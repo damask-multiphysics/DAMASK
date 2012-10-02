@@ -212,6 +212,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  real(pReal), dimension(6,6) :: ddsdde
  real(pReal) temp, timeInc
  integer(pInt) computationMode, n, i
+ logical :: cutBack
 
  do n = 1,nblock                                                       ! loop over vector of IPs
 
@@ -317,4 +318,5 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  integer(pInt) mpie_error
 
  call xit
+ flush(6)
  end subroutine quit

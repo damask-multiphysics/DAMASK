@@ -132,7 +132,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
                       pInt
  use FEsolving, only: cycleCounter, &
                       theInc, &
-                      cutBack, &
                       calcMode, &
                       lastMode, &
                       theTime, &
@@ -171,6 +170,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) computationMode, i, cp_en
+ logical :: cutBack
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
    !$OMP CRITICAL (write2out)
@@ -304,6 +304,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  
  implicit none
  integer(pInt) mpie_error
-
+ flush(6)
  call xit
  end subroutine quit

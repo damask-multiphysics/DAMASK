@@ -223,7 +223,6 @@ subroutine hypela2(&
                       pInt
  use FEsolving, only: cycleCounter, &
                       theInc, &
-                      cutBack, &
                       calcMode, &
                       lastMode, &
                       theTime, &
@@ -248,6 +247,7 @@ subroutine hypela2(&
  integer(pInt) ifr, ifu, itel, jtype, kcus, lclass, matus, n, ncrd, ndeg
  integer(pInt) ndi, ndm, ngens, nn, nnode, nshear
  real(pReal) s, strechn, strechn1, t
+ logical :: cutBack
  !     ** End of generated type statements **
 
  dimension e(*),de(*),t(*),dt(*),g(*),d(ngens,*),s(*), n(2),coord(ncrd,*),disp(ndeg,*),matus(2),dispt(ndeg,*),ffn(itel,*),&
@@ -294,7 +294,7 @@ subroutine hypela2(&
        lastMode = .false.                                                 ! pretend last step was collection
        calcMode = .false.                                                 ! pretend last step was collection
        !$OMP CRITICAL (write2out)
-         write (6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',n(1),nn
+         write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',n(1),nn
          call flush(6)
        !$OMP END CRITICAL (write2out)
      else if (inc - theInc > 1) then                                      ! >> restart of broken analysis <<
@@ -303,7 +303,7 @@ subroutine hypela2(&
        lastMode = .true.                                                  ! pretend last step was calculation
        calcMode = .true.                                                  ! pretend last step was calculation
        !$OMP CRITICAL (write2out)
-         write (6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',n(1),nn
+         write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',n(1),nn
          call flush(6)
        !$OMP END CRITICAL (write2out)
      else                                                                 ! >> just the next inc <<
@@ -312,7 +312,7 @@ subroutine hypela2(&
        lastMode = .true.                                                  ! assure last step was calculation
        calcMode = .true.                                                  ! assure last step was calculation
        !$OMP CRITICAL (write2out)
-         write (6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',n(1),nn
+         write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',n(1),nn
          call flush(6)
        !$OMP END CRITICAL (write2out)
      endif

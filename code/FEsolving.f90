@@ -48,8 +48,7 @@ module FEsolving
    parallelExecution = .true.,  &                                                                   !< OpenMP multicore calculation
    lastMode          = .true.,  &                                                                   !< toDo
    lastIncConverged  = .false., &                                                                   !< toDo
-   outdatedByNewInc  = .false., &                                                                   !< toDo
-   cutBack           = .false.
+   outdatedByNewInc  = .false.                                                                      !< toDo
 
  integer(pInt), dimension(:,:), allocatable, public :: &
    FEsolving_execIP
