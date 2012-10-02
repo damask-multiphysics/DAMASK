@@ -61,7 +61,7 @@ module debug
  integer(pInt), parameter, private :: &
    debug_maxNtype                = debug_abaqus                                                     ! must be set to the maximum defined debug type
    
- integer(pInt), dimension(debug_maxNtype+2_pInt),  public :: &                                      ! specific ones, and 2 for "all" and "other"
+ integer(pInt),protected, dimension(debug_maxNtype+2_pInt),  public :: &                            ! specific ones, and 2 for "all" and "other"
    debug_level                    = 0_pInt
 
  integer(pInt), public :: &
