@@ -92,7 +92,10 @@ subroutine constitutive_init
                      IO_write_jobBinaryIntFile
  use mesh,     only: mesh_maxNips, &
                      mesh_NcpElems, &
-                     mesh_element,FE_Nips
+                     mesh_element, &
+                     FE_Nips, &
+                     FE_NipNeighbors, &
+                     mesh_ipNeighborhood
  use material, only: material_phase, &
                      material_Nphase, &
                      material_localFileExt, &    
@@ -396,7 +399,6 @@ endif
                 allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_nonlocal_sizeDotState(myInstance))) 
               enddo
             endif
-            constitutive_state0(g,i,e)%p =           constitutive_nonlocal_stateInit(myInstance)
             constitutive_aTolState(g,i,e)%p =        constitutive_nonlocal_aTolState(myInstance)
             constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(myInstance)
             constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(myInstance)
@@ -406,6 +408,16 @@ endif
             call IO_error(201_pInt,ext_msg=trim(phase_plasticity(material_phase(g,i,e))))      ! unknown plasticity
            
         end select
+      enddo
+    enddo
+  enddo
+!$OMP END PARALLEL DO
+call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
+!$OMP PARALLEL DO PRIVATE(myNgrains)
+  do e = 1_pInt,mesh_NcpElems                                  ! loop over elements
+    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
+    do i = 1_pInt,FE_Nips(mesh_element(2,e))                   ! loop over IPs
+      do g = 1_pInt,myNgrains                                  ! loop over grains
         constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p
         constitutive_state(g,i,e)%p = constitutive_state0(g,i,e)%p    ! need to be defined for first call of constitutive_microstructure in crystallite_init
       enddo
