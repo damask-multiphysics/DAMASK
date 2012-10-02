@@ -16,42 +16,41 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
+!--------------------------------------------------------------------------------------------------
 !* $Id$
-!************************************
-!*      Module: CONSTITUTIVE        *
-!************************************
-!* contains:                        *
-!* - constitutive equations         *
-!* - parameters definition          *
-!************************************
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!! Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief elasticity, plasticity, internal microstructure state
+!--------------------------------------------------------------------------------------------------
 
-MODULE constitutive
+module constitutive
 
 use prec, only: pInt, p_vec
 
 implicit none
+!private
 type(p_vec),  dimension(:,:,:), allocatable :: &
-  constitutive_state0, &                              ! pointer array to microstructure at start of FE inc
-  constitutive_partionedState0, &                     ! pointer array to microstructure at start of homogenization inc
-  constitutive_subState0, &                           ! pointer array to microstructure at start of crystallite inc
-  constitutive_state, &                               ! pointer array to current microstructure (end of converged time step)
-  constitutive_state_backup, &                        ! pointer array to backed up microstructure (end of converged time step)
-  constitutive_dotState, &                            ! pointer array to evolution of current microstructure
-  constitutive_deltaState, &                          ! pointer array to incremental change of current microstructure
-  constitutive_previousDotState,&                     ! pointer array to previous evolution of current microstructure
-  constitutive_previousDotState2,&                    ! pointer array to 2nd previous evolution of current microstructure
-  constitutive_dotState_backup, &                     ! pointer array to backed up evolution of current microstructure
-  constitutive_RK4dotState, &                         ! pointer array to evolution of microstructure defined by classical Runge-Kutta method
-  constitutive_aTolState                              ! pointer array to absolute state tolerance
+  constitutive_state0, &                                                                            !< pointer array to microstructure at start of FE inc
+  constitutive_partionedState0, &                                                                   !< pointer array to microstructure at start of homogenization inc
+  constitutive_subState0, &                                                                         !< pointer array to microstructure at start of crystallite inc
+  constitutive_state, &                                                                             !< pointer array to current microstructure (end of converged time step)
+  constitutive_state_backup, &                                                                      !< pointer array to backed up microstructure (end of converged time step)
+  constitutive_dotState, &                                                                          !< pointer array to evolution of current microstructure
+  constitutive_deltaState, &                                                                        !< pointer array to incremental change of current microstructure
+  constitutive_previousDotState,&                                                                   !< pointer array to previous evolution of current microstructure
+  constitutive_previousDotState2,&                                                                  !< pointer array to 2nd previous evolution of current microstructure
+  constitutive_dotState_backup, &                                                                   !< pointer array to backed up evolution of current microstructure
+  constitutive_RK4dotState, &                                                                       !< pointer array to evolution of microstructure defined by classical Runge-Kutta method
+  constitutive_aTolState                                                                            !< pointer array to absolute state tolerance
 
- type(p_vec), dimension(:,:,:,:), allocatable :: &
-  constitutive_RKCK45dotState                         ! pointer array to evolution of microstructure used by Cash-Karp Runge-Kutta method
+type(p_vec), dimension(:,:,:,:), allocatable :: &
+  constitutive_RKCK45dotState                                                                       !< pointer array to evolution of microstructure used by Cash-Karp Runge-Kutta method
 
- integer(pInt), dimension(:,:,:), allocatable :: &
-  constitutive_sizeDotState, &                        ! size of dotState array
-  constitutive_sizeState, &                           ! size of state array per grain
-  constitutive_sizePostResults                        ! size of postResults array per grain
+integer(pInt), dimension(:,:,:), allocatable :: &
+  constitutive_sizeDotState, &                                                                      !< size of dotState array
+  constitutive_sizeState, &                                                                         !< size of state array per grain
+  constitutive_sizePostResults                                                                      !< size of postResults array per grain
 
 integer(pInt) :: &
   constitutive_maxSizeDotState, &
@@ -60,27 +59,28 @@ integer(pInt) :: &
 
  character (len=*), parameter, public :: constitutive_hooke_label = 'hooke'
 
+public :: & 
+  constitutive_init, &
+  constitutive_homogenizedC, &
+  constitutive_averageBurgers, &
+  constitutive_microstructure, &
+  constitutive_LpAndItsTangent, &
+  constitutive_TandItsTangent, &
+  constitutive_collectDotState, &
+  constitutive_collectDeltaState, &
+  constitutive_postResults
+
+private :: &
+  constitutive_hooke_TandItsTangent
+
 contains
-!****************************************
-!* - constitutive_init
-!* - constitutive_homogenizedC
-!* - constitutive_averageBurgers
-!* - constitutive_microstructure
-!* - constitutive_LpAndItsTangent
-!* - constitutive_TandItsTangent
-!* - constitutive_hooke_TandItsTangent
-!* - constitutive_collectDotState
-!* - constitutive_collectDeltaState
-!* - constitutive_collectDotTemperature
-!* - constitutive_postResults
-!****************************************
 
 
-!**************************************
-!*      Module initialization         *
-!**************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief allocates arrays pointing to array of the various constitutive modules
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_init
- use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug,    only: debug_level, &
                      debug_constitutive, &
                      debug_levelBasic
@@ -113,12 +113,12 @@ subroutine constitutive_init
 
 implicit none
 integer(pInt), parameter :: fileunit = 200_pInt
-integer(pInt)   g, &                          ! grain number
-                i, &                          ! integration point number
-                e, &                          ! element number
-                gMax, &                       ! maximum number of grains
-                iMax, &                       ! maximum number of integration points
-                eMax, &                       ! maximum number of elements
+integer(pInt)   g, &                                                                                ! grain number
+                i, &                                                                                ! integration point number
+                e, &                                                                                ! element number
+                gMax, &                                                                             ! maximum number of grains
+                iMax, &                                                                             ! maximum number of integration points
+                eMax, &                                                                             ! maximum number of elements
                 p, &
                 s, &
                 myInstance,& 
@@ -447,18 +447,18 @@ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
   call flush(6)
 !$OMP END CRITICAL (write2out)
 
-endsubroutine
+end subroutine constitutive_init
 
 
-function constitutive_homogenizedC(ipc,ip,el)
 !*********************************************************************
 !* This function returns the homogenized elacticity matrix           *
 !* INPUT:                                                            *
-!*  - state           : state variables                              *
 !*  - ipc             : component-ID of current integration point    *
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
+function constitutive_homogenizedC(ipc,ip,el)
+
  use prec, only: pReal
  use material, only: phase_plasticity,material_phase
  use constitutive_none
@@ -494,10 +494,9 @@ function constitutive_homogenizedC(ipc,ip,el)
      
  end select
 
-return
-endfunction
+end function constitutive_homogenizedC
 
-function constitutive_averageBurgers(ipc,ip,el)
+
 !*********************************************************************
 !* This function returns the average length of Burgers vector        *
 !* INPUT:                                                            *
@@ -506,6 +505,8 @@ function constitutive_averageBurgers(ipc,ip,el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
+function constitutive_averageBurgers(ipc,ip,el)
+
  use prec, only: pReal
  use material, only: phase_plasticity,material_phase
  use constitutive_none
@@ -541,8 +542,7 @@ function constitutive_averageBurgers(ipc,ip,el)
      
  end select
 
-return
-endfunction
+end function constitutive_averageBurgers
 
 
 
@@ -630,15 +630,15 @@ use constitutive_nonlocal,      only: constitutive_nonlocal_label, &
 
 implicit none
 !*** input variables ***!
-integer(pInt), intent(in)::                 ipc, &        ! component-ID of current integration point
-                                            ip, &         ! current integration point
-                                            el            ! current element
+integer(pInt), intent(in)::                 ipc, &                                                  ! component-ID of current integration point
+                                            ip, &                                                   ! current integration point
+                                            el                                                      ! current element
 real(pReal), intent(in) ::                  Temperature
-real(pReal), dimension(6), intent(in) ::    Tstar_v       ! 2nd Piola-Kirchhoff stress
+real(pReal), dimension(6), intent(in) ::    Tstar_v                                                 ! 2nd Piola-Kirchhoff stress
 
 !*** output variables ***!
-real(pReal), dimension(3,3), intent(out) :: Lp            ! plastic velocity gradient
-real(pReal), dimension(9,9), intent(out) :: dLp_dTstar    ! derivative of Lp with respect to Tstar (4th-order tensor)
+real(pReal), dimension(3,3), intent(out) :: Lp                                                      ! plastic velocity gradient
+real(pReal), dimension(9,9), intent(out) :: dLp_dTstar                                              ! derivative of Lp with respect to Tstar (4th-order tensor)
 
 
 !*** local variables ***!
@@ -666,7 +666,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
    
 end select
 
-endsubroutine
+end subroutine constitutive_LpAndItsTangent
 
 
 
@@ -700,9 +700,7 @@ subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
      
  end select
 
-return
-
-endsubroutine constitutive_TandItsTangent
+end subroutine constitutive_TandItsTangent
 
 
 
@@ -831,7 +829,7 @@ if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   !$OMP END CRITICAL (debugTimingDotState)
 endif
 
-endsubroutine
+end subroutine constitutive_collectDotState
 
 
 !*********************************************************************
@@ -914,7 +912,7 @@ if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
   !$OMP END CRITICAL (debugTimingDeltaState)
 endif
 
-endsubroutine
+end subroutine constitutive_collectDeltaState
 
 
 
@@ -999,11 +997,10 @@ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   !$OMP END CRITICAL (debugTimingDotTemperature)
 endif
 
-endfunction
+end function constitutive_dotTemperature
 
 
 
-function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 !*********************************************************************
 !* return array of constitutive results                              *
 !* INPUT:                                                            *
@@ -1013,6 +1010,7 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 !*  - ip              : current integration point                    *
 !*  - el              : current element                              *
 !*********************************************************************
+function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
 use prec, only:     pReal
 use mesh, only:     mesh_NcpElems, &
                     mesh_maxNips
@@ -1073,7 +1071,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
                                                                  constitutive_dotstate(ipc,ip,el), ipc, ip, el)
 end select
  
-endfunction
+end function constitutive_postResults
 
 
-END MODULE
+end module constitutive

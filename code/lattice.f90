@@ -45,38 +45,38 @@ module lattice
    lattice_maxNtwin        = 24_pInt, &                                                             !< max # of twin systems over lattice structures
    lattice_maxNinteraction = 30_pInt                                                                !< max # of interaction types (in hardening matrix part)
  
- integer(pInt), allocatable, dimension(:,:), public :: &
+ integer(pInt), allocatable, dimension(:,:), protected, public :: &
    lattice_NslipSystem, &                                                                           !< # of slip systems in each family
    lattice_NtwinSystem                                                                              !< # of twin systems in each family
 
- integer(pInt), allocatable, dimension(:,:,:), public :: &
+ integer(pInt), allocatable, dimension(:,:,:), protected, public :: &
    lattice_interactionSlipSlip, &                                                                   !< interaction type between slip/slip
    lattice_interactionSlipTwin, &                                                                   !< interaction type between slip/twin
    lattice_interactionTwinSlip, &                                                                   !< interaction type between twin/slip
    lattice_interactionTwinTwin                                                                      !< interaction type between twin/twin
 
 
- real(pReal), allocatable, dimension(:,:,:,:), public :: &
+ real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
    lattice_Sslip                                                                                    !< Schmid matrices, normal, shear direction and d x n of slip systems                                          
   
- real(pReal), allocatable, dimension(:,:,:), public :: &
+ real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_Sslip_v, &
    lattice_sn, &
    lattice_sd, &
    lattice_st
 
 ! rotation and Schmid matrices, normal, shear direction and d x n of twin systems
- real(pReal), allocatable, dimension(:,:,:,:), public  :: &
+ real(pReal), allocatable, dimension(:,:,:,:), protected, public  :: &
    lattice_Stwin, &
    lattice_Qtwin
 
- real(pReal), allocatable, dimension(:,:,:), public :: &
+ real(pReal), allocatable, dimension(:,:,:), protected, public :: &
    lattice_Stwin_v, &
    lattice_tn, &
    lattice_td, &
    lattice_tt
 
- real(pReal), allocatable, dimension(:,:), public :: &
+ real(pReal), allocatable, dimension(:,:), protected, public :: &
    lattice_shearTwin                                                                                !< characteristic twin shear
 
  integer(pInt), private :: &

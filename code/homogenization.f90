@@ -322,13 +322,13 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt .and. &
           debug_e > 0 .and. debug_e <= mesh_NcpElems .and. debug_i > 0 .and. debug_i <= mesh_maxNips) then
    !$OMP CRITICAL (write2out)
-     write (6,*)
-     write (6,'(a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
-     write (6,'(a,/,12x,f14.9)') '<< HOMOG >> Temp0', &
+     write(6,*)
+     write(6,'(a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
+     write(6,'(a,/,12x,f14.9)') '<< HOMOG >> Temp0', &
                                      materialpoint_Temperature(debug_i,debug_e)
-     write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
+     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
                                      math_transpose33(materialpoint_F0(1:3,1:3,debug_i,debug_e))
-     write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
+     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
                                      math_transpose33(materialpoint_F(1:3,1:3,debug_i,debug_e))
    !$OMP END CRITICAL (write2out)
  endif
@@ -553,9 +553,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    !$OMP END PARALLEL DO
  else
    !$OMP CRITICAL (write2out)
-   write (6,*)
-   write (6,'(a)') '<< HOMOG >> Material Point terminally ill'
-   write (6,*)
+   write(6,*)
+   write(6,'(a)') '<< HOMOG >> Material Point terminally ill'
+   write(6,*)
    !$OMP END CRITICAL (write2out)
  endif
  return

@@ -155,31 +155,31 @@ subroutine material_init
  call material_parseHomogenization(fileunit,material_partHomogenization)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-   write (6,*) 'Homogenization parsed'
+   write(6,*) 'Homogenization parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-   write (6,*) 'Microstructure parsed'
+   write(6,*) 'Microstructure parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parseCrystallite(fileunit,material_partCrystallite)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-   write (6,*) 'Crystallite parsed'
+   write(6,*) 'Crystallite parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parseTexture(fileunit,material_partTexture)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-   write (6,*) 'Texture parsed'
+   write(6,*) 'Texture parsed'
    !$OMP END CRITICAL (write2out)
  endif
  call material_parsePhase(fileunit,material_partPhase)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-   write (6,*) 'Phase parsed'
+   write(6,*) 'Phase parsed'
    !$OMP END CRITICAL (write2out)
  endif
  close(fileunit)
@@ -202,27 +202,27 @@ subroutine material_init
  enddo
  if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-     write (6,*)
-     write (6,*) 'MATERIAL configuration'
-     write (6,*)
-     write (6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
+     write(6,*)
+     write(6,*) 'MATERIAL configuration'
+     write(6,*)
+     write(6,'(a32,1x,a16,1x,a6)') 'homogenization                  ','type            ','grains'
      do i = 1_pInt,material_Nhomogenization
-       write (6,'(1x,a32,1x,a16,1x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
+       write(6,'(1x,a32,1x,a16,1x,i4)') homogenization_name(i),homogenization_type(i),homogenization_Ngrains(i)
      enddo
-     write (6,*)
-     write (6,'(a32,1x,a11,1x,a12,1x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
+     write(6,*)
+     write(6,'(a32,1x,a11,1x,a12,1x,a13)') 'microstructure                  ','crystallite','constituents','homogeneous'
      do i = 1_pInt,material_Nmicrostructure
-       write (6,'(a32,4x,i4,8x,i4,8x,l1)') microstructure_name(i), &
+       write(6,'(a32,4x,i4,8x,i4,8x,l1)') microstructure_name(i), &
                                            microstructure_crystallite(i), &
                                            microstructure_Nconstituents(i), &
                                            microstructure_elemhomo(i)
        if (microstructure_Nconstituents(i) > 0_pInt) then
          do j = 1_pInt,microstructure_Nconstituents(i)
-           write (6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',phase_name(microstructure_phase(j,i)),&
+           write(6,'(a1,1x,a32,1x,a32,1x,f7.4)') '>',phase_name(microstructure_phase(j,i)),&
                                                       texture_name(microstructure_texture(j,i)),&
                                                       microstructure_fraction(j,i)
          enddo
-         write (6,*)
+         write(6,*)
        endif
      enddo
    !$OMP END CRITICAL (write2out)
@@ -744,10 +744,10 @@ subroutine material_populateGrains
  
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-     write (6,*)
-     write (6,*) 'MATERIAL grain population'
-     write (6,*)
-     write (6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
+     write(6,*)
+     write(6,*) 'MATERIAL grain population'
+     write(6,*)
+     write(6,'(a32,1x,a32,1x,a6)') 'homogenization_name','microstructure_name','grain#'
    !$OMP END CRITICAL (write2out)
  endif
  do homog = 1_pInt,material_Nhomogenization              ! loop over homogenizations
@@ -757,8 +757,8 @@ subroutine material_populateGrains
        myNgrains = Ngrains(homog,micro)             ! assign short name for total number of grains to populate
        if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
          !$OMP CRITICAL (write2out)
-           write (6,*)
-           write (6,'(a32,1x,a32,1x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
+           write(6,*)
+           write(6,'(a32,1x,a32,1x,i6)') homogenization_name(homog),microstructure_name(micro),myNgrains
          !$OMP END CRITICAL (write2out)
        endif
      

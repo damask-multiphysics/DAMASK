@@ -1,7 +1,7 @@
 ! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the Düsseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -29,13 +29,13 @@ implicit none
 real(pReal), parameter ::                         CPFEM_odd_stress    = 1e15_pReal, &
                                                   CPFEM_odd_jacobian  = 1e50_pReal
 
-real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                                          ! Cauchy stress
-real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                                       ! Cauchy stress tangent
-real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood                             ! known good tangent
+real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                                          !> Cauchy stress
+real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                                       !> Cauchy stress tangent
+real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood                             !> known good tangent
 
-logical ::                                        CPFEM_init_done       = .false., &                ! remember whether init has been done already
-                                                  CPFEM_init_inProgress = .false., &                ! remember whether first IP is currently performing init
-                                                  CPFEM_calc_done       = .false.                   ! remember whether first IP has already calced the results
+logical ::                                        CPFEM_init_done       = .false., &                !> remember whether init has been done already
+                                                  CPFEM_init_inProgress = .false., &                !> remember whether first IP is currently performing init
+                                                  CPFEM_calc_done       = .false.                   !> remember whether first IP has already calced the results
  
 
 CONTAINS

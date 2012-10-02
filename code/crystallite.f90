@@ -554,14 +554,14 @@ if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt&
                         .and. debug_i > 0 .and. debug_i <= mesh_maxNips &
                         .and. debug_g > 0 .and. debug_g <= homogenization_maxNgrains) then
   !$OMP CRITICAL (write2out)
-    write (6,*)
-    write (6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> crystallite start at el ip g ', debug_e, debug_i, debug_g
-    write (6,'(a,/,12x,f14.9)') '<< CRYST >> Temp0', crystallite_partionedTemperature0(debug_g,debug_i,debug_e)
-    write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F0 ', &
+    write(6,*)
+    write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> crystallite start at el ip g ', debug_e, debug_i, debug_g
+    write(6,'(a,/,12x,f14.9)') '<< CRYST >> Temp0', crystallite_partionedTemperature0(debug_g,debug_i,debug_e)
+    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F0 ', &
                                           math_transpose33(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
-    write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp0', &
+    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp0', &
                                           math_transpose33(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
-    write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp0', &
+    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp0', &
                                           math_transpose33(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
   !$OMP END CRITICAL (write2out)
 endif
@@ -720,8 +720,8 @@ enddo                                                                           
         if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
 #ifndef _OPENMP
           if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-            write (6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> no convergence : respond fully elastic at el ip g ',e,i,g
-            write (6,*) 
+            write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> no convergence : respond fully elastic at el ip g ',e,i,g
+            write(6,*) 
           endif
 #endif
           invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,g,i,e))
@@ -734,12 +734,12 @@ enddo                                                                           
         if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt &
             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
                     .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
-          write (6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip g ',e,i,g
-          write (6,*) 
-          write (6,'(a,/,3(12x,3(f12.4,1x)/))') '<< CRYST >> P / MPa', math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1.0e6_pReal
-          write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp', math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
-          write (6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp', math_transpose33(crystallite_Lp(1:3,1:3,g,i,e))
-          write (6,*) 
+          write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip g ',e,i,g
+          write(6,*) 
+          write(6,'(a,/,3(12x,3(f12.4,1x)/))') '<< CRYST >> P / MPa', math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1.0e6_pReal
+          write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp', math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
+          write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp', math_transpose33(crystallite_Lp(1:3,1:3,g,i,e))
+          write(6,*) 
         endif
 #endif
       enddo
