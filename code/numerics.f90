@@ -25,20 +25,23 @@ module numerics
 use prec, only: pInt, pReal
 
 implicit none
-character(len=64), parameter, private ::&
+character(len=64), parameter, private :: &
   numerics_configFile        = 'numerics.config'                                                    !< name of configuration file
 
-integer(pInt) ::                iJacoStiffness             =  1_pInt, &                             !< frequency of stiffness update
+integer(pInt), protected, public :: &
+                                iJacoStiffness             =  1_pInt, &                             !< frequency of stiffness update
                                 iJacoLpresiduum            =  1_pInt, &                             !< frequency of Jacobian update of residuum in Lp
                                 nHomog                     = 20_pInt, &                             !< homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
                                 nMPstate                   = 10_pInt, &                             !< materialpoint state loop limit
                                 nCryst                     = 20_pInt, &                             !< crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
                                 nState                     = 10_pInt, &                             !< state loop limit
                                 nStress                    = 40_pInt, &                             !< stress loop limit
-                                pert_method                =  1_pInt, &                             !< method used in perturbation technique for tangent
-                                numerics_integrationMode   =  0_pInt                                !< integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
-integer(pInt), dimension(2) ::  numerics_integrator        =  1_pInt                                !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
-real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &                       !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
+                                pert_method                =  1_pInt                                !< method used in perturbation technique for tangent
+integer(pInt) ::                numerics_integrationMode   =  0_pInt                                !< integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
+integer(pInt), dimension(2) , protected, public :: &
+                                numerics_integrator        =  1_pInt                                !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
+real(pReal), protected, public :: &
+                                relevantStrain             =  1.0e-7_pReal, &                       !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
                                 defgradTolerance           =  1.0e-7_pReal, &                       !< deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
                                 pert_Fg                    =  1.0e-7_pReal, &                       !< strain perturbation for FEM Jacobi
                                 subStepMinCryst            =  1.0e-3_pReal, &                       !< minimum (relative) size of sub-step allowed during cutback in crystallite
@@ -65,39 +68,49 @@ real(pReal) ::                  relevantStrain             =  1.0e-7_pReal, &   
                                 maxVolDiscr_RGC            =  1.0e-5_pReal, &                       !< threshold of maximum volume discrepancy allowed
                                 volDiscrMod_RGC            =  1.0e+12_pReal, &                      !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
                                 volDiscrPow_RGC            =  5.0_pReal                             !< powerlaw penalty for volume discrepancy
-logical ::                      analyticJaco               = .false.                                !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+logical, protected, public :: &                      
+                                analyticJaco               = .false.                                !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
 !* Random seeding parameters
-integer(pInt) ::                fixedSeed                  = 0_pInt                                 !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+integer(pInt), protected, public :: &
+                                fixedSeed                  = 0_pInt                                 !< fixed seeding for pseudo-random number generator, Default 0: use random seed
 !* OpenMP variable
-integer(pInt) ::                DAMASK_NumThreadsInt       = 0_pInt                                 !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
+integer(pInt), protected, public :: &
+                                DAMASK_NumThreadsInt       = 0_pInt                                 !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
 
 !* spectral parameters:
 #ifdef Spectral
-real(pReal) ::                  err_div_tol                =  0.1_pReal, &                          !< Div(P)/avg(P)*meter
+real(pReal), protected, public :: &
+                                err_div_tol                =  0.1_pReal, &                          !< Div(P)/avg(P)*meter
                                 err_stress_tolrel          =  0.01_pReal, &                         !< relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 err_stress_tolabs          =  huge(1.0_pReal),  &                   !< absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 err_f_tol                  =  1e-6_pReal,  &
                                 err_p_tol                  =  1e-5_pReal,  &
                                 fftw_timelimit             = -1.0_pReal, &                          !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal                         !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
-character(len=64) ::            fftw_plan_mode             = 'FFTW_PATIENT', &                      !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
+character(len=64), private :: &
+                                fftw_plan_mode             = 'FFTW_PATIENT'                         !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
+character(len=64), protected, public :: & 
                                 myspectralsolver           = 'basic'  , &                           !< spectral solution method 
                                 myfilter                   = 'none'                                 !< spectral filtering method
-character(len=1024) ::          petsc_options              = '-snes_type ngmres -snes_ngmres_anderson -snes_view'
-integer(pInt) ::                fftw_planner_flag          =  32_pInt, &                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
+character(len=1024), protected, public :: &
+                                petsc_options              = '-snes_type ngmres -snes_ngmres_anderson -snes_view'
+integer(pInt), protected, public :: &
+                                fftw_planner_flag          =  32_pInt, &                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
                                 itmax                      =  20_pInt, &                            !< maximum number of iterations
                                 itmin                      =  2_pInt, &                             !< minimum number of iterations
                                 maxCutBack                 =  3_pInt                                !< max number of cut backs
-logical ::                      memory_efficient           = .true., &                              !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
+logical, protected , public :: &
+                                memory_efficient           = .true., &                              !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 divergence_correction      = .false., &                             !< correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false.                                !< update gamma operator with current stiffness, Default .false.: use initial stiffness 
+
 #endif
 
+  public :: numerics_init
+  
+contains
 
-
-CONTAINS
- 
 !*******************************************
 !    initialization subroutine
 !*******************************************
@@ -256,9 +269,9 @@ subroutine numerics_init
        case ('fftw_timelimit')
              fftw_timelimit = IO_floatValue(line,positions,2_pInt)
        case ('fftw_plan_mode')
-             fftw_plan_mode = IO_stringValue(line,positions,2_pInt)
+             fftw_plan_mode = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('myfilter')
-             myfilter = IO_stringValue(line,positions,2_pInt)
+             myfilter = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('rotation_tol')
              rotation_tol = IO_floatValue(line,positions,2_pInt)
        case ('divergence_correction')
@@ -269,7 +282,7 @@ subroutine numerics_init
        case ('petsc_options')
              petsc_options = trim(line(positions(4):))
        case ('myspectralsolver')
-             myspectralsolver = IO_stringValue(line,positions,2_pInt)
+             myspectralsolver = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('err_f_tol')
              err_f_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_p_tol')

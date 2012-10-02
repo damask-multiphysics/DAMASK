@@ -15,8 +15,8 @@ module DAMASK_spectral_SolverBasicPETSC
    math_I3
  
  use DAMASK_spectral_Utilities, only: &
-   solutionState
- 
+   tSolutionState
+
  implicit none
 #include <finclude/petscsys.h>
 #include <finclude/petscvec.h>
@@ -35,12 +35,12 @@ module DAMASK_spectral_SolverBasicPETSC
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type solutionParams 
+ type tSolutionParams 
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
- end type solutionParams
+ end type tSolutionParams
  
- type(solutionParams), private :: params
+ type(tSolutionParams), private :: params
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
@@ -50,7 +50,7 @@ module DAMASK_spectral_SolverBasicPETSC
  
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc
+  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, Fdot
   real(pReal), private, dimension(:,:,:,:),   allocatable ::  coordinates
   real(pReal), private, dimension(:,:,:),     allocatable ::  temperature
  
@@ -60,9 +60,9 @@ module DAMASK_spectral_SolverBasicPETSC
     F_aim = math_I3, &
     F_aim_lastInc = math_I3, &
     P_av
-   
+  character(len=1024), private :: incInfo   
   real(pReal), private, dimension(3,3,3,3) :: &
-    C = 0.0_pReal, &
+    C = 0.0_pReal, C_lastInc= 0.0_pReal, &
     S = 0.0_pReal
  
   real(pReal), private :: err_stress, err_div
@@ -78,52 +78,51 @@ subroutine BasicPETSC_init()
       
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
-    use IO, only: &
-      IO_read_JobBinaryFile, &
-      IO_write_JobBinaryFile
+ use IO, only: &
+   IO_read_JobBinaryFile, &
+   IO_write_JobBinaryFile
     
-    use FEsolving, only: &
-      restartInc
+ use FEsolving, only: &
+   restartInc
    
-    use DAMASK_interface, only: &
-      getSolverJobName
+ use DAMASK_interface, only: &
+   getSolverJobName
         
-    use DAMASK_spectral_Utilities, only: &
-      Utilities_init, &
-      Utilities_constitutiveResponse, &
-      Utilities_updateGamma, &
-      debugrestart
+ use DAMASK_spectral_Utilities, only: &
+   Utilities_init, &
+   Utilities_constitutiveResponse, &
+   Utilities_updateGamma, &
+   debugRestart
       
-    use numerics, only: &
-      petsc_options  
+ use numerics, only: &
+   petsc_options  
          
-    use mesh, only: &
-      res, &
-      geomdim, &
-      mesh_NcpElems
+ use mesh, only: &
+   res, &
+   geomdim, &
+   mesh_NcpElems
       
-    use math, only: &
-      math_invSym3333
+ use math, only: &
+   math_invSym3333
       
-    implicit none
+ implicit none
+ integer(pInt) :: i,j,k
+ real(pReal), dimension(:,:,:,:,:), allocatable ::  P
     
-    integer(pInt) :: i,j,k
-    real(pReal), dimension(:,:,:,:,:), allocatable ::  P
-    
-    PetscErrorCode :: ierr_psc
-    PetscObject :: dummy
-    PetscMPIInt :: rank
-    PetscScalar, pointer :: xx_psc(:,:,:,:), F(:,:,:,:)
+ PetscErrorCode :: ierr_psc
+ PetscObject :: dummy
+ PetscMPIInt :: rank
+ PetscScalar, pointer :: xx_psc(:,:,:,:), F(:,:,:,:)
     
     call Utilities_init()
     
-    write(6,'(a)') ''
-    write(6,'(a)') ' <<<+-  DAMASK_spectral_solverBasicPETSC init  -+>>>'
+    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSC init  -+>>>'
     write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
 #include "compilation_info.f90"
     write(6,'(a)') ''
    
     allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+    allocate (Fdot  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
     allocate (P          (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
     allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
     allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)
@@ -199,8 +198,8 @@ subroutine BasicPETSC_init()
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-  type(solutionState) function BasicPETSC_solution(guessmode,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
-   
+  type(tSolutionState) function &
+    basicPETSc_solution(incInfoIn,guessmode,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
    use numerics, only: &
      update_gamma
    use math, only: &
@@ -212,23 +211,25 @@ subroutine BasicPETSC_init()
      deformed_fft
    use IO, only: &
      IO_write_JobBinaryFile
-     
    use DAMASK_spectral_Utilities, only: &
-     boundaryCondition, &
+     tBoundaryCondition, &
+     Utilities_calculateRate, &
      Utilities_forwardField, &
      Utilities_maskedCompliance, &
-     Utilities_updateGamma
-       
+     Utilities_updateGamma, &
+     cutBack
    use FEsolving, only: &
-     restartWrite
-   
+     restartWrite, &
+     terminallyIll
    implicit none
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
    real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc, guessmode
-   type(boundaryCondition),      intent(in) :: P_BC,F_BC
+   type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
    real(pReal), dimension(3,3), intent(in) :: rotation_BC
-   real(pReal), dimension(3,3)            :: deltaF_aim, &
+ character(len=*), intent(in) :: incInfoIn
+   real(pReal), dimension(3,3),save       :: F_aimDot=0.0_pReal
+   real(pReal), dimension(3,3)            :: &
                                              F_aim_lab
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
@@ -237,11 +238,12 @@ subroutine BasicPETSC_init()
 !--------------------------------------------------------------------------------------------------
 ! 
    PetscScalar, pointer :: xx_psc(:,:,:,:), F(:,:,:,:)
-   PetscErrorCode ierr_psc   
-   SNESConvergedReason reason
+   PetscErrorCode :: ierr_psc   
+   SNESConvergedReason :: reason
 
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
+   incInfo = incInfoIn
    if (restartWrite) then
      write(6,'(a)') 'writing converged results for restart'
      call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F_lastInc))
@@ -251,29 +253,43 @@ subroutine BasicPETSC_init()
      write (777,rec=1) C
      close(777)
    endif 
-  BasicPETSC_solution%converged =.false.
+  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr_psc)
+  F => xx_psc(0:8,:,:,:)
+ 
+if ( cutBack) then 
+  F_aim = F_aim_lastInc
+
+  F = reshape(F_lastInc,[9,res(1),res(2),res(3)]) 
+  C = C_lastInc
+else
+ 
+  C_lastInc = C
+
 !--------------------------------------------------------------------------------------------------
-! winding forward of deformation aim in loadcase system
-   if (F_BC%myType=='l') then                                                        ! calculate deltaF_aim from given L and current F
-     deltaF_aim = timeinc * F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
-   elseif(F_BC%myType=='fdot')   then                                                                                      ! deltaF_aim = fDot *timeinc where applicable
-     deltaF_aim = timeinc * F_BC%maskFloat * F_BC%values
+! calculate rate for aim
+   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
+     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
+   elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
+     f_aimDot = F_BC%maskFloat * F_BC%values
    endif
-   temp33_Real = F_aim                                            
-   F_aim = F_aim &                                                                         
-           + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)*timeinc/timeinc_old &      
-           + deltaF_aim
-   F_aim_lastInc = temp33_Real
-   F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
-   
+   f_aimDot  = f_aimDot &                                                                         
+             + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
+   F_aim_lastInc = F_aim
+
 !--------------------------------------------------------------------------------------------------
-! update local deformation gradient and coordinates
-   deltaF_aim = math_rotate_backward33(deltaF_aim,rotation_BC)
-   call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr_psc)
-   F => xx_psc(0:8,:,:,:)
-   call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lastInc,F)
-   call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr_psc)
-   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates)
+! update coordinates and rate and forward last inc
+   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
+                                                                   1.0_pReal,F_lastInc,coordinates)
+   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+                                           timeinc,timeinc_old,guessmode,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
+   F_lastInc = reshape(F,[3,3,res(1),res(2),res(3)])
+ endif
+ F_aim = F_aim + f_aimDot * timeinc
+
+
+ F = reshape(Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot),[9,res(1),res(2),res(3)])
+ call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr_psc)
+ call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates)
   
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -288,6 +304,9 @@ subroutine BasicPETSC_init()
 
    call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr_psc)
    call SNESGetConvergedReason(snes,reason,ierr_psc)
+   basicPETSc_solution%termIll = terminallyIll
+   terminallyIll = .false.
+   BasicPETSC_solution%converged =.false.
    if (reason > 0 ) BasicPETSC_solution%converged = .true.
 
  end function BasicPETSC_solution
@@ -309,12 +328,12 @@ subroutine BasicPETSC_init()
      wgt
    use DAMASK_spectral_Utilities, only: &
      field_real, &
-     Utilities_forwardFFT, &
+     Utilities_FFTforward, &
+     Utilities_FFTbackward, &
      Utilities_fourierConvolution, &
-     Utilities_backwardFFT, &
      Utilities_constitutiveResponse, &
      Utilities_divergenceRMS
-  
+   use IO, only : IO_intOut 
    implicit none
 
    real(pReal), dimension(3,3) :: F_aim_lab_lastIter, F_aim_lab
@@ -327,7 +346,6 @@ subroutine BasicPETSC_init()
    PetscInt :: iter, nfuncs
    PetscObject :: dummy
    PetscErrorCode :: ierr_psc
-
    F => x_scal(:,:,:,:,:)
    residual_F => f_scal(:,:,:,:,:)
    
@@ -336,9 +354,8 @@ subroutine BasicPETSC_init()
   
  !--------------------------------------------------------------------------------------------------
  ! report begin of new iteration
-   write(6,'(a)') ''
-   write(6,'(a)') '=================================================================='
-   write(6,'(4(a,i6.6))') ' @ Iter. ',itmin,' < ',iter,' < ',itmax, ' | # Func. calls = ',nfuncs
+   write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+                    ' @ Iter. ', itmin, '<',iter, '≤', itmax
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
                                                              math_transpose33(F_aim)
    F_aim_lab_lastIter = math_rotate_backward33(F_aim,params%rotation_BC)
@@ -347,7 +364,7 @@ subroutine BasicPETSC_init()
  ! evaluate constitutive response
    call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,params%timeinc, &
                                        residual_F,C,P_av,ForwardData,params%rotation_BC)
-   ForwardData = .False.
+   ForwardData = .false.
    
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
@@ -360,15 +377,15 @@ subroutine BasicPETSC_init()
    field_real = 0.0_pReal
    field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = reshape(residual_F,[res(1),res(2),res(3),3,3],&
                                                                order=[4,5,1,2,3]) ! field real has a different order
-   call Utilities_forwardFFT()
+   call Utilities_FFTforward()
    err_div = Utilities_divergenceRMS()
    call Utilities_fourierConvolution(F_aim_lab_lastIter - F_aim_lab) 
-   call Utilities_backwardFFT()
+   call Utilities_FFTbackward()
    
  !--------------------------------------------------------------------------------------------------
  ! constructing residual                         
    residual_F = reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])  
-
+   write(6,'(/,a)') '=========================================================================='
  end subroutine BasicPETSC_formResidual
 
 !--------------------------------------------------------------------------------------------------

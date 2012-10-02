@@ -33,7 +33,7 @@ module DAMASK_spectral_Utilities
  real(pReal),   private, dimension(3,3,3,3)                    :: C_ref
  
  real(pReal),   public,  dimension(:,:,:,:,:),     pointer     :: field_real
-
+ logical, public :: cutBack =.false.
 !--------------------------------------------------------------------------------------------------
 ! debug fftw 
  type(C_PTR),   private  :: plan_scalarField_forth, plan_scalarField_back
@@ -45,7 +45,7 @@ module DAMASK_spectral_Utilities
  type(C_PTR), private :: plan_divergence
  real(pReal),    private, dimension(:,:,:,:), pointer :: divergence_real
  complex(pReal), private, dimension(:,:,:,:), pointer :: divergence_fourier
- real(pReal),    dimension(:,:,:,:), allocatable :: divergence_post
+ real(pReal),  private,  dimension(:,:,:,:), allocatable :: divergence_post
 
 !--------------------------------------------------------------------------------------------------
 !variables controlling debugging
@@ -53,18 +53,18 @@ module DAMASK_spectral_Utilities
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type solutionState 
-   logical ::        converged       = .false.   
+ type tSolutionState 
+   logical ::        converged       = .true.   
    logical ::        regrid          = .false.   
    logical ::        termIll         = .false.   
- end type solutionState
+ end type tSolutionState
 
- type boundaryCondition
+ type tBoundaryCondition
    real(pReal), dimension(3,3) :: values = 0.0_pReal
    real(pReal), dimension(3,3) :: maskFloat = 0.0_pReal
    logical,     dimension(3,3) :: maskLogical = .false.
    character(len=64)           :: myType = 'None'
- end type boundaryCondition
+ end type tBoundaryCondition
 
 contains 
 
@@ -105,7 +105,7 @@ subroutine Utilities_init()
  
 
  write(6,'(a)') ''
- write(6,'(a)') ' <<<+-  DAMASK_spectralSolver Utilities init  -+>>>'
+ write(6,'(a)') ' <<<+-  DAMASK_Utilities init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
  write(6,'(a)') ''
@@ -238,7 +238,7 @@ end subroutine Utilities_updateGamma
 !> In case of debugging the FFT, also one component of the tensor (specified by row and column)
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !--------------------------------------------------------------------------------------------------
-subroutine Utilities_forwardFFT(row,column)
+subroutine Utilities_FFTforward(row,column)
  use mesh, only : &
    virt_dim
  use math, only: &
@@ -286,7 +286,7 @@ subroutine Utilities_forwardFFT(row,column)
  if(res(3)>1_pInt) &
   field_fourier (1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
-end subroutine Utilities_forwardFFT
+end subroutine Utilities_FFTforward
 
 
 !--------------------------------------------------------------------------------------------------
@@ -296,7 +296,7 @@ end subroutine Utilities_forwardFFT
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !> results is weighted by number of points stored in wgt
 !--------------------------------------------------------------------------------------------------
-subroutine Utilities_backwardFFT(row,column)
+subroutine Utilities_FFTbackward(row,column)
 
   implicit none
   integer(pInt), intent(in), optional :: row, column
@@ -335,7 +335,7 @@ subroutine Utilities_backwardFFT(row,column)
   endif
   field_real = field_real * wgt
 
-end subroutine Utilities_backwardFFT
+end subroutine Utilities_FFTbackward
 
 
 !--------------------------------------------------------------------------------------------------
@@ -353,9 +353,8 @@ subroutine Utilities_fourierConvolution(fieldAim)
  integer(pInt) :: i, j, k,    l, m, n, o
  complex(pReal), dimension(3,3) ::  temp33_complex
 
- write(6,'(a)') ''
- write(6,'(a)') '... doing convolution .................'
- write(6,'(a)') ''
+
+ write(6,'(/,a)') '... doing convolution .....................................................'
   
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
@@ -398,8 +397,7 @@ real(pReal) function Utilities_divergenceRMS()
                  err_div_max, err_real_div_max
   complex(pReal), dimension(3) ::  temp3_complex
 
-  write(6,'(a)') ''
-  write(6,'(a)') '... calculating divergence .................'
+  write(6,'(/,a)') '... calculating divergence ................................................'
 
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
@@ -477,7 +475,7 @@ function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
    allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
 
-   C_lastInc = math_rotate_forward3333(C*0.95_pReal+0.5_pReal*C_ref,rot_BC)                         ! calculate stiffness from former inc
+   C_lastInc = math_rotate_forward3333(C*0.75_pReal+0.05_pReal*C_ref,rot_BC)                        ! calculate stiffness from former inc
    temp99_Real = math_Plain3333to99(C_lastInc)
    k = 0_pInt                                                                                       ! build reduced stiffness
    do n = 1_pInt,9_pInt
@@ -537,77 +535,99 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   
   implicit none
   real(pReal), dimension(res(1),res(2),res(3)) :: temperature
-  real(pReal), dimension(res(1),res(2),res(3),3) :: coordinates
+  real(pReal), dimension(res(1),res(2),res(3),3), intent(in) :: coordinates
   
-  real(pReal), dimension(3,3,res(1),res(2),res(3)) :: F,F_lastInc, P
+  real(pReal), dimension(3,3,res(1),res(2),res(3)), intent(in) :: F,F_lastInc
+  real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
   real(pReal) :: timeinc
-  logical :: ForwardData
+  logical, intent(in) :: forwardData
   integer(pInt) :: i, j, k, ielem
-  integer(pInt) :: CPFEM_mode
+  integer(pInt) :: calcMode, collectMode
   real(pReal), dimension(3,3,3,3) :: dPdF, C
   real(pReal), dimension(6)       :: sigma                                                                ! cauchy stress
   real(pReal), dimension(6,6)     :: dsde
-  real(pReal), dimension(3,3)     :: P_av, rotation_BC
+  real(pReal), dimension(3,3), intent(in)     :: rotation_BC
+  real(pReal), dimension(3,3)     :: P_av
   
-  write(6,'(a)') ''
-  write(6,'(a)') '... evaluating constitutive response .................'
-  write(6,'(a)') ''
-  
-  if (ForwardData) then
-    CPFEM_mode = 1_pInt
+  write(6,'(/,a,/)') '... evaluating constitutive response ......................................'
+  if (forwardData) then
+    calcMode = 1_pInt
+    collectMode = 4_pInt
    else
-    CPFEM_mode = 2_pInt
+    calcMode = 2_pInt
+    collectMode = 3_pInt
   endif
-
+  if (cutBack) then
+   calcMode = 2_pInt
+   collectMode = 5_pInt
+  endif
+  print*, 'collect mode', collectMode
+  print*, 'calc mode', calcMode
   ielem = 0_pInt
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     ielem = ielem + 1_pInt
-    call CPFEM_general(3_pInt,&                                                              ! collect cycle
+    call CPFEM_general(collectMode,&                                                                ! collect cycle
                         coordinates(i,j,k,1:3), F_lastInc(1:3,1:3,i,j,k),F(1:3,1:3,i,j,k), &
                         temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
+    collectMode = 3_pInt
   enddo; enddo; enddo
 
-  P = 0.0_pReal                                                                         ! needed because of the padding for FFTW
+  P = 0.0_pReal                                                                                     ! needed because of the padding for FFTW
   C = 0.0_pReal
   ielem = 0_pInt 
   call debug_reset()
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     ielem = ielem + 1_pInt
-    call CPFEM_general(CPFEM_mode,&                                                          ! first element in first iteration retains CPFEM_mode 1, 
-                       coordinates(i,j,k,1:3),F_lastInc(1:3,1:3,i,j,k), F(1:3,1:3,i,j,k), &  ! others get 2 (saves winding forward effort)
+    call CPFEM_general(calcMode,&                                                                   ! first element in first iteration retains CPFEM_mode 1, 
+                       coordinates(i,j,k,1:3),F_lastInc(1:3,1:3,i,j,k), F(1:3,1:3,i,j,k), &         ! others get 2 (saves winding forward effort)
                        temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
-    CPFEM_mode = 2_pInt
+    calcMode = 2_pInt
     C = C + dPdF
   enddo; enddo; enddo
   call debug_info()
   
   P_av = math_rotate_forward33(sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt,rotation_BC)               !average of P rotated
   restartWrite = .false.
-
+  cutBack = .false.
   
-  write (6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') ' Piola-Kirchhoff stress / MPa =',&
+  write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
                                                       math_transpose33(P_av)/1.e6_pReal
   
   C = C * wgt
 end subroutine Utilities_constitutiveResponse
 
 
-subroutine Utilities_forwardField(delta_aim,timeinc,timeinc_old,guessmode,field_lastInc,field)
+function Utilities_calculateRate(delta_aim,timeinc,timeinc_old,guessmode,field_lastInc,field)
  implicit none
  real(pReal), intent(in), dimension(3,3) :: delta_aim
  real(pReal), intent(in) :: timeinc, timeinc_old, guessmode
- real(pReal), intent(inout), dimension(3,3,res(1),res(2),res(3)) :: field_lastInc,field
+ real(pReal), intent(in), dimension(3,3,res(1),res(2),res(3)) :: field_lastInc,field
+ real(pReal),             dimension(3,3,res(1),res(2),res(3)) :: Utilities_calculateRate
  
  if (guessmode == 1.0_pReal) then
-   field = field + (field-field_lastInc) * timeinc/timeinc_old
-   field_lastInc = (field + field_lastInc * timeinc/timeinc_old) /(1.0_pReal + timeinc/timeinc_old)
+   Utilities_calculateRate = (field-field_lastInc) / timeinc_old
  else
-   field_lastInc = field
-   field = field + spread(spread(spread(delta_aim,3,res(1)),4,res(2)),5,res(3))
+   Utilities_calculateRate = spread(spread(spread(delta_aim,3,res(1)),4,res(2)),5,res(3))/timeinc
  endif
 
-end subroutine Utilities_forwardField
+end function Utilities_calculateRate
+
+
+function Utilities_forwardField(timeinc,aim,field_lastInc,rate)
+ implicit none
+ real(pReal), intent(in) :: timeinc
+ real(pReal), intent(in), dimension(3,3) :: aim
+ real(pReal), intent(in), dimension(3,3,res(1),res(2),res(3)) :: field_lastInc,rate
+ real(pReal),             dimension(3,3,res(1),res(2),res(3)) :: Utilities_forwardField
+ real(pReal),             dimension(3,3) :: fieldDiff
  
+ Utilities_forwardField = field_lastInc + rate*timeinc
+ fieldDiff = sum(sum(sum(Utilities_forwardField,dim=5),dim=4),dim=3)*wgt - aim
+ Utilities_forwardField = Utilities_forwardField - &
+                          spread(spread(spread(fieldDiff,3,res(1)),4,res(2)),5,res(3))
+
+end function Utilities_forwardField
+
 real(pReal) function Utilities_getFilter(k)
 
   use numerics, only: &                        
@@ -634,6 +654,7 @@ real(pReal) function Utilities_getFilter(k)
 
 end function Utilities_getFilter
 
+
 subroutine Utilities_destroy()
 
   implicit none
@@ -648,5 +669,6 @@ subroutine Utilities_destroy()
   call fftw_destroy_plan(plan_backward)
 
 end subroutine Utilities_destroy
-       
+
+
 end module DAMASK_spectral_Utilities

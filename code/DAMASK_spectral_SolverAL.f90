@@ -15,7 +15,7 @@ module DAMASK_spectral_SolverAL
    math_I3
  
  use DAMASK_spectral_Utilities, only: &
-   solutionState
+   tSolutionState
  
  implicit none
 #include <finclude/petscsys.h>
@@ -31,47 +31,48 @@ module DAMASK_spectral_SolverAL
 #include <finclude/petscsnes.h90>
 
  character (len=*), parameter, public :: &
-   DAMASK_spectral_SolverAL_label = 'AL'
+   DAMASK_spectral_SolverAL_label = 'al'
    
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type solutionParams 
+ type tSolutionParams 
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
- end type solutionParams
+ end type tSolutionParams
  
- type(solutionParams), private :: params
+ type(tSolutionParams), private :: params
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc data
-  DM, private :: da
-  SNES, private :: snes
-  Vec, private :: solution_vec
+ DM, private :: da
+ SNES, private :: snes
+ Vec, private :: solution_vec
  
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
-  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, F_lambda_lastInc
-  real(pReal), private, dimension(:,:,:,:),   allocatable ::  coordinates
-  real(pReal), private, dimension(:,:,:),     allocatable ::  temperature
+ real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, F_lambda_lastInc, F_lambdaDot, Fdot
+ real(pReal), private, dimension(:,:,:,:),   allocatable ::  coordinates
+ real(pReal), private, dimension(:,:,:),     allocatable ::  temperature
  
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
-  real(pReal), private, dimension(3,3) :: &
-    F_aim = math_I3, &
-    F_aim_lastInc = math_I3, &
-    P_av
-   
-  real(pReal), private, dimension(3,3,3,3) :: &
-    C = 0.0_pReal, &
-    S = 0.0_pReal, &
-    C_scale = 0.0_pReal, &
-    S_scale = 0.0_pReal
+ real(pReal), private, dimension(3,3) :: &
+   F_aimDot, &
+   F_aim = math_I3, &
+   F_aim_lastInc = math_I3, &
+   P_av
+ character(len=1024), private :: incInfo   
+ real(pReal), private, dimension(3,3,3,3) :: &
+   C = 0.0_pReal, C_lastInc = 0.0_pReal, &
+   S = 0.0_pReal, &
+   C_scale = 0.0_pReal, &
+   S_scale = 0.0_pReal
  
-  real(pReal), private :: err_stress, err_f, err_p
-  logical, private :: ForwardData
-  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
+ real(pReal), private :: err_stress, err_f, err_p
+   logical, private :: ForwardData
+   real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
  
-  contains
+contains
  
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
@@ -93,7 +94,7 @@ subroutine AL_init()
       Utilities_init, &
       Utilities_constitutiveResponse, &
       Utilities_updateGamma, &
-      debugrestart
+      debugRestart
       
     use numerics, only: &
       petsc_options  
@@ -118,14 +119,16 @@ subroutine AL_init()
     
     call Utilities_init()
     
-    write(6,'(a)') ''
-    write(6,'(a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
+    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
     write(6,'(a)') ' $Id: DAMASK_spectral_SolverAL.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
 #include "compilation_info.f90"
     write(6,'(a)') ''
    
     allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+    allocate (Fdot  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+ !   allocate (Fdot,source = F_lastInc) somethin like that should be possible
     allocate (F_lambda_lastInc(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+    allocate (F_lambdaDot(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
     allocate (P          (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
     allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
     allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)
@@ -214,7 +217,8 @@ subroutine AL_init()
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the AL scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-  type(solutionState) function AL_solution(guessmode,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
+ type(tSolutionState) function &
+  AL_solution(incInfoIn,guessmode,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
    
    use numerics, only: &
      update_gamma
@@ -227,24 +231,27 @@ subroutine AL_init()
      deformed_fft
    use IO, only: &
      IO_write_JobBinaryFile
-     
    use DAMASK_spectral_Utilities, only: &
-     boundaryCondition, &
+     tBoundaryCondition, &
      Utilities_forwardField, &
+     Utilities_calculateRate, &
      Utilities_maskedCompliance, &
-     Utilities_updateGamma
+     Utilities_updateGamma, &
+     cutBack
        
    use FEsolving, only: &
-     restartWrite
+     restartWrite, &
+     terminallyIll
    
    implicit none
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
    real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc, guessmode
-   type(boundaryCondition),      intent(in) :: P_BC,F_BC
+   type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
+   character(len=*), intent(in) :: incInfoIn
    real(pReal), dimension(3,3), intent(in) :: rotation_BC
-   real(pReal), dimension(3,3)            :: deltaF_aim, &
-                                             F_aim_lab
+   real(pReal), dimension(3,3)    ,save        :: F_aimDot
+   real(pReal), dimension(3,3)            ::   F_aim_lab
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
    real(pReal), dimension(3,3)            :: temp33_Real 
@@ -257,6 +264,7 @@ subroutine AL_init()
 
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
+   incInfo = incInfoIn
    if (restartWrite) then
      write(6,'(a)') 'writing converged results for restart'
      call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F_lastInc))
@@ -266,31 +274,56 @@ subroutine AL_init()
      write (777,rec=1) C
      close(777)
    endif 
-  AL_solution%converged =.false.
+   AL_solution%converged =.false.
+  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr_psc)
+  F => xx_psc(0:8,:,:,:)
+  F_lambda => xx_psc(9:17,:,:,:)
+
+
+if ( cutBack) then 
+  F_aim = F_aim_lastInc
+  F_lambda= reshape(F_lambda_lastInc,[9,res(1),res(2),res(3)]) 
+  F = reshape(F_lastInc,[9,res(1),res(2),res(3)]) 
+  C = C_lastInc
+else
+ 
 !--------------------------------------------------------------------------------------------------
-! winding forward of deformation aim in loadcase system
-   if (F_BC%myType=='l') then                                                        ! calculate deltaF_aim from given L and current F
-     deltaF_aim = timeinc * F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
-   elseif(F_BC%myType=='fdot')   then                                                                                      ! deltaF_aim = fDot *timeinc where applicable
-     deltaF_aim = timeinc * F_BC%maskFloat * F_BC%values
+   C_lastInc = C
+!--------------------------------------------------------------------------------------------------
+! calculate rate for aim
+   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
+     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
+   elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
+     f_aimDot = F_BC%maskFloat * F_BC%values
    endif
-   temp33_Real = F_aim                                            
-   F_aim = F_aim &                                                                         
-           + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)*timeinc/timeinc_old &      
-           + deltaF_aim
-   F_aim_lastInc = temp33_Real
-   F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
-   
+   f_aimDot  = f_aimDot &                                                                         
+             + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
+   F_aim_lastInc = F_aim
+
+!--------------------------------------------------------------------------------------------------
+! update coordinates and rate and forward last inc
+ 
+   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+       timeinc,timeinc_old,guessmode,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
+   F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+       timeinc,timeinc_old,guessmode,F_lambda_lastInc,reshape(F_lambda,[3,3,res(1),res(2),res(3)]))  
+                
+   F_lastInc = reshape(F,[3,3,res(1),res(2),res(3)])
+   F_lambda_lastInc = reshape(F_lambda,[3,3,res(1),res(2),res(3)])
+  call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
+                                                                   1.0_pReal,F_lastInc,coordinates)
+ endif
+ F_aim = F_aim + f_aimDot * timeinc
+
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient and coordinates
-   deltaF_aim = math_rotate_backward33(deltaF_aim,rotation_BC)
-   call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr_psc)
-   F => xx_psc(0:8,:,:,:)
-   F_lambda => xx_psc(9:17,:,:,:)
-   call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lastInc,F)
-   call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lambda_lastInc,F_lambda)
+ !  deltaF_aim = math_rotate_backward33(deltaF_aim,rotation_BC)
+
+
+  F = reshape(Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot),[9,res(1),res(2),res(3)])
+  F_lambda = reshape(Utilities_forwardField(timeinc,F_aim,F_lambda_lastInc,F_lambdadot),[9,res(1),res(2),res(3)])
+
    call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr_psc)
-   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates)
   
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -305,6 +338,11 @@ subroutine AL_init()
 
    call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr_psc)
    call SNESGetConvergedReason(snes,reason,ierr_psc)
+   
+   AL_solution%termIll = terminallyIll
+   terminallyIll = .false.
+  
+
    if (reason > 0 ) AL_solution%converged = .true.
 
  end function AL_solution
@@ -326,15 +364,18 @@ subroutine AL_init()
      wgt
    use DAMASK_spectral_Utilities, only: &
      field_real, &
-     Utilities_forwardFFT, &
+     Utilities_FFTforward, &
      Utilities_fourierConvolution, &
-     Utilities_backwardFFT, &
+     Utilities_FFTbackward, &
      Utilities_constitutiveResponse
+   use IO, only: IO_intOut
   
    implicit none
 
    integer(pInt) :: i,j,k
-   real(pReal), dimension(3,3)            :: temp33_Real 
+   integer(pInt), save :: callNo = 3_pInt, reportIter = 0_pInt
+   real(pReal), dimension(3,3)            :: temp33_Real
+   logical :: report
    
    DMDALocalInfo :: in(DMDA_LOCAL_INFO_SIZE)
    PetscScalar, target :: x_scal(3,3,2,XG_RANGE,YG_RANGE,ZG_RANGE)  
@@ -355,14 +396,21 @@ subroutine AL_init()
   
  !--------------------------------------------------------------------------------------------------
  ! report begin of new iteration
-   write(6,'(a)') ''
-   write(6,'(a)') '=================================================================='
-   write(6,'(4(a,i6.6))') ' @ Iter. ',itmin,' < ',iter,' < ',itmax, ' | # Func. calls = ',nfuncs
+ if (iter == 0 .and. callNo>2) then
+   callNo = 0_pInt
+   reportIter = 0_pInt
+ endif
+ if (callNo == 0 .or. mod(callNo,2) == 1_pInt) then
+   write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+                    ' @ Iter. ', itmin, '<',reportIter, '≤', itmax
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
                                                              math_transpose33(F_aim)
-
+   reportIter = reportIter + 1_pInt
+ endif
+ callNo = callNo +1_pInt
  !--------------------------------------------------------------------------------------------------
  ! evaluate constitutive response
+
    call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,params%timeinc, &
                                        residual_F,C,P_av,ForwardData,params%rotation_BC)
    ForwardData = .False.
@@ -384,9 +432,9 @@ subroutine AL_init()
    
  !--------------------------------------------------------------------------------------------------
  ! doing Fourier transform
-   call Utilities_forwardFFT()
+   call Utilities_FFTforward()
    call Utilities_fourierConvolution(math_rotate_backward33(F_aim,params%rotation_BC)) 
-   call Utilities_backwardFFT()
+   call Utilities_FFTbackward()
    
  !--------------------------------------------------------------------------------------------------
  ! constructing residual                         
@@ -398,7 +446,7 @@ subroutine AL_init()
  ! calculating errors  
    err_f = wgt*sqrt(sum(residual_F_lambda**2.0_pReal))
    err_p = wgt*sqrt(sum((residual_F - residual_F_lambda)**2.0_pReal))
-
+    
  end subroutine AL_formResidual
 
 !--------------------------------------------------------------------------------------------------
@@ -440,8 +488,7 @@ subroutine AL_init()
    write(6,'(a,es14.7)') 'error stress BC = ', err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)  
    write(6,'(a,es14.7)') 'error F         = ', err_f/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_f_tol
    write(6,'(a,es14.7)') 'error P         = ', err_p/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_p_tol
-   return
-
+   write(6,'(/,a)') '=========================================================================='
  end subroutine AL_converged
 
 !--------------------------------------------------------------------------------------------------

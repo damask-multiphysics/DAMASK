@@ -17,7 +17,7 @@ module DAMASK_spectral_SolverBasic
    math_I3
  
  use DAMASK_spectral_Utilities, only: &
-   solutionState
+   tSolutionState
  
  implicit none
  character (len=*), parameter, public :: &
@@ -25,7 +25,7 @@ module DAMASK_spectral_SolverBasic
 
 !--------------------------------------------------------------------------------------------------
 ! pointwise data
- real(pReal),  private,  dimension(:,:,:,:,:), allocatable ::  F, F_lastInc, P
+ real(pReal),  private,  dimension(:,:,:,:,:), allocatable ::  F, F_lastInc, Fdot, P
  real(pReal),  private,  dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal),  private,  dimension(:,:,:),     allocatable ::  temperature
  
@@ -35,7 +35,7 @@ module DAMASK_spectral_SolverBasic
    F_aim = math_I3, &
    F_aim_lastInc = math_I3
  real(pReal), private,dimension(3,3,3,3) :: &
-   C = 0.0_pReal
+   C = 0.0_pReal, C_lastInc = 0.0_pReal
  
 contains
  
@@ -60,28 +60,26 @@ subroutine basic_init()
    Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
-   debugrestart
+   debugRestart
       
  use mesh, only: &
    res, &
    geomdim
 
  implicit none
-
  integer(pInt) :: i,j,k
  real(pReal), dimension(3,3) :: temp33_Real
  
  
  call Utilities_Init()
- write(6,'(a)') ''
- write(6,'(a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
+ write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
  write(6,'(a)') ''
   
-
  allocate (F          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (F_lastInc  (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (Fdot       (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (P          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
  allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)
@@ -139,7 +137,8 @@ end subroutine basic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
+type(tSolutionState) function & 
+  basic_solution(incInfo,guessmode,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
  
  use numerics, only: &
    itmax, &
@@ -153,39 +152,40 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
  use mesh, only: &
    res,&
    geomdim, &
-   deformed_fft
+   deformed_fft, &
+ wgt
  use IO, only: &
    IO_write_JobBinaryFile, &
    IO_intOut
 
  use DAMASK_spectral_Utilities, only: &
-   boundaryCondition, &
+   tBoundaryCondition, &
    field_real, &
    Utilities_forwardField, &
    Utilities_maskedCompliance, &
-   Utilities_forwardFFT, &
+   Utilities_FFTforward, &
    Utilities_divergenceRMS, &
    Utilities_fourierConvolution, &
-   Utilities_backwardFFT, &
+   Utilities_FFTbackward, &
    Utilities_updateGamma, &
-   Utilities_constitutiveResponse
+   Utilities_constitutiveResponse, &
+   Utilities_calculateRate
      
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
- 
+ use DAMASK_spectral_Utilities, only: cutBack 
  implicit none
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
  real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc, guessmode
- type(boundaryCondition),      intent(in) :: P_BC,F_BC
+ type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
+ character(len=*), intent(in) :: incInfo
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  
-
- 
  real(pReal), dimension(3,3,3,3)        :: S
- real(pReal), dimension(3,3)            :: deltaF_aim, &
-                                           F_aim_lab, &
+ real(pReal), dimension(3,3), save            :: f_aimDot = 0.0_pReal
+     real(pReal), dimension(3,3)            ::                                       F_aim_lab, &
                                            F_aim_lab_lastIter, &
                                            P_av
 !--------------------------------------------------------------------------------------------------
@@ -208,69 +208,80 @@ type(solutionState) function basic_solution(guessmode,timeinc,timeinc_old,P_BC,F
    close(777)
  endif 
 
+
+ if ( cutBack) then 
+ F_aim = F_aim_lastInc
+ F = F_lastInc
+ C = C_lastInc
+else
+ C_lastInc = C
 !--------------------------------------------------------------------------------------------------
-! winding forward of deformation aim in loadcase system
- if (F_BC%myType=='l') then                                                        ! calculate deltaF_aim from given L and current F
-   deltaF_aim = timeinc * F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
- elseif(F_BC%myType=='fdot')   then                                                                                      ! deltaF_aim = fDot *timeinc where applicable
-   deltaF_aim = timeinc * F_BC%maskFloat * F_BC%values
+! calculate rate for aim
+   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
+     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
+   elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
+     f_aimDot = F_BC%maskFloat * F_BC%values
+   endif
+   f_aimDot  = f_aimDot &                                                                         
+             + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
+   F_aim_lastInc = F_aim
+
+!--------------------------------------------------------------------------------------------------
+! update coordinates and rate and forward last inc
+   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
+                                                                   1.0_pReal,F_lastInc,coordinates)
+   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+                                                        timeinc,timeinc_old,guessmode,F_lastInc,F)
+   F_lastInc = F
  endif
- temp33_Real = F_aim                                            
- F_aim = F_aim &                                                                         
-         + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)*timeinc/timeinc_old &      
-         + deltaF_aim
- F_aim_lastInc = temp33_Real
- F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
-
-!--------------------------------------------------------------------------------------------------
-! update local deformation gradient and coordinates
- deltaF_aim = math_rotate_backward33(deltaF_aim,rotation_BC)
- call Utilities_forwardField(deltaF_aim,timeinc,timeinc_old,guessmode,F_lastInc,F)
- call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates)
-
+ F_aim = F_aim + f_aimDot * timeinc
+ F = Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot) !I thin F aim should be rotated here
+print*, 'F', sum(sum(sum(F,dim=5),dim=4),dim=3)*wgt
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
  if (update_gamma) call Utilities_updateGamma(C)
  
+ 
  iter = 0_pInt
- ForwardData = .True.
  convergenceLoop: do while(iter < itmax)
    
    iter = iter + 1_pInt
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
-   write(6,'(a)') ''
-   write(6,'(a)') '=================================================================='
-   write(6,'(3(a,'//IO_intOut(itmax)//'))') ' Iter.', itmin, '<',iter, '<', itmax + 1_pInt
+   write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+                    ' @ Iter. ', itmin, '<',iter, '≤', itmax
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
                                                                         math_transpose33(F_aim)
    F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
+   basic_solution%termIll = .false.
    call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
                                  P,C,P_av,ForwardData,rotation_BC)
    basic_solution%termIll = terminallyIll
+   terminallyIll = .False.
    ForwardData = .False.
    
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
-   F_aim = F_aim - math_mul3333xx33(S, ((P_av - P_BC%values))) !S = 0.0 for no bc
-   err_stress = maxval(abs(P_BC%maskFloat * (P_av - P_BC%values)))     ! mask = 0.0 for no bc
-   F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                            ! boundary conditions from load frame into lab (Fourier) frame
+   F_aim = F_aim - math_mul3333xx33(S, ((P_av - P_BC%values)))                                      ! S = 0.0 for no bc
+   err_stress = maxval(abs(P_BC%maskFloat * (P_av - P_BC%values)))                                  ! mask = 0.0 for no bc
+   F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                                            ! boundary conditions from load frame into lab (Fourier) frame
  
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
    field_real = 0.0_pReal
    field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = reshape(P,[res(1),res(2),res(3),3,3],&
                                                                order=[4,5,1,2,3]) ! field real has a different order
-   call Utilities_forwardFFT()
+   call Utilities_FFTforward()
    err_div = Utilities_divergenceRMS()
    call Utilities_fourierConvolution(F_aim_lab_lastIter - F_aim_lab) 
-   call Utilities_backwardFFT()
+   call Utilities_FFTbackward()
    F = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
+   write(6,'(/,a)') '=========================================================================='
    if ((basic_solution%converged .and. iter > itmin) .or. basic_solution%termIll) exit  
  enddo convergenceLoop
 
@@ -320,6 +331,7 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
 
 end function basic_Converged
 
+
 subroutine basic_destroy()
  
  use DAMASK_spectral_Utilities, only: &
@@ -329,6 +341,9 @@ subroutine basic_destroy()
  call Utilities_destroy()
 
 end subroutine basic_destroy
+
+
+
 
 end module DAMASK_spectral_SolverBasic
 
