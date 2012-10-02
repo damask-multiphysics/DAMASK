@@ -25,13 +25,7 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief setting precision for real and int type depending on makros "FLOAT" and "INT"
 !--------------------------------------------------------------------------------------------------
-#ifdef __INTEL_COMPILER
-#if __INTEL_COMPILER<1200
-#define LEGACY_COMPILER
-#endif
-#endif
 
-!--------------------------------------------------------------------------------------------------
 module prec
 
  implicit none
@@ -42,16 +36,18 @@ module prec
  SPECTRAL SOLVER DOES NOT SUPPORT SINGLE PRECISION, STOPING COMPILATION
 #endif
  integer,     parameter, public :: pReal = 4                                                        !< floating point single precition (was selected_real_kind(6,37), number with 6 significant digits, up to 1e+-37)
-#ifdef LEGACY_COMPILER
+#ifdef __INTEL_COMPILER
  real(pReal), parameter, public :: DAMASK_NaN = Z'7F800001'                                         !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
-#else
+#endif
+#ifdef __GFORTRAN__
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7F800001', pReal)                            !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #endif
 #elif (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
-#ifdef LEGACY_COMPILER
+#ifdef __INTEL_COMPILER
  real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
-#else
+#endif
+#ifdef __GFORTRAN__
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000', pReal)                    !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #endif
 #else
@@ -88,9 +84,6 @@ subroutine prec_init
  implicit none
 
 !$OMP CRITICAL (write2out)
-#ifndef LEGACY_COMPILER
- open (6, encoding='UTF-8')  
-#endif
 
  write(6,*)
  write(6,*) '<<<+-  prec init  -+>>>'
@@ -101,8 +94,12 @@ subroutine prec_init
  write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
  write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
  write(6,'(a,l3)')    ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
- write(6,*)
  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
+#ifdef Spectral
+ open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
+ write(6,*) 'using UTF-8 coded output'
+#endif
+ write(6,*)
 !$OMP END CRITICAL (write2out)
 
 end subroutine prec_init
