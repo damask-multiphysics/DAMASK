@@ -957,8 +957,7 @@ real(pReal), dimension(2) ::  noise
 real(pReal), dimension(4) ::  rnd   
 real(pReal)                   meanDensity, &
                               totalVolume, &
-                              linelength, &
-                              totalLinelength, &
+                              densityBinning, &
                               minimumIpVolume
 
 
@@ -983,12 +982,11 @@ do myInstance = 1_pInt,maxNinstance
         endif
       enddo
     enddo
-    linelength = constitutive_nonlocal_rhoSglRandomBinning(myInstance) * minimumIpVolume ** (1.0_pReal / 3.0_pReal)
+    densityBinning = constitutive_nonlocal_rhoSglRandomBinning(myInstance) / minimumIpVolume ** (2.0_pReal / 3.0_pReal)
 
     ! subsequently fill random ips with dislocation segments until we reach the desired overall density
 
     meanDensity = 0.0_pReal
-    totalLinelength = 0.0_pReal
     do while(meanDensity < constitutive_nonlocal_rhoSglRandom(myInstance))
       call random_number(rnd)
       el = nint(rnd(1)*real(mesh_NcpElems,pReal)+0.5_pReal,pInt)
@@ -997,9 +995,8 @@ do myInstance = 1_pInt,maxNinstance
           .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
         t = nint(rnd(4)*4.0_pReal+0.5_pReal,pInt)
-        totalLinelength = totalLinelength + linelength 
-        meanDensity = totalLinelength / totalVolume
-        state(1,ip,el)%p((t-1)*ns+s) = state(1,ip,el)%p((t-1)*ns+s) + linelength / mesh_ipVolume(ip,el)
+        meanDensity = meanDensity + densityBinning * mesh_ipVolume(ip,el) / totalVolume
+        state(1,ip,el)%p((t-1)*ns+s) = state(1,ip,el)%p((t-1)*ns+s) + densityBinning
       endif
     enddo
 
