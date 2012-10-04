@@ -66,7 +66,7 @@ for file in files:
   file['material'].write('#---\n<homogenization>\n#---\n'+
                          '\n[SX]\ntype isostrain\nNgrains 1\n\n'+
                          '#---\n<microstructure>\n#---\n\n')
-  tempPart2=             '#---\n<texture>\n---\n\n'
+  tempPart2=             '#---\n<texture>\n#---\n\n'
   for line in file['input']:
     lineSplit=line.split()
 
