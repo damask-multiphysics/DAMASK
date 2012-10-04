@@ -1139,7 +1139,8 @@ use material, only: homogenization_maxNgrains, &
                     phase_localPlasticity, &
                     phase_plasticityInstance
 use lattice,  only: lattice_sd, &
-                    lattice_st
+                    lattice_st, &
+                    lattice_interactionSlipSlip
 
 implicit none
 
@@ -1171,9 +1172,11 @@ integer(pInt)                   neighboring_el, &             ! element number o
                                 neighboring_ns, &             ! total number of active slip systems at neighboring material point
                                 c, &                          ! index of dilsocation character (edge, screw)
                                 s, &                          ! slip system index
+                                s2, &                         ! slip system index
                                 t, &                          ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
                                 dir, &
-                                n
+                                n, &
+                                interactionCoefficient
 integer(pInt), dimension(2) ::  neighbor
 real(pReal)                     nu, &                         ! poisson's ratio
                                 mu, &
@@ -1181,7 +1184,9 @@ real(pReal)                     nu, &                         ! poisson's ratio
                                 detFe, &
                                 detFp, &
                                 FVsize, &
-                                temp
+                                temp, &
+                                correction, &
+                                myRhoForest
 real(pReal), dimension(2) ::    rhoExcessGradient, &
                                 rhoExcessGradient_over_rho, &
                                 rhoTotal
@@ -1247,6 +1252,26 @@ forall (s = 1_pInt:ns) &
 
 !*** calculate the threshold shear stress for dislocation slip 
 
+if (latticeStruct == 1_pInt) then ! in case of fcc: coefficients are corrected for the line tension effect (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
+  do s = 1_pInt,ns 
+    myRhoForest = max(rhoForest(s),constitutive_nonlocal_significantRho(instance))
+    correction = (  log(0.35_pReal * constitutive_nonlocal_burgers(s,instance) * sqrt(myRhoForest)) &
+                  / log(0.35_pReal * constitutive_nonlocal_burgers(s,instance) * 1e6_pReal)) ** 2.0_pReal
+    do s2 = 1_pInt,ns
+      interactionCoefficient = lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s,instance), &
+                                                           constitutive_nonlocal_slipSystemLattice(s2,instance), &
+                                                           latticeStruct)
+      select case(interactionCoefficient)
+        case(3,4,5,6) ! only correct junction forming interactions (4,5,6) and colinear interaction (3)
+          constitutive_nonlocal_interactionMatrixSlipSlip(s,s2,instance) &
+              = correction * constitutive_nonlocal_interactionSlipSlip(interactionCoefficient, instance)
+        case default
+          constitutive_nonlocal_interactionMatrixSlipSlip(s,s2,instance) &
+              = constitutive_nonlocal_interactionSlipSlip(interactionCoefficient, instance)
+      endselect
+    enddo
+  enddo
+endif
 forall (s = 1_pInt:ns) &
   tauThreshold(s) = constitutive_nonlocal_Gmod(instance) * constitutive_nonlocal_burgers(s,instance) &
                   * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), &
@@ -2346,7 +2371,9 @@ D = constitutive_nonlocal_Dsd0(myInstance) * exp(-constitutive_nonlocal_Qsd(myIn
 vClimb =  constitutive_nonlocal_atomicVolume(myInstance) * D / ( kB * Temperature ) &
           * constitutive_nonlocal_Gmod(myInstance) / ( 2.0_pReal * pi * (1.0_pReal-constitutive_nonlocal_nu(myInstance)) ) &
           * 2.0_pReal / ( dUpper(1:ns,1) + dLower(1:ns,1) )
-rhoDotThermalAnnihilation(1:ns,9) = - 4.0_pReal * rhoDip(1:ns,1) * vClimb / (dUpper(1:ns,1) - dLower(1:ns,1))
+forall (s = 1_pInt:ns, dUpper(s,1) > dLower(s,1)) &
+  rhoDotThermalAnnihilation(s,9) = max(- 4.0_pReal * rhoDip(s,1) * vClimb(s) / (dUpper(s,1) - dLower(s,1)), &
+                                       - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
 ! annihilation of screw dipoles: we assume that all screws annihilate instantaneously by cross-slipping on the colinear system
 ! (so right now this is actually an athermal process, could be enriched by a thermally activated probability for cross-slip)
