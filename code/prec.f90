@@ -94,12 +94,8 @@ subroutine prec_init
  write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
  write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
  write(6,'(a,l3)')    ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
- if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
-#ifdef Spectral
- open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
- write(6,*) 'using UTF-8 coded output'
-#endif
  write(6,*)
+ if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
 !$OMP END CRITICAL (write2out)
 
 end subroutine prec_init

@@ -82,7 +82,8 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  logical :: &
    gotLoadCase = .false., &
    gotGeometry = .false.
- 
+
+ open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
  write(6,'(a)') ''
  write(6,'(a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
  write(6,'(a)') ' $Id$'
