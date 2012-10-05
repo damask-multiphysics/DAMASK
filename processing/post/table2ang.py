@@ -106,6 +106,7 @@ parser.add_option('-c','--center',      dest='center', type='float', nargs=3,
 parser.set_defaults(coords = 'coords')
 parser.set_defaults(eulerangles = 'eulerangles')
 parser.set_defaults(defgrad = 'f')
+parser.set_defaults(hexagonal = False)
 parser.set_defaults(normal = [0.0,0.0,1.0])
 parser.set_defaults(size = [1.0,1.0,0.0])
 parser.set_defaults(up = [1.0,0.0,0.0])
@@ -208,8 +209,7 @@ for file in files:
   for i in xrange(3): stepSize+=dimension[i]/resolution[i]/3.0/options.res
   print 'step size', stepSize
  
-  hexagonal  = False
-  if hexagonal: 
+  if options.hexagonal: 
     stepSize0 = stepSize * math.sin(1.0/3.0*math.pi)
   else: 
     stepSize0 = stepSize
@@ -221,7 +221,7 @@ for file in files:
            max(int(options.size[2]/stepSize),1)
   print 'resolution of ang file', angRes
 
-  if hexagonal: 
+  if options.hexagonal: 
     NpointsSlice = angRes[0]//2*(angRes[1]-1)+(angRes[0]-angRes[0]//2)*angRes[1]
   else:
     NpointsSlice = angRes[0]*angRes[1]
@@ -250,7 +250,7 @@ for file in files:
   for i in xrange(angRes[2]):
     idx = 0
     for j in xrange(angRes[0]):
-      if hexagonal: 
+      if options.hexagonal: 
         res1=angRes[1]-j%2
         #myOffset = offset +float(j%2)* numpy.array([0.0,0.5,0.0],dtype='float')/[float(options.res[0]),float(options.res[1]),float(options.res[2])]*[dimension[0],dimension[1],dimension[2]]
         myOffset = offset +float(j%2)* numpy.array([0.0,0.5*stepSize,0.0],dtype='float')
