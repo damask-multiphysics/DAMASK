@@ -1217,6 +1217,9 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                 rhoDip                        ! dipole dislocation density (edge, screw)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                 rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))), &
+                       constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                myInteractionMatrix           ! corrected slip interaction matrix
 real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip),FE_maxNipNeighbors) :: &
                                 neighboring_rhoExcess         ! excess density at neighboring material point
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
@@ -1260,6 +1263,8 @@ forall (s = 1_pInt:ns) &
 
 !*** calculate the threshold shear stress for dislocation slip 
 
+myInteractionMatrix = 0.0_pReal
+myInteractionMatrix(1:ns,1:ns) = constitutive_nonlocal_interactionMatrixSlipSlip(1:ns,1:ns,instance)
 if (latticeStruct == 1_pInt) then ! in case of fcc: coefficients are corrected for the line tension effect (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
   do s = 1_pInt,ns 
     myRhoForest = max(rhoForest(s),constitutive_nonlocal_significantRho(instance))
@@ -1272,20 +1277,15 @@ if (latticeStruct == 1_pInt) then ! in case of fcc: coefficients are corrected f
                                                            constitutive_nonlocal_slipSystemLattice(s2,instance), &
                                                            latticeStruct)
       select case(interactionCoefficient)
-        case(3,4,5,6) ! only correct junction forming interactions (4,5,6) and colinear interaction (3)
-          constitutive_nonlocal_interactionMatrixSlipSlip(s,s2,instance) &
-              = correction * constitutive_nonlocal_interactionSlipSlip(interactionCoefficient, instance)
-        case default
-          constitutive_nonlocal_interactionMatrixSlipSlip(s,s2,instance) &
-              = constitutive_nonlocal_interactionSlipSlip(interactionCoefficient, instance)
+        case(3_pInt,4_pInt,5_pInt,6_pInt) ! only correct junction forming interactions (4,5,6) and colinear interaction (3)
+          myInteractionMatrix(s,s2) = correction * myInteractionMatrix(s,s2) 
       endselect
     enddo
   enddo
 endif
 forall (s = 1_pInt:ns) &
   tauThreshold(s) = constitutive_nonlocal_Gmod(instance) * constitutive_nonlocal_burgers(s,instance) &
-                  * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), &
-                                      constitutive_nonlocal_interactionMatrixSlipSlip(s,1:ns,instance)))
+                  * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), myInteractionMatrix(s,1:ns)))
 
 
 
