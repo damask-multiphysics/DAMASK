@@ -222,7 +222,7 @@ py_connect('',options.port)
 print 'connected...'
 
 cmds = colorMap(rgbColors,options.baseIdx)
-output(cmds,outputLocals,'Mentat')
+output(['*show_table']+cmds+['*show_model *redraw'],outputLocals,'Mentat')
 py_disconnect()
 
 if options.verbose:
