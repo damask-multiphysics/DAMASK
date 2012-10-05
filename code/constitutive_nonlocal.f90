@@ -133,7 +133,8 @@ constitutive_nonlocal_grainboundaryTransmissivity, &                 ! transmiss
 constitutive_nonlocal_CFLfactor, &                                   ! safety factor for CFL flux condition
 constitutive_nonlocal_fEdgeMultiplication, &                         ! factor that determines how much edge dislocations contribute to multiplication (0...1)
 constitutive_nonlocal_rhoSglRandom, &
-constitutive_nonlocal_rhoSglRandomBinning
+constitutive_nonlocal_rhoSglRandomBinning, &
+constitutive_nonlocal_linetensionEffect
 
 real(pReal), dimension(:,:), allocatable, private :: &
 constitutive_nonlocal_rhoSglEdgePos0, &                              ! initial edge_pos dislocation density per slip system for each family and instance
@@ -345,6 +346,7 @@ allocate(constitutive_nonlocal_grainboundaryTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
 allocate(constitutive_nonlocal_CFLfactor(maxNinstance))
 allocate(constitutive_nonlocal_fEdgeMultiplication(maxNinstance))
+allocate(constitutive_nonlocal_linetensionEffect(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
 constitutive_nonlocal_C12 = 0.0_pReal
@@ -378,6 +380,7 @@ constitutive_nonlocal_surfaceTransmissivity = 1.0_pReal
 constitutive_nonlocal_grainboundaryTransmissivity = -1.0_pReal
 constitutive_nonlocal_CFLfactor = 2.0_pReal
 constitutive_nonlocal_fEdgeMultiplication = 0.0_pReal
+constitutive_nonlocal_linetensionEffect = 0.0_pReal
 constitutive_nonlocal_shortRangeStressCorrection = .true.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
@@ -496,6 +499,8 @@ do                                                                              
       case ('interaction_slipslip')
         forall (it = 1_pInt:lattice_maxNinteraction) &
           constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
+      case('linetension','linetensioneffect','linetension_effect')
+        constitutive_nonlocal_linetensionEffect(i) = IO_floatValue(line,positions,2_pInt)
       case('peierlsstressedge','peierlsstress_edge')
         forall (f = 1_pInt:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
@@ -592,6 +597,9 @@ enddo
   enddo
   if (any(constitutive_nonlocal_interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,myStructure)),i) < 0.0_pReal)) &
                                                                         call IO_error(211_pInt,ext_msg='interaction_SlipSlip (' &
+                                                                             //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_linetensionEffect(i) < 0.0_pReal .or. constitutive_nonlocal_linetensionEffect(i) > 1.0_pReal) &
+                                                                        call IO_error(211_pInt,ext_msg='linetension (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_R(i) < 0.0_pReal)                           call IO_error(211_pInt,ext_msg='r (' &
                                                                              //constitutive_nonlocal_label//')')
@@ -1255,7 +1263,9 @@ forall (s = 1_pInt:ns) &
 if (latticeStruct == 1_pInt) then ! in case of fcc: coefficients are corrected for the line tension effect (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
   do s = 1_pInt,ns 
     myRhoForest = max(rhoForest(s),constitutive_nonlocal_significantRho(instance))
-    correction = (  log(0.35_pReal * constitutive_nonlocal_burgers(s,instance) * sqrt(myRhoForest)) &
+    correction = (  1.0_pReal - constitutive_nonlocal_linetensionEffect(instance) &
+                  + constitutive_nonlocal_linetensionEffect(instance) &
+                  * log(0.35_pReal * constitutive_nonlocal_burgers(s,instance) * sqrt(myRhoForest)) &
                   / log(0.35_pReal * constitutive_nonlocal_burgers(s,instance) * 1e6_pReal)) ** 2.0_pReal
     do s2 = 1_pInt,ns
       interactionCoefficient = lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s,instance), &
