@@ -144,6 +144,10 @@ call constitutive_dislotwin_init(fileunit)
 call constitutive_nonlocal_init(fileunit)  
 close(fileunit)
 
+write(6,*)
+write(6,*) '<<<+-  constitutive init  -+>>>'
+write(6,*) '$Id$'
+#include "compilation_info.f90"
 
 ! --- WRITE DESCRIPTION FILE FOR CONSTITUTIVE PHASE OUTPUT ---
 
@@ -435,29 +439,23 @@ constitutive_maxSizeState       = maxval(constitutive_sizeState)
 constitutive_maxSizeDotState    = maxval(constitutive_sizeDotState)
 constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
 
-!$OMP CRITICAL (write2out)
+if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_state0:          ', shape(constitutive_state0)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_state:           ', shape(constitutive_state)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_deltaState:      ', shape(constitutive_deltaState)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
+  write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
   write(6,*)
-  write(6,*) '<<<+-  constitutive init  -+>>>'
-  write(6,*) '$Id$'
-#include "compilation_info.f90"
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_state0:          ', shape(constitutive_state0)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_partionedState0: ', shape(constitutive_partionedState0)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_subState0:       ', shape(constitutive_subState0)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_state:           ', shape(constitutive_state)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_aTolState:       ', shape(constitutive_aTolState)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_dotState:        ', shape(constitutive_dotState)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_deltaState:      ', shape(constitutive_deltaState)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeState:       ', shape(constitutive_sizeState)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizeDotState:    ', shape(constitutive_sizeDotState)
-    write(6,'(a32,1x,7(i8,1x))') 'constitutive_sizePostResults: ', shape(constitutive_sizePostResults)
-    write(6,*)
-    write(6,'(a32,1x,7(i8,1x))') 'maxSizeState:       ', constitutive_maxSizeState
-    write(6,'(a32,1x,7(i8,1x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
-    write(6,'(a32,1x,7(i8,1x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
-  endif
-  call flush(6)
-!$OMP END CRITICAL (write2out)
+  write(6,'(a32,1x,7(i8,1x))') 'maxSizeState:       ', constitutive_maxSizeState
+  write(6,'(a32,1x,7(i8,1x))') 'maxSizeDotState:    ', constitutive_maxSizeDotState
+  write(6,'(a32,1x,7(i8,1x))') 'maxSizePostResults: ', constitutive_maxSizePostResults
+endif
+call flush(6)
 
 end subroutine constitutive_init
 

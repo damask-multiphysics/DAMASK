@@ -942,7 +942,7 @@ type(p_vec), dimension(1,mesh_maxNips,mesh_NcpElems), intent(inout) :: &
                               state                           ! microstructural state
 
 !*** local variables
-real(pReal), dimension(maxval(constitutive_nonlocal_totalNslip)) :: &              
+real(pReal), dimension(:), allocatable :: &              
                               rhoSglEdgePos, &                ! positive edge dislocation density
                               rhoSglEdgeNeg, &                ! negative edge dislocation density
                               rhoSglScrewPos, &               ! positive screw dislocation density
@@ -971,6 +971,14 @@ real(pReal)                   meanDensity, &
 
 maxNinstance = int(count(phase_plasticity == constitutive_nonlocal_label),pInt)
 
+if (maxNinstance > 0_pInt) then
+  allocate(rhoSglEdgePos(maxval(constitutive_nonlocal_totalNslip)))
+  allocate(rhoSglEdgeNeg(maxval(constitutive_nonlocal_totalNslip)))
+  allocate(rhoSglScrewPos(maxval(constitutive_nonlocal_totalNslip)))
+  allocate(rhoSglScrewNeg(maxval(constitutive_nonlocal_totalNslip)))
+  allocate(rhoDipEdge(maxval(constitutive_nonlocal_totalNslip)))
+  allocate(rhoDipScrew(maxval(constitutive_nonlocal_totalNslip)))
+endif
 do myInstance = 1_pInt,maxNinstance
   ns = constitutive_nonlocal_totalNslip(myInstance)
 
@@ -1044,6 +1052,15 @@ do myInstance = 1_pInt,maxNinstance
     enddo
   endif
 enddo
+
+if (maxNinstance > 0_pInt) then
+  deallocate(rhoSglEdgePos)
+  deallocate(rhoSglEdgeNeg)
+  deallocate(rhoSglScrewPos)
+  deallocate(rhoSglScrewNeg)
+  deallocate(rhoDipEdge)
+  deallocate(rhoDipScrew)
+endif
 
 endsubroutine
 
