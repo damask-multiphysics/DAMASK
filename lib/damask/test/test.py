@@ -36,6 +36,7 @@ class Test():
     '''
     Run all variants and report first failure.
     '''
+    if len(update)   == 0 and self.options.update: print ' This test has no reference to update'
     if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
     self.clean()
     for variant in variants:
