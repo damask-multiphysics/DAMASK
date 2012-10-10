@@ -42,8 +42,8 @@ try:
   #core.mesh.nodesAroundCentroids     = core.mesh.mesh_spectral_nodesAroundCentroids
   #core.mesh.deformedCoordsLin        = core.mesh.mesh_deformedCoordsLin
   #core.mesh.deformedCoordsFFT        = core.mesh.mesh_deformedCoordsFFT
-except ImportError:
-  sys.stderr.write('\nWARNING: Core module (Fortran code) not available, try to run setup_processing.py\nError Message when importing core.so: \n\n')
+except ImportError, e:
+  sys.stderr.write('\nWARNING: Core module (Fortran code) not available, try to run setup_processing.py\nError Message when importing core.so: %s\n\n'%e)
   core = None # from http://www.python.org/dev/peps/pep-0008/
   
   
