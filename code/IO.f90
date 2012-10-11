@@ -1518,6 +1518,8 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
    msg = 'Found Spectral solver parameter '
  case (41_pInt)
    msg = 'Found PETSc solver parameter '
+ case (42_pInt)
+   msg = 'parameter has no effect '
  case (47_pInt)
    msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
  case (101_pInt)
