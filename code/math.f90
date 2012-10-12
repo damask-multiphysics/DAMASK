@@ -143,10 +143,12 @@ real(pReal), dimension(4,36), parameter, private :: &
             qsort, &
             math_range, &
             math_identity2nd, &
-            math_civita, &
             math_identity4th, &
+            math_delta, &
+            math_civita, &
             math_vectorproduct, &
             math_tensorproduct, &
+            math_norm3, &
             math_mul3x3, &
             math_mul6x6, &
             math_mul33xx33, &
@@ -158,18 +160,22 @@ real(pReal), dimension(4,36), parameter, private :: &
             math_mul33x3, &
             math_mul33x3_complex, &
             math_mul66x6 , &
-            math_qConj, &
-            math_qRot, &
+            math_trace33, &
+            math_det33, &
+            math_norm33, &
             math_transpose33, &
+            math_skew33, &
+            math_exp33 , &
             math_inv33, &
             math_invert33, &
             math_invSym3333, &
             math_invert, &
             math_symmetric33, &
             math_symmetric66, &
-            math_skew33, &
             math_deviatoric33, &
-            math_equivStrain33
+            math_equivStrain33, &
+            math_qConj, &
+            math_qRot
 #ifdef Spectral
  public  :: math_curlFFT, &
             math_divergenceFFT, &
@@ -183,8 +189,7 @@ real(pReal), dimension(4,36), parameter, private :: &
             mesh_index
 #endif
             
- private :: math_partition, &
-            math_delta
+ private :: math_partition
  
 contains
 
@@ -427,7 +432,8 @@ end function math_delta
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief fourth rank identity tensor of specified dimension
+!> @brief symmetric fourth rank identity tensor of specified dimension
+!  from http://en.wikipedia.org/wiki/Tensor_derivative_(continuum_mechanics)#Derivative_of_a_second-order_tensor_with_respect_to_itself
 !--------------------------------------------------------------------------------------------------
 pure function math_identity4th(dimen)
 
@@ -437,7 +443,7 @@ pure function math_identity4th(dimen)
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
 
  forall (i=1_pInt:dimen,j=1_pInt:dimen,k=1_pInt:dimen,l=1_pInt:dimen) math_identity4th(i,j,k,l) = &
-        0.5_pReal*(math_I3(i,k)*math_I3(j,k)+math_I3(i,l)*math_I3(j,k))
+        0.5_pReal*(math_I3(i,k)*math_I3(j,l)+math_I3(i,l)*math_I3(j,k))
 
 end function math_identity4th
 
@@ -671,6 +677,35 @@ pure function math_mul66x6(A,B)
    A(i,4)*B(4) + A(i,5)*B(5) + A(i,6)*B(6)
 
 end function math_mul66x6
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief 3x3 matrix exponential up to series approximation order n (default 5)
+!--------------------------------------------------------------------------------------------------
+pure function math_exp33(A,n)
+
+ implicit none
+
+ integer(pInt) :: i,order
+ integer(pInt), intent(in), optional :: n
+ real(pReal), dimension(3,3), intent(in) ::  A
+ real(pReal), dimension(3,3) ::  B,math_exp33
+ real(pReal) :: invfac
+
+ order = 5
+ if (present(n)) order = n
+
+ B = math_identity2nd(3)                                                       ! init
+ invfac = 1.0_pReal                                                            ! 0!
+ math_exp33 = B                                                                ! A^0 = eye2
+
+ do i = 1_pInt,n
+   invfac = invfac/real(i)                                                     ! invfac = 1/i!
+   B = math_mul33x33(B,A)
+   math_exp33 = math_exp33 + invfac*B                                          ! exp = SUM (A^i)/i!
+ enddo
+
+end function math_exp33
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1020,8 +1055,8 @@ pure function math_deviatoric33(m)
  integer(pInt) :: i
  real(pReal) :: hydrostatic
 
- hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
  math_deviatoric33 = m
+ hydrostatic = (m(1,1) + m(2,2) + m(3,3)) / 3.0_pReal
  forall (i=1_pInt:3_pInt) math_deviatoric33(i,i) = m(i,i) - hydrostatic
 
 end function math_deviatoric33
@@ -1050,6 +1085,21 @@ pure function math_equivStrain33(m)
 end function math_equivStrain33
 
  
+!--------------------------------------------------------------------------------------------------
+!> @brief trace of a 33 matrix
+!--------------------------------------------------------------------------------------------------
+pure function math_trace33(m)
+
+ implicit none
+
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) :: math_trace33
+
+ math_trace33 = m(1,1) + m(2,2) + m(3,3)
+
+end function math_trace33
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief determinant of a 33 matrix
 !--------------------------------------------------------------------------------------------------
@@ -1083,7 +1133,7 @@ end function
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief euclidic norm of a 3 vector
+!> @brief euclidian norm of a 3 vector
 !--------------------------------------------------------------------------------------------------
 pure function math_norm3(v)
 
