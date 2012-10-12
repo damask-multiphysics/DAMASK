@@ -968,7 +968,6 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      lattice_Sslip_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,i,myStructure)))
      if (abs(math_trace33(lattice_Sslip(1:3,1:3,i,myStructure))) > 1.0e-8) &
        call IO_error(0_pInt,myStructure,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
-    endif
    enddo
    do i = 1_pInt,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
      lattice_td(1:3,i,myStructure) = td(1:3,i)/math_norm3(sd(1:3,i))                   ! make unit vector
