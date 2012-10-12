@@ -1293,6 +1293,11 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 
  select case (error_ID)
 
+ !* internal errors
+ 
+ case (0_pInt)
+   msg = 'internal check failed:'
+
  !* file handling errors
  
  case (100_pInt)
