@@ -65,19 +65,19 @@ module debug
    debug_level                    = 0_pInt
 
  integer(pInt), public :: &
-   debug_cumLpCalls              = 0_pInt, &
-   debug_cumDeltaStateCalls      = 0_pInt, &
-   debug_cumDotStateCalls        = 0_pInt, &
-   debug_cumDotTemperatureCalls  = 0_pInt, &
+   debug_cumLpCalls              = 0_pInt, &                                                        ! total number of calls to LpAndItsTangent
+   debug_cumDeltaStateCalls      = 0_pInt, &                                                        ! total number of calls to deltaState
+   debug_cumDotStateCalls        = 0_pInt, &                                                        ! total number of calls to dotState
+   debug_cumDotTemperatureCalls  = 0_pInt, &                                                        ! total number of calls to dotTemprature
    debug_e                       = 1_pInt, &
    debug_i                       = 1_pInt, &
    debug_g                       = 1_pInt
 
  integer(pLongInt), public :: &
-   debug_cumLpTicks              = 0_pLongInt, &
-   debug_cumDeltaStateTicks      = 0_pLongInt, &
-   debug_cumDotStateTicks        = 0_pLongInt, &
-   debug_cumDotTemperatureTicks  = 0_pLongInt
+   debug_cumLpTicks              = 0_pLongInt, &                                                    ! total cpu ticks spent in LpAndItsTangent
+   debug_cumDeltaStateTicks      = 0_pLongInt, &                                                    ! total cpu ticks spent in deltaState
+   debug_cumDotStateTicks        = 0_pLongInt, &                                                    ! total cpu ticks spent in dotState
+   debug_cumDotTemperatureTicks  = 0_pLongInt                                                       ! total cpu ticks spent in dotTemperature
  
  integer(pInt), dimension(2), public :: &
    debug_stressMaxLocation       = 0_pInt, &
@@ -86,14 +86,14 @@ module debug
    debug_jacobianMinLocation     = 0_pInt
 
  integer(pInt), dimension(:), allocatable, public :: &
-   debug_CrystalliteLoopDistribution, &
+   debug_CrystalliteLoopDistribution, &                                                             ! distribution of crystallite cutbacks
    debug_MaterialpointStateLoopDistribution, &
    debug_MaterialpointLoopDistribution
 
  integer(pInt), dimension(:,:), allocatable, public :: &
-   debug_StressLoopDistribution, &
-   debug_LeapfrogBreakDistribution, &
-   debug_StateLoopDistribution
+   debug_StressLoopDistribution, &                                                                  ! distribution of stress iterations until convergence
+   debug_LeapfrogBreakDistribution, &                                                               ! distribution of iterations where leapfrog breaks occurred
+   debug_StateLoopDistribution                                                                      ! distribution of state iterations until convergence
  
  real(pReal), public :: &
    debug_stressMax               = -huge(1.0_pReal), &
@@ -149,15 +149,15 @@ subroutine debug_init
  
  if (allocated(debug_StressLoopDistribution)) &
     deallocate(debug_StressLoopDistribution)
-      allocate(debug_StressLoopDistribution(nStress,2))
+      allocate(debug_StressLoopDistribution(nStress+1,2))
                debug_StressLoopDistribution = 0_pInt
  if (allocated(debug_LeapfrogBreakDistribution)) &
     deallocate(debug_LeapfrogBreakDistribution)
-      allocate(debug_LeapfrogBreakDistribution(nStress,2))
+      allocate(debug_LeapfrogBreakDistribution(nStress+1,2))
                debug_LeapfrogBreakDistribution = 0_pInt
  if (allocated(debug_StateLoopDistribution)) &
     deallocate(debug_StateLoopDistribution)
-      allocate(debug_StateLoopDistribution(nState,2))
+      allocate(debug_StateLoopDistribution(nState+1,2))
                debug_StateLoopDistribution = 0_pInt
  if (allocated(debug_CrystalliteLoopDistribution)) &
     deallocate(debug_CrystalliteLoopDistribution)
@@ -364,6 +364,7 @@ subroutine debug_info
  implicit none
  integer(pInt)     :: i,integral
  integer(pLongInt) :: tickrate
+ character(len=1)  :: exceed
 
  call system_clock(count_rate=tickrate)
 
@@ -411,12 +412,15 @@ subroutine debug_info
      write(6,*)
      write(6,*)
      write(6,*) 'distribution_StressLoop :    stress  frogbreak  stiffness  frogbreak'
-     do i=1_pInt,nStress
+     do i=1_pInt,nStress+1_pInt
        if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt ) .or. &
            any(debug_LeapfrogBreakDistribution(i,:)  /= 0_pInt ) ) then
-         integral = integral + i*debug_StressLoopDistribution(i,1) + i*debug_StressLoopDistribution(i,2)
-         write(6,'(i25,1x,i10,1x,i10,1x,i10,1x,i10)')   i,debug_StressLoopDistribution(i,1),debug_LeapfrogBreakDistribution(i,1), &
-                                                debug_StressLoopDistribution(i,2),debug_LeapfrogBreakDistribution(i,2)
+         integral = integral + i*(debug_StressLoopDistribution(i,1) + debug_StressLoopDistribution(i,2))
+         exceed = ' '
+         if (i > nStress) exceed = '+'                                                                    ! last entry gets "+"
+         write(6,'(i25,a1,i10,1x,i10,1x,i10,1x,i10)')   min(nStress,i),exceed, &
+                          debug_StressLoopDistribution(i,1),debug_LeapfrogBreakDistribution(i,1), &
+                          debug_StressLoopDistribution(i,2),debug_LeapfrogBreakDistribution(i,2)
        endif
      enddo
      write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
@@ -426,10 +430,13 @@ subroutine debug_info
      integral = 0_pInt
      write(6,*)
      write(6,*) 'distribution_CrystalliteStateLoop :'
-     do i=1_pInt,nState
+     do i=1_pInt,nState+1_pInt
        if (any(debug_StateLoopDistribution(i,:) /= 0)) then
-         integral = integral + i*debug_StateLoopDistribution(i,1) + i*debug_StateLoopDistribution(i,2)
-         write(6,'(i25,1x,i10,12x,i10)') i,debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
+         integral = integral + i*(debug_StateLoopDistribution(i,1) + debug_StateLoopDistribution(i,2))
+         exceed = ' '
+         if (i > nState) exceed = '+'                                                                    ! last entry gets "+"
+         write(6,'(i25,a1,i10,12x,i10)') min(nState,i),exceed, &
+                          debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
        endif
      enddo
      write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
@@ -442,11 +449,9 @@ subroutine debug_info
      do i=1_pInt,nCryst+1_pInt
        if (debug_CrystalliteLoopDistribution(i) /= 0) then
          integral = integral + i*debug_CrystalliteLoopDistribution(i)
-         if (i <= nCryst) then
-           write(6,'(i25,1x,i10)') i,debug_CrystalliteLoopDistribution(i)
-         else
-           write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_CrystalliteLoopDistribution(i)
-         endif
+         exceed = ' '
+         if (i > nCryst) exceed = '+'
+         write(6,'(i25,a1,i10)') min(nCryst,i),exceed,debug_CrystalliteLoopDistribution(i)
        endif
      enddo
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
@@ -470,11 +475,9 @@ subroutine debug_info
      do i=1_pInt,nHomog+1_pInt
        if (debug_MaterialpointLoopDistribution(i) /= 0) then
          integral = integral + i*debug_MaterialpointLoopDistribution(i)
-         if (i <= nHomog) then
-           write(6,'(i25,1x,i10)') i,debug_MaterialpointLoopDistribution(i)
-         else
-           write(6,'(i25,a1,i10)') i-1_pInt,'+',debug_MaterialpointLoopDistribution(i)
-         endif
+         exceed = ' '
+         if (i > nHomog) exceed = '+'
+         write(6,'(i25,a1,i10)') min(nHomog,i),exceed,debug_MaterialpointLoopDistribution(i)
        endif
      enddo
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
