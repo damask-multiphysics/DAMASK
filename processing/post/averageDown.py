@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,re,sys,math,string,numpy,damask
+import os,re,sys,math,string,numpy,damask,time
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -53,10 +53,15 @@ parser.add_option('-p','--packing',     dest='packing', type='int', nargs=3, \
                                         help='dimension of packed group %default')
 parser.add_option('-s','--shift',       dest='shift', type='int', nargs=3, \
                                         help='shift vector of packing stencil %default')
-
-parser.set_defaults(coords = 'ip')
-parser.set_defaults(packing = [2,2,2])
-parser.set_defaults(shift = [0,0,0])
+parser.add_option('-r','--resolution',  dest='resolution', type='int', nargs=3, \
+                                        help='resolution in x,y,z [autodetect]')
+parser.add_option('-d','--dimension',   dest='dimension', type='float', nargs=3, \
+                                        help='dimension in x,y,z [autodetect]')
+parser.set_defaults(coords     = 'ip')
+parser.set_defaults(packing    = [2,2,2])
+parser.set_defaults(shift      = [0,0,0])
+parser.set_defaults(resolution = [0,0,0])
+parser.set_defaults(dimension  = [0.0,0.0,0.0])
 
 (options,filenames) = parser.parse_args()
 
@@ -94,29 +99,36 @@ for file in files:
   table.head_read()                                                         # read ASCII header info
   table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
+  
 
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                 # columns containing location data
+    elemCol = table.labels.index('elem')                                    # columns containing location data
   except ValueError:
-    print 'no coordinate data found...'
+    print 'no coordinate data element data found...'
     continue
 
-  grid = [{},{},{}]
-  while table.data_read():                                                  # read next data line of ASCII table
-    for j in xrange(3):
-      grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
-  resolution = numpy.array([len(grid[0]),\
-                            len(grid[1]),\
-                            len(grid[2]),],'i')                             # resolution is number of distinct coordinates found
-  dimension = resolution/numpy.maximum(numpy.ones(3,'d'),resolution-1.0)* \
-              numpy.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
-                           max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
-                           max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
-                          ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
+  if (any(options.resolution)==0 or any(options.dimension)==0.0):
+    grid = [{},{},{}]
+    while table.data_read():                                                  # read next data line of ASCII table
+      for j in xrange(3):
+        grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
+    resolution = numpy.array([len(grid[0]),\
+                              len(grid[1]),\
+                              len(grid[2]),],'i')                             # resolution is number of distinct coordinates found
+    dimension = resolution/numpy.maximum(numpy.ones(3,'d'),resolution-1.0)* \
+                numpy.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
+                             max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
+                             max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
+                            ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
+  else:
+    resolution = options.resolution
+    dimension = options.dimension
+
   if resolution[2] == 1:
     options.packing[2] = 1
     options.shift[2]   = 0
-    dimension[2]       = min(dimension[:2]/resolution[:2])
+    dimension[2]       = min(dimension[:2]/resolution[:2])                    # z spacing equal to smaller of x or y spacing
 
   downSized = numpy.maximum(numpy.ones(3,'i'),resolution//options.packing)
 
@@ -127,28 +139,45 @@ for file in files:
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------  
-
   table.data_rewind()
 
-  averagedDown = numpy.zeros(downSized.tolist()+[len(table.labels)])
-
-  for z in xrange(-options.shift[2],-options.shift[2]+resolution[2]):
-    for y in xrange(-options.shift[1],-options.shift[1]+resolution[1]):
-      for x in xrange(-options.shift[0],-options.shift[0]+resolution[0]):
+  data = numpy.zeros(resolution.tolist()+[len(table.labels)]).reshape(resolution[0],\
+                                                                      resolution[1],\
+                                                                      resolution[2],\
+                                                                      [len(table.labels)])
+  for z in xrange(resolution[2]):
+    for y in xrange(resolution[1]):
+      for x in xrange(resolution[0]):
         table.data_read()
-        data = numpy.array(table.data_asFloat(),'d')                        # convert to numpy array
-        me = numpy.array((x,y,z),'i')                                       # my location as array
-        data[locationCol:locationCol+3] -= dimension*(me//resolution)       # shift coordinates if periodic image
-        (a,b,c) = (me%resolution)//options.packing                          # bin to condense my location into
-        averagedDown[a,b,c,:] += data                                       # store the (coord-updated) data there
+        data[x,y,z,:] = numpy.array(table.data_asFloat(),'d')                        # convert to numpy array
+ 
+  sum = numpy.zeros(numpy.shape(data))
 
-  averagedDown /= options.packing.prod()                                    # normalize data by element count
 
+  data = numpy.roll(data,axis=2,shift=options.shift[2])
+  data = numpy.roll(data,axis=1,shift=options.shift[1])
+  data = numpy.roll(data,axis=0,shift=options.shift[0])
+
+  for axis3 in xrange(options.packing[2]):
+    shiftedZ = numpy.roll(data,shift=axis3,axis=2)
+    for axis2 in xrange(options.packing[1]):
+      shiftedZY = numpy.roll(shiftedZ,shift=axis2,axis=1)
+      for axis1 in xrange(options.packing[0]):
+        sum += numpy.roll(shiftedZY,shift=axis1,axis=0)
+
+  averagedDown = sum[::options.packing[0],::options.packing[1],::options.packing[2]] / options.packing.prod()     # normalize data by element count
+
+  posOffset = (options.shift+[0.5,0.5,0.5])*dimension/resolution
+  elementSize = dimension/resolution*options.packing
+  elem = 1
   for c in xrange(downSized[2]):
     for b in xrange(downSized[1]):
       for a in xrange(downSized[0]):
+        averagedDown[a,b,c,locationCol:locationCol+3] = posOffset + [a,b,c]*elementSize
+        averagedDown[a,b,c,elemCol] = elem
         table.data = averagedDown[a,b,c,:].tolist()
         table.data_write()                                                  # output processed line
+        elem += 1
 
   
 # ------------------------------------------ output result ---------------------------------------  
