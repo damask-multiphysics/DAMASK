@@ -105,7 +105,7 @@ for file in files:
     locationCol = table.labels.index('%s.x'%options.coords)                 # columns containing location data
     elemCol = table.labels.index('elem')                                    # columns containing location data
   except ValueError:
-    print 'no coordinate data element data found...'
+    print 'no coordinate data or element data found...'
     continue
 
   if (any(options.resolution)==0 or any(options.dimension)==0.0):
@@ -153,20 +153,18 @@ for file in files:
  
   sum = numpy.zeros(numpy.shape(data))
 
-
   data = numpy.roll(data,axis=2,shift=-options.shift[2])
   data = numpy.roll(data,axis=1,shift=-options.shift[1])
   data = numpy.roll(data,axis=0,shift=-options.shift[0])
 
-  for axis3 in xrange(options.packing[2]):
-    shiftedZ = numpy.roll(data,shift=axis3,axis=2)
-    for axis2 in xrange(options.packing[1]):
-      shiftedZY = numpy.roll(shiftedZ,shift=axis2,axis=1)
-      for axis1 in xrange(options.packing[0]):
-        sum += numpy.roll(shiftedZY,shift=axis1,axis=0)
+  for axis2 in xrange(options.packing[2]):
+    shiftedZ = numpy.roll(data,shift=-axis2,axis=2)
+    for axis1 in xrange(options.packing[1]):
+      shiftedZY = numpy.roll(shiftedZ,shift=-axis1,axis=1)
+      for axis0 in xrange(options.packing[0]):
+        sum += numpy.roll(shiftedZY,shift=-axis0,axis=0)
 
-  averagedDown = sum[::options.packing[0],::options.packing[1],::options.packing[2]] / options.packing.prod()     # normalize data by element count
-
+  averagedDown = sum[::options.packing[0],::options.packing[1],::options.packing[2],::] / options.packing.prod()     # normalize data by element count
   posOffset = (options.shift+[0.5,0.5,0.5])*dimension/resolution
   elementSize = dimension/resolution*options.packing
   elem = 1
