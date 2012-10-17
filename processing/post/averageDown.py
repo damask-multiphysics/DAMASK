@@ -122,8 +122,8 @@ for file in files:
                              max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
                             ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
   else:
-    resolution = options.resolution
-    dimension = options.dimension
+    resolution = numpy.array(options.resolution,'i')
+    dimension = numpy.array(options.dimension,'d')
 
   if resolution[2] == 1:
     options.packing[2] = 1
@@ -154,9 +154,9 @@ for file in files:
   sum = numpy.zeros(numpy.shape(data))
 
 
-  data = numpy.roll(data,axis=2,shift=options.shift[2])
-  data = numpy.roll(data,axis=1,shift=options.shift[1])
-  data = numpy.roll(data,axis=0,shift=options.shift[0])
+  data = numpy.roll(data,axis=2,shift=-options.shift[2])
+  data = numpy.roll(data,axis=1,shift=-options.shift[1])
+  data = numpy.roll(data,axis=0,shift=-options.shift[0])
 
   for axis3 in xrange(options.packing[2]):
     shiftedZ = numpy.roll(data,shift=axis3,axis=2)
