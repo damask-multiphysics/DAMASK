@@ -3085,7 +3085,7 @@ enddo LpLoop
 invFp_new = math_mul33x33(invFp_current,B)
 invFp_new = invFp_new/math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
 call math_invert33(invFp_new,Fp_new,det,error)
-if (error) then
+if (error .or. any(Fp_new/=Fp_new)) then
 #ifndef _OPENMP
   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a,i8,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',&
