@@ -848,11 +848,9 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
  character(len=*) struct
  real(pReal) CoverA
  real(pReal), dimension(3,lattice_maxNslip) :: sd = 0.0_pReal, &
-                                               sn = 0.0_pReal, &
-                                               st = 0.0_pReal
+                                               sn = 0.0_pReal
  real(pReal), dimension(3,lattice_maxNtwin) :: td = 0.0_pReal, &
-                                               tn = 0.0_pReal, &
-                                               tt = 0.0_pReal
+                                               tn = 0.0_pReal
  real(pReal), dimension(lattice_maxNtwin) ::   ts = 0.0_pReal
  integer(pInt), dimension(lattice_maxNslipFamily) :: myNslipSystem = 0_pInt
  integer(pInt), dimension(lattice_maxNtwinFamily) :: myNtwinSystem = 0_pInt
