@@ -1155,9 +1155,9 @@ do n = 1_pInt,4_pInt
             mySizeDotState = constitutive_sizeDotState(g,i,e)
             write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> updateState at el ip g ',e,i,g
             write(6,*)
-            write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
+            write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
             write(6,*)
-            write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+            write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
             write(6,*)
           endif
 #endif
@@ -2195,9 +2195,9 @@ if (numerics_integrationMode < 2) then                                          
                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
           write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> update state at el ip g ',e,i,g
           write(6,*)
-          write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
+          write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
           write(6,*)
-          write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+          write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
           write(6,*)
         endif
 #endif
@@ -2348,19 +2348,17 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
                                               stateResiduum
 logical                                       singleRun                 ! flag indicating computation for single (g,i,e) triple
 
-
-if (present(ee) .and. present(ii) .and. present(gg)) then
+singleRun = present(ee) .and. present(ii) .and. present(gg)
+if (singleRun) then
   eIter = ee
   iIter(1:2,ee) = ii
   gIter(1:2,ee) = gg
-  singleRun = .true.
 else
   eIter = FEsolving_execElem(1:2)
   do e = eIter(1),eIter(2)
     iIter(1:2,e) = FEsolving_execIP(1:2,e)
     gIter(1:2,e) = [1_pInt,homogenization_Ngrains(mesh_element(3,e))]
   enddo
-  singleRun = .false.
 endif
 
 
@@ -2393,12 +2391,12 @@ endif
     if (crystallite_todo(g,i,e)) then
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
-        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
+        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
           !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
           !$OMP END CRITICAL (checkTodo)
-        else                                                                                              ! if broken local...
-          crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
+        else                                                                                              ! broken one was local...
+          crystallite_todo(g,i,e) = .false.                                                               ! ... done (and broken)
         endif
       endif
     endif
@@ -2440,8 +2438,8 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Fe(1:3,1:3,g,i,e), &
                                          crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
       endif
-      constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                      ! age previous dotState
-      constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p                               ! age previous dotState
+      constitutive_previousDotState2(g,i,e)%p = constitutive_previousDotState(g,i,e)%p                      ! remember previous dotState
+      constitutive_previousDotState(g,i,e)%p = constitutive_dotState(g,i,e)%p                               ! remember current  dotState
     enddo; enddo; enddo
   !$OMP ENDDO
   
@@ -2451,13 +2449,12 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        if (.not. crystallite_integrateStress(g,i,e)) then                                                ! if broken ...
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! ... and non-local... 
+        if (.not. crystallite_integrateStress(g,i,e)) then                                                ! if function call says broken ...
+          crystallite_todo(g,i,e) = .false.                                                               ! ... then skip me
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! ... me is non-local... 
             !$OMP CRITICAL (checkTodo) 
               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ... then all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
-          else                                                                                            ! ... and local...
-            crystallite_todo(g,i,e) = .false.                                                             ! ... then skip only me
           endif
         endif
       endif
@@ -2489,12 +2486,11 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       if (crystallite_todo(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
+          crystallite_todo(g,i,e) = .false.                                                                 ! ... skip me next time
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if me is non-local...
             !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
-          else                                                                                              ! if broken local...
-            crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
           endif
         endif
       endif
@@ -2511,7 +2507,7 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
         ! --- state damper ---
         
         dot_prod12 = dot_product( constitutive_dotState(g,i,e)%p - constitutive_previousDotState(g,i,e)%p, &
-                              constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
+                          constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
         dot_prod22 = dot_product( constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p, &
                                   constitutive_previousDotState(g,i,e)%p - constitutive_previousDotState2(g,i,e)%p )
         if (      dot_prod22 > 0.0_pReal &
@@ -2537,16 +2533,16 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
                                                       - stateResiduum(1:mySizeDotState)
         crystallite_Temperature(g,i,e) = crystallite_Temperature(g,i,e) - temperatureResiduum
 #ifndef _OPENMP
-        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt &
             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
                    .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
           write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> update state at el ip g ',e,i,g
           write(6,*)
           write(6,'(a,f6.1)') '<< CRYST >> statedamper ',statedamper
           write(6,*)
-          write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> state residuum',stateResiduum(1:mySizeDotState)
+          write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> state residuum',stateResiduum(1:mySizeDotState)
           write(6,*)
-          write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> new state',constitutive_state(g,i,e)%p(1:mySizeDotState)
+          write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> new state',constitutive_state(g,i,e)%p(1:mySizeDotState)
           write(6,*)
         endif
 #endif
@@ -2684,14 +2680,15 @@ constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:my
                                               + constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
 
 #ifndef _OPENMP
-if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) /= 0.0_pReal) &
+    .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
     .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
   write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> update state at el ip g ',e,i,g
   write(6,*)
-  write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> deltaState', constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
+  write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> deltaState', constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
   write(6,*)
-  write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+  write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
   write(6,*)
 endif
 #endif
@@ -2843,7 +2840,7 @@ endif
  
 !* feed local variables
 
-Fp_current =   crystallite_subFp0(1:3,1:3,g,i,e)
+Fp_current =   crystallite_subFp0(1:3,1:3,g,i,e)                   ! "Fp_current" is only used as temp var here...
 Lpguess_old =  crystallite_Lp(1:3,1:3,g,i,e)                       ! consider present Lp good (i.e. worth remembering) ...
 Lpguess =      crystallite_Lp(1:3,1:3,g,i,e)                       ! ... and take it as first guess
 
@@ -2855,12 +2852,13 @@ if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
 #ifndef _OPENMP
   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on invFp_current inversion at el ip g ',e,i,g
-    if (iand(debug_level(debug_crystallite), debug_levelSelective) > 0_pInt &
-        .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-               .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-      write(6,*)
-      write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new(1:3,1:3))
-    endif
+!    QUESTION: all FP_current == 0.0, why reporting FP_new ??
+!    if (iand(debug_level(debug_crystallite), debug_levelSelective) > 0_pInt &
+!        .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+!               .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+!      write(6,*)
+!      write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> invFp_new',math_transpose33(invFp_new(1:3,1:3))
+!    endif
   endif
 #endif
   return
@@ -2871,10 +2869,10 @@ A = math_mul33x33(Fg_new,invFp_current)                                    ! int
 !* start LpLoop with normal step length
 
 NiterationStress = 0_pInt
-steplength0 = 1.0_pReal
-steplength = steplength0
-steplength_max = 16.0_pReal
 jacoCounter = 0_pInt
+steplength0 = 1.0_pReal
+steplength_max = 16.0_pReal
+steplength = steplength0
 
 LpLoop: do
   NiterationStress = NiterationStress + 1_pInt
@@ -2885,7 +2883,7 @@ LpLoop: do
   if (NiterationStress > nStress) then
 #ifndef _OPENMP
     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then 
-      write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress reached loop limit at el ip g ',e,i,g
+      write(6,'(a,i3,a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress reached loop limit',nStress,' at el ip g ',e,i,g
       write(6,*)
     endif
 #endif
@@ -2893,7 +2891,7 @@ LpLoop: do
   endif
    
 
-  !* calculate 2nd Piola-Kirchhoff stress tensor
+  !* calculate (elastic) 2nd Piola--Kirchhoff stress tensor and its tangent from constitutive law
 
   B = math_I3 - dt*Lpguess
   Fe = math_mul33x33(A,B)                                                    ! current elastic deformation tensor
@@ -2903,12 +2901,13 @@ LpLoop: do
   forall(n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
    
   
-  !* calculate plastic velocity gradient and its tangent according to constitutive law
+  !* calculate plastic velocity gradient and its tangent from constitutive law
   
-  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
     call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
-  endif
+
   call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT_constitutive, Tstar_v, crystallite_Temperature(g,i,e), g, i, e)
+
   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
     !$OMP CRITICAL (debugTimingLpTangent)
@@ -2938,13 +2937,11 @@ LpLoop: do
   aTol = max(rTol_crystalliteStress * maxval(max(abs(Lpguess),abs(Lp_constitutive))), &     ! absolute tolerance from largest acceptable relative error
              aTol_crystalliteStress)                                                        ! minimum lower cutoff
   if (.not. any(residuum /= residuum) &                                                     ! no convergence if NaN in residuum
-      .and. maxval(abs(residuum)) < aTol ) then                                             ! converged if all below absolute tolerance...
-    exit LpLoop
-  endif
+      .and. maxval(abs(residuum)) < aTol ) exit LpLoop                                      ! converged if all below absolute tolerance...
   
 
-  !* NaN occured at regular speed  ->  return
-  if (steplength >= steplength0 .and. any(residuum /= residuum)) then
+  !* NaN occurred at regular speed  ->  return
+  if (steplength <= steplength0 .and. any(residuum /= residuum)) then
 #ifndef _OPENMP
     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then 
       write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el ip g ',e,i,g,&
@@ -2952,7 +2949,7 @@ LpLoop: do
                                     ' >> returning..!'
     endif
 #endif
-    return
+    return                                                                                  ! me = .false. to inform integrator about problem
   endif
 
 
@@ -2964,15 +2961,11 @@ LpLoop: do
       !* Armijo rule is fullfilled (norm of residuum was reduced by at least 0.01 of what was expected)
       if (math_norm33(residuum) <= math_norm33(residuum_old) + 0.01_pReal * steplength * expectedImprovement) then
       
-        !* reduced step length -> return to normal step length
         if (steplength < steplength0) then
-          steplength = steplength0
-        
-        !* normal step length without change in sign of residuum -> accelerate if not yet at maximum speed
-        elseif (sum(residuum * residuum_old) >= 0.0_pReal .and. steplength + 1_pInt <= steplength_max) then
-          steplength = steplength + 1.0_pReal
+          steplength = steplength0                                                          ! return to normal step length
+        elseif (sum(residuum * residuum_old) >= 0.0_pReal) then
+          steplength = min(steplength_max,steplength + 1.0_pReal)                           ! no change in sign of residuum -> accelerate up to maximum speed
         endif
-
       !* Armijo rule not fullfilled -> try smaller step size in same direction
       else
         steplength = 0.5_pReal * steplength 
@@ -2987,9 +2980,7 @@ LpLoop: do
       if (.not. any(residuum /= residuum) & 
           .and. math_norm33(residuum) <= math_norm33(residuum_old) + 0.01_pReal * steplength * expectedImprovement &
           .and. sum(residuum * residuum_old) >= 0.0_pReal) then
-        if (steplength + 1_pInt <= steplength_max) then
-          steplength = steplength + 1.0_pReal
-        endif
+        steplength = min(steplength_max,steplength + 1.0_pReal)                             ! accelerate up to maximum speed
       
       !* something went wrong at accelerated speed?  ->  return to regular speed and try again
       else
@@ -2999,6 +2990,13 @@ LpLoop: do
                                              '; iteration ', NiterationStress
         endif
 #endif
+        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+          !$OMP CRITICAL (distributionLeapfrogBreak)
+            debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) = &
+              debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) + 1_pInt
+          !$OMP END CRITICAL (distributionLeapfrogBreak)
+        endif
+
         !* NaN occured -> use old guess and residuum
         if (any(residuum /= residuum)) then
           Lpguess = Lpguess_old
@@ -3007,12 +3005,6 @@ LpLoop: do
         steplength_max = max(steplength - 1.0_pReal, 1.0_pReal)       ! limit acceleration
         steplength = steplength0                                      ! grinding halt
         jacoCounter = 0_pInt                                          ! reset counter for Jacobian update (we want to do an update next time!)
-        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-          !$OMP CRITICAL (distributionLeapfrogBreak)
-            debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) = &
-              debug_LeapfrogBreakDistribution(NiterationStress,numerics_integrationMode) + 1_pInt
-          !$OMP END CRITICAL (distributionLeapfrogBreak)
-        endif
       endif
     endif
   endif
