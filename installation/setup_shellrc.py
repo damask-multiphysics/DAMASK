@@ -3,9 +3,9 @@
 import os,sys,string,re
 from optparse import OptionParser
 
-validShells = {\
+validShellRC = {\
                'bash':['.bashrc','.bash_profile','.bash_login','.profile','new'],
-               'csh': ['.cshrc'],
+               'csh': ['.cshrc','new'],
               }
 
 env_order = ['DAMASK_ROOT','DAMASK_BIN','PATH','PYTHONPATH','LD_LIBRARY_PATH']
@@ -62,7 +62,7 @@ Sets up your shell resource to be compatible with DAMASK.
 
 parser.add_option("-s","--shell", type="string", 
                   dest = "shell", \
-                  help = "type of shell, e.g. "+', '.join(validShells.keys())+" [%default]")
+                  help = "type of shell, e.g. "+', '.join(validShellRC.keys())+" [%default]")
 
 parser.set_defaults(shell = 'bash')
 
@@ -87,75 +87,80 @@ except:
 theShell = options.shell.lower()
 theHome = os.getenv('USERPROFILE') or os.getenv('HOME')
 
-if theShell == 'bash':
-  for theRC in validShells[theShell]:
-    if theRC =='new' and not hitSomething:
-      print 'Could not find a file to store bash information, creating .bashrc in home directory'
-      theRC='.bashrc'
-      open(os.path.join(theHome,theRC), 'w').close()
-    thePath = os.path.join(theHome,theRC)
-    if os.path.exists(thePath):
-      print thePath
-      hitSomething = True
-      rc = open(os.path.join(theHome,theRC))
-      content = map(string.strip,rc.readlines())
-      rc.close()
+for theRC in validShellRC[theShell]:
+  if theRC == 'new' and not hitSomething:
+    theRC = validShellRC[theShell][0]
+    print 'Could not find a file to store bash information, creating "%s" in home directory'%theRC
+    open(os.path.join(theHome,theRC), 'w').close()
+  thePath = os.path.join(theHome,theRC)
+  if os.path.exists(thePath):
+    print thePath
+    hitSomething = True
+    rc = open(os.path.join(theHome,theRC))
+    content = map(string.strip,rc.readlines())
+    rc.close()
 
-      match = {}
-      for var in env_order: match[var] = False
+    match = {}
+    for var in env_order: match[var] = False
   
-      output = []
+    output = []
       
-      for line in content:
-        for var in env_order:
-          m = re.search(r'^(.*? %s=)([^;]*)(.*)$'%var,line)
-          if m:
-            n = re.search(r'(%s)'%var, line)
-            o = re.search(r'(#)', line)
-            if o:
-              if o.start() < n.start():
-                print 'skipped potential comment line, please check'
-                continue
-            match[var] = True
-            items = m.group(2).split(':')
-            for piece in environment[var]:
-              try:
-                if 'activate' not in piece or eval(piece['activate']) != '':
-                  if piece['append']:
-                    if 'delete' in piece:
-                      killer = eval(piece['delete'])
-                      if type(killer) == str:
-                        items = [path for path in items if killer not in path]
-                      if type(killer) == list:
-                        items = [path for path in items if path not in killer]
-                    items += eval(piece['substitute'])
-                  else:
-                    items = eval(piece['substitute'])
-              except:
-               pass
-            line = m.group(1)+':'.join(items)+m.group(3)
-
-        output.append(line)
-
+    for line in content:
       for var in env_order:
-        if not match[var]:
-          items = ['${%s}'%var]
+        m = re.search(\
+                      {\
+                       'bash': r'^(.*? %s=)([^;]*)(.*)$'%var,
+                       'csh':  r'^(\s*setenv\s+%s\s+)([^;]*)(.*)$'%var 
+                      }[theShell],line)
+        if m:
+          n = re.search(r'(%s)'%var, line)
+          o = re.search(r'(#)', line)
+          if o:
+            if o.start() < n.start():
+              print 'skipped potential comment line, please check!'
+              continue
+          match[var] = True
+          items = m.group(2).split(':')
           for piece in environment[var]:
             try:
               if 'activate' not in piece or eval(piece['activate']) != '':
                 if piece['append']:
+                  if 'delete' in piece:
+                    killer = eval(piece['delete'])
+                    if type(killer) == str:
+                      items = [path for path in items if killer not in path]
+                    if type(killer) == list:
+                      items = [path for path in items if path not in killer]
                   items += eval(piece['substitute'])
                 else:
-                  items =  eval(piece['substitute'])
+                  items = eval(piece['substitute'])
             except:
               pass
-          output.append('export %s=%s'%(var,':'.join(items)))
+          line = m.group(1)+':'.join(items)+m.group(3)
 
-      rc = open(os.path.join(theHome,theRC),'w')
-      rc.write('\n'.join(output)+'\n')
-      rc.close()
+      output.append(line)
 
-elif theShell == 'csh':
-  print 'csh not supported yet...'
+    for var in env_order:
+      if not match[var]:
+        items = ['${%s}'%var]
+        for piece in environment[var]:
+          try:
+            if 'activate' not in piece or eval(piece['activate']) != '':
+              if piece['append']:
+                items += eval(piece['substitute'])
+              else:
+                items =  eval(piece['substitute'])
+          except:
+            pass
+        output.append({\
+           'bash':'export %s=%s'%(var,':'.join(items)),
+           'csh': 'setenv %s %s'%(var,':'.join(items)),
+          }[theShell])
 
-if not hitSomething: print 'no %s found..!'%(', '.join(validShells[theShell]))
+    rc = open(os.path.join(theHome,theRC),'w')
+    rc.write('\n'.join(output)+'\n')
+    rc.close()
+
+
+if not hitSomething: print 'none of %s found..!'%(', '.join(validShellRC[theShell]))
+
