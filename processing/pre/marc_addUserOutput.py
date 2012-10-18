@@ -51,7 +51,15 @@ def ParseOutputFormat(filename,what,me):
 
 
 parser = OptionParser(usage='%prog [options] Marc.inputfile(s)', description="""
-what I do...
+Transfer the output variables requested in the material.config to
+properly labelled user defined variables within the Marc input file (*.dat).
+
+Requires the files 
+<modelname_jobname>.output<Homogenization/Crystallite/Constitutive>
+that are written during the first run of the model.
+
+Specify which user block format you want to apply by stating the homogenization, crystallite, and phase identifiers.
+Or have an existing set of user variables copied over from another *.dat file.
 """)
 parser.add_option('-n','--number', dest='number', type='int', \
           help='maximum requested User Defined Variable [%default]')
