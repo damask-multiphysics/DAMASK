@@ -134,7 +134,8 @@ constitutive_nonlocal_CFLfactor, &                                   ! safety fa
 constitutive_nonlocal_fEdgeMultiplication, &                         ! factor that determines how much edge dislocations contribute to multiplication (0...1)
 constitutive_nonlocal_rhoSglRandom, &
 constitutive_nonlocal_rhoSglRandomBinning, &
-constitutive_nonlocal_linetensionEffect
+constitutive_nonlocal_linetensionEffect, &
+constitutive_nonlocal_s0
 
 real(pReal), dimension(:,:), allocatable, private :: &
 constitutive_nonlocal_rhoSglEdgePos0, &                              ! initial edge_pos dislocation density per slip system for each family and instance
@@ -177,6 +178,10 @@ constitutive_nonlocal_compatibility                                  ! slip syst
 
 logical, dimension(:), allocatable, private :: &
 constitutive_nonlocal_shortRangeStressCorrection                     ! flag indicating the use of the short range stress correction by a excess density gradient term
+
+logical, dimension(:,:,:,:), allocatable, private :: &
+constitutive_nonlocal_manyActiveSources, &
+constitutive_nonlocal_singleActiveSource
 
 public :: &
 constitutive_nonlocal_init, &
@@ -347,6 +352,7 @@ allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
 allocate(constitutive_nonlocal_CFLfactor(maxNinstance))
 allocate(constitutive_nonlocal_fEdgeMultiplication(maxNinstance))
 allocate(constitutive_nonlocal_linetensionEffect(maxNinstance))
+allocate(constitutive_nonlocal_s0(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
 constitutive_nonlocal_C12 = 0.0_pReal
@@ -381,7 +387,8 @@ constitutive_nonlocal_grainboundaryTransmissivity = -1.0_pReal
 constitutive_nonlocal_CFLfactor = 2.0_pReal
 constitutive_nonlocal_fEdgeMultiplication = 0.0_pReal
 constitutive_nonlocal_linetensionEffect = 0.0_pReal
-constitutive_nonlocal_shortRangeStressCorrection = .true.
+constitutive_nonlocal_s0 = 0.0_pReal
+constitutive_nonlocal_shortRangeStressCorrection = .false.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_nonlocal_rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNinstance))
@@ -541,6 +548,8 @@ do                                                                              
         constitutive_nonlocal_fEdgeMultiplication(i) = IO_floatValue(line,positions,2_pInt)
       case('shortrangestresscorrection')
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
+      case('s0')
+        constitutive_nonlocal_s0(i) = IO_floatValue(line,positions,2_pInt)
       case default
         call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_nonlocal_label//')')
     end select
@@ -648,7 +657,9 @@ enddo
   if (constitutive_nonlocal_CFLfactor(i) < 0.0_pReal)                   call IO_error(211_pInt,ext_msg='CFLfactor (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_fEdgeMultiplication(i) < 0.0_pReal .or. constitutive_nonlocal_fEdgeMultiplication(i) > 1.0_pReal) &
-                                                                       call IO_error(211_pInt,ext_msg='edgemultiplicationfactor ('&
+                                                                        call IO_error(211_pInt,ext_msg='edgemultiplicationfactor ('&
+                                                                             //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_s0(i) < 0.0_pReal)                          call IO_error(211_pInt,ext_msg='s0 (' &
                                                                              //constitutive_nonlocal_label//')')
   
   
@@ -688,6 +699,12 @@ constitutive_nonlocal_lattice2slip = 0.0_pReal
 
 allocate(constitutive_nonlocal_accumulatedShear(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_accumulatedShear = 0.0_pReal
+
+allocate(constitutive_nonlocal_manyActiveSources(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+constitutive_nonlocal_manyActiveSources = .true.
+
+allocate(constitutive_nonlocal_singleActiveSource(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
+constitutive_nonlocal_singleActiveSource = .false.
 
 allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 allocate(constitutive_nonlocal_rhoDotMultiplication(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
@@ -1429,6 +1446,7 @@ state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauBack
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', rhoForest
     write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold/1e6
     write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauBack / MPa', tauBack/1e6
+    write(6,*)
   endif
 #endif
 
@@ -1978,6 +1996,7 @@ use IO,       only: IO_error
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
+                    debug_levelExtensive, &
                     debug_levelSelective, &
                     debug_g, &
                     debug_i, &
@@ -2063,6 +2082,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                             gdot                          ! shear rates
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &                  ! forest dislocation density
+                                            rhoSource, &
                                             tauThreshold, &               ! threshold shear stress
                                             tau, &                        ! current resolved shear stress
                                             tauBack, &                    ! current back stress from pileups on same slip system
@@ -2085,9 +2105,11 @@ real(pReal), dimension(3) ::                normal_neighbor2me, &         ! inte
 real(pReal)                                 area, &                       ! area of the current interface
                                             transmissivity, &             ! overall transmissivity of dislocation flux to neighboring material point
                                             lineLength, &                 ! dislocation line length leaving the current interface
-                                            D                             ! self diffusion
+                                            D, &                          ! self diffusion
+                                            rnd
 logical                                     considerEnteringFlux, &
-                                            considerLeavingFlux
+                                            considerLeavingFlux, &
+                                            wasActive
 
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
@@ -2180,9 +2202,41 @@ dUpper = max(dUpper,dLower)
 !*** calculate dislocation multiplication
 
 rhoDotMultiplication = 0.0_pReal
-rhoDotMultiplication(1:ns,1:4) = spread( &
-    (sum(abs(gdot(1:ns,1:2)),2) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(abs(gdot(1:ns,3:4)),2)) &
-  * sqrt(rhoForest) / constitutive_nonlocal_lambda0(1:ns,myInstance) / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 4)
+if (constitutive_nonlocal_s0(myInstance) > 0.0_pReal) then
+  rhoSource(1:ns) = (sum(rhoSgl(1:ns,1:2),2) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(rhoSgl(1:ns,3:4),2)) &
+                  * sqrt(rhoForest(1:ns)) / constitutive_nonlocal_s0(myInstance)
+  do s = 1_pInt,ns
+    wasActive = constitutive_nonlocal_manyActiveSources(s,g,ip,el)
+    constitutive_nonlocal_manyActiveSources(s,g,ip,el) = rhoSource(s) * mesh_ipVolume(ip,el) > 1.0_pReal
+    if (rhoSource(s) * mesh_ipVolume(ip,el) > 1.0_pReal) then
+      rhoDotMultiplication(s,1:4) = (sum(abs(gdot(s,1:2))) * constitutive_nonlocal_fEdgeMultiplication(myInstance) &
+                                   + sum(abs(gdot(s,3:4)))) / constitutive_nonlocal_burgers(s,myInstance) &
+                                  * sqrt(rhoForest(s)) / constitutive_nonlocal_lambda0(s,myInstance)
+    else
+      if (wasActive) then
+        call random_number(rnd)
+        constitutive_nonlocal_singleActiveSource(s,g,ip,el) = rhoSource(s) * mesh_ipVolume(ip,el) > rnd
+        !$OMP FLUSH(constitutive_nonlocal_singleActiveSource)
+      endif
+      if (constitutive_nonlocal_singleActiveSource(s,g,ip,el)) then
+        rhoDotMultiplication(s,1:4) = abs(v(s,1:4)) / mesh_ipVolume(ip,el) * constitutive_nonlocal_s0(myInstance) &
+                                                                           / constitutive_nonlocal_lambda0(s,myInstance)
+      endif
+    endif
+  enddo
+#ifndef _OPENMP
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
+    write(6,'(a,/,4(12x,12(f12.5,1x),/))') '<< CONST >> sources', rhoSource * mesh_ipVolume(ip,el)
+    write(6,*)
+  endif
+#endif
+else
+  rhoDotMultiplication(1:ns,1:4) = spread( &
+      (sum(abs(gdot(1:ns,1:2)),2) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(abs(gdot(1:ns,3:4)),2)) &
+    * sqrt(rhoForest) / constitutive_nonlocal_lambda0(1:ns,myInstance) / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 4)
+endif
 
 
 
