@@ -127,6 +127,7 @@ endif
 ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
 STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics
+#-std=2008ts for newer gfortran
 endif
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
 #                   but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined
@@ -142,6 +143,7 @@ OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-l
 
 
 COMPILE_OPTIONS_ifort    :=-fpp\
+                           -ftz\
                            -assume byterecl
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_ifort    :=$(COMPILE_OPTIONS_ifort)\
@@ -159,6 +161,7 @@ COMPILE_OPTIONS_ifort    :=$(COMPILE_OPTIONS_ifort)\
 endif
 
 #-fpp:                     preprocessor
+#-ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
 #-fimplicit-none:          assume "implicit-none" even if not present in source
 #-diag-disable:            disables warnings, where                           
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
@@ -194,6 +197,7 @@ endif
 #   pointers:                Checking for certain disassociated or uninitialized pointers or unallocated allocatable objects.
 #   uninit:                  Checking for uninitialized variables.
 #-heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
+#-fpe-all0                capture all floating-point exceptions, sets -ftz automatically
 ###################################################################################################
 
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
@@ -258,6 +262,12 @@ endif
 #
 #OPTIONS FOR DEGUBBING DURING RUNTIME
 #-fcheck-bounds:              check if an array index is too small (<1) or too large!
+#-ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
+#           zero,\
+#           overflow,\
+#           underflow,\
+#           precision,\
+#           denormal
 ##################################################################################################
 
 PRECISION_ifort :=-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4
@@ -281,29 +291,29 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math
 
 ifeq "$(SOLVER)" "NEW"
 ifdef PETSC_DIR
-PETSC_FILES = DAMASK_spectral_SolverAL.o DAMASK_spectral_SolverBasicPETSC.o
+PETSC_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o
 endif
 
-COMPILED_FILES += DAMASK_spectral_Utilities.o DAMASK_spectral_SolverBasic.o $(PETSC_FILES)
+COMPILED_FILES += DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 
-DAMASK_spectral.exe: DAMASK_spectral_Driver.o 
+DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
-  -o DAMASK_spectral.exe DAMASK_spectral_Driver.o \
+  -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
   $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
 
-DAMASK_spectral_Driver.o: DAMASK_spectral_Driver.f90 DAMASK_spectral_SolverBasic.o $(PETSC_FILES)
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_Driver.f90 $(SUFFIX)
+DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
+	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
 
-DAMASK_spectral_SolverAL.o:    DAMASK_spectral_SolverAL.f90\
-                               DAMASK_spectral_Utilities.o
+DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90\
+                               DAMASK_spectral_utilities.o
   
-DAMASK_spectral_SolverBasic.o: DAMASK_spectral_SolverBasic.f90\
-                               DAMASK_spectral_Utilities.o
+DAMASK_spectral_solverBasic.o: DAMASK_spectral_solverBasic.f90\
+                               DAMASK_spectral_utilities.o
   
-DAMASK_spectral_SolverBasicPETSC.o: DAMASK_spectral_SolverBasicPETSC.f90\
-                               DAMASK_spectral_Utilities.o
+DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90\
+                               DAMASK_spectral_utilities.o
 
-DAMASK_spectral_Utilities.o:   DAMASK_spectral_Utilities.f90\
+DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90\
                                CPFEM.o
 else
 DAMASK_spectral.exe: DAMASK_spectral.o 

@@ -116,7 +116,7 @@ subroutine BasicPETSC_init()
     
     call Utilities_init()
     
-    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSC init  -+>>>'
+    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
     write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
 #include "compilation_info.f90"
     write(6,'(a)') ''
@@ -307,7 +307,9 @@ else
    basicPETSc_solution%termIll = terminallyIll
    terminallyIll = .false.
    BasicPETSC_solution%converged =.false.
-   if (reason > 0 ) BasicPETSC_solution%converged = .true.
+   if (reason > 0 ) then
+     BasicPETSC_solution%converged = .true.
+   endif
 
  end function BasicPETSC_solution
 
@@ -433,7 +435,6 @@ else
                                                          ' (',err_div/pAvgDivL2,' N/m³)'
    write(6,'(a,f6.2,a,es11.4,a)') 'error stress =     ', err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs), &
                                                          ' (',err_stress,' Pa)'  
-   return
 
  end subroutine BasicPETSC_converged
 

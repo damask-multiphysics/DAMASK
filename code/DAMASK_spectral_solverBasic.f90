@@ -235,14 +235,15 @@ else
    F_lastInc = F
  endif
  F_aim = F_aim + f_aimDot * timeinc
- F = Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot) !I thin F aim should be rotated here
-print*, 'F', sum(sum(sum(F,dim=5),dim=4),dim=3)*wgt
+ F = Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot) !I think F aim should be rotated here
+
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
+
  if (update_gamma) call Utilities_updateGamma(C)
  
- 
+ ForwardData = .True.
  iter = 0_pInt
  convergenceLoop: do while(iter < itmax)
    
@@ -250,7 +251,7 @@ print*, 'F', sum(sum(sum(F,dim=5),dim=4),dim=3)*wgt
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                    ' @ Iter. ', itmin, '<',iter, '≤', itmax
+                    ' @ Iter. ', itmin, '≤',iter, '≤', itmax
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
                                                                         math_transpose33(F_aim)
    F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
@@ -282,7 +283,10 @@ print*, 'F', sum(sum(sum(F,dim=5),dim=4),dim=3)*wgt
    F = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
    write(6,'(/,a)') '=========================================================================='
-   if ((basic_solution%converged .and. iter > itmin) .or. basic_solution%termIll) exit  
+   if ((basic_solution%converged .and. iter >= itmin) .or. basic_solution%termIll) then
+     basic_solution%iterationsNeeded = iter
+     exit
+   endif
  enddo convergenceLoop
 
 end function basic_solution

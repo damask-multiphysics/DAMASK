@@ -23,12 +23,11 @@ module DAMASK_spectral_Utilities
    IO_error
  
  implicit none
- 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
- type(C_PTR),   private                                        :: plan_forward, plan_backward                                                        ! plans for fftw
- real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                                   ! gamma operator (field) for spectral method
- real(pReal),   private, dimension(:,:,:,:),       allocatable :: xi                                          ! wave vector field for divergence and for gamma operator
+ type(C_PTR),   private                                        :: plan_forward, plan_backward        ! plans for fftw
+ real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                          ! gamma operator (field) for spectral method
+ real(pReal),   private, dimension(:,:,:,:),       allocatable :: xi                                 ! wave vector field for divergence and for gamma operator
  complex(pReal),private, dimension(:,:,:,:,:),     pointer     :: field_fourier
  real(pReal),   private, dimension(3,3,3,3)                    :: C_ref
  
@@ -54,9 +53,10 @@ module DAMASK_spectral_Utilities
 !--------------------------------------------------------------------------------------------------
 ! derived types
  type tSolutionState 
-   logical ::        converged       = .true.   
-   logical ::        regrid          = .false.   
-   logical ::        termIll         = .false.   
+   logical ::        converged         = .true.   
+   logical ::        regrid            = .false.   
+   logical ::        termIll           = .false.   
+   integer(pInt) ::  iterationsNeeded  = 0_pInt
  end type tSolutionState
 
  type tBoundaryCondition
@@ -105,7 +105,7 @@ subroutine Utilities_init()
  
 
  write(6,'(a)') ''
- write(6,'(a)') ' <<<+-  DAMASK_Utilities init  -+>>>'
+ write(6,'(a)') ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
  write(6,'(a)') ''
@@ -454,14 +454,15 @@ end function Utilities_divergenceRMS
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates mask compliance
 !--------------------------------------------------------------------------------------------------
-function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
+function Utilities_maskedCompliance(rot_BC,mask_stress,C)
  
  implicit none
  real(pReal), dimension(3,3,3,3) :: Utilities_maskedCompliance
  real(pReal), dimension(3,3,3,3), intent(in) :: C
  integer(pInt) :: j, k, m, n 
  real(pReal), dimension(3,3), intent(in) :: rot_BC
- logical, dimension(9), intent(in) :: mask_stressVector
+ logical, dimension(3,3), intent(in) :: mask_stress
+ logical, dimension(9) :: mask_stressVector
  real(pReal), dimension(3,3,3,3) :: C_lastInc
  real(pReal), dimension(9,9) :: temp99_Real   
  integer(pInt) :: size_reduced = 0_pInt 
@@ -469,13 +470,16 @@ function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
  logical :: errmatinv
  character(len=1024):: formatString
  
- size_reduced = count(mask_stressVector)
+ mask_stressVector = reshape(transpose(mask_stress), [9])
+ size_reduced = int(count(mask_stressVector), pInt)
  if(size_reduced > 0_pInt )then
    allocate (c_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (s_reduced(size_reduced,size_reduced), source =0.0_pReal)
    allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
 
-   C_lastInc = math_rotate_forward3333(C*0.75_pReal+0.05_pReal*C_ref,rot_BC)                        ! calculate stiffness from former inc
+   C_lastInc = math_rotate_forward3333(C,rot_BC)                                                    ! calculate stiffness from former inc
+   print*,'C'
+   print*,C_lastInc
    temp99_Real = math_Plain3333to99(C_lastInc)
    k = 0_pInt                                                                                       ! build reduced stiffness
    do n = 1_pInt,9_pInt
@@ -521,7 +525,8 @@ function Utilities_maskedCompliance(rot_BC,mask_stressVector,C)
    temp99_real = 0.0_pReal
  endif
  Utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
-
+ print*,'masked S'
+ print*,Utilities_maskedCompliance
 end function Utilities_maskedCompliance 
 
 subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
@@ -539,15 +544,16 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   
   real(pReal), dimension(3,3,res(1),res(2),res(3)), intent(in) :: F,F_lastInc
   real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
-  real(pReal) :: timeinc
+  real(pReal),intent(in) :: timeinc
   logical, intent(in) :: forwardData
   integer(pInt) :: i, j, k, ielem
   integer(pInt) :: calcMode, collectMode
-  real(pReal), dimension(3,3,3,3) :: dPdF, C
+  real(pReal), dimension(3,3,3,3) :: dPdF
+  real(pReal), dimension(3,3,3,3),intent(out) :: C
   real(pReal), dimension(6)       :: sigma                                                                ! cauchy stress
   real(pReal), dimension(6,6)     :: dsde
   real(pReal), dimension(3,3), intent(in)     :: rotation_BC
-  real(pReal), dimension(3,3)     :: P_av
+  real(pReal), dimension(3,3),intent(out)     :: P_av
   
   write(6,'(/,a,/)') '... evaluating constitutive response ......................................'
   if (forwardData) then
@@ -561,8 +567,12 @@ subroutine Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
    calcMode = 2_pInt
    collectMode = 5_pInt
   endif
-  print*, 'collect mode', collectMode
-  print*, 'calc mode', calcMode
+  
+  if (DebugGeneral) then
+    write(6,*) 'collect mode', collectMode
+    write(6,*) 'calc mode', calcMode
+  endif
+  
   ielem = 0_pInt
   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
     ielem = ielem + 1_pInt

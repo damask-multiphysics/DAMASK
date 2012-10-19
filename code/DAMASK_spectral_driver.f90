@@ -71,22 +71,22 @@ program DAMASK_spectral_Driver
  
  implicit none
  type tLoadCase
-   real(pReal), dimension (3,3) :: rotation               = math_I3                                 ! rotation of BC
-   type(tBoundaryCondition) ::     P, &                                                             ! stress BC
-                                   deformation                                                      ! deformation BC (Fdot or L)
-   real(pReal) ::                  time                   = 0.0_pReal, &                            ! length of increment
-                                   temperature            = 300.0_pReal                             ! isothermal starting conditions
-   integer(pInt) ::                incs                   = 0_pInt, &                               ! number of increments
-                                   outputfrequency        = 1_pInt, &                               ! frequency of result writes
-                                   restartfrequency       = 0_pInt, &                               ! frequency of restart writes
-                                   logscale               = 0_pInt                                  ! linear/logaritmic time inc flag
-   logical ::                      followFormerTrajectory = .true.                                  ! follow trajectory of former loadcase 
+   real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
+   type(tBoundaryCondition) ::     P, &                                                             !< stress BC
+                                   deformation                                                      !< deformation BC (Fdot or L)
+   real(pReal) ::                  time                   = 0.0_pReal, &                            !< length of increment
+                                   temperature            = 300.0_pReal                             !< isothermal starting conditions
+   integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
+                                   outputfrequency        = 1_pInt, &                               !< frequency of result writes
+                                   restartfrequency       = 0_pInt, &                               !< frequency of restart writes
+                                   logscale               = 0_pInt                                  !< linear/logaritmic time inc flag
+   logical ::                      followFormerTrajectory = .true.                                  !< follow trajectory of former loadcase 
  end type tLoadCase
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
- real(pReal), dimension(9) :: temp_valueVector                                                      !> temporarily from loadcase file when reading in tensors
- logical,     dimension(9) :: temp_maskVector                                                       !> temporarily from loadcase file when reading in tensors
+ real(pReal), dimension(9) :: temp_valueVector                                                      !< temporarily from loadcase file when reading in tensors
+ logical,     dimension(9) :: temp_maskVector                                                       !< temporarily from loadcase file when reading in tensors
  integer(pInt), parameter  :: maxNchunksLoadcase = (1_pInt + 9_pInt)*3_pInt +&                      ! deformation, rotation, and stress
                                                    (1_pInt + 1_pInt)*5_pInt +&                      ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                     1_pInt                                          ! dropguessing
@@ -104,13 +104,14 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
- real(pReal), dimension(3,3), parameter :: ones = 1.0_pReal, zeroes = 0.0_pReal 
+ real(pReal), dimension(3,3), parameter :: ones = 1.0_pReal, zeros = 0.0_pReal 
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc = 1.0_pReal, timeinc_old = 0.0_pReal   ! elapsed time, begin of interval, time interval, previous time interval
  real(pReal) :: guessmode
  integer(pInt) :: i, j, k, l, errorID, cutBackLevel = 0_pInt, stepFraction = 0_pInt
  integer(pInt) :: currentLoadcase = 0_pInt, inc, &
                   totalIncsCounter = 0_pInt,&
-                  notConvergedCounter = 0_pInt, convergedCounter = 0_pInt
+                  notConvergedCounter = 0_pInt, convergedCounter = 0_pInt, &
+                  resUnit = 0_pInt, statUnit = 0_pInt
  character(len=6)  :: loadcase_string
  character(len=1024)  :: incInfo
  type(tLoadCase), allocatable, dimension(:) ::  loadCases
@@ -121,7 +122,7 @@ program DAMASK_spectral_Driver
  call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
 
  write(6,'(a)') ''
- write(6,'(a)') ' <<<+-  DAMASK_spectral_Driver init  -+>>>'
+ write(6,'(a)') ' <<<+-  DAMASK_spectral_driver init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
 !--------------------------------------------------------------------------------------------------
@@ -175,7 +176,7 @@ program DAMASK_spectral_Driver
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,positions,i+j)
          enddo
          loadCases(currentLoadCase)%deformation%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
-         loadCases(currentLoadCase)%deformation%maskFloat   = merge(ones,zeroes,&
+         loadCases(currentLoadCase)%deformation%maskFloat   = merge(ones,zeros,&
                                                         loadCases(currentLoadCase)%deformation%maskLogical)
          loadCases(currentLoadCase)%deformation%values      = math_plain9to33(temp_valueVector)
        case('p','pk1','piolakirchhoff','stress')
@@ -185,7 +186,7 @@ program DAMASK_spectral_Driver
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,positions,i+j)
          enddo
          loadCases(currentLoadCase)%P%maskLogical = transpose(reshape(temp_maskVector,[ 3,3]))
-         loadCases(currentLoadCase)%P%maskFloat   = merge(ones,zeroes,&
+         loadCases(currentLoadCase)%P%maskFloat   = merge(ones,zeros,&
                                                         loadCases(currentLoadCase)%P%maskLogical)
          loadCases(currentLoadCase)%P%values      = math_plain9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
@@ -256,7 +257,6 @@ program DAMASK_spectral_Driver
    write(6,'(2x,a,i5)')    'increments: ', loadCases(currentLoadCase)%incs
    write(6,'(2x,a,i5)')    'output  frequency:  ', loadCases(currentLoadCase)%outputfrequency
    write(6,'(2x,a,i5,/)')    'restart frequency:  ', loadCases(currentLoadCase)%restartfrequency
-   
    if (any(loadCases(currentLoadCase)%P%maskLogical .eqv. loadCases(currentLoadCase)%deformation%maskLogical)) errorID = 831_pInt          ! exclusive or masking only
    if (any(loadCases(currentLoadCase)%P%maskLogical .and. transpose(loadCases(currentLoadCase)%P%maskLogical) .and. &
      reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
@@ -290,25 +290,29 @@ program DAMASK_spectral_Driver
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
  if (appendToOutFile) then
-   open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
-                                   form='UNFORMATTED', position='APPEND', status='OLD')
+   open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                '.spectralOut',form='UNFORMATTED', position='APPEND', status='OLD')
+   open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                '.sta',form='FORMATTED', position='APPEND', status='OLD')
  else
-   open(538,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut',&
-                                   form='UNFORMATTED',status='REPLACE')
-   write(538) 'load',       trim(loadCaseFile)
-   write(538) 'workingdir', trim(getSolverWorkingDirectoryName())
-   write(538) 'geometry',   trim(geometryFile)
-   write(538) 'resolution', res
-   write(538) 'dimension',  geomdim
-   write(538) 'materialpoint_sizeResults', materialpoint_sizeResults
-   write(538) 'loadcases',  size(loadCases)
-   write(538) 'frequencies', loadCases%outputfrequency                                      ! one entry per currentLoadCase
-   write(538) 'times', loadCases%time                                                       ! one entry per currentLoadCase
-   write(538) 'logscales',  loadCases%logscale         
-   write(538) 'increments', loadCases%incs                                                  ! one entry per currentLoadCase
-   write(538) 'startingIncrement', restartInc - 1_pInt                                              ! start with writing out the previous inc
-   write(538) 'eoh'                                                                                 ! end of header
-   write(538) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:mesh_NcpElems)              ! initial (non-deformed or read-in) results
+   open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                '.spectralOut',form='UNFORMATTED',status='REPLACE')
+   open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                '.sta',form='FORMATTED',status='REPLACE')
+   write(resUnit) 'load',       trim(loadCaseFile)
+   write(resUnit) 'workingdir', trim(getSolverWorkingDirectoryName())
+   write(resUnit) 'geometry',   trim(geometryFile)
+   write(resUnit) 'resolution', res
+   write(resUnit) 'dimension',  geomdim
+   write(resUnit) 'materialpoint_sizeResults', materialpoint_sizeResults
+   write(resUnit) 'loadcases',  size(loadCases)
+   write(resUnit) 'frequencies', loadCases%outputfrequency                                      ! one entry per currentLoadCase
+   write(resUnit) 'times', loadCases%time                                                       ! one entry per currentLoadCase
+   write(resUnit) 'logscales',  loadCases%logscale         
+   write(resUnit) 'increments', loadCases%incs                                                  ! one entry per currentLoadCase
+   write(resUnit) 'startingIncrement', restartInc - 1_pInt                                              ! start with writing out the previous inc
+   write(resUnit) 'eoh'                                                                                 ! end of header
+   write(resUnit) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:mesh_NcpElems)              ! initial (non-deformed or read-in) results
    if (debugGeneral) write(6,'(a)') 'Header of result file written out'
  endif
 
@@ -408,11 +412,13 @@ program DAMASK_spectral_Driver
            elseif (solres%termIll) then                                                             ! material point model cannot find a solution
              call IO_error(850_pInt)
            else
-             guessmode=1.0_pReal                                                                    ! start guessing after first accepted (not converged) (sub)inc
+             guessmode = 1.0_pReal                                                                    ! start guessing after first accepted (not converged) (sub)inc
            endif
          else
            guessmode = 1.0_pReal                                                                    ! start guessing after first converged (sub)inc
          endif
+       if(guessmode == 1.0_pReal) &
+         write(statUnit,*) inc, time, cutBackLevel, solres%converged, solres%iterationsNeeded
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half subincs next inc
        if(solres%converged) then
@@ -427,7 +433,7 @@ program DAMASK_spectral_Driver
 
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          write(6,'(1/,a)') '... writing results to file ......................................'
-         write(538)  materialpoint_results                                                          ! write result to file
+         write(resUnit)  materialpoint_results                                                          ! write result to file
        endif
      else !just time forwarding
        time = time + timeinc 
@@ -456,7 +462,7 @@ program DAMASK_spectral_Driver
                                    real(convergedCounter, pReal)/&
                                    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
                                    ' %) increments converged!'
- close(538)
+ close(resUnit)
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)
  call quit(0_pInt)
 

@@ -71,7 +71,7 @@ module DAMASK_spectral_SolverAL
  real(pReal), private :: err_stress, err_f, err_p
    logical, private :: ForwardData
    real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
- 
+ integer(pInt) :: reportIter = 0_pInt
 contains
  
 !--------------------------------------------------------------------------------------------------
@@ -343,8 +343,10 @@ else
    terminallyIll = .false.
   
 
-   if (reason > 0 ) AL_solution%converged = .true.
-
+   if (reason > 0 ) then 
+     AL_solution%converged = .true.
+     AL_solution%iterationsNeeded = reportIter
+   endif
  end function AL_solution
 
 !--------------------------------------------------------------------------------------------------
@@ -373,7 +375,7 @@ else
    implicit none
 
    integer(pInt) :: i,j,k
-   integer(pInt), save :: callNo = 3_pInt, reportIter = 0_pInt
+   integer(pInt), save :: callNo = 3_pInt
    real(pReal), dimension(3,3)            :: temp33_Real
    logical :: report
    
