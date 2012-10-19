@@ -2045,23 +2045,25 @@ relTemperatureResiduum = 0.0_pReal
 !$OMP ENDDO
 
 
-! --- STATE JUMP ---
-
-!$OMP DO
-  do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                  ! converged and still alive...
-      crystallite_todo(g,i,e) = .false.                                                                   ! ... integration done
-      crystallite_converged(g,i,e) = crystallite_stateJump(g,i,e)                                         ! if state jump fails, then convergence is broken
-      if (.not. crystallite_converged(g,i,e)) then
-        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
-          !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-          !$OMP END CRITICAL (checkTodo)
+if (numerics_integrationMode < 2) then                                                                    ! in stiffness calculation mode we do not need to do the state integration again, since this is not influenced by a small perturbation in F
+  ! --- STATE JUMP ---
+  
+  !$OMP DO
+    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                ! converged and still alive...
+        crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
+        crystallite_converged(g,i,e) = crystallite_stateJump(g,i,e)                                       ! if state jump fails, then convergence is broken
+        if (.not. crystallite_converged(g,i,e)) then
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
+            !$OMP CRITICAL (checkTodo)
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
+            !$OMP END CRITICAL (checkTodo)
+          endif
         endif
       endif
-    endif
-  enddo; enddo; enddo
-!$OMP ENDDO
+    enddo; enddo; enddo
+  !$OMP ENDDO
+endif
 
 !$OMP END PARALLEL
 
@@ -2236,20 +2238,22 @@ endif
 !$OMP ENDDO
 
 
-! --- STATE JUMP ---
-
-!$OMP DO
-  do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
-      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
-        !$OMP CRITICAL (checkTodo)
-          crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
-        !$OMP END CRITICAL (checkTodo)
+if (numerics_integrationMode < 2) then                                                                    ! in stiffness calculation mode we do not need to do the state integration again, since this is not influenced by a small perturbation in F
+  ! --- STATE JUMP ---
+  
+  !$OMP DO
+    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      if (crystallite_todo(g,i,e)) then
+        crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+          !$OMP CRITICAL (checkTodo)
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+          !$OMP END CRITICAL (checkTodo)
+        endif
       endif
-    endif
-  enddo; enddo; enddo
-!$OMP ENDDO
+    enddo; enddo; enddo
+  !$OMP ENDDO
+endif
 
 
 ! --- SET CONVERGENCE FLAG ---
