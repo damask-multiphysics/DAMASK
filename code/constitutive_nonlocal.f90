@@ -1163,6 +1163,7 @@ use math,     only: math_Mandel33to6, &
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
+                    debug_levelExtensive, &
                     debug_levelSelective, &
                     debug_g, &
                     debug_i, &
@@ -1437,7 +1438,7 @@ state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauBack
 
 
 #ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,*)
@@ -1465,6 +1466,7 @@ use prec,     only: pReal, &
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
+                    debug_levelExtensive, &
                     debug_levelSelective, &
                     debug_g, &
                     debug_i, &
@@ -1623,7 +1625,7 @@ endif
     
 
 #ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,*)
@@ -1655,6 +1657,7 @@ use math,     only: math_Plain3333to99, &
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
+                    debug_levelExtensive, &
                     debug_levelSelective, &
                     debug_g, &
                     debug_i, &
@@ -1780,7 +1783,7 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 
 #ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,*)
@@ -1806,6 +1809,7 @@ use prec,     only: pReal, &
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
+                    debug_levelExtensive, &
                     debug_levelSelective, &
                     debug_g, &
                     debug_i, &
@@ -1969,7 +1973,7 @@ deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
 
 
 #ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', deltaRhoRemobilization(1:ns,1:8)
@@ -2490,7 +2494,7 @@ endif
 
 
 #ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(a,/,4(12x,12(e12.5,1x),/))') '<< CONST >> dislocation multiplication', rhoDotMultiplication(1:ns,1:4) * timestep

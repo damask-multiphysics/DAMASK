@@ -1865,6 +1865,25 @@ endif
 
 if (numerics_integrationMode < 2) then
 
+  ! --- STATE JUMP ---
+  
+  !$OMP DO
+    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                ! converged and still alive...
+        crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
+        crystallite_converged(g,i,e) = crystallite_stateJump(g,i,e)                                       ! if state jump fails, then convergence is broken
+        if (.not. crystallite_converged(g,i,e)) then
+          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
+            !$OMP CRITICAL (checkTodo)
+              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
+            !$OMP END CRITICAL (checkTodo)
+          endif
+        endif
+      endif
+    enddo; enddo; enddo
+  !$OMP ENDDO
+
+
   ! --- DOT STATE AND TEMPERATURE (EULER INTEGRATION) ---
 
   stateResiduum = 0.0_pReal
@@ -2043,28 +2062,6 @@ relTemperatureResiduum = 0.0_pReal
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
-
-
-if (numerics_integrationMode < 2) then                                                                    ! in stiffness calculation mode we do not need to do the state integration again, since this is not influenced by a small perturbation in F
-  ! --- STATE JUMP ---
-  
-  !$OMP DO
-    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                ! converged and still alive...
-        crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
-        crystallite_converged(g,i,e) = crystallite_stateJump(g,i,e)                                       ! if state jump fails, then convergence is broken
-        if (.not. crystallite_converged(g,i,e)) then
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
-            !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
-            !$OMP END CRITICAL (checkTodo)
-          endif
-        endif
-      endif
-    enddo; enddo; enddo
-  !$OMP ENDDO
-endif
-
 !$OMP END PARALLEL
 
 
@@ -2151,6 +2148,22 @@ endif
 
 if (numerics_integrationMode < 2) then                                                                      ! in stiffness calculation mode we do not need to do the state integration again, since this is not influenced by a small perturbation in F
 
+  ! --- STATE JUMP ---
+  
+  !$OMP DO
+    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      if (crystallite_todo(g,i,e)) then
+        crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+          !$OMP CRITICAL (checkTodo)
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+          !$OMP END CRITICAL (checkTodo)
+        endif
+      endif
+    enddo; enddo; enddo
+  !$OMP ENDDO
+
+
   ! --- DOT STATE AND TEMPERATURE ---
 
   !$OMP DO
@@ -2236,24 +2249,6 @@ endif
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
-
-
-if (numerics_integrationMode < 2) then                                                                    ! in stiffness calculation mode we do not need to do the state integration again, since this is not influenced by a small perturbation in F
-  ! --- STATE JUMP ---
-  
-  !$OMP DO
-    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
-        crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
-        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
-          !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-          !$OMP END CRITICAL (checkTodo)
-        endif
-      endif
-    enddo; enddo; enddo
-  !$OMP ENDDO
-endif
 
 
 ! --- SET CONVERGENCE FLAG ---
@@ -2923,10 +2918,9 @@ LpLoop: do
   endif
    
 #ifndef _OPENMP
-  if (iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt &
+  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
       .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt) &
-      .and. numerics_integrationMode == 1_pInt) then
+             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
     write(6,'(a,i3)') '<< CRYST >> iteration ', NiterationStress
     write(6,*)
     write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive', math_transpose33(Lp_constitutive)
@@ -3120,8 +3114,7 @@ crystallite_integrateStress = .true.
 #ifndef _OPENMP
 if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt &
     .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-            .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt) &
-    .and. numerics_integrationMode == 1_pInt) then 
+            .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then 
   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1.0e6_pReal
   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Cauchy / MPa', &
              math_mul33x33(crystallite_P(1:3,1:3,g,i,e), math_transpose33(Fg_new)) / 1.0e6_pReal / math_det33(Fg_new)
