@@ -33,7 +33,8 @@ module DAMASK_spectral_SolverBasic
 ! stress, stiffness and compliance average etc.
  real(pReal), private, dimension(3,3) :: &
    F_aim = math_I3, &
-   F_aim_lastInc = math_I3
+   F_aim_lastInc = math_I3, &
+   F_aimDot = 0.0_pReal
  real(pReal), private,dimension(3,3,3,3) :: &
    C = 0.0_pReal, C_lastInc = 0.0_pReal
  
@@ -69,8 +70,9 @@ subroutine basic_init()
  implicit none
  integer(pInt) :: i,j,k
  real(pReal), dimension(3,3) :: temp33_Real
+ real(pReal), dimension(3,3,3,3) :: temp3333_Real
  
- 
+
  call Utilities_Init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(a)') ' $Id$'
@@ -81,8 +83,8 @@ subroutine basic_init()
  allocate (F_lastInc  (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (Fdot       (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (P          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
- allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)
+ allocate (coordinates(      res(1),  res(2),res(3),3),source = 0.0_pReal)
+ allocate (temperature(      res(1),  res(2),res(3)),  source = 0.0_pReal)
    
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
@@ -93,6 +95,7 @@ subroutine basic_init()
      coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
                             - geomdim/real(2_pInt*res,pReal)
    enddo; enddo; enddo
+
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(a,'//IO_intOut(restartInc-1_pInt)//',a)') &
                              'Reading values of increment', restartInc - 1_pInt, 'from file' 
@@ -110,26 +113,32 @@ subroutine basic_init()
    call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
    read (777,rec=1) F_aim_lastInc
    close (777)
-  
+   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
+   read (777,rec=1) C_lastInc
+   close (777)
+   call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
+   read (777,rec=1) C
+   close (777)
+   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   read (777,rec=1) f_aimDot
+   close (777)
+   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
+   read (777,rec=1) temp3333_Real
+   close (777)
    coordinates = 0.0 ! change it later!!!
  endif
- !no rotation bc call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates) 
- call Utilities_constitutiveResponse(coordinates,F,F_lastInc,temperature,0.0_pReal,&
+   call Utilities_constitutiveResponse(coordinates,F,F,temperature,0.0_pReal,&
                                      P,C,temp33_Real,.false.,math_I3)
+ !no rotation bc call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates) 
+
    
 !--------------------------------------------------------------------------------------------------
 ! reference stiffness
- if (restartInc == 1_pInt) then
-   call IO_write_jobBinaryFile(777,'C_ref',size(C))
-   write (777,rec=1) C
-   close(777)
- elseif (restartInc > 1_pInt) then
-   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C))
-   read (777,rec=1) C
-   close (777)
- endif
+ if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
+   temp3333_Real = C
+ endif 
    
- call Utilities_updateGamma(C)
+ call Utilities_updateGamma(temp3333_Real,.True.)
  
 end subroutine basic_init
 
@@ -173,8 +182,11 @@ type(tSolutionState) function &
      
  use FEsolving, only: &
    restartWrite, &
+   restartRead, &
    terminallyIll
- use DAMASK_spectral_Utilities, only: cutBack 
+ use DAMASK_spectral_Utilities, only: &
+   cutBack 
+ 
  implicit none
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -184,8 +196,7 @@ type(tSolutionState) function &
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  
  real(pReal), dimension(3,3,3,3)        :: S
- real(pReal), dimension(3,3), save            :: f_aimDot = 0.0_pReal
-     real(pReal), dimension(3,3)            ::                                       F_aim_lab, &
+ real(pReal), dimension(3,3)            :: F_aim_lab, &
                                            F_aim_lab_lastIter, &
                                            P_av
 !--------------------------------------------------------------------------------------------------
@@ -200,21 +211,35 @@ type(tSolutionState) function &
 ! restart information for spectral solver
  if (restartWrite) then
    write(6,'(a)') 'writing converged results for restart'
-   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F_lastInc))
-   write (777,rec=1) F_LastInc
+   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))                        ! writing deformation gradient field to file
+   write (777,rec=1) F
    close (777)
+   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastInc))        ! writing F_lastInc field to file
+   write (777,rec=1) F_lastInc
+   close (777)
+   call IO_write_jobBinaryFile(777,'F_aim',size(F_aim))
+   write (777,rec=1) F_aim
+   close(777)
+   call IO_write_jobBinaryFile(777,'F_aim_lastInc',size(F_aim_lastInc))
+   write (777,rec=1) F_aim_lastInc
+   close(777)
    call IO_write_jobBinaryFile(777,'C',size(C))
    write (777,rec=1) C
    close(777)
+   call IO_write_jobBinaryFile(777,'C_lastInc',size(C_lastInc))
+   write (777,rec=1) C_lastInc
+   close(777)
+   call IO_write_jobBinaryFile(777,'F_aimDot',size(f_aimDot))
+   write (777,rec=1) f_aimDot
+   close(777)
  endif 
 
-
  if ( cutBack) then 
- F_aim = F_aim_lastInc
- F = F_lastInc
- C = C_lastInc
-else
- C_lastInc = C
+   F_aim = F_aim_lastInc
+   F = F_lastInc
+   C = C_lastInc
+ else
+  C_lastInc = C
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
@@ -225,7 +250,8 @@ else
    f_aimDot  = f_aimDot &                                                                         
              + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
-
+   print*, 'F_aimDot', f_aimDot
+   print*, 'guessmode', guessmode
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
    call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
@@ -235,15 +261,15 @@ else
    F_lastInc = F
  endif
  F_aim = F_aim + f_aimDot * timeinc
- F = Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot) !I think F aim should be rotated here
+ F = Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot)                                           !I think F aim should be rotated here
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
 
- if (update_gamma) call Utilities_updateGamma(C)
+ if (update_gamma) call Utilities_updateGamma(C,restartWrite)
  
- ForwardData = .True.
+ if (.not. restartRead) ForwardData = .True.
  iter = 0_pInt
  convergenceLoop: do while(iter < itmax)
    

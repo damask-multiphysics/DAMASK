@@ -238,15 +238,9 @@ program DAMASK_spectral
  complex(pReal), dimension(:,:,:), pointer :: scalarField_real
  complex(pReal), dimension(:,:,:), pointer :: scalarField_fourier
  integer(pInt) :: row, column
-
 !##################################################################################################
 ! reading of information from load case file and geometry file
 !##################################################################################################
-#ifdef PETSC
- integer :: ierr_psc
- call PetscInitialize(PETSC_NULL_CHARACTER, ierr_psc)
-#endif
-
 !-------------------------------------------------------------------------------------------------- 
 ! initialization of all related DAMASK modules (e.g. mesh.f90 reads in geometry)
  call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
@@ -393,13 +387,13 @@ program DAMASK_spectral
    else
      write(6,'(a)')'deformation gradient rate:'
    endif
-   write (6,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
+   write(6,'(3(3(f12.7,1x)/))',advance='no') merge(math_transpose33(bc(loadcase)%deformation),&
                   reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskDeformation))
-   write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') ' stress / GPa:',&
+   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') ' stress / GPa:',&
         1e-9_pReal*merge(math_transpose33(bc(loadcase)%stress),&
                          reshape(spread(DAMASK_NaN,1,9),[ 3,3]),transpose(bc(loadcase)%maskStress))
    if (any(bc(loadcase)%rotation /= math_I3)) &
-     write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') ' rotation of loadframe:',&
+     write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') ' rotation of loadframe:',&
                                                           math_transpose33(bc(loadcase)%rotation)
    write(6,'(a,f12.6)') 'temperature:', bc(loadcase)%temperature
    write(6,'(a,f12.6)') 'time:       ', bc(loadcase)%time
@@ -539,7 +533,7 @@ program DAMASK_spectral
  enddo; enddo; enddo
  if (debugGeneral) write(6,'(a)') 'First call to CPFEM finished'
  C = C * wgt
- 
+
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
 
@@ -805,7 +799,7 @@ program DAMASK_spectral
 
          P_av_lab = real(P_fourier(1,1,1,1:3,1:3),pReal)*wgt
          P_av = math_rotate_forward33(P_av_lab,bc(loadcase)%rotation)
-         write (6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
+         write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
                                                           math_transpose33(P_av)/1.e6_pReal
 
 !--------------------------------------------------------------------------------------------------
@@ -1051,7 +1045,7 @@ program DAMASK_spectral
        if (mod(inc,bc(loadcase)%outputFrequency) == 0_pInt) then                                    ! at output frequency
          write(6,'(a)') ''
          write(6,'(a)') '... writing results to file ......................................'
-         write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:mesh_NcpElems)       ! write result to file
+         write(538)  materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:mesh_NcpElems) ! write result to file
          flush(538)
        endif
        

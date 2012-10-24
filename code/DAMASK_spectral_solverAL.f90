@@ -208,7 +208,7 @@ subroutine AL_init()
       close (777)
     endif
    
-    call Utilities_updateGamma(C)
+    call Utilities_updateGamma(C,.True.)
     C_scale = C
     S_scale = math_invSym3333(C)
  
@@ -328,7 +328,7 @@ else
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
    S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
-   if (update_gamma) call Utilities_updateGamma(C)
+   if (update_gamma) call Utilities_updateGamma(C,restartWrite)
    
    ForwardData = .True.
    mask_stress = P_BC%maskFloat

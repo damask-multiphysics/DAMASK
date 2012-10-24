@@ -209,7 +209,7 @@ subroutine CPFEM_init
 
   !$OMP CRITICAL (write2out)
     write(6,*)
-    write(6,*) '<<<+-  cpfem init  -+>>>'
+    write(6,*) '<<<+-  CPFEM init  -+>>>'
     write(6,*) '$Id$'
 #include "compilation_info.f90"
     if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
