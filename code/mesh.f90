@@ -52,7 +52,7 @@ module mesh
    mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
  
  integer(pInt), dimension(:,:,:,:), allocatable, public :: &
-   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index]
+   mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
  real(pReal), dimension(:,:), allocatable, public :: &
    mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
@@ -3448,6 +3448,8 @@ end subroutine mesh_build_sharedElems
 !***********************************************************
 subroutine mesh_build_ipNeighborhood
 
+use math, only: math_mul3x3
+
 implicit none
 integer(pInt)                   myElem, &                                                           ! my CP element index
                                 myIP, &
@@ -3463,13 +3465,16 @@ integer(pInt)                   myElem, &                                       
                                 dir, &                                                              ! direction of periodicity
                                 matchingElem, &                                                     ! CP elem number of matching element
                                 matchingFace, &                                                     ! face ID of matching element
-                                a, anchor
+                                a, anchor, &
+                                neighboringIP, &  
+                                neighboringElem, &
+                                pointingToMe
 integer(pInt), dimension(FE_maxmaxNnodesAtIP) :: &
                                 linkedNodes = 0_pInt, &
                                 matchingNodes
 logical checkTwins
 
-allocate(mesh_ipNeighborhood(2,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
+allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
 mesh_ipNeighborhood = 0_pInt
 
 
@@ -3580,6 +3585,28 @@ checkCandidateIP: do candidateIP = 1_pInt,FE_Nips(neighboringType)
           enddo checkCandidateIP
         endif                                                                       ! end of valid external matching
       endif                                                                         ! end of internal/external matching
+    enddo
+  enddo
+enddo
+do myElem = 1_pInt,mesh_NcpElems                                                                                 ! loop over cpElems
+  myType = mesh_element(2,myElem)                                                                                ! get elemType
+  do myIP = 1_pInt,FE_Nips(myType)                                                                               ! loop over IPs of elem
+    do neighbor = 1_pInt,FE_NipNeighbors(myType)                                                                 ! loop over neighbors of IP
+      neighboringElem = mesh_ipNeighborhood(1,neighbor,myIP,myElem)
+      neighboringIP   = mesh_ipNeighborhood(2,neighbor,myIP,myElem)
+      if (neighboringElem > 0_pInt .and. neighboringIP > 0_pInt) then                                            ! if neighbor exists ...
+        neighboringType = mesh_element(2,neighboringElem)
+        do pointingToMe = 1_pInt,FE_NipNeighbors(neighboringType)                                                ! find neighboring index that points from my neighbor to myself
+          if (    myElem == mesh_ipNeighborhood(1,pointingToMe,neighboringIP,neighboringElem) &
+              .and. myIP == mesh_ipNeighborhood(2,pointingToMe,neighboringIP,neighboringElem)) then              ! possible candidate
+            if (math_mul3x3(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem),&
+                            mesh_ipAreaNormal(1:3,pointingToMe,neighboringIP,neighboringElem)) < 0.0_pReal) then ! area normals have opposite orientation (we have to check that because of special case for single element with two ips and periodicity. In this case the neighbor is identical in two different directions.)
+              mesh_ipNeighborhood(3,neighbor,myIP,myElem) = pointingToMe                                         ! found match
+              exit                                                                                               ! so no need to search further
+            endif
+          endif
+        enddo
+      endif
     enddo
   enddo
 enddo
