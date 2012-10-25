@@ -44,7 +44,7 @@ try:
   #core.mesh.deformedCoordsFFT        = core.mesh.mesh_deformedCoordsFFT
 except ImportError, e:
   core = None # from http://www.python.org/dev/peps/pep-0008/
-  if(sys.argv[0]!='setup_processing.py'):
+  if('setup_processing' not in sys.argv[0]):
     sys.stderr.write('\nWARNING: Core module (Fortran code) not available, '\
                      'try to run setup_processing.py\nError Message when importing core.so: %s\n\n'%e)
   
