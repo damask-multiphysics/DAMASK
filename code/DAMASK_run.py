@@ -30,7 +30,7 @@ Add column(s) with derived values according to user defined arithmetic operation
 Columns can be specified either by label or index.
 
 Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + #ip.z#**2 )"
-""" + string.replace('$Id: addCalculation.py 1355 2012-02-23 13:53:12Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-l','--load', '--loadcase',   dest='loadcase',  type='string', \
@@ -57,6 +57,9 @@ while exitCode == 2:
     if len(myLine)>1: print myLine[0:-1]   # print output without extra newline
   exitCode = proc.returncode
   err = proc.stderr.readlines()
+  print '-------------------------------------------------------'
+  print 'error messages', err
+  print '-------------------------------------------------------'
   if exitCode==2:
     os.system('rm -rf %i'%start)
     os.system('mkdir %i'%start)
@@ -73,4 +76,4 @@ while exitCode == 2:
     damask.core.math.init()
     damask.core.FEsolving.init()
     damask.core.mesh.init(1,1)
-    damask.core.mesh.regrid(adaptive=False,resNewInput=res)
+    damask.core.mesh.regrid(adaptive=True,resNewInput=res)
