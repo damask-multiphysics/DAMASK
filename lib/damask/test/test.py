@@ -171,12 +171,16 @@ class Test():
     table = damask.ASCIItable(refFile)
     table.head_read()
     refFile.close()
-    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+1))
-    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+1))
-    max_err=numpy.max(abs(refArray[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))                                        
-    print ' ********\n * maximum relative error',max_err,'\n ********'
-    return max_err
-    
+    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+1,autostrip=True))
+    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+1,autostrip=True))
+    if len(curArray) ==  len(refArray):
+      max_err=numpy.max(abs(refArray[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))                                        
+      print ' ********\n * maximum relative error',max_err,'\n ********'
+      return max_err
+    else:
+      print ' ********\n * mismatch in array size to compare \n ********'
+      return sys.float_info.max
+      
   def compare_ArrayRefCur(self,ref,cur=''):
     
     if cur =='': cur = ref

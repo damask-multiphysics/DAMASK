@@ -142,6 +142,7 @@ execute = { \
                         #'f2py -h damask.core.pyf' +\
                         #' --overwrite-signature --no-lower prec.f90 DAMASK_spectral_interface.f90 math.f90 mesh.f90',
                         ###########################################################################
+                        'rm `readlink -f %s`' %(os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),
                         'f2py damask.core.pyf' +\
                         ' --build-dir ./' +\
                         ' -c --no-lower --fcompiler=%s'%(f2py_compiler) +\
@@ -161,7 +162,7 @@ execute = { \
             }
 
 
-for dir in compile:
+for dir in compile:                             #there is nothing to compile at the moment
   for file in compile[dir]:
     src = os.path.abspath(os.path.join(baseDir,dir,file))
     if os.path.isfile(src):
@@ -200,4 +201,11 @@ for dir in bin_link:
     if os.path.lexists(sym_link):
       os.remove(sym_link)    
     os.symlink(src,sym_link)
-    
+
+#check if compilation of core module was successful
+try:
+  with open(damaskEnv.relPath('lib/damask/core.so')) as f: pass
+except IOError as e:
+  print '*********\n* core.so not found, compilation of core modules was not successful\n*********'
+  sys.exit()
+f.close
