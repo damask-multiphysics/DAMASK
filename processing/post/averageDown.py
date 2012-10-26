@@ -129,9 +129,12 @@ for file in files:
     options.packing[2] = 1
     options.shift[2]   = 0
     dimension[2]       = min(dimension[:2]/resolution[:2])                    # z spacing equal to smaller of x or y spacing
-
-  downSized = numpy.maximum(numpy.ones(3,'i'),resolution//options.packing)
-
+  
+  packing   = numpy.array(options.packing,'i')
+  shift     = numpy.array(options.shift,'i')
+  downSized = numpy.maximum(numpy.ones(3,'i'),resolution//packing)
+  outSize   = numpy.ceil(numpy.array(resolution,'d')/numpy.array(packing,'d'))
+  
   print '\t%s @ %s --> %s'%(dimension,resolution,downSized)
   
 # ------------------------------------------ assemble header ---------------------------------------  
@@ -140,40 +143,29 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------  
   table.data_rewind()
-
-  data = numpy.zeros(resolution.tolist()+[len(table.labels)]).reshape(resolution[0],\
-                                                                      resolution[1],\
-                                                                      resolution[2],\
-                                                                      [len(table.labels)])
-  for z in xrange(resolution[2]):
-    for y in xrange(resolution[1]):
-      for x in xrange(resolution[0]):
+  data = numpy.zeros(outSize.tolist()+[len(table.labels)])
+  print numpy.shape(data)
+  p = numpy.zeros(3,'i')
+  
+  for p[2] in xrange(resolution[2]):
+    for p[1] in xrange(resolution[1]):
+      for p[0] in xrange(resolution[0]):
+        d = ((p-shift)%resolution)//packing
         table.data_read()
-        data[x,y,z,:] = numpy.array(table.data_asFloat(),'d')                        # convert to numpy array
- 
-  sum = numpy.zeros(numpy.shape(data))
+        data[d[0],d[1],d[2],:] += numpy.array(table.data_asFloat(),'d')                        # convert to numpy array
+   
+  data /= packing.prod()
 
-  data = numpy.roll(data,axis=2,shift=-options.shift[2])
-  data = numpy.roll(data,axis=1,shift=-options.shift[1])
-  data = numpy.roll(data,axis=0,shift=-options.shift[0])
 
-  for axis2 in xrange(options.packing[2]):
-    shiftedZ = numpy.roll(data,shift=-axis2,axis=2)
-    for axis1 in xrange(options.packing[1]):
-      shiftedZY = numpy.roll(shiftedZ,shift=-axis1,axis=1)
-      for axis0 in xrange(options.packing[0]):
-        sum += numpy.roll(shiftedZY,shift=-axis0,axis=0)
-
-  averagedDown = sum[::options.packing[0],::options.packing[1],::options.packing[2],::] / options.packing.prod()     # normalize data by element count
-  posOffset = (options.shift+[0.5,0.5,0.5])*dimension/resolution
-  elementSize = dimension/resolution*options.packing
+  posOffset = (shift+[0.5,0.5,0.5])*dimension/resolution
+  elementSize = dimension/resolution*packing
   elem = 1
   for c in xrange(downSized[2]):
     for b in xrange(downSized[1]):
       for a in xrange(downSized[0]):
-        averagedDown[a,b,c,locationCol:locationCol+3] = posOffset + [a,b,c]*elementSize
-        averagedDown[a,b,c,elemCol] = elem
-        table.data = averagedDown[a,b,c,:].tolist()
+        data[a,b,c,locationCol:locationCol+3] = posOffset + [a,b,c]*elementSize
+        data[a,b,c,elemCol] = elem
+        table.data = data[a,b,c,:].tolist()
         table.data_write()                                                  # output processed line
         elem += 1
 
