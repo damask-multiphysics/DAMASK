@@ -177,7 +177,8 @@ real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_compatibility                                  ! slip system compatibility between me and my neighbors
 
 logical, dimension(:), allocatable, private :: &
-constitutive_nonlocal_shortRangeStressCorrection                     ! flag indicating the use of the short range stress correction by a excess density gradient term
+constitutive_nonlocal_shortRangeStressCorrection, &                  ! flag indicating the use of the short range stress correction by a excess density gradient term
+constitutive_nonlocal_deadZoneScaling
 
 logical, dimension(:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_manyActiveSources, &
@@ -349,6 +350,7 @@ allocate(constitutive_nonlocal_rhoSglRandomBinning(maxNinstance))
 allocate(constitutive_nonlocal_surfaceTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_grainboundaryTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
+allocate(constitutive_nonlocal_deadZoneScaling(maxNinstance))
 allocate(constitutive_nonlocal_CFLfactor(maxNinstance))
 allocate(constitutive_nonlocal_fEdgeMultiplication(maxNinstance))
 allocate(constitutive_nonlocal_linetensionEffect(maxNinstance))
@@ -389,6 +391,7 @@ constitutive_nonlocal_fEdgeMultiplication = 0.0_pReal
 constitutive_nonlocal_linetensionEffect = 0.0_pReal
 constitutive_nonlocal_s0 = 0.0_pReal
 constitutive_nonlocal_shortRangeStressCorrection = .false.
+constitutive_nonlocal_deadZoneScaling = .false.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_nonlocal_rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNinstance))
@@ -548,6 +551,8 @@ do                                                                              
         constitutive_nonlocal_fEdgeMultiplication(i) = IO_floatValue(line,positions,2_pInt)
       case('shortrangestresscorrection')
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
+      case('deadzonescaling','deadzone','deadscaling')
+        constitutive_nonlocal_deadZoneScaling(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case('s0')
         constitutive_nonlocal_s0(i) = IO_floatValue(line,positions,2_pInt)
       case default
@@ -832,7 +837,8 @@ do i = 1,maxNinstance
             'fluxdensity_screw_neg_z', &
             'maximumdipoleheight_edge', &
             'maximumdipoleheight_screw', &
-            'accumulatedshear' )
+            'accumulatedshear', &
+            'boundarylayer' )
         mySize = constitutive_nonlocal_totalNslip(i)
       case('dislocationstress')
         mySize = 6_pInt
@@ -1707,7 +1713,8 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                             tau, &                      ! resolved shear stress including non Schmid and backstress terms
                                             gdotTotal, &                ! shear rate
                                             dgdotTotal_dtau, &          ! derivative of the shear rate with respect to the shear stress
-                                            tauBack                     ! back stress from dislocation gradients on same slip system
+                                            tauBack, &                  ! back stress from dislocation gradients on same slip system
+                                            deadZoneSize
 
 
 !*** initialize local variables
@@ -1766,8 +1773,13 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, rhoSgl(s,t) * v(s,t-4_pInt) < 0.0_pRea
 
 !*** Calculation of gdot and its tangent
 
-gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * constitutive_nonlocal_burgers(1:ns,myInstance)
-dgdotTotal_dtau = sum(rhoSgl(1:ns,1:4) * dv_dtau, 2) * constitutive_nonlocal_burgers(1:ns,myInstance) 
+deadZoneSize = 0.0_pReal
+if (constitutive_nonlocal_deadZoneScaling(myInstance)) then
+  forall(s = 1_pInt:ns, sum(abs(rhoSgl(s,1:8))) > 0.0_pReal) &
+    deadZoneSize(s) = maxval(abs(rhoSgl(s,5:8)) / (rhoSgl(s,1:4) + abs(rhoSgl(s,5:8))))
+endif
+gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * constitutive_nonlocal_burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
+dgdotTotal_dtau = sum(rhoSgl(1:ns,1:4) * dv_dtau, 2) * constitutive_nonlocal_burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
 
 
 !*** Calculation of Lp and its tangent
@@ -2062,9 +2074,10 @@ integer(pInt)                               myInstance, &             ! current 
                                             neighboring_el, &         ! element number of my neighbor
                                             neighboring_ip, &         ! integration point of my neighbor
                                             neighboring_n, &          ! neighbor index pointing to me when looking from my neighbor
-                                            opposite_n, &             ! index of my opposite neighbor
+                                            opposite_neighbor, &      ! index of my opposite neighbor
                                             opposite_ip, &            ! ip of my opposite neighbor
                                             opposite_el, &            ! element index of my opposite neighbor
+                                            opposite_n, &             ! neighbor index pointing to me when looking from my opposite neighbor
                                             t, &                      ! type of dislocation
                                             topp, &                   ! type of dislocation with opposite sign to t
                                             s, &                      ! index of my current slip system
@@ -2086,7 +2099,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                             gdot                          ! shear rates
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &                  ! forest dislocation density
-                                            rhoSource, &
+                                            rhoSource, &                  ! density of dislocation nucleation sources
                                             tauThreshold, &               ! threshold shear stress
                                             tau, &                        ! current resolved shear stress
                                             tauBack, &                    ! current back stress from pileups on same slip system
@@ -2286,23 +2299,14 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
   do n = 1_pInt,FE_NipNeighbors(mesh_element(2,el))                                                                                 ! loop through my neighbors
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
-    if (neighboring_el > 0_pInt .and. neighboring_ip > 0_pInt) then                                                                 ! if neighbor exists ...
-      do neighboring_n = 1_pInt,FE_NipNeighbors(mesh_element(2,neighboring_el))                                                     ! find neighboring index that points from my neighbor to myself
-        if (      el == mesh_ipNeighborhood(1,neighboring_n,neighboring_ip,neighboring_el) &
-            .and. ip == mesh_ipNeighborhood(2,neighboring_n,neighboring_ip,neighboring_el)) then                                    ! possible candidate
-          if (math_mul3x3(mesh_ipAreaNormal(1:3,n,ip,el),&
-                          mesh_ipAreaNormal(1:3,neighboring_n,neighboring_ip,neighboring_el)) < 0.0_pReal) then                     ! area normals have opposite orientation (we have to check that because of special case for single element with two ips and periodicity. In this case the neighbor is identical in two different directions.)
-            exit
-          endif
-        endif
-      enddo
-    endif
+    neighboring_n  = mesh_ipNeighborhood(3,n,ip,el)
   
-    opposite_n = n + mod(n,2_pInt) - mod(n+1_pInt,2_pInt)
-    opposite_el = mesh_ipNeighborhood(1,opposite_n,ip,el)
-    opposite_ip = mesh_ipNeighborhood(2,opposite_n,ip,el)
+    opposite_neighbor = n + mod(n,2_pInt) - mod(n+1_pInt,2_pInt)
+    opposite_el = mesh_ipNeighborhood(1,opposite_neighbor,ip,el)
+    opposite_ip = mesh_ipNeighborhood(2,opposite_neighbor,ip,el)
+    opposite_n  = mesh_ipNeighborhood(3,opposite_neighbor,ip,el)
   
-    if (neighboring_el > 0_pInt .and. neighboring_ip > 0_pInt) then                                                                 ! if neighbor exists, average deformation gradient
+    if (neighboring_n > 0_pInt) then                                                                                                ! if neighbor exists, average deformation gradient
       neighboring_Fe = Fe(1:3,1:3,g,neighboring_ip,neighboring_el)
       neighboring_F = math_mul33x33(neighboring_Fe, Fp(1:3,1:3,g,neighboring_ip,neighboring_el))
       Favg = 0.5_pReal * (my_F + neighboring_F)
@@ -2319,7 +2323,7 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     considerEnteringFlux = .false.
     neighboring_v = 0.0_pReal        ! needed for check of sign change in flux density below 
     neighboring_rhoSgl = 0.0_pReal
-    if (neighboring_el > 0_pInt .or. neighboring_ip > 0_pInt) then
+    if (neighboring_n > 0_pInt) then
       if (phase_plasticity(material_phase(1,neighboring_ip,neighboring_el)) == constitutive_nonlocal_label &
           .and. any(constitutive_nonlocal_compatibility(:,:,:,n,ip,el) > 0.0_pReal)) &
         considerEnteringFlux = .true.
@@ -2372,7 +2376,7 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     !* That means for an interface of zero transmissivity the leaving flux is fully converted to dead dislocations.
     
     considerLeavingFlux = .true.
-    if (opposite_el > 0_pInt .and. opposite_ip > 0_pInt) then
+    if (opposite_n > 0_pInt) then
       if (phase_plasticity(material_phase(1,opposite_ip,opposite_el)) /= constitutive_nonlocal_label) &
         considerLeavingFlux = .false.
     endif
@@ -3570,6 +3574,16 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
     case('accumulatedshear')
       constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) + sum(gdot,2)*dt
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el)
+      cs = cs + ns
+    
+    case('boundarylayer')
+      do s = 1_pInt,ns
+        if (sum(abs(rhoSgl(s,1:8))) > 0.0_pReal) then
+          constitutive_nonlocal_postResults(cs+s) = maxval(abs(rhoSgl(s,5:8))/(rhoSgl(s,1:4)+abs(rhoSgl(s,5:8))))
+        else
+          constitutive_nonlocal_postResults(cs+s) = 0.0_pReal
+        endif
+      enddo
       cs = cs + ns
 
  end select
