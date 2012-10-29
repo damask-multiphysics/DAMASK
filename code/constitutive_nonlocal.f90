@@ -1950,7 +1950,9 @@ dUpper(1:ns,1) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_
 dUpper(1:ns,2) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgers(1:ns,myInstance) &
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt) &
-  dUpper(1:ns,c) = min(1.0_pReal / sqrt(sum(abs(rhoSgl),c) + sum(rhoDip,c)), dUpper(1:ns,c))
+  dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
+                                      + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
+                       dUpper(1:ns,c))
 dUpper = max(dUpper,dLower)
 deltaDUpper = dUpper - dUpperOld
 
@@ -2210,7 +2212,9 @@ dUpper(1:ns,1) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_
 dUpper(1:ns,2) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgers(1:ns,myInstance) &
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt) &
-  dUpper(1:ns,c) = min(1.0_pReal / sqrt(sum(abs(rhoSgl),c) + sum(rhoDip,c)), dUpper(1:ns,c))
+  dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
+                                      + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
+                       dUpper(1:ns,c))
 dUpper = max(dUpper,dLower)
 
 
@@ -3227,6 +3231,7 @@ forall (t = 1_pInt:4_pInt) &
 do s = 1_pInt,ns
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
   tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,sLattice,myStructure)) + tauBack(s)
+  if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
 dLower = constitutive_nonlocal_minimumDipoleHeight(1:ns,1:2,myInstance)
@@ -3235,7 +3240,9 @@ dUpper(1:ns,1) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_
 dUpper(1:ns,2) = constitutive_nonlocal_Gmod(myInstance) * constitutive_nonlocal_burgers(1:ns,myInstance) &
                / (4.0_pReal * pi * abs(tau))
 forall (c = 1_pInt:2_pInt) &
-  dUpper(1:ns,c) = min(1.0_pReal / sqrt(sum(abs(rhoSgl),c) + sum(rhoDip,c)), dUpper(1:ns,c))
+  dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
+                                      + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
+                       dUpper(1:ns,c))
 dUpper = max(dUpper,dLower)
 
 
