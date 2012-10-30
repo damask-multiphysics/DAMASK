@@ -41,7 +41,7 @@ mappings = {
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-Unpack geometry files containing ranges "a to b" and/or "n copies of x" multiples (exclusively in one line).
+Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
 """ + string.replace('$Id: spectral_geomCanvas.py 1576 2012-06-26 18:08:50Z MPIE\p.eisenlohr $','\n','\\n')
 )
 
@@ -144,7 +144,7 @@ for file in files:
     words = map(str.lower,line.split())
     if len(words) > 1:        # any packing keywords?
       if (words[1] == 'to'): words = map(str,range(int(words[0]),int(words[2])+1))
-      if (words[1] == 'copies' and words[2] == 'of'): words = [words[3]]*int(words[0])
+      if (words[1] == 'of'): words = [words[2]]*int(words[0])
 
     for word in words:
       wordsWritten += 1
