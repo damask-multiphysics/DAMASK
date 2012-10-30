@@ -100,10 +100,10 @@ for file in files:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
   if info['resolution'] == [0,0,0]:
-    print 'no resolution info found.'
+    sys.stderr.write('no resolution info found.\n')
     continue
   if info['dimension'] == [0.0,0.0,0.0]:
-    print 'no dimension info found.'
+    sys.stderr.write('no dimension info found.\n')
     continue
 
   format = {True:  info['resolution'][0],
@@ -127,12 +127,12 @@ for file in files:
     info['origin'][1],
     info['origin'][2]))
   new_header.append("homogenization\t%i\n"%info['homogenization'])
-  new_header.append("maxMicrostructure\t%i\n"%info['maxmicrostructure'])
-  if info['maxmicrostructure'] != 0:
+  if info['maxmicrostructure'] > 0:
+    new_header.append("maxMicrostructure\t%i\n"%info['maxmicrostructure'])
     digits = 1+int(math.log10(int(info['maxmicrostructure'])))
   else:
     digits = 1+int(math.log10(int(info['resolution'][0]*info['resolution'][1]*info['resolution'][2])))
-  print digits
+
 # ------------------------------------------ assemble header ---------------------------------------  
 
   file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
