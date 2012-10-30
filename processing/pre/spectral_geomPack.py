@@ -41,7 +41,7 @@ mappings = {
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-compress geometry files with ranges "a to b" and/or multiples "n copies of x".
+compress geometry files with ranges "a to b" and/or multiples "n of x".
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -144,7 +144,7 @@ for file in files:
         output = {'': '',
                   '.':  str(former)+'\n',
                   'to': '%i to %i\n'%(former-reps+1,former),
-                  'of': '%i copies of %i\n'%(reps,former),
+                  'of': '%i of %i\n'%(reps,former),
                   }[type]
         file['output'].write(output)
         type = '.'
@@ -157,7 +157,7 @@ for file in files:
 
   output = {'.':  str(former),
             'to': '%i to %i'%(former-reps+1,former),
-            'of': '%i copies of %i'%(reps,former),
+            'of': '%i of %i'%(reps,former),
             }[type]
   file['output'].write(output+'\n')
 
