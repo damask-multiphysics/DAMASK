@@ -36,7 +36,7 @@ mappings = {
         'dimension':  lambda x: float(x),
         'origin':     lambda x: float(x),
         'homogenization': lambda x: int(x),
-        'maxgraincount': lambda x: int(x),
+        'maxmicrostructure': lambda x: int(x),
           }
 
 
@@ -85,7 +85,7 @@ for file in files:
           'dimension':  [0.0,0.0,0.0],
           'origin':     [0.0,0.0,0.0],
           'homogenization': 1,
-          'maxgraincount': 0,
+          'maxmicrostructure': 0,
          }
 
   new_header = []
@@ -127,9 +127,9 @@ for file in files:
     info['origin'][1],
     info['origin'][2]))
   new_header.append("homogenization\t%i\n"%info['homogenization'])
-  new_header.append("maxGrainCount\t%i\n"%info['maxgraincount'])
-  if info['maxgraincount'] != 0:
-    digits = 1+int(math.log10(int(info['maxgraincount'])))
+  new_header.append("maxMicrostructure\t%i\n"%info['maxmicrostructure'])
+  if info['maxmicrostructure'] != 0:
+    digits = 1+int(math.log10(int(info['maxmicrostructure'])))
   else:
     digits = 1+int(math.log10(int(info['resolution'][0]*info['resolution'][1]*info['resolution'][2])))
   print digits
