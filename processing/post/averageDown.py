@@ -144,7 +144,6 @@ for file in files:
 # ------------------------------------------ process data ---------------------------------------  
   table.data_rewind()
   data = numpy.zeros(outSize.tolist()+[len(table.labels)])
-  print numpy.shape(data)
   p = numpy.zeros(3,'i')
   
   for p[2] in xrange(resolution[2]):
