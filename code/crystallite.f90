@@ -433,7 +433,7 @@ if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_sizePostResult:        ', shape(crystallite_sizePostResult)
     write(6,*)
     write(6,*) 'Number of nonlocal grains: ',count(.not. crystallite_localPlasticity)
-    call flush(6)
+    flush(6)
   !$OMP END CRITICAL (write2out)
 endif
 
@@ -2749,7 +2749,9 @@ use math, only:         math_mul33x33, &
                         math_Mandel66to3333, &
                         math_Mandel6to33, &
                         math_Mandel33to6, &
-                        math_Plain3333to99
+                        math_Plain3333to99, &
+                        math_Plain33to9, &
+                        math_Plain9to33
 
 implicit none
 
@@ -2787,7 +2789,7 @@ real(pReal), dimension(9,9) ::      dLp_dT_constitutive, &                      
                                     dT_dFe_constitutive, &                                          ! partial derivative of 2nd Piola-Kirchhoff stress calculated by constitutive law
                                     dFe_dLp, &                                                      ! partial derivative of elastic deformation gradient
                                     dR_dLp, &                                                       ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
-                                    inv_dR_dLp                                                      ! inverse of dRdLp
+                                    dR_dLp2                                                         ! working copy of dRdLp
 real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
                                     dFe_dLp3333                                                     ! partial derivative of elastic deformation gradient
 real(pReal)                         p_hydro, &                                                      ! volumetric part of 2nd Piola-Kirchhoff Stress
@@ -2796,10 +2798,11 @@ real(pReal)                         p_hydro, &                                  
                                     steplength0, & 
                                     steplength, & 
                                     steplength_max, & 
-                                    dt, &                         ! time increment
+                                    dt, &                                                           ! time increment
                                     aTol
 logical                             error                                                           ! flag indicating an error
 integer(pInt)                       NiterationStress, &                                             ! number of stress integrations
+                                    ierr, &                                                         ! error indicator for LAPACK
                                     k, &
                                     l, &
                                     m, &
@@ -3019,15 +3022,14 @@ LpLoop: do
     dT_dFe_constitutive = math_Plain3333to99(dT_dFe3333)
     dR_dLp = math_identity2nd(9_pInt) - &
              math_mul99x99(dLp_dT_constitutive, math_mul99x99(dT_dFe_constitutive , dFe_dLp))    
-    inv_dR_dLp = dR_dLp                                                                             ! will be changed in first call to LAPACK
+    dR_dLp2 = dR_dLp                                                                                ! will be overwritten in first call to LAPACK routine
+    work = math_plain33to9(residuum)
 #if(FLOAT==8)
-    call dgetrf(9,9,inv_dR_dLp,9,ipiv,error)                                                        ! invert dR/dLp --> dLp/dR
-    call dgetri(9,inv_dR_dLp,9,ipiv,work,9,error)
+    call dgesv(9,1,dR_dLp2,9,ipiv,work,9,ierr)                                                      ! solve dR/dLp * delta Lp = -res for dR/dLp
 #elif(FLOAT==4)
-    call sgetrf(9,9,inv_dR_dLp,9,ipiv,error)                                                        ! invert dR/dLp --> dLp/dR
-    call sgetri(9,inv_dR_dLp,9,ipiv,work,9,error)
+    call sgesv(9,1,dR_dLp2,9,ipiv,work,9,ierr)                                                      ! solve dR/dLp * delta Lp = -res for dR/dLp
 #endif
-    if (error) then
+    if (ierr /= 0_pInt) then
 #ifndef _OPENMP
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
         write(6,'(a,i8,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ',e,i,g
@@ -3048,11 +3050,8 @@ LpLoop: do
 #endif
       return
     endif
-    deltaLp = 0.0_pReal
-    do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt
-      deltaLp(k,l) = deltaLp(k,l) - inv_dR_dLp(3_pInt*(k-1_pInt)+l,3_pInt*(m-1_pInt)+n) * residuum(m,n)
-    enddo; enddo; enddo; enddo
  
+    deltaLp = - math_plain9to33(work)
     gradientR = 0.0_pReal
     do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do m=1_pInt,3_pInt; do n=1_pInt,3_pInt
       gradientR(k,l) = gradientR(k,l) + dR_dLp(3*(k-1)+l,3_pInt*(m-1_pInt)+n) * residuum(m,n)
