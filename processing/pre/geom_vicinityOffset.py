@@ -29,10 +29,13 @@ class extendedOption(Option):
 identifiers = {
         'resolution': ['a','b','c'],
         'dimension':  ['x','y','z'],
+        'origin':     ['x','y','z'],
           }
 mappings = {
         'resolution': lambda x: int(x),
         'dimension':  lambda x: float(x),
+        'origin':     lambda x: float(x),
+        'homogenization': lambda x: int(x),
           }
 
 
@@ -43,13 +46,14 @@ i.e. within the region close to a grain/phase boundary.
 )
 
 parser.add_option('-v', '--vicinity', dest='vicinity', type='int', \
-                  help='voxel distance checked for presence of other microstructure')
+                  help='voxel distance checked for presence of other microstructure [%default]')
 parser.add_option('-o', '--offset', dest='offset', type='int', \
-                  help='integer offset for tagged microstructure')
+                  help='integer offset for tagged microstructure [%default]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement')
 
 parser.set_defaults(vicinity = 1)
+parser.set_defaults(offset   = 0)
 parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
@@ -58,16 +62,25 @@ parser.set_defaults(twoD = False)
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN',
+                'input':sys.stdin,
+                'output':sys.stdout,
+                'croak':sys.stderr,
+               })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name,
+                    'input':open(name),
+                    'output':open(name+'_tmp','w'),
+                    'croak':sys.stdout,
+                    })
+
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
   #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
@@ -83,40 +96,52 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-  resolution = [0,0,0]
-  dimension = [0.0,0.0,0.0]
+  info = {'resolution': numpy.array([0,0,0]),
+          'dimension':  numpy.array([0.0,0.0,0.0]),
+          'origin':     numpy.array([0.0,0.0,0.0]),
+          'homogenization': 1,
+         }
+
+  new_header = []
   for header in headers:
-    headitems = header.split()
-    if headitems[0] == 'resolution':         # located resolution entry
-      for i in xrange(3):
-        resolution[i] = mappings['resolution'](headitems[headitems.index(identifiers['resolution'][i])+1])
-    if headitems[0] == 'dimension':          # located dimension entry
-      for i in xrange(3):
-        dimension[i] = mappings['dimension'](headitems[headitems.index(identifiers['dimension'][i])+1])
+    headitems = map(str.lower,header.split())
+    if headitems[0] in mappings.keys():
+      if headitems[0] in identifiers.keys():
+        for i in xrange(len(identifiers[headitems[0]])):
+          info[headitems[0]][i] = \
+            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
+      else:
+        info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if resolution == [0,0,0]:
-    print 'no resolution info found.'
-    sys.exit(1)
-  if dimension == [0.0,0.0,0.0]:
-    print 'no dimension info found.'
-    sys.exit(1)
+  if info['resolution'].all() == 0:
+    file['croak'].write('no resolution info found.\n')
+    continue
+  if info['dimension'].all() == 0:
+    file['croak'].write('no dimension info found.\n')
+    continue
 
-  if file['name'] != 'STDIN':
-    print 'resolution: %s'%(' x '.join(map(str,resolution)))
-    print 'dimension:  %s'%(' x '.join(map(str,dimension)))
+  file['croak'].write('resolution:     %s\n'%(' x '.join(map(str,info['resolution']))) + \
+                      'dimension:      %s\n'%(' x '.join(map(str,info['dimension']))) + \
+                      'origin:         %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization: %i\n'%info['homogenization'])
     
-  microstructure = numpy.zeros(resolution,'i')
+  microstructure = numpy.zeros(info['resolution'],'i')
   i = 0
   for line in content:  
     for item in map(int,line.split()):
-      microstructure[i%resolution[0],(i/resolution[0])%resolution[1],i/resolution[0]/resolution[1]] = item
+      microstructure[i%info['resolution'][0],
+                    (i/info['resolution'][0])%info['resolution'][1],
+                     i/info['resolution'][0] /info['resolution'][1]] = item
       i += 1
+
+  formatwidth = 1+int(math.floor(math.log10(abs(microstructure.max()+options.offset))))
+  if options.offset == 0:
+    options.offset = microstructure.max()
+  file['croak'].write('offset:         %i\n'%options.offset)
   
-  formatwidth = int(math.floor(math.log10(microstructure.max())))
-  
-  for x in xrange(resolution[0]):
-    for y in xrange(resolution[1]):
-      for z in xrange(resolution[2]):
+  for x in xrange(info['resolution'][0]):
+    for y in xrange(info['resolution'][1]):
+      for z in xrange(info['resolution'][2]):
 
         me = microstructure[x,y,z]
         breaker = False
@@ -125,7 +150,7 @@ for file in files:
           for dy in xrange(-options.vicinity,options.vicinity+1):
             for dz in xrange(-options.vicinity,options.vicinity+1):
 
-              they = microstructure[(x+dx)%resolution[0],(y+dy)%resolution[1],(z+dz)%resolution[2]]
+              they = microstructure[(x+dx)%info['resolution'][0],(y+dy)%info['resolution'][1],(z+dz)%info['resolution'][2]]
               if they != me and they != me+options.offset:                    # located alien microstructure in vicinity
                 microstructure[x,y,z] += options.offset                       # tag myself as close to aliens!
                 breaker = True
@@ -142,9 +167,9 @@ for file in files:
 
 # ------------------------------------- regenerate texture information ----------------------------------  
 
-  for z in xrange(resolution[2]):
-    for y in xrange(resolution[1]):
-      output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: ('%%%ii'%formatwidth)%x, microstructure[:,y,z])) + '\n'
+  for z in xrange(info['resolution'][2]):
+    for y in xrange(info['resolution'][1]):
+      output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: str(x).rjust(formatwidth), microstructure[:,y,z])) + '\n'
     
     output += '\n'
     

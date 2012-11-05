@@ -68,16 +68,24 @@ for i in xrange(len(options.substitute)/2):                                     
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN',
+                'input':sys.stdin,
+                'output':sys.stdout,
+                'croak':sys.stderr,
+               })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name,
+                    'input':open(name),
+                    'output':open(name+'_tmp','w'),
+                    'croak':sys.stdout,
+                    })
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
   #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
@@ -93,9 +101,9 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-  info = {'resolution': [0,0,0],
-          'dimension':  [0.0,0.0,0.0],
-          'origin':     [0.0,0.0,0.0],
+  info = {'resolution': numpy.array([0,0,0]),
+          'dimension':  numpy.array([0.0,0.0,0.0]),
+          'origin':     numpy.array([0.0,0.0,0.0]),
           'homogenization': 1,
          }
 
@@ -110,17 +118,17 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if info['resolution'] == [0,0,0]:
-    print 'no resolution info found.'
+  if info['resolution'].all() == 0:
+    file['croak'].write('no resolution info found.\n')
     continue
   if info['dimension'] == [0.0,0.0,0.0]:
-    print 'no dimension info found.'
+    file['croak'].write('no dimension info found.\n')
     continue
 
-  if file['name'] != 'STDIN':
-    print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
-    print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
-    print 'origin:     %s'%(' : '.join(map(str,info['origin'])))
+  file['croak'].write('resolution:     %s\n'%(' x '.join(map(str,info['resolution']))) + \
+                      'dimension:      %s\n'%(' x '.join(map(str,info['dimension']))) + \
+                      'origin:         %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization: %i\n'%info['homogenization'])
 
   new_header.append("resolution\ta %i\tb %i\tc %i\n"%( 
     info['resolution'][0],

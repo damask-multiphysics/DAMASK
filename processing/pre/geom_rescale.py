@@ -40,23 +40,20 @@ mappings = {
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-Changes the (three-dimensional) canvas of a spectral geometry description.
+Scales a geometry description independently in x, y, and z direction in terms of resolution and/or dimension.
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-b', '--box', dest='resolution', type='int', nargs = 3, \
-                  help='resolution of new canvas (a,b,c)')
-parser.add_option('-o', '--offset', dest='offset', type='int', nargs = 3, \
-                  help='offset from old to new origin of grid')
-parser.add_option('-f', '--fill', dest='fill', type='int', \
-                  help='(background) canvas grain index')
+parser.add_option('-r', '--resolution', dest='resolution', type='int', nargs = 3, \
+                  help='new resolution (a,b,c)')
+parser.add_option('-d', '--dimension', dest='dimension', type='float', nargs = 3, \
+                  help='new dimension (x,y,z)')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement')
 
 parser.set_defaults(resolution = [0,0,0])
-parser.set_defaults(offset = [0,0,0])
+parser.set_defaults(dimension  = [0.0,0.0,0.0])
 parser.set_defaults(twoD = False)
-parser.set_defaults(fill = 0)
 
 (options, filenames) = parser.parse_args()
 
@@ -64,16 +61,24 @@ parser.set_defaults(fill = 0)
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN',
+                'input':sys.stdin,
+                'output':sys.stdout,
+                'croak':sys.stderr,
+               })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name,
+                    'input':open(name),
+                    'output':open(name+'_tmp','w'),
+                    'croak':sys.stdout,
+                    })
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
   #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
@@ -88,17 +93,10 @@ for file in files:
 
   content = file['input'].readlines()
   file['input'].close()
-  if 0 in options.resolution:  
-    for header in headers:
-      headitems = header.split()
-      if headitems[0] == 'resolution':         # located resolution entry
-        for i in xrange(3):
-          options.resolution[i] = \
-            mappings['resolution'](headitems[headitems.index(identifiers['resolution'][i])+1])
 
-  info = {'resolution': [0,0,0],
-          'dimension':  [0.0,0.0,0.0],
-          'origin':     [0.0,0.0,0.0],
+  info = {'resolution': numpy.array(options.resolution),
+          'dimension':  numpy.array(options.dimension),
+          'origin':     numpy.array([0.0,0.0,0.0]),
           'homogenization': 1,
          }
 
@@ -112,54 +110,49 @@ for file in files:
             mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
-
-  if info['resolution'] == [0,0,0]:
-    print 'no resolution info found.'
+    
+  if info['resolution'].all() == 0:
+    file['croak'].write('no resolution info found.\n')
     continue
-  if info['dimension'] == [0.0,0.0,0.0]:
-    print 'no dimension info found.'
+  if info['dimension'].all() == 0.0:
+    file['croak'].write('no dimension info found.\n')
     continue
 
-  if file['name'] != 'STDIN':
-    print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
-    print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
-    print 'origin:     %s'%(' x '.join(map(str,info['origin'])))
+  if options.resolution == [0,0,0]:
+    options.resolution = info['resolution']
+  if options.dimension == [0.0,0.0,0.0]:
+    options.dimension = info['dimension']
+
+  file['croak'].write('resolution:     %s\n'%(' x '.join(map(str,info['resolution']))) + \
+                      'dimension:      %s\n'%(' x '.join(map(str,info['dimension']))) + \
+                      'origin:         %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization: %i\n'%info['homogenization'])
 
   new_header.append("resolution\ta %i\tb %i\tc %i\n"%( 
     options.resolution[0],
     options.resolution[1],
     options.resolution[2],))
   new_header.append("dimension\tx %f\ty %f\tz %f\n"%(
-    info['dimension'][0]/info['resolution'][0]*options.resolution[0],
-    info['dimension'][1]/info['resolution'][1]*options.resolution[1],
-    info['dimension'][2]/info['resolution'][2]*options.resolution[2],))
+    options.dimension[0],
+    options.dimension[1],
+    options.dimension[2],))
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(
-    info['origin'][0]+info['dimension'][0]/info['resolution'][0]*options.offset[0],
-    info['origin'][1]+info['dimension'][1]/info['resolution'][1]*options.offset[1],
-    info['origin'][2]+info['dimension'][2]/info['resolution'][2]*options.offset[2],))
+    info['origin'][0],
+    info['origin'][1],
+    info['origin'][2],))
   new_header.append("homogenization\t%i\n"%info['homogenization'])
-
+    
   microstructure = numpy.zeros(info['resolution'],'i')
   i = 0
   for line in content:  
     for item in map(int,line.split()):
       microstructure[i%info['resolution'][0],
                     (i/info['resolution'][0])%info['resolution'][1],
-                     i/info['resolution'][0]/info['resolution'][1]] = item
+                     i/info['resolution'][0] /info['resolution'][1]] = item
       i += 1
   
-  microstructure_cropped = numpy.zeros(options.resolution,'i')
-  microstructure_cropped.fill({True:options.fill,False:microstructure.max()+1}[options.fill>0])
-  xindex = list(set(xrange(options.offset[0],options.offset[0]+options.resolution[0])) & set(xrange(info['resolution'][0])))
-  yindex = list(set(xrange(options.offset[1],options.offset[1]+options.resolution[1])) & set(xrange(info['resolution'][1])))
-  zindex = list(set(xrange(options.offset[2],options.offset[2]+options.resolution[2])) & set(xrange(info['resolution'][2])))
-  translate_x = [i - options.offset[0] for i in xindex]
-  translate_y = [i - options.offset[1] for i in yindex]
-  translate_z = [i - options.offset[2] for i in zindex]
-  microstructure_cropped[min(translate_x):(max(translate_x)+1),min(translate_y):(max(translate_y)+1),min(translate_z):(max(translate_z)+1)] = microstructure[min(xindex):(max(xindex)+1),min(yindex):(max(yindex)+1),min(zindex):(max(zindex)+1)]
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
-
-            
+  formatwidth = 1+int(math.floor(math.log10(microstructure.max())))
+           
 # ------------------------------------------ assemble header ---------------------------------------  
 
   output  = '%i\theader\n'%(len(new_header))
@@ -167,17 +160,20 @@ for file in files:
 
 # ------------------------------------- regenerate texture information ----------------------------------  
 
-  for z in xrange(options.resolution[2]):
-    for y in xrange(options.resolution[1]):
-      output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: ('%%%ii'%formatwidth)%x, microstructure_cropped[:,y,z])) + '\n'
-    
-    #output += '\n'
+  for c in xrange(options.resolution[2]):
+    z = int(info['resolution'][2]*(c+0.5)/options.resolution[2])%info['resolution'][2]
+    for b in xrange(options.resolution[1]):
+      y = int(info['resolution'][1]*(b+0.5)/options.resolution[1])%info['resolution'][1]
+      for a in xrange(options.resolution[0]):
+        x = int(info['resolution'][0]*(a+0.5)/options.resolution[0])%info['resolution'][0]
+        output += str(microstructure[x,y,z]).rjust(formatwidth) + {True:' ',False:'\n'}[options.twoD]
+      output += {True:'\n',False:''}[options.twoD]
     
 # ------------------------------------------ output result ---------------------------------------  
 
   file['output'].write(output)
 
+  file['input'].close()
   if file['name'] != 'STDIN':
     file['output'].close()
-    os.rename(file['name']+'_tmp',file['name'])
     
