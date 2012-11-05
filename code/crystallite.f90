@@ -626,6 +626,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
               constitutive_subState0(g,i,e)%p = constitutive_state(g,i,e)%p                             ! ...microstructure
               crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
               crystallite_todo(g,i,e) = .true.
+              !$OMP FLUSH(crystallite_todo)
 #ifndef _OPENMP
               if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                   .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
@@ -659,6 +660,7 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
             crystallite_Tstar_v(1:6,g,i,e) = crystallite_subTstar0_v(1:6,g,i,e)                         ! ...2nd PK stress
                                                                                                         ! cant restore dotState here, since not yet calculated in first cutback after initialization
             crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                      ! still on track or already done (beyond repair)
+            !$OMP FLUSH(crystallite_todo)
 #ifndef _OPENMP
             if (crystallite_todo(g,i,e) &
                 .and. iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
