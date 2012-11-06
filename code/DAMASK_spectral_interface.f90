@@ -30,6 +30,10 @@ module DAMASK_interface
 
  implicit none
  private
+#ifdef PETSc
+#include <finclude/petscsys.h>
+#endif
+
  logical,  protected,                     public  :: &
    appendToOutFile = .false.                                                                        !< Append to existing spectralOut file (in case of restart, not in case of regridding)
  integer(pInt),      protected,           public  :: &
@@ -61,6 +65,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
  implicit none
+
  character(len=1024), optional, intent(in) :: &
    loadCaseParameterIn, &                                        
    geometryParameterIn    
@@ -82,6 +87,14 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  logical :: &
    gotLoadCase = .false., &
    gotGeometry = .false.
+
+#ifdef PETSc
+ PetscErrorCode :: ierr
+!--------------------------------------------------------------------------------------------------
+! PETSc Init
+ call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
+ CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
+#endif
 
  open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
  write(6,'(a)') ''

@@ -657,6 +657,7 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
  endif
  
  if (DebugGeneral) write(6,*) 'collect mode: ', collectMode,' calc mode: ', calcMode
+ flush(6)
  
  ielem = 0_pInt
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)

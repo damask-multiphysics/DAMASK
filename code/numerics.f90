@@ -25,6 +25,9 @@ module numerics
 use prec, only: pInt, pReal
 
 implicit none
+#ifdef PETSc
+#include <finclude/petscsys.h>
+#endif
 character(len=64), parameter, private :: &
   numerics_configFile        = 'numerics.config'                                                    !< name of configuration file
 
@@ -132,6 +135,9 @@ subroutine numerics_init
  implicit none
 #ifdef Marc                                                                                       ! use the non F90 standard include file because some versions of Marc and Abaqus crash when using the module
 !$ include "omp_lib.h"
+#endif
+#ifdef PETSc
+ PetscErrorCode :: ierr
 #endif
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&
                                              maxNchunks = 2_pInt
@@ -326,7 +332,11 @@ subroutine numerics_init
       fftw_planner_flag = 32_pInt
  end select
 #endif
- 
+#ifdef PETSc
+  call PetscOptionsInsertString(petsc_options,ierr)
+  write(6,'(a)') ' Initializing PETSc'
+  CHKERRQ(ierr)
+#endif
  !* writing parameters to output file
    
    write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
