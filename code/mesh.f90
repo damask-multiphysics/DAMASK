@@ -741,7 +741,7 @@ function mesh_spectral_getResolution(fileUnit)
  call IO_checkAndRewind(myUnit)
 
  read(myUnit,'(a1024)') line
- positions = IO_stringPos(line,2_pInt)
+ positions = IO_stringPos(line,7_pInt)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
@@ -822,7 +822,7 @@ function mesh_spectral_getDimension(fileUnit)
  call IO_checkAndRewind(myUnit)
 
  read(myUnit,'(a1024)') line
- positions = IO_stringPos(line,2_pInt)
+ positions = IO_stringPos(line,7_pInt)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
@@ -896,7 +896,7 @@ function mesh_spectral_getHomogenization(fileUnit)
  call IO_checkAndRewind(myUnit)
 
  read(myUnit,'(a1024)') line
- positions = IO_stringPos(line,2_pInt)
+ positions = IO_stringPos(line,7_pInt)
  keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
@@ -1053,8 +1053,7 @@ subroutine mesh_spectral_build_elements(myUnit)
  implicit none
  integer(pInt), intent(in) :: myUnit
 
- integer(pInt), parameter :: maxNchunks = 7_pInt
- integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
+ integer(pInt), dimension (1_pInt+7_pInt*2_pInt) :: myPos
  integer(pInt) :: e, i, headerLength = 0_pInt, maxIntCount
  integer(pInt), dimension(:), allocatable :: microstructures
  integer(pInt), dimension(1,1) :: dummySet = 0_pInt
@@ -1064,7 +1063,7 @@ subroutine mesh_spectral_build_elements(myUnit)
  call IO_checkAndRewind(myUnit)
 
  read(myUnit,'(a65536)') line
- myPos = IO_stringPos(line,2_pInt)
+ myPos = IO_stringPos(line,7_pInt)
  keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt

@@ -800,13 +800,13 @@ pure function IO_stringPos(line,N)
 
  implicit none
  integer(pInt),    intent(in) :: N
- integer(pInt)                ::  IO_stringPos(1_pInt+N*2_pInt)
+ integer(pInt)                :: IO_stringPos(1_pInt+N*2_pInt)
  
  character(len=*), intent(in) :: line
  
- character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13) ! comma and whitespaces
+ character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
 
- integer                      :: left, right                      !no pInt (verify and scan return default integer)
+ integer                      :: left, right                                                        !no pInt (verify and scan return default integer)
 
 
  IO_stringPos = -1_pInt
