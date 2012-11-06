@@ -60,7 +60,7 @@ module mesh
    mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
  
  real(pReal), dimension(:,:,:), allocatable, public :: &
-   mesh_ipCenterOfGravity, &                                                                        !< center of gravity of IP (after deformation!)
+   mesh_ipCoordinates, &                                                                            !< IP x,y,z coordinates (after deformation!)
    mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
  
  real(pReal),dimension(:,:,:,:), allocatable, public :: & 
@@ -279,7 +279,8 @@ module mesh
             mesh_FEasCP, &
             mesh_build_subNodeCoords, &
             mesh_build_ipVolumes, &
-            mesh_build_ipCoordinates
+            mesh_build_ipCoordinates, &
+            mesh_cellCenterCoordinates
 #ifdef Spectral
  public  :: mesh_regrid, &
             mesh_regular_grid, &
@@ -384,7 +385,7 @@ subroutine mesh_init(ip,element)
  if (allocated(mesh_node)) deallocate(mesh_node)
  if (allocated(mesh_element)) deallocate(mesh_element)
  if (allocated(mesh_subNodeCoord)) deallocate(mesh_subNodeCoord)
- if (allocated(mesh_ipCenterOfGravity)) deallocate(mesh_ipCenterOfGravity)
+ if (allocated(mesh_ipCoordinates)) deallocate(mesh_ipCoordinates)
  if (allocated(mesh_ipArea)) deallocate(mesh_ipArea)
  if (allocated(mesh_ipAreaNormal)) deallocate(mesh_ipAreaNormal)
  if (allocated(mesh_sharedElem)) deallocate(mesh_sharedElem)
@@ -589,7 +590,7 @@ subroutine mesh_build_ipVolumes
          volume(j,n) = math_volTetrahedron(nPos(:,n), &                                             ! calc volume of respective tetrahedron to CoG
                                            nPos(:,1_pInt+mod(n-1_pInt +j       ,FE_NipFaceNodes)),& ! start at offset j
                                            nPos(:,1_pInt+mod(n-1_pInt +j+1_pInt,FE_NipFaceNodes)),& ! and take j's neighbor
-                                           mesh_ipCenterOfGravity(:,i,e))
+                                           mesh_cellCenterCoordinates(i,e))
        mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)                                        ! add contribution from this interface
      enddo
      mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes                                      ! renormalize with interfaceNodeNum due to loop over them
@@ -600,7 +601,16 @@ end subroutine mesh_build_ipVolumes
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCenterOfGravity'
+!> @brief Calculates IP Coordinates. Allocates global array 'mesh_ipCoordinates'
+! Called by all solvers in mesh_init in order to initialize the ip coordinates.
+! Later on the current ip coordinates are directly prvided by the spectral solver and by Abaqus,
+! so no need to use this subroutine anymore; Marc however only provides nodal displacements,
+! so in this case the ip coordinates are always calculated on the basis of this subroutine.
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+! FOR THE MOMENT THIS SUBROUTINE ACTUALLY CALCULATES THE CELL CELLENTER AND NOT THE IP COORDINATES,
+! AS THE IP IS NOT (ALWAYS) LOCATED IN THE CENTER OF THE IP VOLUME. 
+! HAS TO BE CHANGED IN A LATER VERSION. 
+! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipCoordinates
  
@@ -612,7 +622,7 @@ subroutine mesh_build_ipCoordinates
  real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos                       ! coordinates of subnodes determining center of grav
  real(pReal), dimension(3) :: centerOfGravity
 
- if (.not. allocated(mesh_ipCenterOfGravity)) allocate(mesh_ipCenterOfGravity(3,mesh_maxNips,mesh_NcpElems))
+ if (.not. allocated(mesh_ipCoordinates)) allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems))
  
  do e = 1_pInt,mesh_NcpElems                                                                       ! loop over cpElems
    t = mesh_element(2,e)                                                                           ! get elemType
@@ -638,11 +648,58 @@ subroutine mesh_build_ipCoordinates
        endif
      enddo
      centerOfGravity = sum(gravityNodePos,2)/real(count(gravityNode),pReal)
-     mesh_ipCenterOfGravity(:,i,e) = centerOfGravity
+     mesh_ipCoordinates(:,i,e) = centerOfGravity
    enddo
  enddo
 
 end subroutine mesh_build_ipCoordinates
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Calculates cell center coordinates.
+!--------------------------------------------------------------------------------------------------
+pure function mesh_cellCenterCoordinates(i,e)
+ 
+use prec, only: tol_gravityNodePos
+ 
+implicit none
+
+!*** input variables
+integer(pInt), intent(in) :: e, &                                                                  ! element number
+                             i                                                                     ! integration point number
+
+!*** output variables
+real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                            ! x,y,z coordinates of the cell center of the requested IP cell
+
+!*** local variables
+integer(pInt) :: f,t,j,k,n
+logical, dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode                                ! flagList to find subnodes determining center of grav
+real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos                       ! coordinates of subnodes determining center of grav
+ 
+
+t = mesh_element(2,e)                                                                              ! get elemType
+gravityNode = .false.                                                                              ! reset flagList
+gravityNodePos = 0.0_pReal                                                                         ! reset coordinates
+do f = 1_pInt,FE_NipNeighbors(t)                                                                   ! loop over interfaces of IP
+  do n = 1_pInt,FE_NipFaceNodes                                                                    ! loop over nodes on interface
+    gravityNode(FE_subNodeOnIPFace(n,f,i,t)) = .true.
+    gravityNodePos(:,FE_subNodeOnIPFace(n,f,i,t)) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
+  enddo
+enddo
+do j = 1_pInt,mesh_maxNnodes+mesh_maxNsubNodes-1_pInt                                              ! walk through entire flagList except last
+  if (gravityNode(j)) then                                                                         ! valid node index
+    do k = j+1_pInt,mesh_maxNnodes+mesh_maxNsubNodes                                               ! walk through remainder of list
+      if (gravityNode(k) .and. all(abs(gravityNodePos(:,j) - gravityNodePos(:,k)) < tol_gravityNodePos)) then   ! found duplicate
+        gravityNode(j) = .false.                                                                   ! delete first instance
+        gravityNodePos(:,j) = 0.0_pReal
+        exit                                                                                       ! continue with next suspect
+      endif
+    enddo
+  endif
+enddo
+mesh_cellCenterCoordinates = sum(gravityNodePos,2)/real(count(gravityNode),pReal)
+
+endfunction mesh_cellCenterCoordinates
 
 
 #ifdef Spectral
@@ -3709,7 +3766,7 @@ enddo
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
       do i = 1_pInt,FE_Nips(mesh_element(2,e))
         if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
-        write (6,'(i8,1x,i5,3(1x,f12.8))') e, i, mesh_ipCenterOfGravity(:,i,e)
+        write (6,'(i8,1x,i5,3(1x,f12.8))') e, i, mesh_ipCoordinates(:,i,e)
       enddo
     enddo 
     write (6,*)

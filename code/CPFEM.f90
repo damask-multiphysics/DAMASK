@@ -279,7 +279,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                             mesh_element, &
                             mesh_node0, &
                             mesh_node, &
-                            mesh_ipCenterOfGravity, &
+                            mesh_ipCoordinates, &
                             mesh_build_subNodeCoords, &
                             mesh_build_ipVolumes, &
                             mesh_build_ipCoordinates, &
@@ -612,7 +612,7 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
       CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
       CPFEM_calc_done = .false.
 #ifndef Marc
-      mesh_ipCenterOfGravity(1:3,IP,cp_en) = numerics_unitlength * coords(1:3,1)
+      mesh_ipCoordinates(1:3,IP,cp_en) = numerics_unitlength * coords(1:3,1)
 #else
       do node = 1,FE_Nnodes(mesh_element(2,cp_en))
         FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))

@@ -1180,7 +1180,7 @@ use mesh,     only: mesh_NcpElems, &
                     FE_NipNeighbors, &
                     FE_maxNipNeighbors, &
                     mesh_ipNeighborhood, &
-                    mesh_ipCenterOfGravity, &
+                    mesh_ipCoordinates, &
                     mesh_ipVolume, &
                     mesh_ipAreaNormal
 use material, only: homogenization_maxNgrains, &
@@ -1338,7 +1338,7 @@ tauBack = 0.0_pReal
 if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStressCorrection(instance)) then
   call math_invert33(Fe, invFe, detFe, inversionError)
   call math_invert33(Fp, invFp, detFp, inversionError)
-  ipCoords = mesh_ipCenterOfGravity(1:3,ip,el)
+  ipCoords = mesh_ipCoordinates(1:3,ip,el)
   rhoExcess(1,1:ns) = rhoSgl(1:ns,1) - rhoSgl(1:ns,2)
   rhoExcess(2,1:ns) = rhoSgl(1:ns,3) - rhoSgl(1:ns,4)
   FVsize = mesh_ipVolume(ip,el) ** (1.0_pReal/3.0_pReal)
@@ -1355,7 +1355,7 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
       neighboring_instance = phase_plasticityInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
-      neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el)
+      neighboring_ipCoords = mesh_ipCoordinates(1:3,neighboring_ip,neighboring_el)
       if (.not. phase_localPlasticity(neighboring_phase) &
           .and. neighboring_latticeStruct == latticeStruct & 
           .and. neighboring_instance == instance) then
@@ -2767,7 +2767,7 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_element, &
                     mesh_node0, &
                     FE_Nips, &
-                    mesh_ipCenterOfGravity, &
+                    mesh_cellCenterCoordinates, &
                     mesh_ipVolume, &
                     mesh_periodicSurface
 use material, only: homogenization_maxNgrains, &
@@ -2827,8 +2827,8 @@ real(pReal), dimension(3) ::    connection, &                 ! connection vecto
                                 connection_neighboringSlip, & ! connection vector between me and my neighbor in the slip system frame of my neighbor
                                 maxCoord, minCoord, &
                                 meshSize, &
-                                ipCoords, &
-                                neighboring_ipCoords
+                                coords, &                     ! x,y,z coordinates of cell center of ip volume
+                                neighboring_coords            ! x,y,z coordinates of cell center of neighboring ip volume
 real(pReal), dimension(3,3) ::  sigma, &                      ! dislocation stress for one slip system in neighboring material point's slip system frame
                                 Tdislo_neighboringLattice, &  ! dislocation stress as 2nd Piola-Kirchhoff stress at neighboring material point
                                 invFe, &                      ! inverse of my elastic deformation gradient
@@ -2876,12 +2876,12 @@ if (.not. phase_localPlasticity(phase)) then
     minCoord(dir) = minval(mesh_node0(dir,:))
   enddo
   meshSize = maxCoord - minCoord
-  ipCoords = mesh_ipCenterOfGravity(1:3,ip,el)
+  coords = mesh_cellCenterCoordinates(ip,el)
   periodicImages = 0_pInt
   do dir = 1_pInt,3_pInt
     if (mesh_periodicSurface(dir)) then
-      periodicImages(1,dir) =   floor((ipCoords(dir) - constitutive_nonlocal_R(instance) - minCoord(dir)) / meshSize(dir), pInt)
-      periodicImages(2,dir) = ceiling((ipCoords(dir) + constitutive_nonlocal_R(instance) - maxCoord(dir)) / meshSize(dir), pInt)
+      periodicImages(1,dir) =   floor((coords(dir) - constitutive_nonlocal_R(instance) - minCoord(dir)) / meshSize(dir), pInt)
+      periodicImages(2,dir) = ceiling((coords(dir) + constitutive_nonlocal_R(instance) - maxCoord(dir)) / meshSize(dir), pInt)
     endif
   enddo
 
@@ -2921,9 +2921,9 @@ ipLoop: do neighboring_ip = 1_pInt,FE_Nips(mesh_element(2,neighboring_el))
             if (neighboring_el /= el .or. neighboring_ip /= ip &
                 .or. deltaX /= 0_pInt .or. deltaY /= 0_pInt .or. deltaZ /= 0_pInt) then
             
-              neighboring_ipCoords = mesh_ipCenterOfGravity(1:3,neighboring_ip,neighboring_el) &
-                                   + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
-              connection = neighboring_ipCoords - ipCoords
+              neighboring_coords = mesh_cellCenterCoordinates(neighboring_ip,neighboring_el) &
+                                 + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
+              connection = neighboring_coords - coords
               distance = sqrt(sum(connection * connection))
               if (distance > constitutive_nonlocal_R(instance)) then
                 cycle
