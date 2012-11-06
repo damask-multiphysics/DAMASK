@@ -295,7 +295,7 @@ subroutine hypela2(&
        calcMode = .false.                                                 ! pretend last step was collection
        !$OMP CRITICAL (write2out)
          write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',n(1),nn
-         call flush(6)
+         flush(6)
        !$OMP END CRITICAL (write2out)
      else if (inc - theInc > 1) then                                      ! >> restart of broken analysis <<
        lastIncConverged = .false.                                         ! no Jacobian backup
@@ -304,7 +304,7 @@ subroutine hypela2(&
        calcMode = .true.                                                  ! pretend last step was calculation
        !$OMP CRITICAL (write2out)
          write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',n(1),nn
-         call flush(6)
+         flush(6)
        !$OMP END CRITICAL (write2out)
      else                                                                 ! >> just the next inc <<
        lastIncConverged = .true.                                          ! request Jacobian backup
@@ -313,7 +313,7 @@ subroutine hypela2(&
        calcMode = .true.                                                  ! assure last step was calculation
        !$OMP CRITICAL (write2out)
          write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',n(1),nn
-         call flush(6)
+         flush(6)
        !$OMP END CRITICAL (write2out)
      endif
    else if ( timinc < theDelta ) then                                     ! >> cutBack <<
@@ -322,7 +322,7 @@ subroutine hypela2(&
      calcMode = .true.                                                    ! pretend last step was calculation
      !$OMP CRITICAL (write2out)
        write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> cutback detected..! ',n(1),nn
-       call flush(6)
+       flush(6)
      !$OMP END CRITICAL (write2out)
    endif                                                                  ! convergence treatment end
 

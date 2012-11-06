@@ -251,7 +251,7 @@ subroutine homogenization_init(Temperature)
      write(6,'(a32,1x,7(i8,1x))') 'maxSizeState:       ', homogenization_maxSizeState
      write(6,'(a32,1x,7(i8,1x))') 'maxSizePostResults: ', homogenization_maxSizePostResults
    endif
-   call flush(6)
+   flush(6)
 !$OMP END CRITICAL (write2out)
 
 end subroutine homogenization_init

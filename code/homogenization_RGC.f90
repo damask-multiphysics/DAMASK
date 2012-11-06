@@ -295,7 +295,7 @@ subroutine homogenization_RGC_partitionDeformation(&
      write(6,'(1x,3(e15.8,1x))')(avgF(i,j), j = 1_pInt,3_pInt)
    enddo
    write(6,*)' '
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -321,7 +321,7 @@ subroutine homogenization_RGC_partitionDeformation(&
        write(6,'(1x,3(e15.8,1x))')(F(i,j,iGrain), j = 1_pInt,3_pInt)
      enddo
      write(6,*)' '
-     call flush(6)
+     flush(6)
      !$OMP END CRITICAL (write2out)
    endif
 
@@ -497,7 +497,7 @@ function homogenization_RGC_updateState(&
               '@ grain',stresLoc(3),'in component',stresLoc(1),stresLoc(2)
    write(6,'(1x,a15,1x,e15.8,1x,a7,i3,1x,a12,i2)')'Max residual: ',residMax, &
               '@ iface',residLoc(1),'in direction',residLoc(2)
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
  
@@ -511,7 +511,7 @@ function homogenization_RGC_updateState(&
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a55)')'... done and happy'
      write(6,*)' '
-     call flush(6)
+     flush(6)
      !$OMP END CRITICAL (write2out)
    endif
 !    write(6,'(1x,a,1x,i3,1x,a6,1x,i3,1x,a12)')'RGC_updateState: ip',ip,'| el',el,'converged :)'
@@ -550,7 +550,7 @@ function homogenization_RGC_updateState(&
      write(6,'(1x,a30,1x,e15.8)')'Maximum relaxation rate: ',maxval(abs(drelax))/dt
      write(6,'(1x,a30,1x,e15.8)')'Average relaxation rate: ',sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)
      write(6,*)''
-     call flush(6)
+     flush(6)
      !$OMP END CRITICAL (write2out)
    endif
    
@@ -567,7 +567,7 @@ function homogenization_RGC_updateState(&
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a55)')'... broken'
      write(6,*)' '
-     call flush(6)
+     flush(6)
      !$OMP END CRITICAL (write2out)
    endif
    
@@ -582,7 +582,7 @@ function homogenization_RGC_updateState(&
      !$OMP CRITICAL (write2out)
      write(6,'(1x,a55)')'... not yet done'
      write(6,*)' '
-     call flush(6)
+     flush(6)
      !$OMP END CRITICAL (write2out)
    endif
    
@@ -641,7 +641,7 @@ function homogenization_RGC_updateState(&
      write(6,'(1x,100(e11.4,1x))')(smatrix(i,j), j = 1_pInt,3_pInt*nIntFaceTot)
    enddo
    write(6,*)' '
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -697,7 +697,7 @@ function homogenization_RGC_updateState(&
      write(6,'(1x,100(e11.4,1x))')(pmatrix(i,j), j = 1_pInt,3_pInt*nIntFaceTot)
    enddo
    write(6,*)' '
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
  
@@ -717,7 +717,7 @@ function homogenization_RGC_updateState(&
      write(6,'(1x,100(e11.4,1x))')(rmatrix(i,j), j = 1_pInt,3_pInt*nIntFaceTot)
    enddo
    write(6,*)' '
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -731,7 +731,7 @@ function homogenization_RGC_updateState(&
      write(6,'(1x,100(e11.4,1x))')(jmatrix(i,j), j = 1_pInt,3_pInt*nIntFaceTot)
    enddo
    write(6,*)' '
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
  
@@ -750,7 +750,7 @@ function homogenization_RGC_updateState(&
      write(6,'(1x,100(e11.4,1x))')(jnverse(i,j), j = 1_pInt,3_pInt*nIntFaceTot)
    enddo
    write(6,*)' '
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -768,7 +768,7 @@ function homogenization_RGC_updateState(&
    !$OMP CRITICAL (write2out)
    write(6,'(1x,a,1x,i3,1x,a,1x,i3,1x,a)')'RGC_updateState: ip',ip,'| el',el,'enforces cutback'
    write(6,'(1x,a,1x,e15.8)')'due to large relaxation change =',maxval(abs(drelax))
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -780,7 +780,7 @@ function homogenization_RGC_updateState(&
      write(6,'(1x,2(e15.8,1x))')state%p(i)
    enddo
    write(6,*)' '
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
 
@@ -834,7 +834,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(&
      enddo
      write(6,*)' '
    enddo
-   call flush(6)
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
  
@@ -1247,7 +1247,7 @@ function homogenization_RGC_interfaceNormal(&
 !    write(6,'(1x,a32,3(1x,i3))')'Interface normal: ',intFace(1)
 !    write(6,'(1x,3(e15.8,1x))')(nVect(i), i = 1,3)
 !    write(6,*)' '
-!    call flush(6)
+!    flush(6)
 !  endif
 
 endfunction
