@@ -92,7 +92,6 @@ module debug
 
  integer(pInt), dimension(:,:), allocatable, public :: &
    debug_StressLoopDistribution, &                                                                  ! distribution of stress iterations until convergence
-   debug_LeapfrogBreakDistribution, &                                                               ! distribution of iterations where leapfrog breaks occurred
    debug_StateLoopDistribution                                                                      ! distribution of state iterations until convergence
  
  real(pReal), public :: &
@@ -151,10 +150,6 @@ subroutine debug_init
     deallocate(debug_StressLoopDistribution)
       allocate(debug_StressLoopDistribution(nStress+1,2))
                debug_StressLoopDistribution = 0_pInt
- if (allocated(debug_LeapfrogBreakDistribution)) &
-    deallocate(debug_LeapfrogBreakDistribution)
-      allocate(debug_LeapfrogBreakDistribution(nStress+1,2))
-               debug_LeapfrogBreakDistribution = 0_pInt
  if (allocated(debug_StateLoopDistribution)) &
     deallocate(debug_StateLoopDistribution)
       allocate(debug_StateLoopDistribution(nState+1,2))
@@ -326,7 +321,6 @@ subroutine debug_reset
  implicit none
 
  debug_StressLoopDistribution              = 0_pInt ! initialize debugging data
- debug_LeapfrogBreakDistribution           = 0_pInt
  debug_StateLoopDistribution               = 0_pInt
  debug_CrystalliteLoopDistribution         = 0_pInt
  debug_MaterialpointStateLoopDistribution  = 0_pInt
@@ -411,21 +405,18 @@ subroutine debug_info
      integral = 0_pInt
      write(6,*)
      write(6,*)
-     write(6,*) 'distribution_StressLoop :    stress  frogbreak  stiffness  frogbreak'
+     write(6,*) 'distribution_StressLoop :    stress  stiffness'
      do i=1_pInt,nStress+1_pInt
-       if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt ) .or. &
-           any(debug_LeapfrogBreakDistribution(i,:)  /= 0_pInt ) ) then
+       if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt )) then
          integral = integral + i*(debug_StressLoopDistribution(i,1) + debug_StressLoopDistribution(i,2))
          exceed = ' '
          if (i > nStress) exceed = '+'                                                                    ! last entry gets "+"
-         write(6,'(i25,a1,i10,1x,i10,1x,i10,1x,i10)')   min(nStress,i),exceed, &
-                          debug_StressLoopDistribution(i,1),debug_LeapfrogBreakDistribution(i,1), &
-                          debug_StressLoopDistribution(i,2),debug_LeapfrogBreakDistribution(i,2)
+         write(6,'(i25,a1,i10,1x,i10)') min(nStress,i),exceed,debug_StressLoopDistribution(i,1),&
+                                                              debug_StressLoopDistribution(i,2)
        endif
      enddo
-     write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
-                                                          sum(debug_StressLoopDistribution(:,1)), &
-                                                          sum(debug_StressLoopDistribution(:,2))
+     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopDistribution(:,1)), &
+                                                               sum(debug_StressLoopDistribution(:,2))
      
      integral = 0_pInt
      write(6,*)
@@ -435,13 +426,12 @@ subroutine debug_info
          integral = integral + i*(debug_StateLoopDistribution(i,1) + debug_StateLoopDistribution(i,2))
          exceed = ' '
          if (i > nState) exceed = '+'                                                                    ! last entry gets "+"
-         write(6,'(i25,a1,i10,12x,i10)') min(nState,i),exceed, &
-                          debug_StateLoopDistribution(i,1),debug_StateLoopDistribution(i,2)
+         write(6,'(i25,a1,i10,1x,i10)') min(nState,i),exceed,debug_StateLoopDistribution(i,1),&
+                                                             debug_StateLoopDistribution(i,2)
        endif
      enddo
-     write(6,'(a15,i10,1x,i10,12x,i10)') '          total',integral,&
-                                                        sum(debug_StateLoopDistribution(:,1)), &
-                                                        sum(debug_StateLoopDistribution(:,2))
+     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StateLoopDistribution(:,1)), &
+                                                               sum(debug_StateLoopDistribution(:,2))
     
      integral = 0_pInt
      write(6,*)
