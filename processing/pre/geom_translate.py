@@ -118,10 +118,10 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if info['resolution'].all() == 0:
+  if numpy.all(info['resolution'] == 0):
     file['croak'].write('no resolution info found.\n')
     continue
-  if info['dimension'] == [0.0,0.0,0.0]:
+  if numpy.all(info['dimension'] == 0.0):
     file['croak'].write('no dimension info found.\n')
     continue
 

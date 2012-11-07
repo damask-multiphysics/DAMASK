@@ -43,9 +43,9 @@ generates geom file and material_config file using seeds file
 )
 
 parser.add_option('-r', '--resolution', dest='resolution', type='int', nargs = 3, \
-                                       help='a,b,c resolution of specimen')
+                                       help='a,b,c resolution of periodic box')
 parser.add_option('-d', '--dimension', dest='dimension', type='float', nargs = 3, \
-                                       help='x,y,z dimension of specimen')
+                                       help='x,y,z dimension of periodic box')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
                                       help='homogenization index to be used')
 parser.add_option('--phase', dest='phase', type='int', \
@@ -130,7 +130,7 @@ for file in files:
   if 0 not in options.resolution:                                    # user-specified resolution
     info['resolution'] = numpy.array(options.resolution)
 
-  if info['resolution'].all() == 0:
+  if numpy.all(info['resolution'] == 0):
     file['croak'].write('no resolution info found.\n')
     continue
 
