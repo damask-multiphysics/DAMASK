@@ -250,8 +250,7 @@ type(tSolutionState) function &
    f_aimDot  = f_aimDot &                                                                         
              + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
-   print*, 'F_aimDot', f_aimDot
-   print*, 'guessmode', guessmode
+
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
    call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &

@@ -21,8 +21,6 @@ module DAMASK_spectral_SolverBasicPETSc
 #include <finclude/petscsys.h>
 #include <finclude/petscdmda.h>
 #include <finclude/petscsnes.h>
-#include <finclude/petscdmda.h90>
-#include <finclude/petscsnes.h90>
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'
@@ -100,6 +98,8 @@ subroutine BasicPETSC_init()
    math_invSym3333
       
  implicit none
+#include <finclude/petscdmda.h90>
+#include <finclude/petscsnes.h90>
  integer(pInt) :: i,j,k
  real(pReal),  dimension(:,:,:,:,:), allocatable ::  P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
@@ -169,16 +169,12 @@ subroutine BasicPETSC_init()
   
       coordinates = 0.0 ! change it later!!!
     endif
-    print*, 'F', shape(F)
-    print*, 'F_lastInc', shape(F_lastInc)
-    print*, 'gfortran runs till here'
-    flush(6)
+
     call Utilities_constitutiveResponse(coordinates,&
                   reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                   reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                   temperature,0.0_pReal,P,C,P_av,.false.,math_I3)
-    print*, 'gfortran does not reach this point'
-    flush(6)
+
     call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr)
 
 
@@ -225,6 +221,8 @@ subroutine BasicPETSC_init()
      restartWrite, &
      terminallyIll
    implicit none
+#include <finclude/petscdmda.h90>
+#include <finclude/petscsnes.h90>
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
    real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc, guessmode

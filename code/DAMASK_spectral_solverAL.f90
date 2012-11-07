@@ -21,8 +21,6 @@ module DAMASK_spectral_SolverAL
 #include <finclude/petscsys.h>
 #include <finclude/petscdmda.h>
 #include <finclude/petscsnes.h>
-#include <finclude/petscdmda.h90>
-#include <finclude/petscsnes.h90>
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverAL_label = 'al'
@@ -102,7 +100,8 @@ subroutine AL_init()
       math_invSym3333
       
     implicit none
-    
+#include <finclude/petscdmda.h90>
+#include <finclude/petscsnes.h90>
     integer(pInt) :: i,j,k
     real(pReal), dimension(:,:,:,:,:), allocatable ::  P
     
@@ -233,6 +232,8 @@ subroutine AL_init()
      terminallyIll
    
    implicit none
+#include <finclude/petscdmda.h90>
+#include <finclude/petscsnes.h90>
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
    real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc, guessmode
