@@ -462,24 +462,30 @@ function IO_hybridIA(Nast,ODFfileName)
  real(pReal), dimension(:,:,:), allocatable :: dV_V
  character(len=80) :: line
  
- call IO_open_file(999_pInt,ODFfileName)
- 
 !--- parse header of ODF file ---
+ call IO_open_file(999_pInt,ODFfileName)
+ IO_hybridIA = -1.0_pReal                                                                           ! initialize return value for case of error
+
 !--- limits in phi1, Phi, phi2 ---
  read(999,fmt=fileFormat,end=100) line
  myPos = IO_stringPos(line,3_pInt)
- if (myPos(1).ne.3) goto 100
- do i=1_pInt,3_pInt
-   limits(i) = IO_floatValue(line,myPos,i)*INRAD
- enddo
+ if (myPos(1) == 3) then                                                                            ! found 3 chunks
+   forall(i=1_pInt:3_pInt) limits(i) = IO_floatValue(line,myPos,i)*INRAD
+ else                                                                                               ! wrong line format
+   close(999)
+   return
+ endif
 
 !--- deltas in phi1, Phi, phi2 ---
  read(999,fmt=fileFormat,end=100) line
  myPos = IO_stringPos(line,3_pInt)
- if (myPos(1).ne.3) goto 100
- do i=1_pInt,3_pInt
-   deltas(i) = IO_floatValue(line,myPos,i)*INRAD
- enddo
+ if (myPos(1) == 3) then                                                                            ! found 3 chunks
+  forall(i=1_pInt:3_pInt) deltas(i) = IO_floatValue(line,myPos,i)*INRAD
+ else                                                                                               ! wrong line format
+   close(999)
+   return
+ endif
+ 
  steps = nint(limits/deltas,pInt)
  allocate(dV_V(steps(3),steps(2),steps(1)))
 
@@ -569,13 +575,9 @@ function IO_hybridIA(Nast,ODFfileName)
    IO_hybridIA(3,i) = deltas(3)*(real(mod(bin                    ,steps(3)),pReal)+center)  ! phi2
    binSet(j) = binSet(i)
  enddo
- close(999)
- return
 
-! on error
-100 IO_hybridIA = -1.0_pReal
- close(999)
- 
+100 close(999)
+
 end function IO_hybridIA
 
 
@@ -1058,13 +1060,13 @@ character(len=300) pure function IO_extractValue(line,key)
 
  character(len=*), parameter  :: sep = achar(61)         ! '='
 
- integer                      :: myPos                                          ! no pInt (scan returns default integer)
+ integer                      :: myPos                                                              ! no pInt (scan returns default integer)
 
  IO_extractValue = ''
 
  myPos = scan(line,sep)
- if (myPos > 0 .and. line(:myPos-1) == key(:myPos-1)) &       ! key matches expected key
-   IO_extractValue = line(myPos+1:)                       ! extract value
+ if (myPos > 0 .and. line(:myPos-1) == key(:myPos-1)) &                                             ! key matches expected key
+   IO_extractValue = line(myPos+1:)                                                                 ! extract value
 
 end function IO_extractValue
 
@@ -1124,17 +1126,20 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
  do
    read(myUnit,'(A300)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
-   if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                  ! found range indicator
-     IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) - IO_intValue(line,myPos,1_pInt)
-     exit                                                                       ! only one single range indicator allowed
-   else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'of' ) then             ! found multiple entries indicator
+   if (myPos(1) < 1_pInt) then                                                                         ! empty line
+     exit
+   elseif (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                                  ! found range indicator
+     IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) &
+                                          - IO_intValue(line,myPos,1_pInt)
+     exit                                                                                           ! only one single range indicator allowed
+   else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'of' ) then                                 ! found multiple entries indicator
      IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
-     exit                                                                       ! only one single multiplier allowed
+     exit                                                                                           ! only one single multiplier allowed
    else
-     IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt  ! add line's count when assuming 'c'
-     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then              ! line finished, read last value
+     IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt                      ! add line's count when assuming 'c'
+     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then                                  ! line finished, read last value
        IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
-       exit                                                                     ! data ended
+       exit                                                                                         ! data ended
      endif
    endif
  enddo
@@ -1190,10 +1195,12 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
  do
    read(myUnit,'(A65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
-   if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set name
-     do i = 1_pInt, lookupMaxN                                             ! loop over known set names
-       if (IO_stringValue(line,myPos,1_pInt) == lookupName(i)) then         ! found matching name
-         IO_continuousIntValues = lookupMap(:,i)                      ! return resp. entity list
+   if (myPos(1) < 1_pInt) then                                                                         ! empty line
+     exit
+   elseif (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then                         ! a non-int, i.e. set name
+     do i = 1_pInt, lookupMaxN                                                                      ! loop over known set names
+       if (IO_stringValue(line,myPos,1_pInt) == lookupName(i)) then                                 ! found matching name
+         IO_continuousIntValues = lookupMap(:,i)                                                    ! return resp. entity list
          exit
        endif
      enddo
@@ -1209,11 +1216,11 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
      IO_continuousIntValues(2:IO_continuousIntValues(1)+1) = IO_intValue(line,myPos,3_pInt)
      exit
    else
-     do i = 1_pInt,myPos(1)-1_pInt  ! interpret up to second to last value
+     do i = 1_pInt,myPos(1)-1_pInt                                                                  ! interpret up to second to last value
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
      enddo
-     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then       ! line finished, read last value
+     if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then                                  ! line finished, read last value
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,myPos(1))
        exit
@@ -1237,25 +1244,24 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
  do l = 1_pInt,c
    read(myUnit,'(A65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
-   if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then     ! a non-int, i.e. set names follow on this line
-     do i = 1_pInt,myPos(1)                                                 ! loop over set names in line
-       do j = 1_pInt,lookupMaxN                                      ! look thru known set names
-         if (IO_stringValue(line,myPos,i) == lookupName(j)) then       ! found matching name
-           first = 2_pInt + IO_continuousIntValues(1)                      ! where to start appending data
-           last  = first + lookupMap(1,j) - 1_pInt                        ! up to where to append data
-           IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)    ! add resp. entity list
-           IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)   ! count them
+   if (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then                             ! a non-int, i.e. set names follow on this line
+     do i = 1_pInt,myPos(1)                                                                         ! loop over set names in line
+       do j = 1_pInt,lookupMaxN                                                                     ! look thru known set names
+         if (IO_stringValue(line,myPos,i) == lookupName(j)) then                                    ! found matching name
+           first = 2_pInt + IO_continuousIntValues(1)                                               ! where to start appending data
+           last  = first + lookupMap(1,j) - 1_pInt                                                  ! up to where to append data
+           IO_continuousIntValues(first:last) = lookupMap(2:1+lookupMap(1,j),j)                     ! add resp. entity list
+           IO_continuousIntValues(1) = IO_continuousIntValues(1) + lookupMap(1,j)                   ! count them
          endif
        enddo
      enddo
-   else if (rangeGeneration) then                                    ! range generation
+   else if (rangeGeneration) then                                                                   ! range generation
      do i = IO_intValue(line,myPos,1_pInt),IO_intValue(line,myPos,2_pInt),max(1_pInt,IO_intValue(line,myPos,3_pInt))
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = i
      enddo
-   else                                                              ! read individual elem nums
+   else                                                                                             ! read individual elem nums
      do i = 1_pInt,myPos(1)
-      !  write(*,*)'IO_CIV-int',IO_intValue(line,myPos,i)
        IO_continuousIntValues(1) = IO_continuousIntValues(1) + 1_pInt
        IO_continuousIntValues(1+IO_continuousIntValues(1)) = IO_intValue(line,myPos,i)
      enddo
@@ -1265,6 +1271,10 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 
 100 end function IO_continuousIntValues
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns format string for integer values without leading zeros
+!--------------------------------------------------------------------------------------------------
 pure function IO_intOut(intToPrint)
   implicit none
   character(len=16) :: N_Digits
