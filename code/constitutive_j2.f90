@@ -338,7 +338,7 @@ pure function constitutive_j2_aTolState(myInstance)
 end function constitutive_j2_aTolState
 
 
-function constitutive_j2_homogenizedC(state,ipc,ip,el)
+pure function constitutive_j2_homogenizedC(state,ipc,ip,el)
 !*********************************************************************
 !* homogenized elacticity matrix                                     *
 !* INPUT:                                                            *
@@ -353,9 +353,9 @@ function constitutive_j2_homogenizedC(state,ipc,ip,el)
  
  implicit none
  integer(pInt), intent(in) :: ipc,ip,el
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
  integer(pInt) :: matID
  real(pReal), dimension(6,6) :: constitutive_j2_homogenizedC
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  
  matID = phase_plasticityInstance(material_phase(ipc,ip,el))
  constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(1:6,1:6,matID)
@@ -537,7 +537,7 @@ pure function constitutive_j2_dotState(Tstar_v, Temperature, state, g, ip, el)
   endif
   
   ! dotState
-  constitutive_j2_dotState =  hardening * gamma_dot
+  constitutive_j2_dotState = hardening * gamma_dot
 
 end function constitutive_j2_dotState
 

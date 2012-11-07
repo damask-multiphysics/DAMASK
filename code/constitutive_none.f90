@@ -270,7 +270,7 @@ pure function constitutive_none_aTolState(myInstance)
 end function constitutive_none_aTolState
 
 
-function constitutive_none_homogenizedC(state,ipc,ip,el)
+pure function constitutive_none_homogenizedC(state,ipc,ip,el)
 !*********************************************************************
 !* homogenized elacticity matrix                                     *
 !* INPUT:                                                            *
@@ -285,9 +285,9 @@ function constitutive_none_homogenizedC(state,ipc,ip,el)
  
  implicit none
  integer(pInt), intent(in) :: ipc,ip,el
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
  integer(pInt) :: matID
  real(pReal), dimension(6,6) :: constitutive_none_homogenizedC
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
  
  matID = phase_plasticityInstance(material_phase(ipc,ip,el))
  constitutive_none_homogenizedC = constitutive_none_Cslip_66(1:6,1:6,matID)

@@ -334,33 +334,28 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  endif
 
 
-!$OMP PARALLEL DO PRIVATE(myNgrains)
- do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                 ! iterate over elements to be processed
+! initialize restoration points of ...
+ do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                               ! iterate over IPs of this element to be processed
-
-     ! initialize restoration points of grain...
-     forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p  ! ...microstructures
-     crystallite_partionedTemperature0(1:myNgrains,i,e) = materialpoint_Temperature(i,e)            ! ...temperatures
-     crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fp0(1:3,1:3,1:myNgrains,i,e)   ! ...plastic def grads
-     crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp0(1:3,1:3,1:myNgrains,i,e)   ! ...plastic velocity grads
-     crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = &
-                                                 crystallite_dPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
-     crystallite_partionedF0(1:3,1:3,1:myNgrains,i,e) = crystallite_F0(1:3,1:3,1:myNgrains,i,e)     ! ...def grads
-     crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = crystallite_Tstar0_v(1:6,1:myNgrains,i,e) ! ...2nd PK stress
-
-     ! initialize restoration points of ...
-     if (homogenization_sizeState(i,e) > 0_pInt) &
-       homogenization_subState0(i,e)%p = homogenization_state0(i,e)%p                               ! ...internal homogenization state
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
+     constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p                           ! ...microstructures
+     crystallite_partionedTemperature0(g,i,e) = materialpoint_Temperature(i,e)                      ! ...temperatures
+     crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
+     crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
+     crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
+     crystallite_partionedF0(1:3,1:3,g,i,e) = crystallite_F0(1:3,1:3,g,i,e)                         ! ...def grads
+     crystallite_partionedTstar0_v(1:6,g,i,e) = crystallite_Tstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
+   endforall
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e))
      materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)                               ! ...def grad
-
      materialpoint_subFrac(i,e) = 0.0_pReal
      materialpoint_subStep(i,e) = 1.0_pReal/subStepSizeHomog                                        ! <<added to adopt flexibility in cutback size>>
      materialpoint_converged(i,e) = .false.                                                         ! pretend failed step of twice the required size
      materialpoint_requested(i,e) = .true.                                                          ! everybody requires calculation
-   enddo
+   endforall
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), homogenization_sizeState(i,e) > 0_pInt) &
+     homogenization_subState0(i,e)%p = homogenization_state0(i,e)%p                                 ! ...internal homogenization state
  enddo
-!$OMP END PARALLEL DO
 
  NiterationHomog = 0_pInt
  

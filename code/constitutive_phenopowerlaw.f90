@@ -593,7 +593,7 @@ end function constitutive_phenopowerlaw_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief homogenized elacticity matrix
 !--------------------------------------------------------------------------------------------------
-function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
+pure function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
  use prec, only: p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips
  use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
