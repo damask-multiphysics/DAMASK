@@ -114,16 +114,24 @@ Produce VTK rectilinear mesh of structure data from geom description
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin})
+  files.append({'name':'STDIN',
+                'input':sys.stdin,
+                'output':sys.stdout,
+                'croak':sys.stderr,
+               })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name)})
+      files.append({'name':name,
+                    'input':open(name),
+                    'output':open(name+'_tmp','w'),
+                    'croak':sys.stdout,
+                    })
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
   #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
@@ -149,16 +157,18 @@ for file in files:
       for i in xrange(len(identifiers[headitems[0]])):
         info[headitems[0]][i] = mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
 
-  if info['resolution'] == [0,0,0]:
-    print 'no resolution info found.'
-    sys.exit(1)
-  if info['dimension'] == [0.0,0.0,0.0]:
-    print 'no dimension info found.'
-    sys.exit(1)
+  if numpy.all(info['resolution'] == 0):
+    file['croak'].write('no resolution info found.\n')
+    continue
 
-  print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
-  print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
-  print 'origin:     %s'%(' : '.join(map(str,info['origin'])))
+  if numpy.all(info['dimension'] == 0.0):
+    file['croak'].write('no dimension info found.\n')
+    continue
+
+  file['croak'].write('resolution:     %s\n'%(' x '.join(map(str,info['resolution']))) + \
+                      'dimension:      %s\n'%(' x '.join(map(str,info['dimension']))) + \
+                      'origin:         %s\n'%(' : '.join(map(str,info['origin'])))
+                     )
   
   data = {'scalar':{'structure':numpy.zeros(info['resolution'],'i')}}
   i = 0
