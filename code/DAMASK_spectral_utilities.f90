@@ -695,7 +695,7 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates forward rate, either guessing or just add delta/timeinc
 !--------------------------------------------------------------------------------------------------
-pure function utilities_calculateRate(delta_aim,timeinc,timeinc_old,guessmode,field_lastInc,field)
+pure function utilities_calculateRate(delta_aim,timeinc,timeinc_old,guess,field_lastInc,field)
  use mesh, only: &
    res
  
@@ -703,14 +703,15 @@ pure function utilities_calculateRate(delta_aim,timeinc,timeinc_old,guessmode,fi
  real(pReal), intent(in), dimension(3,3)                      :: delta_aim                          !< homogeneous addon
  real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< timeinc of current step
-   timeinc_old, &                                                                                   !< timeinc of last step
-   guessmode                                                                                        !< timeinc of current step
+   timeinc_old                                                                                      !< timeinc of last step
+ logical, intent(in) :: &
+   guess                                                                                            !< guess along former trajectory
  real(pReal), intent(in), dimension(3,3,res(1),res(2),res(3)) :: &
    field_lastInc, &                                                                                 !< data of previous step
    field                                                                                            !< data of current step
  real(pReal),             dimension(3,3,res(1),res(2),res(3)) :: utilities_calculateRate
  
- if (guessmode == 1.0_pReal) then
+ if (guess) then
    utilities_calculateRate = (field-field_lastInc) / timeinc_old
  else
    utilities_calculateRate = spread(spread(spread(delta_aim,3,res(1)),4,res(2)),5,res(3))/timeinc

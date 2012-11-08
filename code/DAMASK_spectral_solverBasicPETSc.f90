@@ -198,7 +198,7 @@ subroutine BasicPETSC_init()
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
   type(tSolutionState) function &
-    basicPETSc_solution(incInfoIn,guessmode,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
+    basicPETSc_solution(incInfoIn,guess,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
    use numerics, only: &
      update_gamma
    use math, only: &
@@ -225,7 +225,8 @@ subroutine BasicPETSC_init()
 #include <finclude/petscsnes.h90>
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
-   real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc, guessmode
+   real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc
+   logical, intent(in):: guess
    type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
    real(pReal), dimension(3,3), intent(in) :: rotation_BC
  character(len=*), intent(in) :: incInfoIn
@@ -271,8 +272,7 @@ else
    elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
      f_aimDot = F_BC%maskFloat * F_BC%values
    endif
-   f_aimDot  = f_aimDot &                                                                         
-             + guessmode * P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
+   if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
 
 !--------------------------------------------------------------------------------------------------
@@ -280,7 +280,7 @@ else
    call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
                                                                    1.0_pReal,F_lastInc,coordinates)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                                           timeinc,timeinc_old,guessmode,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
+                                           timeinc,timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
    F_lastInc = reshape(F,[3,3,res(1),res(2),res(3)])
  endif
  F_aim = F_aim + f_aimDot * timeinc

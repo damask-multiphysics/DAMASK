@@ -95,7 +95,7 @@ program DAMASK_spectral_Driver
 ! loop variables, convergence etc.
  real(pReal), dimension(3,3), parameter :: ones = 1.0_pReal, zeros = 0.0_pReal 
  real(pReal) :: time = 0.0_pReal, time0 = 0.0_pReal, timeinc = 1.0_pReal, timeinc_old = 0.0_pReal   ! elapsed time, begin of interval, time interval, previous time interval
- real(pReal) :: guessmode
+ logical :: guess
  integer(pInt) :: i, j, k, l, errorID, cutBackLevel = 0_pInt, stepFraction = 0_pInt
  integer(pInt) :: currentLoadcase = 0_pInt, inc, &
                   totalIncsCounter = 0_pInt,&
@@ -317,9 +317,9 @@ program DAMASK_spectral_Driver
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
    time0 = time                                                                                     ! currentLoadCase start time                
    if (loadCases(currentLoadCase)%followFormerTrajectory) then
-     guessmode = 1.0_pReal
+     guess = .true.
    else
-     guessmode = 0.0_pReal                                                                          ! change of load case, homogeneous guess for the first inc
+     guess = .false.                                                                                ! change of load case, homogeneous guess for the first inc
    endif
 
 !--------------------------------------------------------------------------------------------------
@@ -372,7 +372,7 @@ program DAMASK_spectral_Driver
          
            case (DAMASK_spectral_SolverBasic_label)
              solres = basic_solution (&
-                  incInfo, guessmode,timeinc,timeinc_old, &
+                  incInfo, guess,timeinc,timeinc_old, &
                   P_BC              = loadCases(currentLoadCase)%P, &
                   F_BC              = loadCases(currentLoadCase)%deformation, &
                   temperature_bc    = loadCases(currentLoadCase)%temperature, &
@@ -380,7 +380,7 @@ program DAMASK_spectral_Driver
 #ifdef PETSc
            case (DAMASK_spectral_SolverBasicPETSC_label)
              solres = BasicPETSC_solution (&
-                 incInfo, guessmode,timeinc,timeinc_old, &
+                 incInfo, guess,timeinc,timeinc_old, &
                  P_BC              = loadCases(currentLoadCase)%P, &
                  F_BC              = loadCases(currentLoadCase)%deformation, &
                  temperature_bc    = loadCases(currentLoadCase)%temperature, &
@@ -388,7 +388,7 @@ program DAMASK_spectral_Driver
             
            case (DAMASK_spectral_SolverAL_label)
              solres = AL_solution (&
-                 incInfo, guessmode,timeinc,timeinc_old, &
+                 incInfo, guess,timeinc,timeinc_old, &
                  P_BC              = loadCases(currentLoadCase)%P, &
                  F_BC              = loadCases(currentLoadCase)%deformation, &
                  temperature_bc    = loadCases(currentLoadCase)%temperature, &
@@ -408,12 +408,12 @@ program DAMASK_spectral_Driver
            elseif (solres%termIll) then                                                             ! material point model cannot find a solution
              call IO_error(850_pInt)
            else
-             guessmode = 1.0_pReal                                                                    ! start guessing after first accepted (not converged) (sub)inc
+             guess = .true.                                                                         ! start guessing after first accepted (not converged) (sub)inc
            endif
          else
-           guessmode = 1.0_pReal                                                                    ! start guessing after first converged (sub)inc
+           guess = .true.                                                                           ! start guessing after first converged (sub)inc
          endif
-       if(guessmode == 1.0_pReal) &
+       if(guess) &
          write(statUnit,*) inc, time, cutBackLevel, solres%converged, solres%iterationsNeeded
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half subincs next inc
@@ -437,7 +437,7 @@ program DAMASK_spectral_Driver
        endif 
      else !just time forwarding
        time = time + timeinc
-       guessmode = 1.0_pReal
+       guess = .true.
      endif                                                                                          ! end calculation/forwarding
 
     enddo incLooping
