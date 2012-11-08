@@ -96,14 +96,6 @@ endif
 LIBRARIES +=-lfftw3
 LIB_DIRS  +=-L$(FFTWROOT)/lib
 
-ifeq "$(SOLVER)" "NEW"
-ifdef PETSC_DIR
-include ${PETSC_DIR}/conf/variables
-INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSc
-LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
-endif
-endif
-
 ifdef IMKLROOT
 LIB_DIRS  +=-L$(IMKLROOT)/lib/intel64
 LIBRARIES +=-mkl
@@ -116,6 +108,14 @@ ifdef LAPACKROOT
 LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
 LIBRARIES +=-llapack
 endif
+endif
+endif
+
+ifeq "$(SOLVER)" "NEW"
+ifdef PETSC_DIR
+include ${PETSC_DIR}/conf/variables
+INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSc
+LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
 endif
 endif
 
@@ -271,12 +271,12 @@ endif
 ##################################################################################################
 
 PRECISION_ifort :=-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4
-#-real-size 32:           set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
-#-integer-size 16:        set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
+#-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
+#-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
 PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
-#-fdefault-real-8:           set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
-#-fdefault-double-8:         set precision to 8 bytes for double real, would be 16 bytes because -fdefault-real-8 is used
-#-fdefault-integer-8:        Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
+#-fdefault-real-8:            set precision to 8 bytes for standard real (=8 for pReal). Will set size of double to 16 bytes as long as -fdefault-double-8 is not set
+#-fdefault-double-8:          set precision to 8 bytes for double real, would be 16 bytes because -fdefault-real-8 is used
+#-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 
 ###################################################################################################
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
