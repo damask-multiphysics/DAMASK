@@ -2384,7 +2384,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Fe(1:3,1:3,g,i,e), &
                                          crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
       endif
@@ -2398,7 +2398,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
   
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
         if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! broken non-local... 
           !$OMP CRITICAL (checkTodo) 
@@ -2421,7 +2421,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
                                           crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
@@ -2431,7 +2431,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
   !$OMP ENDDO
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
           crystallite_todo(g,i,e) = .false.                                                                 ! ... skip me next time
@@ -2450,7 +2450,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
 
   !$OMP DO PRIVATE(dot_prod12,dot_prod22,statedamper,mySizeDotState,stateResiduum,temperatureResiduum,tempState)
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
 
         ! --- state damper ---
         
