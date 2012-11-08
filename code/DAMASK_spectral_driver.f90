@@ -75,8 +75,8 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! variables related to information from load case and geom file
- real(pReal), dimension(9) :: temp_valueVector                                                      !< temporarily from loadcase file when reading in tensors
- logical,     dimension(9) :: temp_maskVector                                                       !< temporarily from loadcase file when reading in tensors
+ real(pReal), dimension(9) :: temp_valueVector = 0.0_pReal                                          !< temporarily from loadcase file when reading in tensors (initialize to 0.0)
+ logical,     dimension(9) :: temp_maskVector  = .false.                                            !< temporarily from loadcase file when reading in tensors
  integer(pInt), parameter  :: maxNchunksLoadcase = (1_pInt + 9_pInt)*3_pInt +&                      ! deformation, rotation, and stress
                                                    (1_pInt + 1_pInt)*5_pInt +&                      ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                     1_pInt                                          ! dropguessing
@@ -195,6 +195,7 @@ program DAMASK_spectral_Driver
        case('guessreset','dropguessing')
          loadCases(currentLoadCase)%followFormerTrajectory = .false.                                ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of currentLoadCase given in euler angles
+         temp_valueVector = 0.0_pReal
          l = 0_pInt                                                                                 ! assuming values given in degrees
          k = 0_pInt                                                                                 ! assuming keyword indicating degree/radians
          select case (IO_lc(IO_stringValue(line,positions,i+1_pInt)))

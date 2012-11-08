@@ -13,11 +13,12 @@ module DAMASK_spectral_SolverBasicPETSc
  
  use math, only: &
    math_I3
- 
+   
  use DAMASK_spectral_Utilities, only: &
    tSolutionState
 
  implicit none
+ private
 #include <finclude/petscsys.h>
 #include <finclude/petscdmda.h>
 #include <finclude/petscsnes.h>
@@ -61,12 +62,15 @@ module DAMASK_spectral_SolverBasicPETSc
   logical, private :: ForwardData
   real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
  
-  contains
- 
+
+    public :: basicPETSc_init, &
+              basicPETSc_solution ,&
+              basicPETSc_destroy
+      contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine BasicPETSC_init()
+subroutine basicPETSc_init()
       
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
@@ -101,7 +105,7 @@ subroutine BasicPETSC_init()
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
  integer(pInt) :: i,j,k
- real(pReal),  dimension(:,:,:,:,:), allocatable ::  P
+ real(pReal),  dimension(3,3,  res(1),  res(2),res(3)) ::  P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
  PetscErrorCode :: ierr
  PetscObject    :: dummy
@@ -112,10 +116,9 @@ subroutine BasicPETSC_init()
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
 #include "compilation_info.f90"
  write(6,'(a)') ''
-   
+    
  allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (Fdot       (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (P          (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
  allocate (temperature(  res(1),  res(2),res(3)),      source = 0.0_pReal)
     
@@ -192,7 +195,7 @@ subroutine BasicPETSC_init()
    
     call Utilities_updateGamma(C,.True.)
  
-  end subroutine BasicPETSC_init
+  end subroutine basicPETSc_init
   
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Basic PETSC scheme with internal iterations
@@ -310,12 +313,12 @@ else
      BasicPETSC_solution%converged = .true.
    endif
 
- end function BasicPETSC_solution
+ end function BasicPETSc_solution
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the AL residual vector
 !--------------------------------------------------------------------------------------------------
- subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
+ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
   
    use numerics, only: &
      itmax, &
@@ -339,9 +342,9 @@ else
 
    real(pReal), dimension(3,3) :: F_aim_lab_lastIter, F_aim_lab
    
-   DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: in
-   PetscScalar, dimension(3,3,XG_RANGE,YG_RANGE,ZG_RANGE) :: x_scal 
-   PetscScalar, dimension(3,3,X_RANGE,Y_RANGE,Z_RANGE):: f_scal 
+   DMDALocalInfo, dimension(*) :: myIn
+   PetscScalar, dimension(3,3,res(1),res(2),res(3)) :: x_scal 
+   PetscScalar, dimension(3,3,res(1),res(2),res(3)):: f_scal 
    PetscInt :: iter, nfuncs
    PetscObject :: dummy
    PetscErrorCode :: ierr
@@ -383,12 +386,12 @@ else
  ! constructing residual                         
    f_scal = reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(x_scal),order=[3,4,5,1,2])  
    write(6,'(/,a)') '=========================================================================='
- end subroutine BasicPETSC_formResidual
+ end subroutine BasicPETSc_formResidual
 
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
- subroutine BasicPETSC_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
+ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
   
    use numerics, only: &
     itmax, &
@@ -431,12 +434,12 @@ else
    write(6,'(a,f6.2,a,es11.4,a)') 'error stress =     ', err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs), &
                                                          ' (',err_stress,' Pa)'  
 
- end subroutine BasicPETSC_converged
+ end subroutine BasicPETSc_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief destroy routine
 !--------------------------------------------------------------------------------------------------
- subroutine BasicPETSC_destroy()
+ subroutine BasicPETSc_destroy()
  
    use DAMASK_spectral_Utilities, only: &
      Utilities_destroy
@@ -449,6 +452,6 @@ else
    call PetscFinalize(ierr)
    call Utilities_destroy()
 
- end subroutine BasicPETSC_destroy
+ end subroutine BasicPETSc_destroy
 
- end module DAMASK_spectral_SolverBasicPETSC
+ end module DAMASK_spectral_SolverBasicPETSc
