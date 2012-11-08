@@ -2838,7 +2838,7 @@ NiterationStress = 0_pInt
 jacoCounter = 0_pInt
 steplength0 = 1.0_pReal
 steplength = steplength0
-residuum_old = huge(1.0_pReal)
+residuum_old = 0.0_pReal
 
 LpLoop: do
   NiterationStress = NiterationStress + 1_pInt
@@ -2898,11 +2898,11 @@ LpLoop: do
 
   !* update current residuum and check for convergence of loop
   
-  aTol = max(rTol_crystalliteStress * max(math_norm33(Lpguess),math_norm33(Lp_constitutive)), & ! absolute tolerance from largest acceptable relative error
-             aTol_crystalliteStress)                                                            ! minimum lower cutoff
+  aTol = max(rTol_crystalliteStress * max(math_norm33(Lpguess),math_norm33(Lp_constitutive)), &    ! absolute tolerance from largest acceptable relative error
+             aTol_crystalliteStress)                                                               ! minimum lower cutoff
   residuum = Lpguess - Lp_constitutive
 
-  if (any(residuum /= residuum)) then                                                           ! NaN in residuum...
+  if (any(residuum /= residuum)) then                                                              ! NaN in residuum...
 #ifndef _OPENMP
     if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then 
       write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el ip g ',e,i,g,&
@@ -2910,17 +2910,17 @@ LpLoop: do
                                     ' >> returning..!'
     endif
 #endif
-    return                                                                                      ! ...me = .false. to inform integrator about problem
-  elseif (math_norm33(residuum) < aTol) then                                                    ! converged if below absolute tolerance
-    exit LpLoop                                                                                 ! ...leave iteration loop
-  elseif (math_norm33(residuum) > math_norm33(residuum_old)) then                               ! not converged and worse residuum...
-    steplength = 0.5_pReal * steplength                                                         ! ...try with smaller step length in same direction
+    return                                                                                         ! ...me = .false. to inform integrator about problem
+  elseif (math_norm33(residuum) < aTol) then                                                       ! converged if below absolute tolerance
+    exit LpLoop                                                                                    ! ...leave iteration loop
+  elseif (math_norm33(residuum) < math_norm33(residuum_old) .or. NiterationStress == 1_pInt ) then ! not converged, but improved norm of residuum (always proceed in first iteration)...
+    residuum_old = residuum                                                                        ! ...remember old values and...
+    Lpguess_old = Lpguess 
+    steplength = steplength0                                                                       ! ...proceed with normal step length (calculate new search direction)
+  else                                                                                             ! not converged and residuum not improved...
+    steplength = 0.5_pReal * steplength                                                            ! ...try with smaller step length in same direction
     Lpguess = Lpguess_old + steplength * deltaLp
     cycle LpLoop
-  else                                                                                          ! not converged, but improved norm of residuum...
-    residuum_old = residuum                                                                     ! ...remember old values and...
-    Lpguess_old = Lpguess 
-    steplength = steplength0                                                                    ! ...proceed with normal step length (calculate new search direction)
   endif
 
 
