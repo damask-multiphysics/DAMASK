@@ -152,6 +152,7 @@ program DAMASK_spectral_Driver
    do i = 1_pInt,maxNchunksLoadcase
      select case (IO_lc(IO_stringValue(line,positions,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient')                          ! assign values for the deformation BC matrix
+         temp_valueVector = 0.0_pReal
          if (IO_lc(IO_stringValue(line,positions,i)) == 'l'.or. &                                   ! in case of given L, set flag to true
              IO_lc(IO_stringValue(line,positions,i)) == 'velocitygrad'.or.&
              IO_lc(IO_stringValue(line,positions,i)) == 'velgrad'.or.&
