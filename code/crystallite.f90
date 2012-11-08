@@ -581,7 +581,7 @@ enddo
 
 NiterationCrystallite = 0_pInt
 numerics_integrationMode = 1_pInt
-do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2)) > subStepMinCryst))  ! cutback loop for crystallites
+do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2))))                       ! cutback loop for crystallites
 
   !$OMP PARALLEL DO PRIVATE(myNgrains,formerSubStep)
     do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
@@ -620,6 +620,8 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
               endif
 #endif
             elseif (formerSubStep > 0.0_pReal) then                                                     ! this crystallite just converged
+              crystallite_todo(g,i,e) = .false.                                                         ! so done here
+              !$OMP FLUSH(crystallite_todo)
               if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
                 !$OMP CRITICAL (distributionCrystallite)
                   debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
@@ -690,6 +692,8 @@ do while (any(crystallite_subStep(:,:,FEsolving_execELem(1):FEsolving_execElem(2
     endselect
   endif
   
+  where(.not. crystallite_converged) crystallite_todo = .true.
+
   NiterationCrystallite = NiterationCrystallite + 1_pInt
       
 enddo                                                                                                   ! cutback loop
@@ -1152,14 +1156,11 @@ do n = 1_pInt,4_pInt
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        if (.not. crystallite_integrateStress(g,i,e,timeStepFraction(n))) then                            ! fraction of original times step
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
-            !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
-            !$OMP END CRITICAL (checkTodo)
-          else                                                                                            ! if broken local...
-            crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
-          endif
+        crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e,timeStepFraction(n))                  ! fraction of original times step
+        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+          !$OMP CRITICAL (checkTodo)
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+          !$OMP END CRITICAL (checkTodo)
         endif
       endif
     enddo; enddo; enddo
@@ -1205,15 +1206,12 @@ enddo
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then
-      if (.not. crystallite_stateJump(g,i,e)) then
-        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
-          !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-          !$OMP END CRITICAL (checkTodo)
-        else                                                                                              ! broken local ...
-          crystallite_todo(g,i,e) = .false.                                                               ! ... skip this one next time
-        endif
+    if (crystallite_todo(g,i,e)) then
+      crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
+        !$OMP CRITICAL (checkTodo)
+          crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
+        !$OMP END CRITICAL (checkTodo)
       endif
     endif
   enddo; enddo; enddo
@@ -1226,11 +1224,10 @@ enddo
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
-      crystallite_todo(g,i,e) = .false.                                                                   ! ... integration done
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
         !$OMP CRITICAL (distributionState)
-          debug_StateLoopDistribution(6,numerics_integrationMode) = &
-            debug_StateLoopDistribution(6,numerics_integrationMode) + 1_pInt
+          debug_StateLoopDistribution(4,numerics_integrationMode) = &
+            debug_StateLoopDistribution(4,numerics_integrationMode) + 1_pInt
         !$OMP END CRITICAL (distributionState)
       endif
     endif
@@ -1502,14 +1499,11 @@ do n = 1_pInt,5_pInt
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        if (.not. crystallite_integrateStress(g,i,e,c(n))) then                                           ! fraction of original time step
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
-            !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
-            !$OMP END CRITICAL (checkTodo)
-          else                                                                                            ! if broken local...
-            crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
-          endif
+        crystallite_todo(g,i,e) =  crystallite_integrateStress(g,i,e,c(n))                                ! fraction of original time step
+        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+          !$OMP CRITICAL (checkTodo)
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+          !$OMP END CRITICAL (checkTodo)
         endif
       endif
     enddo; enddo; enddo
@@ -1698,14 +1692,11 @@ relTemperatureResiduum = 0.0_pReal
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      if (.not. crystallite_stateJump(g,i,e)) then
-        if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
-          !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
-          !$OMP END CRITICAL (checkTodo)
-        else                                                                                              ! brken local...
-          crystallite_todo(g,i,e) = .false.                                                               ! ...skip this one next time
-        endif
+      crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
+        !$OMP CRITICAL (checkTodo)
+          crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
+        !$OMP END CRITICAL (checkTodo)
       endif
     endif
   enddo; enddo; enddo
@@ -1718,7 +1709,6 @@ relTemperatureResiduum = 0.0_pReal
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
-      crystallite_todo(g,i,e) = .false.                                                                   ! ... integration done
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
         !$OMP CRITICAL (distributionState)
           debug_StateLoopDistribution(6,numerics_integrationMode) = &
@@ -1837,15 +1827,12 @@ if (numerics_integrationMode < 2) then
   
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                ! converged and still alive...
-        crystallite_todo(g,i,e) = .false.                                                                 ! ... integration done
-        crystallite_converged(g,i,e) = crystallite_stateJump(g,i,e)                                       ! if state jump fails, then convergence is broken
-        if (.not. crystallite_converged(g,i,e)) then
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
-            !$OMP CRITICAL (checkTodo)
-              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
-            !$OMP END CRITICAL (checkTodo)
-          endif
+      if (crystallite_todo(g,i,e)) then
+        crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
+        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+          !$OMP CRITICAL (checkTodo)
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+          !$OMP END CRITICAL (checkTodo)
         endif
       endif
     enddo; enddo; enddo
@@ -1919,14 +1906,11 @@ endif
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
-      if (.not. crystallite_integrateStress(g,i,e)) then
-        if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
-          !$OMP CRITICAL (checkTodo)
-            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
-          !$OMP END CRITICAL (checkTodo)
-        else                                                                                            ! if broken local...
-          crystallite_todo(g,i,e) = .false.                                                             ! ... skip this one next time
-        endif
+      crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+        !$OMP CRITICAL (checkTodo)
+          crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
+        !$OMP END CRITICAL (checkTodo)
       endif
     endif
   enddo; enddo; enddo
@@ -2225,7 +2209,6 @@ endif
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
-      crystallite_todo(g,i,e) = .false.                                                                   ! done with integration
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
         !$OMP CRITICAL (distributionState)
           debug_StateLoopDistribution(1,numerics_integrationMode) = &
@@ -2392,7 +2375,7 @@ endif
 ! --+>> STATE LOOP <<+--
 
 NiterationState = 0_pInt
-do while (any(crystallite_todo) .and. NiterationState < nState )                                          ! convergence loop for crystallite
+do while (any(crystallite_todo .and. .not. crystallite_converged) .and. NiterationState < nState )          ! convergence loop for crystallite
   NiterationState = NiterationState + 1_pInt
   
   !$OMP PARALLEL
@@ -2416,13 +2399,11 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
-        if (.not. crystallite_integrateStress(g,i,e)) then                                                ! if function call says broken ...
-          crystallite_todo(g,i,e) = .false.                                                               ! ... then skip me
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! ... me is non-local... 
-            !$OMP CRITICAL (checkTodo) 
-              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ... then all non-locals skipped
-            !$OMP END CRITICAL (checkTodo)
-          endif
+        crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
+        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! broken non-local... 
+          !$OMP CRITICAL (checkTodo) 
+            crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ... then all non-locals skipped
+          !$OMP END CRITICAL (checkTodo)
         endif
       endif
     enddo; enddo; enddo
@@ -2549,9 +2530,9 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                  ! converged and still alive...
-        crystallite_todo(g,i,e) = .false.                                                                   ! ... integration done
-        crystallite_converged(g,i,e) = crystallite_stateJump(g,i,e)                                         ! if state jump fails, then convergence is broken
-        if (.not. crystallite_converged(g,i,e)) then
+        crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)                                         
+        if (.not. crystallite_todo(g,i,e)) then                                                             ! if state jump fails, then convergence is broken
+          crystallite_converged(g,i,e) = .false.
           if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2580,7 +2561,6 @@ do while (any(crystallite_todo) .and. NiterationState < nState )                
       crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                     ! ...restart all non-local as not converged
     endif
   endif
-  crystallite_todo = crystallite_todo .and. .not. crystallite_converged                                   ! skip all converged
   
   if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
     !$OMP CRITICAL(write2out)
