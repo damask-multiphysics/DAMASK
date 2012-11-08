@@ -37,8 +37,7 @@ mappings = {
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-generates geom file and material_config file using seeds file
-
+Generate geometry description and material configuration by standard Voronoi tessellation of given seeds file.
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -50,6 +49,8 @@ parser.add_option('--homogenization', dest='homogenization', type='int', \
                                       help='homogenization index to be used')
 parser.add_option('--phase', dest='phase', type='int', \
                              help='phase index to be used')
+parser.add_option('--crystallite', dest='crystallite', type='int', \
+                             help='crystallite index to be used')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                                            help='output material configuration')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
@@ -60,6 +61,7 @@ parser.set_defaults(resolution = [0,0,0])
 parser.set_defaults(dimension  = [0.0,0.0,0.0])
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = 1)
+parser.set_defaults(crystallite    = 1)
 parser.set_defaults(config = False)
 parser.set_defaults(twoD   = False)
                                    
@@ -177,7 +179,7 @@ for file in files:
     file['output'].write('<microstructure>\n')
     for i in xrange(info['grains']):
       file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
-                           'crystallite 1\n' + \
+                           'crystallite %i\n'%options.crystallite + \
                            '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase,str(i+1).rjust(formatwidth)))
   
     file['output'].write('\n<texture>\n')
