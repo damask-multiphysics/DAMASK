@@ -47,7 +47,7 @@ parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                                            help='output material configuration')
 
 parser.set_defaults(column = 1)
-parser.set_defaults(threshold = sys.maxint)
+parser.set_defaults(threshold = 0.0)
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = [1,2])
 parser.set_defaults(crystallite    = 1)
