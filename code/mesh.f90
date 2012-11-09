@@ -537,27 +537,32 @@ subroutine mesh_build_subNodeCoords
  
  implicit none
  integer(pInt) e,t,n,p,Nparents
+ real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) mySubNodeCoord
  
  if (.not. allocated(mesh_subNodeCoord)) then
    allocate(mesh_subNodeCoord(3,mesh_maxNnodes+mesh_maxNsubNodes,mesh_NcpElems))
  endif
  mesh_subNodeCoord = 0.0_pReal
  
+ !$OMP PARALLEL DO PRIVATE(mySubNodeCoord,t,Nparents)
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
+   mySubNodeCoord = 0.0_pReal
    t = mesh_element(2,e)                                                                            ! get elemType
    do n = 1_pInt,FE_Nnodes(t)
-     mesh_subNodeCoord(1:3,n,e) = mesh_node(1:3,mesh_FEasCP('node',mesh_element(4_pInt+n,e)))       ! loop over nodes of this element type
+     mySubNodeCoord(1:3,n) = mesh_node(1:3,mesh_FEasCP('node',mesh_element(4_pInt+n,e)))            ! loop over nodes of this element type
    enddo
    do n = 1_pInt,FE_NsubNodes(t)                                                                    ! now for the true subnodes
      Nparents = count(FE_subNodeParent(1_pInt:FE_Nips(t),n,t) > 0_pInt)
      do p = 1_pInt,Nparents                                                                         ! loop through present parent nodes
-       mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) &
-                = mesh_subNodeCoord(1:3,FE_Nnodes(t)+n,e) &
+       mySubNodeCoord(1:3,FE_Nnodes(t)+n) &
+                = mySubNodeCoord(1:3,FE_Nnodes(t)+n) &
                 + mesh_node(1:3,mesh_FEasCP('node',mesh_element(4_pInt+FE_subNodeParent(p,n,t),e))) ! add up parents
      enddo
-     mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e) = mesh_subNodeCoord(1:3,n+FE_Nnodes(t),e)/real(Nparents,pReal)
+     mySubNodeCoord(1:3,n+FE_Nnodes(t)) = mySubNodeCoord(1:3,n+FE_Nnodes(t)) / real(Nparents,pReal)
    enddo
+   mesh_subNodeCoord(1:3,1:mesh_maxNnodes+mesh_maxNsubNodes,e) = mySubNodeCoord
  enddo 
+ !$OMP END PARALLEL DO
  
 end subroutine mesh_build_subNodeCoords
 
@@ -620,10 +625,10 @@ subroutine mesh_build_ipCoordinates
  integer(pInt) :: e,f,t,i,j,k,n
  logical, dimension(mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNode                                ! flagList to find subnodes determining center of grav
  real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: gravityNodePos                       ! coordinates of subnodes determining center of grav
- real(pReal), dimension(3) :: centerOfGravity
 
  if (.not. allocated(mesh_ipCoordinates)) allocate(mesh_ipCoordinates(3,mesh_maxNips,mesh_NcpElems))
  
+ !$OMP PARALLEL DO PRIVATE(t,gravityNode,gravityNodePos)
  do e = 1_pInt,mesh_NcpElems                                                                       ! loop over cpElems
    t = mesh_element(2,e)                                                                           ! get elemType
    do i = 1_pInt,FE_Nips(t)                                                                        ! loop over IPs of elem
@@ -647,10 +652,10 @@ subroutine mesh_build_ipCoordinates
          enddo
        endif
      enddo
-     centerOfGravity = sum(gravityNodePos,2)/real(count(gravityNode),pReal)
-     mesh_ipCoordinates(:,i,e) = centerOfGravity
+     mesh_ipCoordinates(:,i,e) = sum(gravityNodePos,2)/real(count(gravityNode),pReal)
    enddo
  enddo
+ !$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipCoordinates
 
