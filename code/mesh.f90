@@ -537,7 +537,7 @@ subroutine mesh_build_subNodeCoords
  
  implicit none
  integer(pInt) e,t,n,p,Nparents
- real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) mySubNodeCoord
+ real(pReal), dimension(3,mesh_maxNnodes+mesh_maxNsubNodes) :: mySubNodeCoord
  
  if (.not. allocated(mesh_subNodeCoord)) then
    allocate(mesh_subNodeCoord(3,mesh_maxNnodes+mesh_maxNsubNodes,mesh_NcpElems))
