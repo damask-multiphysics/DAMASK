@@ -12,10 +12,8 @@ module DAMASK_spectral_SolverBasic
  use prec, only: & 
    pInt, &
    pReal
- 
  use math, only: &
    math_I3
- 
  use DAMASK_spectral_Utilities, only: &
    tSolutionState
  
@@ -24,19 +22,23 @@ module DAMASK_spectral_SolverBasic
    DAMASK_spectral_SolverBasic_label = 'basic'
 
 !--------------------------------------------------------------------------------------------------
-! pointwise data
- real(pReal),  private,  dimension(:,:,:,:,:), allocatable ::  F, F_lastInc, Fdot, P
+! pointwise global data
+ real(pReal),  private,  dimension(:,:,:,:,:), allocatable ::  &
+   F, &                                                                                             !< deformation gradient field
+   F_lastInc, &                                                                                     !< deformation gradient field last increment
+   Fdot                                                                                             !< assumed rate for F n to F n+1
  real(pReal),  private,  dimension(:,:,:,:),   allocatable ::  coordinates
- real(pReal),  private,  dimension(:,:,:),     allocatable ::  temperature
+ real(pReal),  private                                     ::  temperature                          !< not pointwise
  
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
  real(pReal), private, dimension(3,3) :: &
-   F_aim = math_I3, &
-   F_aim_lastInc = math_I3, &
-   F_aimDot = 0.0_pReal
+   F_aim = math_I3, &                                                                               !< deformation gradient aim
+   F_aim_lastInc = math_I3, &                                                                       !< deformation gradient aim last increment
+   F_aimDot = 0.0_pReal                                                                             !< assumed rate
  real(pReal), private,dimension(3,3,3,3) :: &
-   C = 0.0_pReal, C_lastInc = 0.0_pReal
+   C = 0.0_pReal, &                                                                                 !< average stiffness
+   C_lastInc = 0.0_pReal                                                                            !< average stiffness last increment
  
 contains
  
@@ -50,27 +52,27 @@ subroutine basic_init()
    IO_read_JobBinaryFile, &
    IO_write_JobBinaryFile, &
    IO_intOut
- 
  use FEsolving, only: &
    restartInc
-
  use DAMASK_interface, only: &
    getSolverJobName
-     
  use DAMASK_spectral_Utilities, only: &
    Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
    debugRestart
-      
  use mesh, only: &
    res, &
    geomdim
 
  implicit none
- integer(pInt) :: i,j,k
- real(pReal), dimension(3,3) :: temp33_Real
- real(pReal), dimension(3,3,3,3) :: temp3333_Real
+ real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
+ integer(pInt) :: &
+   i, j, k
+ real(pReal), dimension(3,3) :: &
+   temp33_Real
+ real(pReal), dimension(3,3,3,3) :: &
+   temp3333_Real
  
 
  call Utilities_Init()
@@ -79,15 +81,15 @@ subroutine basic_init()
 #include "compilation_info.f90"
  write(6,'(a)') ''
   
+!--------------------------------------------------------------------------------------------------
+! allocate global fields
  allocate (F          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (F_lastInc  (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (Fdot       (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (P          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (coordinates(      res(1),  res(2),res(3),3),source = 0.0_pReal)
- allocate (temperature(      res(1),  res(2),res(3)),  source = 0.0_pReal)
    
 !--------------------------------------------------------------------------------------------------
-! init fields                 
+! init fields and average quantities
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
    F_lastInc = F
@@ -127,13 +129,9 @@ subroutine basic_init()
    close (777)
    coordinates = 0.0 ! change it later!!!
  endif
-   call Utilities_constitutiveResponse(coordinates,F,F,temperature,0.0_pReal,&
-                                     P,C,temp33_Real,.false.,math_I3)
+ call Utilities_constitutiveResponse(coordinates,F,F,temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3) ! constitutive response with no deformation in no time to get reference stiffness
  !no rotation bc call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates) 
 
-   
-!--------------------------------------------------------------------------------------------------
-! reference stiffness
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
    temp3333_Real = C
  endif 
@@ -148,7 +146,6 @@ end subroutine basic_init
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function & 
   basic_solution(incInfo,guess,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
- 
  use numerics, only: &
    itmax, &
    itmin, &
@@ -162,11 +159,10 @@ type(tSolutionState) function &
    res,&
    geomdim, &
    deformed_fft, &
- wgt
+   wgt
  use IO, only: &
    IO_write_JobBinaryFile, &
    IO_intOut
-
  use DAMASK_spectral_Utilities, only: &
    tBoundaryCondition, &
    field_real, &
@@ -179,7 +175,6 @@ type(tSolutionState) function &
    Utilities_updateGamma, &
    Utilities_constitutiveResponse, &
    Utilities_calculateRate
-     
  use FEsolving, only: &
    restartWrite, &
    restartRead, &
@@ -190,26 +185,40 @@ type(tSolutionState) function &
  implicit none
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
- real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc
- logical, intent(in) :: guess
- type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
- character(len=*), intent(in) :: incInfo
- real(pReal), dimension(3,3), intent(in) :: rotation_BC
+ real(pReal), intent(in) :: &
+   timeinc, &                                                                                       !< increment in time for current solution
+   timeinc_old, &                                                                                   !< increment in time of last increment
+   temperature_bc                                                                                   !< temperature (I wonder, why it is intent(in)
+ logical, intent(in) :: &
+   guess                                                                                            !< if .false., assume homogeneous addon
+ type(tBoundaryCondition),      intent(in) :: &
+   P_BC,&                                                                                           !< stress boundary conditions
+   F_BC                                                                                             !< deformation boundary conditions
+ character(len=*), intent(in) :: &
+   incInfo                                                                                          !< string with information of current increment for output to screen
+ real(pReal), dimension(3,3), intent(in) :: &
+   rotation_BC                                                                                      !< rotation load to lab
  
- real(pReal), dimension(3,3,3,3)        :: S
- real(pReal), dimension(3,3)            :: F_aim_lab, &
-                                           F_aim_lab_lastIter, &
-                                           P_av
+ real(pReal), dimension(3,3,3,3)        :: &
+   S                                                                                                !< current average compliance 
+ real(pReal), dimension(3,3)            :: &
+    F_aim_lab, &                             
+    F_aim_lab_lastIter, &                                                                           !< aim of last iteration
+    P_av
+ real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal)   :: err_div, err_stress       
  integer(pInt) :: iter, row, column, i, j, k
  logical       :: ForwardData
- real(pReal)   :: defgradDet, defgradDetMax, defgradDetMin
+ real(pReal)   :: & 
+   defgradDet, &
+   defgradDetMax, &
+   defgradDetMin 
  real(pReal), dimension(3,3)            :: temp33_Real 
 
 !--------------------------------------------------------------------------------------------------
-! restart information for spectral solver
+! write restart information for spectral solver
  if (restartWrite) then
    write(6,'(a)') 'writing converged results for restart'
    call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))                        ! writing deformation gradient field to file
@@ -235,14 +244,14 @@ type(tSolutionState) function &
    close(777)
  endif 
 
- if ( cutBack) then 
+!--------------------------------------------------------------------------------------------------
+! forward data 
+ if (cutBack) then  
    F_aim = F_aim_lastInc
    F = F_lastInc
    C = C_lastInc
  else
-  C_lastInc = C
-!--------------------------------------------------------------------------------------------------
-! calculate rate for aim
+   C_lastInc = C
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
    elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
@@ -251,9 +260,7 @@ type(tSolutionState) function &
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
 
-!--------------------------------------------------------------------------------------------------
-! update coordinates and rate and forward last inc
-   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
+   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &               ! update coordinates and rate and forward last inc
                                                                    1.0_pReal,F_lastInc,coordinates)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                                                         timeinc,timeinc_old,guess,F_lastInc,F)
@@ -265,13 +272,13 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
-
  if (update_gamma) call Utilities_updateGamma(C,restartWrite)
  
+!--------------------------------------------------------------------------------------------------
+! iteration till converged
  if (.not. restartRead) ForwardData = .True.
  iter = 0_pInt
  convergenceLoop: do while(iter < itmax)
-   
    iter = iter + 1_pInt
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
@@ -279,16 +286,16 @@ type(tSolutionState) function &
                     ' @ Iter. ', itmin, '≤',iter, '≤', itmax
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
                                                                         math_transpose33(F_aim)
-   F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
+   F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
    basic_solution%termIll = .false.
    call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
                                  P,C,P_av,ForwardData,rotation_BC)
    basic_solution%termIll = terminallyIll
-   terminallyIll = .False.
-   ForwardData = .False.
+   terminallyIll = .false.
+   ForwardData = .false.
    
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
@@ -326,7 +333,6 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
    err_div_tol, &
    err_stress_tolrel, &
    err_stress_tolabs
-  
  use math, only: &
    math_mul33x33, &
    math_eigenvalues33, &
@@ -344,8 +350,6 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
  real(pReal) :: &
    err_stress_tol, &
    pAvgDivL2
- 
-
   
  pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(pAvgDiv,math_transpose33(pAvgDiv)))))                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
  err_stress_tol = min(maxval(abs(pAvgStress))*err_stress_tolrel,err_stress_tolabs)
@@ -363,8 +367,8 @@ end function basic_Converged
 
 subroutine basic_destroy()
  
- use DAMASK_spectral_Utilities, only: &
-   Utilities_destroy
+use DAMASK_spectral_Utilities, only: &
+  Utilities_destroy
  
  implicit none
  call Utilities_destroy()
@@ -372,44 +376,4 @@ subroutine basic_destroy()
 end subroutine basic_destroy
 
 
-
-
 end module DAMASK_spectral_SolverBasic
-
-
-!--------------------------------------------------------------------------------------------------
-! calculate some additional output
- ! if(debugGeneral) then
- !   maxCorrectionSkew = 0.0_pReal
- !   maxCorrectionSym  = 0.0_pReal
- !   temp33_Real = 0.0_pReal
- !   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
- !     maxCorrectionSym  = max(maxCorrectionSym,&
- !                             maxval(math_symmetric33(field_real(i,j,k,1:3,1:3))))
- !     maxCorrectionSkew = max(maxCorrectionSkew,&
- !                             maxval(math_skew33(field_real(i,j,k,1:3,1:3))))
- !     temp33_Real = temp33_Real + field_real(i,j,k,1:3,1:3)
- !   enddo; enddo; enddo
- !   write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
- !                                 maxCorrectionSym*wgt
- !   write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
- !                                 maxCorrectionSkew*wgt
- !   write(6,'(a,1x,es11.4)') 'max sym/skew of avg correction =         ',&
- !                                 maxval(math_symmetric33(temp33_real))/&
- !                                 maxval(math_skew33(temp33_real))
- ! endif
-
-!--------------------------------------------------------------------------------------------------
-! calculate bounds of det(F) and report
-  ! if(debugGeneral) then
-    ! defgradDetMax = -huge(1.0_pReal)
-    ! defgradDetMin = +huge(1.0_pReal)
-    ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-      ! defgradDet = math_det33(F(i,j,k,1:3,1:3))
-      ! defgradDetMax = max(defgradDetMax,defgradDet)
-      ! defgradDetMin = min(defgradDetMin,defgradDet) 
-    ! enddo; enddo; enddo
-
-    ! write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
-    ! write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
-  ! endif

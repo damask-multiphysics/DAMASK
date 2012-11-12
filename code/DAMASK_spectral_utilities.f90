@@ -17,25 +17,28 @@ module DAMASK_spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! variables storing information for spectral method and FFTW
- real(pReal),   public,  dimension(:,:,:,:,:),     pointer     :: field_real                        !< real representation (some stress of deformation) of field_fourier
- type(C_PTR),   private                                        :: plan_forward, plan_backward       !< plans for FFTW
+ real(pReal),   public,  dimension(:,:,:,:,:),     pointer     :: field_real                        !< real representation (some stress or deformation) of field_fourier
+ complex(pReal),private, dimension(:,:,:,:,:),     pointer     :: field_fourier                     !< field on which the Fourier transform operates
  real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                         !< gamma operator (field) for spectral method
  real(pReal),   private, dimension(:,:,:,:),       allocatable :: xi                                !< wave vector field for divergence and for gamma operator
- complex(pReal),private, dimension(:,:,:,:,:),     pointer     :: field_fourier                     !< field on which the Fourier transform operates
  real(pReal),   private, dimension(3,3,3,3)                    :: C_ref                             !< reference stiffness
 
 !--------------------------------------------------------------------------------------------------
 ! debug fftw 
- type(C_PTR),   private                            :: plan_scalarField_forth, plan_scalarField_back !< plans for FFTW in case of debugging the Fourier transform
- complex(pReal),private, dimension(:,:,:), pointer :: scalarField_real                              !< scalar field real representation for debug of FFTW
- complex(pReal),private, dimension(:,:,:), pointer :: scalarField_fourier                           !< scalar field complex representation for debug of FFTW
+ complex(pReal),private, dimension(:,:,:), pointer :: scalarField_real, &                           !< scalar field real representation for debug of FFTW
+                                                      scalarField_fourier                           !< scalar field complex representation for debug of FFTW
  
 !--------------------------------------------------------------------------------------------------
 ! debug divergence
- type(C_PTR),   private                                  :: plan_divergence                         !< plan for FFTW in case of debugging divergence calculation
  real(pReal),   private, dimension(:,:,:,:), pointer     :: divergence_real                         !< scalar field real representation for debugging divergence calculation
  complex(pReal),private, dimension(:,:,:,:), pointer     :: divergence_fourier                      !< scalar field real representation for debugging divergence calculation
  real(pReal),   private, dimension(:,:,:,:), allocatable :: divergence_post                         !< data of divergence calculation using function from core modules (serves as a reference)
+
+!--------------------------------------------------------------------------------------------------
+! plans for FFTW
+ type(C_PTR),   private                            :: plan_scalarField_forth, plan_scalarField_back !< plans for FFTW in case of debugging the Fourier transform
+ type(C_PTR),   private                            :: plan_forward, plan_backward                   !< plans for FFTW
+ type(C_PTR),   private                            :: plan_divergence                               !< plan for FFTW in case of debugging divergence calculation
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
@@ -80,8 +83,8 @@ module DAMASK_spectral_utilities
 contains 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief allocates all neccessary fields, sets debug flags, create plans for fftw
-!> @details Sets the debug levels for general, divergence, restart and fftw from the biwise coding 
+!> @brief allocates all neccessary fields, sets debug flags, create plans for FFTW
+!> @details Sets the debug levels for general, divergence, restart and FFTW from the biwise coding 
 !> provided by the debug module to logicals.
 !> Allocates all fields used by FFTW and create the corresponding plans depending on the debug
 !> level chosen.
@@ -132,8 +135,8 @@ subroutine utilities_init()
  
 !--------------------------------------------------------------------------------------------------
 ! allocation
- allocate (xi         (3,res1_red,res(2),res(3)),      source = 0.0_pReal)                          ! start out isothermally
- tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                      ! allocate continous data using a C function, C_SIZE_T is of type integer(8)
+ allocate (xi(3,res1_red,res(2),res(3)),source = 0.0_pReal)                                         ! frequencies, only half the size for first dimension
+ tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                      ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, field_real,      [ res(1)+2_pInt,res(2),res(3),3,3])                 ! place a pointer for a real representation on tensorField
  call c_f_pointer(tensorField, field_fourier,   [ res1_red,     res(2),res(3),3,3])                 ! place a pointer for a complex representation on tensorField
 
@@ -148,7 +151,7 @@ subroutine utilities_init()
  call fftw_set_timelimit(fftw_timelimit)                                                            ! set timelimit for plan creation
 
 !--------------------------------------------------------------------------------------------------
-! creating plans
+! creating plans for the convolution
  plan_forward =  fftw_plan_many_dft_r2c(3, [res(3),res(2) ,res(1)],        9,&                      ! dimensions,  logical length in each dimension in reversed order,  no. of transforms
                                field_real, [res(3),res(2) ,res(1)+2_pInt],&                         ! input data,  physical length in each dimension in reversed order
                                         1,  res(3)*res(2)*(res(1)+2_pInt),&                         ! striding,    product of physical length in the 3 dimensions
@@ -162,7 +165,7 @@ subroutine utilities_init()
                                         1,  res(3)*res(2)*(res(1)+2_pInt), fftw_planner_flag)       ! striding,    product of physical length in the 3 dimensions,      planner precision
 
 !--------------------------------------------------------------------------------------------------
-! depending on (debug) options, allocate more memory and create additional plans 
+! depending on debug options, allocate more memory and create additional plans 
  if (debugDivergence) then
    divergence = fftw_alloc_complex(int(res1_red*res(2)*res(3)*3_pInt,C_SIZE_T))
    call c_f_pointer(divergence, divergence_real,    [ res(1)+2_pInt,res(2),res(3),3])
@@ -267,7 +270,7 @@ end subroutine utilities_updateGamma
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> Does an unweighted FFT transform from real to complex.
+!> @detailed Does an unweighted FFT transform from real to complex.
 !> In case of debugging the FFT, also one component of the tensor (specified by row and column)
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !--------------------------------------------------------------------------------------------------
@@ -326,7 +329,7 @@ end subroutine utilities_FFTforward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in field_fourier to field_real
-!> Does an inverse FFT transform from complex to real
+!> @detailed Does an inverse FFT transform from complex to real
 !> In case of debugging the FFT, also one component of the tensor (specified by row and column)
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !> results is weighted by number of points stored in wgt
@@ -343,7 +346,7 @@ subroutine utilities_FFTbackward(row,column)
  integer(pInt) ::  i, j, k, m, n
   
 !--------------------------------------------------------------------------------------------------
-! unpack FFT data for conj complex symmetric part
+! unpack FFT data for conj complex symmetric part. This data is not transformed when using c2r
  if (debugFFTW) then
    scalarField_fourier = field_fourier(1:res1_red,1:res(2),1:res(3),row,column)
    do i = 0_pInt, res(1)/2_pInt-2_pInt
@@ -377,6 +380,29 @@ subroutine utilities_FFTbackward(row,column)
   
   field_real = field_real * wgt                                                                     ! normalize the result by number of elements
 
+!--------------------------------------------------------------------------------------------------
+! calculate some additional output
+ ! if(debugGeneral) then
+ !   maxCorrectionSkew = 0.0_pReal
+ !   maxCorrectionSym  = 0.0_pReal
+ !   temp33_Real = 0.0_pReal
+ !   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+ !     maxCorrectionSym  = max(maxCorrectionSym,&
+ !                             maxval(math_symmetric33(field_real(i,j,k,1:3,1:3))))
+ !     maxCorrectionSkew = max(maxCorrectionSkew,&
+ !                             maxval(math_skew33(field_real(i,j,k,1:3,1:3))))
+ !     temp33_Real = temp33_Real + field_real(i,j,k,1:3,1:3)
+ !   enddo; enddo; enddo
+ !   write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
+ !                                 maxCorrectionSym*wgt
+ !   write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
+ !                                 maxCorrectionSkew*wgt
+ !   write(6,'(a,1x,es11.4)') 'max sym/skew of avg correction =         ',&
+ !                                 maxval(math_symmetric33(temp33_real))/&
+ !                                 maxval(math_skew33(temp33_real))
+ ! endif
+
+
 end subroutine utilities_FFTbackward
 
 
@@ -397,7 +423,7 @@ subroutine utilities_fourierConvolution(fieldAim)
  real(pReal), intent(in), dimension(3,3) :: fieldAim                                                !< desired average value of the field after convolution
  real(pReal),             dimension(3,3) :: xiDyad, temp33_Real
  real(pReal)                             :: filter                                                  !< weighting of current component
- complex(pReal),          dimension(3,3) ::  temp33_complex
+ complex(pReal),          dimension(3,3) :: temp33_complex
  integer(pInt) :: &
    i, j, k, &
    l, m, n, o
@@ -621,7 +647,7 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
    CPFEM_general
  
  implicit none
- real(pReal), intent(inout), dimension(res(1),res(2),res(3))     :: temperature                     !< temperature field
+ real(pReal), intent(inout)                                      :: temperature                     !< temperature (no field)
  real(pReal), intent(in),    dimension(res(1),res(2),res(3),3)   :: coordinates                     !< coordinates field
  real(pReal), intent(in),    dimension(3,3,res(1),res(2),res(3)) :: &
    F_lastInc, &                                                                                     !< target deformation gradient
@@ -655,7 +681,20 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
   calcMode = 2_pInt
   collectMode = 5_pInt
  endif
- 
+!--------------------------------------------------------------------------------------------------
+! calculate bounds of det(F) and report
+  ! if(debugGeneral) then
+    ! defgradDetMax = -huge(1.0_pReal)
+    ! defgradDetMin = +huge(1.0_pReal)
+    ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+      ! defgradDet = math_det33(F(i,j,k,1:3,1:3))
+      ! defgradDetMax = max(defgradDetMax,defgradDet)
+      ! defgradDetMin = min(defgradDetMin,defgradDet) 
+    ! enddo; enddo; enddo
+
+    ! write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
+    ! write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
+  ! endif
  if (DebugGeneral) write(6,*) 'collect mode: ', collectMode,' calc mode: ', calcMode
  flush(6)
  
@@ -664,7 +703,7 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
    ielem = ielem + 1_pInt
    call CPFEM_general(collectMode,&                                                                 ! collect cycle
                        coordinates(i,j,k,1:3), F_lastInc(1:3,1:3,i,j,k),F(1:3,1:3,i,j,k), &
-                       temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
+                       temperature,timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
    collectMode = 3_pInt
  enddo; enddo; enddo
 
@@ -676,7 +715,7 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
    ielem = ielem + 1_pInt
    call CPFEM_general(calcMode,&                                                                    ! first element in first iteration retains CPFEM_mode 1, 
                       coordinates(i,j,k,1:3),F_lastInc(1:3,1:3,i,j,k), F(1:3,1:3,i,j,k), &          ! others get 2 (saves winding forward effort)
-                      temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
+                      temperature,timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
    calcMode = 2_pInt
    C = C + dPdF
  enddo; enddo; enddo
@@ -711,7 +750,7 @@ pure function utilities_calculateRate(delta_aim,timeinc,timeinc_old,guess,field_
    field                                                                                            !< data of current step
  real(pReal),             dimension(3,3,res(1),res(2),res(3)) :: utilities_calculateRate
  
- if (guess) then
+ if(guess) then
    utilities_calculateRate = (field-field_lastInc) / timeinc_old
  else
    utilities_calculateRate = spread(spread(spread(delta_aim,3,res(1)),4,res(2)),5,res(3))/timeinc
