@@ -156,7 +156,7 @@ rm -f $job.log
 unset PYTHONHOME
 unset PYTHONPATH
 
-"${DIR}/tools/run_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
+"${DIR}/tools/run_h_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
                         $srcfile $restart $postfile $viewfactorsfile $hostfile \
                         $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
                         $nthread $nsolver $mode $gpu > /dev/null 2>&1

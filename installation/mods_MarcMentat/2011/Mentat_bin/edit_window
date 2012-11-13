@@ -9,4 +9,4 @@ else
 fi
 
 # $dir/xterm -T "vi $*" -n "vi $*" -e vi $*
-kwrite $*
+%EDITOR% $*

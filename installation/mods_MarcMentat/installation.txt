@@ -7,7 +7,7 @@ Usually you will need to be root for this to work!
 This is for the Linux64 version of Marc/Mentat2010(.2)/11.
 See Marc and Mentat Release Guide for List of Build and Supported Platforms!
 
-The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1(_18)! The 2011 release of Marc/Mentat relies on Intel Fortran 12.0! Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly, refer to the Intel installation guide for instructions on how to do this.
+The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1(_18)! The 2011/2012 release of Marc/Mentat relies on Intel Fortran 12.0! Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly, refer to the Intel installation guide for instructions on how to do this.
 
 The AMD Core Math Library or an other BLAS implementation (currently IMKL and LAPACK are supported) needs to be installed! 
 Add acml path to LD_LIBRARY_PATH, to do so either use the script setup_shellrc.py in the installstion folder or for a systemwide setup edit /etc/csh.cshrc.local and/or /etc/bash.bashrc.local.
@@ -15,12 +15,7 @@ Assuming ACML is installed in path ACMLDIR the path should read: /ACMLDIR/ifort6
  for bash: LD_LIBRARY_PATH="/ACMLDIR/ifort64_mp/lib:${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH
  for csh:  setenv LD_LIBRARY_PATH /ACMLDIR/ifort64_mp/lib:${LD_LIBRARY_PATH}
  
-FFTW needs to be installed. The code is tested with fftw3.3. To install it unpack the *tar.gz file and run:
-  ./configure --enable-threads --enable-sse2 --enable-shared
-  make
-  make install
-
-As the apply_DAMASK_modifications script has to fix the path for both the BLAS and for FFTW both need to be installed in a place that can be accessed by all users of the system. In addition you have to specify the respective locations in DAMASK_ROOT/lib/pathInfo. 
+As the apply_DAMASK_modifications script has to fix the path for the BLAS it needs to be installed in a place that can be accessed by all users of the system. In addition you have to specify the respective locations in DAMASK_ROOT/lib/pathInfo. 
 
 1) Install Marc, Mentat and Documentation as usual
    Run the test example including subroutines to confirm that the installation of both Marc/Mentat and the Intel Fortran Compiler is ok!
@@ -34,13 +29,13 @@ The structure of this directory should be (VERSION = 2010 or 2010.2 or 2011):
 ./installation.txt                          this text
 ./apply_MPIE_modifications                  script file to apply modifications to the installation
 ./VERSION/Marc_tools/comp_user.org          original file from installation
-./VERSION/Marc_tools/comp_user              modified
-./VERSION/Marc_tools/comp_user_h            modified version using -O3 optimization
-./VERSION/Marc_tools/comp_user_mp           modified version using -O3 optimization and OpenMP
+./VERSION/Marc_tools/comp_user              modified version using -O1 optimization
+./VERSION/Marc_tools/comp_user_h            modified version using -O2 optimization
+./VERSION/Marc_tools/comp_user_mp           modified version using -O1 optimization and OpenMP
 ./VERSION/Marc_tools/run_marc.org           original file from installation
-./VERSION/Marc_tools/run_marc               modified version
-./VERSION/Marc_tools/run_h_marc             modified version using -O3 optimization
-./VERSION/Marc_tools/run_mp_marc            modified version using -O3 optimization and OpenMP
+./VERSION/Marc_tools/run_marc               modified version using -O1 optimization
+./VERSION/Marc_tools/run_h_marc             modified version using -O2 optimization
+./VERSION/Marc_tools/run_mp_marc            modified version using -O1 optimization and OpenMP
 ./VERSION/Marc_tools/include_linux64.org    original file from installation
 ./VERSION/Marc_tools/include_linux64        modified version
 ./VERSION/Mentat_bin/edit_window.org        original file from installation

@@ -2865,14 +2865,14 @@ then
     then
         if test $MACHINENAME = "CRAY"
         then
-            $FORTHIGHMP $user || \
+            $FORTRANMP $user || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         else
-            $FORTHIGHMP $user -o $userobj || \
+            $FORTRANMP $user -o $userobj || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1
@@ -3156,7 +3156,7 @@ then
     userobj=$usernoext.o
         if test $MACHINENAME = "CRAY"
         then
-            $FORTHIGHMP $user || \
+            $FORTRANMP $user || \
                 {
                 echo "$0: compile failed for $user"
                 echo "         $PRODUCT Exit number 3"
@@ -3164,7 +3164,7 @@ then
                 }
             /bin/rm $program 2>/dev/null
         else
-            $FORTHIGHMP $user -o $userobj || \
+            $FORTRANMP $user -o $userobj || \
                 {
                 echo "$0: compile failed for $user"
                 echo "         $PRODUCT Exit number 3"
@@ -3450,14 +3450,14 @@ then
     userobj=$usernoext.o
         if test $MACHINENAME = "CRAY"
         then
-            $FORTHIGHMP $user || \
+            $FORTRANMP $user || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1
                 }
             /bin/rm $program 2>/dev/null
         else
-            $FORTHIGHMP $user -o $userobj || \
+            $FORTRANMP $user -o $userobj || \
                 {
                 echo "$0: compile failed for $user"
                 exit 1

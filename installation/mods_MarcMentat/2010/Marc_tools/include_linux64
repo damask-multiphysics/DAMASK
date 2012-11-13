@@ -296,13 +296,13 @@ then
 fi
 
 if test "$MARC_INTEGER_SIZE" = "i4" ; then
-  I8FFLAGS=
-  I8DEFINES=
+  I8FFLAGS="-real-size 64 -integer-size 32"
+  I8DEFINES="-DFLOAT=8 -DINT=4"
   I8CDEFINES=
   I8CASIDEFS=
 else
-  I8FFLAGS="-i8"
-  I8DEFINES="-DI64"
+  I8FFLAGS="-i8 -real-size 64 -integer-size 64"
+  I8DEFINES="-DI64 -DFLOAT=8 -DINT=8"
   I8CDEFINES="-U_DOUBLE -D_SINGLE"
   I8CASIDEFS="-DCASI_64BIT_INT=1"
 fi
@@ -367,10 +367,13 @@ FORTLOW="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+ -openmp -openmp_report2 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp -WB -w90 -fno-alias -O3 \
- -openmp -openmp_report2 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
+ -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp -WB -w90 -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
+ -openmp -openmp_report2 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -fpp -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
@@ -381,10 +384,13 @@ then
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
+   -openmp -openmp_report2 $I8FFLAGS \
+   -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp -WB -w90 -fno-alias -O3 \
-   -openmp -openmp_report2 $I8FFLAGS -I$MARC_SOURCE/common \
+  FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+   -openmp -openmp_report2 $I8FFLAGS \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -fpp -zero -mp -WB -w90 -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"

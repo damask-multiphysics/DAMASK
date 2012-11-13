@@ -16,7 +16,7 @@ DIRJOB=$2
 cd $DIRJOB
 echo "Compiling and linking user subroutine $user on host `hostname`"
 echo "program: $program"
-        $FORTHIGHMP $user || \
+        $FORTRANMP $user || \
 		{
 		echo "$0: compile failed for $user"
 		exit 1

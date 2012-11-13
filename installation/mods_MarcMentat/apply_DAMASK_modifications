@@ -29,16 +29,14 @@ INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
 echo "MSC installation path: $INSTALLDIR"
 
 BLASDIR=''
-FFTWDIR=''
 BLASTYPE=''
 if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  IKMLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i ikml | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+  IMKLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i imkl | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
   ACMLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i acml | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
   LAPACKDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i lapack | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  FFTWDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i fftw | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  if [ -d "$IKMLDIR" ]; then
-    BLASDIR=$IKMLDIR
-    BLASTYPE='IKML'
+  if [ -d "$IMKLDIR" ]; then
+    BLASDIR=$IMKLDIR
+    BLASTYPE='IMKL'
   elif [ -d "$ACMLDIR" ]; then
     BLASDIR=$ACMLDIR
     BLASTYPE='ACML'
@@ -52,20 +50,14 @@ while [ ! -d "$BLASDIR" ] || [ -z "$BLASDIR" ]
 do
   echo "Input path of BLAS installation:"
   read BLASDIR
-  echo "Input type of BLAS installation [IKML | ACML | LAPACK]:"
+  echo "Input type of BLAS installation [IMKL | ACML | LAPACK]:"
   read BLASTYPE
 done
 
-if [ ! -d "$FFTWDIR" ]; then
-  echo "error, FFTW must be installed and specified in DAMASK_ROOT/lib/pathinfo"
-  exit
-fi
-
 BLASDIR=${BLASDIR%/}               # remove trailing slash
-FFTWDIR=${FFTWDIR%/}               # remove trailing slash
 
 case $BLASTYPE in
-    IKML | ikml) 
+    IMKL | imkl) 
     BLAS=" -mkl"
     ;;
     ACML | acml) 
@@ -75,12 +67,22 @@ case $BLASTYPE in
     BLAS=" -L$BLASDIR/lib64 -L$BLASDIR/lib -llapack"
     ;;
     *)
-    echo "error, BLAS type must be IKML, ACML, or LAPACK"
+    echo "error, BLAS type must be IMKL, ACML, or LAPACK"
     exit
     ;;
 esac
 
-FFTW=" -L$FFTWDIR/lib -lfftw3"
+DEFAULT_EDITOR='vi'
+EDITOR=''
+while [ -z "$EDITOR" ]
+do
+  echo "Input command to invoke your preferred editor: [${DEFAULT_EDITOR}]"
+  read EDITOR
+  if [ -z "$EDITOR" ]; then
+    VERSION=${DEFAULT_EDITOR}
+  fi
+done
+echo "MSC version: $VERSION"
 
 # tools
 echo ''
@@ -97,7 +99,6 @@ for filename in 'comp_user' \
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%BLAS%:${BLAS}:g"
-  echo $theDIR/$filename | xargs perl -pi -e "s:%FFTW%:${FFTW}:g"
   echo $filename
 done
 
@@ -112,6 +113,7 @@ for filename in 'edit_window' \
   cp $WORKINGDIR/$VERSION/Mentat_bin/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
+  echo $theDIR/$filename | xargs perl -pi -e "s:%EDITOR%:${EDITOR}:g"
   echo $filename
 done
 
