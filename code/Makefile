@@ -38,13 +38,13 @@ SHELL = /bin/sh
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 
-#auto values will be set by setup_code.py
-FFTWROOT   := auto
-IMKLROOT   := auto
-ACMLROOT   := auto
-LAPACKROOT := auto
+#any values will be overwritten by setup_code.py
+FFTWROOT   ?= auto
+IMKLROOT   ?= auto
+ACMLROOT   ?= auto
+LAPACKROOT ?= auto
 
-
+# if F90 empty: ifort if present, otherwise gfortran
 ifeq ($(wildcard ifort),)
 F90?=gfortran
 else

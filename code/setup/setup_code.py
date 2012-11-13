@@ -76,13 +76,13 @@ content = makefile.readlines()
 makefile.close()
 makefile = open(os.path.join(baseDir,'Makefile'),'w')
 for line in content:
-  m = re.match(r'(FFTW|IMKL|ACML|LAPACK)ROOT\s*:?=',line)
+  m = re.match(r'(FFTW|IMKL|ACML|LAPACK)ROOT\s*\?=',line)
   if m:
     if m.group(1).lower() in damaskEnv.pathInfo:
       substitution = damaskEnv.pathInfo[m.group(1).lower()]
     else:
       substitution = ''
-    line = '%sROOT := %s\n'%(m.group(1),substitution)
+    line = '%sROOT ?= %s\n'%(m.group(1),substitution)
   makefile.write(line)
 makefile.close()
 

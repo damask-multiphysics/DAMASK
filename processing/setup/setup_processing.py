@@ -2,7 +2,7 @@
 
 # Makes postprocessing routines acessible from everywhere.
 
-import os,sys,glob,string
+import os,sys,glob,string,subprocess
 from damask import Environment
 from optparse import OptionParser, Option
 
@@ -41,8 +41,9 @@ compilers = ['intel','ifort','intel32','gfortran','gnu95']
 
 parser.add_option('--F90', '--f90',     dest='compiler', type='string', \
                                         help='name of F90 compiler')
-                                        
-parser.set_defaults(compiler  = 'ifort')  
+parser.set_defaults(compiler  = {True:'ifort',False:'gfortran'}[\
+                                 subprocess.call(['which', 'ifort'],\
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0])
 (options,filenames) = parser.parse_args()
 
 if options.compiler not in compilers:
