@@ -44,11 +44,16 @@ IMKLROOT   := auto
 ACMLROOT   := auto
 LAPACKROOT := auto
 
-F90 ?= ifort
+
+ifeq ($(wildcard ifort),)
+F90?=gfortran
+else
+F90?=ifort
+endif
+
 COMPILERNAME ?= $(F90)
 
 INCLUDE_DIRS +=-I$(DAMASK_ROOT)/lib
-
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
