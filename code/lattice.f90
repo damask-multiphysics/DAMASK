@@ -236,7 +236,7 @@ module lattice
 
  real(pReal), dimension(3+3,lattice_bcc_Nslip), parameter, private :: &
    lattice_bcc_systemSlip = reshape(real([&
-    ! Slip system <111>{110}  meaningful sorting?
+    ! Slip system <111>{110} 
       1,-1, 1,     0, 1, 1, &
      -1,-1, 1,     0, 1, 1, &
       1, 1, 1,     0,-1, 1, &
@@ -249,7 +249,7 @@ module lattice
      -1, 1,-1,     1, 1, 0, &
       1, 1, 1,    -1, 1, 0, &
       1, 1,-1,    -1, 1, 0, &
-    ! Slip system <111>{112} meaningful sorting ?
+    ! Slip system <111>{112}
      -1, 1, 1,     2, 1, 1, &
       1, 1, 1,    -2, 1, 1, &
       1, 1,-1,     2,-1, 1, &
@@ -262,7 +262,7 @@ module lattice
       1,-1, 1,    -1, 1, 2, &
      -1, 1, 1,     1,-1, 2, &
       1, 1, 1,     1, 1,-2, &
-    ! Slip system <111>{123} meaningful sorting ?
+    ! Slip system <111>{123}
      ! 1, 1,-1,     1, 2, 3, &
      ! 1,-1, 1,    -1, 2, 3, &
      !-1, 1, 1,     1,-2, 3, &
@@ -291,19 +291,19 @@ module lattice
 
  real(pReal), dimension(3+3,lattice_bcc_Ntwin), parameter, private :: &
    lattice_bcc_systemTwin = reshape(real([&
-    ! Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
-     -2, 1, 1,     1, 1, 1, &
-      1,-2, 1,     1, 1, 1, &
-      1, 1,-2,     1, 1, 1, &
-      2,-1, 1,    -1,-1, 1, &
-     -1, 2, 1,    -1,-1, 1, &
-     -1,-1,-2,    -1,-1, 1, &
-     -2,-1,-1,     1,-1,-1, &
-      1, 2,-1,     1,-1,-1, &
-      1,-1, 2,     1,-1,-1, &
-      2, 1,-1,    -1, 1,-1, &
-     -1,-2,-1,    -1, 1,-1, &
-     -1, 1, 2,    -1, 1,-1  &
+    ! Twin system <111>{112}
+     -1, 1, 1,     2, 1, 1, &
+      1, 1, 1,    -2, 1, 1, &
+      1, 1,-1,     2,-1, 1, &
+      1,-1, 1,     2, 1,-1, &
+      1,-1, 1,     1, 2, 1, &
+      1, 1,-1,    -1, 2, 1, &
+      1, 1, 1,     1,-2, 1, &
+     -1, 1, 1,     1, 2,-1, &
+      1, 1,-1,     1, 1, 2, &
+      1,-1, 1,    -1, 1, 2, &
+     -1, 1, 1,     1,-1, 2, &
+      1, 1, 1,     1, 1,-2  &
      ],pReal),[ 3_pInt + 3_pInt,lattice_bcc_Ntwin])
 
  real(pReal), dimension(lattice_bcc_Ntwin), parameter, private :: &
@@ -320,7 +320,7 @@ module lattice
      0.7071067812_pReal, &
      0.7071067812_pReal, &
      0.7071067812_pReal  &
-     ],[lattice_bcc_Ntwin])     ! Twin system {111}<112>  just a dummy
+     ],[lattice_bcc_Ntwin])
 
 !> slip--slip interactions for BCC structures (2) 
  integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Nslip), target, private :: &
