@@ -289,8 +289,6 @@ module lattice
      ! 1,-1, 1,     3, 2,-1  &
      ],pReal),[ 3_pInt + 3_pInt ,lattice_bcc_Nslip])
 
-! twin system <111>{112}
-! MISSING: not implemented yet -- now dummy copy from fcc !!
  real(pReal), dimension(3+3,lattice_bcc_Ntwin), parameter, private :: &
    lattice_bcc_systemTwin = reshape(real([&
     ! Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
@@ -377,7 +375,6 @@ module lattice
      2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1  &
      ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip]))
 
-!> slip--twin interactions for BCC structures (2) MISSING: not implemented yet
  integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Ntwin), target, private :: &
   lattice_bcc_interactionSlipTwin = transpose(reshape(int( [&
      3,3,3,2,2,3,3,3,3,2,3,3, &  ! ---> twin
@@ -403,7 +400,7 @@ module lattice
      3,3,2,3,3,2,3,3,1,3,3,3, &
      3,3,3,2,2,3,3,3,3,1,3,3, &
      2,3,3,3,3,3,3,2,3,3,1,3, &
-     3,2,3,3,3,3,2,3,3,3,3,1 &
+     3,2,3,3,3,3,2,3,3,3,3,1  &
      ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Nslip]))
     !< Interaction types
     !< 1 --- coplanar interaction
@@ -412,20 +409,7 @@ module lattice
 
 !>twin--slip interactions for BCC structures (2) MISSING: not implemented yet
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), target, private :: &
-   lattice_bcc_interactionTwinSlip = transpose(reshape(int( [&
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! ---> slip
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! v twin
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0  &
-     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Ntwin]))
+   lattice_fcc_interactionTwinSlip = 0_pInt
 
 !> twin-twin interactions for BCC structures (2) MISSING: not implemented yet
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin), target, private :: &
