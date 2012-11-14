@@ -40,7 +40,7 @@ parser.set_defaults(makeOptions = ['F90=ifort'])
 architectures = { 
                  'marc': { 
                           'parent': 'DAMASK_marc.f90', 
-                          'versions' : ['%%MARCVERSION%%','2007r1','2008r1','2010','2011','2012'],
+                          'versions' : ['%%MARCVERSION%%','2010','2011','2012'],
                          }, 
                 }
 
