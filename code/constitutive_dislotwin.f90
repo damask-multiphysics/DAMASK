@@ -44,23 +44,19 @@ character(len=18), dimension(4), parameter:: constitutive_dislotwin_listDependen
 real(pReal), parameter :: kB = 1.38e-23_pReal ! Boltzmann constant in J/Kelvin
 
 !* Definition of global variables
-integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_sizeDotState, &                ! number of dotStates
+integer(pInt),     dimension(:),           allocatable :: constitutive_dislotwin_sizeDotState, &                ! number of dotStates
                                                           constitutive_dislotwin_sizeState, &                   ! total number of microstructural state variables
                                                           constitutive_dislotwin_sizePostResults                ! cumulative size of post results
-integer(pInt), dimension(:,:), allocatable, target ::     constitutive_dislotwin_sizePostResult                 ! size of each post result output
+integer(pInt),     dimension(:,:), allocatable, target :: constitutive_dislotwin_sizePostResult                 ! size of each post result output
 character(len=64), dimension(:,:), allocatable, target :: constitutive_dislotwin_output                         ! name of each post result output
-integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_Noutput                        ! number of outputs per instance of this plasticity 
-character(len=32), dimension(:), allocatable ::           constitutive_dislotwin_structureName                  ! name of the lattice structure
-integer(pInt), dimension(:), allocatable ::               constitutive_dislotwin_structure, &                   ! number representing the kind of lattice structure
+integer(pInt),     dimension(:),           allocatable :: constitutive_dislotwin_Noutput                        ! number of outputs per instance of this plasticity 
+character(len=32), dimension(:),           allocatable :: constitutive_dislotwin_structureName                  ! name of the lattice structure
+integer(pInt),     dimension(:),           allocatable :: constitutive_dislotwin_structure, &                   ! number representing the kind of lattice structure
                                                           constitutive_dislotwin_totalNslip, &                  ! total number of active slip systems for each instance
                                                           constitutive_dislotwin_totalNtwin                     ! total number of active twin systems for each instance
-integer(pInt), dimension(:,:), allocatable ::             constitutive_dislotwin_Nslip, &                       ! number of active slip systems for each family and instance
-                                                          constitutive_dislotwin_Ntwin, &                       ! number of active twin systems for each family and instance
-                                                          constitutive_dislotwin_slipFamily, &                  ! lookup table relating active slip system to slip family for each instance
-                                                          constitutive_dislotwin_twinFamily, &                  ! lookup table relating active twin system to twin family for each instance
-                                                          constitutive_dislotwin_slipSystemLattice, &           ! lookup table relating active slip system index to lattice slip system index for each instance
-                                                          constitutive_dislotwin_twinSystemLattice              ! lookup table relating active twin system index to lattice twin system index for each instance
-real(pReal), dimension(:), allocatable ::                 constitutive_dislotwin_CoverA, &                      ! c/a ratio for hex type lattice
+integer(pInt),     dimension(:,:),         allocatable :: constitutive_dislotwin_Nslip, &                       ! number of active slip systems for each family and instance
+                                                          constitutive_dislotwin_Ntwin                          ! number of active twin systems for each family and instance
+real(pReal),       dimension(:),           allocatable :: constitutive_dislotwin_CoverA, &                      ! c/a ratio for hex type lattice
                                                           constitutive_dislotwin_C11, &                         ! C11 element in elasticity matrix
                                                           constitutive_dislotwin_C12, &                         ! C12 element in elasticity matrix
                                                           constitutive_dislotwin_C13, &                         ! C13 element in elasticity matrix
@@ -90,7 +86,7 @@ real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin
 real(pReal),       dimension(:,:,:,:),     allocatable :: constitutive_dislotwin_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
 real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_dislotwin_Cslip_3333                     ! elasticity matrix for each instance
 real(pReal),       dimension(:,:,:,:,:,:), allocatable :: constitutive_dislotwin_Ctwin_3333                     ! twin elasticity matrix for each instance
-real(pReal), dimension(:,:), allocatable ::               constitutive_dislotwin_rhoEdge0, &                    ! initial edge dislocation density per slip system for each family and instance
+real(pReal),       dimension(:,:),         allocatable :: constitutive_dislotwin_rhoEdge0, &                    ! initial edge dislocation density per slip system for each family and instance
                                                           constitutive_dislotwin_rhoEdgeDip0, &                 ! initial edge dipole density per slip system for each family and instance
                                                           constitutive_dislotwin_burgersPerSlipFamily, &        ! absolute length of burgers vector [m] for each slip family and instance
                                                           constitutive_dislotwin_burgersPerSlipSystem, &        ! absolute length of burgers vector [m] for each slip system and instance
@@ -106,16 +102,16 @@ real(pReal), dimension(:,:), allocatable ::               constitutive_dislotwin
                                                           constitutive_dislotwin_twinsizePerTwinSystem, &       ! twin thickness [m] for each twin system and instance
                                                           constitutive_dislotwin_CLambdaSlipPerSlipFamily, &    ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
                                                           constitutive_dislotwin_CLambdaSlipPerSlipSystem, &    ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-                                                          constitutive_dislotwin_interactionSlipSlip, &         ! coefficients for slip-slip interaction for each interaction type and instance
-                                                          constitutive_dislotwin_interactionSlipTwin, &         ! coefficients for slip-twin interaction for each interaction type and instance
-                                                          constitutive_dislotwin_interactionTwinSlip, &         ! coefficients for twin-slip interaction for each interaction type and instance
-                                                          constitutive_dislotwin_interactionTwinTwin            ! coefficients for twin-twin interaction for each interaction type and instance
-real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin_interactionMatrixSlipSlip, &   ! interaction matrix of the different slip systems for each instance
-                                                          constitutive_dislotwin_interactionMatrixSlipTwin, &   ! interaction matrix of slip systems with twin systems for each instance
-                                                          constitutive_dislotwin_interactionMatrixTwinSlip, &   ! interaction matrix of twin systems with slip systems for each instance
-                                                          constitutive_dislotwin_interactionMatrixTwinTwin, &   ! interaction matrix of the different twin systems for each instance
+                                                          constitutive_dislotwin_interaction_SlipSlip, &        ! coefficients for slip-slip interaction for each interaction type and instance
+                                                          constitutive_dislotwin_interaction_SlipTwin, &        ! coefficients for slip-twin interaction for each interaction type and instance
+                                                          constitutive_dislotwin_interaction_TwinSlip, &        ! coefficients for twin-slip interaction for each interaction type and instance
+                                                          constitutive_dislotwin_interaction_TwinTwin           ! coefficients for twin-twin interaction for each interaction type and instance
+real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin_interactionMatrix_SlipSlip, &  ! interaction matrix of the different slip systems for each instance
+                                                          constitutive_dislotwin_interactionMatrix_SlipTwin, &  ! interaction matrix of slip systems with twin systems for each instance
+                                                          constitutive_dislotwin_interactionMatrix_TwinSlip, &  ! interaction matrix of twin systems with slip systems for each instance
+                                                          constitutive_dislotwin_interactionMatrix_TwinTwin, &  ! interaction matrix of the different twin systems for each instance
                                                           constitutive_dislotwin_forestProjectionEdge           ! matrix of forest projections of edge dislocations for each instance
-real(pReal), dimension(:,:,:,:,:),        allocatable ::  constitutive_dislotwin_sbSv
+real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_dislotwin_sbSv
 
 CONTAINS
 !****************************************
@@ -185,14 +181,6 @@ allocate(constitutive_dislotwin_Nslip(lattice_maxNslipFamily,maxNinstance))
          constitutive_dislotwin_Nslip = 0_pInt
 allocate(constitutive_dislotwin_Ntwin(lattice_maxNtwinFamily,maxNinstance))
          constitutive_dislotwin_Ntwin = 0_pInt
-allocate(constitutive_dislotwin_slipFamily(lattice_maxNslip,maxNinstance))
-         constitutive_dislotwin_slipFamily = 0_pInt
-allocate(constitutive_dislotwin_twinFamily(lattice_maxNtwin,maxNinstance))
-         constitutive_dislotwin_twinFamily = 0_pInt
-allocate(constitutive_dislotwin_slipSystemLattice(lattice_maxNslip,maxNinstance))
-         constitutive_dislotwin_slipSystemLattice = 0_pInt
-allocate(constitutive_dislotwin_twinSystemLattice(lattice_maxNtwin,maxNinstance))
-         constitutive_dislotwin_twinSystemLattice = 0_pInt
 allocate(constitutive_dislotwin_totalNslip(maxNinstance))
          constitutive_dislotwin_totalNslip  = 0_pInt
 allocate(constitutive_dislotwin_totalNtwin(maxNinstance))
@@ -271,14 +259,14 @@ allocate(constitutive_dislotwin_twinsizePerTwinFamily(lattice_maxNtwinFamily,max
          constitutive_dislotwin_twinsizePerTwinFamily = 0.0_pReal
 allocate(constitutive_dislotwin_CLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance))
          constitutive_dislotwin_CLambdaSlipPerSlipFamily = 0.0_pReal
-allocate(constitutive_dislotwin_interactionSlipSlip(lattice_maxNinteraction,maxNinstance))
-         constitutive_dislotwin_interactionSlipSlip = 0.0_pReal
-allocate(constitutive_dislotwin_interactionSlipTwin(lattice_maxNinteraction,maxNinstance))
-         constitutive_dislotwin_interactionSlipTwin = 0.0_pReal
-allocate(constitutive_dislotwin_interactionTwinSlip(lattice_maxNinteraction,maxNinstance))
-         constitutive_dislotwin_interactionTwinSlip = 0.0_pReal
-allocate(constitutive_dislotwin_interactionTwinTwin(lattice_maxNinteraction,maxNinstance))
-         constitutive_dislotwin_interactionTwinTwin = 0.0_pReal
+allocate(constitutive_dislotwin_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance))
+         constitutive_dislotwin_interaction_SlipSlip = 0.0_pReal
+allocate(constitutive_dislotwin_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance))
+         constitutive_dislotwin_interaction_SlipTwin = 0.0_pReal
+allocate(constitutive_dislotwin_interaction_TwinSlip(lattice_maxNinteraction,maxNinstance))
+         constitutive_dislotwin_interaction_TwinSlip = 0.0_pReal
+allocate(constitutive_dislotwin_interaction_TwinTwin(lattice_maxNinteraction,maxNinstance))
+         constitutive_dislotwin_interaction_TwinTwin = 0.0_pReal
 allocate(constitutive_dislotwin_sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
          constitutive_dislotwin_sbSv = 0.0_pReal
 
@@ -384,18 +372,18 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_CEdgeDipMinDistance(i) = IO_floatValue(line,positions,2_pInt)
        case ('catomicvolume')
               constitutive_dislotwin_CAtomicVolume(i) = IO_floatValue(line,positions,2_pInt)
-       case ('interactionslipslip')
+       case ('interaction_slipslip','interactionslipslip')
               forall (j = 1_pInt:lattice_maxNinteraction) &
-                constitutive_dislotwin_interactionSlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-       case ('interactionsliptwin')
+                constitutive_dislotwin_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+       case ('interaction_sliptwin','interactionsliptwin')
               forall (j = 1_pInt:lattice_maxNinteraction) &
-                constitutive_dislotwin_interactionSlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-       case ('interactiontwinslip')
+                constitutive_dislotwin_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+       case ('interaction_twinslip','interactiontwinslip')
               forall (j = 1_pInt:lattice_maxNinteraction) &
-                constitutive_dislotwin_interactionTwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-       case ('interactiontwintwin')
+                constitutive_dislotwin_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+       case ('interaction_twintwin','interactiontwintwin')
               forall (j = 1_pInt:lattice_maxNinteraction) &
-                constitutive_dislotwin_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+                constitutive_dislotwin_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
        case ('sfe_0k')
               constitutive_dislotwin_SFE_0K(i) = IO_floatValue(line,positions,2_pInt)
        case ('dsfe_dt')
@@ -489,14 +477,14 @@ allocate(constitutive_dislotwin_twinsizePerTwinSystem(maxTotalNtwin, maxNinstanc
 allocate(constitutive_dislotwin_CLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance))
          constitutive_dislotwin_CLambdaSlipPerSlipSystem = 0.0_pReal
 
-allocate(constitutive_dislotwin_interactionMatrixSlipSlip(maxTotalNslip,maxTotalNslip,maxNinstance))
-         constitutive_dislotwin_interactionMatrixSlipSlip = 0.0_pReal
-allocate(constitutive_dislotwin_interactionMatrixSlipTwin(maxTotalNslip,maxTotalNtwin,maxNinstance))
-         constitutive_dislotwin_interactionMatrixSlipTwin = 0.0_pReal
-allocate(constitutive_dislotwin_interactionMatrixTwinSlip(maxTotalNtwin,maxTotalNslip,maxNinstance))
-         constitutive_dislotwin_interactionMatrixTwinSlip = 0.0_pReal
-allocate(constitutive_dislotwin_interactionMatrixTwinTwin(maxTotalNtwin,maxTotalNtwin,maxNinstance))
-         constitutive_dislotwin_interactionMatrixTwinTwin = 0.0_pReal
+allocate(constitutive_dislotwin_interactionMatrix_SlipSlip(maxTotalNslip,maxTotalNslip,maxNinstance))
+         constitutive_dislotwin_interactionMatrix_SlipSlip = 0.0_pReal
+allocate(constitutive_dislotwin_interactionMatrix_SlipTwin(maxTotalNslip,maxTotalNtwin,maxNinstance))
+         constitutive_dislotwin_interactionMatrix_SlipTwin = 0.0_pReal
+allocate(constitutive_dislotwin_interactionMatrix_TwinSlip(maxTotalNtwin,maxTotalNslip,maxNinstance))
+         constitutive_dislotwin_interactionMatrix_TwinSlip = 0.0_pReal
+allocate(constitutive_dislotwin_interactionMatrix_TwinTwin(maxTotalNtwin,maxTotalNtwin,maxNinstance))
+         constitutive_dislotwin_interactionMatrix_TwinTwin = 0.0_pReal
 allocate(constitutive_dislotwin_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance))
          constitutive_dislotwin_forestProjectionEdge = 0.0_pReal
 
@@ -508,35 +496,17 @@ allocate(constitutive_dislotwin_Ctwin_3333(3,3,3,3,maxTotalNtwin,maxNinstance))
 do i = 1_pInt,maxNinstance
    myStructure = constitutive_dislotwin_structure(i)
 
-   !* Inverse lookup of my slip system family
-   l = 0_pInt
-   do f = 1_pInt,lattice_maxNslipFamily
-      do k = 1_pInt,constitutive_dislotwin_Nslip(f,i)
-         l = l + 1_pInt
-         constitutive_dislotwin_slipFamily(l,i) = f
-         constitutive_dislotwin_slipSystemLattice(l,i) = sum(lattice_NslipSystem(1:f-1_pInt,myStructure)) + k
-   !        write(6,*) 'slip system',l,'has family',f,'and is actually',constitutive_dislotwin_slipSystemLattice(l,i)
-   enddo; enddo
-
-   !* Inverse lookup of my twin system family
-   l = 0_pInt
-   do f = 1_pInt,lattice_maxNtwinFamily
-      do k = 1_pInt,constitutive_dislotwin_Ntwin(f,i)
-         l = l + 1_pInt
-         constitutive_dislotwin_twinFamily(l,i) = f
-         constitutive_dislotwin_twinSystemLattice(l,i) = sum(lattice_NtwinSystem(1:f-1_pInt,myStructure)) + k
-  !       write(6,*) 'twin system',l,'has family',f,'and is actually',constitutive_dislotwin_twinSystemLattice(l,i)
-   enddo; enddo
-
-   !* Determine size of state array
    ns = constitutive_dislotwin_totalNslip(i)
    nt = constitutive_dislotwin_totalNtwin(i)
-  !  write(6,*) 'instance',i,'has nslip and ntwin',ns,nt
-   constitutive_dislotwin_sizeDotState(i) = int(size(constitutive_dislotwin_listBasicSlipStates),pInt)*ns&
-                                          + int(size(constitutive_dislotwin_listBasicTwinStates),pInt)*nt
-   constitutive_dislotwin_sizeState(i) = constitutive_dislotwin_sizeDotState(i)&
-                                       + int(size(constitutive_dislotwin_listDependentSlipStates),pInt)*ns&
-                                       + int(size(constitutive_dislotwin_listDependentTwinStates),pInt)*nt
+   !  write(6,*) 'instance',i,'has nslip and ntwin',ns,nt
+
+   !* Determine size of state array
+
+   constitutive_dislotwin_sizeDotState(i) = int(size(constitutive_dislotwin_listBasicSlipStates),pInt) * ns &
+                                          + int(size(constitutive_dislotwin_listBasicTwinStates),pInt) * nt
+   constitutive_dislotwin_sizeState(i) = constitutive_dislotwin_sizeDotState(i) &
+                                       + int(size(constitutive_dislotwin_listDependentSlipStates),pInt) * ns &
+                                       + int(size(constitutive_dislotwin_listDependentTwinStates),pInt) * nt
 
    !* Determine size of postResults array
    do o = 1_pInt,constitutive_dislotwin_Noutput(i)
@@ -584,11 +554,11 @@ do i = 1_pInt,maxNinstance
    case(1_pInt:2_pInt) ! cubic(s)
      forall(k=1_pInt:3_pInt)
        forall(j=1_pInt:3_pInt) &
-         constitutive_dislotwin_Cslip_66(k,j,i)     = constitutive_dislotwin_C12(i)
-         constitutive_dislotwin_Cslip_66(k,k,i)     = constitutive_dislotwin_C11(i)
+         constitutive_dislotwin_Cslip_66(k,j,i)               = constitutive_dislotwin_C12(i)
+         constitutive_dislotwin_Cslip_66(k,k,i)               = constitutive_dislotwin_C11(i)
          constitutive_dislotwin_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_dislotwin_C44(i)
      end forall
-   case(3_pInt:)   ! all hex
+   case(3_pInt:)       ! all hex
      constitutive_dislotwin_Cslip_66(1,1,i) = constitutive_dislotwin_C11(i)
      constitutive_dislotwin_Cslip_66(2,2,i) = constitutive_dislotwin_C11(i)
      constitutive_dislotwin_Cslip_66(3,3,i) = constitutive_dislotwin_C33(i)
@@ -607,82 +577,106 @@ do i = 1_pInt,maxNinstance
    constitutive_dislotwin_Gmod(i) = &
    0.2_pReal*(constitutive_dislotwin_C11(i)-constitutive_dislotwin_C12(i))+0.3_pReal*constitutive_dislotwin_C44(i)
 
-   !* Construction of the twin elasticity matrices
-   do j=1_pInt,lattice_maxNtwinFamily
-      do k=1_pInt,constitutive_dislotwin_Ntwin(j,i)
-         do l=1_pInt,3_pInt ; do m=1_pInt,3_pInt ; do n=1_pInt,3_pInt ; do o=1_pInt,3_pInt
-           do p=1_pInt,3_pInt ; do q=1_pInt,3_pInt ; do r=1_pInt,3_pInt ; do s=1_pInt,3_pInt
-             constitutive_dislotwin_Ctwin_3333(l,m,n,o,sum(constitutive_dislotwin_Nslip(1:j-1_pInt,i))+k,i) = &
-               constitutive_dislotwin_Ctwin_3333(l,m,n,o,sum(constitutive_dislotwin_Nslip(1:j-1_pInt,i))+k,i) + &
-               constitutive_dislotwin_Cslip_3333(p,q,r,s,i)*&
-               lattice_Qtwin(l,p,sum(lattice_NslipSystem(1:j-1_pInt,myStructure))+k,myStructure)* &
-               lattice_Qtwin(m,q,sum(lattice_NslipSystem(1:j-1_pInt,myStructure))+k,myStructure)* &
-               lattice_Qtwin(n,r,sum(lattice_NslipSystem(1:j-1_pInt,myStructure))+k,myStructure)* &
-               lattice_Qtwin(o,s,sum(lattice_NslipSystem(1:j-1_pInt,myStructure))+k,myStructure)
-           enddo ; enddo ; enddo ; enddo ; enddo ; enddo ; enddo ; enddo
-         constitutive_dislotwin_Ctwin_66(:,:,k,i) = math_Mandel3333to66(constitutive_dislotwin_Ctwin_3333(:,:,:,:,k,i))
-        enddo
-   enddo
 
-    !* Burgers vector, dislocation velocity prefactor, mean free path prefactor and minimum dipole distance for each slip system
-   do s = 1_pInt,constitutive_dislotwin_totalNslip(i)
-      f = constitutive_dislotwin_slipFamily(s,i)
-      constitutive_dislotwin_burgersPerSlipSystem(s,i)     = constitutive_dislotwin_burgersPerSlipFamily(f,i)
-      constitutive_dislotwin_QedgePerSlipSystem(s,i)       = constitutive_dislotwin_QedgePerSlipFamily(f,i)
-      constitutive_dislotwin_v0PerSlipSystem(s,i)          = constitutive_dislotwin_v0PerSlipFamily(f,i)
-      constitutive_dislotwin_CLambdaSlipPerSlipSystem(s,i) = constitutive_dislotwin_CLambdaSlipPerSlipFamily(f,i)
-   enddo
+   !* Process slip related parameters ------------------------------------------------
 
-   !* Burgers vector, nucleation rate prefactor and twin size for each twin system
-   do s = 1_pInt,constitutive_dislotwin_totalNtwin(i)
-      f = constitutive_dislotwin_twinFamily(s,i)
-      constitutive_dislotwin_burgersPerTwinSystem(s,i)  = constitutive_dislotwin_burgersPerTwinFamily(f,i)
-      constitutive_dislotwin_Ndot0PerTwinSystem(s,i)    = constitutive_dislotwin_Ndot0PerTwinFamily(f,i)
-      constitutive_dislotwin_twinsizePerTwinSystem(s,i) = constitutive_dislotwin_twinsizePerTwinFamily(f,i)
-   enddo
+   do f = 1_pInt,lattice_maxNslipFamily
+     index_myFamily = sum(constitutive_dislotwin_Nslip(1:f-1_pInt,i))                              ! index in truncated slip system list
 
-    !* Construction of interaction matrices
-   do s1 = 1_pInt,constitutive_dislotwin_totalNslip(i)
-      do s2 = 1_pInt,constitutive_dislotwin_totalNslip(i)
-         constitutive_dislotwin_interactionMatrixSlipSlip(s1,s2,i) = &
-         constitutive_dislotwin_interactionSlipSlip(lattice_interactionSlipSlip(constitutive_dislotwin_slipSystemLattice(s1,i), &
-                                                                                constitutive_dislotwin_slipSystemLattice(s2,i), &
-                                                                                myStructure),i)
-   enddo; enddo
+     do j = 1_pInt,constitutive_dislotwin_Nslip(f,i)                                               ! system in family
 
-   do t2 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
-      do s1 = 1_pInt,constitutive_dislotwin_totalNslip(i)
-         constitutive_dislotwin_interactionMatrixSlipTwin(s1,t2,i) = &
-         constitutive_dislotwin_interactionSlipTwin(&
-              lattice_interactionSlipTwin(constitutive_dislotwin_twinSystemLattice(t2,i), &
-                                          constitutive_dislotwin_slipSystemLattice(s1,i),myStructure),i)
-   enddo; enddo
+     !* Burgers vector, 
+     !  dislocation velocity prefactor,
+     !  mean free path prefactor,
+     !  and minimum dipole distance
 
-    do s2 = 1_pInt,constitutive_dislotwin_totalNslip(i)
-      do t1 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
-         constitutive_dislotwin_interactionMatrixTwinSlip(t1,s2,i) = &
-         constitutive_dislotwin_interactionTwinSlip(lattice_interactionTwinSlip(&
-             constitutive_dislotwin_slipSystemLattice(s2,i), &
-             constitutive_dislotwin_twinSystemLattice(t1,i), myStructure),i)
-   enddo; enddo
+       constitutive_dislotwin_burgersPerSlipSystem(index_myFamily+j,i)     = constitutive_dislotwin_burgersPerSlipFamily(f,i)
+       constitutive_dislotwin_QedgePerSlipSystem(index_myFamily+j,i)       = constitutive_dislotwin_QedgePerSlipFamily(f,i)
+       constitutive_dislotwin_v0PerSlipSystem(index_myFamily+j,i)          = constitutive_dislotwin_v0PerSlipFamily(f,i)
+       constitutive_dislotwin_CLambdaSlipPerSlipSystem(index_myFamily+j,i) = constitutive_dislotwin_CLambdaSlipPerSlipFamily(f,i)
 
-     do t1 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
-      do t2 = 1_pInt,constitutive_dislotwin_totalNtwin(i)
-         constitutive_dislotwin_interactionMatrixTwinTwin(t1,t2,i) = &
-         constitutive_dislotwin_interactionTwinTwin(&
-             lattice_interactionTwinTwin(constitutive_dislotwin_twinSystemLattice(t1,i), &
-             constitutive_dislotwin_twinSystemLattice(t2,i), myStructure),i)
-   enddo; enddo
+     !* Interaction matrices
 
-    !* Calculation of forest projections for edge dislocations
-   do s1 = 1_pInt,constitutive_dislotwin_totalNslip(i)
-      do s2 = 1_pInt,constitutive_dislotwin_totalNslip(i)
-         constitutive_dislotwin_forestProjectionEdge(s1,s2,i) = &
-         abs(math_mul3x3(lattice_sn(:,constitutive_dislotwin_slipSystemLattice(s1,i),myStructure), &
-                         lattice_st(:,constitutive_dislotwin_slipSystemLattice(s2,i),myStructure)))
-   enddo; enddo
+       do o = 1_pInt,lattice_maxNslipFamily
+         index_otherFamily = sum(constitutive_dislotwin_Nslip(1:o-1_pInt,i))
+         do k = 1_pInt,constitutive_dislotwin_Nslip(o,i)                                           ! loop over (active) systems in other family (slip)
+           constitutive_dislotwin_interactionMatrix_SlipSlip(index_myFamily+j,index_otherFamily+k,i) = &
+                 constitutive_dislotwin_interaction_SlipSlip(lattice_interactionSlipSlip( &
+                                                               sum(lattice_NslipSystem(1:f-1,myStructure))+j, &
+                                                               sum(lattice_NslipSystem(1:o-1,myStructure))+k, &
+                                                               myStructure), i )
+       enddo; enddo
 
-enddo
+       do o = 1_pInt,lattice_maxNtwinFamily
+         index_otherFamily = sum(constitutive_dislotwin_Ntwin(1:o-1_pInt,i))
+         do k = 1_pInt,constitutive_dislotwin_Ntwin(o,i)                                           ! loop over (active) systems in other family (twin)
+           constitutive_dislotwin_interactionMatrix_SlipTwin(index_myFamily+j,index_otherFamily+k,i) = &
+                 constitutive_dislotwin_interaction_SlipTwin(lattice_interactionSlipTwin( &
+                                                               sum(lattice_NslipSystem(1:f-1_pInt,myStructure))+j, &
+                                                               sum(lattice_NtwinSystem(1:o-1_pInt,myStructure))+k, &
+                                                               myStructure), i )
+       enddo; enddo
+
+     enddo ! slip system in family
+   enddo   ! slip families
+
+   !* Process twin related parameters ------------------------------------------------
+   
+   do f = 1_pInt,lattice_maxNtwinFamily
+     index_myFamily = sum(constitutive_dislotwin_Ntwin(1:f-1_pInt,i))                              ! index in truncated twin system list
+
+     do j = 1_pInt,constitutive_dislotwin_Ntwin(f,i)                                               ! system in family
+
+     !* Burgers vector,
+     !  nucleation rate prefactor,
+     !  and twin size
+
+       constitutive_dislotwin_burgersPerTwinSystem(index_myFamily+j,i)  = constitutive_dislotwin_burgersPerTwinFamily(f,i)
+       constitutive_dislotwin_Ndot0PerTwinSystem(index_myFamily+j,i)    = constitutive_dislotwin_Ndot0PerTwinFamily(f,i)
+       constitutive_dislotwin_twinsizePerTwinSystem(index_myFamily+j,i) = constitutive_dislotwin_twinsizePerTwinFamily(f,i)
+
+     !* Rotate twin elasticity matrices
+
+       index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,myStructure))                        ! index in full lattice twin list
+       do l = 1_pInt,3_pInt ; do m = 1_pInt,3_pInt ; do n = 1_pInt,3_pInt ; do o = 1_pInt,3_pInt
+         do p = 1_pInt,3_pInt ; do q = 1_pInt,3_pInt ; do r = 1_pInt,3_pInt ; do s = 1_pInt,3_pInt
+           constitutive_dislotwin_Ctwin_3333(l,m,n,o,index_myFamily+j,i) = &
+           constitutive_dislotwin_Ctwin_3333(l,m,n,o,index_myFamily+j,i) + &
+             constitutive_dislotwin_Cslip_3333(p,q,r,s,i) * &
+             lattice_Qtwin(l,p,index_otherFamily+j,myStructure) * &
+             lattice_Qtwin(m,q,index_otherFamily+j,myStructure) * &
+             lattice_Qtwin(n,r,index_otherFamily+j,myStructure) * &
+             lattice_Qtwin(o,s,index_otherFamily+j,myStructure)
+         enddo ; enddo ; enddo ; enddo
+       enddo ; enddo ; enddo ; enddo
+       constitutive_dislotwin_Ctwin_66(:,:,k,i) = math_Mandel3333to66(constitutive_dislotwin_Ctwin_3333(:,:,:,:,k,i))
+
+    !* Interaction matrices
+
+       do o = 1_pInt,lattice_maxNslipFamily
+         index_otherFamily = sum(constitutive_dislotwin_Nslip(1:o-1_pInt,i))
+         do k = 1_pInt,constitutive_dislotwin_Nslip(o,i)                                           ! loop over (active) systems in other family (slip)
+           constitutive_dislotwin_interactionMatrix_TwinSlip(index_myFamily+j,index_otherFamily+k,i) = &
+                 constitutive_dislotwin_interaction_TwinSlip(lattice_interactionTwinSlip( &
+                                                               sum(lattice_NtwinSystem(1:f-1_pInt,myStructure))+j, &
+                                                               sum(lattice_NslipSystem(1:o-1_pInt,myStructure))+k, &
+                                                               myStructure), i )
+       enddo; enddo
+
+       do o = 1_pInt,lattice_maxNtwinFamily
+         index_otherFamily = sum(constitutive_dislotwin_Ntwin(1:o-1_pInt,i))
+         do k = 1_pInt,constitutive_dislotwin_Ntwin(o,i)                                           ! loop over (active) systems in other family (twin)
+           constitutive_dislotwin_interactionMatrix_TwinTwin(index_myFamily+j,index_otherFamily+k,i) = &
+                 constitutive_dislotwin_interaction_TwinTwin(lattice_interactionTwinTwin( &
+                                                               sum(lattice_NtwinSystem(1:f-1_pInt,myStructure))+j, &
+                                                               sum(lattice_NtwinSystem(1:o-1_pInt,myStructure))+k, &
+                                                               myStructure), i )
+       enddo; enddo
+
+     enddo  ! twin system in family
+   enddo    ! twin families
+
+enddo  ! instances
 
 return
 end subroutine
@@ -701,7 +695,7 @@ implicit none
 integer(pInt) :: myInstance
 real(pReal), dimension(constitutive_dislotwin_sizeState(myInstance))  :: constitutive_dislotwin_stateInit
 !* Local variables
-integer(pInt) s0,s1,s,t,f,ns,nt
+integer(pInt) i,j,f,ns,nt
 real(pReal), dimension(constitutive_dislotwin_totalNslip(myInstance)) :: rhoEdge0, &
                                                                          rhoEdgeDip0, &
                                                                          invLambdaSlip0, &
@@ -714,44 +708,43 @@ nt = constitutive_dislotwin_totalNtwin(myInstance)
 constitutive_dislotwin_stateInit = 0.0_pReal
 
 !* Initialize basic slip state variables
-s1 = 0_pInt
+
 do f = 1_pInt,lattice_maxNslipFamily
-   s0 = s1 + 1_pInt
-   s1 = s0 + constitutive_dislotwin_Nslip(f,myInstance) - 1_pInt
-   do s = s0,s1
-      rhoEdge0(s)    = constitutive_dislotwin_rhoEdge0(f,myInstance)
-      rhoEdgeDip0(s) = constitutive_dislotwin_rhoEdgeDip0(f,myInstance)
-   enddo
-enddo
-constitutive_dislotwin_stateInit(1:ns)           = rhoEdge0
-constitutive_dislotwin_stateInit(ns+1:2_pInt*ns) = rhoEdgeDip0
+  index_myFamily   = sum(constitutive_dislotwin_Nslip(1:f-1_pInt,myInstance))                      ! index in truncated slip system list
+  rhoEdge0(index_myFamily: &
+           index_myFamily+constitutive_dislotwin_Nslip(f)-1_pInt)    = constitutive_dislotwin_rhoEdge0(f,myInstance)
+  rhoEdgeDip0(index_myFamily: &
+              index_myFamily+constitutive_dislotwin_Nslip(f)-1_pInt) = constitutive_dislotwin_rhoEdgeDip0(f,myInstance)
+
+constitutive_dislotwin_stateInit(1_pInt:ns)           = rhoEdge0
+constitutive_dislotwin_stateInit(ns+1_pInt:2_pInt*ns) = rhoEdgeDip0
 
 !* Initialize dependent slip microstructural variables
 forall (s = 1_pInt:ns) &
-invLambdaSlip0(s) = sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_forestProjectionEdge(1:ns,s,myInstance)))/ &
-constitutive_dislotwin_CLambdaSlipPerSlipSystem(s,myInstance)
-constitutive_dislotwin_stateInit(2_pInt*ns+nt+1_pInt:3_pInt*ns+nt) = invLambdaSlip0
+  invLambdaSlip0(s) = sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_forestProjectionEdge(1:ns,s,myInstance)))/ &
+                      constitutive_dislotwin_CLambdaSlipPerSlipSystem(s,myInstance)
+  constitutive_dislotwin_stateInit(2_pInt*ns+nt+1_pInt:3_pInt*ns+nt) = invLambdaSlip0
 
 forall (s = 1_pInt:ns) &
-MeanFreePathSlip0(s) = &
-constitutive_dislotwin_GrainSize(myInstance)/(1.0_pReal+invLambdaSlip0(s)*constitutive_dislotwin_GrainSize(myInstance))
-constitutive_dislotwin_stateInit(4_pInt*ns+2_pInt*nt+1:5_pInt*ns+2_pInt*nt) = MeanFreePathSlip0
+  MeanFreePathSlip0(s) = &
+    constitutive_dislotwin_GrainSize(myInstance)/(1.0_pReal+invLambdaSlip0(s)*constitutive_dislotwin_GrainSize(myInstance))
+  constitutive_dislotwin_stateInit(4_pInt*ns+2_pInt*nt+1:5_pInt*ns+2_pInt*nt) = MeanFreePathSlip0
 
 forall (s = 1_pInt:ns) &
-tauSlipThreshold0(s) = constitutive_dislotwin_SolidSolutionStrength(myInstance)+ &
-constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(s,myInstance)* &
-sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrixSlipSlip(1:ns,s,myInstance)))
-constitutive_dislotwin_stateInit(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = tauSlipThreshold0
+  tauSlipThreshold0(s) = constitutive_dislotwin_SolidSolutionStrength(myInstance) + &
+    constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(s,myInstance) * &
+    sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,myInstance)))
+  constitutive_dislotwin_stateInit(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = tauSlipThreshold0
 
 !* Initialize dependent twin microstructural variables
 forall (t = 1_pInt:nt) &
-MeanFreePathTwin0(t) = constitutive_dislotwin_GrainSize(myInstance)
-constitutive_dislotwin_stateInit(5_pInt*ns+2_pInt*nt+1_pInt:5_pInt*ns+3_pInt*nt) = MeanFreePathTwin0
+  MeanFreePathTwin0(t) = constitutive_dislotwin_GrainSize(myInstance)
+  constitutive_dislotwin_stateInit(5_pInt*ns+2_pInt*nt+1_pInt:5_pInt*ns+3_pInt*nt) = MeanFreePathTwin0
 
 forall (t = 1_pInt:nt) &
-TwinVolume0(t) = &
-(pi/6.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(t,myInstance)*MeanFreePathTwin0(t)**(2.0_pReal)
-constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1_pInt:6_pInt*ns+5_pInt*nt) = TwinVolume0
+  TwinVolume0(t) = &
+    (pi/6.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(t,myInstance)*MeanFreePathTwin0(t)**(2.0_pReal)
+  constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1_pInt:6_pInt*ns+5_pInt*nt) = TwinVolume0
 
 !write(6,*) '#STATEINIT#'
 !write(6,*)
@@ -890,14 +883,14 @@ forall (s = 1_pInt:ns) &
 state(g,ip,el)%p((3_pInt*ns+nt+1_pInt):(4_pInt*ns+nt)) = 0.0_pReal
 if (nt > 0_pInt) &
   state(g,ip,el)%p((3_pInt*ns+nt+1):(4_pInt*ns+nt)) = &
-    matmul(constitutive_dislotwin_interactionMatrixSlipTwin(1:ns,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
+    matmul(constitutive_dislotwin_interactionMatrix_SlipTwin(1:ns,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
 !$OMP END CRITICAL (evilmatmul)
 
 !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
 !$OMP CRITICAL (evilmatmul)
 if (nt > 0_pInt) &
   state(g,ip,el)%p((4_pInt*ns+nt+1_pInt):(4_pInt*ns+2_pInt*nt)) = &
-    matmul(constitutive_dislotwin_interactionMatrixTwinTwin(1:nt,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
+    matmul(constitutive_dislotwin_interactionMatrix_TwinTwin(1:nt,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
 !$OMP END CRITICAL (evilmatmul)
 
 !* mean free path between 2 obstacles seen by a moving dislocation
@@ -924,7 +917,7 @@ forall (s = 1_pInt:ns) &
   state(g,ip,el)%p(5_pInt*ns+3_pInt*nt+s) = constitutive_dislotwin_SolidSolutionStrength(myInstance)+ &
     constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(s,myInstance)*&
     sqrt(dot_product((state(g,ip,el)%p(1:ns)+state(g,ip,el)%p(ns+1_pInt:2_pInt*ns)),&
-                     constitutive_dislotwin_interactionMatrixSlipSlip(1:ns,s,myInstance)))
+                     constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,myInstance)))
 
 !* threshold stress for growing twin
 forall (t = 1_pInt:nt) &
