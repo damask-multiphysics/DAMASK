@@ -145,7 +145,8 @@ integer(pInt), intent(in) :: file
 integer(pInt), parameter :: maxNchunks = 21_pInt
 integer(pInt), dimension(1+2*maxNchunks) :: positions
 integer(pInt) :: section, maxNinstance,mySize,myStructure,maxTotalNslip,maxTotalNtwin,&
-                 f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t1,t2,ns,nt
+                 f,i,j,k,l,m,n,o,p,q,r,s,ns,nt, &
+                 index_myFamily, index_otherFamily
 character(len=64) tag
 character(len=1024) line
 
@@ -678,7 +679,6 @@ do i = 1_pInt,maxNinstance
 
 enddo  ! instances
 
-return
 end subroutine
 
 
@@ -695,7 +695,7 @@ implicit none
 integer(pInt) :: myInstance
 real(pReal), dimension(constitutive_dislotwin_sizeState(myInstance))  :: constitutive_dislotwin_stateInit
 !* Local variables
-integer(pInt) i,j,f,ns,nt
+integer(pInt) :: i,j,f,ns,nt, index_myFamily
 real(pReal), dimension(constitutive_dislotwin_totalNslip(myInstance)) :: rhoEdge0, &
                                                                          rhoEdgeDip0, &
                                                                          invLambdaSlip0, &
@@ -711,40 +711,43 @@ constitutive_dislotwin_stateInit = 0.0_pReal
 
 do f = 1_pInt,lattice_maxNslipFamily
   index_myFamily   = sum(constitutive_dislotwin_Nslip(1:f-1_pInt,myInstance))                      ! index in truncated slip system list
-  rhoEdge0(index_myFamily: &
-           index_myFamily+constitutive_dislotwin_Nslip(f)-1_pInt)    = constitutive_dislotwin_rhoEdge0(f,myInstance)
-  rhoEdgeDip0(index_myFamily: &
-              index_myFamily+constitutive_dislotwin_Nslip(f)-1_pInt) = constitutive_dislotwin_rhoEdgeDip0(f,myInstance)
+  rhoEdge0(index_myFamily+1_pInt: &
+           index_myFamily+constitutive_dislotwin_Nslip(f,myInstance)) = &
+    constitutive_dislotwin_rhoEdge0(f,myInstance)
+  rhoEdgeDip0(index_myFamily+1_pInt: &
+              index_myFamily+constitutive_dislotwin_Nslip(f,myInstance)) = &
+    constitutive_dislotwin_rhoEdgeDip0(f,myInstance)
+enddo
 
 constitutive_dislotwin_stateInit(1_pInt:ns)           = rhoEdge0
 constitutive_dislotwin_stateInit(ns+1_pInt:2_pInt*ns) = rhoEdgeDip0
 
 !* Initialize dependent slip microstructural variables
-forall (s = 1_pInt:ns) &
-  invLambdaSlip0(s) = sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_forestProjectionEdge(1:ns,s,myInstance)))/ &
-                      constitutive_dislotwin_CLambdaSlipPerSlipSystem(s,myInstance)
-  constitutive_dislotwin_stateInit(2_pInt*ns+nt+1_pInt:3_pInt*ns+nt) = invLambdaSlip0
+forall (i = 1_pInt:ns) &
+  invLambdaSlip0(i) = sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_forestProjectionEdge(1:ns,i,myInstance)))/ &
+                      constitutive_dislotwin_CLambdaSlipPerSlipSystem(i,myInstance)
+constitutive_dislotwin_stateInit(2_pInt*ns+nt+1_pInt:3_pInt*ns+nt) = invLambdaSlip0
 
-forall (s = 1_pInt:ns) &
-  MeanFreePathSlip0(s) = &
-    constitutive_dislotwin_GrainSize(myInstance)/(1.0_pReal+invLambdaSlip0(s)*constitutive_dislotwin_GrainSize(myInstance))
-  constitutive_dislotwin_stateInit(4_pInt*ns+2_pInt*nt+1:5_pInt*ns+2_pInt*nt) = MeanFreePathSlip0
+forall (i = 1_pInt:ns) &
+  MeanFreePathSlip0(i) = &
+    constitutive_dislotwin_GrainSize(myInstance)/(1.0_pReal+invLambdaSlip0(i)*constitutive_dislotwin_GrainSize(myInstance))
+constitutive_dislotwin_stateInit(4_pInt*ns+2_pInt*nt+1:5_pInt*ns+2_pInt*nt) = MeanFreePathSlip0
 
-forall (s = 1_pInt:ns) &
-  tauSlipThreshold0(s) = constitutive_dislotwin_SolidSolutionStrength(myInstance) + &
-    constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(s,myInstance) * &
-    sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,myInstance)))
-  constitutive_dislotwin_stateInit(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = tauSlipThreshold0
+forall (i = 1_pInt:ns) &
+  tauSlipThreshold0(i) = constitutive_dislotwin_SolidSolutionStrength(myInstance) + &
+    constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(i,myInstance) * &
+    sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(i,1:ns,myInstance)))
+constitutive_dislotwin_stateInit(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = tauSlipThreshold0
 
 !* Initialize dependent twin microstructural variables
-forall (t = 1_pInt:nt) &
-  MeanFreePathTwin0(t) = constitutive_dislotwin_GrainSize(myInstance)
-  constitutive_dislotwin_stateInit(5_pInt*ns+2_pInt*nt+1_pInt:5_pInt*ns+3_pInt*nt) = MeanFreePathTwin0
+forall (j = 1_pInt:nt) &
+  MeanFreePathTwin0(j) = constitutive_dislotwin_GrainSize(myInstance)
+constitutive_dislotwin_stateInit(5_pInt*ns+2_pInt*nt+1_pInt:5_pInt*ns+3_pInt*nt) = MeanFreePathTwin0
 
-forall (t = 1_pInt:nt) &
-  TwinVolume0(t) = &
-    (pi/6.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(t,myInstance)*MeanFreePathTwin0(t)**(2.0_pReal)
-  constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1_pInt:6_pInt*ns+5_pInt*nt) = TwinVolume0
+forall (j = 1_pInt:nt) &
+  TwinVolume0(j) = &
+    (pi/6.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(j,myInstance)*MeanFreePathTwin0(j)**(2.0_pReal)
+constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1_pInt:6_pInt*ns+5_pInt*nt) = TwinVolume0
 
 !write(6,*) '#STATEINIT#'
 !write(6,*)
@@ -756,7 +759,6 @@ forall (t = 1_pInt:nt) &
 !write(6,'(a,/,4(3(f30.20,1x)/))') 'MeanFreePathTwin', MeanFreePathTwin0
 !write(6,'(a,/,4(3(f30.20,1x)/))') 'TwinVolume', TwinVolume0
 
-return
 end function
 
 
@@ -773,8 +775,7 @@ real(pReal), dimension(constitutive_dislotwin_sizeState(myInstance)) :: constitu
 
 constitutive_dislotwin_aTolState = constitutive_dislotwin_aTolRho(myInstance)
 
-return
-endfunction
+end function constitutive_dislotwin_aTolState
 
 
 pure function constitutive_dislotwin_homogenizedC(state,g,ip,el)
@@ -813,7 +814,6 @@ do i=1_pInt,nt
    constitutive_dislotwin_homogenizedC + state(g,ip,el)%p(2_pInt*ns+i)*constitutive_dislotwin_Ctwin_66(:,:,i,myInstance)
 enddo
 
-return
 end function
 
 
@@ -940,8 +940,6 @@ forall (t = 1_pInt:nt) &
 ! write(6,'(a,/,4(3(f10.4,1x)/))') 'Fraction',state(g,ip,el)%p(2*ns+1:2*ns+nt)
 !endif
 
-
-return
 end subroutine
 
 
@@ -1163,7 +1161,6 @@ dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
 !   write(6,'(a,/,9(9(f10.4,1x)/))') 'dLp_dTstar',dLp_dTstar
 !endif
 
-return
 end subroutine
 
 
@@ -1336,7 +1333,6 @@ enddo
 !write(6,'(a,/,4(3(f30.20,1x)/))') 'SingleDipole',DotRhoEdgeDipAnnihilation
 !write(6,'(a,/,4(3(f30.20,1x)/))') 'DipClimb',DotRhoEdgeDipClimb
 
-return
 end function
 
 
@@ -1373,8 +1369,7 @@ real(pReal), dimension(constitutive_dislotwin_sizeDotState(phase_plasticityInsta
 
 
 constitutive_dislotwin_deltaState = 0.0_pReal
-
-endfunction
+end function
 
 
 pure function constitutive_dislotwin_dotTemperature(Tstar_v,Temperature,state,g,ip,el)
@@ -1402,8 +1397,6 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal) constitutive_dislotwin_dotTemperature
 
 constitutive_dislotwin_dotTemperature = 0.0_pReal
-
-return
 end function
 
 
@@ -1640,7 +1633,6 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
    end select
 enddo
 
-return
 end function
 
 END MODULE
