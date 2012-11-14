@@ -154,11 +154,11 @@ module lattice
      ],[lattice_fcc_Ntwin])                                                                         !< Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
 
  integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Nslip), target, private :: &
-   lattice_fcc_interactionSlipSlip = reshape(int( [&
-     1,2,2,4,6,5,3,5,5,4,5,6, &
-     2,1,2,6,4,5,5,4,6,5,3,5, &
-     2,2,1,5,5,3,5,6,4,6,5,4, &
-     4,6,5,1,2,2,4,5,6,3,5,5, &
+   lattice_fcc_interactionSlipSlip = transpose(reshape(int( [&
+     1,2,2,4,6,5,3,5,5,4,5,6, &  ! ---> slip
+     2,1,2,6,4,5,5,4,6,5,3,5, &  ! |
+     2,2,1,5,5,3,5,6,4,6,5,4, &  ! |
+     4,6,5,1,2,2,4,5,6,3,5,5, &  ! v slip
      6,4,5,2,1,2,5,3,5,5,4,6, &
      5,5,3,2,2,1,6,5,4,5,6,4, &
      3,5,5,4,5,6,1,2,2,4,6,5, &
@@ -167,7 +167,7 @@ module lattice
      4,5,6,3,5,5,4,6,5,1,2,2, &
      5,3,5,5,4,6,6,4,5,2,1,2, &
      6,5,4,5,6,4,5,5,3,2,2,1  &
-     ],pInt),[lattice_fcc_Nslip,lattice_fcc_Nslip])
+     ],pInt),[lattice_fcc_Nslip,lattice_fcc_Nslip]))
     !< Interaction types
     !< 1 --- self interaction
     !< 2 --- coplanar interaction
@@ -176,12 +176,12 @@ module lattice
     !< 5 --- glissile junctions
     !< 6 --- Lomer locks
     
- integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip), target, private :: &
-   lattice_fcc_interactionSlipTwin = reshape(int( [&
-     1,1,1,2,2,1,1,2,2,2,1,2, &
-     1,1,1,2,2,1,1,2,2,2,1,2, &
-     1,1,1,2,2,1,1,2,2,2,1,2, &
-     2,2,1,1,1,1,2,1,2,1,2,2, &
+ integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin), target, private :: &
+   lattice_fcc_interactionSlipTwin = transpose(reshape(int( [&
+     1,1,1,2,2,1,1,2,2,2,1,2, &  ! ---> twin
+     1,1,1,2,2,1,1,2,2,2,1,2, &  ! |
+     1,1,1,2,2,1,1,2,2,2,1,2, &  ! |
+     2,2,1,1,1,1,2,1,2,1,2,2, &  ! v slip
      2,2,1,1,1,1,2,1,2,1,2,2, &
      2,2,1,1,1,1,2,1,2,1,2,2, &
      1,2,2,2,1,2,1,1,1,2,2,1, &
@@ -190,17 +190,17 @@ module lattice
      2,1,2,1,2,2,2,2,1,1,1,1, &
      2,1,2,1,2,2,2,2,1,1,1,1, &
      2,1,2,1,2,2,2,2,1,1,1,1  &
-     ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Nslip])
+     ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Nslip]))
 
- integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin), target, private :: &
+ integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip), target, private :: &
    lattice_fcc_interactionTwinSlip = 0_pInt
 
  integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Ntwin), target, private :: &
-   lattice_fcc_interactionTwinTwin = reshape(int( [&
-     1,1,1,2,2,2,2,2,2,2,2,2, &
-     1,1,1,2,2,2,2,2,2,2,2,2, &
-     1,1,1,2,2,2,2,2,2,2,2,2, &
-     2,2,2,1,1,1,2,2,2,2,2,2, &
+   lattice_fcc_interactionTwinTwin = transpose(reshape(int( [&
+     1,1,1,2,2,2,2,2,2,2,2,2, &  ! ---> twin
+     1,1,1,2,2,2,2,2,2,2,2,2, &  ! |
+     1,1,1,2,2,2,2,2,2,2,2,2, &  ! |
+     2,2,2,1,1,1,2,2,2,2,2,2, &  ! v twin
      2,2,2,1,1,1,2,2,2,2,2,2, &
      2,2,2,1,1,1,2,2,2,2,2,2, &
      2,2,2,2,2,2,1,1,1,2,2,2, &
@@ -209,7 +209,7 @@ module lattice
      2,2,2,2,2,2,2,2,2,1,1,1, &
      2,2,2,2,2,2,2,2,2,1,1,1, &
      2,2,2,2,2,2,2,2,2,1,1,1  &
-     ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin])
+     ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin]))
  
  
 !--------------------------------------------------------------------------------------------------
@@ -322,11 +322,11 @@ module lattice
 
 !> slip--slip interactions for BCC structures (2) 
  integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Nslip), target, private :: &
-   lattice_bcc_interactionSlipSlip = reshape(int( [&
-     1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
-     2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
-     2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
-     2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
+   lattice_bcc_interactionSlipSlip = transpose(reshape(int( [&
+     1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &  ! ---> slip     
+     2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &  ! |     
+     2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &  ! |
+     2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &  ! v slip
      2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
      2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
      2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, &
@@ -371,15 +371,15 @@ module lattice
      2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2, &
      2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2, &
      2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1  &
-     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip])
+     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip]))
 
 !> slip--twin interactions for BCC structures (2) MISSING: not implemented yet
- integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), target, private :: &
-  lattice_bcc_interactionSlipTwin = reshape(int( [&
-     0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0, &
+ integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Ntwin), target, private :: &
+  lattice_bcc_interactionSlipTwin = transpose(reshape(int( [&
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! ---> twin
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! v slip
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0, &
@@ -424,16 +424,16 @@ module lattice
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0  &
-     ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Nslip])
+     ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Nslip]))
 
 
 !>twin--slip interactions for BCC structures (2) MISSING: not implemented yet
- integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Ntwin), target, private :: &
-   lattice_bcc_interactionTwinSlip = reshape(int( [&
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
+ integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), target, private :: &
+   lattice_bcc_interactionTwinSlip = transpose(reshape(int( [&
+     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! ---> slip
+     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
+     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
+     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &  ! v twin
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
@@ -442,15 +442,15 @@ module lattice
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0  &
-     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Ntwin])
+     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Ntwin]))
 
 !> twin-twin interactions for BCC structures (2) MISSING: not implemented yet
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin), target, private :: &
-   lattice_bcc_interactionTwinTwin = reshape(int( [&
-     0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0, &
-     0,0,0,0,0,0,0,0,0,0,0,0, &
+   lattice_bcc_interactionTwinTwin = transpose(reshape(int( [&
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! ---> twin
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! |
+     0,0,0,0,0,0,0,0,0,0,0,0, &  ! v twin
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0, &
@@ -459,7 +459,7 @@ module lattice
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0, &
      0,0,0,0,0,0,0,0,0,0,0,0  &
-     ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Ntwin])
+     ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Ntwin]))
  
 
 !--------------------------------------------------------------------------------------------------
@@ -583,11 +583,11 @@ module lattice
  !* 4. twin-slip interaction - 16 types
    
  integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Nslip), target, private :: &
-   lattice_hex_interactionSlipSlip = reshape(int( [&
-      1, 6, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &
-      6, 1, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &
-      6, 6, 1,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &
-    !
+   lattice_hex_interactionSlipSlip = transpose(reshape(int( [&
+      1, 6, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &  ! ---> slip
+      6, 1, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &  ! |
+      6, 6, 1,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &  ! |
+    !                                                                                                         v slip
      21,21,21,   2, 7, 7,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  19,19,19,19,19,19,  &
      21,21,21,   7, 2, 7,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  19,19,19,19,19,19,  &
      21,21,21,   7, 7, 2,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  19,19,19,19,19,19,  &
@@ -618,11 +618,11 @@ module lattice
      30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10, 5,10,10,  &
      30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10,10, 5,10,  &
      30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10,10,10, 5   &
-     ],pInt),[lattice_hex_Nslip,lattice_hex_Nslip])
+     ],pInt),[lattice_hex_Nslip,lattice_hex_Nslip]))
   
 !* isotropic interaction at the moment
- integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Nslip), target, private :: &
-   lattice_hex_interactionSlipTwin = reshape(int( [&
+ integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Ntwin), target, private :: &
+   lattice_hex_interactionSlipTwin = transpose(reshape(int( [&
       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! --> twin
       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! |
       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! |
@@ -657,11 +657,11 @@ module lattice
      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20  &
-     ],pInt),[lattice_hex_Ntwin,lattice_hex_Nslip])  
+     ],pInt),[lattice_hex_Ntwin,lattice_hex_Nslip]))  
 
  !* isotropic interaction at the moment
- integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Ntwin), target, private :: &
-   lattice_hex_interactionTwinSlip = reshape(int( [&
+ integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Nslip), target, private :: &
+   lattice_hex_interactionTwinSlip = transpose(reshape(int( [&
       1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! --> slip
       1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! |
       1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! |
@@ -689,15 +689,15 @@ module lattice
       4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20, &
       4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20, &
       4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20  &
-     ],pInt),[lattice_hex_Nslip,lattice_hex_Ntwin])  
+     ],pInt),[lattice_hex_Nslip,lattice_hex_Ntwin]))
 
 
  integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Ntwin), target, private :: &
-   lattice_hex_interactionTwinTwin = reshape(int( [&
-      1, 5, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
-      5, 1, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
-      5, 5, 1, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
-      5, 5, 5, 1, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
+   lattice_hex_interactionTwinTwin = transpose(reshape(int( [&
+      1, 5, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &  ! ---> twin
+      5, 1, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &  ! |
+      5, 5, 1, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &  ! |
+      5, 5, 5, 1, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &  ! v twin
       5, 5, 5, 5, 1, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
       5, 5, 5, 5, 5, 1,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &
     !
@@ -721,7 +721,7 @@ module lattice
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 4, 8, 8, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 4, 8, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 8, 4  &
-     ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin])  
+     ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin]))
 
  public :: &
   lattice_init, &
@@ -819,9 +819,9 @@ subroutine lattice_init
 
  allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure))
           lattice_interactionSlipSlip = 0_pInt ! other:me
- allocate(lattice_interactionSlipTwin(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure))
+ allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure))
           lattice_interactionSlipTwin = 0_pInt ! other:me
- allocate(lattice_interactionTwinSlip(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure))
+ allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure))
           lattice_interactionTwinSlip = 0_pInt ! other:me
  allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure))
           lattice_interactionTwinTwin = 0_pInt ! other:me
@@ -983,8 +983,8 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
    lattice_NslipSystem(1:lattice_maxNslipFamily,myStructure) = myNslipSystem                                ! number of slip systems in each family
    lattice_NtwinSystem(1:lattice_maxNtwinFamily,myStructure) = myNtwinSystem                                ! number of twin systems in each family
    lattice_interactionSlipSlip(1:myNslip,1:myNslip,myStructure) = interactionSlipSlip(1:myNslip,1:myNslip)
-   lattice_interactionSlipTwin(1:myNtwin,1:myNslip,myStructure) = interactionSlipTwin(1:myNtwin,1:myNslip)
-   lattice_interactionTwinSlip(1:myNslip,1:myNtwin,myStructure) = interactionTwinSlip(1:myNslip,1:myNtwin)
+   lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myStructure) = interactionSlipTwin(1:myNslip,1:myNtwin)
+   lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myStructure) = interactionTwinSlip(1:myNtwin,1:myNslip)
    lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myStructure) = interactionTwinTwin(1:myNtwin,1:myNtwin)
  endif
 
