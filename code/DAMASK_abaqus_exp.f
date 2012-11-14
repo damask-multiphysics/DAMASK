@@ -170,6 +170,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
  use prec, only:      pReal, &
                       pInt
+ use numerics, only:  numerics_unitlength
  use FEsolving, only: cycleCounter, &
                       theTime, &
                       outdatedByNewInc, &
@@ -182,7 +183,8 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
                       debug_levelBasic, &
                       debug_level, &
                       debug_abaqus
- use mesh, only:      mesh_FEasCP
+ use mesh, only:      mesh_FEasCP, &
+                      mesh_ipCoordinates
  use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 
@@ -211,7 +213,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
  real(pReal) temp, timeInc
- integer(pInt) computationMode, n, i
+ integer(pInt) computationMode, n, i, cp_en
  logical :: cutBack
 
  do n = 1,nblock                                                       ! loop over vector of IPs
@@ -289,8 +291,10 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
      defgrd1(3,2) = defgradNew(n,8)
    endif
 
-   coordinates = coordMp(n,1:3)
-   call CPFEM_general(computationMode,coordinates,defgrd0,defgrd1,temp,timeInc,nElement(n),nMatPoint(n),stress,ddsdde, pstress, dPdF)
+   cp_en = mesh_FEasCP('elem',nElement(n))
+   mesh_ipCoordinates(1:3,n,cp_en) = numerics_unitlength * coordMp(n,1:3)
+
+   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nMatPoint(n),stress,ddsdde, pstress, dPdF)
   
   !     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
   !     straight:   11, 22, 33, 12, 23, 13

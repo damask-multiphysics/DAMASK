@@ -230,15 +230,14 @@ end subroutine CPFEM_init
 !***    perform initialization at first call, update variables and   ***
 !***    call the actual material model                               ***
 !***********************************************************************
-subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, cauchyStress,&
+subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress,&
       & jacobian, pstress, dPdF)
   ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
 
   !*** variables and functions from other modules ***!
   use prec, only:           pInt
   use numerics, only:       defgradTolerance, &
-                            iJacoStiffness, &
-                            numerics_unitlength
+                            iJacoStiffness
   use debug, only:          debug_level, &
                             debug_CPFEM, &
                             debug_levelBasic, &
@@ -277,12 +276,6 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                             mesh_NcpElems, &
                             mesh_maxNips, &
                             mesh_element, &
-                            mesh_node0, &
-                            mesh_node, &
-                            mesh_ipCoordinates, &
-                            mesh_build_subNodeCoords, &
-                            mesh_build_ipVolumes, &
-                            mesh_build_ipCoordinates, &
                             FE_Nips, &
                             FE_Nnodes
   use material, only:       homogenization_maxNgrains, &
@@ -324,9 +317,6 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                                                       IP                                            ! FE integration point number
   real(pReal), intent(inout) ::                       Temperature                                   ! temperature
   real(pReal), intent(in) ::                          dt                                            ! time increment
-  real(pReal), dimension (3,*), intent(in) ::         coords                                        ! MARC: displacements for each node of the current element
-                                                                                                    ! ABAQUS: coordinates of the current material point (IP)
-                                                                                                    ! SPECTRAL: coordinates of the current material point (IP)
   real(pReal), dimension (3,3), intent(in) ::         ffn, &                                        ! deformation gradient for t=t0
                                                       ffn1                                          ! deformation gradient for t=t1
   integer(pInt), intent(in) ::                        mode                                          ! computation mode  1: regular computation plus aging of results
@@ -356,9 +346,6 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
                                                       jacobian3333                                  ! jacobian in Matrix notation
   integer(pInt)                                       cp_en, &                                      ! crystal plasticity element number
                                                       i, j, k, l, m, n, e                          
-#ifdef Marc
-  integer(pInt)::                                     node, FEnodeID
-#endif
   logical                                             updateJaco                                    ! flag indicating if JAcobian has to be updated
   
   
@@ -535,11 +522,6 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
             !$OMP END CRITICAL (write2out)
           endif
-#ifdef Marc
-! marc returns nodal coordinates, whereas Abaqus and spectral solver return ip coordinates. So for marc we have to calculate the ip coordinates from the nodal coordinates.
-            call mesh_build_subNodeCoords()                                                         ! update subnodal coordinates
-            call mesh_build_ipCoordinates()                                                         ! update ip coordinates
-#endif
           if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) then
             !$OMP CRITICAL (write2out)
               write(6,'(a,i8,a,i8)') '<< CPFEM >> Start stress and tangent ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
@@ -611,14 +593,6 @@ subroutine CPFEM_general(mode, coords, ffn, ffn1, Temperature, dt, element, IP, 
       CPFEM_cs(1:6,IP,cp_en) = rnd * CPFEM_odd_stress
       CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
       CPFEM_calc_done = .false.
-#ifndef Marc
-      mesh_ipCoordinates(1:3,IP,cp_en) = numerics_unitlength * coords(1:3,1)
-#else
-      do node = 1,FE_Nnodes(mesh_element(2,cp_en))
-        FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
-        mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + numerics_unitlength * coords(1:3,node)
-      enddo
-#endif
 
     ! --+>> RECYCLING OF FORMER RESULTS (MARC SPECIALTY) <<+--
 

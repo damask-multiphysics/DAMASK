@@ -84,7 +84,8 @@ program DAMASK_spectral
    wgt, &
    geomdim, &
    virt_dim, &
-   deformed_FFT
+   deformed_FFT, &
+   mesh_ipCoordinates
    
  use CPFEM, only: &
    CPFEM_general, &
@@ -520,14 +521,19 @@ program DAMASK_spectral
  endif
  ielem = 0_pInt
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   ielem = ielem +1_pInt
+   mesh_ipCoordinates(1:3,1,ielem) = coordinates(i,j,k,1:3)
+ enddo; enddo; enddo
+ ielem = 0_pInt
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    ielem = ielem + 1_pInt 
-   call CPFEM_general(3_pInt,coordinates(i,j,k,1:3),F(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3),temperature(i,j,k),&                         
+   call CPFEM_general(3_pInt,F(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3),temperature(i,j,k),&                         
                         0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
  enddo; enddo; enddo
  ielem = 0_pInt
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    ielem = ielem + 1_pInt 
-   call CPFEM_general(2_pInt,coordinates(i,j,k,1:3),F(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3),temperature(i,j,k),&
+   call CPFEM_general(2_pInt,F(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3),temperature(i,j,k),&
                         0.0_pReal,ielem,1_pInt,sigma,dsde,P_real(i,j,k,1:3,1:3),dPdF)
    C = C + dPdF 
  enddo; enddo; enddo
@@ -686,7 +692,11 @@ program DAMASK_spectral
        enddo; enddo; enddo
        call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,bc(loadcase)%rotation),&          ! calculate current coordinates
                                                           1.0_pReal,F_lastInc,coordinates)
-
+       ielem = 0_pInt
+       do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+         ielem = ielem +1_pInt
+         mesh_ipCoordinates(1:3,1,ielem) = coordinates(i,j,k,1:3)
+       enddo; enddo; enddo
 !--------------------------------------------------------------------------------------------------
 ! calculate reduced compliance
        if(size_reduced > 0_pInt) then                                                               ! calculate compliance in case stress BC is applied
@@ -753,7 +763,7 @@ program DAMASK_spectral
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(3_pInt,&                                                              ! collect cycle
-                              coordinates(i,j,k,1:3), F_lastInc(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3), &
+                              F_lastInc(i,j,k,1:3,1:3),F(i,j,k,1:3,1:3), &
                               temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde,&
                               P_real(i,j,k,1:3,1:3),dPdF)
          enddo; enddo; enddo
@@ -765,7 +775,7 @@ program DAMASK_spectral
          do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
            ielem = ielem + 1_pInt
            call CPFEM_general(CPFEM_mode,&                                                          ! first element in first iteration retains CPFEM_mode 1, 
-                              coordinates(i,j,k,1:3),F_lastInc(i,j,k,1:3,1:3), F(i,j,k,1:3,1:3), &  ! others get 2 (saves winding forward effort)
+                              F_lastInc(i,j,k,1:3,1:3), F(i,j,k,1:3,1:3), &  ! others get 2 (saves winding forward effort)
                               temperature(i,j,k),timeinc,ielem,1_pInt,sigma,dsde, &
                               P_real(i,j,k,1:3,1:3),dPdF)
            CPFEM_mode = 2_pInt

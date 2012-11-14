@@ -630,7 +630,7 @@ end function utilities_maskedCompliance
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
+subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
                                           P,C,P_av,forwardData,rotation_BC)
  use debug, only: &
    debug_reset, &
@@ -648,7 +648,6 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
  
  implicit none
  real(pReal), intent(inout)                                      :: temperature                     !< temperature (no field)
- real(pReal), intent(in),    dimension(res(1),res(2),res(3),3)   :: coordinates                     !< coordinates field
  real(pReal), intent(in),    dimension(3,3,res(1),res(2),res(3)) :: &
    F_lastInc, &                                                                                     !< target deformation gradient
    F                                                                                                !< previous deformation gradient
@@ -702,7 +701,7 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    ielem = ielem + 1_pInt
    call CPFEM_general(collectMode,&                                                                 ! collect cycle
-                       coordinates(i,j,k,1:3), F_lastInc(1:3,1:3,i,j,k),F(1:3,1:3,i,j,k), &
+                       F_lastInc(1:3,1:3,i,j,k),F(1:3,1:3,i,j,k), &
                        temperature,timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
    collectMode = 3_pInt
  enddo; enddo; enddo
@@ -714,7 +713,7 @@ subroutine utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,ti
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    ielem = ielem + 1_pInt
    call CPFEM_general(calcMode,&                                                                    ! first element in first iteration retains CPFEM_mode 1, 
-                      coordinates(i,j,k,1:3),F_lastInc(1:3,1:3,i,j,k), F(1:3,1:3,i,j,k), &          ! others get 2 (saves winding forward effort)
+                      F_lastInc(1:3,1:3,i,j,k), F(1:3,1:3,i,j,k), &          ! others get 2 (saves winding forward effort)
                       temperature,timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
    calcMode = 2_pInt
    C = C + dPdF

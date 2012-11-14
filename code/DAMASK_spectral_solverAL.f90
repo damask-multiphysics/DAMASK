@@ -46,7 +46,6 @@ module DAMASK_spectral_solverAL
    F_lambda_lastInc, &                                                                              !< field of previous incompatible deformation gradient 
    Fdot, &                                                                                          !< field of assumed rate of compatible deformation gradient
    F_lambdaDot                                                                                      !< field of assumed rate of incopatible deformation gradient
- real(pReal), private, dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal), private                                    ::  temperature                            !< temperature, no spatial quantity at the moment
  
 !--------------------------------------------------------------------------------------------------
@@ -94,7 +93,8 @@ subroutine AL_init()
  use mesh, only: &
    res, &
    geomdim, &
-   mesh_NcpElems
+   mesh_NcpElems, &
+   mesh_ipCoordinates
  use math, only: &
    math_invSym3333
    
@@ -119,7 +119,6 @@ subroutine AL_init()
  !   allocate (Fdot,source = F_lastInc) somethin like that should be possible
  allocate (F_lambda_lastInc(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (F_lambdaDot(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
@@ -151,10 +150,6 @@ subroutine AL_init()
    F_lambda_lastInc = F_lastInc
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)])
    F_lambda = F
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
-                            - geomdim/real(2_pInt*res,pReal)
-   enddo; enddo; enddo
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
@@ -180,9 +175,10 @@ subroutine AL_init()
    call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
    read (777,rec=1) F_aim_lastInc
    close (777)
-   coordinates = 0.0 ! change it later!!!
  endif
- call Utilities_constitutiveResponse(coordinates,F,F,temperature,0.0_pReal,P,C,P_av,.false.,math_I3)
+ mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
+                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+ call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,P_av,.false.,math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
  CHKERRQ(ierr)
 
@@ -219,7 +215,7 @@ type(tSolutionState) function &
  use mesh, only: &
    res,&
    geomdim,&
-   deformed_fft
+   mesh_ipCoordinates
  use IO, only: &
    IO_write_JobBinaryFile
  use DAMASK_spectral_Utilities, only: &
@@ -292,7 +288,8 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
- 
+   mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
+                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
        timeinc,timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
    F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
@@ -300,8 +297,6 @@ type(tSolutionState) function &
                 
    F_lastInc = reshape(F,[3,3,res(1),res(2),res(3)])
    F_lambda_lastInc = reshape(F_lambda,[3,3,res(1),res(2),res(3)])
-   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
-                                                                   1.0_pReal,F_lastInc,coordinates)
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
@@ -406,7 +401,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,F,temperature,params%timeinc, &
                                      residual_F,C,P_av,ForwardData,params%rotation_BC)
  ForwardData = .False.
   

@@ -221,6 +221,7 @@ subroutine hypela2(&
 
  use prec, only:      pReal, &
                       pInt
+ use numerics, only:  numerics_unitlength
  use FEsolving, only: cycleCounter, &
                       theInc, &
                       calcMode, &
@@ -235,7 +236,13 @@ subroutine hypela2(&
  use math, only:      invnrmMandel
  use debug, only:     debug_info, &
                       debug_reset
- use mesh, only:      mesh_FEasCP
+ use mesh, only:      mesh_FEasCP, &
+                      mesh_element, &
+                      mesh_node0, &
+                      mesh_node, &
+                      mesh_build_subNodeCoords, &
+                      mesh_build_ipCoordinates, &
+                      FE_Nnodes
  use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
 !$ use numerics, only: DAMASK_NumThreadsInt                                   ! number of threads set by DAMASK_NUM_THREADS
  
@@ -265,7 +272,8 @@ subroutine hypela2(&
  real(pReal), dimension (3,3) :: pstress                                  ! dummy argument for call of cpfem_general (used by mpie_spectral)
  real(pReal), dimension (3,3,3,3) :: dPdF                                 ! dummy argument for call of cpfem_general (used by mpie_spectral)
 
- integer(pInt)  computationMode, i, cp_en
+ integer(pInt) computationMode, i, cp_en
+ integer(pInt) node, FEnodeID
 
 ! OpenMP variable
 !$ integer(pInt) defaultNumThreadsInt                                     ! default value set by Marc
@@ -351,6 +359,10 @@ subroutine hypela2(&
      else
        computationMode = 3                                                ! plain collect
      endif
+     do node = 1,FE_Nnodes(mesh_element(2,cp_en))
+       FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
+       mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + numerics_unitlength * dispt(1:3,node)
+     enddo
    endif
 
    theTime  = cptim                                                       ! record current starting time
@@ -359,7 +371,11 @@ subroutine hypela2(&
    lastMode = calcMode(nn,cp_en)                                          ! record calculationMode
  endif
 
- call CPFEM_general(computationMode,dispt,ffn,ffn1,t(1),timinc,n(1),nn,stress,ddsdde, pstress, dPdF)
+ ! marc returns nodal coordinates. So for marc we have to calculate the ip coordinates from the nodal coordinates.
+ call mesh_build_subNodeCoords()                                          ! update subnodal coordinates
+ call mesh_build_ipCoordinates()                                          ! update ip coordinates
+
+ call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,stress,ddsdde, pstress, dPdF)
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13

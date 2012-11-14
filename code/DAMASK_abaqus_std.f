@@ -130,6 +130,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  
  use prec, only:      pReal, &
                       pInt
+ use numerics, only:  numerics_unitlength
  use FEsolving, only: cycleCounter, &
                       theInc, &
                       calcMode, &
@@ -147,7 +148,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
                       debug_levelBasic, &
                       debug_level, &
                       debug_abaqus
- use mesh, only:      mesh_FEasCP
+ use mesh, only:      mesh_FEasCP, &
+                      mesh_ipCoordinates
  use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 
@@ -253,6 +255,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
     else
         computationMode = 3                                            ! plain collect
     endif
+    mesh_ipCoordinates(1:3,npt,cp_en) = numerics_unitlength * COORDS
  endif
 
  theTime  = time(2)                                                    ! record current starting time
@@ -266,7 +269,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    !$OMP END CRITICAL (write2out)
  endif
    
- call CPFEM_general(computationMode,COORDS,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress_h,ddsdde_h, pstress, dPdF)
+ call CPFEM_general(computationMode,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress_h,ddsdde_h, pstress, dPdF)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     straight:            11, 22, 33, 12, 23, 13

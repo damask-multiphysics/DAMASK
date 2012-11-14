@@ -27,7 +27,6 @@ module DAMASK_spectral_SolverBasic
    F, &                                                                                             !< deformation gradient field
    F_lastInc, &                                                                                     !< deformation gradient field last increment
    Fdot                                                                                             !< assumed rate for F n to F n+1
- real(pReal),  private,  dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal),  private                                     ::  temperature                          !< not pointwise
  
 !--------------------------------------------------------------------------------------------------
@@ -63,7 +62,10 @@ subroutine basic_init()
    debugRestart
  use mesh, only: &
    res, &
-   geomdim
+   geomdim, &
+   mesh_ipCoordinates, &
+   mesh_NcpElems, &
+   mesh_deformedCoordsFFT
 
  implicit none
  real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
@@ -86,18 +88,12 @@ subroutine basic_init()
  allocate (F          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (F_lastInc  (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (Fdot       (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (coordinates(      res(1),  res(2),res(3),3),source = 0.0_pReal)
    
 !--------------------------------------------------------------------------------------------------
 ! init fields and average quantities
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
    F_lastInc = F
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
-                            - geomdim/real(2_pInt*res,pReal)
-   enddo; enddo; enddo
-
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(a,'//IO_intOut(restartInc-1_pInt)//',a)') &
                              'Reading values of increment', restartInc - 1_pInt, 'from file' 
@@ -127,11 +123,10 @@ subroutine basic_init()
    call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
    read (777,rec=1) temp3333_Real
    close (777)
-   coordinates = 0.0 ! change it later!!!
  endif
- call Utilities_constitutiveResponse(coordinates,F,F,temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3) ! constitutive response with no deformation in no time to get reference stiffness
- !no rotation bc call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates) 
-
+ mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
+                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+ call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3) ! constitutive response with no deformation in no time to get reference stiffness
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
    temp3333_Real = C
  endif 
@@ -158,8 +153,10 @@ type(tSolutionState) function &
  use mesh, only: &
    res,&
    geomdim, &
-   deformed_fft, &
-   wgt
+   wgt, &
+   mesh_ipCoordinates,&
+   mesh_NcpElems, &
+   mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobBinaryFile, &
    IO_intOut
@@ -252,6 +249,8 @@ type(tSolutionState) function &
    C = C_lastInc
  else
    C_lastInc = C
+   mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
+                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
    elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
@@ -259,9 +258,6 @@ type(tSolutionState) function &
    endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
-
-   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &               ! update coordinates and rate and forward last inc
-                                                                   1.0_pReal,F_lastInc,coordinates)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                                                         timeinc,timeinc_old,guess,F_lastInc,F)
    F_lastInc = F
@@ -291,7 +287,7 @@ type(tSolutionState) function &
 ! evaluate constitutive response
    F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
    basic_solution%termIll = .false.
-   call Utilities_constitutiveResponse(coordinates,F_lastInc,F,temperature,timeinc,&
+   call Utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
                                  P,C,P_av,ForwardData,rotation_BC)
    basic_solution%termIll = terminallyIll
    terminallyIll = .false.

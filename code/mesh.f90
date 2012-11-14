@@ -1,7 +1,7 @@
-! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
+! Copyright 2011 Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the DÃ¼sseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -19,11 +19,11 @@
 !--------------------------------------------------------------------------------------------------
 !* $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!! Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!! Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
-!! Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!! Krishna Komerla, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!! Philip Eisenlohr, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!! Christoph Koords, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!! Martin Diehl, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!! Krishna Komerla, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver 
 !--------------------------------------------------------------------------------------------------
 
@@ -286,6 +286,7 @@ module mesh
             mesh_regular_grid, &
             deformed_linear, &
             deformed_fft, &
+            mesh_deformedCoordsFFT, &
             volume_compare, &
             shape_compare
 #endif
@@ -1184,7 +1185,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  integer(pInt), dimension(:,:,:), allocatable :: &
    material_phase, material_phaseNew, &
    sizeStateConst
-   
+ 
  write(6,*) 'Regridding geometry'
  if (adaptive) then
    write(6,*) 'adaptive resolution determination'
@@ -1355,7 +1356,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  allocate(F_Linear(3,3,mesh_NcpElems))
  allocate(F_Linear_New(3,3,NpointsNew))
  allocate(FNew(resNew(1),resNew(2),resNew(3),3,3))
- 
+
  ielem = 0_pInt
  do k=1_pInt,res(3); do j=1_pInt, res(2); do i=1_pInt, res(1)
   ielem = ielem + 1_pInt 
@@ -1365,7 +1366,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  do i=1_pInt, NpointsNew
    F_Linear_New(1:3,1:3,i) = F_Linear(1:3,1:3,indices(i))  ! -- mapping old to new ...based on indices
  enddo
-  
+
  ielem = 0_pInt
  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
   ielem = ielem + 1_pInt 
@@ -1377,11 +1378,11 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  enddo; enddo
 
  deltaF  = Favg - FavgNew
-  
+
  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
   FNew(i,j,k,1:3,1:3) = FNew(i,j,k,1:3,1:3) + deltaF
  enddo; enddo; enddo
-  
+ 
  call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(FNew))
  write (777,rec=1) FNew
  close (777)
@@ -1394,12 +1395,12 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  allocate(F_lastIncNew(resNew(1),resNew(2),resNew(3),3,3))
  allocate(F_Linear(3,3,mesh_NcpElems))
  allocate(F_Linear_New(3,3,NpointsNew))
- 
+
  call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc', &
                                     trim(getSolverJobName()),size(F_lastInc))
  read (777,rec=1) F_lastInc
  close (777)
- 
+
  call IO_read_jobBinaryFile(777,'F_aim_lastInc', &
                                  trim(getSolverJobName()),size(Favg_LastInc))
  read (777,rec=1) Favg_LastInc
@@ -1433,7 +1434,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
    F_LastIncNew(i,j,k,1:3,1:3) = F_LastIncNew(i,j,k,1:3,1:3) + deltaF_lastInc
  enddo; enddo; enddo
-   
+ 
  call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_LastIncNew))
  write (777,rec=1) F_LastIncNew
  close (777)
@@ -1441,7 +1442,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(F_Linear_New)
  deallocate(F_lastInc)
  deallocate(F_lastIncNew)
- 
+
 ! relocating data of material subroutine ---------------------------------------------------------
  allocate(material_phase    (1,1, mesh_NcpElems))
  allocate(material_phaseNew (1,1, NpointsNew))
@@ -1923,6 +1924,156 @@ subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords)
 
 end subroutine deformed_fft
 
+
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+function mesh_deformedCoordsFFT(geomdim,F,scalingIn,FavgIn)
+!+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+! Routine to calculate coordinates in current configuration for given defgrad
+! using integration in Fourier space (more accurate than deformed(...))
+!
+ use IO, only: &
+   IO_error
+ use numerics, only: &
+   fftw_timelimit, &
+   fftw_planner_flag
+ use debug, only: &
+   debug_mesh, &
+   debug_level, &
+   debug_levelBasic
+ use math, only: &
+   PI
+
+ implicit none
+
+ real(pReal), intent(in), dimension(3)                   :: geomdim
+ real(pReal), intent(in), dimension(:,:,:,:,:)           :: F
+ real(pReal), intent(in), dimension(3,3),      optional  :: FavgIn
+ real(pReal), intent(in),                      optional  :: scalingIn
+! function
+ real(pReal), dimension(3,size(F,3),size(F,4),size(F,5)) :: mesh_deformedCoordsFFT
+! allocatable arrays for fftw c routines
+ type(C_PTR) :: fftw_forth, fftw_back
+ type(C_PTR) :: coords_fftw, defgrad_fftw
+ real(pReal),    dimension(:,:,:,:,:), pointer :: F_real
+ complex(pReal), dimension(:,:,:,:,:), pointer :: F_fourier
+ real(pReal),    dimension(:,:,:,:),   pointer :: coords_real
+ complex(pReal), dimension(:,:,:,:),   pointer :: coords_fourier
+ ! other variables
+ integer(pInt) :: i, j, k, m, res1_red
+ integer(pInt), dimension(3) :: k_s, res
+ real(pReal), dimension(3)   :: step, offset_coords, integrator
+ real(pReal), dimension(3,3)   :: Favg
+ real(pReal)   :: scaling
+
+ if (present(scalingIn)) then
+   if (scalingIn < 0.0_pReal) then                                                                       !the f2py way to tell it is not present
+     scaling = 1.0_pReal
+   else
+     scaling = scalingIn
+   endif
+ else
+   scaling = 1.0_pReal
+ endif
+ 
+ res =  [size(F,3),size(F,4),size(F,5)]
+ integrator = geomdim / 2.0_pReal / pi                                                                   ! see notes where it is used
+
+ if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
+   print*, 'Restore geometry using FFT-based integration'
+   print '(a,3(e12.5))', ' Dimension: ', geomdim
+   print '(a,3(i5))',   ' Resolution:', res
+ endif
+ 
+ res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
+ step = geomdim/real(res, pReal)
+
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
+ call fftw_set_timelimit(fftw_timelimit)
+ defgrad_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*9_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
+ call c_f_pointer(defgrad_fftw, F_real,   [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])
+ call c_f_pointer(defgrad_fftw, F_fourier,[res1_red     ,res(2),res(3),3_pInt,3_pInt])
+ coords_fftw =          fftw_alloc_complex(int(res1_red     *res(2)*res(3)*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
+ call c_f_pointer(coords_fftw, coords_real,     [res(1)+2_pInt,res(2),res(3),3_pInt])
+ call c_f_pointer(coords_fftw, coords_fourier,  [res1_red     ,res(2),res(3),3_pInt])
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),9_pInt,&                      ! dimensions , length in each dimension in reversed order
+                          F_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
+                       F_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)
+
+ fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),3_pInt,&
+                        coords_fourier,(/res(3),res(2) ,res1_red/),&
+                                     1_pInt,  res(3)*res(2)* res1_red,&
+                           coords_real,(/res(3),res(2) ,res(1)+2_pInt/),&
+                                     1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
+ 
+ 
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   F_real(i,j,k,1:3,1:3) = F(1:3,1:3,i,j,k)                                        ! ensure that data is aligned properly (fftw_alloc)
+ enddo; enddo; enddo
+
+ call fftw_execute_dft_r2c(fftw_forth, F_real, F_fourier)
+ 
+ if (present(FavgIn)) then
+   if (all(FavgIn < 0.0_pReal)) then
+     Favg = real(F_fourier(1,1,1,1:3,1:3)*real((res(1)*res(2)*res(3)),pReal),pReal)                                                          !the f2py way to tell it is not present
+   else
+     Favg = FavgIn
+   endif
+ else
+   Favg = real(F_fourier(1,1,1,1:3,1:3)*real((res(1)*res(2)*res(3)),pReal),pReal)
+ endif
+ 
+ !remove highest frequency in each direction
+ if(res(1)>1_pInt) &
+   F_fourier( res(1)/2_pInt+1_pInt,1:res(2)           ,1:res(3)             ,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(2)>1_pInt) &
+   F_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+ if(res(3)>1_pInt) &
+   F_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
+                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+
+ coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ do k = 1_pInt, res(3)
+   k_s(3) = k-1_pInt
+   if(k > res(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-res(3)
+   do j = 1_pInt, res(2)
+     k_s(2) = j-1_pInt
+     if(j > res(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-res(2)
+     do i = 1_pInt, res1_red
+       k_s(1) = i-1_pInt
+       do m = 1_pInt,3_pInt
+         coords_fourier(i,j,k,m) = sum(F_fourier(i,j,k,m,1:3)*cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
+      enddo
+      if (k_s(3) /= 0_pInt .or. k_s(2) /= 0_pInt .or. k_s(1) /= 0_pInt) &
+        coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3) / real(-sum(k_s*k_s),pReal)
+ enddo; enddo; enddo
+
+ call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
+ coords_real = coords_real/real(res(1)*res(2)*res(3),pReal)
+
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   mesh_deformedCoordsFFT(1:3,i,j,k) = coords_real(i,j,k,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
+ enddo; enddo; enddo
+
+ offset_coords = matmul(F(1:3,1:3,1,1,1),step/2.0_pReal) - scaling*mesh_deformedCoordsFFT(1:3,1,1,1)
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     mesh_deformedCoordsFFT(1:3,i,j,k) =  scaling*mesh_deformedCoordsFFT(1:3,i,j,k) &
+     + offset_coords + matmul(Favg,&
+                                                    (/step(1)*real(i-1_pInt,pReal),&
+                                                      step(2)*real(j-1_pInt,pReal),&
+                                                      step(3)*real(k-1_pInt,pReal)/))
+
+ enddo; enddo; enddo
+ 
+ call fftw_destroy_plan(fftw_forth)
+ call fftw_destroy_plan(fftw_back)
+ call fftw_free(defgrad_fftw)
+ call fftw_free(coords_fftw)
+
+end function mesh_deformedCoordsFFT
 
 !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch)
@@ -3711,28 +3862,28 @@ do e = 1_pInt,mesh_NcpElems
 enddo
 !$OMP CRITICAL (write2out)
   if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-    write (6,*)
-    write (6,*) 'Input Parser: STATISTICS'
-    write (6,*)
-    write (6,*) mesh_Nelems,           ' : total number of elements in mesh'
-    write (6,*) mesh_NcpElems,         ' : total number of CP elements in mesh'
-    write (6,*) mesh_Nnodes,           ' : total number of nodes in mesh'
-    write (6,*) mesh_maxNnodes,        ' : max number of nodes in any CP element'
-    write (6,*) mesh_maxNips,          ' : max number of IPs in any CP element'
-    write (6,*) mesh_maxNipNeighbors,  ' : max number of IP neighbors in any CP element'
-    write (6,*) mesh_maxNsubNodes,     ' : max number of (additional) subnodes in any CP element'
-    write (6,*) mesh_maxNsharedElems,  ' : max number of CP elements sharing a node'
-    write (6,*)
-    write (6,*) 'Input Parser: HOMOGENIZATION/MICROSTRUCTURE'
-    write (6,*)
-    write (6,*) mesh_maxValStateVar(1), ' : maximum homogenization index'
-    write (6,*) mesh_maxValStateVar(2), ' : maximum microstructure index'
-    write (6,*)
+    write(6,*)
+    write(6,*) 'Input Parser: STATISTICS'
+    write(6,*)
+    write(6,*) mesh_Nelems,           ' : total number of elements in mesh'
+    write(6,*) mesh_NcpElems,         ' : total number of CP elements in mesh'
+    write(6,*) mesh_Nnodes,           ' : total number of nodes in mesh'
+    write(6,*) mesh_maxNnodes,        ' : max number of nodes in any CP element'
+    write(6,*) mesh_maxNips,          ' : max number of IPs in any CP element'
+    write(6,*) mesh_maxNipNeighbors,  ' : max number of IP neighbors in any CP element'
+    write(6,*) mesh_maxNsubNodes,     ' : max number of (additional) subnodes in any CP element'
+    write(6,*) mesh_maxNsharedElems,  ' : max number of CP elements sharing a node'
+    write(6,*)
+    write(6,*) 'Input Parser: HOMOGENIZATION/MICROSTRUCTURE'
+    write(6,*)
+    write(6,*) mesh_maxValStateVar(1), ' : maximum homogenization index'
+    write(6,*) mesh_maxValStateVar(2), ' : maximum microstructure index'
+    write(6,*)
     write (myFmt,'(a,i32.32,a)') '(9x,a2,1x,',mesh_maxValStateVar(2),'(i8))'
-    write (6,myFmt) '+-',math_range(mesh_maxValStateVar(2))
+    write(6,myFmt) '+-',math_range(mesh_maxValStateVar(2))
     write (myFmt,'(a,i32.32,a)') '(i8,1x,a2,1x,',mesh_maxValStateVar(2),'(i8))'
     do i=1_pInt,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
-      write (6,myFmt) i,'| ',mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstructures
+      write(6,myFmt) i,'| ',mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstructures
     enddo
     write(6,*)
     write(6,*) 'Input Parser: ADDITIONAL MPIE OPTIONS'
@@ -3743,9 +3894,9 @@ enddo
   endif
 
   if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
-    write (6,*)
-    write (6,*) 'Input Parser: SUBNODE COORDINATES'
-    write (6,*)
+    write(6,*)
+    write(6,*) 'Input Parser: SUBNODE COORDINATES'
+    write(6,*)
     write(6,'(a8,1x,a5,1x,2(a15,1x),a20,3(1x,a12))')&
                               'elem','IP','IP neighbor','IPFaceNodes','subNodeOnIPFace','x','y','z'
     do e = 1_pInt,mesh_NcpElems                  ! loop over cpElems
@@ -3770,28 +3921,28 @@ enddo
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
       do i = 1_pInt,FE_Nips(mesh_element(2,e))
         if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
-        write (6,'(i8,1x,i5,3(1x,f12.8))') e, i, mesh_ipCoordinates(:,i,e)
+        write(6,'(i8,1x,i5,3(1x,f12.8))') e, i, mesh_ipCoordinates(:,i,e)
       enddo
     enddo 
-    write (6,*)
-    write (6,*) 'Input Parser: ELEMENT VOLUME'
-    write (6,*)
-    write (6,'(a13,1x,e15.8)') 'total volume', sum(mesh_ipVolume)
-    write (6,*)
-    write (6,'(a8,1x,a5,1x,a15,1x,a5,1x,a15,1x,a16)') 'elem','IP','volume','face','area','-- normal --'
+    write(6,*)
+    write(6,*) 'Input Parser: ELEMENT VOLUME'
+    write(6,*)
+    write(6,'(a13,1x,e15.8)') 'total volume', sum(mesh_ipVolume)
+    write(6,*)
+    write(6,'(a8,1x,a5,1x,a15,1x,a5,1x,a15,1x,a16)') 'elem','IP','volume','face','area','-- normal --'
     do e = 1_pInt,mesh_NcpElems
       if (iand(myDebug,debug_levelSelective)   /= 0_pInt .and. debug_e /= e) cycle
       do i = 1_pInt,FE_Nips(mesh_element(2,e))
         if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
-        write (6,'(i8,1x,i5,1x,e15.8)') e,i,mesh_IPvolume(i,e)
+        write(6,'(i8,1x,i5,1x,e15.8)') e,i,mesh_IPvolume(i,e)
         do f = 1_pInt,FE_NipNeighbors(mesh_element(2,e))
-          write (6,'(i33,1x,e15.8,1x,3(f6.3,1x))') f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
+          write(6,'(i33,1x,e15.8,1x,3(f6.3,1x))') f,mesh_ipArea(f,i,e),mesh_ipAreaNormal(:,f,i,e)
         enddo
       enddo
     enddo
-    write (6,*)
-    write (6,*) 'Input Parser: NODE TWINS'
-    write (6,*)
+    write(6,*)
+    write(6,*) 'Input Parser: NODE TWINS'
+    write(6,*)
     write(6,'(a6,3(3x,a6))') '  node','twin_x','twin_y','twin_z'
     do n = 1_pInt,mesh_Nnodes                    ! loop over cpNodes
       if (debug_e <= mesh_NcpElems) then
@@ -3810,7 +3961,7 @@ enddo
       do i = 1_pInt,FE_Nips(t)                   ! loop over IPs of elem
         if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. debug_i /= i) cycle
         do n = 1_pInt,FE_NipNeighbors(t)         ! loop over neighbors of IP
-          write (6,'(i8,1x,i10,1x,i10,1x,a3,1x,i13,1x,i13)') e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
+          write(6,'(i8,1x,i10,1x,i10,1x,a3,1x,i13,1x,i13)') e,i,n,'-->',mesh_ipNeighborhood(1,n,i,e),mesh_ipNeighborhood(2,n,i,e)
         enddo
       enddo
     enddo

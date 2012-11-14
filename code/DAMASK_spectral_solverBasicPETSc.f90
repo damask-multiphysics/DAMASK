@@ -10,10 +10,8 @@ module DAMASK_spectral_SolverBasicPETSc
  use prec, only: & 
    pInt, &
    pReal
- 
  use math, only: &
    math_I3
-   
  use DAMASK_spectral_Utilities, only: &
    tSolutionState
 
@@ -44,7 +42,6 @@ module DAMASK_spectral_SolverBasicPETSc
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, Fdot
- real(pReal), private, dimension(:,:,:,:),   allocatable ::  coordinates
  real(pReal)                                             ::  temperature
 
 !--------------------------------------------------------------------------------------------------
@@ -72,33 +69,27 @@ module DAMASK_spectral_SolverBasicPETSc
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
 subroutine basicPETSc_init()
-      
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
- 
  use IO, only: &
    IO_read_JobBinaryFile, &
    IO_write_JobBinaryFile
-    
  use FEsolving, only: &
    restartInc
-   
  use DAMASK_interface, only: &
    getSolverJobName
-        
  use DAMASK_spectral_Utilities, only: &
    Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
    debugRestart
-      
  use numerics, only: &
    petsc_options  
-         
  use mesh, only: &
    res, &
    geomdim, &
-   mesh_NcpElems
-      
+   mesh_NcpElems, &
+   mesh_ipCoordinates, &
+   mesh_deformedCoordsFFT
  use math, only: &
    math_invSym3333
       
@@ -106,7 +97,7 @@ subroutine basicPETSc_init()
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
  integer(pInt) :: i,j,k
- real(pReal),  dimension(3,3,  res(1),  res(2),res(3)) ::  P
+ real(pReal),  dimension(3,3,res(1),res(2),res(3)) ::  P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
  PetscErrorCode :: ierr
  PetscObject    :: dummy
@@ -119,9 +110,8 @@ subroutine basicPETSc_init()
     
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
- allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (Fdot       (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (coordinates(  res(1),  res(2),res(3),3),    source = 0.0_pReal)
+ allocate (F_lastInc(3,3,res(1),res(2),res(3)),  source = 0.0_pReal)
+ allocate (Fdot     (3,3,res(1),res(2),res(3)),  source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -150,10 +140,6 @@ subroutine basicPETSc_init()
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F_lastInc         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                   ! initialize to identity
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)])
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     coordinates(i,j,k,1:3) = geomdim/real(res,pReal)*real([i,j,k],pReal) &
-                            - geomdim/real(2_pInt*res,pReal)
-   enddo; enddo; enddo
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
@@ -172,11 +158,10 @@ subroutine basicPETSc_init()
    call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
    read (777,rec=1) F_aim_lastInc
    close (777)
-
-   coordinates = 0.0 ! change it later!!!
  endif
-
- call Utilities_constitutiveResponse(coordinates,&
+ mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
+                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+ call Utilities_constitutiveResponse(&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                temperature,0.0_pReal,P,C,P_av,.false.,math_I3)
@@ -211,7 +196,9 @@ type(tSolutionState) function &
  use mesh, only: &
    res,&
    geomdim,&
-   deformed_fft
+   mesh_ipCoordinates,&
+   mesh_NcpElems, &
+   mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobBinaryFile
  use DAMASK_spectral_Utilities, only: &
@@ -260,14 +247,16 @@ type(tSolutionState) function &
    close(777)
  endif 
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
- 
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(F,[3,3,res(1),res(2),res(3)])),&
+                                                        [3,1,mesh_NcpElems])
  if ( cutBack) then 
    F_aim = F_aim_lastInc
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)]) 
    C = C_lastInc
  else
    C_lastInc = C
-
+   mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
+                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
@@ -280,8 +269,6 @@ type(tSolutionState) function &
   
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
-   call deformed_fft(res,geomdim,math_rotate_backward33(F_aim_lastInc,rotation_BC), &
-                                                                   1.0_pReal,F_lastInc,coordinates)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                                            timeinc,timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
    F_lastInc = reshape(F,[3,3,res(1),res(2),res(3)])
@@ -292,7 +279,6 @@ type(tSolutionState) function &
  F = reshape(Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot),[9,res(1),res(2),res(3)])
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr)
  CHKERRQ(ierr)
- call deformed_fft(res,geomdim,math_rotate_backward33(F_aim,rotation_BC),1.0_pReal,F_lastInc,coordinates)
   
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -322,7 +308,6 @@ end function BasicPETSc_solution
 !> @brief forms the AL residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
-
  use numerics, only: &
    itmax, &
    itmin
@@ -366,7 +351,7 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(coordinates,F_lastInc,x_scal,temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,x_scal,temperature,params%timeinc, &
                                      f_scal,C,P_av,ForwardData,params%rotation_BC)
  ForwardData = .false.
   
