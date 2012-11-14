@@ -100,6 +100,7 @@ bin_link = { \
                 'addCauchy.py',
                 'addCalculation.py',
                 'addDeterminant.py',
+                'addDeviator.py',
                 'addDivergence.py',
                 'addCurl.py',
                 'addMises.py',
