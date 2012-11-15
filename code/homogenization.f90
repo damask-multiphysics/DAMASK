@@ -79,7 +79,7 @@ subroutine homogenization_init(Temperature)
  use debug, only: debug_level, debug_homogenization, debug_levelBasic
  use IO, only: IO_error, IO_open_file, IO_open_jobFile_stat, IO_write_jobFile, &
                IO_write_jobBinaryIntFile 
- use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
+ use mesh, only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips,FE_geomtype
  use material
  use constitutive, only: constitutive_maxSizePostResults
  use crystallite, only: crystallite_maxSizePostResults
@@ -178,7 +178,7 @@ subroutine homogenization_init(Temperature)
  !$OMP PARALLEL DO PRIVATE(myInstance)
    do e = 1,mesh_NcpElems                                                                           ! loop over elements
      myInstance = homogenization_typeInstance(mesh_element(3,e))
-     do i = 1,FE_Nips(mesh_element(2,e))                                                            ! loop over IPs
+     do i = 1,FE_Nips(FE_geomtype(mesh_element(2,e)))                                               ! loop over IPs
        select case(homogenization_type(mesh_element(3,e)))
          case (homogenization_isostrain_label)
            if (homogenization_isostrain_sizeState(myInstance) > 0_pInt) then

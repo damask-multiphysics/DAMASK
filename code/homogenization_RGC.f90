@@ -77,7 +77,7 @@ subroutine homogenization_RGC_init(&
                   math_sampleRandomOri,&
                   math_EulerToR,&
                   INRAD
- use mesh,  only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips
+ use mesh,  only: mesh_maxNips,mesh_NcpElems,mesh_element,FE_Nips,FE_geomtype
  use IO
  use material
 
@@ -164,7 +164,7 @@ subroutine homogenization_RGC_init(&
      myInstance = homogenization_typeInstance(mesh_element(3,e))
      if (all (homogenization_RGC_angles(:,myInstance) >= 399.9_pReal)) then
        homogenization_RGC_orientation(:,:,1,e) = math_EulerToR(math_sampleRandomOri())
-       do i = 1_pInt,FE_Nips(mesh_element(2,e))
+       do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
          if (microstructure_elemhomo(mesh_element(4,e))) then
            homogenization_RGC_orientation(:,:,i,e) = homogenization_RGC_orientation(:,:,1,e)
          else
@@ -172,7 +172,7 @@ subroutine homogenization_RGC_init(&
          endif
        enddo
      else
-       do i = 1_pInt,FE_Nips(mesh_element(2,e))
+       do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
          homogenization_RGC_orientation(:,:,i,e) = math_EulerToR(homogenization_RGC_angles(:,myInstance)*inRad)
        enddo
      endif

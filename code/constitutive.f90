@@ -93,9 +93,10 @@ subroutine constitutive_init
  use mesh,     only: mesh_maxNips, &
                      mesh_NcpElems, &
                      mesh_element, &
+                     mesh_ipNeighborhood, &
                      FE_Nips, &
                      FE_NipNeighbors, &
-                     mesh_ipNeighborhood
+                     FE_geomtype
  use material, only: material_phase, &
                      material_Nphase, &
                      material_localFileExt, &    
@@ -221,7 +222,7 @@ endif
 
 do e = 1_pInt,mesh_NcpElems                                  ! loop over elements
   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-  do i = 1_pInt,FE_Nips(mesh_element(2,e))                   ! loop over IPs
+  do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))      ! loop over IPs
     do g = 1_pInt,myNgrains                                  ! loop over grains
       select case(phase_elasticity(material_phase(g,i,e)))  
 
@@ -375,8 +376,8 @@ do e = 1_pInt,mesh_NcpElems                                  ! loop over element
           constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(myInstance)
           
         case (constitutive_nonlocal_label)
-          select case(mesh_element(2,e))
-            case (1_pInt,6_pInt,7_pInt,8_pInt,9_pInt)
+          select case(FE_geomtype(mesh_element(2,e)))
+            case (7_pInt,8_pInt,9_pInt,10_pInt)
               ! all fine
             case default
               call IO_error(253_pInt,e,i,g)
@@ -417,7 +418,7 @@ enddo
 call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
 do e = 1_pInt,mesh_NcpElems                                  ! loop over elements
   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-  forall(i = 1_pInt:FE_Nips(mesh_element(2,e)), g = 1_pInt:myNgrains)
+  forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
     constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p
     constitutive_state(g,i,e)%p = constitutive_state0(g,i,e)%p    ! need to be defined for first call of constitutive_microstructure in crystallite_init
   endforall

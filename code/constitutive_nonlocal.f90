@@ -952,8 +952,9 @@ use math,     only: math_sampleGaussVar
 use mesh,     only: mesh_ipVolume, &
                     mesh_NcpElems, &
                     mesh_maxNips, &
+                    mesh_element, &
                     FE_Nips, &
-                    mesh_element
+                    FE_geomtype
 use material, only: material_phase, &
                     phase_plasticityInstance, &
                     phase_plasticity
@@ -1012,7 +1013,7 @@ do myInstance = 1_pInt,maxNinstance
 
     minimumIpVolume = 1e99_pReal
     do el = 1_pInt,mesh_NcpElems
-      do ip = 1_pInt,FE_Nips(mesh_element(2,el))
+      do ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,el)))
         if (constitutive_nonlocal_label == phase_plasticity(material_phase(1,ip,el)) &
             .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
           totalVolume = totalVolume + mesh_ipVolume(ip,el)
@@ -1029,7 +1030,7 @@ do myInstance = 1_pInt,maxNinstance
     do while(meanDensity < constitutive_nonlocal_rhoSglRandom(myInstance))
       call random_number(rnd)
       el = nint(rnd(1)*real(mesh_NcpElems,pReal)+0.5_pReal,pInt)
-      ip = nint(rnd(2)*real(FE_Nips(mesh_element(2,el)),pReal)+0.5_pReal,pInt)
+      ip = nint(rnd(2)*real(FE_Nips(FE_geomtype(mesh_element(2,el))),pReal)+0.5_pReal,pInt)
       if (constitutive_nonlocal_label == phase_plasticity(material_phase(1,ip,el)) &
           .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
@@ -1042,7 +1043,7 @@ do myInstance = 1_pInt,maxNinstance
   ! homogeneous distribution of density with some noise
   else
     do el = 1_pInt,mesh_NcpElems
-      do ip = 1_pInt,FE_Nips(mesh_element(2,el))
+      do ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,el)))
         if (constitutive_nonlocal_label == phase_plasticity(material_phase(1,ip,el)) &
             .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
           do f = 1_pInt,lattice_maxNslipFamily
@@ -1177,12 +1178,13 @@ use debug,    only: debug_level, &
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_element, &
-                    FE_NipNeighbors, &
-                    FE_maxNipNeighbors, &
                     mesh_ipNeighborhood, &
                     mesh_ipCoordinates, &
                     mesh_ipVolume, &
-                    mesh_ipAreaNormal
+                    mesh_ipAreaNormal, &
+                    FE_NipNeighbors, &
+                    FE_maxNipNeighbors, &
+                    FE_geomtype
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_localPlasticity, &
@@ -1347,7 +1349,7 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
   
   !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
   
-  do n = 1_pInt,FE_NipNeighbors(mesh_element(2,el))
+  do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,el)))
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
     if (neighboring_el > 0 .and. neighboring_ip > 0) then
@@ -2031,11 +2033,12 @@ use math,     only: math_norm3, &
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_element, &
-                    FE_NipNeighbors, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
                     mesh_ipArea, &
-                    mesh_ipAreaNormal
+                    mesh_ipAreaNormal, &
+                    FE_NipNeighbors, &
+                    FE_geomtype
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_plasticityInstance, &
@@ -2300,7 +2303,7 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
   my_Fe = Fe(1:3,1:3,g,ip,el)
   my_F = math_mul33x33(my_Fe, Fp(1:3,1:3,g,ip,el))
   
-  do n = 1_pInt,FE_NipNeighbors(mesh_element(2,el))                                                                                 ! loop through my neighbors
+  do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,el)))                                                                    ! loop through my neighbors
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
     neighboring_n  = mesh_ipNeighborhood(3,n,ip,el)
@@ -2561,9 +2564,10 @@ use material, only:   material_phase, &
                       homogenization_maxNgrains
 use mesh, only:       mesh_element, &
                       mesh_ipNeighborhood, &
-                      FE_NipNeighbors, &
                       mesh_maxNips, &
-                      mesh_NcpElems
+                      mesh_NcpElems, &
+                      FE_NipNeighbors, &
+                      FE_geomtype
 use lattice, only:    lattice_sn, &
                       lattice_sd
 
@@ -2594,7 +2598,7 @@ integer(pInt)                                   Nneighbors, &                 ! 
 real(pReal), dimension(4) ::                    absoluteMisorientation        ! absolute misorientation (without symmetry) between me and my neighbor
 real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
                          constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(1,i,e))),&
-                         FE_NipNeighbors(mesh_element(2,e))) :: &  
+                         FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))) :: &  
                                                 compatibility                 ! compatibility for current element and ip
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) :: &  
                                                 slipNormal, &
@@ -2606,10 +2610,10 @@ logical, dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(mat
                                                 belowThreshold
 
 
-Nneighbors = FE_NipNeighbors(mesh_element(2,e))
-my_phase = material_phase(1,i,e)
-my_texture = material_texture(1,i,e)
-my_instance = phase_plasticityInstance(my_phase)
+Nneighbors   = FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))
+my_phase     = material_phase(1,i,e)
+my_texture   = material_texture(1,i,e)
+my_instance  = phase_plasticityInstance(my_phase)
 my_structure = constitutive_nonlocal_structure(my_instance)
 ns = constitutive_nonlocal_totalNslip(my_instance)
 slipNormal(1:3,1:ns) =    lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,my_instance), my_structure)
@@ -2766,10 +2770,11 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_element, &
                     mesh_node0, &
-                    FE_Nips, &
                     mesh_cellCenterCoordinates, &
                     mesh_ipVolume, &
-                    mesh_periodicSurface
+                    mesh_periodicSurface, &
+                    FE_Nips, &
+                    FE_geomtype
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_localPlasticity, &
@@ -2890,7 +2895,7 @@ if (.not. phase_localPlasticity(phase)) then
   !* but only consider nonlocal neighbors within a certain cutoff radius R
   
   do neighboring_el = 1_pInt,mesh_NcpElems
-ipLoop: do neighboring_ip = 1_pInt,FE_Nips(mesh_element(2,neighboring_el))
+ipLoop: do neighboring_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighboring_el)))
       neighboring_phase = material_phase(g,neighboring_ip,neighboring_el)
       if (phase_localPlasticity(neighboring_phase)) then
         cycle

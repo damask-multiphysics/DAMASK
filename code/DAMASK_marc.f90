@@ -242,7 +242,8 @@ subroutine hypela2(&
                       mesh_node, &
                       mesh_build_subNodeCoords, &
                       mesh_build_ipCoordinates, &
-                      FE_Nnodes
+                      FE_Nnodes, &
+                      FE_geomtype
  use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
 !$ use numerics, only: DAMASK_NumThreadsInt                                   ! number of threads set by DAMASK_NUM_THREADS
  
@@ -361,7 +362,7 @@ subroutine hypela2(&
      else
        computationMode = 3                                                ! plain collect
      endif
-     do node = 1,FE_Nnodes(mesh_element(2,cp_en))
+     do node = 1,FE_Nnodes(FE_geomtype(mesh_element(2,cp_en)))
        FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
        mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + numerics_unitlength * dispt(1:3,node)
      enddo

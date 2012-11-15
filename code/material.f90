@@ -672,7 +672,8 @@ subroutine material_populateGrains
                       mesh_maxNips, &
                       mesh_NcpElems, &
                       mesh_ipVolume, &
-                      FE_Nips
+                      FE_Nips, &
+                      FE_geomtype
  use IO, only:        IO_error, &
                       IO_hybridIA
  use FEsolving, only: FEsolving_execIP
@@ -720,6 +721,7 @@ subroutine material_populateGrains
 
 ! identify maximum grain count per IP (from element) and find grains per homog/micro pair
  do e = 1_pInt,mesh_NcpElems
+   t     = FE_geomtype(mesh_element(2,e))
    homog = mesh_element(3,e)
    micro = mesh_element(4,e)
    if (homog < 1_pInt .or. homog > material_Nhomogenization) &   ! out of bounds
@@ -729,7 +731,7 @@ subroutine material_populateGrains
    if (microstructure_elemhomo(micro)) then
      dGrains = homogenization_Ngrains(homog)
    else
-     dGrains = homogenization_Ngrains(homog) * FE_Nips(mesh_element(2,e))
+     dGrains = homogenization_Ngrains(homog) * FE_Nips(t)
    endif
    Ngrains(homog,micro) = Ngrains(homog,micro) + dGrains
    Nelems(homog,micro)  = Nelems(homog,micro) + 1_pInt
@@ -767,15 +769,16 @@ subroutine material_populateGrains
        grain = 0_pInt
        do hme = 1_pInt, Nelems(homog,micro)
          e = elemsOfHomogMicro(hme,homog,micro)                               ! my combination of homog and micro, only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
+         t = FE_geomtype(mesh_element(2,e))
          if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
-           volumeOfGrain(grain+1_pInt:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(mesh_element(2,e)),e))/&
+           volumeOfGrain(grain+1_pInt:grain+dGrains) = sum(mesh_ipVolume(1:FE_Nips(t),e))/&
                                                                          real(dGrains,pReal)
            grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
          else
-           forall (i = 1_pInt:FE_Nips(mesh_element(2,e))) &                        ! loop over IPs
+           forall (i = 1_pInt:FE_Nips(t)) &                                   ! loop over IPs
              volumeOfGrain(grain+(i-1)*dGrains+1_pInt:grain+i*dGrains) = &
                mesh_ipVolume(i,e)/dGrains                                     ! assign IPvolume/Ngrains to all grains of IP
-           grain = grain + FE_Nips(mesh_element(2,e)) * dGrains               ! wind forward by Nips*NgrainsPerIP
+           grain = grain + FE_Nips(t) * dGrains                               ! wind forward by Nips*NgrainsPerIP
          endif
        enddo
        
@@ -886,8 +889,9 @@ subroutine material_populateGrains
        grain = 0_pInt
        do hme = 1_pInt, Nelems(homog,micro)
        e = elemsOfHomogMicro(hme,homog,micro)                                 ! only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
+       t = FE_geomtype(mesh_element(2,e))
          if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
-           forall (i = 1_pInt:FE_Nips(mesh_element(2,e)), g = 1_pInt:dGrains)           ! loop over IPs and grains
+           forall (i = 1_pInt:FE_Nips(t), g = 1_pInt:dGrains)                 ! loop over IPs and grains
              material_volume(g,i,e)        = volumeOfGrain(grain+g)
              material_phase(g,i,e)         = phaseOfGrain(grain+g)
              material_texture(g,i,e)       = textureOfGrain(grain+g)
@@ -896,13 +900,13 @@ subroutine material_populateGrains
            FEsolving_execIP(2,e) = 1_pInt                                     ! restrict calculation to first IP only, since all other results are to be copied from this
            grain = grain + dGrains                                            ! wind forward by NgrainsPerIP
          else
-           forall (i = 1_pInt:FE_Nips(mesh_element(2,e)), g = 1_pInt:dGrains)           ! loop over IPs and grains
+           forall (i = 1_pInt:FE_Nips(t), g = 1_pInt:dGrains)                 ! loop over IPs and grains
              material_volume(g,i,e)        = volumeOfGrain(grain+(i-1_pInt)*dGrains+g)
              material_phase(g,i,e)         = phaseOfGrain(grain+(i-1_pInt)*dGrains+g)
              material_texture(g,i,e)       = textureOfGrain(grain+(i-1_pInt)*dGrains+g)
              material_EulerAngles(:,g,i,e) = orientationOfGrain(:,grain+(i-1_pInt)*dGrains+g)
            end forall
-           grain = grain + FE_Nips(mesh_element(2,e)) * dGrains               ! wind forward by Nips*NgrainsPerIP
+           grain = grain + FE_Nips(t) * dGrains                               ! wind forward by Nips*NgrainsPerIP
          endif
        enddo
      endif   ! active homog,micro pair

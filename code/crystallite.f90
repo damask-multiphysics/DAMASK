@@ -3038,7 +3038,8 @@ use material, only:                   material_phase, &
                                       phase_plasticityInstance
 use mesh, only:                       mesh_element, &
                                       mesh_ipNeighborhood, &
-                                      FE_NipNeighbors
+                                      FE_NipNeighbors, &
+                                      FE_geomtype
 use constitutive_nonlocal, only:      constitutive_nonlocal_structure, &
                                       constitutive_nonlocal_updateCompatibility
 
@@ -3104,19 +3105,19 @@ logical error
         
         ! --- calculate disorientation between me and my neighbor ---
         
-        do n = 1_pInt,FE_NipNeighbors(mesh_element(2,e))                                                       ! loop through my neighbors          
+        do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))                                     ! loop through my neighbors
           neighboring_e = mesh_ipNeighborhood(1,n,i,e)
           neighboring_i = mesh_ipNeighborhood(2,n,i,e)
           if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                         ! if neighbor exists
             neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
             if (.not. phase_localPlasticity(neighboringPhase)) then                                       ! neighbor got also nonlocal plasticity
               neighboringInstance = phase_plasticityInstance(neighboringPhase)        
-              neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure               
+              neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure
               if (myStructure == neighboringStructure) then                                               ! if my neighbor has same crystal structure like me
                 crystallite_disorientation(:,n,1,i,e) = &
                   math_QuaternionDisorientation( crystallite_orientation(1:4,1,i,e), &
                                                  crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
-                                                 crystallite_symmetryID(1,i,e))                           ! calculate disorientation            
+                                                 crystallite_symmetryID(1,i,e))                           ! calculate disorientation
               else                                                                                        ! for neighbor with different phase
                 crystallite_disorientation(:,n,1,i,e) = (/0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal/)    ! 180 degree rotation about 100 axis
               endif

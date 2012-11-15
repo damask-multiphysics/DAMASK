@@ -277,7 +277,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                             mesh_maxNips, &
                             mesh_element, &
                             FE_Nips, &
-                            FE_Nnodes
+                            FE_Nnodes, &
+                            FE_geomtype
   use material, only:       homogenization_maxNgrains, &
                             microstructure_elemhomo, &
                             material_phase
@@ -532,7 +533,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
           !$OMP PARALLEL DO
             do e = FEsolving_execElem(1),FEsolving_execElem(2)                                      ! loop over all parallely processed elements
               if (microstructure_elemhomo(mesh_element(4,e))) then                                  ! dealing with homogeneous element?
-                forall (i = 2:FE_Nips(mesh_element(2,e)))                                           ! copy results of first IP to all others
+                forall (i = 2:FE_Nips(FE_geomtype(mesh_element(2,e))))                              ! copy results of first IP to all others
                   materialpoint_P(1:3,1:3,i,e) = materialpoint_P(1:3,1:3,1,e) 
                   materialpoint_F(1:3,1:3,i,e) = materialpoint_F(1:3,1:3,1,e) 
                   materialpoint_dPdF(1:3,1:3,1:3,1:3,i,e) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e)
