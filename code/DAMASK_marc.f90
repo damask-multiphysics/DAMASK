@@ -341,6 +341,8 @@ subroutine hypela2(&
        call debug_reset()                                                 ! resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1_pInt
+       call mesh_build_subNodeCoords()                                    ! update subnodal coordinates
+       call mesh_build_ipCoordinates()                                    ! update ip coordinates
      endif
      if ( outdatedByNewInc ) then
        outdatedByNewInc = .false.                                         ! reset flag
@@ -370,10 +372,6 @@ subroutine hypela2(&
    theInc   = inc                                                         ! record current increment number
    lastMode = calcMode(nn,cp_en)                                          ! record calculationMode
  endif
-
- ! marc returns nodal coordinates. So for marc we have to calculate the ip coordinates from the nodal coordinates.
- call mesh_build_subNodeCoords()                                          ! update subnodal coordinates
- call mesh_build_ipCoordinates()                                          ! update ip coordinates
 
  call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,n(1),nn,stress,ddsdde, pstress, dPdF)
 
