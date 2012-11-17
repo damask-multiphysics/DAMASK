@@ -162,8 +162,7 @@ constitutive_nonlocal_interactionMatrixSlipSlip                      ! interacti
 
 real(pReal), dimension(:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_lattice2slip, &                                ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
-constitutive_nonlocal_accumulatedShear, &                            ! accumulated shear per slip system up to the start of the FE increment
-constitutive_nonlocal_rhoDotEdgeJogs
+constitutive_nonlocal_accumulatedShear                               ! accumulated shear per slip system up to the start of the FE increment
 
 real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_Cslip_3333, &                                  ! elasticity matrix for each instance
@@ -716,13 +715,11 @@ allocate(constitutive_nonlocal_rhoDotMultiplication(maxTotalNslip, 2, homogeniza
 allocate(constitutive_nonlocal_rhoDotSingle2DipoleGlide(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 allocate(constitutive_nonlocal_rhoDotAthermalAnnihilation(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 allocate(constitutive_nonlocal_rhoDotThermalAnnihilation(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-allocate(constitutive_nonlocal_rhoDotEdgeJogs(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_rhoDotFlux = 0.0_pReal
 constitutive_nonlocal_rhoDotMultiplication = 0.0_pReal
 constitutive_nonlocal_rhoDotSingle2DipoleGlide = 0.0_pReal
 constitutive_nonlocal_rhoDotAthermalAnnihilation = 0.0_pReal
 constitutive_nonlocal_rhoDotThermalAnnihilation = 0.0_pReal
-constitutive_nonlocal_rhoDotEdgeJogs = 0.0_pReal
 
 allocate(constitutive_nonlocal_compatibility(2,maxTotalNslip, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_compatibility = 0.0_pReal
@@ -1866,14 +1863,16 @@ integer(pInt)                               myInstance, &             ! current 
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),10) :: &
                                             deltaRho, &                     ! density increment
                                             deltaRhoRemobilization, &       ! density increment by remobilization
-                                            deltaRhoDipole2SingleStress     ! density increment by dipole dissociation (by stress change)
+                                            deltaRhoDipole2SingleStress, &  ! density increment by dipole dissociation (by stress change)
+                                            deltaRhoScrewDipoleAnnihilation ! density incrmeent by annihilation of screw dipoles
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             v                             ! dislocation glide velocity
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             tau, &                        ! current resolved shear stress
-                                            tauBack                       ! current back stress from pileups on same slip system
+                                            tauBack, &                    ! current back stress from pileups on same slip system
+                                            rhoForest
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             rhoDip, &                     ! current dipole dislocation densities (screw and edge dipoles)
                                             dLower, &                     ! minimum stable dipole distance for edges and screws
@@ -1905,6 +1904,7 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
   rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
   rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)
+rhoForest = state(g,ip,el)%p(10_pInt*ns+1:11_pInt*ns)
 tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
@@ -1959,15 +1959,13 @@ dUpper = max(dUpper,dLower)
 deltaDUpper = dUpper - dUpperOld
 
 
-!*** dissociation by stress increase
+!*** dissociation by stress increase (only edge dipoles)
 
 deltaRhoDipole2SingleStress = 0.0_pReal
-forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal) &
-  deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) / (dUpperOld(s,c) - dLower(s,c))
-
-forall (t=1_pInt:4_pInt) &
+forall (s=1_pInt:ns, deltaDUpper(s,1) < 0.0_pReal) &
+  deltaRhoDipole2SingleStress(s,9) = rhoDip(s,1) * deltaDUpper(s,1) / (dUpperOld(s,1) - dLower(s,1))
+forall (t=1_pInt:2_pInt) &
   deltaRhoDipole2SingleStress(1_pInt:ns,t) = -0.5_pReal * deltaRhoDipole2SingleStress(1_pInt:ns,(t-1_pInt)/2_pInt+9_pInt)
-
  
 
 !*** store new maximum dipole height in state
@@ -1978,11 +1976,27 @@ forall (c = 1_pInt:2_pInt) &
 
 
 !****************************************************************************
+!*** annihilation of screw dipoles
+! we assume that all screws annihilate instantaneously by cross-slipping on the colinear system
+! (so right now this is actually an athermal process, could be enriched by a thermally activated probability for cross-slip)
+! annihilated screw dipoles leave edge jogs behind on the colinear system
+
+deltaRhoScrewDipoleAnnihilation = 0.0_pReal
+if (myStructure == 1_pInt) then ! only fcc
+  deltaRhoScrewDipoleAnnihilation(1:ns,10) = -rhoDip(1:ns,2)
+  forall (s = 1:ns, constitutive_nonlocal_colinearSystem(s,myInstance) > 0_pInt) &
+    deltaRhoScrewDipoleAnnihilation(constitutive_nonlocal_colinearSystem(s,myInstance),1:2) = rhoDip(s,2) &
+                                                      * 0.25_pReal * sqrt(rhoForest(s)) * (dUpperOld(s,2) + dLower(s,2))
+endif
+
+
+!****************************************************************************
 !*** assign the changes in the dislocation densities to deltaState
 
 deltaRho = 0.0_pReal
 deltaRho = deltaRhoRemobilization &
-         + deltaRhoDipole2SingleStress
+         + deltaRhoDipole2SingleStress &
+         + deltaRhoScrewDipoleAnnihilation
 
 deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
 
@@ -1994,6 +2008,7 @@ deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
     write(6,'(a,/,8(12x,12(e12.5,1x),/))') '<< CONST >> dislocation remobilization', deltaRhoRemobilization(1:ns,1:8)
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole dissociation by stress increase', deltaRhoDipole2SingleStress
+    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> screw dipole annihilation', deltaRhoScrewDipoleAnnihilation
     write(6,*)
   endif
 #endif
@@ -2447,22 +2462,18 @@ do c = 1_pInt,2_pInt
 enddo
 
 
-!*** athermal annihilation
+!*** athermal annihilation (only edge dipoles)
 
 rhoDotAthermalAnnihilation = 0.0_pReal
-
-forall (c=1_pInt:2_pInt) &  
-  rhoDotAthermalAnnihilation(1:ns,c+8_pInt) = -2.0_pReal * dLower(1:ns,c) / constitutive_nonlocal_burgers(1:ns,myInstance) &
-               * (  2.0_pReal * (rhoSgl(1:ns,2*c-1) * abs(gdot(1:ns,2*c)) + rhoSgl(1:ns,2*c) * abs(gdot(1:ns,2*c-1))) &             ! was single hitting single
-                  + 2.0_pReal * (abs(rhoSgl(1:ns,2*c+3)) * abs(gdot(1:ns,2*c)) + abs(rhoSgl(1:ns,2*c+4)) * abs(gdot(1:ns,2*c-1))) & ! was single hitting immobile single or was immobile single hit by single
-                  + rhoDip(1:ns,c) * (abs(gdot(1:ns,2*c-1)) + abs(gdot(1:ns,2*c))))                                                 ! single knocks dipole constituent
+rhoDotAthermalAnnihilation(1:ns,9) = -2.0_pReal * dLower(1:ns,1) / constitutive_nonlocal_burgers(1:ns,myInstance) &
+                           * (  2.0_pReal * (rhoSgl(1:ns,1) * abs(gdot(1:ns,2)) + rhoSgl(1:ns,2) * abs(gdot(1:ns,1))) &             ! was single hitting single
+                              + 2.0_pReal * (abs(rhoSgl(1:ns,5)) * abs(gdot(1:ns,2)) + abs(rhoSgl(1:ns,6)) * abs(gdot(1:ns,1))) &   ! was single hitting immobile single or was immobile single hit by single
+                              + rhoDip(1:ns,1) * (abs(gdot(1:ns,1)) + abs(gdot(1:ns,2))))                                           ! single knocks dipole constituent
   
   
-!*** thermally activated annihilation of dipoles
+!*** thermally activated annihilation of edge dipoles by climb
 
 rhoDotThermalAnnihilation = 0.0_pReal
-
-! edge annihilation by thermally activate climb
 D = constitutive_nonlocal_Dsd0(myInstance) * exp(-constitutive_nonlocal_Qsd(myInstance) / (kB * Temperature))
 vClimb =  constitutive_nonlocal_atomicVolume(myInstance) * D / ( kB * Temperature ) &
           * constitutive_nonlocal_Gmod(myInstance) / ( 2.0_pReal * pi * (1.0_pReal-constitutive_nonlocal_nu(myInstance)) ) &
@@ -2472,15 +2483,7 @@ forall (s = 1_pInt:ns, dUpper(s,1) > dLower(s,1)) &
                                        - rhoDip(s,1) / timestep - rhoDotAthermalAnnihilation(s,9) - rhoDotSingle2DipoleGlide(s,9))  ! make sure that we do not annihilate more dipoles than we have
 
 ! annihilation of screw dipoles: we assume that all screws annihilate instantaneously by cross-slipping on the colinear system
-! (so right now this is actually an athermal process, could be enriched by a thermally activated probability for cross-slip)
-! annihilated screw dipoles leave edge jogs behind on the colinear system
-if (myStructure == 1_pInt) then ! only fcc
-  rhoDotThermalAnnihilation(1:ns,10) = -rhoDip(1:ns,2) / timestep
-  forall (s = 1:ns, constitutive_nonlocal_colinearSystem(s,myInstance) > 0_pInt) &
-    rhoDotThermalAnnihilation(constitutive_nonlocal_colinearSystem(s,myInstance),1:2) = -rhoDotThermalAnnihilation(s,10) &
-                                                      * 0.25_pReal * sqrt(rhoForest(s)) * (dUpper(s,2) + dLower(s,2))
-endif
-
+! so this mechanism is modeled in the deltaState 
 
 
 !****************************************************************************
@@ -2500,7 +2503,6 @@ if (numerics_integrationMode == 1_pInt) then                                    
   constitutive_nonlocal_rhoDotSingle2DipoleGlide(1:ns,1:2,g,ip,el) = rhoDotSingle2DipoleGlide(1:ns,9:10)
   constitutive_nonlocal_rhoDotAthermalAnnihilation(1:ns,1:2,g,ip,el) = rhoDotAthermalAnnihilation(1:ns,9:10)
   constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,1:2,g,ip,el) = rhoDotThermalAnnihilation(1:ns,9:10)
-  constitutive_nonlocal_rhoDotEdgeJogs(1:ns,g,ip,el) = 2.0_pReal * rhoDotThermalAnnihilation(1:ns,1)
 endif
 
 
@@ -2513,8 +2515,8 @@ endif
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> dipole formation by glide', rhoDotSingle2DipoleGlide * timestep
     write(6,'(a,/,2(12x,12(e12.5,1x),/))') '<< CONST >> athermal dipole annihilation', &
                                             rhoDotAthermalAnnihilation(1:ns,9:10) * timestep
-    write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> thermally activated dipole annihilation', &
-                                            rhoDotThermalAnnihilation * timestep
+    write(6,'(a,/,2(12x,12(e12.5,1x),/))') '<< CONST >> thermally activated dipole annihilation', &
+                                            rhoDotThermalAnnihilation(1:ns,9:10) * timestep
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> total density change', rhoDot * timestep
     write(6,'(a,/,10(12x,12(f12.7,1x),/))') '<< CONST >> relative density change', &
                                             rhoDot(1:ns,1:8) * timestep / (abs(rhoSgl)+1.0e-10), &
@@ -3480,10 +3482,6 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
 
     case ('rho_dot_ann_the_screw') 
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotThermalAnnihilation(1:ns,2,g,ip,el)
-      cs = cs + ns
-
-    case ('rho_dot_edgejogs') 
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_rhoDotEdgeJogs(1:ns,g,ip,el)
       cs = cs + ns
 
     case ('rho_dot_flux')
