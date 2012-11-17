@@ -2612,10 +2612,10 @@ logical, dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(mat
                                                 belowThreshold
 
 
-Nneighbors   = FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))
-my_phase     = material_phase(1,i,e)
-my_texture   = material_texture(1,i,e)
-my_instance  = phase_plasticityInstance(my_phase)
+Nneighbors = FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))
+my_phase = material_phase(1,i,e)
+my_texture = material_texture(1,i,e)
+my_instance = phase_plasticityInstance(my_phase)
 my_structure = constitutive_nonlocal_structure(my_instance)
 ns = constitutive_nonlocal_totalNslip(my_instance)
 slipNormal(1:3,1:ns) =    lattice_sn(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,my_instance), my_structure)
