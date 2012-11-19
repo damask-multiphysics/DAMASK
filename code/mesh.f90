@@ -457,25 +457,15 @@ subroutine mesh_init(ip,element)
 #endif
 #ifdef Marc
  call IO_open_inputFile(fileUnit,modelName)                                                         ! parse info from input file...
-   write(6,*) '1<<<+-  mesh init  -+>>>'
  call mesh_marc_get_tableStyles(fileUnit)
-   write(6,*) '2<<<+-  mesh init  -+>>>'
  call mesh_marc_count_nodesAndElements(fileUnit)
-   write(6,*) '3<<<+-  mesh init  -+>>>'
  call mesh_marc_count_elementSets(fileUnit)
-   write(6,*) '4<<<+-  mesh init  -+>>>'
  call mesh_marc_map_elementSets(fileUnit)
-   write(6,*) '5<<<+-  mesh init  -+>>>'
  call mesh_marc_count_cpElements(fileUnit)
-   write(6,*) '6<<<+-  mesh init  -+>>>'
  call mesh_marc_map_elements(fileUnit)
-   write(6,*) '7<<<+-  mesh init  -+>>>'
  call mesh_marc_map_nodes(fileUnit)
-   write(6,*) '8<<<+-  mesh init  -+>>>'
  call mesh_marc_build_nodes(fileUnit)
-   write(6,*) '9<<<+-  mesh init  -+>>>'
  call mesh_marc_count_cpSizes(fileunit)
-   write(6,*) '10<<<+-  mesh init  -+>>>'
  call mesh_marc_build_elements(fileUnit)
 #endif
 #ifdef Abaqus
@@ -497,21 +487,13 @@ subroutine mesh_init(ip,element)
  call mesh_get_damaskOptions(fileUnit)
  close (fileUnit)
  
-   write(6,*) '11<<<+-  mesh init  -+>>>'
  call mesh_build_subNodeCoords
-   write(6,*) '12<<<+-  mesh init  -+>>>'
  call mesh_build_ipCoordinates
-   write(6,*) '13<<<+-  mesh init  -+>>>'
  call mesh_build_ipVolumes
-   write(6,*) '14<<<+-  mesh init  -+>>>'
  call mesh_build_ipAreas
-   write(6,*) '15<<<+-  mesh init  -+>>>'
  call mesh_build_nodeTwins
-   write(6,*) '16<<<+-  mesh init  -+>>>'
  call mesh_build_sharedElems
-   write(6,*) '17<<<+-  mesh init  -+>>>'
  call mesh_build_ipNeighborhood
-   write(6,*) 'stat<<<+-  mesh init  -+>>>'
  call mesh_tell_statistics
 
  parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))                       ! plus potential killer from non-local constitutive
