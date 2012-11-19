@@ -321,13 +321,13 @@ do e = FEsolving_execElem(1),FEsolving_execElem(2)                              
     crystallite_localPlasticity(g,i,e) = phase_localPlasticity(material_phase(g,i,e))
     crystallite_Fe(1:3,1:3,g,i,e)  = math_transpose33(crystallite_Fp0(1:3,1:3,g,i,e))
     crystallite_Fp(1:3,1:3,g,i,e)  = crystallite_Fp0(1:3,1:3,g,i,e)
+    crystallite_requested(g,i,e) = .true.
   endforall
 enddo
 crystallite_partionedTemperature0 = Temperature   ! isothermal assumption
 crystallite_partionedFp0 = crystallite_Fp0
 crystallite_partionedF0 = crystallite_F0
 crystallite_partionedF = crystallite_F0
-crystallite_requested = .true.
 
 
 ! Initialize crystallite_symmetryID(g,i,e)
