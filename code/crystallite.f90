@@ -692,7 +692,8 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
     endselect
   endif
   
-  where(.not. crystallite_converged) crystallite_todo = .true.
+  where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &
+    crystallite_todo = .true.
 
   NiterationCrystallite = NiterationCrystallite + 1_pInt
       
