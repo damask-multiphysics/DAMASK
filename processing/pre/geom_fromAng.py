@@ -100,7 +100,7 @@ for file in files:
         me = str(point).rjust(formatwidth)
         microstructure += ['[Grain%s]\n'%me + \
                            'crystallite\t%i\n'%options.crystallite + \
-                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column])<options.threshold]],me)
+                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]],me)
                           ]
         texture +=        ['[Grain%s]\n'%me + \
                            '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
