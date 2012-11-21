@@ -165,8 +165,9 @@ class Test():
     file.close()
     
   def compare_Array(self,File1,File2):
+  
     import numpy
-
+    print 'comparing\n ' , File1,'\n ', File2
     refFile = open(File1)
     table = damask.ASCIItable(refFile)
     table.head_read()
@@ -174,8 +175,13 @@ class Test():
     refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+1,autostrip=True))
     curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+1,autostrip=True))
     if len(curArray) ==  len(refArray):
-      max_err=numpy.max(abs(refArray[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))                                        
-      print ' ********\n * maximum relative error',max_err,'\n ********'
+      refArrayNonZero = refArray[refArray.nonzero()]
+      curArray = curArray[refArray.nonzero()]
+      max_err=numpy.max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      max_loc=numpy.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
+      refArrayNonZero = refArrayNonZero[curArray.nonzero()]
+      curArray = curArray[curArray.nonzero()]
+      print ' ********\n * maximum relative error ',max_err,' for ', refArrayNonZero[max_loc],' and ',curArray[max_loc],'\n ********'
       return max_err
     else:
       print ' ********\n * mismatch in array size to compare \n ********'
@@ -187,7 +193,73 @@ class Test():
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
     return self.compare_Array(refName,curName)
+    
+  def compare_TableRefCur(self,headings,ref,cur=''):
+    
+    if cur =='': cur = ref
+    if len(headings) == 1 or type(headings) == dict: headings += headings
+    if len(headings) != 2 : print 'headings should be array of length 1 or 2 containing dictionaries or a dictionary'
+    if len(headings[0]) != len(headings[1]): print 'mismatch in headings to compare'
+    
+    refName = self.fileInReference(ref)
+    curName = self.fileInCurrent(cur)
+    return self.compare_Table(headings,refName,curName)
+    
+  def compare_Table(self,headings,File1,File2):
 
+    print 'comparing ASCII Tables\n' , File1,'\n', File2
+    table1 = damask.ASCIItable(open(File1))
+    table1.head_read()
+    table2 = damask.ASCIItable(open(File2))
+    table2.head_read()   
+    datainfo = {                                                               # list of requested labels per datatype
+                'scalar':     {'len':1,
+                               'label1':[],
+                               'label2':[]},
+                'vector':     {'len':3,
+                               'label1':[],
+                               'label2':[]},
+                'tensor':     {'len':9,
+                               'label1':[],
+                               'label2':[]},
+                }
+
+    for label in headings[0]:
+      datainfo[headings[0][label]]['label1'] += [label]
+    for label in headings[1]:
+      datainfo[headings[1][label]]['label2'] += [label]
+
+    active = [{},{}]
+    column = [{},{}]
+
+    for datatype,info in datainfo.items():
+      for label in info['label1']:
+        key = {True :'1_%s',
+               False:'%s'   }[info['len']>1]%label
+        if key not in table1.labels:
+          sys.stderr.write('column %s not found in 1. table...\n'%key)
+        else:
+          if datatype not in active[0]: active[0][datatype] = []
+          if datatype not in column[0]: column[0][datatype] = {}
+          active[0][datatype].append(label)
+          column[0][datatype][label] = table1.labels.index(key)                   # remember columns of requested data
+      for label in info['label2']:
+        key = {True :'1_%s',
+               False:'%s'   }[info['len']>1]%label
+        if key not in table2.labels:
+          sys.stderr.write('column %s not found in 2. table...\n'%key)
+        else:
+          if datatype not in active[1]: active[1][datatype] = []
+          if datatype not in column[1]: column[1][datatype] = {}
+          active[1][datatype].append(label)
+          column[1][datatype][label] = table2.labels.index(key)                   # remember columns of requested data
+    
+    while table1.data_read():                                                     # read next data line of ASCII table
+      for datatype,labels in active[0].items():                                   # loop over vector,tensor
+        for label in labels:                                                      # loop over all requested norms
+          data1[label] += numpy.array(map(float,table1.data[column[0][datatype][label]:
+                              column[0][datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)
+    print myData
   def report_Success(self,culprit):
     
     if culprit < 0:
