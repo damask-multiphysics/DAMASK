@@ -286,7 +286,7 @@ subroutine hypela2(&
 
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
- if (lovl == 4) then                                                      ! Marc requires stiffness in separate call
+ if (lovl == 4) then                                                      ! Marc requires stiffness in separate call (lovl == 4)
    if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
      computationMode = 7                                                  !  --> restore tangent and return it
    else

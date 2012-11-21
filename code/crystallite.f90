@@ -1514,7 +1514,7 @@ do n = 1_pInt,5_pInt
   ! --- dot state and RK dot state---
 #ifndef _OPENMP
   if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
-    write(6,'(a,1x,i1)') '<< CRYST >> RUNGE KUTTA STEP',n+1_pInt
+    write(6,'(a,1x,i1)') '<< CRYST >> Runge--Kutta step',n+1_pInt
   endif
 #endif
   !$OMP DO

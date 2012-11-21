@@ -867,14 +867,14 @@ subroutine material_populateGrains
        enddo  ! constituent
 
 ! ----------------------------------------------------------------------------
-       if (.not. microstructure_elemhomo(micro)) then                           ! unless element homogeneous, reshuffle grains
-         do i=1_pInt,myNgrains-1_pInt                                                     ! walk thru grains
+       if (.not. microstructure_elemhomo(micro)) then                         ! unless element homogeneous, reshuffle grains
+         do i=1_pInt,myNgrains-1_pInt                                         ! walk thru grains
            call random_number(rnd)
-           t = nint(rnd*(myNgrains-i)+i+0.5_pReal,pInt)                         ! select a grain in remaining list
-           m                       = phaseOfGrain(t)                            ! exchange current with random
+           t = nint(rnd*(myNgrains-i)+i+0.5_pReal,pInt)                       ! select a grain in remaining list
+           m                       = phaseOfGrain(t)                          ! exchange current with random
            phaseOfGrain(t)         = phaseOfGrain(i)
            phaseOfGrain(i)         = m
-           m                       = textureOfGrain(t)                          ! exchange current with random
+           m                       = textureOfGrain(t)                        ! exchange current with random
            textureOfGrain(t)       = textureOfGrain(i)
            textureOfGrain(i)       = m
            orientation             = orientationOfGrain(:,t)
@@ -888,8 +888,8 @@ subroutine material_populateGrains
 ! ----------------------------------------------------------------------------
        grain = 0_pInt
        do hme = 1_pInt, Nelems(homog,micro)
-       e = elemsOfHomogMicro(hme,homog,micro)                                 ! only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
-       t = FE_geomtype(mesh_element(2,e))
+         e = elemsOfHomogMicro(hme,homog,micro)                               ! only perform calculations for elements with homog, micro combinations which is indexed in cpElemsindex
+         t = FE_geomtype(mesh_element(2,e))
          if (microstructure_elemhomo(micro)) then                             ! homogeneous distribution of grains over each element's IPs
            forall (i = 1_pInt:FE_Nips(t), g = 1_pInt:dGrains)                 ! loop over IPs and grains
              material_volume(g,i,e)        = volumeOfGrain(grain+g)
