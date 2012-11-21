@@ -160,8 +160,10 @@ for file in files:
         for accuracy in options.accuracy:
           divergence[datatype][label][accuracy] = numpy.array([0.0 for i in xrange(N*datainfo[datatype]['len']//3)]).\
                                                            reshape(list(resolution)+[datainfo[datatype]['len']//3])
-          table.labels_append(['%i_div%s(%s)'%(i+1,accuracy,label) 
-                             for i in xrange(datainfo[datatype]['len']//3)])   # extend ASCII header with new labels
+          if datatype == 'vector':                        # extend ASCII header with new labels
+            table.labels_append(['div%s(%s)'%(accuracy,label)])
+          if datatype == 'tensor':
+            table.labels_append(['%i_div%s(%s)'%(i+1,accuracy,label) for i in xrange(3)])
 
         
 # ------------------------------------------ assemble header ---------------------------------------  
