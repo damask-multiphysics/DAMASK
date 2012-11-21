@@ -374,9 +374,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
          if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt &
             .and. ((e == debug_e .and. i == debug_i) & 
                    .or. .not. iand(debug_level(debug_homogenization),debug_levelSelective) /= 0_pInt)) then
-           write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,/)') '<< HOMOG >> winding forward from', &
+           write(6,'(a,1x,f12.8,1x,a,1x,f12.8,1x,a,i8,1x,i2/)') '<< HOMOG >> winding forward from', &
              materialpoint_subFrac(i,e), 'to current materialpoint_subFrac', &
-             materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent'
+             materialpoint_subFrac(i,e)+materialpoint_subStep(i,e),'in materialpoint_stressAndItsTangent at el ip',e,i
          endif
 #endif
          
@@ -432,9 +432,9 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt &
               .and. ((e == debug_e .and. i == debug_i) &
                     .or. .not. iand(debug_level(debug_homogenization), debug_levelSelective) /= 0_pInt)) then
-             write(6,'(a,1x,f12.8,/)') &
+             write(6,'(a,1x,f12.8,a,i8,1x,i2/)') &
                '<< HOMOG >> cutback step in materialpoint_stressAndItsTangent with new materialpoint_subStep:',&
-               materialpoint_subStep(i,e)
+               materialpoint_subStep(i,e),' at el ip',e,i 
            endif
 #endif
   
