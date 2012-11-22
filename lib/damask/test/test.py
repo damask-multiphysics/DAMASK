@@ -194,72 +194,84 @@ class Test():
     curName = self.fileInCurrent(cur)
     return self.compare_Array(refName,curName)
     
-  def compare_TableRefCur(self,headings,ref,cur=''):
+  def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur=''):
     
-    if cur =='': cur = ref
-    if len(headings) == 1 or type(headings) == dict: headings += headings
-    if len(headings) != 2 : print 'headings should be array of length 1 or 2 containing dictionaries or a dictionary'
-    if len(headings[0]) != len(headings[1]): print 'mismatch in headings to compare'
-    
+    if headingsCur == '': headingsCur = headingsRef
+    if cur == '': cur = ref
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
-    return self.compare_Table(headings,refName,curName)
+    return self.compare_Table(headingsRef,refName,headingsCur,curName)
     
-  def compare_Table(self,headings,File1,File2):
-
-    print 'comparing ASCII Tables\n' , File1,'\n', File2
-    table1 = damask.ASCIItable(open(File1))
-    table1.head_read()
-    table2 = damask.ASCIItable(open(File2))
-    table2.head_read()   
-    datainfo = {                                                               # list of requested labels per datatype
-                'scalar':     {'len':1,
-                               'label1':[],
-                               'label2':[]},
-                'vector':     {'len':3,
-                               'label1':[],
-                               'label2':[]},
-                'tensor':     {'len':9,
-                               'label1':[],
-                               'label2':[]},
-                }
-
-    for label in headings[0]:
-      datainfo[headings[0][label]]['label1'] += [label]
-    for label in headings[1]:
-      datainfo[headings[1][label]]['label2'] += [label]
-
-    active = [{},{}]
-    column = [{},{}]
-
-    for datatype,info in datainfo.items():
-      for label in info['label1']:
-        key = {True :'1_%s',
-               False:'%s'   }[info['len']>1]%label
-        if key not in table1.labels:
-          sys.stderr.write('column %s not found in 1. table...\n'%key)
-        else:
-          if datatype not in active[0]: active[0][datatype] = []
-          if datatype not in column[0]: column[0][datatype] = {}
-          active[0][datatype].append(label)
-          column[0][datatype][label] = table1.labels.index(key)                   # remember columns of requested data
-      for label in info['label2']:
-        key = {True :'1_%s',
-               False:'%s'   }[info['len']>1]%label
-        if key not in table2.labels:
-          sys.stderr.write('column %s not found in 2. table...\n'%key)
-        else:
-          if datatype not in active[1]: active[1][datatype] = []
-          if datatype not in column[1]: column[1][datatype] = {}
-          active[1][datatype].append(label)
-          column[1][datatype][label] = table2.labels.index(key)                   # remember columns of requested data
+  def compare_Table(self,headings0,file0,headings1,file1):
     
+    import numpy
+    print 'comparing ASCII Tables\n' , file0,'\n', file1
+
+    if len(headings0) == len(headings1):                                                             #check if comparison is possible and determine lenght of columns
+      dataLength = len(headings0)
+      length       = [1   for i in xrange(dataLength)]
+      shape        = [[]  for i in xrange(dataLength)]
+      data         = [[]  for i in xrange(dataLength)]
+      maxError     = [0.0 for i in xrange(dataLength)]
+      maxNorm      = [0.0 for i in xrange(dataLength)]
+
+      column = [[length],[length]]
+      for i in xrange(dataLength):
+        if headings0[i]['shape'] != headings1[i]['shape']: 
+          raise Exception('shape mismatch when comparing ', headings0[i]['label'], ' with ', headings1[i]['label'])
+        shape[i] = headings0[i]['shape'] 
+        for j in xrange(numpy.shape(headings0[i]['shape'])[0]):
+          length[i] = headings0[i]['shape'][j]
+    else:
+      raise Exception('trying to compare ', len(headings0), ' with ', len(headings1), ' data sets')
+
+
+    table0 = damask.ASCIItable(open(file0))
+    table0.head_read()
+    table1 = damask.ASCIItable(open(file1))
+    table1.head_read()   
+
+    for i in xrange(dataLength):
+      key0 = {True :'1_%s',
+             False:'%s'   }[length[i]>1]%headings0[i]['label']
+      key1 = {True :'1_%s',
+             False:'%s'   }[length[i]>1]%headings1[i]['label']
+       
+      if key0 not in table0.labels:
+        raise Exception('column %s not found in 1. table...\n'%key0)
+      elif key1 not in table1.labels:
+        raise Exception('column %s not found in 2. table...\n'%key1)
+      else:
+        column[0][i] = table0.labels.index(key0)                   # remember columns of requested data
+        column[1][i] = table1.labels.index(key1)                   # remember columns of requested data in second column
+
+    line0 = 0
+    while table0.data_read():                                                     # read next data line of ASCII table
+      line0 +=1
+      for i in xrange(dataLength):
+        myData = numpy.array(map(float,table0.data[column[0][i]:\
+                                                   column[0][i]+length[i]]),'d')
+        maxNorm[i] = max(maxNorm[i],numpy.linalg.norm(numpy.reshape(myData,shape[i])))
+        data[i]=numpy.append(data[i],myData)
+    
+    for i in xrange(dataLength):
+      data[i] = numpy.reshape(data[i],[line0,length[i]])
+    
+    line1 = 0
     while table1.data_read():                                                     # read next data line of ASCII table
-      for datatype,labels in active[0].items():                                   # loop over vector,tensor
-        for label in labels:                                                      # loop over all requested norms
-          data1[label] += numpy.array(map(float,table1.data[column[0][datatype][label]:
-                              column[0][datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)
-    print myData
+      for i in xrange(dataLength):
+        myData = numpy.array(map(float,table1.data[column[1][i]:\
+                                                   column[1][i]+length[i]]),'d')
+        maxError[i] = max(maxError[i],numpy.linalg.norm(numpy.reshape(myData-data[i][line1,:],shape[i])))
+        line1 +=1
+        
+    if (line0 != line1): raise Exception('found ', line0, ' lines in 1. table and ', line1, ' in 2. table')
+    
+    for i in xrange(dataLength):
+      maxError[i] = maxError[i]/maxNorm[i]
+    
+    return maxError
+      
   def report_Success(self,culprit):
     
     if culprit < 0:
