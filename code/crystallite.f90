@@ -583,97 +583,97 @@ NiterationCrystallite = 0_pInt
 numerics_integrationMode = 1_pInt
 do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2))))                       ! cutback loop for crystallites
 
-  !$OMP PARALLEL DO PRIVATE(myNgrains,formerSubStep)
-    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
-      myNgrains = homogenization_Ngrains(mesh_element(3,e))
-      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
-        do g = 1,myNgrains
-          
-          ! --- wind forward ---
-          
-          if (crystallite_converged(g,i,e)) then
+!$OMP PARALLEL DO PRIVATE(myNgrains,formerSubStep)
+  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
+    myNgrains = homogenization_Ngrains(mesh_element(3,e))
+    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
+      do g = 1,myNgrains
+        
+        ! --- wind forward ---
+        
+        if (crystallite_converged(g,i,e)) then
             formerSubStep = crystallite_subStep(g,i,e)
             crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
-            !$OMP FLUSH(crystallite_subFrac)
+!$OMP FLUSH(crystallite_subFrac)
             crystallite_subStep(g,i,e) = min( 1.0_pReal - crystallite_subFrac(g,i,e), &
-                                              stepIncreaseCryst * crystallite_subStep(g,i,e) )
-            !$OMP FLUSH(crystallite_subStep)
-            if (crystallite_subStep(g,i,e) > 0.0_pReal) then
-              crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)                       ! wind forward...
-              crystallite_subF0(1:3,1:3,g,i,e) = crystallite_subF(1:3,1:3,g,i,e)                        ! ...def grad
-              !$OMP FLUSH(crystallite_subF0)
-              crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                         ! ...plastic def grad
-              crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e)) ! only needed later on for stiffness calculation
-              crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                         ! ...plastic velocity gradient
-              constitutive_subState0(g,i,e)%p = constitutive_state(g,i,e)%p                             ! ...microstructure
-              crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
-              crystallite_todo(g,i,e) = .true.
-              !$OMP FLUSH(crystallite_todo)
+                                            stepIncreaseCryst * crystallite_subStep(g,i,e) )
+!$OMP FLUSH(crystallite_subStep)
+          if (crystallite_subStep(g,i,e) > 0.0_pReal) then
+            crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)                       ! wind forward...
+            crystallite_subF0(1:3,1:3,g,i,e) = crystallite_subF(1:3,1:3,g,i,e)                        ! ...def grad
+!$OMP FLUSH(crystallite_subF0)
+            crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                         ! ...plastic def grad
+            crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e)) ! only needed later on for stiffness calculation
+            crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                         ! ...plastic velocity gradient
+            constitutive_subState0(g,i,e)%p   = constitutive_state(g,i,e)%p                           ! ...microstructure
+            crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
+            crystallite_todo(g,i,e) = .true.
+!$OMP FLUSH(crystallite_todo)
 #ifndef _OPENMP
-              if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
-                  .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                         .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-                write(6,'(a,f12.8,a,f12.8,a)') '<< CRYST >> winding forward from ', &
-                  crystallite_subFrac(g,i,e)-formerSubStep,' to current crystallite_subfrac ', &
-                  crystallite_subFrac(g,i,e),' in crystallite_stressAndItsTangent'
-                write(6,*)
-              endif
-#endif
-            elseif (formerSubStep > 0.0_pReal) then                                                     ! this crystallite just converged
-              crystallite_todo(g,i,e) = .false.                                                         ! so done here
-              !$OMP FLUSH(crystallite_todo)
-              if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
-                !$OMP CRITICAL (distributionCrystallite)
-                  debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
-                    debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
-                !$OMP END CRITICAL (distributionCrystallite)
-              endif
-            endif
-          
-          ! --- cutback ---
-          
-          else
-            crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                  ! cut step in half and restore...
-            !$OMP FLUSH(crystallite_subStep)
-            crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)                         ! ...temperature
-            crystallite_Fp(1:3,1:3,g,i,e) = crystallite_subFp0(1:3,1:3,g,i,e)                           ! ...plastic def grad
-            !$OMP FLUSH(crystallite_Fp)
-            crystallite_invFp(1:3,1:3,g,i,e) = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
-            !$OMP FLUSH(crystallite_invFp)
-            crystallite_Lp(1:3,1:3,g,i,e) = crystallite_subLp0(1:3,1:3,g,i,e)                           ! ...plastic velocity grad
-            constitutive_state(g,i,e)%p = constitutive_subState0(g,i,e)%p                               ! ...microstructure
-            crystallite_Tstar_v(1:6,g,i,e) = crystallite_subTstar0_v(1:6,g,i,e)                         ! ...2nd PK stress
-                                                                                                        ! cant restore dotState here, since not yet calculated in first cutback after initialization
-            crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                      ! still on track or already done (beyond repair)
-            !$OMP FLUSH(crystallite_todo)
-#ifndef _OPENMP
-            if (crystallite_todo(g,i,e) &
-                .and. iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
+            if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-              write(6,'(a,f12.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
-                                     crystallite_subStep(g,i,e)
+                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+              write(6,'(a,f12.8,a,f12.8,a)') '<< CRYST >> winding forward from ', &
+                crystallite_subFrac(g,i,e)-formerSubStep,' to current crystallite_subfrac ', &
+                crystallite_subFrac(g,i,e),' in crystallite_stressAndItsTangent'
               write(6,*)
             endif
 #endif
+          elseif (formerSubStep > 0.0_pReal) then                                                     ! this crystallite just converged
+            crystallite_todo(g,i,e) = .false.                                                         ! so done here
+!$OMP FLUSH(crystallite_todo)
+            if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
+              !$OMP CRITICAL (distributionCrystallite)
+                debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
+                debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
+              !$OMP END CRITICAL (distributionCrystallite)
+            endif
           endif
+        
+        ! --- cutback ---
+        
+        else
+            crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                ! cut step in half and restore...
+!$OMP FLUSH(crystallite_subStep)
+            crystallite_Temperature(g,i,e)   = crystallite_subTemperature0(g,i,e)                     ! ...temperature
+            crystallite_Fp(1:3,1:3,g,i,e)    = crystallite_subFp0(1:3,1:3,g,i,e)                      ! ...plastic def grad
+!$OMP FLUSH(crystallite_Fp)
+            crystallite_invFp(1:3,1:3,g,i,e) = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
+!$OMP FLUSH(crystallite_invFp)
+            crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)                      ! ...plastic velocity grad
+            constitutive_state(g,i,e)%p      = constitutive_subState0(g,i,e)%p                        ! ...microstructure
+            crystallite_Tstar_v(1:6,g,i,e)   = crystallite_subTstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
+                                                                                                      ! cant restore dotState here, since not yet calculated in first cutback after initialization
+            crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                    ! still on track or already done (beyond repair)
+!$OMP FLUSH(crystallite_todo)
+#ifndef _OPENMP
+          if (crystallite_todo(g,i,e) &
+              .and. iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
+              .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+            write(6,'(a,f12.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
+                                   crystallite_subStep(g,i,e)
+            write(6,*)
+          endif
+#endif
+        endif
 
-          ! --- prepare for integration ---
-          
-          if (crystallite_todo(g,i,e)) then
+        ! --- prepare for integration ---
+        
+        if (crystallite_todo(g,i,e)) then
             crystallite_subF(1:3,1:3,g,i,e) = crystallite_subF0(1:3,1:3,g,i,e) &
                                             + crystallite_subStep(g,i,e) &
                                               * (crystallite_partionedF(1:3,1:3,g,i,e) - crystallite_partionedF0(1:3,1:3,g,i,e))
-            !$OMP FLUSH(crystallite_subF)
+!$OMP FLUSH(crystallite_subF)
             crystallite_Fe(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e))
             crystallite_subdt(g,i,e) = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
-            crystallite_converged(g,i,e) = .false.                                                      ! start out non-converged
-          endif
-          
-        enddo
-      enddo
-    enddo
-  !$OMP END PARALLEL DO
+            crystallite_converged(g,i,e) = .false.                                                    ! start out non-converged
+        endif
+        
+      enddo    ! grains
+    enddo      ! IPs
+  enddo        ! elements
+!$OMP END PARALLEL DO
 
   ! --- integrate --- requires fully defined state array (basic + dependent state)
   
@@ -689,15 +689,15 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
         call crystallite_integrateStateRK4()
       case(5_pInt)
         call crystallite_integrateStateRKCK45()
-    endselect
+    end select
   endif
   
-  where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &
+  where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                    ! do not try non-converged & fully cutbacked any further
     crystallite_todo = .true.
 
   NiterationCrystallite = NiterationCrystallite + 1_pInt
       
-enddo                                                                                                   ! cutback loop
+enddo                                                                                                 ! cutback loop
 
 
 ! --+>> CHECK FOR NON-CONVERGED CRYSTALLITES <<+--
@@ -709,7 +709,7 @@ do e = FEsolving_execElem(1),FEsolving_execElem(2)                              
       if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
         if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
           !$OMP CRITICAL (write2out)
-          write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> no convergence : respond fully elastic at el ip g ',e,i,g
+          write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> no convergence: respond fully elastic at el ip g ',e,i,g
           write(6,*) 
           !$OMP END CRITICAL (write2out)
         endif
@@ -743,7 +743,6 @@ if(updateJaco) then                                                             
   
   numerics_integrationMode = 2_pInt
   
-
   ! --- BACKUP ---
   
   do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                    ! iterate over elements to be processed
@@ -755,14 +754,14 @@ if(updateJaco) then                                                             
         constitutive_dotState(g,i,e)%p(1:constitutive_sizeDotState(g,i,e)) ! ... dotStates, ...
     endforall
   enddo
-  Temperature_backup = crystallite_Temperature                                                          ! ... Temperature, ...
-  F_backup = crystallite_subF                                                                           ! ... and kinematics
-  Fp_backup = crystallite_Fp
-  InvFp_backup = crystallite_invFp
-  Fe_backup = crystallite_Fe
-  Lp_backup = crystallite_Lp
-  Tstar_v_backup = crystallite_Tstar_v
-  P_backup = crystallite_P
+  Temperature_backup     = crystallite_Temperature                                                      ! ... Temperature, ...
+  F_backup               = crystallite_subF                                                             ! ... and kinematics
+  Fp_backup              = crystallite_Fp
+  InvFp_backup           = crystallite_invFp
+  Fe_backup              = crystallite_Fe
+  Lp_backup              = crystallite_Lp
+  Tstar_v_backup         = crystallite_Tstar_v
+  P_backup               = crystallite_P
   convergenceFlag_backup = crystallite_converged
 
   
@@ -771,7 +770,7 @@ if(updateJaco) then                                                             
   dPdF_perturbation1 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
   dPdF_perturbation2 = crystallite_dPdF0                                                                ! initialize stiffness with known good values from last increment
   do perturbation = 1,2                                                                                 ! forward and backward perturbation
-    if (iand(pert_method,perturbation) > 0) then                                                        ! mask for desired direction
+    if (iand(pert_method,perturbation) > 0_pInt) then                                                   ! mask for desired direction
       myPert = -pert_Fg * (-1.0_pReal)**perturbation                                                    ! set perturbation step
       do k = 1,3; do l = 1,3                                                                            ! ...alter individual components
         if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
@@ -796,11 +795,11 @@ if(updateJaco) then                                                             
               endforall
             enddo
             crystallite_Temperature = Temperature_backup
-            crystallite_Fp = Fp_backup 
-            crystallite_invFp = InvFp_backup
-            crystallite_Fe = Fe_backup
-            crystallite_Lp = Lp_backup
-            crystallite_Tstar_v = Tstar_v_backup
+            crystallite_Fp          = Fp_backup 
+            crystallite_invFp       = InvFp_backup
+            crystallite_Fe          = Fe_backup
+            crystallite_Lp          = Lp_backup
+            crystallite_Tstar_v     = Tstar_v_backup
           case(2_pInt,3_pInt)                                                                       ! explicit Euler methods: nothing to restore (except for F), since we are only doing a stress integration step
           case(4_pInt,5_pInt)                                                                       ! explicit Runge-Kutta methods: restore to start of subinc, since we are doing a full integration of state and stress
             do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -813,9 +812,9 @@ if(updateJaco) then                                                             
               endforall
             enddo
             crystallite_Temperature = crystallite_subTemperature0
-            crystallite_Fp = crystallite_subFp0
-            crystallite_Fe = crystallite_subFe0
-            crystallite_Tstar_v = crystallite_subTstar0_v
+            crystallite_Fp          = crystallite_subFp0
+            crystallite_Fe          = crystallite_subFe0
+            crystallite_Tstar_v     = crystallite_subTstar0_v
         end select
 
 
@@ -855,7 +854,8 @@ if(updateJaco) then                                                             
             end select
         enddo
         
-      enddo; enddo                                                                                      ! k,l loop
+      enddo; enddo                                                                                      ! k,l component perturbation loop
+
     endif
   enddo                                                                                                 ! perturbation direction
 
@@ -898,14 +898,14 @@ if(updateJaco) then                                                             
     endforall
   enddo
   crystallite_Temperature = Temperature_backup
-  crystallite_subF = F_backup
-  crystallite_Fp = Fp_backup 
-  crystallite_invFp = InvFp_backup
-  crystallite_Fe = Fe_backup
-  crystallite_Lp = Lp_backup
-  crystallite_Tstar_v = Tstar_v_backup
-  crystallite_P = P_backup
-  crystallite_converged = convergenceFlag_backup
+  crystallite_subF        = F_backup
+  crystallite_Fp          = Fp_backup 
+  crystallite_invFp       = InvFp_backup
+  crystallite_Fe          = Fe_backup
+  crystallite_Lp          = Lp_backup
+  crystallite_Tstar_v     = Tstar_v_backup
+  crystallite_P           = P_backup
+  crystallite_converged   = convergenceFlag_backup
   
   else                                                                                                  ! Calculate Jacobian using analytical expression
 
@@ -943,14 +943,14 @@ if(updateJaco) then                                                             
           FDot_inv = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)
           counter = 0.0_pReal
           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
-            if (abs(FDot_inv(o,p)) .lt. relevantStrain) then
+            if (abs(FDot_inv(o,p)) < relevantStrain) then
               FDot_inv(o,p) = 0.0_pReal
             else  
               counter = counter + 1.0_pReal
               FDot_inv(o,p) = crystallite_dt(g,i,e)/FDot_inv(o,p)
             endif 
           enddo; enddo
-          if (counter .gt. 0.0_pReal) FDot_inv = FDot_inv/counter
+          if (counter > 0.0_pReal) FDot_inv = FDot_inv/counter
           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
             dFp_invdFdot(o,p,1:3,1:3) = Fpinv_rate(o,p)*FDot_inv
           enddo; enddo

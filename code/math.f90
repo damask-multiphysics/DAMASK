@@ -239,7 +239,7 @@ subroutine math_init
  enddo
 
  !$OMP CRITICAL (write2out)
- write(6,*) 'size of random seed:     ', randSize
+ write(6,*) 'size  of random seed:    ', randSize
  do i =1, randSize
    write(6,*) 'value of random seed:    ', i, randInit(i)
  enddo
