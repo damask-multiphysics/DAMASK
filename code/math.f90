@@ -1580,7 +1580,7 @@ pure function math_AxisAngleToR(axis,omega)
 
  norm = sqrt(math_mul3x3(axis,axis))
  if (norm > 1.0e-8_pReal) then                             ! non-zero rotation
-   forall (i=1_pInt:3_pInt) axisNrm(i) = axis(i)/norm      ! normalize axis to be sure
+   axisNrm = axis/norm                                     ! normalize axis to be sure
 
    s = sin(omega)
    c = cos(omega)
@@ -1624,10 +1624,10 @@ pure function math_AxisAngleToQuaternion(axis,omega)
 
  norm = sqrt(math_mul3x3(axis,axis))
  if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
-   forall (i=1_pInt:3_pInt) axisNrm(i) = axis(i)/norm          ! normalize axis to be sure
+   axisNrm = axis/norm                               ! normalize axis to be sure
    ! formula taken from http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
-   s = sin(omega/2.0_pReal)
-   c = cos(omega/2.0_pReal)
+   s = sin(0.5_pReal*omega)
+   c = cos(0.5_pReal*omega)
    math_AxisAngleToQuaternion(1) =   c
    math_AxisAngleToQuaternion(2:4) = s * axisNrm(1:3)
  else

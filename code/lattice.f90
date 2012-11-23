@@ -171,7 +171,7 @@ module lattice
     !< Interaction types
     !< 1 --- self interaction
     !< 2 --- coplanar interaction
-    !< 3 --- colinear interaction
+    !< 3 --- collinear interaction
     !< 4 --- Hirth locks
     !< 5 --- glissile junctions
     !< 6 --- Lomer locks
@@ -193,8 +193,8 @@ module lattice
      ],pInt),[lattice_fcc_Nslip,lattice_fcc_Ntwin],order=[2,1])
     !< Interaction types
     !< 1 --- coplanar interaction
-    !< 2 --- colinear interaction
-    !< 3 --- hardened interaction
+    !< 2 --- screw trace between slip system and twin habit plane (easy cross slip)
+    !< 3 --- other interaction
 
  integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip), target, private :: &
    lattice_fcc_interactionTwinSlip = 0_pInt
@@ -226,10 +226,10 @@ module lattice
    lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)
    
  integer(pInt), parameter, private :: &
-   lattice_bcc_Nslip = 24_pInt                                       ! sum(lattice_bcc_NslipSystem)
+   lattice_bcc_Nslip = 24_pInt                                                                     ! sum(lattice_bcc_NslipSystem)
    
  integer(pInt), parameter, private :: &
-   lattice_bcc_Ntwin = 12_pInt                                      ! sum(lattice_bcc_NtwinSystem)
+   lattice_bcc_Ntwin = 12_pInt                                                                     ! sum(lattice_bcc_NtwinSystem)
    
  integer(pInt), private :: &
    lattice_bcc_Nstructure = 0_pInt
@@ -322,33 +322,34 @@ module lattice
      0.7071067812_pReal  &
      ],[lattice_bcc_Ntwin])
 
-!> slip--slip interactions for BCC structures (2)   from Lee et-al. Int J of Plast. (v15) 1999 pp. 625-645
+! slip--slip interactions for BCC structures (2)   from Lee et al. Int J Plast 15 (1999) 625-645
  integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Nslip), target, private :: &
    lattice_bcc_interactionSlipSlip = reshape(int( [&
-     1,3,6,6,5,4,4,2,4,2,5,4,6,6,4,2,2,4,6,6,4,2,6,6, &  ! ---> slip  
-     3,1,6,6,4,2,5,4,5,4,4,2,6,6,2,4,4,2,6,6,2,4,6,6, &  ! |
-     6,6,1,3,4,5,2,4,4,5,2,4,4,2,6,6,6,6,2,4,6,6,4,2, &  ! |
-     6,6,3,1,2,4,4,5,2,4,4,5,2,4,6,6,6,6,4,2,6,6,2,4, &  ! v slip
-     5,4,4,2,1,3,6,6,2,4,5,4,2,6,4,6,6,4,6,2,4,6,2,6, &
-     4,2,5,4,3,1,6,6,4,5,4,2,4,6,2,6,6,2,6,4,2,6,4,6, &
-     4,5,2,4,6,6,1,3,5,4,2,4,6,2,6,4,4,6,2,6,6,4,6,2, &
-     2,4,4,5,6,6,3,1,4,2,4,5,6,4,6,2,2,6,4,6,6,2,6,4, &
-     4,5,4,2,2,4,5,4,1,3,6,6,2,6,6,4,4,6,6,2,6,4,2,6, &
-     2,4,5,4,4,5,4,2,3,1,6,6,4,6,6,2,2,6,6,4,6,2,4,6, &
-     5,4,2,4,5,4,2,4,6,6,1,3,6,2,4,6,6,4,2,6,4,6,6,2, &
-     4,2,4,5,4,2,4,5,6,6,3,1,6,4,2,6,6,2,4,6,2,6,6,4, &
-     6,6,4,2,2,4,6,6,2,4,6,6,1,5,6,6,5,6,6,2,5,6,2,6, &
-     6,6,2,4,6,6,2,4,6,6,2,4,5,1,6,6,6,5,2,6,6,5,6,2, &
-     4,2,6,6,4,2,6,6,6,6,4,2,6,6,1,5,6,2,5,6,2,6,5,6, &
-     2,4,6,6,6,6,4,2,4,2,6,6,6,6,5,1,2,6,6,5,6,2,6,5, &
-     2,4,6,6,6,6,4,2,4,2,6,6,5,6,6,2,1,6,5,6,5,2,6,6, &
-     4,2,6,6,4,2,6,6,6,6,4,2,6,5,2,6,6,1,6,5,2,5,6,6, &
-     6,6,2,4,6,6,2,4,6,6,2,4,6,2,5,6,5,6,1,6,6,6,5,2, &
-     6,6,4,2,2,4,6,6,2,4,6,6,2,6,6,5,6,5,6,1,6,6,2,5, &
-     4,2,6,6,4,2,6,6,6,6,4,2,5,6,2,6,5,2,6,6,1,6,6,5, &
-     2,4,6,6,6,6,4,2,4,2,6,6,6,5,6,2,2,5,6,6,6,1,5,6, &
-     6,6,4,2,2,4,6,6,2,4,6,6,2,6,5,6,6,6,5,2,6,5,1,6, &
-     6,6,2,4,6,6,2,4,6,6,2,4,6,2,6,5,6,6,2,5,5,6,6,1  &
+     1,3,6,6,5,4,4,2,4,2,5,4, 6,6,4,2,2,4,6,6,4,2,6,6, &  ! ---> slip  
+     3,1,6,6,4,2,5,4,5,4,4,2, 6,6,2,4,4,2,6,6,2,4,6,6, &  ! |
+     6,6,1,3,4,5,2,4,4,5,2,4, 4,2,6,6,6,6,2,4,6,6,4,2, &  ! |
+     6,6,3,1,2,4,4,5,2,4,4,5, 2,4,6,6,6,6,4,2,6,6,2,4, &  ! v slip
+     5,4,4,2,1,3,6,6,2,4,5,4, 2,6,4,6,6,4,6,2,4,6,2,6, &
+     4,2,5,4,3,1,6,6,4,5,4,2, 4,6,2,6,6,2,6,4,2,6,4,6, &
+     4,5,2,4,6,6,1,3,5,4,2,4, 6,2,6,4,4,6,2,6,6,4,6,2, &
+     2,4,4,5,6,6,3,1,4,2,4,5, 6,4,6,2,2,6,4,6,6,2,6,4, &
+     4,5,4,2,2,4,5,4,1,3,6,6, 2,6,6,4,4,6,6,2,6,4,2,6, &
+     2,4,5,4,4,5,4,2,3,1,6,6, 4,6,6,2,2,6,6,4,6,2,4,6, &
+     5,4,2,4,5,4,2,4,6,6,1,3, 6,2,4,6,6,4,2,6,4,6,6,2, &
+     4,2,4,5,4,2,4,5,6,6,3,1, 6,4,2,6,6,2,4,6,2,6,6,4, &
+     !
+     6,6,4,2,2,4,6,6,2,4,6,6, 1,5,6,6,5,6,6,2,5,6,2,6, &
+     6,6,2,4,6,6,2,4,6,6,2,4, 5,1,6,6,6,5,2,6,6,5,6,2, &
+     4,2,6,6,4,2,6,6,6,6,4,2, 6,6,1,5,6,2,5,6,2,6,5,6, &
+     2,4,6,6,6,6,4,2,4,2,6,6, 6,6,5,1,2,6,6,5,6,2,6,5, &
+     2,4,6,6,6,6,4,2,4,2,6,6, 5,6,6,2,1,6,5,6,5,2,6,6, &
+     4,2,6,6,4,2,6,6,6,6,4,2, 6,5,2,6,6,1,6,5,2,5,6,6, &
+     6,6,2,4,6,6,2,4,6,6,2,4, 6,2,5,6,5,6,1,6,6,6,5,2, &
+     6,6,4,2,2,4,6,6,2,4,6,6, 2,6,6,5,6,5,6,1,6,6,2,5, &
+     4,2,6,6,4,2,6,6,6,6,4,2, 5,6,2,6,5,2,6,6,1,6,6,5, &
+     2,4,6,6,6,6,4,2,4,2,6,6, 6,5,6,2,2,5,6,6,6,1,5,6, &
+     6,6,4,2,2,4,6,6,2,4,6,6, 2,6,5,6,6,6,5,2,6,5,1,6, &
+     6,6,2,4,6,6,2,4,6,6,2,4, 6,2,6,5,6,6,2,5,5,6,6,1  &
      ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip],order=[2,1])
     !< Interaction types
     !< 1 --- self interaction
@@ -372,6 +373,7 @@ module lattice
      3,3,3,2,2,3,3,3,3,2,3,3, &
      3,2,3,3,3,3,2,3,3,3,3,2, &
      3,3,2,3,3,2,3,3,2,3,3,3, &
+     !
      1,3,3,3,3,3,3,2,3,3,2,3, &
      3,1,3,3,3,3,2,3,3,3,3,2, &
      3,3,1,3,3,2,3,3,2,3,3,3, &
@@ -387,14 +389,14 @@ module lattice
      ],pInt),[lattice_bcc_Nslip,lattice_bcc_Ntwin],order=[2,1])
     !< Interaction types
     !< 1 --- coplanar interaction
-    !< 2 --- colinear interaction
-    !< 3 --- hardened interaction
+    !< 2 --- screw trace between slip system and twin habit plane (easy cross slip)
+    !< 3 --- other interaction
 
-!>twin--slip interactions for BCC structures (2) MISSING: not implemented yet
+! twin--slip interactions for BCC structures (2) MISSING: not implemented yet
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), target, private :: &
    lattice_bcc_interactionTwinSlip = 0_pInt
 
-!> twin-twin interactions for BCC structures (2) MISSING: not implemented yet
+! twin--twin interactions for BCC structures (2)
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin), target, private :: &
    lattice_bcc_interactionTwinTwin = reshape(int( [&
      1,3,3,3,3,3,3,2,3,3,2,3, &  ! ---> twin
@@ -412,13 +414,14 @@ module lattice
      ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Ntwin],order=[2,1])
     !< Interaction types
     !< 1 --- self interaction
-    !< 2 --- coplinear interaction
-    !< 3 --- hardened interaction
+    !< 2 --- collinear interaction
+    !< 3 --- other interaction
+
 !--------------------------------------------------------------------------------------------------
 ! hex (3+)
 
  integer(pInt), dimension(lattice_maxNslipFamily), parameter, private :: &
-   lattice_hex_NslipSystem = int([ 3, 3, 6,12, 6],pInt)
+   lattice_hex_NslipSystem = int([ 3, 3, 6, 12, 6],pInt)
    
  integer(pInt), dimension(lattice_maxNtwinFamily), parameter, private :: &
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)
@@ -916,20 +919,20 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      lattice_Sslip(1:3,1:3,i,myStructure) = math_tensorproduct(lattice_sd(1:3,i,myStructure), &
                                                                lattice_sn(1:3,i,myStructure))
      lattice_Sslip_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,i,myStructure)))
-     if (abs(math_trace33(lattice_Sslip(1:3,1:3,i,myStructure))) > 1.0e-8) &
+     if (abs(math_trace33(lattice_Sslip(1:3,1:3,i,myStructure))) > 1.0e-8_pReal) &
        call IO_error(0_pInt,myStructure,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
    enddo
    do i = 1_pInt,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
-     lattice_td(1:3,i,myStructure) = td(1:3,i)/math_norm3(sd(1:3,i))                   ! make unit vector
-     lattice_tn(1:3,i,myStructure) = tn(1:3,i)/math_norm3(sn(1:3,i))                   ! make unit vector
+     lattice_td(1:3,i,myStructure) = td(1:3,i)/math_norm3(td(1:3,i))                   ! make unit vector
+     lattice_tn(1:3,i,myStructure) = tn(1:3,i)/math_norm3(tn(1:3,i))                   ! make unit vector
      lattice_tt(1:3,i,myStructure) = math_vectorproduct(lattice_td(1:3,i,myStructure), &
                                                         lattice_tn(1:3,i,myStructure))
      lattice_Stwin(1:3,1:3,i,myStructure) = math_tensorproduct(lattice_td(1:3,i,myStructure), &
                                                                lattice_tn(1:3,i,myStructure))
-     lattice_Stwin_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Stwin(1:3,1:3,i,myStructure)))
+     lattice_Stwin_v(1:6,i,myStructure)   = math_Mandel33to6(math_symmetric33(lattice_Stwin(1:3,1:3,i,myStructure)))
      lattice_Qtwin(1:3,1:3,i,myStructure) = math_AxisAngleToR(tn(1:3,i),180.0_pReal*INRAD)
-     lattice_shearTwin(i,myStructure) = ts(i)
-     if (abs(math_trace33(lattice_Stwin(1:3,1:3,i,myStructure))) > 1.0e-8) &
+     lattice_shearTwin(i,myStructure)     = ts(i)
+     if (abs(math_trace33(lattice_Stwin(1:3,1:3,i,myStructure))) > 1.0e-8_pReal) &
        call IO_error(0_pInt,myStructure,i,0_pInt,ext_msg = 'dilatational twin Schmid matrix')
    enddo
    lattice_NslipSystem(1:lattice_maxNslipFamily,myStructure) = myNslipSystem                                ! number of slip systems in each family
