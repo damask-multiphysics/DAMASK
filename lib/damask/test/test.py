@@ -214,8 +214,8 @@ class Test():
       data         = [[]  for i in xrange(dataLength)]
       maxError     = [0.0 for i in xrange(dataLength)]
       maxNorm      = [0.0 for i in xrange(dataLength)]
-
-      column = [[length],[length]]
+      column       = [[1 for i in xrange(dataLength)] for j in xrange(2)]
+      
       for i in xrange(dataLength):
         if headings0[i]['shape'] != headings1[i]['shape']: 
           raise Exception('shape mismatch when comparing ', headings0[i]['label'], ' with ', headings1[i]['label'])
@@ -224,7 +224,6 @@ class Test():
           length[i] *= shape[i][j]
     else:
       raise Exception('trying to compare ', len(headings0), ' with ', len(headings1), ' data sets')
-
 
     table0 = damask.ASCIItable(open(file0))
     table0.head_read()
@@ -236,7 +235,6 @@ class Test():
              False:'%s'   }[length[i]>1]%headings0[i]['label']
       key1 = {True :'1_%s',
              False:'%s'   }[length[i]>1]%headings1[i]['label']
-       
       if key0 not in table0.labels:
         raise Exception('column %s not found in 1. table...\n'%key0)
       elif key1 not in table1.labels:
@@ -246,6 +244,7 @@ class Test():
         column[1][i] = table1.labels.index(key1)                   # remember columns of requested data in second column
 
     line0 = 0
+
     while table0.data_read():                                                     # read next data line of ASCII table
       line0 +=1
       for i in xrange(dataLength):
@@ -253,6 +252,7 @@ class Test():
                                                    column[0][i]+length[i]]),'d')
         maxNorm[i] = max(maxNorm[i],numpy.linalg.norm(numpy.reshape(myData,shape[i])))
         data[i]=numpy.append(data[i],myData)
+ 
     for i in xrange(dataLength):
       data[i] = numpy.reshape(data[i],[line0,length[i]])
       if maxNorm[i] == 0.0:
@@ -264,12 +264,11 @@ class Test():
       for i in xrange(dataLength):
         myData = numpy.array(map(float,table1.data[column[1][i]:\
                                                    column[1][i]+length[i]]),'d')
-
         maxError[i] = max(maxError[i],numpy.linalg.norm(numpy.reshape(myData-data[i][line1,:],shape[i])))
-        line1 +=1
+      line1 +=1
 
     if (line0 != line1): raise Exception('found ', line0, ' lines in 1. table and ', line1, ' in 2. table')
-    
+
     print ' ********'
     for i in xrange(dataLength):
       maxError[i] = maxError[i]/maxNorm[i]
