@@ -184,8 +184,8 @@ class Test():
       print ' ********\n * maximum relative error ',max_err,' for ', refArrayNonZero[max_loc],' and ',curArray[max_loc],'\n ********'
       return max_err
     else:
-      print ' ********\n * mismatch in array size to compare \n ********'
-      return sys.float_info.max
+       raise Exception('mismatch in array size to compare')
+
       
   def compare_ArrayRefCur(self,ref,cur=''):
     
@@ -219,9 +219,9 @@ class Test():
       for i in xrange(dataLength):
         if headings0[i]['shape'] != headings1[i]['shape']: 
           raise Exception('shape mismatch when comparing ', headings0[i]['label'], ' with ', headings1[i]['label'])
-        shape[i] = headings0[i]['shape'] 
-        for j in xrange(numpy.shape(headings0[i]['shape'])[0]):
-          length[i] = headings0[i]['shape'][j]
+        shape[i] = headings0[i]['shape']
+        for j in xrange(numpy.shape(shape[i])[0]):
+          length[i] *= shape[i][j]
     else:
       raise Exception('trying to compare ', len(headings0), ' with ', len(headings1), ' data sets')
 
@@ -253,23 +253,28 @@ class Test():
                                                    column[0][i]+length[i]]),'d')
         maxNorm[i] = max(maxNorm[i],numpy.linalg.norm(numpy.reshape(myData,shape[i])))
         data[i]=numpy.append(data[i],myData)
-    
     for i in xrange(dataLength):
       data[i] = numpy.reshape(data[i],[line0,length[i]])
+      if maxNorm[i] == 0.0:
+        print 'Maximum norm of',headings0[i]['label'],'in 1. table is 0, using absolute tolerance'
+        maxNorm[i] = 1.0
     
     line1 = 0
     while table1.data_read():                                                     # read next data line of ASCII table
       for i in xrange(dataLength):
         myData = numpy.array(map(float,table1.data[column[1][i]:\
                                                    column[1][i]+length[i]]),'d')
+
         maxError[i] = max(maxError[i],numpy.linalg.norm(numpy.reshape(myData-data[i][line1,:],shape[i])))
         line1 +=1
-        
+
     if (line0 != line1): raise Exception('found ', line0, ' lines in 1. table and ', line1, ' in 2. table')
     
+    print ' ********'
     for i in xrange(dataLength):
       maxError[i] = maxError[i]/maxNorm[i]
-    
+      print ' * maximum relative error ',maxError[i],' for ', headings0[i]['label'],' and ',headings1[i]['label']
+    print ' ********'
     return maxError
       
   def report_Success(self,culprit):

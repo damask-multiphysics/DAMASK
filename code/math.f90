@@ -189,7 +189,66 @@ real(pReal), dimension(4,36), parameter, private :: &
             mesh_index
 #endif
             
- private :: math_partition
+ ! private :: math_partition, &
+            ! math_delta, &
+            ! math_qRnd, &
+            ! math_qMul, &
+            ! math_qDot, &
+            ! math_qNorm, &
+            ! math_qInv, &
+            ! prime, &
+            ! get_seed, &
+            ! halton, &
+            ! halton_memory, &
+            ! halton_ndim_set, &
+            ! halton_seed_set, &
+            ! i_to_halton
+
+
+! math_equivStrain33_field
+! math_spectralDecompositionSym33
+! math_pDecomposition
+! math_spectral1
+! math_hi
+
+
+! math_det33
+! math_norm33
+! math_norm3
+! math_Plain33to9
+! math_Plain9to33
+! math_Mandel33to6
+! math_Mandel6to33
+! math_Plain3333to99
+! math_Plain99to3333
+! math_Mandel66toPlain66
+! math_Plain66toMandel66
+! math_Mandel3333to66
+! math_Mandel66to3333
+! math_Voigt66to3333
+! math_RtoEuler
+! math_RtoQuaternion
+! math_EulerToR
+! math_EulerToQuaternion
+! math_AxisAngleToR
+! math_AxisAngleToQuaternion
+! math_QuaternionToR
+! math_QuaternionToEuler
+! math_QuaternionToAxisAngle
+! math_QuaternionToRodrig
+! math_EulerMisorientation
+! math_QuaternionInSST
+! math_QuaternionDisorientation
+! math_sampleRandomOri
+! math_sampleGaussOri
+! math_sampleFiberOri
+! math_symmetricEulers
+! math_sampleGaussVar
+! math_eigenvalues33
+! math_volTetrahedron
+! math_rotate_forward33
+! math_rotate_backward33
+! math_rotate_forward3333
  
 contains
 
@@ -2775,12 +2834,9 @@ pure function math_rotate_forward3333(tensor,rot_tensor)
 end function math_rotate_forward3333
 
 
-
-
 #ifdef Spectral
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates curl field using differentation in Fourier space
-! use vec_tens to decide if tensor (3) or vector (1)
 !--------------------------------------------------------------------------------------------------
 function math_curlFFT(geomdim,field)
 
@@ -2813,11 +2869,14 @@ function math_curlFFT(geomdim,field)
  
  res =  [size(field,1),size(field,2),size(field,3)]
  vec_tens = size(field,4)
-
+ if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) call IO_error(0_pInt, &
+                                                 ext_msg = 'Curl: invalid data dimension')
+ 
  if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   print*, 'Calculating curl of vector/tensor field'
+   if (vec_tens == 1_pInt) print*, 'Calculating curl of vector field'
+   if (vec_tens == 3_pInt) print*, 'Calculating curl of tensor field'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
-   print '(a,3(i5))',   ' Resolution:', res
+   print '(a,3(i5))',    ' Resolution:', res
  endif
 
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
@@ -2861,7 +2920,7 @@ function math_curlFFT(geomdim,field)
    field_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
                                 1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
 
- do k = 1_pInt, res(3)                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+ do k = 1_pInt, res(3)                                                                             ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
    k_s(3) = k - 1_pInt
    if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
      do j = 1_pInt, res(2)
@@ -2884,10 +2943,16 @@ function math_curlFFT(geomdim,field)
  enddo; enddo; enddo
 
  call fftw_execute_dft_c2r(fftw_back, curl_fourier, curl_real)
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   math_curlFFT(i,j,k,1:vec_tens,1:3) = curl_real(i,j,k,1:vec_tens,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
- enddo; enddo; enddo
-
+ if (vec_tens == 1_pInt) then
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     math_curlFFT(i,j,k,1:1,1:3) = curl_real(i,j,k,1:1,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
+   enddo; enddo; enddo
+ else
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     math_curlFFT(i,j,k,1:3,1:3) = math_transpose33(curl_real(i,j,k,1:3,1:3))                      ! ensure that data is aligned properly (fftw_alloc)
+   enddo; enddo; enddo
+ endif
+ 
  math_curlFFT = math_curlFFT * wgt
  call fftw_destroy_plan(fftw_forth)
  call fftw_destroy_plan(fftw_back)
@@ -2898,7 +2963,6 @@ end function math_curlFFT
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates divergence field using integration in Fourier space
-! use vec_tens to decide if tensor (3) or vector (1)
 !--------------------------------------------------------------------------------------------------
 function math_divergenceFFT(geomdim,field)
  
@@ -2909,15 +2973,14 @@ function math_divergenceFFT(geomdim,field)
                   debug_levelBasic
                   
  implicit none
- ! input variables
 
  real(pReal), intent(in), dimension(3)   :: geomdim
  real(pReal), intent(in),  dimension(:,:,:,:,:) :: field
- ! function
+! function
  real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4)) :: math_divergenceFFT
- ! variables with dimension depending on input
- real(pReal),    dimension(size(field,1)/2_pInt+1_pInt,size(field,2),size(field,3),3) :: xi
- ! allocatable arrays for fftw c routines
+! variables with dimension depending on input
+ real(pReal), dimension(size(field,1)/2_pInt+1_pInt,size(field,2),size(field,3),3) :: xi
+! allocatable arrays for fftw c routines
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: field_fftw, divergence_fftw
  real(pReal),    dimension(:,:,:,:,:), pointer :: field_real
@@ -2932,11 +2995,14 @@ function math_divergenceFFT(geomdim,field)
  
  res =  [size(field,1),size(field,2),size(field,3)]
  vec_tens = size(field,4)
+ if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) call IO_error(0_pInt, &
+                                                 ext_msg = 'Divergence: invalid data dimension')
 
  if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
-   print '(a)', 'Calculating divergence of tensor/vector field using FFT'  
+   if (vec_tens == 1_pInt) print*, 'Calculating divergence of vector field'
+   if (vec_tens == 3_pInt) print*, 'Calculating divergence of tensor field'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
-   print '(a,3(i5))',   ' Resolution:', res
+   print '(a,3(i5))',    ' Resolution:', res
  endif
 
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
