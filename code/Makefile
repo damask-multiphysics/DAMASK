@@ -44,12 +44,7 @@ IMKLROOT   ?= auto
 ACMLROOT   ?= auto
 LAPACKROOT ?= auto
 
-# if F90 empty: ifort if present, otherwise gfortran
-ifeq ($(wildcard ifort),"")
-F90?=gfortran
-else
 F90?=ifort
-endif
 
 COMPILERNAME ?= $(F90)
 
