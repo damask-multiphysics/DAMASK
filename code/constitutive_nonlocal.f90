@@ -2020,13 +2020,14 @@ endsubroutine
 !*********************************************************************
 !* rate of change of microstructure                                  *
 !*********************************************************************
-function constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, state, timestep, orientation, g,ip,el)
+function constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, state, state0, timestep, subfrac, orientation, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
                     p_vec, &
                     DAMASK_NaN
-use numerics, only: numerics_integrationMode
+use numerics, only: numerics_integrationMode, &
+                    numerics_timeSyncing
 use IO,       only: IO_error
 use debug,    only: debug_level, &
                     debug_constitutive, &
@@ -2048,6 +2049,7 @@ use math,     only: math_norm3, &
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_element, &
+                    mesh_maxNipNeighbors, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
                     mesh_ipArea, &
@@ -2072,13 +2074,17 @@ integer(pInt), intent(in) ::                g, &                      ! current 
 real(pReal), intent(in) ::                  Temperature, &            ! temperature
                                             timestep                  ! substepped crystallite time increment
 real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
+real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                            subfrac                   ! fraction of timestep at the beginning of the substepped crystallite time increment 
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             Fe, &                     ! elastic deformation gradient
                                             Fp                        ! plastic deformation gradient
 real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             orientation               ! crystal lattice orientation
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            state                     ! current microstructural state
+                                            state, &                  ! current microstructural state
+                                            state0                    ! microstructural state at beginning of crystallite increment
+
 !*** input/output variables
  
 !*** output variables
@@ -2111,11 +2117,15 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                             rhoDotAthermalAnnihilation, & ! density evolution by athermal annihilation
                                             rhoDotThermalAnnihilation     ! density evolution by thermal annihilation
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
-                                            neighboring_rhoSgl, &         ! current single dislocation densities (positive/negative screw and edge without dipoles)
-                                            rhoSgl                        ! current single dislocation densities (positive/negative screw and edge without dipoles)
+                                            rhoSgl, &                     ! current single dislocation densities (positive/negative screw and edge without dipoles)
+                                            rhoSgl0, &                    ! single dislocation densities at start of cryst inc (positive/negative screw and edge without dipoles)
+                                            rhoSglMe, &                   ! single dislocation densities of central ip (positive/negative screw and edge without dipoles)
+                                            neighboring_rhoSgl            ! current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
-                                            v, &                          ! dislocation glide velocity
-                                            neighboring_v, &              ! dislocation glide velocity
+                                            v, &                          ! current dislocation glide velocity
+                                            v0, &                         ! dislocation glide velocity at start of cryst inc
+                                            vMe, &                        ! dislocation glide velocity of central ip
+                                            neighboring_v, &              ! dislocation glide velocity of enighboring ip
                                             gdot                          ! shear rates
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &                  ! forest dislocation density
@@ -2186,7 +2196,6 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
 where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoDip = 0.0_pReal
-
 
 
 !*** sanity check for timestep
@@ -2305,6 +2314,17 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     constitutive_nonlocal_dotState = DAMASK_NaN                                                                                   ! -> return NaN and, hence, enforce cutback
     return
   endif
+
+
+  if (numerics_timeSyncing) then
+    forall (t = 1_pInt:4_pInt) &
+      v0(1_pInt:ns,t) = state0(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+    forall (t = 1_pInt:8_pInt) &
+      rhoSgl0(1_pInt:ns,t) = state0(g,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
+    where (abs(rhoSgl0) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
+           .or. abs(rhoSgl0) < constitutive_nonlocal_significantRho(myInstance)) &
+      rhoSgl0 = 0.0_pReal
+  endif
   
 
   !*** be aware of the definition of lattice_st = lattice_sd x lattice_sn !!!
@@ -2352,12 +2372,18 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     endif
     
     if (considerEnteringFlux) then
-      forall (t = 1_pInt:4_pInt) &
-        neighboring_v(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
-      forall (t = 1_pInt:4_pInt) &
-        neighboring_rhoSgl(1_pInt:ns,t) = max(state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
-      forall (t = 5_pInt:8_pInt) &
-        neighboring_rhoSgl(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
+      if(numerics_timeSyncing .and. (subfrac(g,neighboring_ip,neighboring_el) == 0.0_pReal &
+                                      .or. subfrac(g,ip,el) == 0.0_pReal)) then
+        forall (t = 1_pInt:4_pInt) &
+          neighboring_v(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+        forall (t = 1_pInt:8_pInt) &
+          neighboring_rhoSgl(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
+      else
+        forall (t = 1_pInt:4_pInt) &
+          neighboring_v(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+        forall (t = 1_pInt:8_pInt) &
+          neighboring_rhoSgl(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
+      endif
       where (abs(neighboring_rhoSgl) * mesh_ipVolume(neighboring_ip,neighboring_el) ** 0.667_pReal &
              < constitutive_nonlocal_significantN(myInstance) &
              .or. abs(neighboring_rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
@@ -2404,6 +2430,14 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     endif
 
     if (considerLeavingFlux) then
+      if(numerics_timeSyncing .and. (subfrac(g,neighboring_ip,neighboring_el) == 0.0_pReal &
+                                      .or. subfrac(g,ip,el) == 0.0_pReal)) then
+        rhoSglMe = rhoSgl0
+        vMe = v0
+      else
+        rhoSglMe = rhoSgl
+        vMe = v
+      endif
       normal_me2neighbor_defConf = math_det33(Favg) * math_mul33x3(math_inv33(math_transpose33(Favg)), & 
                                                                    mesh_ipAreaNormal(1:3,n,ip,el))                                  ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
       normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) / math_det33(my_Fe)                    ! interface normal in my lattice configuration
@@ -2411,18 +2445,18 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
       normal_me2neighbor = normal_me2neighbor / math_norm3(normal_me2neighbor)                                                      ! normalize the surface normal to unit length    
       do s = 1_pInt,ns
         do t = 1_pInt,4_pInt
-          c = (t + 1_pInt) / 2_pInt        
-          if (v(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then                                               ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
-            if (v(s,t) * neighboring_v(s,t) >= 0.0_pReal) then                                                                      ! no sign change in flux density
+          c = (t + 1_pInt) / 2_pInt
+          if (vMe(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then                                             ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
+            if (vMe(s,t) * neighboring_v(s,t) >= 0.0_pReal) then                                                                    ! no sign change in flux density
               transmissivity = sum(constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el)**2.0_pReal)                           ! overall transmissivity from this slip system to my neighbor
             else                                                                                                                    ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
               transmissivity = 0.0_pReal
             endif
-            lineLength = rhoSgl(s,t) * v(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                                  ! positive line length of mobiles that wants to leave through this interface
+            lineLength = rhoSglMe(s,t) * vMe(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                              ! positive line length of mobiles that wants to leave through this interface
             rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                   ! subtract dislocation flux from current type
             rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
-                                                             * sign(1.0_pReal, v(s,t))                                              ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
-            lineLength = rhoSgl(s,t+4_pInt) * v(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                           ! positive line length of deads that wants to leave through this interface
+                                                             * sign(1.0_pReal, vMe(s,t))                                            ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
+            lineLength = rhoSglMe(s,t+4_pInt) * vMe(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of deads that wants to leave through this interface
             rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) - lineLength / mesh_ipVolume(ip,el) * transmissivity                    ! dead dislocations leaving through this interface
           endif
         enddo
@@ -3583,6 +3617,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
     
     case('accumulatedshear')
       constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) + sum(gdot,2)*dt
+      !$OMP FLUSH(constitutive_nonlocal_accumulatedShear)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el)
       cs = cs + ns
     

@@ -94,6 +94,7 @@ subroutine constitutive_init
                      mesh_NcpElems, &
                      mesh_element, &
                      mesh_ipNeighborhood, &
+                     mesh_maxNipNeighbors, &
                      FE_Nips, &
                      FE_NipNeighbors, &
                      FE_geomtype
@@ -123,6 +124,7 @@ integer(pInt)   g, &                                                            
                 gMax, &                                                                             ! maximum number of grains
                 iMax, &                                                                             ! maximum number of integration points
                 eMax, &                                                                             ! maximum number of elements
+                n, &
                 p, &
                 s, &
                 myInstance,& 
@@ -763,7 +765,7 @@ end subroutine constitutive_hooke_TandItsTangent
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
 !*********************************************************************
-subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, orientation, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, subfrac, orientation, ipc, ip, el)
 
 use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDotStateCalls, &
@@ -772,7 +774,8 @@ use debug, only:    debug_cumDotStateCalls, &
                     debug_constitutive, &
                     debug_levelBasic
 use mesh, only:     mesh_NcpElems, &
-                    mesh_maxNips
+                    mesh_maxNips, &
+                    mesh_maxNipNeighbors
 use material, only: phase_plasticity, &
                     material_phase, &
                     homogenization_maxNgrains
@@ -796,6 +799,8 @@ integer(pInt), intent(in) ::    ipc, &        ! component-ID of current integrat
                                 el            ! current element
 real(pReal), intent(in) ::      Temperature, &
                                 subdt         ! timestep
+real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+                                subfrac       ! subfraction of timestep
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 Fe, &         ! elastic deformation gradient
                                 Fp            ! plastic deformation gradient
@@ -831,8 +836,8 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
  
   case (constitutive_nonlocal_label)
     constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, constitutive_state, &
-                                         subdt, orientation, ipc, ip, el)
- 
+                                                                      constitutive_state0, subdt, subfrac, orientation, ipc, ip, el)
+
 end select
 
 if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then

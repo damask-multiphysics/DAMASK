@@ -99,6 +99,12 @@ module crystallite
      crystallite_requested, &                                                                       !< flag to request crystallite calculation
      crystallite_todo, &                                                                            !< flag to indicate need for further computation
      crystallite_converged                                                                          !< convergence flag
+ logical, dimension (:,:), allocatable :: &
+     crystallite_clearToWindForward, &
+     crystallite_clearToCutback, &
+     crystallite_syncSubFrac, &
+     crystallite_syncSubFracCompleted, &
+     crystallite_neighborEnforcedCutback
  
 contains
 
@@ -225,6 +231,11 @@ subroutine crystallite_init(Temperature)
  allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
  allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .false.
  allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
+ allocate(crystallite_clearToWindForward(iMax,eMax));            crystallite_clearToWindForward = .true.
+ allocate(crystallite_syncSubFrac(iMax,eMax));                          crystallite_syncSubFrac = .false.
+ allocate(crystallite_syncSubFracCompleted(iMax,eMax));        crystallite_syncSubFracCompleted = .false.
+ allocate(crystallite_clearToCutback(iMax,eMax));                    crystallite_clearToCutback = .true.
+ allocate(crystallite_neighborEnforcedCutback(iMax,eMax));  crystallite_neighborEnforcedCutback = .false.
  allocate(crystallite_output(maxval(crystallite_Noutput), &
                              material_Ncrystallite)) ;                       crystallite_output = ''
  allocate(crystallite_sizePostResults(material_Ncrystallite)) ;     crystallite_sizePostResults = 0_pInt
@@ -449,6 +460,7 @@ use numerics, only:      subStepMinCryst, &
                          nCryst, &
                          numerics_integrator, &
                          numerics_integrationMode, &
+                         numerics_timeSyncing, &
                          relevantStrain, &
                          analyticJaco
 use debug, only:         debug_level, &
@@ -474,7 +486,9 @@ use FEsolving, only:     FEsolving_execElem, &
                          FEsolving_execIP
 use mesh, only:          mesh_element, &
                          mesh_NcpElems, &
-                         mesh_maxNips
+                         mesh_maxNips, &
+                         mesh_ipNeighborhood, &
+                         FE_NipNeighbors
 use material, only:      homogenization_Ngrains, &
                          homogenization_maxNgrains
 use constitutive, only:  constitutive_sizeState, &
@@ -488,12 +502,14 @@ use constitutive, only:  constitutive_sizeState, &
                          constitutive_dotState_backup, &
                          constitutive_TandItsTangent
 
+
 implicit none
 !*** input variables ***!
 logical, intent(in) ::            updateJaco, rate_sensitivity                                      ! flag indicating wehther we want to update the Jacobian (stiffness) or not
 !*** local variables ***!
 real(pReal)                       myPert, &                                                         ! perturbation with correct sign
-                                  formerSubStep
+                                  formerSubStep, &
+                                  subFracIntermediate
 real(pReal), dimension(3,3) ::    invFp, &                                                          ! inverse of the plastic deformation gradient
                                   Fe_guess, &                                                       ! guess for elastic deformation gradient
                                   Tstar                                                             ! 2nd Piola-Kirchhoff stress tensor
@@ -517,6 +533,9 @@ integer(pInt)                      NiterationCrystallite, &                     
                                    g, &                                                             ! grain index
                                    k, &
                                    l, &
+                                   n, &
+                                   neighboring_e, &
+                                   neighboring_i, &
                                    o, &
                                    p, &
                                    perturbation , &                                                 ! loop counter for forward,backward perturbation mode
@@ -583,32 +602,207 @@ NiterationCrystallite = 0_pInt
 numerics_integrationMode = 1_pInt
 do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2))))                       ! cutback loop for crystallites
 
-!$OMP PARALLEL DO PRIVATE(myNgrains,formerSubStep)
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
-    myNgrains = homogenization_Ngrains(mesh_element(3,e))
-    do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
-      do g = 1,myNgrains
-        
-        ! --- wind forward ---
-        
-        if (crystallite_converged(g,i,e)) then
+  if (any(.not. crystallite_localPlasticity) .and. numerics_timeSyncing) then
+    
+    ! Time synchronization can only be used for nonlocal calculations, and only there it makes sense.
+    ! The idea is that in nonlocal calculations often the vast amjority of the ips
+    ! converges in one iteration whereas a small fraction of ips has to do a lot of cutbacks. 
+    ! Hence, we try to minimize the computational effort by just doing a lot of cutbacks
+    ! in the vicinity of the "bad" ips and leave the easily converged volume more or less as it is.
+    ! However, some synchronization of the time step has to be done at the border between "bad" ips 
+    ! and the ones that immediately converged. 
+
+    if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+      !$OMP CRITICAL (write2out)
+      write(6,'(a,i6)') '<< CRYST >> crystallite iteration ',NiterationCrystallite
+      !$OMP END CRITICAL (write2out)
+    endif
+
+    if (any(crystallite_syncSubFrac)) then 
+      
+      ! Just did a time synchronization.
+      ! Dont do anything else than winding the synchronizers forward.
+      
+      crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:) .or. crystallite_syncSubFrac
+      crystallite_clearToCutback = crystallite_localPlasticity(1,:,:)
+      if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+        !$OMP CRITICAL (write2out)
+        write(6,'(a,i6)') '<< CRYST >> time synchronization: wind forward'
+        !$OMP END CRITICAL (write2out)
+      endif
+
+    elseif (any(crystallite_syncSubFracCompleted)) then 
+      
+      ! Just completed a time synchronization.
+      ! Make sure that the ips that synchronized their time step start non-converged 
+
+      where(crystallite_syncSubFracCompleted) &
+        crystallite_converged(1,:,:) = .false.
+      crystallite_syncSubFracCompleted = .false.
+      crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:)
+      crystallite_clearToCutback = crystallite_localPlasticity(1,:,:) .or. .not. crystallite_converged(1,:,:)
+      if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+        !$OMP CRITICAL (write2out)
+        write(6,'(a,i6)') '<< CRYST >> time synchronization: done, proceed with cutback'
+        !$OMP END CRITICAL (write2out)
+      endif
+
+    else
+      
+      ! Normal calculation.
+      ! If all converged and are at the end of the time increment, then just do a final wind forward.
+      ! If all converged, but not all reached the end of the time increment, then we only wind
+      ! those forward that are still on their way, all others have to wait.
+      ! If some did not converge and all are still at the start of the time increment, 
+      ! then all non-convergers force their converged neighbors to also do a cutback.
+      ! In case that some ips have already wound forward to an intermediate time (subfrac), 
+      ! then all those ips that converged in the first iteration, but now have a non-converged neighbor
+      ! have to synchronize their time step to the same intermediate time. If such a synchronization
+      ! takes place, all other ips have to wait and only the synchronizers do a cutback. In the next 
+      ! iteration those will do a wind forward while all others still wait. 
+
+      crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:)
+      crystallite_clearToCutback = crystallite_localPlasticity(1,:,:)
+      if (all(crystallite_localPlasticity .or. crystallite_converged)) then
+        if (all(crystallite_localPlasticity .or. crystallite_subStep + crystallite_subFrac >= 1.0_pReal)) then
+          crystallite_clearToWindForward = .true.   ! final wind forward
+          if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+            !$OMP CRITICAL (write2out)
+            write(6,'(a,i6)') '<< CRYST >> final wind forward'
+            !$OMP END CRITICAL (write2out)
+          endif
+        else
+          crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:) .or. crystallite_subStep(1,:,:) < 1.0_pReal
+          if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+            !$OMP CRITICAL (write2out)
+            write(6,'(a,i6)') '<< CRYST >> wind forward'
+            !$OMP END CRITICAL (write2out)
+          endif
+        endif
+      else
+        subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
+        if (subFracIntermediate == 0.0_pReal) then
+          crystallite_neighborEnforcedCutback = .false.  ! look for ips that require a cutback because of a nonconverged neighbor
+          !$OMP PARALLEL DO PRIVATE(neighboring_e,neighboring_i)
+            do e = FEsolving_execElem(1),FEsolving_execElem(2) 
+              do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+                if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_converged(1,i,e)) then
+                  do n = 1_pInt,FE_NipNeighbors(mesh_element(2,e))
+                    neighboring_e = mesh_ipNeighborhood(1,n,i,e)
+                    neighboring_i = mesh_ipNeighborhood(2,n,i,e)
+                    if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
+                      if (.not. crystallite_localPlasticity(1,neighboring_i,neighboring_e) &
+                          .and. .not. crystallite_converged(1,neighboring_i,neighboring_e)) then 
+                        crystallite_neighborEnforcedCutback(i,e) = .true.
+#ifndef _OPENMP
+                        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
+                          write(6,'(a12,i5,1x,i2,a,i5,1x,i2)') '<< CRYST >> ', neighboring_e,neighboring_i, &
+                                                                 ' enforced cutback at ',e,i
+#endif
+                      endif
+                    endif
+                  enddo
+                endif
+              enddo
+            enddo
+          !$OMP END PARALLEL DO
+          where(crystallite_neighborEnforcedCutback) &
+            crystallite_converged(1,:,:) = .false.
+        else
+          crystallite_syncSubFrac = .false.  ! look for ips that have to do a time synchronization because of a nonconverged neighbor
+          !$OMP PARALLEL DO PRIVATE(neighboring_e,neighboring_i)
+            do e = FEsolving_execElem(1),FEsolving_execElem(2) 
+              do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+                if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_subFrac(1,i,e) == 0.0_pReal) then
+                  do n = 1_pInt,FE_NipNeighbors(mesh_element(2,e))
+                    neighboring_e = mesh_ipNeighborhood(1,n,i,e)
+                    neighboring_i = mesh_ipNeighborhood(2,n,i,e)
+                    if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
+                      if (.not. crystallite_localPlasticity(1,neighboring_i,neighboring_e) &
+                          .and. .not. crystallite_converged(1,neighboring_i,neighboring_e)) then 
+                        crystallite_syncSubFrac(i,e) = .true.
+#ifndef _OPENMP
+                        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) &
+                          write(6,'(a12,i5,1x,i2,a,i5,1x,i2)') '<< CRYST >> ',neighboring_e,neighboring_i, &
+                                                               ' enforced time synchronization at ',e,i
+#endif
+                      endif
+                    endif
+                  enddo
+                endif
+              enddo
+            enddo
+          !$OMP END PARALLEL DO
+          where(crystallite_syncSubFrac) &
+            crystallite_converged(1,:,:) = .false.
+        endif
+        where(.not. crystallite_localPlasticity .and. crystallite_subStep < 1.0_pReal) &
+          crystallite_converged = .false.
+        if (any(crystallite_syncSubFrac)) then   ! have to do syncing now, so all wait except for the synchronizers which do a cutback
+          crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:)
+          crystallite_clearToCutback = crystallite_localPlasticity(1,:,:) .or. crystallite_syncSubFrac
+          if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+            !$OMP CRITICAL (write2out)
+            write(6,'(a,i6)') '<< CRYST >> time synchronization: cutback'
+            !$OMP END CRITICAL (write2out)
+          endif
+        else
+          where(.not. crystallite_converged(1,:,:)) &
+            crystallite_clearToCutback = .true.
+          if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+            !$OMP CRITICAL (write2out)
+            write(6,'(a,i6)') '<< CRYST >> cutback'
+            !$OMP END CRITICAL (write2out)
+          endif
+        endif
+      endif
+    endif
+
+    ! Make sure that all cutbackers start with the same substep
+
+    where(.not. crystallite_localPlasticity .and. .not. crystallite_converged) &
+      crystallite_subStep = minval(crystallite_subStep, mask=.not. crystallite_localPlasticity &
+                                                             .and. .not. crystallite_converged)
+
+    ! Those that do neither wind forward nor cutback are not to do
+
+    where(.not. crystallite_clearToWindForward .and. .not. crystallite_clearToCutback) &
+      crystallite_todo(1,:,:) = .false.
+      
+  endif
+
+  !$OMP PARALLEL DO PRIVATE(myNgrains,formerSubStep)
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)                                                  ! iterate over elements to be processed
+      myNgrains = homogenization_Ngrains(mesh_element(3,e))
+      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
+        do g = 1,myNgrains
+          
+          ! --- wind forward ---
+          
+          if (crystallite_converged(g,i,e) .and. crystallite_clearToWindForward(i,e)) then
             formerSubStep = crystallite_subStep(g,i,e)
             crystallite_subFrac(g,i,e) = crystallite_subFrac(g,i,e) + crystallite_subStep(g,i,e)
-!$OMP FLUSH(crystallite_subFrac)
-            crystallite_subStep(g,i,e) = min( 1.0_pReal - crystallite_subFrac(g,i,e), &
-                                            stepIncreaseCryst * crystallite_subStep(g,i,e) )
-!$OMP FLUSH(crystallite_subStep)
-          if (crystallite_subStep(g,i,e) > 0.0_pReal) then
-            crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)                       ! wind forward...
-            crystallite_subF0(1:3,1:3,g,i,e) = crystallite_subF(1:3,1:3,g,i,e)                        ! ...def grad
-!$OMP FLUSH(crystallite_subF0)
-            crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                         ! ...plastic def grad
-            crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e)) ! only needed later on for stiffness calculation
-            crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                         ! ...plastic velocity gradient
-            constitutive_subState0(g,i,e)%p   = constitutive_state(g,i,e)%p                           ! ...microstructure
-            crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
-            crystallite_todo(g,i,e) = .true.
-!$OMP FLUSH(crystallite_todo)
+            !$OMP FLUSH(crystallite_subFrac)
+            crystallite_subStep(g,i,e) = min(1.0_pReal - crystallite_subFrac(g,i,e), &
+                                             stepIncreaseCryst * crystallite_subStep(g,i,e))
+            !$OMP FLUSH(crystallite_subStep)
+            if (crystallite_subStep(g,i,e) > 0.0_pReal) then
+              crystallite_subTemperature0(g,i,e) = crystallite_Temperature(g,i,e)                       ! wind forward...
+              crystallite_subF0(1:3,1:3,g,i,e) = crystallite_subF(1:3,1:3,g,i,e)                        ! ...def grad
+              !$OMP FLUSH(crystallite_subF0)
+              crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                         ! ...plastic def grad
+              crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e)) ! only needed later on for stiffness calculation
+              crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                         ! ...plastic velocity gradient
+              constitutive_subState0(g,i,e)%p = constitutive_state(g,i,e)%p                             ! ...microstructure
+              crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                       ! ...2nd PK stress
+              if (crystallite_syncSubFrac(i,e)) then                                                    ! if we just did a synchronization of states, then we wind forward without any further time integration
+                crystallite_syncSubFracCompleted(i,e) = .true.
+                crystallite_syncSubFrac(i,e) = .false.
+                crystallite_todo(g,i,e) = .false.
+              else
+                crystallite_todo(g,i,e) = .true.
+              endif
+              !$OMP FLUSH(crystallite_todo)
 #ifndef _OPENMP
             if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
                 .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
@@ -619,33 +813,37 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
               write(6,*)
             endif
 #endif
-          elseif (formerSubStep > 0.0_pReal) then                                                     ! this crystallite just converged
-            crystallite_todo(g,i,e) = .false.                                                         ! so done here
-!$OMP FLUSH(crystallite_todo)
-            if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
-              !$OMP CRITICAL (distributionCrystallite)
-                debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
-                debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
-              !$OMP END CRITICAL (distributionCrystallite)
+            elseif (formerSubStep > 0.0_pReal) then                                                     ! this crystallite just converged for the entire timestep
+              crystallite_todo(g,i,e) = .false.                                                         ! so done here
+              !$OMP FLUSH(crystallite_todo)
+              if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
+                !$OMP CRITICAL (distributionCrystallite)
+                  debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
+                    debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
+                !$OMP END CRITICAL (distributionCrystallite)
+              endif
             endif
-          endif
-        
-        ! --- cutback ---
-        
-        else
-            crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                ! cut step in half and restore...
-!$OMP FLUSH(crystallite_subStep)
-            crystallite_Temperature(g,i,e)   = crystallite_subTemperature0(g,i,e)                     ! ...temperature
-            crystallite_Fp(1:3,1:3,g,i,e)    = crystallite_subFp0(1:3,1:3,g,i,e)                      ! ...plastic def grad
-!$OMP FLUSH(crystallite_Fp)
+          
+          ! --- cutback ---
+          
+          elseif (.not. crystallite_converged(g,i,e) .and. crystallite_clearToCutback(i,e)) then
+            if (crystallite_syncSubFrac(i,e)) then                                                      ! synchronize time
+              crystallite_subStep(g,i,e) = subFracIntermediate
+            else
+              crystallite_subStep(g,i,e) = subStepSizeCryst * crystallite_subStep(g,i,e)                ! cut step in half and restore...
+            endif
+            !$OMP FLUSH(crystallite_subStep)
+            crystallite_Temperature(g,i,e) = crystallite_subTemperature0(g,i,e)                         ! ...temperature
+            crystallite_Fp(1:3,1:3,g,i,e) = crystallite_subFp0(1:3,1:3,g,i,e)                           ! ...plastic def grad
+            !$OMP FLUSH(crystallite_Fp)
             crystallite_invFp(1:3,1:3,g,i,e) = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
-!$OMP FLUSH(crystallite_invFp)
+            !$OMP FLUSH(crystallite_invFp)
             crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)                      ! ...plastic velocity grad
             constitutive_state(g,i,e)%p      = constitutive_subState0(g,i,e)%p                        ! ...microstructure
             crystallite_Tstar_v(1:6,g,i,e)   = crystallite_subTstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
                                                                                                       ! cant restore dotState here, since not yet calculated in first cutback after initialization
             crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                    ! still on track or already done (beyond repair)
-!$OMP FLUSH(crystallite_todo)
+            !$OMP FLUSH(crystallite_todo)
 #ifndef _OPENMP
           if (crystallite_todo(g,i,e) &
               .and. iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
@@ -659,15 +857,15 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
         endif
 
         ! --- prepare for integration ---
-        
-        if (crystallite_todo(g,i,e)) then
-            crystallite_subF(1:3,1:3,g,i,e) = crystallite_subF0(1:3,1:3,g,i,e) &
-                                            + crystallite_subStep(g,i,e) &
-                                              * (crystallite_partionedF(1:3,1:3,g,i,e) - crystallite_partionedF0(1:3,1:3,g,i,e))
-!$OMP FLUSH(crystallite_subF)
-            crystallite_Fe(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e))
-            crystallite_subdt(g,i,e) = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
-            crystallite_converged(g,i,e) = .false.                                                    ! start out non-converged
+          
+        if (crystallite_todo(g,i,e) .and. (crystallite_clearToWindForward(i,e) .or. crystallite_clearToCutback(i,e))) then
+          crystallite_subF(1:3,1:3,g,i,e) = crystallite_subF0(1:3,1:3,g,i,e) &
+                                          + crystallite_subStep(g,i,e) &
+                                            * (crystallite_partionedF(1:3,1:3,g,i,e) - crystallite_partionedF0(1:3,1:3,g,i,e))
+          !$OMP FLUSH(crystallite_subF)
+          crystallite_Fe(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e))
+          crystallite_subdt(g,i,e) = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
+          crystallite_converged(g,i,e) = .false.                                                    ! start out non-converged
         endif
         
       enddo    ! grains
@@ -675,8 +873,29 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
   enddo        ! elements
 !$OMP END PARALLEL DO
 
+  if(numerics_timeSyncing) then
+    if (any(.not. crystallite_localPlasticity .and. .not. crystallite_todo .and. .not. crystallite_converged &
+            .and. crystallite_subStep <= subStepMinCryst)) then                                          ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
+      where(.not. crystallite_localPlasticity)
+        crystallite_todo = .false.                                                                       ! ... so let all nonlocal ips die peacefully
+        crystallite_subStep = 0.0_pReal
+      endwhere
+    endif
+  endif
+
+  if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+    !$OMP CRITICAL (write2out)
+    write(6,*)
+    write(6,'(a,e12.5)') '<< CRYST >> min(subStep) ',minval(crystallite_subStep)
+    write(6,'(a,e12.5)') '<< CRYST >> max(subStep) ',maxval(crystallite_subStep)
+    write(6,'(a,e12.5)') '<< CRYST >> min(subFrac) ',minval(crystallite_subFrac)
+    write(6,'(a,e12.5)') '<< CRYST >> max(subFrac) ',maxval(crystallite_subFrac)
+    write(6,*)
+    !$OMP END CRITICAL (write2out)
+  endif
+
   ! --- integrate --- requires fully defined state array (basic + dependent state)
-  
+
   if (any(crystallite_todo)) then
     select case(numerics_integrator(numerics_integrationMode))
       case(1_pInt)
@@ -1068,7 +1287,8 @@ RK4dotTemperature = 0.0_pReal                                                   
     constitutive_RK4dotState(g,i,e)%p = 0.0_pReal                                                         ! initialize Runge-Kutta dotState
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
     endif
@@ -1193,7 +1413,7 @@ do n = 1_pInt,4_pInt
         if (crystallite_todo(g,i,e)) then
           call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
                                             crystallite_Temperature(g,i,e), timeStepFraction(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
-                                            crystallite_orientation, g,i,e)
+                                            crystallite_subFrac, crystallite_orientation, g,i,e)
           crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                           crystallite_Temperature(g,i,e),g,i,e)
         endif
@@ -1390,7 +1610,8 @@ endif
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
     endif
@@ -1539,7 +1760,7 @@ do n = 1_pInt,5_pInt
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
                                           crystallite_Temperature(g,i,e), c(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
-                                          crystallite_orientation, g,i,e)
+                                          crystallite_subFrac, crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -1644,9 +1865,9 @@ relTemperatureResiduum = 0.0_pReal
       mySizeDotState = constitutive_sizeDotState(g,i,e)
       forall (s = 1_pInt:mySizeDotState, abs(constitutive_state(g,i,e)%p(s)) > 0.0_pReal) &
         relStateResiduum(s,g,i,e) = stateResiduum(s,g,i,e) / constitutive_state(g,i,e)%p(s)
-      if (crystallite_Temperature(g,i,e) > 0) &
+      if (crystallite_Temperature(g,i,e) > 0) then
         relTemperatureResiduum(g,i,e) = temperatureResiduum(g,i,e) / crystallite_Temperature(g,i,e)
-      
+      endif
       !$OMP FLUSH(relStateResiduum,relTemperatureResiduum)
       
       crystallite_todo(g,i,e) = &
@@ -1848,7 +2069,8 @@ if (numerics_integrationMode == 1_pInt) then
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then  
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
+                                          crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -1942,7 +2164,8 @@ if (numerics_integrationMode == 1_pInt) then
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
+                                          crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -1988,8 +2211,9 @@ if (numerics_integrationMode == 1_pInt) then
 
         forall (s = 1_pInt:mySizeDotState, abs(constitutive_state(g,i,e)%p(s)) > 0.0_pReal) &
           relStateResiduum(s,g,i,e) = stateResiduum(s,g,i,e) / constitutive_state(g,i,e)%p(s)
-        if (crystallite_Temperature(g,i,e) > 0_pInt) &
+        if (crystallite_Temperature(g,i,e) > 0_pInt) then
           relTemperatureResiduum(g,i,e) = temperatureResiduum(g,i,e) / crystallite_Temperature(g,i,e)
+        endif
         !$OMP FLUSH(relStateResiduum,relTemperatureResiduum)
 
 #ifndef _OPENMP        
@@ -2076,7 +2300,8 @@ end subroutine crystallite_integrateStateAdaptiveEuler
 subroutine crystallite_integrateStateEuler(gg,ii,ee)
 
 !*** variables and functions from other modules ***!
-use numerics, only:     numerics_integrationMode
+use numerics, only:     numerics_integrationMode, &
+                        numerics_timeSyncing
 use debug, only:        debug_level, &
                         debug_crystallite, &
                         debug_levelBasic, &
@@ -2138,9 +2363,10 @@ if (numerics_integrationMode == 1_pInt) then
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
+                                          crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -2148,10 +2374,10 @@ if (numerics_integrationMode == 1_pInt) then
   !$OMP ENDDO
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
-          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
+          if (.not. crystallite_localPlasticity(g,i,e) .and. .not. numerics_timeSyncing) then              ! if broken non-local...
             !$OMP CRITICAL (checkTodo)
               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
             !$OMP END CRITICAL (checkTodo)
@@ -2168,7 +2394,7 @@ if (numerics_integrationMode == 1_pInt) then
 
   !$OMP DO PRIVATE(mySizeDotState)
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         mySizeDotState = constitutive_sizeDotState(g,i,e)
         constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:mySizeDotState) &
                                                       + constitutive_dotState(g,i,e)%p(1:mySizeDotState) * crystallite_subdt(g,i,e)
@@ -2190,14 +2416,15 @@ if (numerics_integrationMode == 1_pInt) then
     enddo; enddo; enddo
   !$OMP ENDDO
 
-    
-  ! --- STATE JUMP ---
 
+  ! --- STATE JUMP ---
+  
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
-        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
+        if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                ! if broken non-local...
+            .and. .not. numerics_timeSyncing) then
           !$OMP CRITICAL (checkTodo)
             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
           !$OMP END CRITICAL (checkTodo)
@@ -2211,7 +2438,7 @@ if (numerics_integrationMode == 1_pInt) then
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-      if (crystallite_todo(g,i,e)) then
+      if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Fe(1:3,1:3,g,i,e), &
                                          crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
       endif
@@ -2225,9 +2452,10 @@ endif
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
+    if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
       crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
-      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then              ! if broken non-local...
+      if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e) &                  ! if broken non-local...
+          .and. .not. numerics_timeSyncing) then
         !$OMP CRITICAL (checkTodo)
           crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                           ! ...all non-locals skipped
         !$OMP END CRITICAL (checkTodo)
@@ -2241,7 +2469,7 @@ endif
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
+    if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
       if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
         !$OMP CRITICAL (distributionState)
@@ -2259,7 +2487,8 @@ endif
 ! --- CHECK NON-LOCAL CONVERGENCE ---
 
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
-  if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                      ! any non-local not yet converged (or broken)...
+  if (any(.not. crystallite_converged .and. .not. crystallite_localPlasticity) &                          ! any non-local not yet converged (or broken)...
+      .and. .not. numerics_timeSyncing) then
     crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
   endif
 endif
@@ -2365,7 +2594,8 @@ endif
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
+                                        crystallite_orientation, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
     endif
@@ -2457,7 +2687,8 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
+                                          crystallite_orientation, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif

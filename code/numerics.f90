@@ -72,7 +72,8 @@ real(pReal), protected, public :: &
                                 volDiscrMod_RGC            =  1.0e+12_pReal, &                      !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
                                 volDiscrPow_RGC            =  5.0_pReal                             !< powerlaw penalty for volume discrepancy
 logical, protected, public :: &                      
-                                analyticJaco               = .false.                                !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+                                analyticJaco               = .false., &                             !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+                                numerics_timeSyncing       = .false.                                !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 !* Random seeding parameters
 integer(pInt), protected, public :: &
                                 fixedSeed                  = 0_pInt                                 !< fixed seeding for pseudo-random number generator, Default 0: use random seed
@@ -222,6 +223,8 @@ subroutine numerics_init
              numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
        case ('analyticjaco')
              analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
+       case ('timesyncing')
+             numerics_timeSyncing = IO_intValue(line,positions,2_pInt) > 0_pInt
        case ('unitlength')
              numerics_unitlength = IO_floatValue(line,positions,2_pInt)
 
@@ -337,6 +340,9 @@ subroutine numerics_init
   write(6,'(a)') ' Initializing PETSc'
   CHKERRQ(ierr)
 #endif
+
+numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                 ! timeSyncing only allowed for explicit Euler integrator
+
  !* writing parameters to output file
    
    write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
@@ -356,6 +362,7 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
    write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
    write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
+   write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
    write(6,'(a24,1x,L8)')     ' analytic Jacobian:      ',analyticJaco
    write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
  
