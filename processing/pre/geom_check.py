@@ -116,7 +116,6 @@ files = []
 if filenames == []:
   files.append({'name':'STDIN',
                 'input':sys.stdin,
-                'output':sys.stdout,
                 'croak':sys.stderr,
                })
 else:
@@ -124,7 +123,6 @@ else:
     if os.path.exists(name):
       files.append({'name':name,
                     'input':open(name),
-                    'output':open(name+'_tmp','w'),
                     'croak':sys.stdout,
                     })
 
