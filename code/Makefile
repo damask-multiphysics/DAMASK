@@ -393,7 +393,7 @@ IO.o:                         IO.f90 \
 
 DAMASK_spectral_interface.o:  DAMASK_spectral_interface.f90 \
                               prec.o
-ifeq "$(COMPILERNAME)" "gfortran"            # fno-range-check because NaN is defined in prec
+ifeq "$(F90)" "gfortran"            # fno-range-check because NaN is defined in prec
 prec.o:                       prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -fno-range-check prec.f90 $(SUFFIX)
 else
