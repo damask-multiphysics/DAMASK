@@ -576,7 +576,7 @@ program DAMASK_spectral
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
+         temp33_Real(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad)
        temp33_Real = math_inv33(temp33_Real)
        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
          gamma_hat(i,j,k, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)
@@ -937,7 +937,7 @@ program DAMASK_spectral
                  forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
                    xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
                  forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-                   temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
+                   temp33_Real(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad)
                  temp33_Real = math_inv33(temp33_Real)
                  forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, p=1_pInt:3_pInt)&
                    gamma_hat(1,1,1, l,m,n,p) =  temp33_Real(l,n)*xiDyad(m,p)

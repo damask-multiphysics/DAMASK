@@ -258,7 +258,7 @@ subroutine utilities_updateGamma(C,saveReference)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
          xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
        forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-         temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
+         temp33_Real(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad)
        temp33_Real = math_inv33(temp33_Real)
        filter = utilities_getFilter(xi(1:3,i,j,k))                                                  ! weighting factor computed by getFilter function
        forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
@@ -437,18 +437,18 @@ subroutine utilities_fourierConvolution(fieldAim)
 ! to the actual spectral method calculation (mechanical equilibrium)
  if(memory_efficient) then                                                                          ! memory saving version, on-the-fly calculation of gamma_hat
    do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
-       if(any([i,j,k] /= 1_pInt)) then                                                              ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
-         forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-           xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
-         forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-           temp33_Real(l,m) = sum(C_ref(l,m,1:3,1:3)*xiDyad)
-         temp33_Real = math_inv33(temp33_Real)
-         filter = utilities_getFilter(xi(1:3,i,j,k))                                                ! weighting factor computed by getFilter function
-         forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
-           gamma_hat(l,m,n,o, 1,1,1) =  filter*temp33_Real(l,n)*xiDyad(m,o)
-         forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
-           temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3, 1,1,1) * field_fourier(i,j,k,1:3,1:3))
-         field_fourier(i,j,k,1:3,1:3) = temp33_Complex 
+     if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
+       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+         xiDyad(l,m) = xi(l, i,j,k)*xi(m, i,j,k)
+       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+         temp33_Real(l,m) = sum(C_ref(l,1:3,m,1:3)*xiDyad)
+       temp33_Real = math_inv33(temp33_Real)
+       filter = utilities_getFilter(xi(1:3,i,j,k))                                                  ! weighting factor computed by getFilter function
+       forall(l=1_pInt:3_pInt, m=1_pInt:3_pInt, n=1_pInt:3_pInt, o=1_pInt:3_pInt)&
+         gamma_hat(l,m,n,o, 1,1,1) =  filter*temp33_Real(l,n)*xiDyad(m,o)
+       forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+         temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3, 1,1,1) * field_fourier(i,j,k,1:3,1:3))
+       field_fourier(i,j,k,1:3,1:3) = temp33_Complex 
      endif             
    enddo; enddo; enddo
  else                                                                                               ! use precalculated gamma-operator
@@ -729,10 +729,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  
  P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P 
  if (debugRotation) &
- write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress (lab) / MPa =',&
+ write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola--Kirchhoff stress (lab) / MPa =',&
                                                      math_transpose33(P_av)/1.e6_pReal
  P_av = math_rotate_forward33(P_av,rotation_BC)
- write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
+ write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola--Kirchhoff stress / MPa =',&
                                                      math_transpose33(P_av)/1.e6_pReal
 end subroutine utilities_constitutiveResponse
 
