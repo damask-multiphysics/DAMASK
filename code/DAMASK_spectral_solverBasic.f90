@@ -171,7 +171,8 @@ type(tSolutionState) function &
    Utilities_FFTbackward, &
    Utilities_updateGamma, &
    Utilities_constitutiveResponse, &
-   Utilities_calculateRate
+   Utilities_calculateRate, &
+   debugRotation
  use FEsolving, only: &
    restartWrite, &
    restartRead, &
@@ -198,10 +199,9 @@ type(tSolutionState) function &
  
  real(pReal), dimension(3,3,3,3)        :: &
    S                                                                                                !< current average compliance 
- real(pReal), dimension(3,3)            :: &
-    F_aim_lab, &                             
-    F_aim_lab_lastIter, &                                                                           !< aim of last iteration
-    P_av
+ real(pReal), dimension(3,3)            :: &                            
+   F_aim_lastIter, &                                                                                !< aim of last iteration
+   P_av
  real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
@@ -258,12 +258,12 @@ type(tSolutionState) function &
    endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
-   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                                                        timeinc,timeinc_old,guess,F_lastInc,F)
+   Fdot =  utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+                                                        timeinc_old,guess,F_lastInc,F)
    F_lastInc = F
  endif
  F_aim = F_aim + f_aimDot * timeinc
- F = Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot)                                           !I think F aim should be rotated here
+ F = Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),F_lastInc,Fdot)                                           !I think F aim should be rotated here
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -280,12 +280,14 @@ type(tSolutionState) function &
 ! report begin of new iteration
    write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iter. ', itmin, '≤',iter, '≤', itmax
+   if (debugRotation) &
+   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim (lab)=', &
+                                        math_transpose33(math_rotate_backward33(F_aim,rotation_BC))
    write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
-                                                                        math_transpose33(F_aim)
-
+                                        math_transpose33(F_aim)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
-   F_aim_lab_lastIter = math_rotate_backward33(F_aim,rotation_BC)
+   F_aim_lastIter = F_aim
    basic_solution%termIll = .false.
    call Utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
                                  P,C,P_av,ForwardData,rotation_BC)
@@ -297,8 +299,7 @@ type(tSolutionState) function &
 ! stress BC handling
    F_aim = F_aim - math_mul3333xx33(S, ((P_av - P_BC%values)))                                      ! S = 0.0 for no bc
    err_stress = maxval(abs(P_BC%maskFloat * (P_av - P_BC%values)))                                  ! mask = 0.0 for no bc
-   F_aim_lab = math_rotate_backward33(F_aim,rotation_BC)                                            ! boundary conditions from load frame into lab (Fourier) frame
- 
+
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
    field_real = 0.0_pReal
@@ -306,7 +307,7 @@ type(tSolutionState) function &
                                                                order=[4,5,1,2,3]) ! field real has a different order
    call Utilities_FFTforward()
    err_div = Utilities_divergenceRMS()
-   call Utilities_fourierConvolution(F_aim_lab_lastIter - F_aim_lab) 
+   call Utilities_fourierConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,rotation_BC))
    call Utilities_FFTbackward()
    F = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)

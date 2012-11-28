@@ -196,18 +196,17 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%followFormerTrajectory = .false.                                ! do not continue to predict deformation along former trajectory
        case('euler')                                                                                ! rotation of currentLoadCase given in euler angles
          temp_valueVector = 0.0_pReal
-         l = 0_pInt                                                                                 ! assuming values given in degrees
-         k = 0_pInt                                                                                 ! assuming keyword indicating degree/radians
+         l = 1_pInt                                                                                 ! assuming values given in degrees
+         k = 1_pInt                                                                                 ! assuming keyword indicating degree/radians present
          select case (IO_lc(IO_stringValue(line,positions,i+1_pInt)))
-           case('rad','radian')
-             l = 1_pInt
-             k = 1_pInt
            case('deg','degree')
-             l = 1_pInt                                                                             ! for conversion from degree to radian           
-           case default               
+           case('rad','radian')                                                                     ! don't convert from degree to radian           
+             l = 0_pInt
+           case default   
+             k = 0_pInt           
          end select
          forall(j = 1_pInt:3_pInt)  temp_valueVector(j) = IO_floatValue(line,positions,i+k+j)
-         if (k == 1_pInt) temp_valueVector(1:3) = temp_valueVector(1:3) * inRad                     ! convert to rad
+         if (l == 1_pInt) temp_valueVector(1:3) = temp_valueVector(1:3) * inRad                     ! convert to rad
          loadCases(currentLoadCase)%rotation = math_EulerToR(temp_valueVector(1:3))                 ! convert rad Eulers to rotation matrix
        case('rotation','rot')                                                                       ! assign values for the rotation of currentLoadCase matrix
          temp_valueVector = 0.0_pReal

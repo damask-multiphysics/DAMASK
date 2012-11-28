@@ -46,7 +46,8 @@ module DAMASK_spectral_utilities
    debugGeneral, &                                                                                  !< general debugging of spectral solver
    debugDivergence, &                                                                               !< debugging of divergence calculation (comparison to function used for post processing)
    debugRestart, &                                                                                  !< debbuging of restart features
-   debugFFTW                                                                                        !< doing additional FFT on scalar field and compare to results of strided 3D FFT
+   debugFFTW, &                                                                                     !< doing additional FFT on scalar field and compare to results of strided 3D FFT
+   debugRotation                                                                                    !< also printing out results in lab frame
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -105,7 +106,8 @@ subroutine utilities_init()
    debug_levelBasic, &
    debug_spectralDivergence, &
    debug_spectralRestart, &
-   debug_spectralFFTW
+   debug_spectralFFTW, &
+   debug_spectralRotation
  use mesh, only: &
    res, &
    res1_red, &
@@ -132,6 +134,7 @@ subroutine utilities_init()
  debugDivergence = iand(debug_level(debug_spectral),debug_spectralDivergence) /= 0
  debugRestart    = iand(debug_level(debug_spectral),debug_spectralRestart)    /= 0
  debugFFTW       = iand(debug_level(debug_spectral),debug_spectralFFTW)       /= 0
+ debugRotation   = iand(debug_level(debug_spectral),debug_spectralRotation)   /= 0
  
 !--------------------------------------------------------------------------------------------------
 ! allocation
@@ -721,10 +724,14 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  C = C * wgt
  call debug_info()
  
- P_av = math_rotate_forward33(sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt,rotation_BC)                 ! average of P rotated
  restartWrite = .false.                                                                             ! reset restartWrite status
  cutBack = .false.                                                                                  ! reset cutBack status
  
+ P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P 
+ if (debugRotation) &
+ write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress (lab) / MPa =',&
+                                                     math_transpose33(P_av)/1.e6_pReal
+ P_av = math_rotate_forward33(P_av,rotation_BC)
  write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola-Kirchhoff stress / MPa =',&
                                                      math_transpose33(P_av)/1.e6_pReal
 end subroutine utilities_constitutiveResponse
@@ -733,14 +740,13 @@ end subroutine utilities_constitutiveResponse
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates forward rate, either guessing or just add delta/timeinc
 !--------------------------------------------------------------------------------------------------
-pure function utilities_calculateRate(delta_aim,timeinc,timeinc_old,guess,field_lastInc,field)
+pure function utilities_calculateRate(avRate,timeinc_old,guess,field_lastInc,field)
  use mesh, only: &
    res
  
  implicit none
- real(pReal), intent(in), dimension(3,3)                      :: delta_aim                          !< homogeneous addon
+ real(pReal), intent(in), dimension(3,3)                      :: avRate                             !< homogeneous addon
  real(pReal), intent(in) :: &
-   timeinc, &                                                                                       !< timeinc of current step
    timeinc_old                                                                                      !< timeinc of last step
  logical, intent(in) :: &
    guess                                                                                            !< guess along former trajectory
@@ -752,7 +758,7 @@ pure function utilities_calculateRate(delta_aim,timeinc,timeinc_old,guess,field_
  if(guess) then
    utilities_calculateRate = (field-field_lastInc) / timeinc_old
  else
-   utilities_calculateRate = spread(spread(spread(delta_aim,3,res(1)),4,res(2)),5,res(3))/timeinc
+   utilities_calculateRate = spread(spread(spread(avRate,3,res(1)),4,res(2)),5,res(3))
  endif
 
 end function utilities_calculateRate

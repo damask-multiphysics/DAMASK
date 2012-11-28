@@ -43,7 +43,8 @@ module debug
  integer(pInt), parameter, public :: &
    debug_spectralRestart    = debug_maxGeneral*2_pInt**1_pInt, &
    debug_spectralFFTW       = debug_maxGeneral*2_pInt**2_pInt, &
-   debug_spectralDivergence = debug_maxGeneral*2_pInt**3_pInt
+   debug_spectralDivergence = debug_maxGeneral*2_pInt**3_pInt, &
+   debug_spectralRotation   = debug_maxGeneral*2_pInt**4_pInt
 
  integer(pInt), parameter, public :: &
    debug_debug                   =  1_pInt, &
@@ -232,6 +233,8 @@ subroutine debug_init
              debug_level(what) = ior(debug_level(what), debug_spectralFFTW)
            case('divergence')
              debug_level(what) = ior(debug_level(what), debug_spectralDivergence)
+           case('rotation')
+             debug_level(what) = ior(debug_level(what), debug_spectralRotation)
          end select
        enddo
       endif
@@ -306,6 +309,7 @@ subroutine debug_init
          if(iand(debug_level(i),debug_spectralRestart)   /= 0) write(6,'(a)') ' restart'
          if(iand(debug_level(i),debug_spectralFFTW)      /= 0) write(6,'(a)') ' FFTW'
          if(iand(debug_level(i),debug_spectralDivergence)/= 0) write(6,'(a)') ' divergence'
+         if(iand(debug_level(i),debug_spectralRotation)  /= 0) write(6,'(a)') ' rotation'
    !$OMP END CRITICAL (write2out)
        endif
      enddo
