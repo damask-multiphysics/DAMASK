@@ -475,12 +475,15 @@ subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
    reason = 0
  endif 
  
- write(6,'(a,es14.7)') 'error stress BC = ', &
-   err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)  
- write(6,'(a,es14.7)') 'error F         = ',&
-   err_f/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_f_tol
- write(6,'(a,es14.7)') 'error P         = ', &
-   err_p/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_p_tol
+ write(6,'(a,f12.7,1x,1a,1x,es9.3)') 'error stress BC = ', &
+   err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs),&
+   '@',min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
+ write(6,'(a,f12.7,1x,1a,1x,es9.3)') 'error F         = ',&
+   err_f/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_f_tol,&
+   '@',err_f_tol
+ write(6,'(a,f12.7,1x,1a,1x,es9.3)') 'error P         = ', &
+   err_p/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_p_tol,&
+   '@',err_p_tol
  write(6,'(/,a)') '=========================================================================='
 end subroutine AL_converged
 
