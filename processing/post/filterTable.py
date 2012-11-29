@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,re,sys,math,string,damask
+import os,re,sys,fnmatch,math,string,damask
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -76,8 +76,8 @@ for file in files:
   labels = []
   positions = []
   for position,label in enumerate(table.labels):
-    if    (options.whitelist == [] or label in options.whitelist) \
-      and (options.blacklist == [] or label not in options.blacklist):      # a label to keep?
+    if    (options.whitelist == [] or     any([fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
+      and (options.blacklist == [] or not any([fnmatch.fnmatch(label,needle) for needle in options.blacklist])):      # a label to keep?
       labels.append(label)                                                  # remember name...
       positions.append(position)                                            # ...and position
 
