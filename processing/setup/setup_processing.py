@@ -94,6 +94,7 @@ bin_link = { \
                 'geom_unpack.py',
                 'geom_translate.py',
                 'geom_vicinityOffset.py',
+                'geom_euclideanDistance'
                 ],
         'post' : [
                 '3Dvisualize.py',
