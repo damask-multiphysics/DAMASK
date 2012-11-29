@@ -765,7 +765,7 @@ end subroutine constitutive_hooke_TandItsTangent
 !* This subroutine contains the constitutive equation for            *
 !* calculating the rate of change of microstructure                  *
 !*********************************************************************
-subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, subfrac, orientation, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, subfrac, ipc, ip, el)
 
 use prec, only:     pReal, pLongInt
 use debug, only:    debug_cumDotStateCalls, &
@@ -804,8 +804,6 @@ real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                 Fe, &         ! elastic deformation gradient
                                 Fp            ! plastic deformation gradient
-real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                orientation   ! crystal orientation (quaternion)
 real(pReal), dimension(6), intent(in) :: &
                                 Tstar_v       ! 2nd Piola Kirchhoff stress tensor (Mandel)
 !*** local variables
@@ -836,7 +834,7 @@ select case (phase_plasticity(material_phase(ipc,ip,el)))
  
   case (constitutive_nonlocal_label)
     constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, constitutive_state, &
-                                                                      constitutive_state0, subdt, subfrac, orientation, ipc, ip, el)
+                                                                      constitutive_state0, subdt, subfrac, ipc, ip, el)
 
 end select
 

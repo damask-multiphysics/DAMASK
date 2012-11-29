@@ -1287,8 +1287,7 @@ RK4dotTemperature = 0.0_pReal                                                   
     constitutive_RK4dotState(g,i,e)%p = 0.0_pReal                                                         ! initialize Runge-Kutta dotState
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
-                                        crystallite_orientation, g,i,e)
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
     endif
@@ -1413,7 +1412,7 @@ do n = 1_pInt,4_pInt
         if (crystallite_todo(g,i,e)) then
           call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
                                             crystallite_Temperature(g,i,e), timeStepFraction(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
-                                            crystallite_subFrac, crystallite_orientation, g,i,e)
+                                            crystallite_subFrac, g,i,e)
           crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                           crystallite_Temperature(g,i,e),g,i,e)
         endif
@@ -1610,8 +1609,7 @@ endif
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
-                                        crystallite_orientation, g,i,e)
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
     endif
@@ -1760,7 +1758,7 @@ do n = 1_pInt,5_pInt
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
                                           crystallite_Temperature(g,i,e), c(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
-                                          crystallite_subFrac, crystallite_orientation, g,i,e)
+                                          crystallite_subFrac, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -2069,8 +2067,7 @@ if (numerics_integrationMode == 1_pInt) then
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then  
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
-                                          crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -2164,8 +2161,7 @@ if (numerics_integrationMode == 1_pInt) then
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
-                                          crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -2365,8 +2361,7 @@ if (numerics_integrationMode == 1_pInt) then
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
-                                          crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -2594,8 +2589,7 @@ endif
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
       call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
-                                        crystallite_orientation, g,i,e)
+                                        crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
       crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                       crystallite_Temperature(g,i,e),g,i,e)
     endif
@@ -2687,8 +2681,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, crystallite_Fp, &
-                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, &
-                                          crystallite_orientation, g,i,e)
+                                          crystallite_Temperature(g,i,e), crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
         crystallite_dotTemperature(g,i,e) = constitutive_dotTemperature(crystallite_Tstar_v(1:6,g,i,e), &
                                                                         crystallite_Temperature(g,i,e),g,i,e)
       endif
@@ -3016,9 +3009,6 @@ real(pReal)                         p_hydro, &                                  
 logical                             error                                                           ! flag indicating an error
 integer(pInt)                       NiterationStress, &                                             ! number of stress integrations
                                     ierr, &                                                         ! error indicator for LAPACK
-                                    k, &
-                                    l, &
-                                    m, &
                                     n, &
                                     o, &
                                     p, &

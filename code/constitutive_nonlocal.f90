@@ -1859,7 +1859,6 @@ integer(pInt)                               myInstance, &             ! current 
                                             myStructure, &            ! current lattice structure
                                             ns, &                     ! short notation for the total number of active slip systems
                                             c, &                      ! character of dislocation
-                                            n, &                      ! index of my current neighbor
                                             t, &                      ! type of dislocation
                                             s, &                      ! index of my current slip system
                                             sLattice                  ! index of my current slip system according to lattice order
@@ -2005,7 +2004,7 @@ endsubroutine
 !*********************************************************************
 !* rate of change of microstructure                                  *
 !*********************************************************************
-function constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, state, state0, timestep, subfrac, orientation, g,ip,el)
+function constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, state, state0, timestep, subfrac, g,ip,el)
 
 use prec,     only: pReal, &
                     pInt, &
@@ -2064,8 +2063,6 @@ real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             Fe, &                     ! elastic deformation gradient
                                             Fp                        ! plastic deformation gradient
-real(pReal), dimension(4,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            orientation               ! crystal lattice orientation
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             state, &                  ! current microstructural state
                                             state0                    ! microstructural state at beginning of crystallite increment
@@ -3200,8 +3197,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                             rhoForest, &              ! forest dislocation density
                                             tauThreshold, &           ! threshold shear stress
                                             tau, &                    ! current resolved shear stress
-                                            tauBack, &                ! back stress from pileups on same slip system
-                                            vClimb                    ! climb velocity of edge dipoles
+                                            tauBack                   ! back stress from pileups on same slip system
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             rhoDip, &                 ! current dipole dislocation densities (screw and edge dipoles)
                                             rhoDotDip, &              ! evolution rate of dipole dislocation densities (screw and edge dipoles)
@@ -3210,7 +3206,6 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             m, &                      ! direction of dislocation motion for edge and screw (unit vector)
                                             m_currentconf             ! direction of dislocation motion for edge and screw (unit vector) in current configuration
-real(pReal)                                 D                         ! self diffusion
 real(pReal), dimension(3,3) ::              sigma
 
 myInstance = phase_plasticityInstance(material_phase(g,ip,el))
