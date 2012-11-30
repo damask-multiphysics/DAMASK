@@ -46,11 +46,5 @@ for file in files:
 
   table.output_flush()
 
-  try:
+  if file['name'] != 'STDIN':
     file['input'].close()
-  except:
-    pass
-  try:
-    file['output'].close()
-  except:
-    pass
