@@ -115,6 +115,7 @@ bin_link = { \
                 'binXY.py',
                 'deleteColumn.py',
                 'deleteInfo.py',
+                'showTable.py',
                 'filterTable.py',
                 'mentat_colorMap.py',
                 'postResults.py',
