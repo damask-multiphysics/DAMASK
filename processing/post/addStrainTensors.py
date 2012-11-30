@@ -23,12 +23,15 @@ class extendableOption(Option):
 
 
 
-def operator(how,vector):
+def operator(stretch,strain,eigenvalues):
   return { \
-    'ln':    numpy.log(vector)*1.0,\
-    'Biot':  vector           *1.0,\
-    'Green': vector*vector    *0.5,\
-         }[how]
+    'V#ln':    numpy.log(eigenvalues)                                 ,
+    'U#ln':    numpy.log(eigenvalues)                                 ,
+    'V#Biot':  ( numpy.ones(3,'d') - 1.0/eigenvalues )                ,
+    'U#Biot':  ( eigenvalues - numpy.ones(3,'d') )                    ,
+    'V#Green': ( numpy.ones(3,'d') - 1.0/eigenvalues*eigenvalues) *0.5,
+    'U#Green': ( eigenvalues*eigenvalues - numpy.ones(3,'d'))     *0.5,
+         }[stretch+'#'+strain]
 
 
 
@@ -44,14 +47,14 @@ Add column(s) containing given strains based on given stretches of requested def
 
 
 parser.add_option('-u','--right',       action='store_true', dest='right', \
-                                        help='calculate strains based on right Cauchy--Green deformation, i.e., C and U')
+                                        help='material strains based on right Cauchy--Green deformation, i.e., C and U')
 parser.add_option('-v','--left',        action='store_true', dest='left', \
-                                        help='calculate strains based on left Cauchy--Green deformation, i.e., B and V')
-parser.add_option('-l','--logarithmic', action='store_true', dest='logarithmic', \
+                                        help='spatial strains based on left Cauchy--Green deformation, i.e., B and V')
+parser.add_option('-l','-0','--logarithmic', action='store_true', dest='logarithmic', \
                                         help='calculate logarithmic strain tensor')
-parser.add_option('-b','--biot',        action='store_true', dest='biot', \
+parser.add_option('-b','-1','--biot',   action='store_true', dest='biot', \
                                         help='calculate biot strain tensor')
-parser.add_option('-g','--green',       action='store_true', dest='green', \
+parser.add_option('-g','-2','--green',  action='store_true', dest='green', \
                                         help='calculate green strain tensor')
 parser.add_option('-f','--deformation', dest='defgrad', action='extend', type='string', \
                                         help='heading(s) of columns containing deformation tensor values %default')
@@ -153,9 +156,8 @@ for file in files:
               V[:,(i+1)%3] = numpy.cross(V[:,(i+2)%3],V[:,i]) # correct next vector
               V[:,(i+1)%3] /= numpy.sqrt(numpy.dot(V[:,(i+1)%3],V[:,(i+1)%3].conj()))  # and renormalize (hyperphobic?)
           for theStrain in strains:
-            d = operator(theStrain,D)                         # operate on eigenvalues of U or V
-            I = operator(theStrain,numpy.ones(3))             # operate on eigenvalues of I (i.e. [1,1,1])
-            eps = (numpy.dot(V,numpy.dot(numpy.diag(d),V.T)).real-numpy.diag(I)).reshape(9)  # build tensor back from eigenvalue/vector basis
+            d = operator(theStretch,theStrain,D)              # operate on eigenvalues of U or V
+            eps = (numpy.dot(V,numpy.dot(numpy.diag(d),V.T)).real).reshape(9)  # build tensor back from eigenvalue/vector basis
 
             table.data_append(list(eps))
 
