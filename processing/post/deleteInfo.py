@@ -28,7 +28,7 @@ class extendableOption(Option):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=extendableOption, usage='%prog [file[s]]', description = """
-Remove info from table head
+Remove info lines from given ASCIItable(s).
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -68,7 +68,7 @@ for file in files:
 
   outputAlive and table.output_flush()                                      # just in case of buffered ASCII table
 
-  file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
+    file['input'].close()                                                   # close input ASCII table
     file['output'].close()                                                  # close output ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
