@@ -30,7 +30,9 @@ class extendableOption(Option):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Filter rows according to condition and columns by either white or black listing.
 
-Example: every odd row if x coordinate is positive -- " #ip.x# >= 0.0 and #_row_#%2 == 1 )"
+Examples:
+Every odd row if x coordinate is positive -- " #ip.x# >= 0.0 and #_row_#%2 == 1 ).
+All rows where label 'foo' equals 'bar' -- " #s#foo# == \"bar\" "
 """ + string.replace('$Id$','\n','\\n')
 )
 
@@ -82,18 +84,22 @@ for file in files:
       positions.append(position)                                            # ...and position
 
   interpolator = []
-  for position,operand in enumerate(set(re.findall(r'#(.+?)#',options.condition))):
-    options.condition = options.condition.replace('#'+operand+'#','{%i}'%position)
-    if operand in specials:
-      interpolator += ['specials["%s"]'%operand]
+  for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',options.condition))):  # find three groups
+    options.condition = options.condition.replace('#'+operand[0]+'#',
+                                                  {  '': '{%i}'%position,
+                                                   's#':'"{%i}"'%position}[operand[1]])
+    if operand[2] in specials:                                              # special label ?
+      interpolator += ['specials["%s"]'%operand[2]]
     else:
       try:
-        interpolator += ['float(table.data[%i])'%table.labels.index(operand)]
+        interpolator += ['%s(table.data[%i])'%({  '':'float',
+                                                's#':'str'}[operand[1]],
+                                               table.labels.index(operand[2]))]
       except:
         parser.error('column %s not found...\n'%operand)
 
   evaluator = "'" + options.condition + "'.format(" + ','.join(interpolator) + ")"
-
+  
 # ------------------------------------------ assemble header ---------------------------------------  
 
   table.labels = labels                                                     # update with new label set
