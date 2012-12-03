@@ -98,7 +98,6 @@ bin_link = { \
                 ],
         'post' : [
                 '3Dvisualize.py',
-                'addCauchy.py',
                 'addCalculation.py',
                 'addDeterminant.py',
                 'addDeviator.py',
@@ -107,8 +106,10 @@ bin_link = { \
                 'addCurl.py',
                 'addMises.py',
                 'addNorm.py',
+                'addCauchy.py',
                 'addPK2.py',
                 'addStrainTensors.py',
+                'addEhkl.py',
                 'addCompatibilityMismatch.py',
                 'addDeformedConfiguration.py',
                 'averageDown.py',
