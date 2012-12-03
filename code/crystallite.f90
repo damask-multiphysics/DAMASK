@@ -3103,8 +3103,8 @@ LpLoop: do
   Fe = math_mul33x33(A,B)                                                    ! current elastic deformation tensor
   call constitutive_TandItsTangent(Tstar, dT_dFe3333, Fe, g,i,e)             ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
   Tstar_v = math_Mandel33to6(Tstar)
-!  p_hydro = sum(Tstar_v(1:3)) / 3.0_pReal
-!  forall(n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
+  p_hydro = sum(Tstar_v(1:3)) / 3.0_pReal
+  forall(n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
    
   
   !* calculate plastic velocity gradient and its tangent from constitutive law
@@ -3216,7 +3216,7 @@ enddo LpLoop
 !* calculate new plastic and elastic deformation gradient
 
 invFp_new = math_mul33x33(invFp_current,B)
-! invFp_new = invFp_new/math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
+invFp_new = invFp_new/math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
 call math_invert33(invFp_new,Fp_new,det,error)
 if (error .or. any(Fp_new/=Fp_new)) then
 #ifndef _OPENMP
@@ -3238,7 +3238,7 @@ Fe_new = math_mul33x33(Fg_new,invFp_new)                             ! calc resu
 
 !* add volumetric component to 2nd Piola-Kirchhoff stress and calculate 1st Piola-Kirchhoff stress
 
-! forall (n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) + p_hydro
+forall (n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) + p_hydro
 crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_new, math_mul33x33(math_Mandel6to33(Tstar_v), math_transpose33(invFp_new)))
  
 
