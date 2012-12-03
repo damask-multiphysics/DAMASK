@@ -178,7 +178,8 @@ constitutive_nonlocal_compatibility                                  ! slip syst
 
 logical, dimension(:), allocatable, private :: &
 constitutive_nonlocal_shortRangeStressCorrection, &                  ! flag indicating the use of the short range stress correction by a excess density gradient term
-constitutive_nonlocal_deadZoneScaling
+constitutive_nonlocal_deadZoneScaling, &
+constitutive_nonlocal_probabilisticMultiplication
 
 public :: &
 constitutive_nonlocal_init, &
@@ -347,6 +348,7 @@ allocate(constitutive_nonlocal_surfaceTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_grainboundaryTransmissivity(maxNinstance))
 allocate(constitutive_nonlocal_shortRangeStressCorrection(maxNinstance))
 allocate(constitutive_nonlocal_deadZoneScaling(maxNinstance))
+allocate(constitutive_nonlocal_probabilisticMultiplication(maxNinstance))
 allocate(constitutive_nonlocal_CFLfactor(maxNinstance))
 allocate(constitutive_nonlocal_fEdgeMultiplication(maxNinstance))
 allocate(constitutive_nonlocal_linetensionEffect(maxNinstance))
@@ -386,6 +388,7 @@ constitutive_nonlocal_fEdgeMultiplication = 0.0_pReal
 constitutive_nonlocal_linetensionEffect = 0.0_pReal
 constitutive_nonlocal_shortRangeStressCorrection = .false.
 constitutive_nonlocal_deadZoneScaling = .false.
+constitutive_nonlocal_probabilisticMultiplication = .false.
 
 allocate(constitutive_nonlocal_rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
 allocate(constitutive_nonlocal_rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNinstance))
@@ -547,6 +550,8 @@ do                                                                              
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case('deadzonescaling','deadzone','deadscaling')
         constitutive_nonlocal_deadZoneScaling(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
+      case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
+        constitutive_nonlocal_probabilisticMultiplication(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case default
         call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_nonlocal_label//')')
     end select
@@ -2221,30 +2226,31 @@ dUpper = max(dUpper,dLower)
 !*** calculate dislocation multiplication
 
 rhoDotMultiplication = 0.0_pReal
-meshlength = mesh_ipVolume(ip,el)**0.333_pReal
-where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
-  nSources = (sum(rhoSgl(1:ns,1:2),2) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(rhoSgl(1:ns,3:4),2)) &
-           / sum(rhoSgl(1:ns,1:4),2) * meshlength / constitutive_nonlocal_lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
-elsewhere
-  nSources = meshlength / constitutive_nonlocal_lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
-endwhere
-do s = 1_pInt,ns
-  if (nSources(s) < 1.0_pReal) then
-    if (constitutive_nonlocal_sourceProbability(s,g,ip,el) > 1.0_pReal) then
-      call random_number(rnd)
-      constitutive_nonlocal_sourceProbability(s,g,ip,el) = rnd
-      !$OMP FLUSH(constitutive_nonlocal_sourceProbability)
+if (constitutive_nonlocal_probabilisticMultiplication(myInstance)) then
+  meshlength = mesh_ipVolume(ip,el)**0.333_pReal
+  where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
+    nSources = (sum(rhoSgl(1:ns,1:2),2) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(rhoSgl(1:ns,3:4),2)) &
+             / sum(rhoSgl(1:ns,1:4),2) * meshlength / constitutive_nonlocal_lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
+  elsewhere
+    nSources = meshlength / constitutive_nonlocal_lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
+  endwhere
+  do s = 1_pInt,ns
+    if (nSources(s) < 1.0_pReal) then
+      if (constitutive_nonlocal_sourceProbability(s,g,ip,el) > 1.0_pReal) then
+        call random_number(rnd)
+        constitutive_nonlocal_sourceProbability(s,g,ip,el) = rnd
+        !$OMP FLUSH(constitutive_nonlocal_sourceProbability)
+      endif
+      if (constitutive_nonlocal_sourceProbability(s,g,ip,el) > 1.0_pReal - nSources(s)) then
+        rhoDotMultiplication(s,1:4) = sum(rhoSglOriginal(1:ns,1:4),2) * abs(v(s,1:4)) / meshlength
+      endif
+    else
+      constitutive_nonlocal_sourceProbability(s,g,ip,el) = 2.0_pReal
+      rhoDotMultiplication(s,1:4) = &
+        (sum(abs(gdot(s,1:2))) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(abs(gdot(s,3:4)))) &
+        / constitutive_nonlocal_burgers(s,myInstance) * sqrt(rhoForest(s)) / constitutive_nonlocal_lambda0(s,myInstance)
     endif
-    if (constitutive_nonlocal_sourceProbability(s,g,ip,el) > 1.0_pReal - nSources(s)) then
-      rhoDotMultiplication(s,1:4) = sum(rhoSglOriginal(1:ns,1:4),2) * abs(v(s,1:4)) / meshlength
-    endif
-  else
-    constitutive_nonlocal_sourceProbability(s,g,ip,el) = 2.0_pReal
-    rhoDotMultiplication(s,1:4) = &
-      (sum(abs(gdot(s,1:2))) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(abs(gdot(s,3:4)))) &
-      / constitutive_nonlocal_burgers(s,myInstance) * sqrt(rhoForest(s)) / constitutive_nonlocal_lambda0(s,myInstance)
-  endif
-enddo
+  enddo
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
@@ -2253,6 +2259,11 @@ enddo
     write(6,*)
   endif
 #endif
+else
+  rhoDotMultiplication(1:ns,1:4) = spread( &
+      (sum(abs(gdot(1:ns,1:2)),2) * constitutive_nonlocal_fEdgeMultiplication(myInstance) + sum(abs(gdot(1:ns,3:4)),2)) &
+    * sqrt(rhoForest(1:ns)) / constitutive_nonlocal_lambda0(1:ns,myInstance) / constitutive_nonlocal_burgers(1:ns,myInstance), 2, 4)
+endif
 
 
 
@@ -2270,7 +2281,7 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
           .and. constitutive_nonlocal_CFLfactor(myInstance) * abs(v) * timestep &
               > mesh_ipVolume(ip,el) / maxval(mesh_ipArea(:,ip,el)))) then                                                        ! ...with velocity above critical value (we use the reference volume and area for simplicity here)
 #ifndef _OPENMP
-    if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
+    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
       write(6,'(a,i5,a,i2)') '<< CONST >> CFL condition not fullfilled at el ',el,' ip ',ip
       write(6,'(a,e10.3,a,e10.3)') '<< CONST >> velocity is at  ', &
         maxval(abs(v), abs(gdot) > 0.0_pReal .and. constitutive_nonlocal_CFLfactor(myInstance) * abs(v) * timestep &
@@ -2538,7 +2549,7 @@ endif
 if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constitutive_nonlocal_aTolRho(myInstance)) &
    .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -constitutive_nonlocal_aTolRho(myInstance))) then
 #ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then 
+  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
     write(6,'(a)') '<< CONST >> enforcing cutback !!!'
   endif
