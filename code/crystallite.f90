@@ -804,14 +804,14 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
               endif
               !$OMP FLUSH(crystallite_todo)
 #ifndef _OPENMP
-            if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
-                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-              write(6,'(a,f12.8,a,f12.8,a)') '<< CRYST >> winding forward from ', &
-                crystallite_subFrac(g,i,e)-formerSubStep,' to current crystallite_subfrac ', &
-                crystallite_subFrac(g,i,e),' in crystallite_stressAndItsTangent'
-              write(6,*)
-            endif
+              if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
+                  .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                         .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+                write(6,'(a,f12.8,a,f12.8,a,i8,1x,i2,1x,i3)') '<< CRYST >> winding forward from ', &
+                  crystallite_subFrac(g,i,e)-formerSubStep,' to current crystallite_subfrac ', &
+                  crystallite_subFrac(g,i,e),' in crystallite_stressAndItsTangent at el ip g ',e,i,g
+                write(6,*)
+              endif
 #endif
             elseif (formerSubStep > 0.0_pReal) then                                                     ! this crystallite just converged for the entire timestep
               crystallite_todo(g,i,e) = .false.                                                         ! so done here
@@ -845,33 +845,38 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
             crystallite_todo(g,i,e) = crystallite_subStep(g,i,e) > subStepMinCryst                    ! still on track or already done (beyond repair)
             !$OMP FLUSH(crystallite_todo)
 #ifndef _OPENMP
-          if (crystallite_todo(g,i,e) &
-              .and. iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
-              .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-            write(6,'(a,f12.8)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent with new crystallite_subStep: ',&
-                                   crystallite_subStep(g,i,e)
-            write(6,*)
-          endif
+            if(iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
+                .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+              if (crystallite_todo(g,i,e)) then
+                write(6,'(a,f12.8,a,i8,1x,i2,1x,i3)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent &
+                                                       &with new crystallite_subStep: ',&
+                                                      crystallite_subStep(g,i,e),' at el ip g ',e,i,g
+              else
+                write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> reached minimum step size &
+                                              &in crystallite_stressAndItsTangent at el ip g ',e,i,g
+              endif
+              write(6,*)
+            endif
 #endif
-        endif
+          endif
 
-        ! --- prepare for integration ---
+          ! --- prepare for integration ---
+            
+          if (crystallite_todo(g,i,e) .and. (crystallite_clearToWindForward(i,e) .or. crystallite_clearToCutback(i,e))) then
+            crystallite_subF(1:3,1:3,g,i,e) = crystallite_subF0(1:3,1:3,g,i,e) &
+                                            + crystallite_subStep(g,i,e) &
+                                              * (crystallite_partionedF(1:3,1:3,g,i,e) - crystallite_partionedF0(1:3,1:3,g,i,e))
+            !$OMP FLUSH(crystallite_subF)
+            crystallite_Fe(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e))
+            crystallite_subdt(g,i,e) = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
+            crystallite_converged(g,i,e) = .false.                                                    ! start out non-converged
+          endif
           
-        if (crystallite_todo(g,i,e) .and. (crystallite_clearToWindForward(i,e) .or. crystallite_clearToCutback(i,e))) then
-          crystallite_subF(1:3,1:3,g,i,e) = crystallite_subF0(1:3,1:3,g,i,e) &
-                                          + crystallite_subStep(g,i,e) &
-                                            * (crystallite_partionedF(1:3,1:3,g,i,e) - crystallite_partionedF0(1:3,1:3,g,i,e))
-          !$OMP FLUSH(crystallite_subF)
-          crystallite_Fe(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e))
-          crystallite_subdt(g,i,e) = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
-          crystallite_converged(g,i,e) = .false.                                                    ! start out non-converged
-        endif
-        
-      enddo    ! grains
-    enddo      ! IPs
-  enddo        ! elements
-!$OMP END PARALLEL DO
+        enddo    ! grains
+      enddo      ! IPs
+    enddo        ! elements
+  !$OMP END PARALLEL DO
 
   if(numerics_timeSyncing) then
     if (any(.not. crystallite_localPlasticity .and. .not. crystallite_todo .and. .not. crystallite_converged &
@@ -3098,8 +3103,8 @@ LpLoop: do
   Fe = math_mul33x33(A,B)                                                    ! current elastic deformation tensor
   call constitutive_TandItsTangent(Tstar, dT_dFe3333, Fe, g,i,e)             ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
   Tstar_v = math_Mandel33to6(Tstar)
-  p_hydro = sum(Tstar_v(1:3)) / 3.0_pReal
-  forall(n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
+!  p_hydro = sum(Tstar_v(1:3)) / 3.0_pReal
+!  forall(n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
    
   
   !* calculate plastic velocity gradient and its tangent from constitutive law
@@ -3211,7 +3216,7 @@ enddo LpLoop
 !* calculate new plastic and elastic deformation gradient
 
 invFp_new = math_mul33x33(invFp_current,B)
-invFp_new = invFp_new/math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
+! invFp_new = invFp_new/math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
 call math_invert33(invFp_new,Fp_new,det,error)
 if (error .or. any(Fp_new/=Fp_new)) then
 #ifndef _OPENMP
@@ -3233,7 +3238,7 @@ Fe_new = math_mul33x33(Fg_new,invFp_new)                             ! calc resu
 
 !* add volumetric component to 2nd Piola-Kirchhoff stress and calculate 1st Piola-Kirchhoff stress
 
-forall (n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) + p_hydro
+! forall (n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) + p_hydro
 crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_new, math_mul33x33(math_Mandel6to33(Tstar_v), math_transpose33(invFp_new)))
  
 
