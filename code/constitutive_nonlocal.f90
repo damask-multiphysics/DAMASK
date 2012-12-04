@@ -1312,7 +1312,7 @@ if (latticeStruct == 1_pInt) then ! in case of fcc: coefficients are corrected f
                                                            constitutive_nonlocal_slipSystemLattice(s2,instance), &
                                                            latticeStruct)
       select case(interactionCoefficient)
-        case(3_pInt,4_pInt,5_pInt,6_pInt) ! only correct junction forming interactions (4,5,6) and colinear interaction (3)
+        case(4_pInt,5_pInt,6_pInt) ! only correct junction forming interactions (4,5,6)
           myInteractionMatrix(s,s2) = correction * myInteractionMatrix(s,s2) 
       endselect
     enddo
