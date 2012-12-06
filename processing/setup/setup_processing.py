@@ -110,6 +110,7 @@ bin_link = { \
                 'addPK2.py',
                 'addStrainTensors.py',
                 'addEhkl.py',
+                'addEuclideanDistance.py',
                 'addCompatibilityMismatch.py',
                 'addDeformedConfiguration.py',
                 'averageDown.py',
