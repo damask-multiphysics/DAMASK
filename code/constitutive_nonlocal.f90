@@ -2111,6 +2111,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                             nSources
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             rhoDip, &                     ! current dipole dislocation densities (screw and edge dipoles)
+                                            rhoDipOriginal, & 
                                             dLower, &                     ! minimum stable dipole distance for edges and screws
                                             dUpper                        ! current maximum stable dipole distance for edges and screws
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
@@ -2166,6 +2167,7 @@ tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
 forall (t = 1_pInt:4_pInt) &
   v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
 rhoSglOriginal = rhoSgl
+rhoDipOriginal = rhoDip
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
@@ -2546,8 +2548,8 @@ endif
 #endif
 
 
-if (    any(rhoSgl(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constitutive_nonlocal_aTolRho(myInstance)) &
-   .or. any(rhoDip(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -constitutive_nonlocal_aTolRho(myInstance))) then
+if (    any(rhoSglOriginal(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constitutive_nonlocal_aTolRho(myInstance)) &
+   .or. any(rhoDipOriginal(1:ns,1:2) + rhoDot(1:ns,9:10) * timestep < -constitutive_nonlocal_aTolRho(myInstance))) then
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt) then 
     write(6,'(a,i5,a,i2)') '<< CONST >> evolution rate leads to negative density at el ',el,' ip ',ip
