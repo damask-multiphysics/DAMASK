@@ -4,7 +4,7 @@ class ASCIItable():
   '''
      There should be a doc string here  :)
   '''
-  import sys
+  import sys,numpy
   __slots__ = ['__IO__',
                'info',
                'labels',
@@ -86,16 +86,43 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def head_write(self):
+    '''
+       write current header information (info + labels)
+    '''
     return self.output_write (['%i\theader'%(len(self.info)+1),
                               self.info,
                               '\t'.join(self.labels)])
 
 # ------------------------------------------------------------------
   def labels_append(self,
-                   what):
+                    what):
+    '''
+       add item or list to existing set of labels
+    '''
     if isinstance(what,list):
       for item in what: self.labels_append(item)
     else:               self.labels += [str(what)]
+
+# ------------------------------------------------------------------
+  def labels_index(self,
+                   labels):
+    '''
+       tell index of column label(s)
+    '''
+    if isinstance(labels,list):
+      idx = []
+      for label in labels:
+        try:
+          idx.append(self.labels.index(label))
+        except ValueError:
+          idx.append(-1)
+    else:
+      try:
+        idx = self.labels.index(labels)
+      except ValueError:
+        idx = -1
+
+    return idx
 
 # ------------------------------------------------------------------
   def info_append(self,
@@ -168,4 +195,18 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_asFloat(self):
     return map(self._transliterateToFloat,self.data)
+
+# ------------------------------------------------------------------
+  def data_asArray(self,
+                   labels = []):
+    import numpy
+    '''
+       read whole data of all (given) labels as numpy array
+    '''
+
+    if labels == []: indices = range(self.__IO__['validReadSize'])               # use all columns
+    else: indices = self.labels_index(labels)                                   # use specified columns
+
+    self.data_rewind()
+    return numpy.loadtxt(self.__IO__['in'], usecols=indices)
 
