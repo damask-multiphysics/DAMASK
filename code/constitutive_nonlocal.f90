@@ -2242,7 +2242,7 @@ if (constitutive_nonlocal_probabilisticMultiplication(myInstance)) then
         !$OMP FLUSH(constitutive_nonlocal_sourceProbability)
       endif
       if (constitutive_nonlocal_sourceProbability(s,g,ip,el) > 1.0_pReal - nSources(s)) then
-        rhoDotMultiplication(s,1:4) = sum(rhoSglOriginal(1:ns,1:4),2) * abs(v(s,1:4)) / meshlength
+        rhoDotMultiplication(s,1:4) = sum(rhoSglOriginal(s,1:4) * abs(v(s,1:4))) / meshlength
       endif
     else
       constitutive_nonlocal_sourceProbability(s,g,ip,el) = 2.0_pReal
