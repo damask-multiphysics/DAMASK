@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,re,sys,math,numpy,skfmm,string,damask,time
+import os,re,sys,math,numpy,skfmm,string,damask
 from scipy import ndimage
 from optparse import OptionParser, Option
 
@@ -163,8 +163,6 @@ for file in files:
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------   
-
-  cputime = time.clock()
   
   structure = table.data_asArray(['ip.x','ip.y','ip.z',options.id])
 
@@ -195,11 +193,11 @@ for file in files:
   
   convoluted = numpy.sort(convoluted,axis=0)
   uniques = numpy.zeros(resolution)
-  counter = numpy.empty(resolution)
-  counter[:,:,:] = numpy.nan
+  check = numpy.empty(resolution)
+  check[:,:,:] = numpy.nan
   for i in xrange(len(neighborhood)):
-    uniques += numpy.where(convoluted[i,1:-1,1:-1,1:-1] == counter,0,1)
-    counter = convoluted[i,1:-1,1:-1,1:-1]
+    uniques += numpy.where(convoluted[i,1:-1,1:-1,1:-1] == check,0,1)
+    check = convoluted[i,1:-1,1:-1,1:-1]
   for i,feature_id in enumerate(feature_list):
     distance[i,:,:,:] = numpy.where(uniques > features[feature_id]['aliens'],0.0,1.0)
   
@@ -223,6 +221,4 @@ for file in files:
     file['input'].close()                                                   # close input ASCII table
     file['output'].close()                                                  # close output ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
-
-  print 'write | time = '+repr(time.clock()-cputime)
-  cputime = time.clock()
+    
