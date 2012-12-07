@@ -162,8 +162,8 @@ for file in files:
 
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------  
-
+# ------------------------------------------ process data --------------------------------------- 
+  
   structure = table.data_asArray(['ip.x','ip.y','ip.z',options.id])
 
   grid = [{},{},{}]
@@ -180,6 +180,9 @@ for file in files:
   convoluted = numpy.empty([len(neighborhood)]+list(resolution+2),'i')
   microstructure = periodic_3Dpad(numpy.array(structure[:,3].reshape(resolution),'i'))
 
+  print 'setup | time = '+repr(time.clock()-cputime)
+  cputime = time.clock()
+  
   for i,p in enumerate(neighborhood):
     stencil = numpy.zeros((3,3,3),'i')
     stencil[1,1,1] = -1
@@ -188,20 +191,20 @@ for file in files:
             p[2]+1] = 1
 
     convoluted[i,:,:,:] = ndimage.convolve(microstructure,stencil)
-
+  
   distance = numpy.ones((len(feature_list),resolution[0],resolution[1],resolution[2]),'d')
-  for x in xrange(resolution[0]):
-    for y in xrange(resolution[1]):
-      for z in xrange(resolution[2]):
-        uniques = len(numpy.unique(convoluted[:,x+1,y+1,z+1]))
-        for i,feature_id in enumerate(feature_list):
-          if uniques > features[feature_id]['aliens']:
-            distance[i,x,y,z] = 0.0  # found a starting point
-
+  
+  uniques = numpy.ones(resolution)
+  for i in xrange(len(neighborhood)):
+    for j in xrange(len(neighborhood)):
+      uniques += numpy.where(convoluted[i,1:-1,1:-1,1:-1] == convoluted[j,1:-1,1:-1,1:-1],1,0)
+  for i,feature_id in enumerate(feature_list):
+    distance[i,:,:,:] = numpy.where(uniques > features[feature_id]['aliens'],0.0,1.0)
+  
   for i in xrange(len(feature_list)):
     distance[i,:,:,:] = skfmm.distance(distance[i,:,:,:], dx=[unitlength]*3)
   distance.shape = (len(feature_list),resolution.prod())
-
+  
   table.data_rewind()
   l = 0
   while table.data_read():
