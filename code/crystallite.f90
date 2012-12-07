@@ -2906,9 +2906,6 @@ if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) /= 0.0_pReal) &
 endif
 #endif
 
-call constitutive_microstructure(crystallite_Temperature(g,i,e), crystallite_Fe(1:3,1:3,g,i,e), &
-                                       crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                           ! update dependent state variables to be consistent with basic states
-
 crystallite_stateJump = .true.
 
 end function crystallite_stateJump
