@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,re,sys,math,numpy,skfmm,string,damask
+import os,re,sys,math,numpy,skfmm,string,damask,time
 from scipy import ndimage
 from optparse import OptionParser, Option
 
@@ -162,7 +162,9 @@ for file in files:
 
   table.head_write()
 
-# ------------------------------------------ process data --------------------------------------- 
+# ------------------------------------------ process data ---------------------------------------   
+
+  cputime = time.clock()
   
   structure = table.data_asArray(['ip.x','ip.y','ip.z',options.id])
 
@@ -179,9 +181,6 @@ for file in files:
   neighborhood = neighborhoods[options.neighborhood]
   convoluted = numpy.empty([len(neighborhood)]+list(resolution+2),'i')
   microstructure = periodic_3Dpad(numpy.array(structure[:,3].reshape(resolution),'i'))
-
-  print 'setup | time = '+repr(time.clock()-cputime)
-  cputime = time.clock()
   
   for i,p in enumerate(neighborhood):
     stencil = numpy.zeros((3,3,3),'i')
@@ -194,10 +193,13 @@ for file in files:
   
   distance = numpy.ones((len(feature_list),resolution[0],resolution[1],resolution[2]),'d')
   
-  uniques = numpy.ones(resolution)
+  convoluted = numpy.sort(convoluted,axis=0)
+  uniques = numpy.zeros(resolution)
+  counter = numpy.empty(resolution)
+  counter[:,:,:] = numpy.nan
   for i in xrange(len(neighborhood)):
-    for j in xrange(len(neighborhood)):
-      uniques += numpy.where(convoluted[i,1:-1,1:-1,1:-1] == convoluted[j,1:-1,1:-1,1:-1],1,0)
+    uniques += numpy.where(convoluted[i,1:-1,1:-1,1:-1] == counter,0,1)
+    counter = convoluted[i,1:-1,1:-1,1:-1]
   for i,feature_id in enumerate(feature_list):
     distance[i,:,:,:] = numpy.where(uniques > features[feature_id]['aliens'],0.0,1.0)
   
@@ -221,3 +223,6 @@ for file in files:
     file['input'].close()                                                   # close input ASCII table
     file['output'].close()                                                  # close output ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+
+  print 'write | time = '+repr(time.clock()-cputime)
+  cputime = time.clock()
