@@ -2411,10 +2411,14 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     endif
 
     if (considerLeavingFlux) then
-      if(numerics_timeSyncing .and. (subfrac(g,neighboring_ip,neighboring_el) == 0.0_pReal &
-                                      .or. subfrac(g,ip,el) == 0.0_pReal)) then
-        rhoSglMe = rhoSgl0
-        vMe = v0
+      if(numerics_timeSyncing .and. neighboring_n > 0_pInt) then
+        if(subfrac(g,neighboring_ip,neighboring_el) == 0.0_pReal .or. subfrac(g,ip,el) == 0.0_pReal) then
+          rhoSglMe = rhoSgl0
+          vMe = v0
+        else
+          rhoSglMe = rhoSgl
+          vMe = v
+        endif
       else
         rhoSglMe = rhoSgl
         vMe = v
@@ -2540,9 +2544,9 @@ endif
     write(6,'(a,/,2(12x,12(e12.5,1x),/))') '<< CONST >> thermally activated dipole annihilation', &
                                             rhoDotThermalAnnihilation(1:ns,9:10) * timestep
     write(6,'(a,/,10(12x,12(e12.5,1x),/))') '<< CONST >> total density change', rhoDot * timestep
-    write(6,'(a,/,10(12x,12(f12.7,1x),/))') '<< CONST >> relative density change', &
-                                            rhoDot(1:ns,1:8) * timestep / (abs(rhoSgl)+1.0e-10), &
-                                            rhoDot(1:ns,9:10) * timestep / (rhoDip+1.0e-10)
+    write(6,'(a,/,10(12x,12(f12.5,1x),/))') '<< CONST >> relative density change', &
+                                            rhoDot(1:ns,1:8) * timestep / (abs(rhoSglOriginal)+1.0e-10), &
+                                            rhoDot(1:ns,9:10) * timestep / (rhoDipOriginal+1.0e-10)
     write(6,*)
   endif
 #endif
