@@ -488,7 +488,8 @@ use mesh, only:          mesh_element, &
                          mesh_NcpElems, &
                          mesh_maxNips, &
                          mesh_ipNeighborhood, &
-                         FE_NipNeighbors
+                         FE_NipNeighbors, &
+                         FE_geomtype
 use material, only:      homogenization_Ngrains, &
                          homogenization_maxNgrains
 use constitutive, only:  constitutive_sizeState, &
