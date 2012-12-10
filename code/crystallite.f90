@@ -687,7 +687,7 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
             do e = FEsolving_execElem(1),FEsolving_execElem(2) 
               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
                 if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_converged(1,i,e)) then
-                  do n = 1_pInt,FE_NipNeighbors(mesh_element(2,e))
+                  do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))
                     neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                     neighboring_i = mesh_ipNeighborhood(2,n,i,e)
                     if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
@@ -714,7 +714,7 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
             do e = FEsolving_execElem(1),FEsolving_execElem(2) 
               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
                 if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_subFrac(1,i,e) == 0.0_pReal) then
-                  do n = 1_pInt,FE_NipNeighbors(mesh_element(2,e))
+                  do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))
                     neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                     neighboring_i = mesh_ipNeighborhood(2,n,i,e)
                     if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
