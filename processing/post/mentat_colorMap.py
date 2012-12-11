@@ -81,12 +81,12 @@ def interpolate(val0, val1, x):
 # -----------------------------
 def syminterpolate(comp, val0, val1, x):
     if comp == "hue":
-        return interpolate(val0, val1, x)
+        return {True:val0,False:val1}[x<0.5]
 
     if comp == "lightness":
-        val_middle = max(0.9, val0, val1)
+        val_middle = 1
     elif comp == "saturation":
-        val_middle = min(0.1, val0, val1)
+        val_middle = 0
     if x < 0.5:
         return interpolate(val0, val_middle, 2*x)
     else:
