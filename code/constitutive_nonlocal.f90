@@ -2353,8 +2353,7 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     endif
     
     if (considerEnteringFlux) then
-      if(numerics_timeSyncing .and. (subfrac(g,neighboring_ip,neighboring_el) == 0.0_pReal &
-                                      .or. subfrac(g,ip,el) == 0.0_pReal)) then
+      if(numerics_timeSyncing .and. (subfrac(g,neighboring_ip,neighboring_el) /= subfrac(g,ip,el))) then                            ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
         forall (t = 1_pInt:4_pInt) &
           neighboring_v(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
         forall (t = 1_pInt:8_pInt) &
@@ -2411,18 +2410,25 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     endif
 
     if (considerLeavingFlux) then
-      if(numerics_timeSyncing .and. neighboring_n > 0_pInt) then
-        if(subfrac(g,neighboring_ip,neighboring_el) == 0.0_pReal .or. subfrac(g,ip,el) == 0.0_pReal) then
+      
+      !* timeSyncing mode: If the central ip has zero subfraction, always use "state0". This is needed in case of 
+      !* a synchronization step for the central ip, because then "state" contains the values at the end of the
+      !* previously converged full time step. Also, if either me or my neighbor has zero subfraction, we have to 
+      !* use "state0" to make sure that fluxes on both sides of the (potential) timestep are equal.
+      rhoSglMe = rhoSgl
+      vMe = v
+      if(numerics_timeSyncing) then
+        if (subfrac(g,ip,el) == 0.0_pReal) then
           rhoSglMe = rhoSgl0
           vMe = v0
-        else
-          rhoSglMe = rhoSgl
-          vMe = v
+        elseif (neighboring_n > 0_pInt) then
+          if (subfrac(g,neighboring_ip,neighboring_el) == 0.0_pReal) then
+            rhoSglMe = rhoSgl0
+            vMe = v0
+          endif
         endif
-      else
-        rhoSglMe = rhoSgl
-        vMe = v
       endif
+      
       normal_me2neighbor_defConf = math_det33(Favg) * math_mul33x3(math_inv33(math_transpose33(Favg)), & 
                                                                    mesh_ipAreaNormal(1:3,n,ip,el))                                  ! calculate the normal of the interface in (average) deformed configuration (pointing from me to my neighbor!!!)
       normal_me2neighbor = math_mul33x3(math_transpose33(my_Fe), normal_me2neighbor_defConf) / math_det33(my_Fe)                    ! interface normal in my lattice configuration
