@@ -622,14 +622,28 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
     if (any(crystallite_syncSubFrac)) then 
       
       ! Just did a time synchronization.
-      ! Dont do anything else than winding the synchronizers forward.
+      ! If all synchrnizers converged, then do nothing else than winding them forward.
+      ! If any of the cynchronizers did not converge, something went completely wrong 
+      ! and its not clear how to fix this, so all nonlocals become terminally ill.
       
-      crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:) .or. crystallite_syncSubFrac
-      crystallite_clearToCutback = crystallite_localPlasticity(1,:,:)
-      if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-        !$OMP CRITICAL (write2out)
-        write(6,'(a,i6)') '<< CRYST >> time synchronization: wind forward'
-        !$OMP END CRITICAL (write2out)
+      if (any(crystallite_syncSubFrac .and. .not. crystallite_converged(1,:,:))) then
+        where(.not. crystallite_localPlasticity)
+          crystallite_substep = 0.0_pReal
+          crystallite_todo = .false.
+        endwhere
+        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+          !$OMP CRITICAL (write2out)
+          write(6,'(a,i6)') '<< CRYST >> time synchronization: failed'
+          !$OMP END CRITICAL (write2out)
+        endif
+      else
+        crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:) .or. crystallite_syncSubFrac
+        crystallite_clearToCutback = crystallite_localPlasticity(1,:,:)
+        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+          !$OMP CRITICAL (write2out)
+          write(6,'(a,i6)') '<< CRYST >> time synchronization: wind forward'
+          !$OMP END CRITICAL (write2out)
+        endif
       endif
 
     elseif (any(crystallite_syncSubFracCompleted)) then 
