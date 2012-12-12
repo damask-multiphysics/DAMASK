@@ -4,13 +4,6 @@ import sys, os, string, damask
 from colorsys import *
 from optparse import OptionParser
 
-sys.path.append(damask.solver.Marc().libraryPath('../../'))
-
-try:
-  from py_mentat import *
-except:
-  sys.stderr.write('warning: no valid Mentat release found')
-
 
 # -----------------------------
 def readConfig(configFile,ownPath):
@@ -165,25 +158,25 @@ if len(colors) == 0:
   hlsColor_range = (options.symmetric and [[0,0.2,0.9],[0.333,0.2,0.9]]) or \
                                           [[0.167,0.9,0.1],[0.167,0.1,0.9]]
 elif len(colors) == 2:
-	hlsColor_range = [map(float, colors[i].split(',')) for i in range(2)]
+  hlsColor_range = [map(float, colors[i].split(',')) for i in range(2)]
 elif colors[0] in config:
   options.symmetric = config[colors[0]]['symmetric']
   hlsColor_range = [config[colors[0]]['lower'],\
-  									config[colors[0]]['upper']]
+                    config[colors[0]]['upper']]
 else:
   msg.append('two color tuples required')
 
 if msg == []:  
-	hlsColors_limits = [[0.0,0.0,0.0],[1.0,1.0,1.0]]
+  hlsColors_limits = [[0.0,0.0,0.0],[1.0,1.0,1.0]]
 
-	if options.inverse:
-	  hlsColor_range = [hlsColor_range[1],hlsColor_range[0]]
+  if options.inverse:
+    hlsColor_range = [hlsColor_range[1],hlsColor_range[0]]
 
-	for i in range(2):			
-		for j in range(min(3,len(hlsColor_range[i]))):
-			if hlsColor_range[i][j] < hlsColors_limits[0][j] or hlsColor_range[i][j] > hlsColors_limits[1][j]:
-				msg.append('%s of %s color exceeds limit'%(['hue','lightness','saturation'][j],limit))
-		
+  for i in range(2):      
+    for j in range(min(3,len(hlsColor_range[i]))):
+      if hlsColor_range[i][j] < hlsColors_limits[0][j] or hlsColor_range[i][j] > hlsColors_limits[1][j]:
+        msg.append('%s of %s color exceeds limit'%(['hue','lightness','saturation'][j],limit))
+    
 if msg != []:
     parser.error('\n'+'\n'.join(msg)+'\n')
 
@@ -205,27 +198,27 @@ else:
 rgbColors = [ hls_to_rgb(hlsColor[0], hlsColor[1], hlsColor[2]) 
               for hlsColor in hlsColors ]
 
-if options.palette:
+if options.palette or options.palettef:
   for rgb in rgbColors:
-    print '\t'.join(map(lambda x: str(int(255*x)),rgb))
-  sys.exit(0)
-if options.palettef:
-  for rgb in rgbColors:
-    print '\t'.join(map(str,rgb))
-  sys.exit(0)
-  
+    print '\t'.join(map(lambda x: {True: str(int(255*x)),
+                                   False:str(        x)}[options.palette],rgb))
+else:  
 ### connect to mentat and change colorMap
+  sys.path.append(damask.solver.Marc().libraryPath('../../'))
+  try:
+    from py_mentat import *
+  except:
+    sys.stderr.write('error: no valid Mentat release found\n')
+    sys.exit(1)
 
-outputLocals = {}
-print 'waiting to connect...'
-py_connect('',options.port)
-print 'connected...'
-
-cmds = colorMap(rgbColors,options.baseIdx)
-output(['*show_table']+cmds+['*show_model *redraw'],outputLocals,'Mentat')
-py_disconnect()
-
-if options.verbose:
-  output(cmds,outputLocals,'Stdout')
+  outputLocals = {}
+  print 'waiting to connect...'
+  py_connect('',options.port)
+  print 'connected...'
   
+  cmds = colorMap(rgbColors,options.baseIdx)
+  output(['*show_table']+cmds+['*show_model *redraw'],outputLocals,'Mentat')
+  py_disconnect()
   
+  if options.verbose:
+    output(cmds,outputLocals,'Stdout')
