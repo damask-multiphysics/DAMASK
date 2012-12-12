@@ -1,1 +1,2 @@
-fdot 1.0e-3 0 0  0 * 0   0 * 0   stress  * * *   * 0 *   * 0 *   time  1  incs   4 freq  40
+fdot 1.0e-3 0 0  0 * 0   0 * 0   stress  * * *   * 0 *   * 0 *   time  10  incs   40 freq  4
+fdot 1.0e-3 0 0  0 * 0   0 * 0   stress  * * *   * 0 *   * 0 *   time  60  incs   60
