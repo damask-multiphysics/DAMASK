@@ -9,7 +9,7 @@ sys.path.append(damask.solver.Marc().libraryPath('../../'))
 try:
   from py_mentat import *
 except:
-  print('warning: no valid Mentat release found')
+  sys.stderr.write('warning: no valid Mentat release found')
 
 
 # -----------------------------
