@@ -182,7 +182,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  geometryFile = getGeometryFile(geometryParameter)
  loadCaseFile = getLoadCaseFile(loadCaseParameter)
 
- call get_environment_variable('HOST',hostName)
+ call get_environment_variable('HOSTNAME',hostName)
  call get_environment_variable('USER',userName)
  call date_and_time(values = dateAndTime)
 
