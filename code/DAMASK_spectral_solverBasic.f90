@@ -62,6 +62,7 @@ subroutine basic_init()
    debugRestart
  use mesh, only: &
    res, &
+   wgt, &
    geomdim, &
    mesh_ipCoordinates, &
    mesh_NcpElems, &
@@ -105,12 +106,10 @@ subroutine basic_init()
                                                   trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
-   call IO_read_jobBinaryFile(777,'F_aim',trim(getSolverJobName()),size(F_aim))
-   read (777,rec=1) F_aim
-   close (777)
-   call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
-   read (777,rec=1) F_aim_lastInc
-   close (777)
+   
+   F_aim         = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt                                         ! average of F
+   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
+
    call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
    read (777,rec=1) C_lastInc
    close (777)
@@ -224,12 +223,6 @@ type(tSolutionState) function &
    call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastInc))        ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
-   call IO_write_jobBinaryFile(777,'F_aim',size(F_aim))
-   write (777,rec=1) F_aim
-   close(777)
-   call IO_write_jobBinaryFile(777,'F_aim_lastInc',size(F_aim_lastInc))
-   write (777,rec=1) F_aim_lastInc
-   close(777)
    call IO_write_jobBinaryFile(777,'C',size(C))
    write (777,rec=1) C
    close(777)

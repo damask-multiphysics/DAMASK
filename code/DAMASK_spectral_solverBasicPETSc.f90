@@ -86,6 +86,7 @@ subroutine basicPETSc_init()
    petsc_options  
  use mesh, only: &
    res, &
+   wgt, &
    geomdim, &
    mesh_NcpElems, &
    mesh_ipCoordinates, &
@@ -138,7 +139,7 @@ subroutine basicPETSc_init()
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr)                                                    ! get the data out of PETSc to work with
  CHKERRQ(ierr)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                   ! initialize to identity
+   F_lastInc = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)])
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
@@ -150,14 +151,12 @@ subroutine basicPETSc_init()
    close (777)
    call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',&
                                                 trim(getSolverJobName()),size(F_lastInc))
-   read (777,rec=1) F_lastInc
+
    close (777)
-   call IO_read_jobBinaryFile(777,'F_aim',trim(getSolverJobName()),size(F_aim))
-   read (777,rec=1) F_aim
-   close (777)
-   call IO_read_jobBinaryFile(777,'F_aim_lastInc',trim(getSolverJobName()),size(F_aim_lastInc))
-   read (777,rec=1) F_aim_lastInc
-   close (777)
+   F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
+   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
+
+
  endif
  mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
                              !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
