@@ -333,7 +333,7 @@ class Test():
     if headingsCur == '': headingsCur = headingsRef
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
-    return self.compare_Table(headingsRef,refName,headingsCur,curName,normHeadings,normType,absoluteTolerance,perLine,skipLine)
+    return self.compare_Table(headingsRef,refName,headingsCur,curName,normHeadings,normType,absoluteTolerance,perLine,skipLines)
     
   def report_Success(self,culprit):
     
