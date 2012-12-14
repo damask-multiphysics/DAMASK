@@ -145,7 +145,7 @@ subroutine utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)                         ! check for correct precision in C
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0_pInt,ext_msg='Fortran to C')             ! check for correct precision in C
 !$ if(DAMASK_NumThreadsInt > 0_pInt) then
 !$   i = fftw_init_threads()                                                                        ! returns 0 in case of problem
 !$   if (i == 0_pInt) call IO_error(error_ID = 809_pInt)
@@ -588,7 +588,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
            c_reduced(k,j) = temp99_Real(n,m)
    endif; enddo; endif; enddo
    call math_invert(size_reduced, c_reduced, s_reduced, errmatinv)                                  ! invert reduced stiffness
-   if(errmatinv) call IO_error(error_ID=400_pInt)
+   if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    temp99_Real = 0.0_pReal                                                                          ! fill up compliance with zeros
     k = 0_pInt
     do n = 1_pInt,9_pInt
@@ -615,7 +615,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
      write(6,trim(formatString),advance='no') 'C * S', transpose(matmul(c_reduced,s_reduced))
      write(6,trim(formatString),advance='no') 'S', transpose(s_reduced)
    endif
-   if(errmatinv) call IO_error(error_ID=400_pInt)
+   if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    deallocate(c_reduced)
    deallocate(s_reduced)
    deallocate(sTimesC)

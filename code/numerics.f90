@@ -339,8 +339,10 @@ subroutine numerics_init
  end select
 #endif
 #ifdef PETSc
-  call PetscOptionsInsertString(petsc_options,ierr)
   write(6,'(a)') ' Initializing PETSc'
+  call PetscOptionsClear(ierr)
+  CHKERRQ(ierr)
+  call PetscOptionsInsertString(petsc_options,ierr)
   CHKERRQ(ierr)
 #endif
 

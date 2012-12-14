@@ -97,11 +97,11 @@ subroutine basic_init()
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(a,'//IO_intOut(restartInc-1_pInt)//',a)') &
                              'Reading values of increment', restartInc - 1_pInt, 'from file' 
-   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
+   call IO_read_jobBinaryFile(777,'F',&
                                                   trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',&
+   call IO_read_jobBinaryFile(777,'F_lastInc',&
                                                   trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
@@ -216,10 +216,10 @@ type(tSolutionState) function &
 ! write restart information for spectral solver
  if (restartWrite) then
    write(6,'(a)') 'writing converged results for restart'
-   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))                        ! writing deformation gradient field to file
+   call IO_write_jobBinaryFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
-   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastInc))        ! writing F_lastInc field to file
+   call IO_write_jobBinaryFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
    call IO_write_jobBinaryFile(777,'C',size(C))

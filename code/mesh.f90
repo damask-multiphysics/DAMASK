@@ -382,7 +382,6 @@ subroutine mesh_init(ip,element)
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
-   IO_error, &
 #ifdef Abaqus
    IO_abaqus_hasNoPart, &
 #endif
@@ -1045,8 +1044,6 @@ end subroutine mesh_spectral_count_cpSizes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_nodes()
 
- use IO,   only: &
-  IO_error
  use numerics, only: numerics_unitlength
 
  implicit none
@@ -2018,8 +2015,12 @@ function mesh_deformedCoordsFFT(geomdim,F,scalingIn,FavgIn)
  
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
  step = geomdim/real(res, pReal)
-
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)
+ if ((mod(res(3),2_pInt)/=0_pInt .and. res(3) /= 1_pInt) .or. &
+      mod(res(2),2_pInt)/=0_pInt .or. &
+      mod(res(1),2_pInt)/=0_pInt) & 
+   call IO_error(0_pInt,ext_msg='Resolution in mesh_deformedCoordsFFT')
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
+   call IO_error(0_pInt,ext_msg='Fortran to C in mesh_deformedCoordsFFT')
  call fftw_set_timelimit(fftw_timelimit)
  defgrad_fftw =         fftw_alloc_complex(int(res1_red     *res(2)*res(3)*9_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
  call c_f_pointer(defgrad_fftw, F_real,   [res(1)+2_pInt,res(2),res(3),3_pInt,3_pInt])

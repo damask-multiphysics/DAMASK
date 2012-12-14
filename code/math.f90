@@ -2869,16 +2869,22 @@ function math_curlFFT(geomdim,field)
  
  res =  [size(field,1),size(field,2),size(field,3)]
  vec_tens = size(field,4)
- if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) call IO_error(0_pInt, &
-                                                 ext_msg = 'Curl: invalid data dimension')
- 
+
  if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    if (vec_tens == 1_pInt) print*, 'Calculating curl of vector field'
    if (vec_tens == 3_pInt) print*, 'Calculating curl of tensor field'
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',    ' Resolution:', res
  endif
-
+ 
+ if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) &
+   call IO_error(0_pInt, ext_msg = 'Invalid data type in math_curlFFT')
+ if ((mod(res(3),2_pInt)/=0_pInt .and. res(3) /= 1_pInt) .or. &
+      mod(res(2),2_pInt)/=0_pInt .or. &
+      mod(res(1),2_pInt)/=0_pInt) & 
+   call IO_error(0_pInt,ext_msg='Resolution in math_curlFFT')
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
+   call IO_error(0_pInt,ext_msg='Fortran to C in math_curlFFT')
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
  res1_red = res(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
 
@@ -2995,8 +3001,6 @@ function math_divergenceFFT(geomdim,field)
  
  res =  [size(field,1),size(field,2),size(field,3)]
  vec_tens = size(field,4)
- if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) call IO_error(0_pInt, &
-                                                 ext_msg = 'Divergence: invalid data dimension')
 
  if (iand(debug_level(debug_math),debug_levelBasic) /= 0_pInt) then
    if (vec_tens == 1_pInt) print*, 'Calculating divergence of vector field'
@@ -3004,7 +3008,15 @@ function math_divergenceFFT(geomdim,field)
    print '(a,3(e12.5))', ' Dimension: ', geomdim
    print '(a,3(i5))',    ' Resolution:', res
  endif
-
+ 
+ if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) &
+   call IO_error(0_pInt, ext_msg = 'Invalid data type in math_divergenceFFT')
+ if ((mod(res(3),2_pInt)/=0_pInt .and. res(3) /= 1_pInt) .or. &
+      mod(res(2),2_pInt)/=0_pInt .or. &
+      mod(res(1),2_pInt)/=0_pInt) & 
+   call IO_error(0_pInt,ext_msg='Resolution in math_divergenceFFT')
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
+   call IO_error(0_pInt,ext_msg='Fortran to C in math_divergenceFFT')
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
 
@@ -3081,6 +3093,7 @@ end function math_divergenceFFT
 !--------------------------------------------------------------------------------------------------
 function math_divergenceFDM(geomdim,order,field)
  
+ use IO, only: IO_error
  use debug, only: debug_math, &
                   debug_level, &
                   debug_levelBasic
@@ -3111,6 +3124,9 @@ function math_divergenceFDM(geomdim,order,field)
    print '(a,3(i5))',   ' Resolution:', res
  endif
 
+  if (vec_tens /= 1_pInt .and. vec_tens /= 3_pInt) &
+   call IO_error(0_pInt, ext_msg = 'Invalid data type in math_divergenceFDM')
+   
  math_divergenceFDM = 0.0_pReal
  do k = 0_pInt, res(3)-1_pInt; do j = 0_pInt, res(2)-1_pInt; do i = 0_pInt, res(1)-1_pInt
    do m = 1_pInt, order + 1_pInt

@@ -150,11 +150,11 @@ subroutine basicPETSc_init()
    if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
    flush(6)
-   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad',&
+   call IO_read_jobBinaryFile(777,'F',&
                                                 trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',&
+   call IO_read_jobBinaryFile(777,'F_lastInc',&
                                                 trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
@@ -167,8 +167,8 @@ subroutine basicPETSc_init()
    call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
    read (777,rec=1) C
    close (777)
-   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-   read (777,rec=1) f_aimDot
+   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(F_aimDot))
+   read (777,rec=1) F_aimDot
    close (777)
    call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
    read (777,rec=1) temp3333_Real
@@ -243,14 +243,15 @@ type(tSolutionState) function &
  incInfo = incInfoIn
 
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
+ 
 !--------------------------------------------------------------------------------------------------
 ! write restart information for spectral solver
  if (restartWrite) then
    write(6,'(a)') 'writing converged results for restart'
-   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))                        ! writing deformation gradient field to file
+   call IO_write_jobBinaryFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
-   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastInc))        ! writing F_lastInc field to file
+   call IO_write_jobBinaryFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
    call IO_write_jobBinaryFile(777,'C',size(C))
@@ -259,8 +260,8 @@ type(tSolutionState) function &
    call IO_write_jobBinaryFile(777,'C_lastInc',size(C_lastInc))
    write (777,rec=1) C_lastInc
    close(777)
-   call IO_write_jobBinaryFile(777,'F_aimDot',size(f_aimDot))
-   write (777,rec=1) f_aimDot
+   call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
+   write (777,rec=1) F_aimDot
    close(777)
  endif 
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(F,[3,3,res(1),res(2),res(3)])),&

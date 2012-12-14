@@ -440,7 +440,7 @@ program DAMASK_spectral
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of fftw (see manual on fftw.org for more details)
- if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=808_pInt)                         ! check for correct precision in C
+ if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(error_ID=0_pInt)                           ! check for correct precision in C
 !$ if(DAMASK_NumThreadsInt > 0_pInt) then
 !$   ierr = fftw_init_threads()
 !$   if (ierr == 0_pInt) call IO_error(error_ID = 809_pInt)
