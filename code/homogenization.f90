@@ -175,35 +175,33 @@ subroutine homogenization_init(Temperature)
  
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postrestuls variables
- !$OMP PARALLEL DO PRIVATE(myInstance)
-   do e = 1,mesh_NcpElems                                                                           ! loop over elements
-     myInstance = homogenization_typeInstance(mesh_element(3,e))
-     do i = 1,FE_Nips(FE_geomtype(mesh_element(2,e)))                                               ! loop over IPs
-       select case(homogenization_type(mesh_element(3,e)))
-         case (homogenization_isostrain_label)
-           if (homogenization_isostrain_sizeState(myInstance) > 0_pInt) then
-             allocate(homogenization_state0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
-             allocate(homogenization_subState0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
-             allocate(homogenization_state(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
-             homogenization_state0(i,e)%p  = homogenization_isostrain_stateInit(myInstance)
-             homogenization_sizeState(i,e) = homogenization_isostrain_sizeState(myInstance)
-           endif
-           homogenization_sizePostResults(i,e) = homogenization_isostrain_sizePostResults(myInstance)
-         case (homogenization_RGC_label)
-           if (homogenization_RGC_sizeState(myInstance) > 0_pInt) then
-             allocate(homogenization_state0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
-             allocate(homogenization_subState0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
-             allocate(homogenization_state(i,e)%p(homogenization_RGC_sizeState(myInstance)))
-             homogenization_state0(i,e)%p  = homogenization_RGC_stateInit(myInstance)
-             homogenization_sizeState(i,e) = homogenization_RGC_sizeState(myInstance)
-           endif
-           homogenization_sizePostResults(i,e) = homogenization_RGC_sizePostResults(myInstance)
-         case default
-           call IO_error(500_pInt,ext_msg=homogenization_type(mesh_element(3,e)))                   ! unknown homogenization
-       end select
-     enddo
+ do e = 1,mesh_NcpElems                                                                           ! loop over elements
+   myInstance = homogenization_typeInstance(mesh_element(3,e))
+   do i = 1,FE_Nips(FE_geomtype(mesh_element(2,e)))                                               ! loop over IPs
+     select case(homogenization_type(mesh_element(3,e)))
+       case (homogenization_isostrain_label)
+         if (homogenization_isostrain_sizeState(myInstance) > 0_pInt) then
+           allocate(homogenization_state0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
+           allocate(homogenization_subState0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
+           allocate(homogenization_state(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
+           homogenization_state0(i,e)%p  = homogenization_isostrain_stateInit(myInstance)
+           homogenization_sizeState(i,e) = homogenization_isostrain_sizeState(myInstance)
+         endif
+         homogenization_sizePostResults(i,e) = homogenization_isostrain_sizePostResults(myInstance)
+       case (homogenization_RGC_label)
+         if (homogenization_RGC_sizeState(myInstance) > 0_pInt) then
+           allocate(homogenization_state0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
+           allocate(homogenization_subState0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
+           allocate(homogenization_state(i,e)%p(homogenization_RGC_sizeState(myInstance)))
+           homogenization_state0(i,e)%p  = homogenization_RGC_stateInit(myInstance)
+           homogenization_sizeState(i,e) = homogenization_RGC_sizeState(myInstance)
+         endif
+         homogenization_sizePostResults(i,e) = homogenization_RGC_sizePostResults(myInstance)
+       case default
+         call IO_error(500_pInt,ext_msg=homogenization_type(mesh_element(3,e)))                   ! unknown homogenization
+     end select
    enddo
- !$OMP END PARALLEL DO
+ enddo
 
 !--------------------------------------------------------------------------------------------------
 ! write state size file out
@@ -451,8 +449,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
          endif       
        endif
      
-       materialpoint_requested(i,e) = materialpoint_subStep(i,e) > subStepMinHomog
-       if (materialpoint_requested(i,e)) then
+       if (materialpoint_subStep(i,e) > subStepMinHomog) then
+         materialpoint_requested(i,e) = .true.
          materialpoint_subF(1:3,1:3,i,e) = materialpoint_subF0(1:3,1:3,i,e) + &
                                          materialpoint_subStep(i,e) * (materialpoint_F(1:3,1:3,i,e) - materialpoint_F0(1:3,1:3,i,e))
          materialpoint_subdt(i,e) = materialpoint_subStep(i,e) * dt
