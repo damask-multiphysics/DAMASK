@@ -49,7 +49,8 @@ module DAMASK_spectral_SolverBasicPETSc
  real(pReal), private, dimension(3,3) :: &
    F_aim = math_I3, &
    F_aim_lastInc = math_I3, &
-   P_av
+   P_av, &
+   F_aimDot=0.0_pReal
  character(len=1024), private :: incInfo   
  real(pReal), private, dimension(3,3,3,3) :: &
    C = 0.0_pReal, C_lastInc= 0.0_pReal, &
@@ -102,7 +103,11 @@ subroutine basicPETSc_init()
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
  PetscErrorCode :: ierr
  PetscObject    :: dummy
-    
+ real(pReal), dimension(3,3) :: &
+   temp33_Real = 0.0_pReal
+ real(pReal), dimension(3,3,3,3) :: &
+   temp3333_Real = 0.0_pReal
+
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
@@ -151,34 +156,37 @@ subroutine basicPETSc_init()
    close (777)
    call IO_read_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',&
                                                 trim(getSolverJobName()),size(F_lastInc))
-
+   read (777,rec=1) F_lastInc
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
 
-
+   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
+   read (777,rec=1) C_lastInc
+   close (777)
+   call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
+   read (777,rec=1) C
+   close (777)
+   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   read (777,rec=1) f_aimDot
+   close (777)
+   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
+   read (777,rec=1) temp3333_Real
+   close (777)
  endif
  mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
                              !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
  call Utilities_constitutiveResponse(&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
-               temperature,0.0_pReal,P,C,P_av,.false.,math_I3)
+               temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr)                                                ! write data back into PETSc
  CHKERRQ(ierr)
-
-!--------------------------------------------------------------------------------------------------
-! reference stiffness and Gamma operator
- if (restartInc == 1_pInt) then
-   call IO_write_jobBinaryFile(777,'C_ref',size(C))
-   write (777,rec=1) C
-   close(777)
- elseif (restartInc > 1_pInt) then
-   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(C))
-   read (777,rec=1) C
-   close (777)
- endif
- call Utilities_updateGamma(C,.True.)
+ if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
+   temp3333_Real = C
+ endif 
+   
+ call Utilities_updateGamma(temp3333_Real,.True.)
 
 end subroutine basicPETSc_init
   
@@ -220,7 +228,6 @@ type(tSolutionState) function &
  type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  character(len=*), intent(in) :: incInfoIn
- real(pReal), dimension(3,3),save       :: F_aimDot=0.0_pReal
  real(pReal), dimension(3,3)            :: &
                                            F_aim_lab
 !--------------------------------------------------------------------------------------------------
@@ -233,19 +240,29 @@ type(tSolutionState) function &
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
 
-!--------------------------------------------------------------------------------------------------
-! restart information for spectral solver
  incInfo = incInfoIn
+
+ call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
+!--------------------------------------------------------------------------------------------------
+! write restart information for spectral solver
  if (restartWrite) then
    write(6,'(a)') 'writing converged results for restart'
-   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F_lastInc))
-   write (777,rec=1) F_LastInc
+   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad',size(F))                        ! writing deformation gradient field to file
+   write (777,rec=1) F
+   close (777)
+   call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_lastInc))        ! writing F_lastInc field to file
+   write (777,rec=1) F_lastInc
    close (777)
    call IO_write_jobBinaryFile(777,'C',size(C))
    write (777,rec=1) C
    close(777)
+   call IO_write_jobBinaryFile(777,'C_lastInc',size(C_lastInc))
+   write (777,rec=1) C_lastInc
+   close(777)
+   call IO_write_jobBinaryFile(777,'F_aimDot',size(f_aimDot))
+   write (777,rec=1) f_aimDot
+   close(777)
  endif 
- call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(F,[3,3,res(1),res(2),res(3)])),&
                                                         [3,1,mesh_NcpElems])
  if ( cutBack) then 

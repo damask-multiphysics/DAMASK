@@ -44,7 +44,8 @@ program DAMASK_spectral_Driver
  use numerics, only: &
    maxCutBack, &
    rotation_tol, &
-   mySpectralSolver
+   mySpectralSolver, &
+   regridMode
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results
@@ -100,7 +101,7 @@ program DAMASK_spectral_Driver
  integer(pInt) :: currentLoadcase = 0_pInt, inc, &
                   totalIncsCounter = 0_pInt,&
                   notConvergedCounter = 0_pInt, convergedCounter = 0_pInt, &
-                  resUnit = 0_pInt, statUnit = 0_pInt
+                  resUnit = 0_pInt, statUnit = 0_pInt, lastRestartWritten = 0_pInt
  character(len=6)  :: loadcase_string
  character(len=1024)  :: incInfo
  type(tLoadCase), allocatable, dimension(:) ::  loadCases
@@ -405,8 +406,10 @@ program DAMASK_spectral_Driver
              timeinc_old = timeinc
              timeinc = timeinc/2.0_pReal
            elseif (solres%termIll) then                                                             ! material point model cannot find a solution
+             if(regridMode > 0_pInt) call quit(-1*(lastRestartWritten+1))
              call IO_error(850_pInt)
            else
+             if(regridMode == 2_pInt) call quit(-1*(lastRestartWritten+1))
              guess = .true.                                                                         ! start guessing after first accepted (not converged) (sub)inc
            endif
          else
@@ -433,6 +436,7 @@ program DAMASK_spectral_Driver
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &
                       mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then                        ! at frequency of writing restart information set restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
          restartWrite = .true.
+         lastRestartWritten = inc
        endif 
      else !just time forwarding
        time = time + timeinc

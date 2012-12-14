@@ -103,7 +103,8 @@ integer(pInt), protected, public :: &
                                 fftw_planner_flag          =  32_pInt, &                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
                                 itmax                      =  20_pInt, &                            !< maximum number of iterations
                                 itmin                      =  2_pInt, &                             !< minimum number of iterations
-                                maxCutBack                 =  3_pInt                                !< max number of cut backs
+                                maxCutBack                 =  3_pInt, &                             !< max number of cut backs
+                                regridMode                 =  0_pInt                                !< 0: no regrid; 1: regrid if DAMASK doesn't converge; 2: regrid if DAMASK or BVP Solver doesn't converge 
 logical, protected , public :: &
                                 memory_efficient           = .true., &                              !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 divergence_correction      = .false., &                             !< correct divergence calculation in fourier space, Default .false.: no correction
@@ -273,6 +274,8 @@ subroutine numerics_init
              itmin = IO_intValue(line,positions,2_pInt)
        case ('maxcutback')
              maxCutBack = IO_intValue(line,positions,2_pInt)
+       case ('regridmode')
+             regridMode = IO_intValue(line,positions,2_pInt)
        case ('memory_efficient')
              memory_efficient = IO_intValue(line,positions,2_pInt)  > 0_pInt
        case ('fftw_timelimit')
@@ -401,6 +404,7 @@ numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pIn
    write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
    write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
    write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
+   write(6,'(a24,1x,i8)')      ' regridMode:             ',regridMode
    write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
    if(fftw_timelimit<0.0_pReal) then
      write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.

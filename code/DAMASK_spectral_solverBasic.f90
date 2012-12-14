@@ -73,11 +73,10 @@ subroutine basic_init()
  integer(pInt) :: &
    i, j, k
  real(pReal), dimension(3,3) :: &
-   temp33_Real
+   temp33_Real = 0.0_pReal
  real(pReal), dimension(3,3,3,3) :: &
    temp3333_Real
  
-
  call Utilities_Init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(a)') ' $Id$'
@@ -86,9 +85,9 @@ subroutine basic_init()
   
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
- allocate (F          (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (F_lastInc  (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (Fdot       (  3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (F         (3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (F_lastInc (3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (Fdot      (3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
    
 !--------------------------------------------------------------------------------------------------
 ! init fields and average quantities
@@ -355,6 +354,9 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
 end function basic_Converged
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief does the cleaning up after the simulation has finished
+!--------------------------------------------------------------------------------------------------
 subroutine basic_destroy()
  
 use DAMASK_spectral_Utilities, only: &
