@@ -44,7 +44,8 @@ module debug
    debug_spectralRestart    = debug_maxGeneral*2_pInt**1_pInt, &
    debug_spectralFFTW       = debug_maxGeneral*2_pInt**2_pInt, &
    debug_spectralDivergence = debug_maxGeneral*2_pInt**3_pInt, &
-   debug_spectralRotation   = debug_maxGeneral*2_pInt**4_pInt
+   debug_spectralRotation   = debug_maxGeneral*2_pInt**4_pInt, &
+   debug_spectralPETSc      = debug_maxGeneral*2_pInt**5_pInt
 
  integer(pInt), parameter, public :: &
    debug_debug                   =  1_pInt, &
@@ -104,6 +105,10 @@ module debug
  character(len=64), parameter, private ::  &
    debug_configFile         = 'debug.config'                                                        ! name of configuration file
 
+#ifdef PETSc 
+ character(len=1024), parameter, public :: &
+   PETScDebug = ' -snes_view -snes_monitor' 
+#endif
  public :: debug_init, &
            debug_reset, &
            debug_info
@@ -139,7 +144,6 @@ subroutine debug_init
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=64)                        :: tag
  character(len=1024)                      :: line
- 
  !$OMP CRITICAL (write2out)
    write(6,*)
    write(6,*) '<<<+-  debug init  -+>>>'
@@ -235,6 +239,8 @@ subroutine debug_init
              debug_level(what) = ior(debug_level(what), debug_spectralDivergence)
            case('rotation')
              debug_level(what) = ior(debug_level(what), debug_spectralRotation)
+           case('petsc')
+             debug_level(what) = ior(debug_level(what), debug_spectralPETSc)
          end select
        enddo
       endif
@@ -310,6 +316,7 @@ subroutine debug_init
          if(iand(debug_level(i),debug_spectralFFTW)      /= 0) write(6,'(a)') ' FFTW'
          if(iand(debug_level(i),debug_spectralDivergence)/= 0) write(6,'(a)') ' divergence'
          if(iand(debug_level(i),debug_spectralRotation)  /= 0) write(6,'(a)') ' rotation'
+         if(iand(debug_level(i),debug_spectralPETSc)     /= 0) write(6,'(a)') ' PETSc'
    !$OMP END CRITICAL (write2out)
        endif
      enddo

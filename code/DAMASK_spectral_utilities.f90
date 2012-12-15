@@ -13,6 +13,9 @@ module DAMASK_spectral_utilities
    pInt
 
  implicit none
+#ifdef PETSc
+#include <finclude/petscsys.h>
+#endif
  logical,       public                                         :: cutBack =.false.                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
 
 !--------------------------------------------------------------------------------------------------
@@ -47,7 +50,8 @@ module DAMASK_spectral_utilities
    debugDivergence, &                                                                               !< debugging of divergence calculation (comparison to function used for post processing)
    debugRestart, &                                                                                  !< debbuging of restart features
    debugFFTW, &                                                                                     !< doing additional FFT on scalar field and compare to results of strided 3D FFT
-   debugRotation                                                                                    !< also printing out results in lab frame
+   debugRotation, &                                                                                 !< also printing out results in lab frame
+   debugPETSc                                                                                       !< use some in debug defined options for more verbose PETSc solution
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
@@ -99,7 +103,8 @@ subroutine utilities_init()
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
    fftw_timelimit, &
-   memory_efficient
+   memory_efficient, &
+   petsc_options
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -107,14 +112,21 @@ subroutine utilities_init()
    debug_spectralDivergence, &
    debug_spectralRestart, &
    debug_spectralFFTW, &
+#ifdef PETSc
+   debug_spectralPETSc, &
+   PETScDebug, &
+#endif
    debug_spectralRotation
  use mesh, only: &
    res, &
    res1_red, &
    virt_dim
  use math                                                                                           ! must use the whole module for use of FFTW
- 
+
  implicit none
+#ifdef PETSc
+ PetscErrorCode :: ierr
+#endif  
  integer(pInt)               :: i, j, k
  integer(pInt), dimension(3) :: k_s
  type(C_PTR) :: &
@@ -122,7 +134,6 @@ subroutine utilities_init()
    scalarField_realC, &                                                                             !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
    scalarField_fourierC, &                                                                          !< field cotaining data for FFTW in fourier space when debugging FFTW (no in place)
    divergence                                                                                       !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
- 
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
  write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
@@ -135,7 +146,17 @@ subroutine utilities_init()
  debugRestart    = iand(debug_level(debug_spectral),debug_spectralRestart)    /= 0
  debugFFTW       = iand(debug_level(debug_spectral),debug_spectralFFTW)       /= 0
  debugRotation   = iand(debug_level(debug_spectral),debug_spectralRotation)   /= 0
- 
+#ifdef PETSc
+ debugPETSc      = iand(debug_level(debug_spectral),debug_spectralPETSc)      /= 0
+ if(debugPETSc) write(6,'(a)') ' Initializing PETSc with debug options: ', trim(PETScDebug), &
+                               ' add more using the PETSc_Options keyword in numerics.config '
+ call PetscOptionsClear(ierr)
+ CHKERRQ(ierr)
+ if(debugPETSc) call PetscOptionsInsertString(trim(PETScDebug),ierr)
+ CHKERRQ(ierr)
+ call PetscOptionsInsertString(trim(petsc_options),ierr)
+ CHKERRQ(ierr)
+#endif
 !--------------------------------------------------------------------------------------------------
 ! allocation
  allocate (xi(3,res1_red,res(2),res(3)),source = 0.0_pReal)                                         ! frequencies, only half the size for first dimension

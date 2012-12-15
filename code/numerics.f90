@@ -25,9 +25,6 @@ module numerics
 use prec, only: pInt, pReal
 
 implicit none
-#ifdef PETSc
-#include <finclude/petscsys.h>
-#endif
 character(len=64), parameter, private :: &
   numerics_configFile        = 'numerics.config'                                                    !< name of configuration file
 
@@ -98,7 +95,8 @@ character(len=64), protected, public :: &
                                 myspectralsolver           = 'basic'  , &                           !< spectral solution method 
                                 myfilter                   = 'none'                                 !< spectral filtering method
 character(len=1024), protected, public :: &
-                                petsc_options              = '-snes_type ngmres -snes_ngmres_anderson -snes_view'
+                                petsc_options              = '-snes_type ngmres &
+                                                              -snes_ngmres_anderson '
 integer(pInt), protected, public :: &
                                 fftw_planner_flag          =  32_pInt, &                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
                                 itmax                      =  20_pInt, &                            !< maximum number of iterations
@@ -122,24 +120,23 @@ contains
 subroutine numerics_init
   
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use IO, only:                               IO_error, &
-                                             IO_open_file_stat, &
-                                             IO_isBlank, &
-                                             IO_stringPos, &
-                                             IO_stringValue, &
-                                             IO_lc, &
-                                             IO_floatValue, &
-                                             IO_intValue, &
-                                             IO_warning
+ use IO, only: &
+   IO_error, &
+   IO_open_file_stat, &
+   IO_isBlank, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_lc, &
+   IO_floatValue, &
+   IO_intValue, &
+   IO_warning
+
 #ifndef Marc
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if not using MSC.Marc
 #endif  
  implicit none
 #ifdef Marc
 !$ include "omp_lib.h"                                                                              ! use the non F90 standard include file to prevent crashes with some versions of MSC.Marc
-#endif  
-#ifdef PETSc
- PetscErrorCode :: ierr
 #endif  
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&
                                              maxNchunks = 2_pInt
@@ -337,13 +334,6 @@ subroutine numerics_init
       call IO_warning(warning_ID=47_pInt,ext_msg=trim(IO_lc(fftw_plan_mode)))
       fftw_planner_flag = 32_pInt
  end select
-#endif
-#ifdef PETSc
-  write(6,'(a)') ' Initializing PETSc'
-  call PetscOptionsClear(ierr)
-  CHKERRQ(ierr)
-  call PetscOptionsInsertString(petsc_options,ierr)
-  CHKERRQ(ierr)
 #endif
 
 numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                 ! timeSyncing only allowed for explicit Euler integrator
