@@ -131,16 +131,16 @@ subroutine numerics_init
                                              IO_floatValue, &
                                              IO_intValue, &
                                              IO_warning
-#ifndef Marc                                                                                      ! Use the standard conforming module file for omp if using the spectral solver
-!$ use OMP_LIB, only: omp_set_num_threads
-#endif
+#ifndef Marc
+!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if not using MSC.Marc
+#endif  
  implicit none
-#ifdef Marc                                                                                       ! use the non F90 standard include file because some versions of Marc and Abaqus crash when using the module
-!$ include "omp_lib.h"
-#endif
+#ifdef Marc
+!$ include "omp_lib.h"                                                                              ! use the non F90 standard include file to prevent crashes with some versions of MSC.Marc
+#endif  
 #ifdef PETSc
  PetscErrorCode :: ierr
-#endif
+#endif  
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&
                                              maxNchunks = 2_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1

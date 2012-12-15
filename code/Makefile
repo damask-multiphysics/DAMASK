@@ -9,17 +9,17 @@ SHELL = /bin/sh
 #
 # Install fftw3 (v3.3 is tested):
 # + execute
-#   ./configure --enable-threads --enable-sse2 --enable-shared [-enable-float]
+#   ./configure --enable-threads --enable-sse2 --enable-shared
 #   make
 #   make install
 # + specify in the "pathinfo:FFTW" where FFTW was installed.
 #   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3",
 #   so you can copy those, for instance,
 #   into DAMASK_ROOT/lib/fftw/lib/ and specify "./fftw/" as pathinfo:FFTW
-# Use --enable-float in above configure for single precision...
 # Uses linux threads to parallelize fftw3
 #
-# Instead of the AMD Core Math Library a standard "lib(64)/liblapack.a/dylib/etc." can be used.
+# Instead of the AMD Core Math Library or the Intel Kernel Math Library 
+# a standard "lib(64)/liblapack.a/dylib/etc." can be used.
 # leave pathinfo:ACML and pathinfo:IKML blank, but specify as pathinfo:LAPACK where the library folder is located
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
@@ -111,12 +111,10 @@ endif
 endif
 endif
 
-ifeq "$(SOLVER)" "NEW"
 ifdef PETSC_DIR
 include ${PETSC_DIR}/conf/variables
 INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSc
 LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
-endif
 endif
 
 ifdef STANDARD_CHECK
@@ -127,9 +125,9 @@ endif
 ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
 STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics
-#-std=2008ts for newer gfortran
 endif
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
+#-std=f2008ts:      for newer gfortran
 #                   but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined
 #                   procedure with the same name as any intrinsic will be called except when it is explicitly declared external
 #-Wintrinsics-std:  warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers
@@ -221,7 +219,12 @@ COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
                            -Wunsafe-loop-optimizations\
                            -Wunused\
                            -Wall\
-                           -Wextra
+                           -Wextra\
+                           -Wsuggest-attribute=const\
+                           -Wsuggest-attribute=pure\
+                           -Wsuggest-attribute=noreturn\
+                           -Wreal-q-constant\
+                           -pedantic-errors
 endif
 
 #-xf95-cpp-input:              preprocessor
@@ -246,13 +249,8 @@ endif
 #        -value:
 #        -parameter:           find usused variables with "parameter" attribute
 #-Wextra:                        
+#-Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
 ###################################################################################################
-#OPTIONS FOR GFORTRAN 4.6
-#-Wsuggest-attribute=const:
-#-Wsuggest-attribute=noreturn:
-#-Wsuggest-attribute=pure:  
-#-Wreal-q-constant:            Warn about real-literal-constants with 'q'  exponent-letter
-#
 #MORE OPTIONS FOR DEBUGGING DURING COMPILING                      
 #-Wline-truncation:           too many warnings because we have comments beyond character 132
 #-Warray-temporarieswarnings: because we have many temporary arrays (performance issue?):                     
@@ -286,15 +284,14 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math
                  FEsolving.o mesh.o material.o lattice.o \
                  constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
                  constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o crystallite.o \
-                 homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o 
+                 homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o \
+                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o 
 
-
-ifeq "$(SOLVER)" "NEW"
 ifdef PETSC_DIR
 PETSC_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o
+COMPILED_FILES += $(PETSC_FILES)
 endif
 
-COMPILED_FILES += DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
@@ -315,89 +312,80 @@ DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90\
 
 DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90\
                                CPFEM.o
-else
-DAMASK_spectral.exe: DAMASK_spectral.o 
-	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
-  -o DAMASK_spectral.exe DAMASK_spectral.o \
-  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
+CPFEM.o:                       CPFEM.f90\
+                               homogenization.o
 
-DAMASK_spectral.o: DAMASK_spectral.f90 CPFEM.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral.f90 $(SUFFIX)
-endif                       
-CPFEM.o:                      CPFEM.f90\
-                              homogenization.o
+homogenization.o:              homogenization.f90\
+                               homogenization_RGC.o \
+                               homogenization_isostrain.o
 
-homogenization.o:             homogenization.f90\
-                              homogenization_RGC.o \
-                              homogenization_isostrain.o
+homogenization_RGC.o:          homogenization_RGC.f90 \
+                               crystallite.o
 
-homogenization_RGC.o:         homogenization_RGC.f90 \
-                              crystallite.o
+homogenization_isostrain.o:    homogenization_isostrain.f90 \
+                               crystallite.o
 
-homogenization_isostrain.o:   homogenization_isostrain.f90 \
-                              crystallite.o
-
-crystallite.o:                crystallite.f90 \
-                              constitutive.o
+crystallite.o:                 crystallite.f90 \
+                               constitutive.o
                             
-constitutive.o:               constitutive.f90 \
-                              constitutive_nonlocal.o \
-                              constitutive_titanmod.o \
-                              constitutive_dislotwin.o \
-                              constitutive_phenopowerlaw.o \
-                              constitutive_j2.o \
-                              constitutive_none.o
+constitutive.o:                constitutive.f90 \
+                               constitutive_nonlocal.o \
+                               constitutive_titanmod.o \
+                               constitutive_dislotwin.o \
+                               constitutive_phenopowerlaw.o \
+                               constitutive_j2.o \
+                               constitutive_none.o
 
-constitutive_nonlocal.o:      constitutive_nonlocal.f90 \
-                              lattice.o
+constitutive_nonlocal.o:       constitutive_nonlocal.f90 \
+                               lattice.o
 
-constitutive_titanmod.o:      constitutive_titanmod.f90 \
-                              lattice.o
+constitutive_titanmod.o:       constitutive_titanmod.f90 \
+                               lattice.o
 
-constitutive_dislotwin.o:     constitutive_dislotwin.f90 \
-                              lattice.o
+constitutive_dislotwin.o:      constitutive_dislotwin.f90 \
+                               lattice.o
 
-constitutive_phenopowerlaw.o: constitutive_phenopowerlaw.f90 \
-                              lattice.o
+constitutive_phenopowerlaw.o:  constitutive_phenopowerlaw.f90 \
+                               lattice.o
 
-constitutive_j2.o:            constitutive_j2.f90 \
-                              lattice.o
+constitutive_j2.o:             constitutive_j2.f90 \
+                               lattice.o
 
-constitutive_none.o:          constitutive_none.f90 \
-                              lattice.o
+constitutive_none.o:           constitutive_none.f90 \
+                               lattice.o
 
-lattice.o:                    lattice.f90 \
-                              material.o
+lattice.o:                     lattice.f90 \
+                               material.o
 
-material.o:                   material.f90 \
-                              mesh.o
+material.o:                    material.f90 \
+                               mesh.o
 
-mesh.o:                       mesh.f90 \
-                              FEsolving.o \
-                              math.o
+mesh.o:                        mesh.f90 \
+                               FEsolving.o \
+                               math.o
 
-FEsolving.o:                  FEsolving.f90 \
-                              debug.o
+FEsolving.o:                   FEsolving.f90 \
+                               debug.o
 
-math.o:                       math.f90 \
-                              debug.o
+math.o:                        math.f90 \
+                               debug.o
 
-debug.o:                      debug.f90 \
-                              numerics.o
+debug.o:                       debug.f90 \
+                               numerics.o
 
-numerics.o:                   numerics.f90 \
-                              IO.o
-                              
-IO.o:                         IO.f90 \
-                              DAMASK_spectral_interface.o
+numerics.o:                    numerics.f90 \
+                               IO.o
+                               
+IO.o:                          IO.f90 \
+                               DAMASK_spectral_interface.o
 
-DAMASK_spectral_interface.o:  DAMASK_spectral_interface.f90 \
-                              prec.o
+DAMASK_spectral_interface.o:   DAMASK_spectral_interface.f90 \
+                               prec.o
 ifeq "$(F90)" "gfortran"            # fno-range-check because NaN is defined in prec
-prec.o:                       prec.f90
+prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -fno-range-check prec.f90 $(SUFFIX)
 else
-prec.o:                       prec.f90
+prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
 endif
 
