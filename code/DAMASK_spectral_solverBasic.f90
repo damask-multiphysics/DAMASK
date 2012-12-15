@@ -243,6 +243,9 @@ type(tSolutionState) function &
    C_lastInc = C
    mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
                              !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+
+!--------------------------------------------------------------------------------------------------
+! calculate rate for aim
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
    elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
@@ -250,12 +253,15 @@ type(tSolutionState) function &
    endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
+
+!--------------------------------------------------------------------------------------------------
+! update rate and forward last inc
    Fdot =  utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                                                         timeinc_old,guess,F_lastInc,F)
    F_lastInc = F
  endif
  F_aim = F_aim + f_aimDot * timeinc
- F = Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),F_lastInc,Fdot)                                           !I think F aim should be rotated here
+ F = Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),F_lastInc,Fdot)
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)

@@ -48,8 +48,9 @@ module DAMASK_spectral_SolverBasicPETSc
 ! stress, stiffness and compliance average etc.
  real(pReal), private, dimension(3,3) :: &
    F_aim = math_I3, &
+   F_aim_lastIter = math_I3, &
    F_aim_lastInc = math_I3, &
-   P_av, &
+   P_av = 0.0_pReal, &
    F_aimDot=0.0_pReal
  character(len=1024), private :: incInfo   
  real(pReal), private, dimension(3,3,3,3) :: &
@@ -228,8 +229,7 @@ type(tSolutionState) function &
  type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  character(len=*), intent(in) :: incInfoIn
- real(pReal), dimension(3,3)            :: &
-                                           F_aim_lab
+
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal), dimension(3,3)            :: temp33_Real 
@@ -274,6 +274,7 @@ type(tSolutionState) function &
    C_lastInc = C
    mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
                              !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
@@ -285,15 +286,15 @@ type(tSolutionState) function &
    F_aim_lastInc = F_aim
   
 !--------------------------------------------------------------------------------------------------
-! update coordinates and rate and forward last inc
-   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                                           timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
+! update rate and forward last inc
+   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,params%rotation_BC), &
+                                 timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
    F_lastInc = reshape(F,[3,3,res(1),res(2),res(3)])
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
-
- F = reshape(Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot),[9,res(1),res(2),res(3)])
+ F = reshape(Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),F_lastInc,&
+                                 Fdot),[9,res(1),res(2),res(3)])
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr)
  CHKERRQ(ierr)
   
@@ -341,12 +342,11 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
    Utilities_FFTbackward, &
    Utilities_fourierConvolution, &
    Utilities_constitutiveResponse, &
-   Utilities_divergenceRMS
+   Utilities_divergenceRMS, &
+   debugRotation
  use IO, only : IO_intOut 
 
  implicit none
- real(pReal), dimension(3,3) :: F_aim_lab_lastIter, F_aim_lab
- 
  DMDALocalInfo, dimension(*) :: myIn
  PetscScalar, dimension(3,3,res(1),res(2),res(3)) :: x_scal 
  PetscScalar, dimension(3,3,res(1),res(2),res(3)):: f_scal 
@@ -358,13 +358,16 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
  CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,iter,ierr)
  CHKERRQ(ierr)
+
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
  write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                  ' @ Iter. ', itmin, '<',iter, '≤', itmax
- write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
-                                                           math_transpose33(F_aim)
- F_aim_lab_lastIter = math_rotate_backward33(F_aim,params%rotation_BC)
+                  ' @ Iter. ', itmin, '≤', iter, '≤', itmax
+ if (debugRotation) &
+ write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim (lab)=', &
+                                math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+ write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
+                                math_transpose33(F_aim)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -374,9 +377,9 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
   
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
- F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC))) ! S = 0.0 for no bc
- err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))     ! mask = 0.0 for no bc
- F_aim_lab = math_rotate_backward33(F_aim,params%rotation_BC) 
+ F_aim_lastIter = F_aim
+ F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
+ err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
  
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
@@ -385,7 +388,7 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
                                                              order=[4,5,1,2,3]) ! field real has a different order
  call Utilities_FFTforward()
  err_div = Utilities_divergenceRMS()
- call Utilities_fourierConvolution(F_aim_lab_lastIter - F_aim_lab) 
+ call Utilities_fourierConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,params%rotation_BC))
  call Utilities_FFTbackward()
  
 !--------------------------------------------------------------------------------------------------
