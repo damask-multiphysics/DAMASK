@@ -896,6 +896,21 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
   if(numerics_timeSyncing) then
     if (any(.not. crystallite_localPlasticity .and. .not. crystallite_todo .and. .not. crystallite_converged &
             .and. crystallite_subStep <= subStepMinCryst)) then                                          ! no way of rescuing a nonlocal ip that violated the lower time step limit, ...
+      if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+        do e = FEsolving_execElem(1),FEsolving_execElem(2)
+          myNgrains = homogenization_Ngrains(mesh_element(3,e))
+          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+            do g = 1,myNgrains
+              if (.not. crystallite_localPlasticity(g,i,e) .and. .not. crystallite_todo(g,i,e) &
+                  .and. .not. crystallite_converged(g,i,e) .and. crystallite_subStep(g,i,e) <= subStepMinCryst) then
+                !$OMP CRITICAL (write2out)
+                write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> nonlocal violated minimum subStep at el,ip,g ',e,i,g
+                !$OMP END CRITICAL (write2out)
+              endif
+            enddo
+          enddo
+        enddo
+      endif
       where(.not. crystallite_localPlasticity)
         crystallite_todo = .false.                                                                       ! ... so let all nonlocal ips die peacefully
         crystallite_subStep = 0.0_pReal
@@ -1297,11 +1312,10 @@ else
 endif
 
 
-!$OMP PARALLEL PRIVATE(mySizeDotState)
-
 ! --- FIRST RUNGE KUTTA STEP ---
 
 RK4dotTemperature = 0.0_pReal                                                                             ! initialize Runge-Kutta dotTemperature
+!$OMP PARALLEL PRIVATE(mySizeDotState)
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     constitutive_RK4dotState(g,i,e)%p = 0.0_pReal                                                         ! initialize Runge-Kutta dotState
@@ -1315,6 +1329,7 @@ RK4dotTemperature = 0.0_pReal                                                   
 !$OMP ENDDO
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+    !$OMP FLUSH(crystallite_todo)
     if (crystallite_todo(g,i,e)) then
       if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
@@ -1329,6 +1344,7 @@ RK4dotTemperature = 0.0_pReal                                                   
     endif
   enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP END PARALLEL
 
 
 ! --- SECOND TO FOURTH RUNGE KUTTA STEP PLUS FINAL INTEGRATION ---
@@ -1337,6 +1353,7 @@ do n = 1_pInt,4_pInt
 
   ! --- state update ---
 
+  !$OMP PARALLEL PRIVATE(mySizeDotState)
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
@@ -1384,6 +1401,7 @@ do n = 1_pInt,4_pInt
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
         !$OMP FLUSH(crystallite_todo)
@@ -1413,6 +1431,7 @@ do n = 1_pInt,4_pInt
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e,timeStepFraction(n))                  ! fraction of original times step
         !$OMP FLUSH(crystallite_todo)
@@ -1442,6 +1461,7 @@ do n = 1_pInt,4_pInt
     !$OMP ENDDO
     !$OMP DO
       do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                ! iterate over elements, ips and grains
+        !$OMP FLUSH(crystallite_todo)
         if (crystallite_todo(g,i,e)) then
           if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                    ! NaN occured in dotState
                .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then         ! NaN occured in dotTemperature
@@ -1457,27 +1477,24 @@ do n = 1_pInt,4_pInt
       enddo; enddo; enddo
     !$OMP ENDDO
   endif
+  !$OMP END PARALLEL
   
 enddo
 
 
 ! --- SET CONVERGENCE FLAG ---
 
-!$OMP DO
-  do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-    if (crystallite_todo(g,i,e)) then
-      crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
-      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-        !$OMP CRITICAL (distributionState)
-          debug_StateLoopDistribution(4,numerics_integrationMode) = &
-            debug_StateLoopDistribution(4,numerics_integrationMode) + 1_pInt
-        !$OMP END CRITICAL (distributionState)
-      endif
+do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+  if (crystallite_todo(g,i,e)) then
+    crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
+    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+      !$OMP CRITICAL (distributionState)
+        debug_StateLoopDistribution(4,numerics_integrationMode) = &
+          debug_StateLoopDistribution(4,numerics_integrationMode) + 1_pInt
+      !$OMP END CRITICAL (distributionState)
     endif
-  enddo; enddo; enddo
-!$OMP ENDDO
-
-!$OMP END PARALLEL
+  endif
+enddo; enddo; enddo
 
 
 ! --- CHECK NONLOCAL CONVERGENCE ---
@@ -1619,14 +1636,15 @@ else
 endif
 
 
-!$OMP PARALLEL PRIVATE(mySizeDotState)
 
 ! --- FIRST RUNGE KUTTA STEP ---
-#ifndef _OPENMP
+
 if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
+  !$OMP CRITICAL (write2out)
   write(6,'(a,1x,i1)') '<< CRYST >> RUNGE KUTTA STEP',1
+  !$OMP END CRITICAL (write2out)
 endif
-#endif
+!$OMP PARALLEL PRIVATE(mySizeDotState)
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
@@ -1639,6 +1657,7 @@ endif
 !$OMP ENDDO
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+    !$OMP FLUSH(crystallite_todo)
     if (crystallite_todo(g,i,e)) then
       if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
@@ -1653,6 +1672,7 @@ endif
     endif
  enddo; enddo; enddo
 !$OMP ENDDO
+!$OMP END PARALLEL
 
 
 ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
@@ -1661,6 +1681,7 @@ do n = 1_pInt,5_pInt
 
   ! --- state update ---
   
+  !$OMP PARALLEL PRIVATE(mySizeDotState)
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
@@ -1729,6 +1750,7 @@ do n = 1_pInt,5_pInt
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
         !$OMP FLUSH(crystallite_todo)
@@ -1758,6 +1780,7 @@ do n = 1_pInt,5_pInt
   
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then
         crystallite_todo(g,i,e) =  crystallite_integrateStress(g,i,e,c(n))                                ! fraction of original time step
         !$OMP FLUSH(crystallite_todo)
@@ -1790,6 +1813,7 @@ do n = 1_pInt,5_pInt
   !$OMP ENDDO
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
@@ -1804,6 +1828,7 @@ do n = 1_pInt,5_pInt
       endif
     enddo; enddo; enddo
   !$OMP ENDDO
+  !$OMP END PARALLEL
 
 enddo  
 
@@ -1812,6 +1837,7 @@ enddo
 
 relStateResiduum = 0.0_pReal
 relTemperatureResiduum = 0.0_pReal
+!$OMP PARALLEL PRIVATE(mySizeDotState)
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
     if (crystallite_todo(g,i,e)) then
@@ -1924,6 +1950,7 @@ relTemperatureResiduum = 0.0_pReal
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+    !$OMP FLUSH(crystallite_todo)
     if (crystallite_todo(g,i,e)) then
       crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
       !$OMP FLUSH(crystallite_todo)
@@ -1953,6 +1980,7 @@ relTemperatureResiduum = 0.0_pReal
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+    !$OMP FLUSH(crystallite_todo)
     if (crystallite_todo(g,i,e)) then
       crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
       !$OMP FLUSH(crystallite_todo)
@@ -1987,12 +2015,12 @@ relTemperatureResiduum = 0.0_pReal
 
 ! --- nonlocal convergence check ---
 
-#ifndef _OPENMP  
-  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
-    write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
-    write(6,*)
-  endif
-#endif
+if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
+  !$OMP CRITICAL (write2out)
+  write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
+  write(6,*)
+  !$OMP END CRITICAL (write2out)
+endif
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                     ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
@@ -2082,13 +2110,14 @@ else
 endif
 
 
+stateResiduum = 0.0_pReal
+
 !$OMP PARALLEL PRIVATE(mySizeDotState)
 
 if (numerics_integrationMode == 1_pInt) then
 
   ! --- DOT STATE AND TEMPERATURE (EULER INTEGRATION) ---
 
-  stateResiduum = 0.0_pReal
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then  
@@ -2101,6 +2130,7 @@ if (numerics_integrationMode == 1_pInt) then
   !$OMP ENDDO
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then  
         if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                        ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then             ! NaN occured in dotTemperature
@@ -2138,6 +2168,7 @@ if (numerics_integrationMode == 1_pInt) then
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
         !$OMP FLUSH(crystallite_todo)
@@ -2168,6 +2199,7 @@ endif
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+    !$OMP FLUSH(crystallite_todo)
     if (crystallite_todo(g,i,e)) then
       crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
       !$OMP FLUSH(crystallite_todo)
@@ -2197,6 +2229,7 @@ if (numerics_integrationMode == 1_pInt) then
   !$OMP ENDDO
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p /= constitutive_dotState(g,i,e)%p) &                      ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e) /= crystallite_dotTemperature(g,i,e) ) then           ! NaN occured in dotTemperature
@@ -2215,8 +2248,10 @@ if (numerics_integrationMode == 1_pInt) then
 
   ! --- ERROR ESTIMATE FOR STATE AND TEMPERATURE (HEUN METHOD) ---
 
+  !$OMP SINGLE
   relStateResiduum = 0.0_pReal
   relTemperatureResiduum = 0.0_pReal
+  !$OMP END SINGLE
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
       if (crystallite_todo(g,i,e)) then
@@ -2301,12 +2336,12 @@ endif
 
 ! --- NONLOCAL CONVERGENCE CHECK ---
 
-#ifndef _OPENMP  
-  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
-    write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
-    write(6,*)
-  endif
-#endif
+if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
+  !$OMP CRITICAL (write2out)
+  write(6,'(a,i8,a,i2)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
+  write(6,*)
+  !$OMP END CRITICAL (write2out)
+endif
 if (.not. singleRun) then                                                                                 ! if not requesting Integration of just a single IP   
   if ( any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) then                     ! any non-local not yet converged (or broken)...
     crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
@@ -2397,6 +2432,7 @@ if (numerics_integrationMode == 1_pInt) then
   !$OMP ENDDO
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
@@ -2444,6 +2480,7 @@ if (numerics_integrationMode == 1_pInt) then
   
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)
         !$OMP FLUSH(crystallite_todo)
@@ -2476,6 +2513,7 @@ endif
 
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+    !$OMP FLUSH(crystallite_todo)
     if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
       crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
       !$OMP FLUSH(crystallite_todo)
@@ -2627,6 +2665,7 @@ endif
 !$OMP ENDDO
 !$OMP DO
   do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+    !$OMP FLUSH(crystallite_todo)
     if (crystallite_todo(g,i,e)) then
       if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
            .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
@@ -2686,6 +2725,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
   
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         crystallite_todo(g,i,e) = crystallite_integrateStress(g,i,e)
         !$OMP FLUSH(crystallite_todo)
@@ -2699,11 +2739,13 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
   !$OMP ENDDO
 
 
+  !$OMP SINGLE
   !$OMP CRITICAL (write2out)
   if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) then
     write(6,'(a,i8,a)') '<< CRYST >> ', count(crystallite_todo(:,:,:)),' grains todo after stress integration'
   endif
   !$OMP END CRITICAL (write2out)
+  !$OMP END SINGLE
 
 
   ! --- DOT STATE AND TEMPERATURE ---
@@ -2720,6 +2762,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
   !$OMP ENDDO
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
         if ( any(constitutive_dotState(g,i,e)%p/=constitutive_dotState(g,i,e)%p) &                          ! NaN occured in dotState
              .or. crystallite_dotTemperature(g,i,e)/=crystallite_dotTemperature(g,i,e) ) then               ! NaN occured in dotTemperature
@@ -2818,6 +2861,7 @@ do while (any(crystallite_todo .and. .not. crystallite_converged) .and. Niterati
 
   !$OMP DO
     do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+      !$OMP FLUSH(crystallite_todo)
       if (crystallite_todo(g,i,e) .and. crystallite_converged(g,i,e)) then                                  ! converged and still alive...
         crystallite_todo(g,i,e) = crystallite_stateJump(g,i,e)                                         
         !$OMP FLUSH(crystallite_todo)
