@@ -627,15 +627,22 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
       ! and its not clear how to fix this, so all nonlocals become terminally ill.
       
       if (any(crystallite_syncSubFrac .and. .not. crystallite_converged(1,:,:))) then
+        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              if (crystallite_syncSubFrac(i,e) .and. .not. crystallite_converged(1,i,e)) then
+                !$OMP CRITICAL (write2out)
+                write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> time synchronization: failed at el,ip,g ',e,i,g
+                !$OMP END CRITICAL (write2out)
+              endif
+            enddo
+          enddo
+        endif
         where(.not. crystallite_localPlasticity)
           crystallite_substep = 0.0_pReal
           crystallite_todo = .false.
         endwhere
-        if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
-          !$OMP CRITICAL (write2out)
-          write(6,'(a,i6)') '<< CRYST >> time synchronization: failed'
-          !$OMP END CRITICAL (write2out)
-        endif
       else
         crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:) .or. crystallite_syncSubFrac
         crystallite_clearToCutback = crystallite_localPlasticity(1,:,:)
