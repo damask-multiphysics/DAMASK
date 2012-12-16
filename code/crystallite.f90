@@ -633,12 +633,13 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
               if (crystallite_syncSubFrac(i,e) .and. .not. crystallite_converged(1,i,e)) then
                 !$OMP CRITICAL (write2out)
-                write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> time synchronization: failed at el,ip,g ',e,i,g
+                write(6,'(a,i8,1x,i2)') '<< CRYST >> time synchronization: failed at el,ip ',e,i
                 !$OMP END CRITICAL (write2out)
               endif
             enddo
           enddo
         endif
+        crystallite_syncSubFrac = .false.
         where(.not. crystallite_localPlasticity)
           crystallite_substep = 0.0_pReal
           crystallite_todo = .false.
