@@ -128,27 +128,22 @@ subroutine AL_init()
     
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
- call SNESCreate(PETSC_COMM_WORLD,snes,ierr)
- CHKERRQ(ierr)
+ call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call DMDACreate3d(PETSC_COMM_WORLD,                               &
            DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
            DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
            18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
  CHKERRQ(ierr)
- call DMCreateGlobalVector(da,solution_vec,ierr)
- CHKERRQ(ierr)
- call DMDASetLocalFunction(da,AL_formResidual,ierr)
- CHKERRQ(ierr)
- call SNESSetDM(snes,da,ierr)
- CHKERRQ(ierr)
+ call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
+ call DMDASetLocalFunction(da,AL_formResidual,ierr); CHKERRQ(ierr)
+ call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr)  
- CHKERRQ(ierr)
+ call SNESSetFromOptions(snes,ierr) ; CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
- call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)                                               ! places pointer xx_psc on PETSc data
+ call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                                ! places pointer xx_psc on PETSc data
  F => xx_psc(0:8,:,:,:)
  F_lambda => xx_psc(9:17,:,:,:)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
@@ -195,8 +190,7 @@ subroutine AL_init()
                              !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
  call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,temp3333_Real2,&
                                 temp33_Real,.false.,math_I3)
- call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
- CHKERRQ(ierr)
+ call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! reference stiffness
@@ -245,10 +239,17 @@ type(tSolutionState) function &
 #include <finclude/petscsnes.h90>
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
- real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc
- logical, intent(in) :: guess
- type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
- character(len=*), intent(in) :: incInfoIn
+ real(pReal), intent(in) :: &
+   timeinc, &
+   timeinc_old, &
+   temperature_bc
+ logical, intent(in) :: &
+   guess
+ type(tBoundaryCondition),      intent(in) :: &
+   P_BC, &
+   F_BC
+ character(len=*), intent(in) :: &
+   incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
 
 !--------------------------------------------------------------------------------------------------
@@ -317,17 +318,17 @@ type(tSolutionState) function &
    F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,res(1),res(2),res(3)]))  
                 
-   F_lastInc = reshape(F,[3,3,res(1),res(2),res(3)])
+   F_lastInc        = reshape(F,       [3,3,res(1),res(2),res(3)])
    F_lambda_lastInc = reshape(F_lambda,[3,3,res(1),res(2),res(3)])
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
 !--------------------------------------------------------------------------------------------------
-! update local deformation gradient and coordinates
-!  deltaF_aim = math_rotate_backward33(deltaF_aim,rotation_BC)
-
- F = reshape(Utilities_forwardField(timeinc,F_aim,F_lastInc,Fdot),[9,res(1),res(2),res(3)])
- F_lambda = reshape(Utilities_forwardField(timeinc,F_aim,F_lambda_lastInc,F_lambdadot),[9,res(1),res(2),res(3)])
+! update local deformation gradient
+ F        = reshape(Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),&
+                                                          F_lastInc,Fdot),[9,res(1),res(2),res(3)])
+ F_lambda = reshape(Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),&
+                                            F_lambda_lastInc,F_lambdadot),[9,res(1),res(2),res(3)])
 
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
  CHKERRQ(ierr)
@@ -378,7 +379,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    Utilities_FFTforward, &
    Utilities_fourierConvolution, &
    Utilities_FFTbackward, &
-   Utilities_constitutiveResponse
+   Utilities_constitutiveResponse, &
+   debugRotation
  use IO, only: IO_intOut
 
  implicit none
@@ -414,9 +416,12 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  endif
  if (callNo == 0 .or. mod(callNo,2) == 1_pInt) then
    write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                    ' @ Iter. ', itmin, '<',reportIter, '≤', itmax
-   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =',&
-                                                             math_transpose33(F_aim)
+                    ' @ Iter. ', itmin, '≤',reportIter, '≤', itmax
+   if (debugRotation) &
+   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim (lab)=', &
+                                 math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
+                                 math_transpose33(F_aim)
    reportIter = reportIter + 1_pInt
  endif
  callNo = callNo +1_pInt
