@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,re,sys,math,numpy,skfmm,string,damask
+import os,re,sys,math,numpy,string,damask
 from scipy import ndimage
 from optparse import OptionParser, Option
 
@@ -202,7 +202,7 @@ for file in files:
     distance[i,:,:,:] = numpy.where(uniques > features[feature_id]['aliens'],0.0,1.0)
   
   for i in xrange(len(feature_list)):
-    distance[i,:,:,:] = skfmm.distance(distance[i,:,:,:], dx=[unitlength]*3)
+    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[unitlength]*3
   distance.shape = (len(feature_list),resolution.prod())
   
   table.data_rewind()
