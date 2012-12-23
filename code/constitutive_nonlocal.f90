@@ -134,7 +134,8 @@ constitutive_nonlocal_CFLfactor, &                                   ! safety fa
 constitutive_nonlocal_fEdgeMultiplication, &                         ! factor that determines how much edge dislocations contribute to multiplication (0...1)
 constitutive_nonlocal_rhoSglRandom, &
 constitutive_nonlocal_rhoSglRandomBinning, &
-constitutive_nonlocal_linetensionEffect   
+constitutive_nonlocal_linetensionEffect, &
+constitutive_nonlocal_edgeJogFactor
 
 real(pReal), dimension(:,:), allocatable, private :: &
 constitutive_nonlocal_rhoSglEdgePos0, &                              ! initial edge_pos dislocation density per slip system for each family and instance
@@ -352,6 +353,7 @@ allocate(constitutive_nonlocal_probabilisticMultiplication(maxNinstance))
 allocate(constitutive_nonlocal_CFLfactor(maxNinstance))
 allocate(constitutive_nonlocal_fEdgeMultiplication(maxNinstance))
 allocate(constitutive_nonlocal_linetensionEffect(maxNinstance))
+allocate(constitutive_nonlocal_edgeJogFactor(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
 constitutive_nonlocal_C11 = 0.0_pReal
 constitutive_nonlocal_C12 = 0.0_pReal
@@ -386,6 +388,7 @@ constitutive_nonlocal_grainboundaryTransmissivity = -1.0_pReal
 constitutive_nonlocal_CFLfactor = 2.0_pReal
 constitutive_nonlocal_fEdgeMultiplication = 0.0_pReal
 constitutive_nonlocal_linetensionEffect = 0.0_pReal
+constitutive_nonlocal_edgeJogFactor = 1.0_pReal
 constitutive_nonlocal_shortRangeStressCorrection = .false.
 constitutive_nonlocal_deadZoneScaling = .false.
 constitutive_nonlocal_probabilisticMultiplication = .false.
@@ -508,6 +511,8 @@ do                                                                              
           constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
       case('linetension','linetensioneffect','linetension_effect')
         constitutive_nonlocal_linetensionEffect(i) = IO_floatValue(line,positions,2_pInt)
+      case('edgejog','edgejogs','edgejogeffect','edgejog_effect')
+        constitutive_nonlocal_edgeJogFactor(i) = IO_floatValue(line,positions,2_pInt)
       case('peierlsstressedge','peierlsstress_edge')
         forall (f = 1_pInt:lattice_maxNslipFamily) &
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
@@ -611,6 +616,9 @@ enddo
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_linetensionEffect(i) < 0.0_pReal .or. constitutive_nonlocal_linetensionEffect(i) > 1.0_pReal) &
                                                                         call IO_error(211_pInt,ext_msg='linetension (' &
+                                                                             //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_edgeJogFactor(i) < 0.0_pReal .or. constitutive_nonlocal_edgeJogFactor(i) > 1.0_pReal) &
+                                                                        call IO_error(211_pInt,ext_msg='edgejog (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_R(i) < 0.0_pReal)                           call IO_error(211_pInt,ext_msg='r (' &
                                                                              //constitutive_nonlocal_label//')')
@@ -2500,7 +2508,8 @@ forall (c=1_pInt:2_pInt) &
 if (myStructure == 1_pInt) then ! only fcc
   forall (s = 1:ns, constitutive_nonlocal_colinearSystem(s,myInstance) > 0_pInt) &
     rhoDotAthermalAnnihilation(constitutive_nonlocal_colinearSystem(s,myInstance),1:2) = -rhoDotAthermalAnnihilation(s,10) &
-                                                      * 0.25_pReal * sqrt(rhoForest(s)) * (dUpper(s,2) + dLower(s,2))
+                                                      * 0.25_pReal * sqrt(rhoForest(s)) * (dUpper(s,2) + dLower(s,2)) &
+                                                      * constitutive_nonlocal_edgeJogFactor(myInstance)
 endif
   
   
