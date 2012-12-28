@@ -392,9 +392,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
         if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
           !$OMP CRITICAL (write2out)
             write(6,'(a)') '<< CPFEM >> aging states'
-            if (debug_e == cp_en .and. debug_i == IP) then
+            if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
               write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)))') '<< CPFEM >> aged state of el ip grain',&
-                                                              cp_en, IP, 1, constitutive_state(1,IP,cp_en)%p
+                                                              debug_e, debug_i, 1, constitutive_state(1,debug_i,debug_e)%p
               write(6,*)
             endif
           !$OMP END CRITICAL (write2out)
