@@ -112,11 +112,12 @@ subroutine utilities_init()
    debug_spectralDivergence, &
    debug_spectralRestart, &
    debug_spectralFFTW, &
-#ifdef PETSc
-   debug_spectralPETSc, &
-   PETScDebug, &
-#endif
    debug_spectralRotation
+#ifdef PETSc
+ use debug, only: &
+   debug_spectralPETSc, &
+   PETScDebug
+#endif
  use mesh, only: &
    res, &
    res1_red, &

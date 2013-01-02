@@ -20,7 +20,6 @@ module DAMASK_spectral_SolverBasicPETSc
 #include <finclude/petscsys.h>
 #include <finclude/petscdmda.h>
 #include <finclude/petscsnes.h>
-
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'
    

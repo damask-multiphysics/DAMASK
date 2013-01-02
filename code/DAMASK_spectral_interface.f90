@@ -19,10 +19,14 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Interfacing between the spectral solver and the material subroutines provided
-!! by DAMASK
+!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author   Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief    Interfacing between the spectral solver and the material subroutines provided
+!!           by DAMASK
+!> @details  Interfacing between the spectral solver and the material subroutines provided
+!>           by DAMASK. Interpretating the command line arguments or, in case of called from f2py, 
+!>           the arguments parsed to the init routine to get load case, geometry file, working 
+!>           directory, etc.
 !--------------------------------------------------------------------------------------------------
 module DAMASK_interface
  use prec, only: &
@@ -34,26 +38,26 @@ module DAMASK_interface
 #include <finclude/petscsys.h>
 #endif
 
- logical,  protected,                     public  :: &
-   appendToOutFile = .false.                                                                        !< Append to existing spectralOut file (in case of restart, not in case of regridding)
- integer(pInt),      protected,           public  :: &
-   spectralRestartInc = 1_pInt                                                                      !< Increment at which calculation starts
- character(len=1024),   protected,        public  :: &
+ logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
+ integer(pInt),       public, protected :: spectralRestartInc = 1_pInt                              !< Increment at which calculation starts
+ character(len=1024), public, protected :: &
    geometryFile = '', &                                                                             !< parameter given for geometry file
    loadCaseFile = ''                                                                                !< parameter given for load case file
+ character(len=1024), private           :: workingDirectory                                         !< accessed by getSolverWorkingDirectoryName for compatibility reasons
 
  public  :: getSolverWorkingDirectoryName, &
             getSolverJobName, &
             DAMASK_interface_init
- private :: getGeometryFile, &
+ private :: storeWorkingDirectory, &
+            getGeometryFile, &
             getLoadCaseFile, &
             rectifyPath, &
             makeRelativePath, &
             getPathSep, &
-            IO_stringValue, &
-            IO_intValue, &
-            IO_lc, &
-            IO_stringPos
+            IIO_stringValue, &
+            IIO_intValue, &
+            IIO_lc, &
+            IIO_stringPos
 
 contains
 
@@ -67,29 +71,27 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  implicit none
 
  character(len=1024), optional, intent(in) :: &
-   loadCaseParameterIn, &                                        
-   geometryParameterIn    
+   loadCaseParameterIn, &                                                                           !< if using the f2py variant, the -l argument of DAMASK_spectral.exe
+   geometryParameterIn                                                                              !< if using the f2py variant, the -g argument of DAMASK_spectral.exe
  character(len=1024) :: &
    commandLine, &                                                                                   !< command line call as string
-   geometryParameter, &
-   loadCaseParameter, &
-   hostName, &                                                                                      !< name of computer
-   userName, &                                                                                         !< name of user calling the executable
+   loadCaseArg   ='', &                                                                             !< -l argument given to DAMASK_spectral.exe
+   geometryArg   ='', &                                                                             !< -g argument given to DAMASK_spectral.exe
+   workingDirArg ='', &                                                                             !< -w argument given to DAMASK_spectral.exe
+   hostName, &                                                                                      !< name of machine on which DAMASK_spectral.exe is execute (might require export HOSTNAME)
+   userName, &                                                                                      !< name of user calling DAMASK_spectral.exe
    tag
  integer :: &
    i
  integer, parameter :: &
-   maxNchunks = 7
+   maxNchunks = 10                                                                                  !< DAMASK_spectral + (l,g,w,r)*2 + h
  integer, dimension(1+ 2* maxNchunks) :: &
    positions
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
- logical :: &
-   gotLoadCase = .false., &
-   gotGeometry = .false.
-
 #ifdef PETSc
  PetscErrorCode :: ierr
+
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
@@ -97,90 +99,99 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
 #endif
 
  open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
- write(6,'(a)') ''
- write(6,'(a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
- write(6,'(a)') ' $Id$'
+ write(6,'(/,a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
 
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
-   geometryParameter = geometryParameterIn
-   loadcaseParameter = loadcaseParameterIn
+   geometryArg = geometryParameterIn
+   loadcaseArg = loadcaseParameterIn
    commandLine = 'n/a'
-   gotLoadCase = .true.
-   gotGeometry = .true.
  else if ( .not.( present(loadcaseParameterIn) .and. present(geometryParameterIn))) then            ! none parameters given in function call, trying to get them from command line
    call get_command(commandLine)
-   positions = IO_stringPos(commandLine,maxNchunks)
+   positions = IIO_stringPos(commandLine,maxNchunks)
    do i = 1, maxNchunks
-     tag = IO_lc(IO_stringValue(commandLine,positions,i))                                           ! extract key
+     tag = IIO_lc(IIO_stringValue(commandLine,positions,i))                                           ! extract key
      select case(tag)
        case ('-h','--help')
-         write(6,'(a)')  ' #############################################################'
-         write(6,'(a)')  ' DAMASK spectral:'
+         write(6,'(a)')  ' #######################################################################'
+         write(6,'(a)')  ' DAMASK_spectral:'
          write(6,'(a)')  ' The spectral method boundary value problem solver for'
-         write(6,'(a)')  ' the Duesseldorf Advanced Material Simulation Kit'
-         write(6,'(a)')  ' #############################################################'
-         write(6,'(a)')  ' Valid command line switches:'
-         write(6,'(a)')  '    --geom    (-g, --geometry)'
-         write(6,'(a)')  '    --load    (-l, --loadcase)'
-         write(6,'(a)')  '    --restart (-r, --rs)'
-         write(6,'(a)')  '    --regrid  (--rg)'
-         write(6,'(a)')  '    --help    (-h)'
-         write(6,'(a)')  '  '
-         write(6,'(a)')  ' Mandatory Arguments:'
-         write(6,'(a)')  '   --load PathToLoadFile/NameOfLoadFile.load'
-         write(6,'(a)')  '        "PathToLoadFile" will be the working directory.'
+         write(6,'(a)')  ' the Düsseldorf Advanced Material Simulation Kit'
+         write(6,'(a,/)')' #######################################################################'
+         write(6,'(a,/)')' Valid command line switches:'
+         write(6,'(a)')  '    --geom         (-g, --geometry)'
+         write(6,'(a)')  '    --load         (-l, --loadcase)'
+         write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory)'
+         write(6,'(a)')  '    --restart      (-r, --rs)'
+         write(6,'(a)')  '    --regrid       (--rg)'
+         write(6,'(a)')  '    --help         (-h)'
+         write(6,'(/,a)')' -----------------------------------------------------------------------'
+         write(6,'(a)')  ' Mandatory arguments:'
+         write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom.geom'
+         write(6,'(a)')  '        Specifies the location of the geometry definition file,' 
+         write(6,'(a)')  '            if no extension is given, .geom will be appended.' 
+         write(6,'(a)')  '        "PathToGeomFile" will be the working directory if not specified'
+         write(6,'(a)')  '            via --workingdir.'
          write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-         write(6,'(a)')  '            directory'   
+         write(6,'(a)')  '            directory.'   
          write(6,'(a)')  '        For further configuration place "numerics.config"'
-         write(6,'(a)')  '            and "numerics.config" in that directory.'
-         write(6,'(a)')  '  '
-         write(6,'(a)')  '   --geom PathToGeomFile/NameOfGeom.geom'
-         write(6,'(a)')  '  '
-         write(6,'(a)')  ' Optional Argument:'
-         write(6,'(a)')  '   --restart XX'
+         write(6,'(a)')'            and "numerics.config" in that directory.'
+         write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile.load'
+         write(6,'(a)')  '        Specifies the location of the load case definition file,' 
+         write(6,'(a)')  '            if no extension is given, .load will be appended.' 
+         write(6,'(/,a)')' -----------------------------------------------------------------------'
+         write(6,'(a)')  ' Optional arguments:'
+         write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
+         write(6,'(a)')  '        Specifies the working directory and overwrites the default'
+         write(6,'(a)')  '            "PathToGeomFile".'
+         write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
+         write(6,'(a)')  '            directory.'   
+         write(6,'(a)')  '        For further configuration place "numerics.config"'
+         write(6,'(a)')'            and "numerics.config" in that directory.'
+         write(6,'(/,a)')'   --restart XX'
          write(6,'(a)')  '        Reads in total increment No. XX-1 and continous to'
          write(6,'(a)')  '            calculate total increment No. XX.'
          write(6,'(a)')  '        Appends to existing results file '
          write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
          write(6,'(a)')  '        Works only if the restart information for total increment'
          write(6,'(a)')  '             No. XX-1 is available in the working directory.'
-         write(6,'(a)')  '  '
-         write(6,'(a)')  '   --regrid XX'
+         write(6,'(/,a)')'   --regrid XX'
          write(6,'(a)')  '        Reads in total increment No. XX-1 and continous to'
          write(6,'(a)')  '            calculate total increment No. XX.'
          write(6,'(a)')  '        Attention: Overwrites existing results file '
          write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
          write(6,'(a)')  '        Works only if the restart information for total increment'
          write(6,'(a)')  '             No. XX-1 is available in the working directory.'
+         write(6,'(/,a)')' -----------------------------------------------------------------------'
          write(6,'(a)')  ' Help:'
-         write(6,'(a)')  '   --help'
-         write(6,'(a)')  '        Prints this message and exits'
-         write(6,'(a)')  '  '
+         write(6,'(/,a)')'   --help'
+         write(6,'(a,/)')'        Prints this message and exits'
          call quit(0_pInt)                                                                                ! normal Termination
        case ('-l', '--load', '--loadcase')
-         loadcaseParameter = IO_stringValue(commandLine,positions,i+1_pInt)
-         gotLoadCase = .true.
+         loadcaseArg = IIO_stringValue(commandLine,positions,i+1_pInt)
        case ('-g', '--geom', '--geometry')
-         geometryParameter = IO_stringValue(commandLine,positions,i+1_pInt)
-         gotGeometry = .true.
+         geometryArg = IIO_stringValue(commandLine,positions,i+1_pInt)
+       case ('-w', '--wd', '--workingdir', '--workingdirectory')
+         workingDirArg = IIO_stringValue(commandLine,positions,i+1_pInt)
        case ('-r', '--rs', '--restart')
-         spectralRestartInc = IO_IntValue(commandLine,positions,i+1_pInt)
+         spectralRestartInc = IIO_IntValue(commandLine,positions,i+1_pInt)
          appendToOutFile = .true.
        case ('--rg', '--regrid')
-         spectralRestartInc = IO_IntValue(commandLine,positions,i+1_pInt)
+         spectralRestartInc = IIO_IntValue(commandLine,positions,i+1_pInt)
          appendToOutFile = .false.
      end select
    enddo
  endif
  
- if (.not. (gotLoadCase .and. gotGeometry)) then
-   write(6,'(a)') ' Please specify Geometry AND Load Case'
+ if (len(trim(loadcaseArg)) == 0 .or. len(trim(geometryArg)) == 0) then
+   write(6,'(a)') ' Please specify geometry AND load case (-h for help)'
    call quit(1_pInt)
  endif
 
- geometryFile = getGeometryFile(geometryParameter)
- loadCaseFile = getLoadCaseFile(loadCaseParameter)
+ workingDirectory = storeWorkingDirectory(trim(workingDirArg),trim(geometryArg))
+ geometryFile = getGeometryFile(geometryArg)
+ loadCaseFile = getLoadCaseFile(loadCaseArg)
 
  call get_environment_variable('HOSTNAME',hostName)
  call get_environment_variable('USER',userName)
@@ -196,39 +207,65 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  write(6,'(a,a)')    ' User name:             ', trim(userName)
  write(6,'(a,a)')    ' Path separator:        ', getPathSep()
  write(6,'(a,a)')    ' Command line call:     ', trim(commandLine)
- write(6,'(a,a)')    ' Geometry parameter:    ', trim(geometryParameter)
- write(6,'(a,a)')    ' Loadcase parameter:    ', trim(loadcaseParameter)
+ if (len(trim(workingDirArg))>0) &
+ write(6,'(a,a)')    ' Working dir argument:  ', trim(workingDirArg)
+ write(6,'(a,a)')    ' Geometry argument:     ', trim(geometryArg)
+ write(6,'(a,a)')    ' Loadcase argument:     ', trim(loadcaseArg)
+ write(6,'(a,a)')    ' Working directory:     ', trim(getSolverWorkingDirectoryName())
  write(6,'(a,a)')    ' Geometry file:         ', trim(geometryFile)
  write(6,'(a,a)')    ' Loadcase file:         ', trim(loadCaseFile)
- write(6,'(a,a)')    ' Working Directory:     ', trim(getSolverWorkingDirectoryName())
- write(6,'(a,a)')    ' Solver Job Name:       ', trim(getSolverJobName())
+ write(6,'(a,a)')    ' Solver job name:       ', trim(getSolverJobName())
  if (SpectralRestartInc > 1_pInt) write(6,'(a,i6.6)') &
                      ' Restart at increment:  ', spectralRestartInc
  write(6,'(a,l1,/)') ' Append to result file: ', appendToOutFile
 
 end subroutine DAMASK_interface_init
 
+
 !--------------------------------------------------------------------------------------------------
-!> @brief  extract working directory from loadcase file possibly based on current working dir
+!> @brief extract working directory from loadcase file possibly based on current working dir
+!--------------------------------------------------------------------------------------------------
+character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryArg)
+
+ implicit none
+ character(len=*),  intent(in) :: workingDirectoryArg
+ character(len=*),  intent(in) :: geometryArg
+ character(len=1024)           :: cwd
+ character                     :: pathSep
+
+ pathSep = getPathSep()
+ if (len(workingDirectoryArg)>0) then                                                               ! got working directory as input
+   if (workingDirectoryArg(1:1) == pathSep) then                                                    ! absolute path given as command line argument
+     storeWorkingDirectory = workingDirectoryArg
+   else
+     call getcwd(cwd)                                                                               ! relative path given as command line argument
+     storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
+   endif
+   if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
+      /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
+ else                                                                                               ! using path to geometry file as working dir
+   if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
+     storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
+   else
+     call getcwd(cwd)                                                                               ! relative path given as command line argument
+     storeWorkingDirectory = trim(cwd)//pathSep//&
+                              geometryArg(1:scan(geometryArg,pathSep,back=.true.))
+   endif
+ endif
+ storeWorkingDirectory = rectifyPath(storeWorkingDirectory)
+ 
+end function storeWorkingDirectory
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief simply returns the private string workingDir 
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getSolverWorkingDirectoryName()
 
  implicit none
- character(len=1024) :: cwd
- character           :: pathSep
 
- pathSep = getPathSep()
+ getSolverWorkingDirectoryName = workingDirectory
 
- if (geometryFile(1:1) == pathSep) then                                                             ! absolute path given as command line argument
-   getSolverWorkingDirectoryName = geometryFile(1:scan(geometryFile,pathSep,back=.true.))
- else
-   call getcwd(cwd)                                                                                 ! relative path given as command line argument
-   getSolverWorkingDirectoryName = trim(cwd)//pathSep//&
-                                   geometryFile(1:scan(geometryFile,pathSep,back=.true.))
- endif
-
- getSolverWorkingDirectoryName = rectifyPath(getSolverWorkingDirectoryName)
- 
 end function getSolverWorkingDirectoryName
 
 
@@ -389,7 +426,7 @@ end function makeRelativePath
 
 !--------------------------------------------------------------------------------------------------
 !> @brief counting / and \ in $PATH System variable the character occuring more often is assumed
-!! to be the path separator
+! to be the path separator
 !--------------------------------------------------------------------------------------------------
 character function getPathSep()
 
@@ -412,32 +449,31 @@ character function getPathSep()
 
 end function getPathSep
 
-!********************************************************************
-! read string value at myPos from line
-!********************************************************************
- pure function IO_stringValue(line,positions,myPos)
+
+!--------------------------------------------------------------------------------------------------
+!> @brief taken from IO, check IO_stringValue for documentation 
+!--------------------------------------------------------------------------------------------------
+pure function IIO_stringValue(line,positions,myPos)
  
  implicit none
-
  integer(pInt),                                intent(in) :: positions(*), &
                                                              myPos
-
- character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
-
+ character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IIO_stringValue
  character(len=*),                             intent(in) :: line
 
  if (positions(1) < myPos) then
-   IO_stringValue = ''
+   IIO_stringValue = ''
  else
-   IO_stringValue = line(positions(myPos*2):positions(myPos*2+1))
+   IIO_stringValue = line(positions(myPos*2):positions(myPos*2+1))
  endif
 
-end function IO_stringValue
+end function IIO_stringValue
 
-!********************************************************************
-! read int value at myPos from line
-!********************************************************************
-integer(pInt) pure function IO_intValue(line,positions,myPos)
+
+!--------------------------------------------------------------------------------------------------
+!> @brief taken from IO, check IO_stringValue for documentation 
+!--------------------------------------------------------------------------------------------------
+integer(pInt) pure function IIO_intValue(line,positions,myPos)
 
  implicit none
  character(len=*), intent(in) :: line
@@ -445,56 +481,56 @@ integer(pInt) pure function IO_intValue(line,positions,myPos)
                                  myPos
 
  if (positions(1) < myPos) then
-   IO_intValue = 0_pInt
+   IIO_intValue = 0_pInt
  else
-   read(UNIT=line(positions(myPos*2):positions(myPos*2+1)),ERR=100,FMT=*) IO_intValue
+   read(UNIT=line(positions(myPos*2):positions(myPos*2+1)),ERR=100,FMT=*) IIO_intValue
  endif
  return
-100 IO_intValue = huge(1_pInt)
+100 IIO_intValue = huge(1_pInt)
 
-end function IO_intValue
+end function IIO_intValue
 
-!********************************************************************
-! change character in line to lower case
-!********************************************************************
-pure function IO_lc(line)
+
+!--------------------------------------------------------------------------------------------------
+!> @brief taken from IO, check IO_lc for documentation 
+!--------------------------------------------------------------------------------------------------
+pure function IIO_lc(line)
 
  implicit none
  character(26), parameter :: lower = 'abcdefghijklmnopqrstuvwxyz'
  character(26), parameter :: upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
  character(len=*), intent(in) :: line
- character(len=len(line))     :: IO_lc
+ character(len=len(line))     :: IIO_lc
  
- integer                      :: i,n                      ! no pInt (len returns default integer)
+ integer                      :: i,n                                                                ! no pInt (len returns default integer)
 
- IO_lc = line
+ IIO_lc = line
  do i=1,len(line)
-   n = index(upper,IO_lc(i:i))
-   if (n/=0) IO_lc(i:i) = lower(n:n)
+   n = index(upper,IIO_lc(i:i))
+   if (n/=0) IIO_lc(i:i) = lower(n:n)
  enddo
 
-end function IO_lc
+end function IIO_lc
 
-!********************************************************************
-! locate at most N space-separated parts in line
-! return array containing number of parts in line and
-! the left/right positions of at most N to be used by IO_xxxVal
-!********************************************************************
-pure function IO_stringPos(line,N)
+
+!--------------------------------------------------------------------------------------------------
+!> @brief taken from IO, check IO_stringPos for documentation 
+!--------------------------------------------------------------------------------------------------
+pure function IIO_stringPos(line,N)
 
  implicit none
  integer(pInt),    intent(in) :: N
- integer(pInt)                :: IO_stringPos(1_pInt+N*2_pInt)
+ integer(pInt)                :: IIO_stringPos(1_pInt+N*2_pInt)
  
  character(len=*), intent(in) :: line
  
- character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13) ! comma and whitespaces
+ character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
 
- integer                      :: left, right                      !no pInt (verify and scan return default integer)
+ integer                      :: left, right                                                        !no pInt (verify and scan return default integer)
 
 
- IO_stringPos = -1_pInt
- IO_stringPos(1) = 0_pInt
+ IIO_stringPos = -1_pInt
+ IIO_stringPos(1) = 0_pInt
  right = 0
  
  do while (verify(line(right+1:),sep)>0)
@@ -503,13 +539,14 @@ pure function IO_stringPos(line,N)
    if ( line(left:left) == '#' ) then
      exit
    endif
-   if ( IO_stringPos(1)<N ) then
-     IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+1_pInt) = int(left, pInt)
-     IO_stringPos(1_pInt+IO_stringPos(1)*2_pInt+2_pInt) = int(right, pInt)
+   if ( IIO_stringPos(1)<N ) then
+     IIO_stringPos(1_pInt+IIO_stringPos(1)*2_pInt+1_pInt) = int(left, pInt)
+     IIO_stringPos(1_pInt+IIO_stringPos(1)*2_pInt+2_pInt) = int(right, pInt)
    endif
-   IO_stringPos(1) = IO_stringPos(1)+1_pInt
+   IIO_stringPos(1) = IIO_stringPos(1)+1_pInt
  enddo
 
-end function IO_stringPos
+end function IIO_stringPos
+
 
 end module
