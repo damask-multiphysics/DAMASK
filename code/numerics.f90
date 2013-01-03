@@ -96,7 +96,7 @@ character(len=64), protected, public :: &
                                 myfilter                   = 'none'                                 !< spectral filtering method
 character(len=1024), protected, public :: &
                                 petsc_options              = '-snes_type ngmres &
-                                                              -snes_ngmres_anderson '
+                                                             &-snes_ngmres_anderson '
 integer(pInt), protected, public :: &
                                 fftw_planner_flag          =  32_pInt, &                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
                                 itmax                      =  20_pInt, &                            !< maximum number of iterations

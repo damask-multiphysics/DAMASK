@@ -107,7 +107,7 @@ module debug
 
 #ifdef PETSc 
  character(len=1024), parameter, public :: &
-   PETScDebug = ' -snes_view -snes_monitor' 
+   PETScDebug = ' -snes_view -snes_monitor ' 
 #endif
  public :: debug_init, &
            debug_reset, &
