@@ -1,14 +1,74 @@
 #!/usr/bin/env python
-# -*- coding: iso-8859-1 -*-
 
-import math, convert_colormodels
+import math, convert_colormodels, colormap_io, string, sys
+
+from optparse import OptionParser, Option
+
+# -----------------------------
+class extendableOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+  
+  ACTIONS = Option.ACTIONS + ("extend",)
+  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+  def take_action(self, action, dest, opt, value, values, parser):
+    if action == "extend":
+      lvalue = value.split(",")
+      values.ensure_value(dest, []).extend(lvalue)
+    else:
+      Option.take_action(self, action, dest, opt, value, values, parser)
+
+
+
+# --------------------------------------------------------------------
+                               # MAIN
+# --------------------------------------------------------------------
+
+parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+Add column(s) containing Cauchy stress based on given column(s) of
+deformation gradient and first Piola--Kirchhoff stress.
+
+""" + string.replace('$Id: addCauchy.py 1278 2012-02-07 13:09:10Z MPIE\c.kords $','\n','\\n')
+)
+
+parser.add_option('-l','--left', dest='left', type='float', nargs=3, \
+                  help='left color')
+parser.add_option('-r','--right', dest='right', type='float', nargs=3, \
+                  help='right color')
+parser.add_option('-c','--colormodel', dest='colormodel', \
+                  help='colormodel of left and right "RGB","RGB255","HSV","HSL" [%default]')
+parser.add_option('-o','--outtype', dest='outtype', \
+                  help='output file type "paraview","gmsh","raw" [%default]')
+parser.add_option('-s','--steps', dest='steps', type='int', nargs = 1, \
+                  help='no of interpolation steps [%default]')
+
+parser.set_defaults(colormodel = 'RGB')
+parser.set_defaults(outtype = 'paraview')
+parser.set_defaults(steps = '10')
+
+(options,filenames) = parser.parse_args()
+
+# ------------------------------------------ setup file handles ---------------------------------------  
+
+files = []
+if filenames == []:
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  
+  
+# -----------------------------------------------------------------------------------------------------  
+
+   
 def rad_dif(Msh1,Msh2,white):
     HSL1 = convert_colormodels.RGB2HSL(convert_colormodels.XYZ2RGB(convert_colormodels.CIELab2XYZ(convert_colormodels.Msh2CIELab(Msh1),white)))
     HSL2 = convert_colormodels.RGB2HSL(convert_colormodels.XYZ2RGB(convert_colormodels.CIELab2XYZ(convert_colormodels.Msh2CIELab(Msh2),white)))
     return abs(HSL1[0]*math.pi/180.0-HSL2[0]*math.pi/180.0)
 
 def adjust_hue(Msh_sat,M_unsat):
-    if Msh_sat[0] >= M_unsat:
+    if ( Msh_sat[0] >= (M_unsat-0.1) ):
         return Msh_sat[2]
     else:
         hSpin = Msh_sat[1]*math.sqrt((M_unsat)**2.0-(Msh_sat[0])**2)/(Msh_sat[0]*math.sin(Msh_sat[1]))
@@ -42,25 +102,20 @@ def interpolate_color(RGB1,RGB2,white,interp):
         Msh_mid[i] = (1.0-interp)*Msh1[i] + interp* Msh2[i]
     return convert_colormodels.XYZ2RGB(convert_colormodels.CIELab2XYZ(convert_colormodels.Msh2CIELab(Msh_mid),white))
 
-test1 = [0.231372549,0.298039216,0.752941176]
-test2 = [0.705882353,0.015686275,0.149019608]
-#test1 = [0.0,1.0,24.0/255.0]
-#test1 = [0.5,0.5,0.5]
-#test2 = [0.0,151.0/255.0,21.0/255.0]
-x=0.950456 
-y=1.0
-z=1.088754
-white = [x, y, z]
-test = test1
-iteration = 33
-delta = 1.0/float(iteration-1)
-f = -delta
-for i in range(iteration):
-    f = f + delta
-    test = test + interpolate_color(test1,test2,white,f)
-test = test + test2
-for i in range(iteration):
-    print i
-    print test[3*i+3]*255.0
-    print test[3*i+1+3]*255.0
-    print test[3*i+2+3]*255.0, '\n'
+white = [0.950456, 1.0, 1.088754]
+interpolatorArray = []
+for i in range(options.steps+1): interpolatorArray.append(float(i)/options.steps)
+rMatrix = []
+gMatrix = []
+bMatrix = []
+for i in interpolatorArray:
+    step_no = str(interpolatorArray.index(i))
+    color = interpolate_color(options.left,options.right,white,i)
+    rMatrix.append(color[0])
+    gMatrix.append(color[1])
+    bMatrix.append(color[2])
+colorMatrix = [rMatrix,gMatrix,bMatrix]    
+
+if options.outtype.lower() == 'paraview':
+    colormap_io.write_paraview(colorMatrix,filenames[0])
+
