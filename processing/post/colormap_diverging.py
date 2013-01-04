@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import math, convert_colormodels, colormap_io, string, sys
-
+import math, string, sys
+from damask import Colormaps
 from optparse import OptionParser, Option
 
 # -----------------------------
@@ -32,7 +32,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog options [file[
 Add column(s) containing Cauchy stress based on given column(s) of
 deformation gradient and first Piola--Kirchhoff stress.
 
-""" + string.replace('$Id: addCauchy.py 1278 2012-02-07 13:09:10Z MPIE\c.kords $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-l','--left', dest='left', type='float', nargs=3, \
@@ -61,10 +61,11 @@ if filenames == []:
   
 # -----------------------------------------------------------------------------------------------------  
 
+myColorMap = Colormaps()
    
 def rad_dif(Msh1,Msh2,white):
-    HSL1 = convert_colormodels.RGB2HSL(convert_colormodels.XYZ2RGB(convert_colormodels.CIELab2XYZ(convert_colormodels.Msh2CIELab(Msh1),white)))
-    HSL2 = convert_colormodels.RGB2HSL(convert_colormodels.XYZ2RGB(convert_colormodels.CIELab2XYZ(convert_colormodels.Msh2CIELab(Msh2),white)))
+    HSL1 = myColorMap.RGB2HSL(myColorMap.XYZ2RGB(myColorMap.CIELab2XYZ(myColorMap.Msh2CIELab(Msh1),white)))
+    HSL2 = myColorMap.RGB2HSL(myColorMap.XYZ2RGB(myColorMap.CIELab2XYZ(myColorMap.Msh2CIELab(Msh2),white)))
     return abs(HSL1[0]*math.pi/180.0-HSL2[0]*math.pi/180.0)
 
 def adjust_hue(Msh_sat,M_unsat):
@@ -79,8 +80,8 @@ def adjust_hue(Msh_sat,M_unsat):
         
     
 def interpolate_color(RGB1,RGB2,white,interp):
-    Msh1 = convert_colormodels.CIELab2Msh(convert_colormodels.XYZ2CIELab(convert_colormodels.RGB2XYZ(RGB1),white))
-    Msh2 = convert_colormodels.CIELab2Msh(convert_colormodels.XYZ2CIELab(convert_colormodels.RGB2XYZ(RGB2),white))
+    Msh1 = myColorMap.CIELab2Msh(myColorMap.XYZ2CIELab(myColorMap.RGB2XYZ(RGB1),white))
+    Msh2 = myColorMap.CIELab2Msh(myColorMap.XYZ2CIELab(myColorMap.RGB2XYZ(RGB2),white))
     Msh_mid = [0.0,0.0,0.0]
     if ((Msh1[1] > 0.05 and Msh2[1] > 0.05) and rad_dif(Msh1,Msh2,white) > math.pi/3.0):
         Msh_mid[0] = max(Msh1[0],Msh2[0],88.0)
@@ -100,7 +101,7 @@ def interpolate_color(RGB1,RGB2,white,interp):
         Msh2[2] = adjust_hue(Msh1,Msh2[0])
     for i in range(3):
         Msh_mid[i] = (1.0-interp)*Msh1[i] + interp* Msh2[i]
-    return convert_colormodels.XYZ2RGB(convert_colormodels.CIELab2XYZ(convert_colormodels.Msh2CIELab(Msh_mid),white))
+    return myColorMap.XYZ2RGB(myColorMap.CIELab2XYZ(myColorMap.Msh2CIELab(Msh_mid),white))
 
 white = [0.950456, 1.0, 1.088754]
 interpolatorArray = []
@@ -114,8 +115,9 @@ for i in interpolatorArray:
     rMatrix.append(color[0])
     gMatrix.append(color[1])
     bMatrix.append(color[2])
+
 colorMatrix = [rMatrix,gMatrix,bMatrix]    
 
 if options.outtype.lower() == 'paraview':
-    colormap_io.write_paraview(colorMatrix,filenames[0])
+    myColorMap.write_paraview(colorMatrix,filenames[0])
 
