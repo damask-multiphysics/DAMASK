@@ -11,8 +11,8 @@ def write_gsmh(RGB_vector,name):
 
 def write_paraview(RGB_vector,name):
   colormap = open(str(name) + '.xml',"w")
-  colormap.write('<ColorMap name = "'+ str(name)+ '" space = "RGB">\n')
-  for i in range(len(RGB_vector)):
+  colormap.write('<ColorMap name="'+ str(name)+ '" space="RGB">\n')
+  for i in range(len(RGB_vector[0])):
     colormap.write('<Point x="'+str(i)+'" o="1" r="'+str(RGB_vector[0][i])+'" g="'+str(RGB_vector[1][i])+'" b="'+str(RGB_vector[2][i])+'"/>\n')
   colormap.write('</ColorMap>')
   file.close(colormap)
@@ -32,5 +32,3 @@ def write_raw(RGB_vector,name):
     colormap.write(str(RGB_vector[0][i])+'\t'+str(RGB_vector[1][i])+'\t'+str(RGB_vector[2][i])+'\n')
   file.close(colormap)
 
-  def read_raw(filename):
-    print 'void'
