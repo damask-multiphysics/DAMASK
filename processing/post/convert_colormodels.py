@@ -113,53 +113,86 @@ def XYZ2RGB(XYZ):
     for i in range(3):
         RGB[i] = min(RGB[i],1.0) 
         RGB[i] = max(RGB[i],0.0) 
+        
+    maxVal = RGB[0]
+    if (maxVal < RGB[1]): maxVal = RGB[1]
+    if (maxVal < RGB[2]): maxVal = RGB[2]
+    if (maxVal > 1.0):
+        RGB[0] = RGB[0]/maxVal
+        RGB[1] = RGB[1]/maxVal
+        RGB[2] = RGB[2]/maxVal
+        
     return RGB
-
+    
 # convert  CIE Lab to CIE XYZ
 # with XYZ in the range of 0 to 1
-# from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
+# from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
 def CIELab2XYZ(Lab,white):
+    # ref_white_XYZ = [.95047, 1.00000, 1.08883]        # Observer= 2°, Illuminant= D65
     XYZ = [0.0,0.0,0.0]
-    temp = [0.0,0.0,0.0]
-    temp[0] = 1.0/116.0 *(Lab[0] + 16.0) + 1/500.0 * Lab[1]
-    temp[1] = 1.0/116.0 *(Lab[0] + 16.0)
-    temp[2] = 1.0/116.0 *(Lab[0] + 16.0) - 1/200.0 * Lab[2]
-    for i in range(3):
-        if (temp[i] > 6.0/29.0):
-            temp[i] = temp[i]**(3.0)
-        else:
-            temp[i] =3 * (6.0/29.0)**2 * (temp[i]- 4.0/29.0)
-        XYZ[i] = white[i] * temp[i]
-    for i in range(3):
-        XYZ[i] = min(XYZ[i],1.0) 
-        XYZ[i] = max(XYZ[i],0.0) 
-    return XYZ
+    var_Y = ( Lab[0] + 16 ) / 116
+    var_X = Lab[1] / 500 + var_Y
+    var_Z = var_Y - Lab[2] / 200
 
+    if ( var_Y**3 > 0.008856 ):  
+        var_Y = var_Y**3
+    else: 
+        var_Y = ( var_Y-16/116) / 7.787
+        
+    if ( var_X**3 > 0.008856 ):  
+        var_X = var_X**3
+    else: 
+        var_X = ( var_X-16/116) / 7.787
+        
+    if ( var_Z**3 > 0.008856 ):  
+        var_Z = var_Z**3
+    else: 
+        var_Z = ( var_Z-16/116) / 7.787
+
+    XYZ[0] = white[0]*var_X          
+    XYZ[1] = white[1]*var_Y     
+    XYZ[2] = white[2]*var_Z
+    
+    return XYZ  
+  
 # convert CIE XYZ to CIE Lab 
 # with XYZ in the range of 0 to 1
 # from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
 def XYZ2CIELab(XYZ,white):
-    temp = [0.0,0.0,0.0]
+    # ref_white_XYZ = [.95047, 1.00000, 1.08883]          # Observer= 2°, Illuminant= D65
     Lab = [0.0,0.0,0.0]
-    for i in range(3):
-        temp[i] =  XYZ[i]/white[i]
-        if (temp[i] > (6.0/29.0)**3.0):
-            temp[i] = temp[i]**(1.0/3.0)
-        else:
-            temp[i] = 1.0/3.0 * (29.0/6.0)**2.0 * temp[i] + 4.0/29.0
-    Lab[0] = 116.0 * temp[1] - 16.0
-    Lab[1] = 500.0 *(temp[0] - temp[1])
-    Lab[2] = 200.0 *(temp[1] - temp[2])
+    var_X = XYZ[0]/white[0] 
+    var_Y = XYZ[1]/white[1]          
+    var_Z = XYZ[2]/white[2] 
+    
+    if ( var_X > 0.008856 ):
+        var_X = var_X**(1.0/3.0)
+    else: 
+        var_X = ( 7.787 * var_X ) + (16.0/116.0)
+        
+    if ( var_Y > 0.008856 ):
+        var_Y = var_Y**(1.0/3.0)
+    else:
+        var_Y = ( 7.787 * var_Y ) + (16.0/116.0)
+        
+    if ( var_Z > 0.008856 ):
+        var_Z = var_Z**(1.0/3.0)
+    else: 
+        var_Z = (7.787*var_Z)+(16.0/116.0)
+        
+    Lab[0] = (116.0 * var_Y) - 16.0
+    Lab[1] = 500.0 * (var_X - var_Y)
+    Lab[2] = 200.0 * (var_Y - var_Z)
     return Lab
-
+ 
 # convert Cie Lab to msh colorspace  
 # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
 def CIELab2Msh(Lab):
     Msh = [0.0,0.0,0.0]
     Msh[0] = math.sqrt(Lab[0]**2.0 + Lab[1]**2.0 + Lab[2]**2.0)
-    if (Msh[0] != 0.0):
+    if (Msh[0] != 0.0) and (Msh[0] > 0.001):
         Msh[1] = math.acos(Lab[0]/Msh[0])
-    if (Lab[1] != 0.0):
+    if (Lab[1] != 0.0) and (Msh[1] > 0.001):
         Msh[2] = math.atan2(Lab[2],Lab[1])
     return Msh
 
