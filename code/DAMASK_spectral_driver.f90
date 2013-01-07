@@ -97,6 +97,8 @@ program DAMASK_spectral_Driver
  real(pReal), dimension(3,3), parameter :: &
    ones  = 1.0_pReal, &
    zeros = 0.0_pReal 
+ integer(pInt), parameter :: &
+   subStepFactor = 2_pInt                                                                           !< for each substep, divide the last time increment by 2.0
  real(pReal) :: &
    time = 0.0_pReal, &                                                                              !< elapsed time
    time0 = 0.0_pReal, &                                                                             !< begin of interval
@@ -372,7 +374,7 @@ program DAMASK_spectral_Driver
        stepFraction = 0_pInt
 !--------------------------------------------------------------------------------------------------
 ! loop over sub incs 
-       subIncLooping: do while (stepFraction/2_pInt**cutBackLevel <1_pInt)
+       subIncLooping: do while (stepFraction/subStepFactor**cutBackLevel <1_pInt)
          time = time + timeinc                                                                      ! forward time
          stepFraction = stepFraction + 1_pInt 
 !--------------------------------------------------------------------------------------------------
@@ -380,16 +382,16 @@ program DAMASK_spectral_Driver
          write(6,'(1/,a)') '###########################################################################'
          write(6,'(a,es12.5'//&
                  ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
-                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(2_pInt**cutBackLevel)//&
+                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
                  ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
                  'Time', time, &
                  's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
-                 '-', stepFraction, '/', 2_pInt**cutBackLevel,&
+                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
                  ' of load case ', currentLoadCase,'/',size(loadCases)
          write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases(:)%incs))//&
-               ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(2_pInt**cutBackLevel)//')') &
+               ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
                'Inc. ',totalIncsCounter,'/',sum(loadCases(:)%incs),&
-               '-',stepFraction, '/', 2_pInt**cutBackLevel
+               '-',stepFraction, '/', subStepFactor**cutBackLevel
          select case(myspectralsolver)
          
 !--------------------------------------------------------------------------------------------------
@@ -426,16 +428,16 @@ program DAMASK_spectral_Driver
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
              write(6,'(/,a)') 'cut back detected'
              cutBack = .True.
-             stepFraction = (stepFraction - 1_pInt) * 2_pInt**cutBackLevel                          ! adjust to new denominator
+             stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
              time    = time - timeinc                                                               ! rewind time
              timeinc_old = timeinc
              timeinc = timeinc/2.0_pReal
            elseif (solres%termIll) then                                                             ! material point model cannot find a solution
-             if(regridMode > 0_pInt) call quit(-1*(lastRestartWritten+1))                           ! regrid requested (mode 1 or 2)
+             if(regridMode > 0_pInt) call quit(-1_pInt*(lastRestartWritten+1_pInt))                 ! regrid requested (mode 1 or 2)
              call IO_error(850_pInt)                                                                ! no regrid (give up)
            else
-             if(regridMode == 2_pInt) call quit(-1*(lastRestartWritten+1))                          ! regrid also if BVP solver do not converge
+             if(regridMode == 2_pInt) call quit(-1_pInt*(lastRestartWritten+1_pInt))                ! regrid also if BVP solver do not converge
              guess = .true.                                                                         ! continue from non-converged solution and start guessing after accepted (sub)inc
            endif
          else
