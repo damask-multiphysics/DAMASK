@@ -4,8 +4,8 @@ import sys
 from .environment import Environment      # only one class
 from .asciitable  import ASCIItable       # only one class
 from .config      import Material         # will be extended to debug and numerics
-from .colormaps   import Colormaps        # only one class
-#from .block       import Block            # only one class
+from .colormaps   import Colormap, Color
+#from .block       import Block           # only one class
 from .result      import Result           # one class with subclasses
 from .geometry    import Geometry         # one class with subclasses
 from .solver      import Solver           # one class with subclasses
