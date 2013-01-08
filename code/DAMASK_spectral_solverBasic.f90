@@ -261,7 +261,7 @@ type(tSolutionState) function &
    F_lastInc = F
  endif
  F_aim = F_aim + f_aimDot * timeinc
- F = Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),F_lastInc,Fdot)
+ F = Utilities_forwardField(timeinc,F_lastInc,Fdot,math_rotate_backward33(F_aim,rotation_BC))
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)

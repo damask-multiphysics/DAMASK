@@ -46,7 +46,8 @@ module DAMASK_spectral_solverAL
    F_lambda_lastInc, &                                                                              !< field of previous incompatible deformation gradient 
    Fdot, &                                                                                          !< field of assumed rate of compatible deformation gradient
    F_lambdaDot                                                                                      !< field of assumed rate of incopatible deformation gradient
- real(pReal), private                                    ::  temperature                            !< temperature, no spatial quantity at the moment
+ real(pReal), private :: &
+   temperature                                                                                      !< temperature, no spatial quantity at the moment
  
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -325,10 +326,10 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient
- F        = reshape(Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),&
-                                                          F_lastInc,Fdot),[9,res(1),res(2),res(3)])
- F_lambda = reshape(Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),&
-                                            F_lambda_lastInc,F_lambdadot),[9,res(1),res(2),res(3)])
+ F        = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                ! ensure that it matches rotated F_aim
+                               math_rotate_backward33(F_aim,rotation_BC)),[9,res(1),res(2),res(3)])
+ F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &                 ! does not have any average value as boundary condition
+                                                                          [9,res(1),res(2),res(3)])
 
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
  CHKERRQ(ierr)

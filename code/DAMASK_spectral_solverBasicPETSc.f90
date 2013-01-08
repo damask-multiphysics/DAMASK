@@ -292,8 +292,8 @@ type(tSolutionState) function &
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
- F = reshape(Utilities_forwardField(timeinc,math_rotate_backward33(F_aim,rotation_BC),F_lastInc,&
-                                 Fdot),[9,res(1),res(2),res(3)])
+ F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot,math_rotate_backward33(F_aim, &
+                                                            rotation_BC)),[9,res(1),res(2),res(3)])
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr)
  CHKERRQ(ierr)
   

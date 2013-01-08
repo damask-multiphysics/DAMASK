@@ -787,26 +787,31 @@ end function utilities_calculateRate
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forwards a field with a pointwise given rate, ensures that the average matches the aim
+!> @brief forwards a field with a pointwise given rate, if aim is given, 
+!> ensures that the average matches the aim
 !--------------------------------------------------------------------------------------------------
-pure function utilities_forwardField(timeinc,aim,field_lastInc,rate)
+pure function utilities_forwardField(timeinc,field_lastInc,rate,aim)
  use mesh, only: &
    res, &
    wgt
 
  implicit none
- real(pReal), intent(in)                                      :: timeinc                            !< timeinc of current step
- real(pReal), intent(in), dimension(3,3)                      :: aim                                !< average field value aim
- real(pReal), intent(in), dimension(3,3,res(1),res(2),res(3)) :: &
-   field_lastInc,&                                                                                  !< initial field
+ real(pReal), intent(in) :: & 
+   timeinc                                                                                          !< timeinc of current step
+ real(pReal), intent(in),           dimension(3,3,res(1),res(2),res(3)) :: &
+   field_lastInc, &                                                                                 !< initial field
    rate                                                                                             !< rate by which to forward
- real(pReal),             dimension(3,3,res(1),res(2),res(3)) :: utilities_forwardField
- real(pReal),             dimension(3,3)                      :: fieldDiff                          !< <a + adot*t> - aim
+ real(pReal), intent(in), optional, dimension(3,3) :: &
+   aim                                                                                              !< average field value aim
+ real(pReal),                       dimension(3,3,res(1),res(2),res(3)) :: utilities_forwardField
+ real(pReal),                       dimension(3,3)                      :: fieldDiff                !< <a + adot*t> - aim
  
  utilities_forwardField = field_lastInc + rate*timeinc
- fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt - aim
- utilities_forwardField = utilities_forwardField - &
+ if (present(aim)) then                                                                             !< correct to match average
+   fieldDiff = sum(sum(sum(utilities_forwardField,dim=5),dim=4),dim=3)*wgt - aim
+   utilities_forwardField = utilities_forwardField - &
                           spread(spread(spread(fieldDiff,3,res(1)),4,res(2)),5,res(3))
+ endif
 
 end function utilities_forwardField
 
