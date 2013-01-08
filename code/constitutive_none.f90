@@ -109,23 +109,19 @@ subroutine constitutive_none_init(myFile)
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) :: section = 0_pInt, maxNinstance, i,j,k, mySize, myStructure
  character(len=64)   :: tag
- character(len=1024) :: line
-
- !$OMP CRITICAL (write2out)
-   write(6,*)
-   write(6,*) '<<<+-  constitutive_',trim(constitutive_none_label),' init  -+>>>'
-   write(6,*) '$Id$'
+ character(len=1024) :: line = ''                                                                   ! to start initialized
+ 
+ write(6,*)
+ write(6,*) '<<<+-  constitutive_',trim(constitutive_none_label),' init  -+>>>'
+ write(6,*) '$Id$'
 #include "compilation_info.f90"
- !$OMP END CRITICAL (write2out)
  
  maxNinstance = int(count(phase_plasticity == constitutive_none_label),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
-   !$OMP CRITICAL (write2out)
-     write(6,'(a16,1x,i5)') '# instances:',maxNinstance
-     write(6,*)
-   !$OMP END CRITICAL (write2out)
+   write(6,'(a16,1x,i5)') '# instances:',maxNinstance
+   write(6,*)
  endif
  
  allocate(constitutive_none_sizeDotState(maxNinstance))

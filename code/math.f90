@@ -273,12 +273,10 @@ subroutine math_init
                                                                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
 
- !$OMP CRITICAL (write2out)
  write(6,*) ''
  write(6,*) '<<<+-  math init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
- !$OMP END CRITICAL (write2out)
 
  call random_seed(size=randSize)
  if (allocated(randInit)) deallocate(randInit)
@@ -297,14 +295,12 @@ subroutine math_init
    call random_number(randTest(i))
  enddo
 
- !$OMP CRITICAL (write2out)
  write(6,*) 'size  of random seed:    ', randSize
  do i =1, randSize
    write(6,*) 'value of random seed:    ', i, randInit(i)
  enddo
  write(6,'(a,4(/,26x,f17.14))') ' start of random sequence: ', randTest
  write(6,*) ''
- !$OMP END CRITICAL (write2out)
 
  call random_seed(put = randInit)
 

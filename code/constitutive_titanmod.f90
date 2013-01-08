@@ -252,8 +252,8 @@ integer(pInt) :: section,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,&
                  mySize = 0_pInt,myStructure,maxTotalNslip,maxTotalNtwin
 integer :: maxNinstance !no pInt
 character(len=64)   :: tag
-character(len=1024) :: line
-
+character(len=1024) :: line = ''                                                                   ! to start initialized
+ 
 write(6,*)
 write(6,*) '<<<+-  constitutive_',trim(constitutive_titanmod_label),' init  -+>>>'
 write(6,*) '$Id$'

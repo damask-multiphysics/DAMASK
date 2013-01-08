@@ -75,14 +75,14 @@ subroutine homogenization_isostrain_init(myFile)                           ! fil
  integer(pInt) section, i, j, output, mySize
  integer :: maxNinstance, k                                                                         !no pInt (stores a system dependen value from 'count'
  character(len=64)   :: tag
- character(len=1024) :: line
+ character(len=1024) :: line = ''                                                                   ! to start initialized
  
- !$OMP CRITICAL (write2out)
-   write(6,*)
-   write(6,*) '<<<+-  homogenization_',trim(homogenization_isostrain_label),' init  -+>>>'
-   write(6,*) '$Id$'
+
+ write(6,*)
+ write(6,*) '<<<+-  homogenization_',trim(homogenization_isostrain_label),' init  -+>>>'
+ write(6,*) '$Id$'
 #include "compilation_info.f90"
- !$OMP END CRITICAL (write2out)
+
 
  maxNinstance = count(homogenization_type == homogenization_isostrain_label)
  if (maxNinstance == 0) return

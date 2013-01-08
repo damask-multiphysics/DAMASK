@@ -148,14 +148,12 @@ integer(pInt) :: section, maxNinstance,mySize,myStructure,maxTotalNslip,maxTotal
                  f,i,j,k,l,m,n,o,p,q,r,s,ns,nt, &
                  index_myFamily, index_otherFamily
 character(len=64) tag
-character(len=1024) line
-
-!$OMP CRITICAL (write2out)
-  write(6,*)
-  write(6,*) '<<<+-  constitutive_',trim(constitutive_dislotwin_label),' init  -+>>>'
-  write(6,*) '$Id$'
+character(len=1024) :: line = ''                                                                   ! to start initialized
+ 
+write(6,*)
+write(6,*) '<<<+-  constitutive_',trim(constitutive_dislotwin_label),' init  -+>>>'
+write(6,*) '$Id$'
 #include "compilation_info.f90"
-!$OMP END CRITICAL (write2out)
 
 maxNinstance = int(count(phase_plasticity == constitutive_dislotwin_label),pInt)
 if (maxNinstance == 0_pInt) return
