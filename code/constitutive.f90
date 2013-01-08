@@ -729,11 +729,14 @@ end subroutine constitutive_TandItsTangent
 !*  - el             : current element                                  *
 !************************************************************************
 pure subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, g, i, e)
-
+use prec, only: &
+  pReal
 use math, only : &
   math_mul33x33, &
+  math_mul3333xx33, &
   math_Mandel66to3333, &
-  math_transpose33
+  math_transpose33, &
+  math_I3
 implicit none
 
 !* Definition of variables
@@ -741,7 +744,7 @@ implicit none
 integer(pInt), intent(in) :: g, i, e
 real(pReal), dimension(3,3), intent(in) :: Fe
 
-integer(pInt)  p, o
+integer(pInt) ::  p, o
 real(pReal), dimension(3,3), intent(out) :: T
 real(pReal), dimension(3,3,3,3), intent(out) :: dT_dFe
 

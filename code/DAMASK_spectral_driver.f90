@@ -70,7 +70,7 @@ program DAMASK_spectral_Driver
    integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
                                    outputfrequency        = 1_pInt, &                               !< frequency of result writes
                                    restartfrequency       = 0_pInt, &                               !< frequency of restart writes
-                                   logscale               = 0_pInt                                  !< linear/logaritmic time inc flag
+                                   logscale               = 0_pInt                                  !< linear/logarithmic time inc flag
    logical ::                      followFormerTrajectory = .true.                                  !< follow trajectory of former loadcase 
  end type tLoadCase
 

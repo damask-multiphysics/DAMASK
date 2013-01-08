@@ -140,7 +140,7 @@ subroutine AL_init()
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,AL_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr) ; CHKERRQ(ierr)
+ call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
