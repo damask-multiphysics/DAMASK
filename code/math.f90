@@ -1201,7 +1201,7 @@ pure function math_norm3(v)
  real(pReal), dimension(3), intent(in) :: v
  real(pReal) :: math_norm3
 
- math_norm3 = sqrt(v(1)*v(1) + v(2)*v(2) + v(3)*v(3))
+ math_norm3 = sqrt(sum(v**2.0_pReal))
 
 end function math_norm3
 

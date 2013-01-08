@@ -101,12 +101,10 @@ subroutine FE_init
  character(len=1024) :: line
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
 #endif
-!$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  FEsolving init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
-!$OMP END CRITICAL (write2out)
 
  modelName = getSolverJobName()
 #ifdef Spectral
@@ -179,14 +177,12 @@ subroutine FE_init
  if (allocated(calcMode)) deallocate(calcMode)
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
 #endif
-!$OMP CRITICAL (write2out)
  if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead
    if (restartRead) write(6,*) 'restart Job:        ', trim(modelName)
    write(6,*)
  endif
-!$OMP END CRITICAL (write2out)
 
 end subroutine FE_init
 

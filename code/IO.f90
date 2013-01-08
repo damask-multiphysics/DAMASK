@@ -1602,7 +1602,6 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
    read(unit2,'(A300)',END=220) line
    positions = IO_stringPos(line,maxNchunks)
 
-!   call IO_lcInPlace(line)
    if (IO_lc(IO_StringValue(line,positions,1_pInt))=='*include') then
      fname = trim(getSolverWorkingDirectoryName())//trim(line(9+scan(line(9:),'='):))
      inquire(file=fname, exist=fexist)

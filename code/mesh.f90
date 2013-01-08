@@ -1,7 +1,7 @@
-! Copyright 2011 Max-Planck-Institut fŸr Eisenforschung GmbH
+! Copyright 2011 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the DŸsseldorf Advanced Material Simulation Kit.
+! the Düsseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -19,11 +19,11 @@
 !--------------------------------------------------------------------------------------------------
 !* $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Franz Roters, Max-Planck-Institut fŸr Eisenforschung GmbH
-!! Philip Eisenlohr, Max-Planck-Institut fŸr Eisenforschung GmbH
-!! Christoph Koords, Max-Planck-Institut fŸr Eisenforschung GmbH
-!! Martin Diehl, Max-Planck-Institut fŸr Eisenforschung GmbH
-!! Krishna Komerla, Max-Planck-Institut fŸr Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!! Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!! Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
+!! Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!! Krishna Komerla, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver 
 !--------------------------------------------------------------------------------------------------
 
@@ -405,12 +405,11 @@ subroutine mesh_init(ip,element)
  integer(pInt), parameter :: fileUnit = 222_pInt
  integer(pInt) :: e, element, ip
  
- !$OMP CRITICAL (write2out)
-   write(6,*)
-   write(6,*) '<<<+-  mesh init  -+>>>'
-   write(6,*) '$Id$'
+ write(6,*)
+ write(6,*) '<<<+-  mesh init  -+>>>'
+ write(6,*) '$Id$'
 #include "compilation_info.f90"
- !$OMP END CRITICAL (write2out)
+
  if (allocated(mesh_mapFEtoCPelem))  deallocate(mesh_mapFEtoCPelem)
  if (allocated(mesh_mapFEtoCPnode))  deallocate(mesh_mapFEtoCPnode)
  if (allocated(mesh_node0))          deallocate(mesh_node0)

@@ -730,9 +730,10 @@ end subroutine constitutive_TandItsTangent
 !************************************************************************
 pure subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, g, i, e)
 
-use prec, only: p_vec
-use math
-
+use math, only : &
+  math_mul33x33, &
+  math_Mandel66to3333, &
+  math_transpose33
 implicit none
 
 !* Definition of variables
@@ -744,19 +745,17 @@ integer(pInt)  p, o
 real(pReal), dimension(3,3), intent(out) :: T
 real(pReal), dimension(3,3,3,3), intent(out) :: dT_dFe
 
-real(pReal), dimension(6,6)     :: C_66
+real(pReal), dimension(3,3)     :: FeT
 real(pReal), dimension(3,3,3,3) :: C
 
 !* get elasticity tensor
 
-C_66 = constitutive_homogenizedC(g,i,e)
-C = math_Mandel66to3333(C_66)
+C = math_Mandel66to3333(constitutive_homogenizedC(g,i,e))
 
-T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+FeT = math_transpose33(Fe)
+T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(FeT,Fe)-math_I3)
 
-do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
-    dT_dFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), math_transpose33(Fe))                 ! dT*_ij/dFe_kl
-enddo; enddo
+forall (o=1_pInt:3_pInt, p=1_pInt:3_pInt) dT_dFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), FeT) ! dT*_ij/dFe_kl
 
 end subroutine constitutive_hooke_TandItsTangent
 

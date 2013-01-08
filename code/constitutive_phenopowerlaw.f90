@@ -609,7 +609,7 @@ pure function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
    state                                                                                            ! state variables
  
  matID = phase_plasticityInstance(material_phase(ipc,ip,el))
- constitutive_phenopowerlaw_homogenizedC = constitutive_phenopowerlaw_Cslip_66(:,:,matID)
+ constitutive_phenopowerlaw_homogenizedC = constitutive_phenopowerlaw_Cslip_66(6,6,matID)
 
 end function constitutive_phenopowerlaw_homogenizedC
 
