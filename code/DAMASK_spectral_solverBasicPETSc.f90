@@ -58,13 +58,16 @@ module DAMASK_spectral_SolverBasicPETSc
 
  real(pReal), private :: err_stress, err_div
  logical, private :: ForwardData
+ integer(pInt), private :: reportIter = 0_pInt
  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
 
- public :: basicPETSc_init, &
-           basicPETSc_solution ,&
-           basicPETSc_destroy
- contains
+ public :: &
+   basicPETSc_init, &
+   basicPETSc_solution ,&
+   basicPETSc_destroy
+
+contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
@@ -114,8 +117,7 @@ subroutine basicPETSc_init(temperature)
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
 #include "compilation_info.f90"
- write(6,'(a)') ''
-    
+
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
  allocate (F_lastInc(3,3,res(1),res(2),res(3)),  source = 0.0_pReal)
@@ -123,33 +125,27 @@ subroutine basicPETSc_init(temperature)
     
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
- call SNESCreate(PETSC_COMM_WORLD,snes,ierr)
- CHKERRQ(ierr)
+ call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call DMDACreate3d(PETSC_COMM_WORLD, &
               DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
               DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
-              9,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
- CHKERRQ(ierr)
- call DMCreateGlobalVector(da,solution_vec,ierr)
- CHKERRQ(ierr)
- call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr)
- CHKERRQ(ierr)
- call SNESSetDM(snes,da,ierr)
- CHKERRQ(ierr)
+              9,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr); CHKERRQ(ierr)
+ call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
+ call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
+ call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr)  
- CHKERRQ(ierr)
+ call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
- call DMDAVecGetArrayF90(da,solution_vec,F,ierr)                                                    ! get the data out of PETSc to work with
- CHKERRQ(ierr)
+ call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
+
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F_lastInc = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)])
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
-   if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
+   if (debugRestart) write(6,'(/,a,i6,a)') ' reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
    flush(6)
    call IO_read_jobBinaryFile(777,'F',&
@@ -220,6 +216,7 @@ type(tSolutionState) function &
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
+
  implicit none
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
@@ -240,15 +237,14 @@ type(tSolutionState) function &
  PetscScalar, pointer :: F(:,:,:,:)
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
-
  incInfo = incInfoIn
 
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
- 
 !--------------------------------------------------------------------------------------------------
 ! write restart information for spectral solver
  if (restartWrite) then
-   write(6,'(a)') 'writing converged results for restart'
+   write(6,'(/,a)') ' writing converged results for restart'
+   flush(6)
    call IO_write_jobBinaryFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
@@ -296,8 +292,7 @@ type(tSolutionState) function &
 
  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot,math_rotate_backward33(F_aim, &
                                                             rotation_BC)),[9,res(1),res(2),res(3)])
- call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr)
- CHKERRQ(ierr)
+ call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
   
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -320,9 +315,11 @@ type(tSolutionState) function &
  BasicPETSC_solution%converged =.false.
  if (reason > 0 ) then
    BasicPETSC_solution%converged = .true.
+   BasicPETSC_solution%iterationsNeeded = reportIter
  endif
 
 end function BasicPETSc_solution
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the AL residual vector
@@ -350,26 +347,36 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
 
  implicit none
  DMDALocalInfo, dimension(*) :: myIn
- PetscScalar, dimension(3,3,res(1),res(2),res(3)) :: x_scal 
- PetscScalar, dimension(3,3,res(1),res(2),res(3)):: f_scal 
+ PetscScalar, dimension(3,3,res(1),res(2),res(3)) :: &
+   x_scal, &
+   f_scal 
  PetscInt :: iter, nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
+ integer(pInt), save :: callNo = 3_pInt
+ logical :: report
 
- call SNESGetNumberFunctionEvals(snes,nfuncs,ierr)
- CHKERRQ(ierr)
- call SNESGetIterationNumber(snes,iter,ierr)
- CHKERRQ(ierr)
+ call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
+ call SNESGetIterationNumber(snes,iter,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
- write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                  ' @ Iter. ', itmin, '≤', iter, '≤', itmax
- if (debugRotation) &
- write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim (lab)=', &
-                                math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
- write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
-                                math_transpose33(F_aim)
+ if (iter == 0 .and. callNo>2) then
+   callNo = 0_pInt
+   reportIter = 0_pInt
+ endif
+ if (callNo == 0 .or. mod(callNo,2) == 1_pInt) then
+   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+                    ' @ Iteration ', itmin, '≤',reportIter, '≤', itmax
+   if (debugRotation) &
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab)=', &
+                                 math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
+                                 math_transpose33(F_aim)
+   flush(6)
+   reportIter = reportIter + 1_pInt
+ endif
+ callNo = callNo +1_pInt
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -395,8 +402,8 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
- f_scal = reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(x_scal),order=[3,4,5,1,2])  
- write(6,'(/,a)') '=========================================================================='
+ f_scal = reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(x_scal),order=[3,4,5,1,2]) 
+
 end subroutine BasicPETSc_formResidual
 
 
@@ -404,47 +411,53 @@ end subroutine BasicPETSc_formResidual
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
 subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
-
  use numerics, only: &
    itmax, &
    itmin, &
    err_div_tol, &
    err_stress_tolrel, &
    err_stress_tolabs
-
  use math, only: &
    math_mul33x33, &
    math_eigenvalues33, &
    math_transpose33
  
  implicit none
-
  SNES :: snes_local
  PetscInt :: it
- PetscReal :: xnorm, snorm, fnorm
+ PetscReal :: &
+   xnorm, &
+   snorm, &
+   fnorm
  SNESConvergedReason :: reason
  PetscObject :: dummy
  PetscErrorCode :: ierr
  logical :: Converged
- real(pReal) :: pAvgDivL2
+ real(pReal) :: pAvgDivL2, &
+   err_stress_tol 
+ 
+ err_stress_tol =min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
            
  pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,math_transpose33(P_av)))))
- Converged = (it > itmin .and. &
+ Converged = (it >= itmin .and. &
                all([ err_div/pAvgDivL2/err_div_tol, &
-                     err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)] < 1.0_pReal))
+                     err_stress/err_stress_tol] < 1.0_pReal))
  
  if (Converged) then
    reason = 1
- elseif (it > itmax) then
+ elseif (it >= itmax) then
    reason = -1
  else  
    reason = 0
  endif 
-
- write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/pAvgDivL2/err_div_tol,&
-                                                       ' (',err_div/pAvgDivL2,' N/m³)'
- write(6,'(a,f6.2,a,es11.4,a)') 'error stress =     ', err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs), &
-                                                       ' (',err_stress,' Pa)'  
+ write(6,'(1/,a)') ' ... reporting ....................................................'
+ write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
+            err_div/pAvgDivL2/err_div_tol, ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
+ write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC =  ', &
+                   err_stress/err_stress_tol, ' (',err_stress, ' Pa  , tol =',err_stress_tol,')' 
+ write(6,'(/,a)') ' =========================================================================='
+ flush(6)
+ 
 end subroutine BasicPETSc_converged
 
 
@@ -452,23 +465,18 @@ end subroutine BasicPETSc_converged
 !> @brief destroy routine
 !--------------------------------------------------------------------------------------------------
 subroutine BasicPETSc_destroy()
- 
  use DAMASK_spectral_Utilities, only: &
    Utilities_destroy
 
  implicit none
  PetscErrorCode :: ierr
   
- call VecDestroy(solution_vec,ierr)
- CHKERRQ(ierr)
- call SNESDestroy(snes,ierr)
- CHKERRQ(ierr)
- call DMDestroy(da,ierr)
- CHKERRQ(ierr)
- call PetscFinalize(ierr)
- CHKERRQ(ierr)
+ call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
+ call SNESDestroy(snes,ierr); CHKERRQ(ierr)
+ call DMDestroy(da,ierr); CHKERRQ(ierr)
+ call PetscFinalize(ierr); CHKERRQ(ierr)
  call Utilities_destroy()
- CHKERRQ(ierr)
+
 end subroutine BasicPETSc_destroy
 
 end module DAMASK_spectral_SolverBasicPETSc

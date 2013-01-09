@@ -82,8 +82,7 @@ subroutine basic_init(temperature)
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
- write(6,'(a)') ''
-  
+
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
  allocate (F         (3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
@@ -96,8 +95,9 @@ subroutine basic_init(temperature)
    F         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
    F_lastInc = F
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
-   if (debugRestart) write(6,'(a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-                             'Reading values of increment', restartInc - 1_pInt, 'from file' 
+   if (debugRestart) write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+                             'reading values of increment', restartInc - 1_pInt, 'from file'
+   flush(6)
    call IO_read_jobBinaryFile(777,'F',&
                                                   trim(getSolverJobName()),size(F))
    read (777,rec=1) F
@@ -216,7 +216,8 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! write restart information for spectral solver
  if (restartWrite) then
-   write(6,'(a)') 'writing converged results for restart'
+   write(6,'(/,a)') ' writing converged results for restart'
+   flush(6)
    call IO_write_jobBinaryFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
@@ -277,13 +278,14 @@ type(tSolutionState) function &
    iter = iter + 1_pInt
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
-   write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                    ' @ Iter. ', itmin, '≤',iter, '≤', itmax
+   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+                    ' @ Iteration ', itmin, '≤',iter, '≤', itmax
    if (debugRotation) &
-   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim (lab)=', &
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab)=', &
                                         math_transpose33(math_rotate_backward33(F_aim,rotation_BC))
-   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                         math_transpose33(F_aim)
+   flush(6)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
    F_aim_lastIter = F_aim
@@ -310,7 +312,8 @@ type(tSolutionState) function &
    call Utilities_FFTbackward()
    F = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
-   write(6,'(/,a)') '=========================================================================='
+   write(6,'(/,a)') ' =========================================================================='
+   flush(6)
    if ((basic_solution%converged .and. iter >= itmin) .or. basic_solution%termIll) then
      basic_solution%iterationsNeeded = iter
      exit
@@ -353,10 +356,11 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
  basic_Converged = all([ err_div/pAvgDivL2/err_div_tol,&
                            err_stress/err_stress_tol    ]  < 1.0_pReal)
   
- write(6,'(a,f6.2,a,es11.4,a)') 'error divergence = ', err_div/pAvgDivL2/err_div_tol,&
-                                                       ' (',err_div,' N/m³)'
- write(6,'(a,f6.2,a,es11.4,a)') 'error stress =     ', err_stress/err_stress_tol, &
-                                                       ' (',err_stress,' Pa)'  
+ write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
+            err_div/pAvgDivL2/err_div_tol, ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
+ write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC =  ', &
+                   err_stress/err_stress_tol, ' (',err_stress, ' Pa  , tol =',err_stress_tol,')'  
+ flush(6)
 
 end function basic_Converged
 

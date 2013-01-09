@@ -139,6 +139,7 @@ subroutine utilities_init()
  write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
  write(6,'(a)')   ''
+ call flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -149,14 +150,12 @@ subroutine utilities_init()
  debugRotation   = iand(debug_level(debug_spectral),debug_spectralRotation)   /= 0
 #ifdef PETSc
  debugPETSc      = iand(debug_level(debug_spectral),debug_spectralPETSc)      /= 0
- if(debugPETSc) write(6,'(a)') ' Initializing PETSc with debug options: ', trim(PETScDebug), &
-                               ' add more using the PETSc_Options keyword in numerics.config '
- call PetscOptionsClear(ierr)
- CHKERRQ(ierr)
- if(debugPETSc) call PetscOptionsInsertString(trim(PETScDebug),ierr)
- CHKERRQ(ierr)
- call PetscOptionsInsertString(trim(petsc_options),ierr)
- CHKERRQ(ierr)
+ if(debugPETSc) write(6,'(/,a)') ' Initializing PETSc with debug options: ', trim(PETScDebug), &
+                                 ' add more using the PETSc_Options keyword in numerics.config '
+ flush(6)
+ call PetscOptionsClear(ierr); CHKERRQ(ierr)
+ if(debugPETSc) call PetscOptionsInsertString(trim(PETScDebug),ierr); CHKERRQ(ierr)
+ call PetscOptionsInsertString(trim(petsc_options),ierr); CHKERRQ(ierr)
 #endif
 !--------------------------------------------------------------------------------------------------
 ! allocation
@@ -214,7 +213,8 @@ subroutine utilities_init()
                                       scalarField_fourier,scalarField_real,+1,fftw_planner_flag)    ! input, output, backward (1), planner precision
  endif 
 
- if (debugGeneral) write(6,'(a)') 'FFTW initialized'
+ if (debugGeneral) write(6,'(/,a)') ' FFTW initialized'
+ flush(6)
  
 !--------------------------------------------------------------------------------------------------
 ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
@@ -268,7 +268,8 @@ subroutine utilities_updateGamma(C,saveReference)
   
  C_ref = C
  if (saveReference) then
-   write(6,'(a)') 'writing reference stiffness to file'
+   write(6,'(/,a)') ' writing reference stiffness to file'
+   flush(6)
    call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
    write (777,rec=1) C_ref
    close(777)
@@ -330,14 +331,16 @@ subroutine utilities_FFTforward(row,column)
 ! comparing 1 and 3x3 FT results
   if (debugFFTW) then
     call fftw_execute_dft(plan_scalarField_forth,scalarField_real,scalarField_fourier)
-    write(6,'(a,i1,1x,i1)') 'checking FT results of compontent ', row, column
-    write(6,'(a,2(es11.4,1x))')  'max FT relative error = ',&                                       ! print real and imaginary part seperately
+    write(6,'(/,a,i1,1x,i1,a)') ' .. checking FT results of compontent ', row, column, ' ..'
+    flush(6)
+    write(6,'(/,a,2(es11.4,1x))')  ' max FT relative error = ',&                                    ! print real and imaginary part seperately
       maxval( real((scalarField_fourier(1:res1_red,1:res(2),1:res(3))-& 
                           field_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
                     scalarField_fourier(1:res1_red,1:res(2),1:res(3)))), &
       maxval(aimag((scalarField_fourier(1:res1_red,1:res(2),1:res(3))-&
                           field_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
                     scalarField_fourier(1:res1_red,1:res(2),1:res(3))))
+    flush(6)
   endif
 
 !--------------------------------------------------------------------------------------------------
@@ -395,12 +398,14 @@ subroutine utilities_FFTbackward(row,column)
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
   if (debugFFTW) then
-    write(6,'(a,i1,1x,i1)') 'checking iFT results of compontent ', row, column
+    write(6,'(/,a,i1,1x,i1,a)') ' ... checking iFT results of compontent ', row, column, ' ..'
+    flush(6)
     call fftw_execute_dft(plan_scalarField_back,scalarField_fourier,scalarField_real)
-    write(6,'(a,es11.4)') 'max iFT relative error = ',&
+    write(6,'(/,a,es11.4)') ' max iFT relative error = ',&
         maxval((real(scalarField_real(1:res(1),1:res(2),1:res(3)))-&
                 field_real(1:res(1),1:res(2),1:res(3),row,column))/&
                 real(scalarField_real(1:res(1),1:res(2),1:res(3))))
+    flush(6)
   endif
   
   field_real = field_real * wgt                                                                     ! normalize the result by number of elements
@@ -453,8 +458,9 @@ subroutine utilities_fourierConvolution(fieldAim)
    i, j, k, &
    l, m, n, o
 
- write(6,'(/,a)') '... doing convolution .....................................................'
-  
+ write(6,'(/,a)') ' ... doing convolution .....................................................'
+ flush(6)
+ 
 !--------------------------------------------------------------------------------------------------
 ! to the actual spectral method calculation (mechanical equilibrium)
  if(memory_efficient) then                                                                          ! memory saving version, on-the-fly calculation of gamma_hat
@@ -505,8 +511,8 @@ real(pReal) function utilities_divergenceRMS()
    err_real_div_max                                                                                 !< maximum value of divergence in real space
  complex(pReal), dimension(3) ::  temp3_complex
 
- write(6,'(/,a)') '... calculating divergence ................................................'
-
+ write(6,'(/,a)') ' ... calculating divergence ................................................'
+ flush(6)
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
  utilities_divergenceRMS = 0.0_pReal
@@ -549,11 +555,12 @@ real(pReal) function utilities_divergenceRMS()
    err_real_div_max = sqrt(maxval(sum(divergence_real**2.0_pReal,dim=4)))                          ! max in real space                                       
    err_div_max      = sqrt(    err_div_max)                                                        ! max in Fourier space
    
-   write(6,'(1x,a,es11.4)')        'error divergence  FT  RMS = ',err_div_RMS
+   write(6,'(/,1x,a,es11.4)')      'error divergence  FT  RMS = ',err_div_RMS
    write(6,'(1x,a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
    write(6,'(1x,a,es11.4)')        'error divergence post RMS = ',err_post_div_RMS
    write(6,'(1x,a,es11.4)')        'error divergence  FT  max = ',err_div_max
    write(6,'(1x,a,es11.4)')        'error divergence Real max = ',err_real_div_max
+   flush(6)
  endif
 
 end function utilities_divergenceRMS
@@ -596,9 +603,13 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    allocate (sTimesC(size_reduced,size_reduced),   source =0.0_pReal)
 
    temp99_Real = math_Plain3333to99(math_rotate_forward3333(C,rot_BC))
-   if(debugGeneral) &
-     write(6,'(a,/,9(9(2x,f12.7,1x)/))',advance='no') 'Stiffness C rotated  / GPa =',&
+
+   if(debugGeneral) then 
+     write(6,'(/,a)') ' ... updating masked compliance ............................................'
+     write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C rotated  / GPa =',&
                                                   transpose(temp99_Real)/1.e9_pReal
+     flush(6)
+   endif
    k = 0_pInt                                                                                       ! calculate reduced stiffness
    do n = 1_pInt,9_pInt
      if(mask_stressVector(n)) then
@@ -633,9 +644,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    enddo
    if(debugGeneral .or. errmatinv) then                                                             ! report
      write(formatString, '(I16.16)') size_reduced
-     formatString = '(a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-     write(6,trim(formatString),advance='no') 'C * S', transpose(matmul(c_reduced,s_reduced))
-     write(6,trim(formatString),advance='no') 'S', transpose(s_reduced)
+     formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
+     write(6,trim(formatString),advance='no') ' C * S', transpose(matmul(c_reduced,s_reduced))
+     write(6,trim(formatString),advance='no') ' S', transpose(s_reduced)
    endif
    if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    deallocate(c_reduced)
@@ -645,8 +656,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    temp99_real = 0.0_pReal
  endif
  if(debugGeneral) &                                                                                 ! report
-   write(6,'(a,/,9(9(2x,f12.7,1x)/))',advance='no') 'Masked Compliance * GPa =', &
-                                                  transpose(temp99_Real*1.e9_pReal)
+   write(6,'(/,a,/,9(9(2x,f12.7,1x)/),/)',advance='no') ' Masked Compliance * GPa =', &
+                                                    transpose(temp99_Real*1.e9_pReal)
+ flush(6)
  utilities_maskedCompliance = math_Plain99to3333(temp99_Real)
 
 end function utilities_maskedCompliance 
@@ -693,7 +705,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  real(pReal), dimension(6)       :: sigma                                                           !< cauchy stress in mandel notation
  real(pReal), dimension(6,6)     :: dsde                                                            !< d sigma / d Epsilon
 
- write(6,'(/,a,/)') '... evaluating constitutive response ......................................'
+ write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  if (forwardData) then                                                                              ! aging results
    calcMode = 1_pInt
    collectMode = 4_pInt
@@ -719,7 +731,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
     ! write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
     ! write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
   ! endif
- if (DebugGeneral) write(6,*) 'collect mode: ', collectMode,' calc mode: ', calcMode
+ if (DebugGeneral) write(6,'(/,2(a,i1.1))') ' collect mode: ', collectMode,' calc mode: ', calcMode
  flush(6)
  
  ielem = 0_pInt
@@ -751,11 +763,12 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  
  P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P 
  if (debugRotation) &
- write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola--Kirchhoff stress (lab) / MPa =',&
+ write(6,'(/,a,/,3(3(2x,f12.7,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
                                                      math_transpose33(P_av)/1.e6_pReal
  P_av = math_rotate_forward33(P_av,rotation_BC)
- write(6,'(a,/,3(3(2x,f12.7,1x)/))',advance='no') 'Piola--Kirchhoff stress / MPa =',&
+ write(6,'(/,a,/,3(3(2x,f12.7,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
                                                      math_transpose33(P_av)/1.e6_pReal
+
 end subroutine utilities_constitutiveResponse
 
 

@@ -21,14 +21,16 @@
 !##############################################################
 module numerics
 !##############################################################
+ use prec, only: &
+   pInt, &
+   pReal
 
-use prec, only: pInt, pReal
+ implicit none
+ private
+ character(len=64), parameter, private :: &
+   numerics_configFile        = 'numerics.config'                                                   !< name of configuration file
 
-implicit none
-character(len=64), parameter, private :: &
-  numerics_configFile        = 'numerics.config'                                                    !< name of configuration file
-
-integer(pInt), protected, public :: &
+ integer(pInt), protected, public :: &
                                 iJacoStiffness             =  1_pInt, &                             !< frequency of stiffness update
                                 iJacoLpresiduum            =  1_pInt, &                             !< frequency of Jacobian update of residuum in Lp
                                 nHomog                     = 20_pInt, &                             !< homogenization loop limit (only for debugging info, loop limit is determined by "subStepMinHomog")
@@ -37,10 +39,10 @@ integer(pInt), protected, public :: &
                                 nState                     = 10_pInt, &                             !< state loop limit
                                 nStress                    = 40_pInt, &                             !< stress loop limit
                                 pert_method                =  1_pInt                                !< method used in perturbation technique for tangent
-integer(pInt) ::                numerics_integrationMode   =  0_pInt                                !< integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
-integer(pInt), dimension(2) , protected, public :: &
+ integer(pInt), public ::       numerics_integrationMode   =  0_pInt                                !< integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
+ integer(pInt), dimension(2) , protected, public :: &
                                 numerics_integrator        =  1_pInt                                !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
-real(pReal), protected, public :: &
+ real(pReal), protected, public :: &
                                 relevantStrain             =  1.0e-7_pReal, &                       !< strain increment considered significant (used by crystallite to determine whether strain inc is considered significant)
                                 defgradTolerance           =  1.0e-7_pReal, &                       !< deviation of deformation gradient that is still allowed (used by CPFEM to determine outdated ffn1)
                                 pert_Fg                    =  1.0e-7_pReal, &                       !< strain perturbation for FEM Jacobi
@@ -68,20 +70,20 @@ real(pReal), protected, public :: &
                                 maxVolDiscr_RGC            =  1.0e-5_pReal, &                       !< threshold of maximum volume discrepancy allowed
                                 volDiscrMod_RGC            =  1.0e+12_pReal, &                      !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
                                 volDiscrPow_RGC            =  5.0_pReal                             !< powerlaw penalty for volume discrepancy
-logical, protected, public :: &                      
+ logical, protected, public :: &                      
                                 analyticJaco               = .false., &                             !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
                                 numerics_timeSyncing       = .false.                                !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 !* Random seeding parameters
-integer(pInt), protected, public :: &
+ integer(pInt), protected, public :: &
                                 fixedSeed                  = 0_pInt                                 !< fixed seeding for pseudo-random number generator, Default 0: use random seed
 !* OpenMP variable
-integer(pInt), protected, public :: &
+ integer(pInt), protected, public :: &
                                 DAMASK_NumThreadsInt       = 0_pInt                                 !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
 
 !* spectral parameters:
 #ifdef Spectral
-real(pReal), protected, public :: &
+ real(pReal), protected, public :: &
                                 err_div_tol                =  0.1_pReal, &                          !< Div(P)/avg(P)*meter
                                 err_stress_tolrel          =  0.01_pReal, &                         !< relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 err_stress_tolabs          =  huge(1.0_pReal),  &                   !< absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
@@ -89,28 +91,28 @@ real(pReal), protected, public :: &
                                 err_p_tol                  =  1e-5_pReal,  &
                                 fftw_timelimit             = -1.0_pReal, &                          !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal                         !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
-character(len=64), private :: &
+ character(len=64), private :: &
                                 fftw_plan_mode             = 'FFTW_PATIENT'                         !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
-character(len=64), protected, public :: & 
+ character(len=64), protected, public :: & 
                                 myspectralsolver           = 'basic'  , &                           !< spectral solution method 
                                 myfilter                   = 'none'                                 !< spectral filtering method
-character(len=1024), protected, public :: &
+ character(len=1024), protected, public :: &
                                 petsc_options              = '-snes_type ngmres &
                                                              &-snes_ngmres_anderson '
-integer(pInt), protected, public :: &
+ integer(pInt), protected, public :: &
                                 fftw_planner_flag          =  32_pInt, &                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
                                 itmax                      =  20_pInt, &                            !< maximum number of iterations
                                 itmin                      =  2_pInt, &                             !< minimum number of iterations
                                 maxCutBack                 =  3_pInt, &                             !< max number of cut backs
                                 regridMode                 =  0_pInt                                !< 0: no regrid; 1: regrid if DAMASK doesn't converge; 2: regrid if DAMASK or BVP Solver doesn't converge 
-logical, protected , public :: &
+ logical, protected , public :: &
                                 memory_efficient           = .true., &                              !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 divergence_correction      = .false., &                             !< correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false.                                !< update gamma operator with current stiffness, Default .false.: use initial stiffness 
 
 #endif
 
-  public :: numerics_init
+ public :: numerics_init
   
 contains
 
@@ -150,7 +152,6 @@ subroutine numerics_init
  write(6,*) '<<<+-  numerics init  -+>>>'
  write(6,*) '$Id$'
 #include "compilation_info.f90"
-
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) call IO_warning(35_pInt,ext_msg=DAMASK_NumThreadsString)
@@ -336,7 +337,7 @@ subroutine numerics_init
  end select
 #endif
 
-numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                 ! timeSyncing only allowed for explicit Euler integrator
+ numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                ! timeSyncing only allowed for explicit Euler integrator
 
  !* writing parameters to output file
    

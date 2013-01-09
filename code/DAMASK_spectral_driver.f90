@@ -331,7 +331,8 @@ program DAMASK_spectral_Driver
    open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                '.sta',form='FORMATTED',status='REPLACE')
    write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                   ! statistics file
-   if (debugGeneral) write(6,'(a)') 'Header of result file written out'
+   if (debugGeneral) write(6,'(/,a)') ' header of result file written out'
+   flush(6)
  endif
 !--------------------------------------------------------------------------------------------------
 ! loopping over loadcases
@@ -379,8 +380,8 @@ program DAMASK_spectral_Driver
          stepFraction = stepFraction + 1_pInt 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
-         write(6,'(1/,a)') '###########################################################################'
-         write(6,'(a,es12.5'//&
+         write(6,'(/,a)') ' ###########################################################################'
+         write(6,'(1x,a,es12.5'//&
                  ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
                  ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
                  ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
@@ -388,9 +389,10 @@ program DAMASK_spectral_Driver
                  's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
                  '-', stepFraction, '/', subStepFactor**cutBackLevel,&
                  ' of load case ', currentLoadCase,'/',size(loadCases)
+         flush(6)
          write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases(:)%incs))//&
                ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
-               'Inc. ',totalIncsCounter,'/',sum(loadCases(:)%incs),&
+               'Increment ',totalIncsCounter,'/',sum(loadCases(:)%incs),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel
          select case(myspectralsolver)
          
@@ -449,16 +451,17 @@ program DAMASK_spectral_Driver
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
        if(solres%converged) then                                                                    ! report converged inc
          convergedCounter = convergedCounter + 1_pInt
-         write(6,'(A,'//IO_intOut(totalIncsCounter)//',A)') &
-                                     'increment ', totalIncsCounter, ' converged'
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',A)') &
+                                     ' increment ', totalIncsCounter, ' converged'
        else
-         write(6,'(A,'//IO_intOut(totalIncsCounter)//',A)') &                                       ! report non-converged inc
-                                     'increment ', totalIncsCounter, ' NOT converged'
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',A)') &                                       ! report non-converged inc
+                                     ' increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
        endif
+       flush(6)
 
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
-         write(6,'(1/,a)') '... writing results to file ......................................'
+         write(6,'(1/,a)') ' ... writing results to file ......................................'
          write(resUnit)  materialpoint_results                                                      ! write result to file
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &
@@ -489,9 +492,8 @@ program DAMASK_spectral_Driver
  
 !--------------------------------------------------------------------------------------------------
 ! done report summary 
- write(6,'(a)') ''
- write(6,'(a)') '##################################################################'
- write(6,'(i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
+ write(6,'(/,a)') ' ##################################################################'
+ write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
                                    notConvergedCounter + convergedCounter, ' (', &
                                    real(convergedCounter, pReal)/&
                                    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &

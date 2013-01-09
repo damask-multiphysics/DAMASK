@@ -1298,7 +1298,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  character(len=*), optional, intent(in) :: ext_msg
  
  character(len=1024)                    :: msg
-
+ character(len=1024)                    :: formatString
+ 
  select case (error_ID)
 
  !* internal errors
@@ -1414,7 +1415,7 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (831_pInt)
    msg = 'mask consistency violated in spectral loadcase'
  case (832_pInt)
-   msg = 'ill-defined L (each line should be either fully or not at all defined) in spectral loadcase'
+   msg = 'ill-defined L (line party P) in spectral loadcase'
  case (834_pInt)
    msg = 'negative time increment in spectral loadcase'
  case (835_pInt)
@@ -1438,7 +1439,7 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (846_pInt)
    msg = 'not a rotation defined for loadcase rotation'
  case (847_pInt)
-   msg = 'updating of gamma operator not possible if it is pre calculated'
+   msg = 'update of gamma operator not possible when pre-calculated'
  case (850_pInt)
    msg = 'max number of cut back exceeded'
  case (880_pInt)
@@ -1453,27 +1454,27 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  !* Error messages related to parsing of Abaqus input file
 
  case (900_pInt)
-   msg = 'PARSE ERROR: Improper definition of nodes in input file (Nnodes < 2)'
+   msg = 'improper definition of nodes in input file (Nnodes < 2)'
  case (901_pInt)
-   msg = 'PARSE ERROR: No Elements defined in input file (Nelems = 0)'
+   msg = 'no elements defined in input file (Nelems = 0)'
  case (902_pInt)
-   msg = 'PARSE ERROR: No Element sets defined in input file (Atleast one *Elset must exist)'
+   msg = 'no element sets defined in input file (No *Elset exists)'
  case (903_pInt)
-   msg = 'PARSE ERROR: No Materials defined in input file (Look into section assigments)'
+   msg = 'no materials defined in input file (Look into section assigments)'
  case (904_pInt)
-   msg = 'PARSE ERROR: No elements could be assigned for Elset: '
+   msg = 'no elements could be assigned for Elset: '
  case (905_pInt)
-   msg = 'PARSE ERROR: Error in mesh_abaqus_map_materials'
+   msg = 'error in mesh_abaqus_map_materials'
  case (906_pInt)
-   msg = 'PARSE ERROR: Error in mesh_abaqus_count_cpElements'
+   msg = 'error in mesh_abaqus_count_cpElements'
  case (907_pInt)
-   msg = 'PARSE ERROR: Incorrect size of mesh_mapFEtoCPelem in mesh_abaqus_map_elements; Size cannot be zero'
+   msg = 'size of mesh_mapFEtoCPelem in mesh_abaqus_map_elements'
  case (908_pInt)
-   msg = 'PARSE ERROR: Incorrect size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes; Size cannot be zero'
+   msg = 'size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes'
  case (909_pInt)
-   msg = 'PARSE ERROR: Incorrect size of mesh_node in mesh_abaqus_build_nodes; must be equal to mesh_Nnodes'
+   msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes'
  case (910_pInt)
-   msg = 'PARSE ERROR: Incorrect element type mapping in '
+   msg = 'incorrect element type mapping in '
  
  
  !* general error messages
@@ -1481,26 +1482,35 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (666_pInt)
    msg = 'memory leak detected'
  case default
-   msg = 'Unknown error number...'
+   msg = 'unknown error number...'
 
  end select
  
  !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,'(a38)')        '+------------------------------------+'
- write(6,'(a38)')        '+               error                +'
- write(6,'(a17,i3,a18)') '+                ',error_ID,'                 +'
- write(6,'(a38)')        '+                                    +'
- write(6,'(a2,a)')       '+ ', trim(msg)
- if (present(ext_msg))  write(6,'(a2,a)') '+ ', trim(ext_msg)
+ write(6,'(/,a)')      ' +--------------------------------------------------------+'
+ write(6,'(a)')        ' +                         error                          +'
+ write(6,'(a,i3,a)')   ' +                         ',error_ID,'                            +'
+ write(6,'(a)')        ' +                                                        +'
+ write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(msg)),',',&
+                                         max(1,60-len(trim(msg))-5),'x,a)'
+ write(6,formatString) '+ ', trim(msg),'+'
+ if (present(ext_msg)) then
+   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(ext_msg)),',',&
+                                         max(1,60-len(trim(ext_msg))-5),'x,a)'
+   write(6,formatString) '+ ', trim(ext_msg),'+'
+ endif
  if (present(e)) then
-   if (present(i) .and. present(g)) then
-     write(6,'(a13,i6,a4,i2,a7,i4,a2)') '+ at element ',e,' IP ',i,' grain ',g,' +'
+   if (present(i)) then
+     if (present(g)) then
+       write(6,'(a13,1x,i9,1x,a2,1x,i2,1x,a5,1x,i4,18x,a1)') ' + at element',e,'IP',i,'grain',g,'+'
+     else
+       write(6,'(a13,1x,i9,1x,a2,1x,i2,29x,a1)') ' + at element',e,'IP',i,'+'
+     endif
    else
-     write(6,'(a18,i6,a14)') '+              at ',e,'             +'
+     write(6,'(a13,1x,i9,35x,a1)') ' + at element',e,'+'
    endif
  endif
- write(6,'(a38)') '+------------------------------------+'
+ write(6,'(a)')      ' +--------------------------------------------------------+'
  flush(6)
  call quit(9000_pInt+error_ID)
  !$OMP END CRITICAL (write2out)
@@ -1521,6 +1531,7 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
  character(len=*), optional, intent(in) :: ext_msg
  
  character(len=1024)                    :: msg
+ character(len=1024)                    :: formatString
 
  select case (warning_ID)
  case (34_pInt)
@@ -1528,47 +1539,52 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
  case (35_pInt)
    msg = 'could not get $DAMASK_NUM_THREADS'
  case (40_pInt)
-   msg = 'Found Spectral solver parameter '
+   msg = 'found spectral solver parameter'
  case (41_pInt)
-   msg = 'Found PETSc solver parameter '
+   msg = 'found PETSc solver parameter'
  case (42_pInt)
-   msg = 'parameter has no effect '
+   msg = 'parameter has no effect'
  case (47_pInt)
-   msg = 'No valid parameter for FFTW given, using FFTW_PATIENT'
+   msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
  case (101_pInt)
-   msg = '+    crystallite debugging off...    +'
+   msg = 'crystallite debugging off'
  case (600_pInt)
-   msg = '+  crystallite responds elastically  +'
+   msg = 'crystallite responds elastically'
  case (601_pInt)
-   msg = '+      stiffness close to zero       +'
+   msg = 'stiffness close to zero'
  case (650_pInt)
-   msg = '+     polar decomposition failed     +'
+   msg = 'polar decomposition failed'
  case (700_pInt)
-   msg = '+      unknown crystal symmetry      +'
+   msg = 'unknown crystal symmetry'
  case default
-   msg = '+     unknown warning number...      +'
+   msg = 'unknown warning number'
  end select
  
  !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,'(a38)')        '+------------------------------------+'
- write(6,'(a38)')        '+              warning               +'
- write(6,'(a38)')        '+                                    +'
- write(6,'(a17,i3,a18)') '+                ',warning_ID,'                 +'
- write(6,'(a2,a)') '+ ', trim(msg)
- if (present(ext_msg))  write(6,'(a2,a)') '+ ', trim(ext_msg)
+ write(6,'(/,a)')      ' +--------------------------------------------------------+'
+ write(6,'(a)')        ' +                        warning                         +'
+ write(6,'(a,i3,a)')   ' +                         ',warning_ID,'                            +'
+ write(6,'(a)')        ' +                                                        +'
+ write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(msg)),',',&
+                                         max(1,60-len(trim(msg))-5),'x,a)'
+ write(6,formatString) '+ ', trim(msg),'+'
+ if (present(ext_msg)) then
+   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(ext_msg)),',',&
+                                         max(1,60-len(trim(ext_msg))-5),'x,a)'
+   write(6,formatString) '+ ', trim(ext_msg),'+'
+ endif
  if (present(e)) then
    if (present(i)) then
      if (present(g)) then
-       write(6,'(a12,1x,i6,1x,a2,1x,i2,1x,a5,1x,i4,a2)') '+ at element',e,'IP',i,'grain',g,' +'
+       write(6,'(a13,1x,i9,1x,a2,1x,i2,1x,a5,1x,i4,18x,a1)') ' + at element',e,'IP',i,'grain',g,'+'
      else
-       write(6,'(a12,1x,i6,1x,a2,1x,i2,a13)') '+ at element',e,'IP',i,'            +'
+       write(6,'(a13,1x,i9,1x,a2,1x,i2,29x,a1)') ' + at element',e,'IP',i,'+'
      endif
    else
-     write(6,'(a12,1x,i6,a19)') '+ at element',e,'             +'
+     write(6,'(a13,1x,i9,35x,a1)') ' + at element',e,'+'
    endif
  endif
- write(6,'(a38)') '+------------------------------------+'
+ write(6,'(a)')      ' +--------------------------------------------------------+'
  flush(6)
  !$OMP END CRITICAL (write2out)
 
@@ -1597,7 +1613,6 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
  logical                                  :: createSuccess,fexist
 
 
- 
  do
    read(unit2,'(A300)',END=220) line
    positions = IO_stringPos(line,maxNchunks)

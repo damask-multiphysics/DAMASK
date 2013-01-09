@@ -68,7 +68,7 @@ module DAMASK_spectral_solverAL
    err_f, &                                                                                         !< difference between compatible and incompatible deformation gradient
    err_p                                                                                            !< difference of stress resulting from compatible and incompatible F
  logical, private :: ForwardData
- integer(pInt) :: reportIter = 0_pInt
+ integer(pInt), private :: reportIter = 0_pInt
 contains
  
 !--------------------------------------------------------------------------------------------------
@@ -120,8 +120,7 @@ subroutine AL_init(temperature)
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverAL.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
 #include "compilation_info.f90"
- write(6,'(a)') ''
-   
+ 
  allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (Fdot  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  !   allocate (Fdot,source = F_lastInc) somethin like that should be possible
@@ -154,7 +153,7 @@ subroutine AL_init(temperature)
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)])
    F_lambda = F
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
-   if (debugRestart) write(6,'(a,i6,a)') 'Reading values of increment ',&
+   if (debugRestart) write(6,'(/,a,i6,a)') ' reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
    flush(6)
    call IO_read_jobBinaryFile(777,'F',&
@@ -269,7 +268,8 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
  if (restartWrite) then
-   write(6,'(a)') 'writing converged results for restart'
+   write(6,'(/,a)') ' writing converged results for restart'
+   flush(6)
    call IO_write_jobBinaryFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
@@ -406,10 +406,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  residual_F => f_scal(:,:,1,:,:,:)
  residual_F_lambda => f_scal(:,:,2,:,:,:)
  
- call SNESGetNumberFunctionEvals(snes,nfuncs,ierr)
- CHKERRQ(ierr)
- call SNESGetIterationNumber(snes,iter,ierr)
- CHKERRQ(ierr)
+ call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
+ call SNESGetIterationNumber(snes,iter,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
@@ -418,13 +416,14 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    reportIter = 0_pInt
  endif
  if (callNo == 0 .or. mod(callNo,2) == 1_pInt) then
-   write(6,'(/,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                    ' @ Iter. ', itmin, '≤',reportIter, '≤', itmax
+   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+                    ' @ Iteration ', itmin, '≤',reportIter, '≤', itmax
    if (debugRotation) &
-   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim (lab)=', &
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
                                  math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
-   write(6,'(a,/,3(3(f12.7,1x)/))',advance='no') 'deformation gradient aim =', &
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
+   flush(6)
    reportIter = reportIter + 1_pInt
  endif
  callNo = callNo +1_pInt
@@ -473,7 +472,6 @@ end subroutine AL_formResidual
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
 subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
-
  use numerics, only: &
   itmax, &
   itmin, &
@@ -481,60 +479,61 @@ subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
   err_p_tol, &
   err_stress_tolrel, &
   err_stress_tolabs
- 
- implicit none
 
+ implicit none
  SNES :: snes_local
  PetscInt :: it
- PetscReal :: xnorm, snorm, fnorm
+ PetscReal :: &
+   xnorm, &
+   snorm, &
+   fnorm
  SNESConvergedReason :: reason
  PetscObject :: dummy
  PetscErrorCode ::ierr
  logical :: Converged
-           
+ real(pReal) :: err_stress_tol
+ 
+ err_stress_tol = min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
  Converged = (it > itmin .and. &
-               all([ err_f/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_f_tol, &
-                     err_p/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_p_tol, &
-                     err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)] < 1.0_pReal))
+               all([ err_f/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_f_tol, &
+                     err_p/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_p_tol, &
+                     err_stress/err_stress_tol] < 1.0_pReal))
  
  if (Converged) then
    reason = 1
- elseif (it > itmax) then
+ elseif (it >= itmax) then
    reason = -1
  else  
    reason = 0
  endif 
- 
- write(6,'(a,f12.7,1x,1a,1x,es9.3)') 'error stress BC = ', &
-   err_stress/min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs),&
-   '@',min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
- write(6,'(a,f12.7,1x,1a,1x,es9.3)') 'error F         = ',&
-   err_f/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_f_tol,&
-   '@',err_f_tol
- write(6,'(a,f12.7,1x,1a,1x,es9.3)') 'error P         = ', &
-   err_p/sqrt(sum((F_aim-math_I3)*(F_aim-math_I3)))/err_p_tol,&
-   '@',err_p_tol
- write(6,'(/,a)') '=========================================================================='
+ write(6,'(1/,a)') ' ... reporting ....................................................'
+ write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' mismatch F =      ', &
+                     err_f/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_f_tol, &
+                ' (',err_f/sqrt(sum((F_aim-math_I3)**2.0_pReal)),' -,  tol =',err_f_tol,')'
+ write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' mismatch P =      ', &
+                     err_p/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_p_tol, &
+                ' (',err_p/sqrt(sum((F_aim-math_I3)**2.0_pReal)),' -,  tol =',err_p_tol,')'
+ write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC = ', &
+                   err_stress/err_stress_tol, ' (',err_stress, ' Pa, tol =',err_stress_tol,')' 
+ write(6,'(/,a)') ' =========================================================================='
+ flush(6)
+
 end subroutine AL_converged
 
 !--------------------------------------------------------------------------------------------------
 !> @brief destroy routine
 !--------------------------------------------------------------------------------------------------
 subroutine AL_destroy()
-
  use DAMASK_spectral_Utilities, only: &
    Utilities_destroy
+ 
  implicit none
  PetscErrorCode :: ierr
 
- call VecDestroy(solution_vec,ierr)
- CHKERRQ(ierr)
- call SNESDestroy(snes,ierr)
- CHKERRQ(ierr)
- call DMDestroy(da,ierr)
- CHKERRQ(ierr)
- call PetscFinalize(ierr)
- CHKERRQ(ierr)
+ call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
+ call SNESDestroy(snes,ierr); CHKERRQ(ierr)
+ call DMDestroy(da,ierr); CHKERRQ(ierr)
+ call PetscFinalize(ierr); CHKERRQ(ierr)
  call Utilities_destroy()
 
 end subroutine AL_destroy
