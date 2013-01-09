@@ -28,6 +28,7 @@ module DAMASK_spectral_solverAL
  type tSolutionParams 
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
+   real(pReal) :: temperature
  end type tSolutionParams
  
  type(tSolutionParams), private :: params
@@ -46,9 +47,7 @@ module DAMASK_spectral_solverAL
    F_lambda_lastInc, &                                                                              !< field of previous incompatible deformation gradient 
    Fdot, &                                                                                          !< field of assumed rate of compatible deformation gradient
    F_lambdaDot                                                                                      !< field of assumed rate of incopatible deformation gradient
- real(pReal), private :: &
-   temperature                                                                                      !< temperature, no spatial quantity at the moment
- 
+
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
  real(pReal), private, dimension(3,3) :: &
@@ -75,7 +74,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine AL_init()
+subroutine AL_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_read_JobBinaryFile, &
@@ -101,6 +100,8 @@ subroutine AL_init()
    math_invSym3333
    
  implicit none
+ real(pReal), intent(inout) :: &
+   temperature
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
  integer(pInt) :: i,j,k
@@ -344,6 +345,7 @@ type(tSolutionState) function &
  params%P_BC = P_BC%values
  params%rotation_BC = rotation_BC
  params%timeinc = timeinc
+ params%temperature = temperature_bc
 
  call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
  CHKERRQ(ierr)
@@ -429,7 +431,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(F_lastInc,F,temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,F,params%temperature,params%timeinc, &
                                      residual_F,C,P_av,ForwardData,params%rotation_BC)
  ForwardData = .False.
   

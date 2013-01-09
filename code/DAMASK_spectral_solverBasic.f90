@@ -27,8 +27,7 @@ module DAMASK_spectral_SolverBasic
    F, &                                                                                             !< deformation gradient field
    F_lastInc, &                                                                                     !< deformation gradient field last increment
    Fdot                                                                                             !< assumed rate for F n to F n+1
- real(pReal),  private                                     ::  temperature                          !< not pointwise
- 
+
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
  real(pReal), private, dimension(3,3) :: &
@@ -44,7 +43,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine basic_init()
+subroutine basic_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
  use IO, only: &
@@ -69,6 +68,8 @@ subroutine basic_init()
    mesh_deformedCoordsFFT
 
  implicit none
+ real(pReal), intent(inout) :: &
+   temperature
  real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
  integer(pInt) :: &
    i, j, k
@@ -124,7 +125,7 @@ subroutine basic_init()
  endif
  mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
                              !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
- call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3) ! constitutive response with no deformation in no time to get reference stiffness
+ call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3)     ! constitutive response with no deformation in no time to get reference stiffness
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
    temp3333_Real = C
  endif 
@@ -183,8 +184,7 @@ type(tSolutionState) function &
 ! input data for solution
  real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
-   timeinc_old, &                                                                                   !< increment in time of last increment
-   temperature_bc                                                                                   !< temperature (I wonder, why it is intent(in)
+   timeinc_old                                                                                      !< increment in time of last increment
  logical, intent(in) :: &
    guess                                                                                            !< if .false., assume homogeneous addon
  type(tBoundaryCondition),      intent(in) :: &
@@ -194,7 +194,8 @@ type(tSolutionState) function &
    incInfo                                                                                          !< string with information of current increment for output to screen
  real(pReal), dimension(3,3), intent(in) :: &
    rotation_BC                                                                                      !< rotation load to lab
- 
+ real(pReal), intent(inout) :: &
+   temperature_bc  
  real(pReal), dimension(3,3,3,3)        :: &
    S                                                                                                !< current average compliance 
  real(pReal), dimension(3,3)            :: &                            
@@ -287,7 +288,7 @@ type(tSolutionState) function &
 ! evaluate constitutive response
    F_aim_lastIter = F_aim
    basic_solution%termIll = .false.
-   call Utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
+   call Utilities_constitutiveResponse(F_lastInc,F,temperature_bc,timeinc,&
                                  P,C,P_av,ForwardData,rotation_BC)
    basic_solution%termIll = terminallyIll
    terminallyIll = .false.

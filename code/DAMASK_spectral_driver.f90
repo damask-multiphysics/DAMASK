@@ -293,12 +293,12 @@ program DAMASK_spectral_Driver
 ! doing initialization depending on selected solver 
  select case (myspectralsolver)
    case (DAMASK_spectral_SolverBasic_label)
-     call basic_init()
+     call basic_init(loadCases(1)%temperature)
 #ifdef PETSc
    case (DAMASK_spectral_SolverBasicPETSc_label)
-     call basicPETSc_init()
+     call basicPETSc_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverAL_label)
-     call AL_init()
+     call AL_init(loadCases(1)%temperature)
 #endif
    case default
       call IO_error(error_ID = 891, ext_msg = trim(myspectralsolver))
@@ -398,27 +398,27 @@ program DAMASK_spectral_Driver
 ! calculate solution 
            case (DAMASK_spectral_SolverBasic_label)
              solres = basic_solution (&
-                  incInfo, guess,timeinc,timeinc_old, &
-                  P_BC              = loadCases(currentLoadCase)%P, &
-                  F_BC              = loadCases(currentLoadCase)%deformation, &
-                  temperature_bc    = loadCases(currentLoadCase)%temperature, &
-                  rotation_BC       = loadCases(currentLoadCase)%rotation)
+                 incInfo, guess,timeinc,timeinc_old, &
+                 P_BC               = loadCases(currentLoadCase)%P, &
+                 F_BC               = loadCases(currentLoadCase)%deformation, &
+                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
+                 rotation_BC        = loadCases(currentLoadCase)%rotation)
 #ifdef PETSc
            case (DAMASK_spectral_SolverBasicPETSC_label)
              solres = BasicPETSC_solution (&
                  incInfo, guess,timeinc,timeinc_old, &
-                 P_BC              = loadCases(currentLoadCase)%P, &
-                 F_BC              = loadCases(currentLoadCase)%deformation, &
-                 temperature_bc    = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC       = loadCases(currentLoadCase)%rotation)
+                 P_BC               = loadCases(currentLoadCase)%P, &
+                 F_BC               = loadCases(currentLoadCase)%deformation, &
+                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
+                 rotation_BC        = loadCases(currentLoadCase)%rotation)
             
            case (DAMASK_spectral_SolverAL_label)
              solres = AL_solution (&
                  incInfo, guess,timeinc,timeinc_old, &
-                 P_BC              = loadCases(currentLoadCase)%P, &
-                 F_BC              = loadCases(currentLoadCase)%deformation, &
-                 temperature_bc    = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC       = loadCases(currentLoadCase)%rotation)
+                 P_BC               = loadCases(currentLoadCase)%P, &
+                 F_BC               = loadCases(currentLoadCase)%deformation, &
+                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
+                 rotation_BC        = loadCases(currentLoadCase)%rotation)
 #endif
          end select 
 !--------------------------------------------------------------------------------------------------

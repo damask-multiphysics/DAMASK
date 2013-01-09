@@ -28,6 +28,7 @@ module DAMASK_spectral_SolverBasicPETSc
  type tSolutionParams 
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
+   real(pReal) :: temperature
  end type tSolutionParams
  
  type(tSolutionParams), private :: params
@@ -41,7 +42,6 @@ module DAMASK_spectral_SolverBasicPETSc
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, Fdot
- real(pReal)                                             ::  temperature
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -69,7 +69,7 @@ module DAMASK_spectral_SolverBasicPETSc
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine basicPETSc_init()
+subroutine basicPETSc_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_read_JobBinaryFile, &
@@ -96,6 +96,8 @@ subroutine basicPETSc_init()
    math_invSym3333
       
  implicit none
+ real(pReal), intent(inout) :: &
+   temperature
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
  integer(pInt) :: i,j,k
@@ -307,6 +309,7 @@ type(tSolutionState) function &
  params%P_BC = P_BC%values
  params%rotation_BC = rotation_BC
  params%timeinc = timeinc
+ params%temperature = temperature_BC
 
  call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
  CHKERRQ(ierr)
@@ -370,7 +373,7 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(F_lastInc,x_scal,temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,x_scal,params%temperature,params%timeinc, &
                                      f_scal,C,P_av,ForwardData,params%rotation_BC)
  ForwardData = .false.
   
