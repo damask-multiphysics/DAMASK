@@ -309,7 +309,7 @@ type(tSolutionState) function &
  params%timeinc = timeinc
  params%temperature = temperature_BC
 
- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr): CHKERRQ(ierr)
+ call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
  basicPETSc_solution%termIll = terminallyIll
  terminallyIll = .false.

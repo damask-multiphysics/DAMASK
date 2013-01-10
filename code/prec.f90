@@ -65,7 +65,6 @@ module prec
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal
  real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
- 
 
  type, public :: p_vec
    real(pReal), dimension(:), pointer :: p
@@ -83,20 +82,15 @@ subroutine prec_init
  
  implicit none
 
-!$OMP CRITICAL (write2out)
-
- write(6,*)
- write(6,*) '<<<+-  prec init  -+>>>'
- write(6,*) '$Id$'
+ write(6,'(/,a)') '<<<+-  prec init  -+>>>'
+ write(6,'(a)') '$Id$'
 #include "compilation_info.f90"
  write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
  write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
  write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
  write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
- write(6,'(a,l3)')    ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
- write(6,*)
+ write(6,'(a,l3,/)')  ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
-!$OMP END CRITICAL (write2out)
 
 end subroutine prec_init
 

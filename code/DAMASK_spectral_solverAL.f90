@@ -386,21 +386,24 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  use IO, only: IO_intOut
 
  implicit none
- integer(pInt) :: i,j,k
  integer(pInt), save :: callNo = 3_pInt
  real(pReal), dimension(3,3)            :: temp33_Real
- logical :: report
- 
- DMDALocalInfo,         dimension(DMDA_LOCAL_INFO_SIZE) :: &
+
+!--------------------------------------------------------------------------------------------------
+! strange syntax in the next line because otherwise macros expand beyond 132 character limit 
+ DMDALocalInfo,        dimension(&
+   DMDA_LOCAL_INFO_SIZE) :: &
    in
- PetscScalar, target,   dimension(3,3,2,XG_RANGE,YG_RANGE,ZG_RANGE) :: &
+ PetscScalar, target, dimension(3,3,2, &
+   XG_RANGE,YG_RANGE,ZG_RANGE) :: &
    x_scal
- PetscScalar, target,   dimension(3,3,2,X_RANGE,Y_RANGE,Z_RANGE) :: &
+ PetscScalar, target, dimension(3,3,2, &
+   X_RANGE,Y_RANGE,Z_RANGE) :: &
    f_scal
- PetscScalar, pointer,  dimension(:,:,:,:,:) :: &
+ PetscScalar, pointer, dimension(:,:,:,:,:) :: &
    F, &
    F_lambda, &
-   residual_F &
+   residual_F, &
    residual_F_lambda
  PetscInt :: &
    iter, &
@@ -408,10 +411,14 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscObject :: dummy
  PetscErrorCode :: ierr
 
- F                 => x_scal(1:3,1:3,1,XG_RANGE,YG_RANGE,ZG_RANGE)
- F_lambda          => x_scal(1:3,1:3,2,XG_RANGE,YG_RANGE,ZG_RANGE)
- residual_F        => f_scal(1:3,1:3,1,X_RANGE,Y_RANGE,Z_RANGE)
- residual_F_lambda => f_scal(1:3,1:3,2,X_RANGE,Y_RANGE,Z_RANGE)
+ F                 => x_scal(1:3,1:3,1,&
+  XG_RANGE,YG_RANGE,ZG_RANGE)
+ F_lambda          => x_scal(1:3,1:3,2,&
+  XG_RANGE,YG_RANGE,ZG_RANGE)
+ residual_F        => f_scal(1:3,1:3,1,&
+  X_RANGE,Y_RANGE,Z_RANGE)
+ residual_F_lambda => f_scal(1:3,1:3,2,&
+  X_RANGE,Y_RANGE,Z_RANGE)
  
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,iter,ierr); CHKERRQ(ierr)
