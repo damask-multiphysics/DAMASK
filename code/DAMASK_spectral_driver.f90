@@ -30,7 +30,8 @@ program DAMASK_spectral_Driver
    IO_lc, &
    IO_read_jobBinaryFile, &
    IO_write_jobBinaryFile, &
-   IO_intOut
+   IO_intOut, &
+   IO_warning
  use math                                                                                           ! need to include the whole module for FFTW
  use mesh,  only : &
    res, &
@@ -53,6 +54,7 @@ program DAMASK_spectral_Driver
    tBoundaryCondition, &
    tSolutionState, &
    debugGeneral, &
+   debugDivergence, &
    cutBack
  use DAMASK_spectral_SolverBasic
 #ifdef PETSc
@@ -298,6 +300,7 @@ program DAMASK_spectral_Driver
    case (DAMASK_spectral_SolverBasicPETSc_label)
      call basicPETSc_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverAL_label)
+     if(debugDivergence) call IO_warning(42_pInt, ext_msg='debug Divergence')
      call AL_init(loadCases(1)%temperature)
 #endif
    case default
@@ -390,9 +393,9 @@ program DAMASK_spectral_Driver
                  '-', stepFraction, '/', subStepFactor**cutBackLevel,&
                  ' of load case ', currentLoadCase,'/',size(loadCases)
          flush(6)
-         write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases(:)%incs))//&
+         write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
                ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
-               'Increment ',totalIncsCounter,'/',sum(loadCases(:)%incs),&
+               'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel
          select case(myspectralsolver)
          

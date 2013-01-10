@@ -366,7 +366,6 @@ end function AL_solution
 !> @brief forms the AL residual vector
 !--------------------------------------------------------------------------------------------------
 subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
-
  use numerics, only: &
    itmax, &
    itmin
@@ -392,19 +391,27 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  real(pReal), dimension(3,3)            :: temp33_Real
  logical :: report
  
- DMDALocalInfo :: in(DMDA_LOCAL_INFO_SIZE)
- PetscScalar, target :: x_scal(3,3,2,XG_RANGE,YG_RANGE,ZG_RANGE)  
- PetscScalar, target :: f_scal(3,3,2,X_RANGE,Y_RANGE,Z_RANGE) 
- PetscScalar, pointer :: F(:,:,:,:,:), F_lambda(:,:,:,:,:) 
- PetscScalar, pointer :: residual_F(:,:,:,:,:), residual_F_lambda(:,:,:,:,:)
- PetscInt :: iter, nfuncs
+ DMDALocalInfo,         dimension(DMDA_LOCAL_INFO_SIZE) :: &
+   in
+ PetscScalar, target,   dimension(3,3,2,XG_RANGE,YG_RANGE,ZG_RANGE) :: &
+   x_scal
+ PetscScalar, target,   dimension(3,3,2,X_RANGE,Y_RANGE,Z_RANGE) :: &
+   f_scal
+ PetscScalar, pointer,  dimension(:,:,:,:,:) :: &
+   F, &
+   F_lambda, &
+   residual_F &
+   residual_F_lambda
+ PetscInt :: &
+   iter, &
+   nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
 
- F => x_scal(:,:,1,:,:,:)
- F_lambda => x_scal(:,:,2,:,:,:)
- residual_F => f_scal(:,:,1,:,:,:)
- residual_F_lambda => f_scal(:,:,2,:,:,:)
+ F                 => x_scal(1:3,1:3,1,XG_RANGE,YG_RANGE,ZG_RANGE)
+ F_lambda          => x_scal(1:3,1:3,2,XG_RANGE,YG_RANGE,ZG_RANGE)
+ residual_F        => f_scal(1:3,1:3,1,X_RANGE,Y_RANGE,Z_RANGE)
+ residual_F_lambda => f_scal(1:3,1:3,2,X_RANGE,Y_RANGE,Z_RANGE)
  
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,iter,ierr); CHKERRQ(ierr)

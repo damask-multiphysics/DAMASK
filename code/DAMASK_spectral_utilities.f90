@@ -98,7 +98,8 @@ contains
 subroutine utilities_init()
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
-   IO_error
+   IO_error, &
+   IO_warning
  use numerics, only: &                        
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
@@ -148,14 +149,16 @@ subroutine utilities_init()
  debugRestart    = iand(debug_level(debug_spectral),debug_spectralRestart)    /= 0
  debugFFTW       = iand(debug_level(debug_spectral),debug_spectralFFTW)       /= 0
  debugRotation   = iand(debug_level(debug_spectral),debug_spectralRotation)   /= 0
-#ifdef PETSc
  debugPETSc      = iand(debug_level(debug_spectral),debug_spectralPETSc)      /= 0
+#ifdef PETSc
  if(debugPETSc) write(6,'(/,a)') ' Initializing PETSc with debug options: ', trim(PETScDebug), &
                                  ' add more using the PETSc_Options keyword in numerics.config '
  flush(6)
  call PetscOptionsClear(ierr); CHKERRQ(ierr)
  if(debugPETSc) call PetscOptionsInsertString(trim(PETScDebug),ierr); CHKERRQ(ierr)
  call PetscOptionsInsertString(trim(petsc_options),ierr); CHKERRQ(ierr)
+#else
+ call IO_warning(41_pInt, ext_msg='debug PETSc')
 #endif
 !--------------------------------------------------------------------------------------------------
 ! allocation

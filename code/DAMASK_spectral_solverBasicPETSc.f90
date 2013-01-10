@@ -127,9 +127,10 @@ subroutine basicPETSc_init(temperature)
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call DMDACreate3d(PETSC_COMM_WORLD, &
-              DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
-              DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
-              9,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr); CHKERRQ(ierr)
+        DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
+        DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
+        9,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
+ CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
  call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
@@ -178,8 +179,7 @@ subroutine basicPETSc_init(temperature)
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3)
- call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr)                                                ! write data back into PETSc
- CHKERRQ(ierr)
+ call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back into PETSc
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
    temp3333_Real = C
  endif 
@@ -300,16 +300,17 @@ type(tSolutionState) function &
  if (update_gamma) call Utilities_updateGamma(C,restartWrite)
  
  ForwardData = .True.
+
+!--------------------------------------------------------------------------------------------------
+! set module wide availabe data 
  mask_stress = P_BC%maskFloat
  params%P_BC = P_BC%values
  params%rotation_BC = rotation_BC
  params%timeinc = timeinc
  params%temperature = temperature_BC
 
- call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
- CHKERRQ(ierr)
- call SNESGetConvergedReason(snes,reason,ierr)
- CHKERRQ(ierr)
+ call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr): CHKERRQ(ierr)
+ call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
  basicPETSc_solution%termIll = terminallyIll
  terminallyIll = .false.
  BasicPETSC_solution%converged =.false.
@@ -324,7 +325,7 @@ end function BasicPETSc_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief forms the AL residual vector
 !--------------------------------------------------------------------------------------------------
-subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
+subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin
@@ -346,11 +347,14 @@ subroutine BasicPETSC_formResidual(myIn,x_scal,f_scal,dummy,ierr)
  use IO, only : IO_intOut 
 
  implicit none
- DMDALocalInfo, dimension(*) :: myIn
- PetscScalar, dimension(3,3,res(1),res(2),res(3)) :: &
+ DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
+   in
+ PetscScalar,   dimension(3,3,res(1),res(2),res(3)) :: &
    x_scal, &
    f_scal 
- PetscInt :: iter, nfuncs
+ PetscInt :: &
+   iter, &
+   nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
  integer(pInt), save :: callNo = 3_pInt
@@ -433,15 +437,15 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
  PetscObject :: dummy
  PetscErrorCode :: ierr
  logical :: Converged
- real(pReal) :: pAvgDivL2, &
+ real(pReal) :: &
+   pAvgDivL2, &
    err_stress_tol 
  
  err_stress_tol =min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
-           
  pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,math_transpose33(P_av)))))
  Converged = (it >= itmin .and. &
-               all([ err_div/pAvgDivL2/err_div_tol, &
-                     err_stress/err_stress_tol] < 1.0_pReal))
+                           all([ err_div/pAvgDivL2/err_div_tol, &
+                                 err_stress/err_stress_tol       ] < 1.0_pReal))
  
  if (Converged) then
    reason = 1
