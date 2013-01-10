@@ -410,6 +410,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
+ integer(pInt) :: &
+   i, j, k
 
  F                 => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
