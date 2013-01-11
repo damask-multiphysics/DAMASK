@@ -162,7 +162,7 @@ function homogenization_isostrain_stateInit(myInstance)
 
  homogenization_isostrain_stateInit = 0.0_pReal
 
-endfunction homogenization_isostrain_stateInit
+end function homogenization_isostrain_stateInit
 
 
 !********************************************************************
@@ -263,7 +263,7 @@ end subroutine homogenization_isostrain_averageStressAndItsTangent
 !********************************************************************
 ! derive average stress and stiffness from constituent quantities
 !********************************************************************
-function homogenization_isostrain_averageTemperature(&
+pure function homogenization_isostrain_averageTemperature(&
    Temperature, &   ! temperature
    ip, &            ! my integration point
    el  &            ! my element
@@ -316,8 +316,6 @@ pure function homogenization_isostrain_postResults(&
        c = c + 1_pInt
    end select
  enddo
- 
- return
 
 end function homogenization_isostrain_postResults
 

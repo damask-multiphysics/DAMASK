@@ -212,9 +212,9 @@ end subroutine AL_init
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
   AL_solution(incInfoIn,guess,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
- 
  use numerics, only: &
-   update_gamma
+   update_gamma, &
+   itmax
  use math, only: &
    math_mul33x33 ,&
    math_rotate_backward33
@@ -354,9 +354,12 @@ type(tSolutionState) function &
  
  AL_solution%termIll = terminallyIll
  terminallyIll = .false.
- if (reason > 0 ) then 
+ if (reason < 1 ) then 
+   AL_solution%converged = .false.
+   AL_solution%iterationsNeeded = itmax
+ else
    AL_solution%converged = .true.
-   AL_solution%iterationsNeeded = reportIter
+   AL_solution%iterationsNeeded = reportIter - 1_pInt
  endif
 
 end function AL_solution

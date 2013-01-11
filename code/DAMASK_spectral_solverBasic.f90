@@ -274,6 +274,7 @@ type(tSolutionState) function &
 ! iteration till converged
  if (.not. restartRead) ForwardData = .True.
  iter = 0_pInt
+ basic_solution%iterationsNeeded = itmax
  convergenceLoop: do while(iter < itmax)
    iter = iter + 1_pInt
 !--------------------------------------------------------------------------------------------------

@@ -113,6 +113,7 @@ subroutine utilities_init()
    debug_spectralDivergence, &
    debug_spectralRestart, &
    debug_spectralFFTW, &
+   debug_spectralPETSc, &
    debug_spectralRotation
 #ifdef PETSc
  use debug, only: &

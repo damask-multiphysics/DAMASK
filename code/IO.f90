@@ -1003,7 +1003,7 @@ end function IO_lc
 !--------------------------------------------------------------------------------------------------
 !> @brief in place change of character in line to lower case
 !--------------------------------------------------------------------------------------------------
-subroutine IO_lcInplace(line)
+pure subroutine IO_lcInplace(line)
 
  implicit none
  character(26), parameter :: lower = 'abcdefghijklmnopqrstuvwxyz'
@@ -1652,17 +1652,16 @@ end function abaqus_assembleInputFile
 !--------------------------------------------------------------------------------------------------
 !> @brief hybrid IA repetition counter
 !--------------------------------------------------------------------------------------------------
-integer(pInt) function hybridIA_reps(dV_V,steps,C)
+integer(pInt) pure function hybridIA_reps(dV_V,steps,C)
 
  implicit none
-  integer(pInt), intent(in), dimension(3) :: &
+ integer(pInt), intent(in), dimension(3) :: &
    steps
  real(pReal),   intent(in), dimension(steps(3),steps(2),steps(1)) :: &
    dV_V
  real(pReal),   intent(in) :: &
    C
- 
-  integer(pInt) :: phi1,Phi,phi2
+ integer(pInt) :: phi1,Phi,phi2
  
  hybridIA_reps = 0_pInt
  do phi1=1_pInt,steps(1)

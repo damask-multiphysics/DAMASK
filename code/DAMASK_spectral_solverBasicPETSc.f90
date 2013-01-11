@@ -194,7 +194,8 @@ end subroutine basicPETSc_init
 type(tSolutionState) function &
   basicPETSc_solution(incInfoIn,guess,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
  use numerics, only: &
-   update_gamma
+   update_gamma, &
+   itmax
  use math, only: &
    math_mul33x33 ,&
    math_rotate_backward33
@@ -313,10 +314,13 @@ type(tSolutionState) function &
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
  basicPETSc_solution%termIll = terminallyIll
  terminallyIll = .false.
- BasicPETSC_solution%converged =.false.
- if (reason > 0 ) then
-   BasicPETSC_solution%converged = .true.
-   BasicPETSC_solution%iterationsNeeded = reportIter
+
+ if (reason < 1) then
+   basicPETSC_solution%converged = .false.
+   basicPETSC_solution%iterationsNeeded = itmax
+ else
+   basicPETSC_solution%converged = .true.
+   basicPETSC_solution%iterationsNeeded = reportIter - 1_pInt
  endif
 
 end function BasicPETSc_solution
