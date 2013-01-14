@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # $Id$
 
-import os, sys, shlex
+import os, sys, shlex, inspect
 import subprocess,shutil,string
 import damask
 from optparse import OptionParser
@@ -20,7 +20,7 @@ class Test():
          +'----------------------------------------------------------------\n' \
          +'| '+test_description+'\n' \
          +'----------------------------------------------------------------'
-    self.dirBase = os.path.dirname(os.path.realpath(sys.argv[0]))
+    self.dirBase = os.path.dirname(os.path.realpath(inspect.getfile(self.__class__)))
     self.parser = OptionParser(
     description = 'Using: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $',
     usage='run_test.py [options]')
