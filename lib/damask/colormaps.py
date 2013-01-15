@@ -1,22 +1,71 @@
 #!/usr/bin/env python
 
-# suggestion to have class Color and class ColorMap, both use numpy arrays...
-# Color has properties:
-# .model
-# .color
-# and methods
-# .as/toOTHER (which checks own model and does appropriate conversion)
-
-
 class Color():
   '''
-     There should be a doc string here  :)
+    Conversion of colors between different color-spaces. Colors should be given in the form 
+    Color('model',[vector]).To convert and copy color from one space to other, use the methods 
+    to('model') and asModel('model')spectively
   '''
   import numpy
-  __slots__ = ['model',
+  
+  __slots__ = [
+               'model',
                'color',
               ]
+# ------------------------------------------------------------------
+  def __init__(self,
+               model = 'RGB',
+               color = numpy.zeros(3,'d')):
+    import numpy
+    
+    self.__transforms__ = \
+                   {'HSL':    {'index': 0, 'next': self._HSL2RGB},
+                    'RGB':    {'index': 1, 'next': self._RGB2XYZ,     'prev': self._RGB2HSL},
+                    'XYZ':    {'index': 2, 'next': self._XYZ2CIELAB,  'prev': self._XYZ2RGB},
+                    'CIELAB': {'index': 3, 'next': self._CIELAB2MSH,  'prev': self._CIELAB2XYZ},
+                    'MSH':    {'index': 4, 'prev': self._MSH2CIELAB},
+                    }
 
+    model = model.upper()
+    if model not in self.__transforms__.keys(): model = 'RGB'
+    if model == 'RGB' and max(color) > 1.0:                                                                                                              # are we RGB255 ?
+      for i in range(3):
+        color[i] /= 255.0                                                                                                                                 # rescale to RGB
+
+    if model == 'HSL':                                                                                                                                   # are we HSL ?
+      if abs(color[0]) > 1.0: color[0] /= 360.0                                                                                                          # with angular hue?
+      while color[0] >= 1.0: color[0] -= 1.0                                                                                                             # rewind to proper range
+      while color[0] < 0.0:  color[0] += 1.0                                                                                                             # rewind to proper range
+
+    self.model = model
+    self.color = numpy.array(color,'d')
+# ------------------------------------------------------------------
+  def __repr__(self):
+    return 'Model: %s Color: %s'%(self.model,str(self.color))    
+# ------------------------------------------------------------------
+  def __str__(self):
+    return self.__repr__()
+# ------------------------------------------------------------------
+  def to(self,toModel = 'RGB'):
+    toModel = toModel.upper()
+    if toModel not in self.__transforms__.keys(): return 
+
+    sourcePos = self.__transforms__[self.model]['index']
+    targetPos = self.__transforms__[toModel]['index']
+
+    while sourcePos < targetPos:
+      self.__transforms__[self.model]['next']()
+      sourcePos += 1
+
+    while sourcePos > targetPos:
+      self.__transforms__[self.model]['prev']()
+      sourcePos -= 1
+    return self
+# ------------------------------------------------------------------
+  def asModel(self,toModel = 'RGB'):
+    print self.__class__(self.model,self.color)
+    return self.__class__(self.model,self.color).to(toModel)    
+# ------------------------------------------------------------------   
   # convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
   # with S,L,H,R,G,B running from 0 to 1
   # from http://en.wikipedia.org/wiki/HSL_and_HSV
@@ -38,11 +87,11 @@ class Color():
                                     [c+m, m, x+m],
                                    ][sextant],'d'))
     self.model = converted.model
-    self.color = converted.color
-
+    self.color = converted.color    
+# ------------------------------------------------------------------
   # convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
   # with S,L,H,R,G,B running from 0 to 1
-  # from http://130.113.54.154/~monger/hsl-rgb.html
+  # from http://130.113.54.154/~monger/hsl-rgb.html  
   def _RGB2HSL(self):
     import numpy
     if self.model != 'RGB': return
@@ -75,9 +124,7 @@ class Color():
     converted = Color('HSL', HSL) 
     self.model = converted.model
     self.color = converted.color
-
-
-
+# ------------------------------------------------------------------
   # convert R(ed) G(reen) B(lue) to CIE XYZ
   # with all values in the range of 0 to 1
   # from http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -104,9 +151,7 @@ class Color():
     converted = Color('XYZ', XYZ) 
     self.model = converted.model
     self.color = converted.color
-
-
-
+# ------------------------------------------------------------------
   # convert  CIE XYZ R(ed) G(reen) B(lue)
   # with all values in the range of 0 to 1
   # from http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -130,16 +175,14 @@ class Color():
       RGB[i] = min(RGB[i],1.0) 
       RGB[i] = max(RGB[i],0.0) 
         
-    maxVal = max(RGB)                                                                              # clipping colors according to the display gamut
+    maxVal = max(RGB)                                                                                                                                    # clipping colors according to the display gamut
     if (maxVal > 1.0):
       RGB /= maxVal
         
     converted = Color('RGB', RGB) 
     self.model = converted.model
     self.color = converted.color
-
-    
-
+# ------------------------------------------------------------------
   # convert  CIE Lab to CIE XYZ
   # with XYZ in the range of 0 to 1
   # from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
@@ -147,7 +190,7 @@ class Color():
     import numpy
     if self.model != 'CIELAB': return
     
-    ref_white = numpy.array([.95047, 1.00000, 1.08883],'d')                                         # Observer = 2, Illuminant = D65
+    ref_white = numpy.array([.95047, 1.00000, 1.08883],'d')                                                                                              # Observer = 2, Illuminant = D65
     XYZ       = numpy.zeros(3,'d') 
 
     XYZ[1] = (self.color[0] + 16 ) / 116
@@ -163,9 +206,7 @@ class Color():
     converted = Color('XYZ', XYZ*ref_white) 
     self.model = converted.model
     self.color = converted.color
-
-
-    
+# ------------------------------------------------------------------    
   # convert CIE XYZ to CIE Lab 
   # with XYZ in the range of 0 to 1
   # from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -173,7 +214,7 @@ class Color():
     import numpy
     if self.model != 'XYZ': return
     
-    ref_white = numpy.array([.95047, 1.00000, 1.08883],'d')                                         # Observer = 2, Illuminant = D65
+    ref_white = numpy.array([.95047, 1.00000, 1.08883],'d')                                                                                              # Observer = 2, Illuminant = D65
     XYZ = self.color/ref_white
       
     for i in xrange(len(XYZ)):
@@ -187,8 +228,7 @@ class Color():
                                               200.0 * (XYZ[1] - XYZ[2]) ]))
     self.model = converted.model
     self.color = converted.color
-
-                                     
+# ------------------------------------------------------------------                                     
   # convert Cie Lab to msh colorspace  
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _CIELAB2MSH(self):
@@ -205,10 +245,9 @@ class Color():
     converted = Color('MSH', Msh)
     self.model = converted.model
     self.color = converted.color
-
-
-
+# ------------------------------------------------------------------
   # convert  msh colorspace to Cie Lab 
+  # s,h in radians
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _MSH2CIELAB(self):
     import numpy, math
@@ -222,137 +261,126 @@ class Color():
     converted = Color('CIELAB', Lab)
     self.model = converted.model
     self.color = converted.color
-
-
-
 # ------------------------------------------------------------------
-  def __init__(self,
-               model = 'RGB',
-               color = numpy.zeros(3,'d')):
-    import numpy
-    
-    self.__transforms__ = \
-                   {'HSL':    {'index': 0, 'next': self._HSL2RGB},
-                    'RGB':    {'index': 1, 'next': self._RGB2XYZ,     'prev': self._RGB2HSL},
-                    'XYZ':    {'index': 2, 'next': self._XYZ2CIELAB,  'prev': self._XYZ2RGB},
-                    'CIELAB': {'index': 3, 'next': self._CIELAB2MSH,  'prev': self._CIELAB2XYZ},
-                    'MSH':    {'index': 4, 'prev': self._MSH2CIELAB},
-                    }
-
-    model = model.upper()
-    if model not in self.__transforms__.keys(): model = 'RGB'
-    if model == 'RGB' and max(color) > 1.0:                                                         # are we RGB255 ?
-      color /= 255.0                                                                                # rescale to RGB
-
-    if model == 'HSL':                                                                              # are we HSL ?
-      if abs(color[0]) > 1.0: color[0] /= 360.0                                                     # with angular hue?
-      while color[0] >= 1.0: color[0] -= 1.0                                                        # rewind to proper range
-      while color[0] < 0.0:  color[0] += 1.0                                                        # rewind to proper range
-
-    self.model = model
-    self.color = numpy.array(color,'d')
-
-
-  def __repr__(self):
-    return 'Model: %s Color: %s'%(self.model,str(self.color))
-
-  def __str__(self):
-    return self.__repr__()
-
-# ------------------------------------------------------------------
-  def to(self,toModel = 'RGB'):
-    toModel = toModel.upper()
-    if toModel not in self.__transforms__.keys(): return 
-
-    sourcePos = self.__transforms__[self.model]['index']
-    targetPos = self.__transforms__[toModel]['index']
-
-    while sourcePos < targetPos:
-      self.__transforms__[self.model]['next']()
-      sourcePos += 1
-
-    while sourcePos > targetPos:
-      self.__transforms__[self.model]['prev']()
-      sourcePos -= 1
-    return self
-
-
-# ------------------------------------------------------------------
-  def asModel(self,toModel = 'RGB'):
-    return self.__class__(self.model,self.color).to(toModel)
-
-
-
-# lorMap has properties
-# .type (seq, div)
-# .len
-# .colors (.len of class Color)
-# and methods
-# .export(type) (switches internally to output desired format)
 
 class Colormap():
+  '''
+      perceptually uniform diverging and sequential colormaps. colormap string exportable in the respective
+      formats compatible to paraview,gmsh and raw. 
+  ''' 
 
-  __slots__ = ['type',
+  __slots__ = [
                'left',
                'right',
-              ]
-
-  __formats__ = ['sequential','diverging']
-  
+              ]  
+# ------------------------------------------------------------------
   def __init__(self,
-               style = 'sequential',
                left  = Color('RGB',[1,1,1]),
                right = Color('RGB',[0,0,0]),
                ):
-
-    style = style.lower()
-    if style not in self.__formats__:
-      style = self.__formats__[0]
-
+    
     if left.__class__.__name__ != 'Color':
       left = Color()
     if right.__class__.__name__ != 'Color':
       right = Color()
-
-
-    self.style = style
-    self.left  =  left.asModel('MSH')
+    
+    self.left  = left.asModel('MSH')
     self.right = right.asModel('MSH')
+# ------------------------------------------------------------------  
+  def export(self,name='uniformPerceptualColorMap',format = 'paraview', steps = 10, crop = [-1,1]):
+  # export method returns colormap as a string w.r.t the specified format eg, paraview,gmsh
+  # the colormap can be cropped according to the range of specified values.
+  # No need to differentiate between sequential and diverging colormaps 
+  # produces sequential colormaps if either of the colors in the Colormap-object is either white or black
+ # ------------------------------------------------------------------  
+    import copy,numpy, math
+    
+    def interpolate_color(left,right,interp):
+      def rad_dif(left,right):
+        return abs((left.color[2]-right.color[2]))
 
+      def adjust_hue(Msh_sat,Msh_unsat):                                                                                              # if saturation of one of the two colors is too less than the other, hue of the less
+                                                                                                                                      # saturated color is adjusted.
+        M_unsat = Msh_unsat.color[0]
+        if ( Msh_sat.color[0] >= (M_unsat-0.1) ):
+          return Msh_sat.color[2]
+        else:
+          hSpin = Msh_sat.color[1]*math.sqrt((M_unsat)**2.0-(Msh_sat.color[0])**2)/(Msh_sat.color[0]*math.sin(Msh_sat.color[1]))
+        if Msh_sat.color[2] > - math.pi/3.0:
+          return Msh_sat.color[2] + hSpin
+        else:
+          return Msh_sat.color[2] - hSpin
+     
+      Msh1 = copySelf.left
+      Msh2 = copySelf.right
+      Msh_mid = [0.0,0.0,0.0]
+      if ((Msh1.color[1] > 0.05 and Msh2.color[1] > 0.05) and rad_dif(Msh1,Msh2) > math.pi/3.0): 
+        Msh_mid[0] = max(Msh1.color[0],Msh2.color[0],88.0)
+        if interp < 0.5:
+          Msh2.color[0] = Msh_mid[0]
+          Msh2.color[1] = 0.0
+          Msh2.color[2] = 0.0
+          interp = 2.0*interp
+        else:
+          Msh1.color[0] = Msh_mid[0]
+          Msh1.color[1] = 0.0
+          Msh1.color[2] = 0.0
+          interp = 2.0*interp - 1.0
+      if (Msh1.color[1] < 0.05) and (Msh2.color[1] > 0.05):
+        Msh1.color[2] = adjust_hue(Msh2,Msh1)
+      elif (Msh2.color[1] < 0.05) and (Msh1.color[1] > 0.05):
+        Msh2.color[2] = adjust_hue(Msh1,Msh2)
+      for i in range(3):
+        Msh_mid[i] = (1.0-interp)*Msh1.color[i] + interp* Msh2.color[i]
+      return Color('MSH',Msh_mid).to()
 
-
-class Colormaps():
-  '''
-     Funtionality to manipulate colormaps 
-  '''
-
-  # from http://code.activestate.com/recipes/121574-matrix-vector-multiplication/
-  def matmult(self, m, v):
-      nrows = len(m)
-      w = [None] * nrows
-      for row in range(nrows):
-          w[row] = reduce(lambda x,y: x+y, map(lambda x,y: x*y, m[row], v))
-      return w
-
-  def write_gsmh(self,RGB_vector,name):
-    colormap = open(str(name) + '.map',"w")
-    colormap.write('View.ColorTable = {\n')
-    for i in range(len(RGB_vector)-1):
-      colormap.write('{'+str((RGB_vector[0][i])*255.0)+','+str((RGB_vector[1][i])*255.0)+','+str((RGB_vector[2][i])*255.0)+'},\n')
-    colormap.write('{'+str((RGB_vector[0][-1])*255.0)+','+str((RGB_vector[1][-1])*255.0)+','+str((RGB_vector[2][-1])*255.0)+'}}')
-    file.close(colormap)
-
-  def write_paraview(self,RGB_vector,name):
-    colormap = open(str(name) + '.xml',"w")
-    colormap.write('<ColorMap name="'+ str(name)+ '" space="RGB">\n')
-    for i in range(len(RGB_vector[0])):
-      colormap.write('<Point x="'+str(i)+'" o="1" r="'+str(RGB_vector[0][i])+'" g="'+str(RGB_vector[1][i])+'" b="'+str(RGB_vector[2][i])+'"/>\n')
-    colormap.write('</ColorMap>')
-    file.close(colormap)
+    def write_paraview(RGB_vector):
+      colormap ='<ColorMap name="'+ str(name)+ '" space="RGB">\n'
+      for i in range(len(RGB_vector)):
+        colormap+='<Point x="'+str(i)+'" o="1" r="'+str(RGB_vector[i][0])+'" g="'+str(RGB_vector[i][1])+'" b="'+str(RGB_vector[i][2])+'"/>\n'
+      colormap+='</ColorMap>'
+      return colormap
+    
+    def write_gmsh(RGB_vector):
+      colormap = 'View.ColorTable = {\n'
+      for i in range(len(RGB_vector)-1):
+        colormap+='{'+str((RGB_vector[i][0])*255.0)+','+str((RGB_vector[i][1])*255.0)+','+str((RGB_vector[i][2])*255.0)+'},\n'
+      colormap+='{'+str((RGB_vector[-1][0])*255.0)+','+str((RGB_vector[-1][1])*255.0)+','+str((RGB_vector[-1][2])*255.0)+'}}\n'
+      return colormap
+    
+    def write_raw(RGB_vector):
+      colormap = ('ColorMap name = ' + str(name)+'\n')
+      for i in range(len(RGB_vector)):
+        colormap+=str(RGB_vector[i][0])+'\t'+str(RGB_vector[i][1])+'\t'+str(RGB_vector[i][2])+'\n'
+      return colormap
       
-  def write_raw(self,RGB_vector,name):
-    colormap = open(str(name) + '.colormap',"w")
-    colormap.write('ColorMap name = ' + str(name)+'\n')
-    for i in range(len(RGB_vector)):
-      colormap.write(str(RGB_vector[0][i])+'\t'+str(RGB_vector[1][i])+'\t'+str(RGB_vector[2][i])+'\n')
-    file.close(colormap)
+    def croppedVector(RGB_vector):                                                                  
+      zeroPos = int((len(RGB_vector)-1)/2)
+      leftPos,rightPos = crop
+      maxValue = max(abs(leftPos),abs(rightPos))
+      minValue = min(abs(leftPos),abs(rightPos))
+      perUnit = (len(RGB_vector)-1)/(2*maxValue)
+      if abs(leftPos) > abs(rightPos):
+        del RGB_vector[((zeroPos + int(perUnit*minValue))+1):]
+      if abs(leftPos) < abs(rightPos):
+        del RGB_vector[:(zeroPos - int(perUnit*minValue))]
+      return RGB_vector
+      
+    interpolationVector = []                                                                                                                             # a list of equally spaced values(interpolator) between 0 and 1
+    RGB_Matrix = []
+    for i in range(steps+1): interpolationVector.append(float(i)/steps)
+    for i in interpolationVector:
+      copySelf = copy.deepcopy(self)
+      color = interpolate_color(copySelf.left,copySelf.right,i)
+      RGB_Matrix.append(color.color)
+    RGB_Matrix_cropped = croppedVector(RGB_Matrix)
+
+    if format.lower() == 'paraview':
+      colormap = write_paraview(RGB_Matrix_cropped)
+    if format.lower() == 'gmsh':
+      colormap = write_gmsh(RGB_Matrix_cropped)
+    if format.lower() == 'raw':
+      colormap = write_raw(RGB_Matrix_cropped)      
+    colormapStr = str(colormap)
+
+    return colormapStr
