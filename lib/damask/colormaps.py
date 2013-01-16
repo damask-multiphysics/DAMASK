@@ -63,7 +63,6 @@ class Color():
     return self
 # ------------------------------------------------------------------
   def asModel(self,toModel = 'RGB'):
-    print self.__class__(self.model,self.color)
     return self.__class__(self.model,self.color).to(toModel)    
 # ------------------------------------------------------------------   
   # convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
@@ -375,12 +374,9 @@ class Colormap():
       RGB_Matrix.append(color.color)
     RGB_Matrix_cropped = croppedVector(RGB_Matrix)
 
-    if format.lower() == 'paraview':
-      colormap = write_paraview(RGB_Matrix_cropped)
-    if format.lower() == 'gmsh':
-      colormap = write_gmsh(RGB_Matrix_cropped)
-    if format.lower() == 'raw':
-      colormap = write_raw(RGB_Matrix_cropped)      
-    colormapStr = str(colormap)
-
-    return colormapStr
+    return {\
+            'paraview': write_paraview,
+            'gmsh': write_gmsh,
+            'raw': write_raw,
+            'list': lambda x: x,
+    }[format.lower()](RGB_Matrix_cropped)      
