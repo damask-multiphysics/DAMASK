@@ -104,10 +104,10 @@ module numerics
                                 itmax                      =  20_pInt, &                            !< maximum number of iterations
                                 itmin                      =  2_pInt, &                             !< minimum number of iterations
                                 maxCutBack                 =  3_pInt, &                             !< max number of cut backs
-                                regridMode                 =  0_pInt                                !< 0: no regrid; 1: regrid if DAMASK doesn't converge; 2: regrid if DAMASK or BVP Solver doesn't converge 
+                                regridMode                 =  0_pInt, &                             !< 0: no regrid; 1: regrid if DAMASK doesn't converge; 2: regrid if DAMASK or BVP Solver doesn't converge 
+                                divergence_correction      =  0_pInt                                !< correct divergence calculation in fourier space 0: no correction, 1: dimension scaled to 1, 2: dimension scaled to Npoints
  logical, protected , public :: &
                                 memory_efficient           = .true., &                              !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
-                                divergence_correction      = .false., &                             !< correct divergence calculation in fourier space, Default .false.: no correction
                                 update_gamma               = .false.                                !< update gamma operator with current stiffness, Default .false.: use initial stiffness 
 
 #endif
@@ -285,7 +285,7 @@ subroutine numerics_init
        case ('rotation_tol')
              rotation_tol = IO_floatValue(line,positions,2_pInt)
        case ('divergence_correction')
-             divergence_correction = IO_intValue(line,positions,2_pInt)  > 0_pInt
+             divergence_correction = IO_intValue(line,positions,2_pInt)
        case ('update_gamma')
              update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
 #ifdef PETSc
@@ -409,7 +409,7 @@ subroutine numerics_init
    write(6,'(a24,1x,a)')       ' myfilter:               ',trim(myfilter)
    write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
    write(6,'(a24,1x,es8.1)')   ' rotation_tol:           ',rotation_tol
-   write(6,'(a24,1x,L8,/)')    ' divergence_correction:  ',divergence_correction
+   write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
    write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
 #ifdef PETSc
    write(6,'(a24,1x,es8.1)')   ' err_f_tol:              ',err_f_tol
@@ -470,6 +470,8 @@ subroutine numerics_init
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolabs')
  if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
+ if (divergence_correction < 0_pInt .or. &
+     divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
  if (maxCutBack <= 1.0_pInt)               call IO_error(301_pInt,ext_msg='maxCutBack')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)

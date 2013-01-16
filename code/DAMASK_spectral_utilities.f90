@@ -123,7 +123,7 @@ subroutine utilities_init()
  use mesh, only: &
    res, &
    res1_red, &
-   virt_dim
+   scaledDim
  use math                                                                                           ! must use the whole module for use of FFTW
 
  implicit none
@@ -230,7 +230,7 @@ subroutine utilities_init()
        if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)                                      ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
          do i = 1_pInt, res1_red
            k_s(1) = i - 1_pInt                                                                      ! symmetry, junst running from 0,1,...,N/2,N/2+1
-           xi(1:3,i,j,k) = real(k_s, pReal)/virt_dim                                                ! if divergence_correction is set, frequencies are calculated on unit length
+           xi(1:3,i,j,k) = real(k_s, pReal)/scaledDim                                                ! if divergence_correction is set, frequencies are calculated on unit length
  enddo; enddo; enddo
  
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor
@@ -307,7 +307,7 @@ end subroutine utilities_updateGamma
 subroutine utilities_FFTforward(row,column)
  use math
  use mesh, only : &
-   virt_dim, &
+   scaledDim, &
    res, &
    res1_red
 
@@ -325,7 +325,7 @@ subroutine utilities_FFTforward(row,column)
 !--------------------------------------------------------------------------------------------------
 ! call function to calculate divergence from math (for post processing) to check results
   if (debugDivergence) &
-    divergence_post = math_divergenceFFT(virt_dim,field_real(1:res(1),1:res(2),1:res(3),1:3,1:3))   ! some elements are padded
+    divergence_post = math_divergenceFFT(scaledDim,field_real(1:res(1),1:res(2),1:res(3),1:3,1:3))   ! some elements are padded
   
 !--------------------------------------------------------------------------------------------------
 ! doing the FFT

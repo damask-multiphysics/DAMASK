@@ -34,7 +34,7 @@ module mesh
  implicit none
  private
  
- integer(pInt), public :: &
+ integer(pInt), public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NelemSets, &
    mesh_maxNelemInSet, &
@@ -46,27 +46,31 @@ module mesh
    mesh_maxNsharedElems, &                                                                          !< max number of CP elements sharing a node
    mesh_maxNsubNodes
 
- integer(pInt), dimension(:,:), allocatable, public :: &
+ integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices
    mesh_sharedElem, &                                                                               !< entryCount and list of elements containing node
    mesh_nodeTwins                                                                                   !< node twins are surface nodes that lie exactly on opposite sides of the mesh (surfaces nodes with equal coordinate values in two dimensions)
  
- integer(pInt), dimension(:,:,:,:), allocatable, public :: &
+ integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
  real(pReal), dimension(:,:), allocatable, public :: &
-   mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
-   mesh_node0, &                                                                                    !< node x,y,z coordinates (initially!)
    mesh_node                                                                                        !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
  
- real(pReal), dimension(:,:,:), allocatable, public :: &
-   mesh_ipCoordinates, &                                                                            !< IP x,y,z coordinates (after deformation!)
-   mesh_ipArea                                                                                      !< area of interface to neighboring IP (initially!)
+ real(pReal), dimension(:,:), allocatable, public, protected :: &
+   mesh_ipVolume, &                                                                                 !< volume associated with IP (initially!)
+   mesh_node0                                                                                       !< node x,y,z coordinates (initially!)
+
+ real(pReal), dimension(:,:,:), allocatable, public, protected :: &
+    mesh_ipArea                                                                                     !< area of interface to neighboring IP (initially!)
  
- real(pReal),dimension(:,:,:,:), allocatable, public :: & 
+ real(pReal), dimension(:,:,:), allocatable, public :: &
+   mesh_ipCoordinates                                                                               !< IP x,y,z coordinates (after deformation!)
+
+ real(pReal),dimension(:,:,:,:), allocatable, public, protected :: & 
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
     
- logical, dimension(3), public :: mesh_periodicSurface                                              !< flag indicating periodic outer surfaces (used for fluxes)
+ logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
                                                               
  integer(pInt), private :: &
    mesh_Nelems                                                                                      !< total number of elements in mesh
@@ -98,10 +102,16 @@ module mesh
 
 #ifdef Spectral
  include 'fftw3.f03'
- real(pReal),   dimension(3), public :: geomdim, virt_dim                                           ! physical dimension of volume element per direction
- integer(pInt), dimension(3), public :: res
- real(pReal),   public  :: wgt
- integer(pInt), public  :: res1_red, homog
+ real(pReal),   dimension(3), public, protected :: &
+   geomdim, &                                                                                       !< physical dimension of volume element per direction
+   scaledDim                                                                                        !< scaled dimension of volume element, depending on selected divergence calculation
+ integer(pInt), dimension(3), public, protected :: &
+   res                                                                                              !< resolution, e.g. number of Fourier points in each direction
+ real(pReal),   public, protected  :: &
+   wgt
+ integer(pInt), public, protected  :: &
+   res1_red, &
+   homog
  integer(pInt), private :: i
 #endif
 
@@ -435,12 +445,20 @@ subroutine mesh_init(ip,element)
  wgt = 1.0/real(res(1)*res(2)*res(3),pReal)
  geomdim = mesh_spectral_getDimension(fileUnit)
  homog = mesh_spectral_getHomogenization(fileUnit)
- if (divergence_correction) then
+ 
+!--------------------------------------------------------------------------------------------------
+! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and reso-
+! lution-independent divergence
+ if (divergence_correction == 1_pInt) then
    do i = 1_pInt, 3_pInt
-    if (i /= minloc(geomdim,1) .and. i /= maxloc(geomdim,1)) virt_dim = geomdim/geomdim(i)
+    if (i/=minloc(geomdim,1) .and. i/=maxloc(geomdim,1)) scaledDim=geomdim/geomdim(i)
+   enddo
+ elseif (divergence_correction == 2_pInt) then
+   do i = 1_pInt, 3_pInt
+    if (i/=minloc(geomdim/res,1) .and. i/=maxloc(geomdim/res,1)) scaledDim=geomdim/geomdim(i)*res(i)
    enddo
  else
-   virt_dim = geomdim
+   scaledDim = geomdim
  endif
  write(6,'(a,3(i12  ))') ' resolution a b c:',      res
  write(6,'(a,3(f12.5))') ' dimension  x y z:',      geomdim

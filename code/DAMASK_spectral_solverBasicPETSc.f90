@@ -92,6 +92,7 @@ subroutine basicPETSc_init(temperature)
    res, &
    wgt, &
    geomdim, &
+   scaledDim, &
    mesh_NcpElems, &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
@@ -117,6 +118,7 @@ subroutine basicPETSc_init(temperature)
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
 #include "compilation_info.f90"
+ write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields

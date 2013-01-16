@@ -63,6 +63,7 @@ subroutine basic_init(temperature)
    res, &
    wgt, &
    geomdim, &
+   scaledDim, &
    mesh_ipCoordinates, &
    mesh_NcpElems, &
    mesh_deformedCoordsFFT
@@ -82,6 +83,7 @@ subroutine basic_init(temperature)
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
+ write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
