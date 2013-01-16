@@ -69,7 +69,7 @@ module crystallite
      crystallite_subTstar0_v, &                                                                     !< 2nd Piola-Kirchhoff stress vector at start of crystallite inc
      crystallite_orientation, &                                                                     !< orientation as quaternion
      crystallite_orientation0, &                                                                    !< initial orientation as quaternion
-     crystallite_rotation                                                                           !< grain rotation away from initial orientation as axis-angle (in degrees)
+     crystallite_rotation                                                                           !< grain rotation away from initial orientation as axis-angle (in degrees) in crystal reference frame 
  real(pReal), dimension (:,:,:,:,:), allocatable :: &
      crystallite_Fe, &                                                                              !< current "elastic" def grad (end of converged time step)
      crystallite_subFe0,&                                                                           !< "elastic" def grad at start of crystallite inc
@@ -280,7 +280,7 @@ subroutine crystallite_init(Temperature)
  do i = 1_pInt,material_Ncrystallite
    do j = 1_pInt,crystallite_Noutput(i)
      select case(crystallite_output(j,i))
-       case('phase','texture','volume')
+       case('phase','texture','volume','grainrotationx','grainrotationy','grainrotationz')
          mySize = 1_pInt
        case('orientation','grainrotation')   ! orientation as quaternion, or deviation from initial grain orientation in axis-angle form (angle in degrees)
          mySize = 4_pInt
@@ -3497,7 +3497,9 @@ function crystallite_postResults(&
                                       math_det33, &
                                       math_I3, &
                                       inDeg, &
-                                      math_Mandel6to33
+                                      math_Mandel6to33, &
+                                      math_qMul, &
+                                      math_qConj
  use mesh, only:                      mesh_element, &
                                       mesh_ipVolume
  use material, only:                  microstructure_crystallite, &
@@ -3523,6 +3525,7 @@ function crystallite_postResults(&
  
  !*** local variables ***!
  real(pReal), dimension(3,3) ::       Ee
+ real(pReal), dimension(4) ::         rotation
  real(pReal)                          detF
  integer(pInt)                        o,c,crystID,mySize
 
@@ -3530,7 +3533,7 @@ function crystallite_postResults(&
 
  crystallite_postResults = 0.0_pReal
  c = 0_pInt
- crystallite_postResults(c+1) = real(crystallite_sizePostResults(crystID),pReal)                    ! size of results from cryst
+ crystallite_postResults(c+1) = real(crystallite_sizePostResults(crystID),pReal)                                  ! size of results from cryst
  c = c + 1_pInt
  
  do o = 1_pInt,crystallite_Noutput(crystID)
@@ -3538,24 +3541,42 @@ function crystallite_postResults(&
    select case(crystallite_output(o,crystID))
      case ('phase')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = real(material_phase(g,i,e),pReal)                             ! phaseID of grain
+       crystallite_postResults(c+1) = real(material_phase(g,i,e),pReal)                                           ! phaseID of grain
      case ('texture')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = real(material_texture(g,i,e),pReal)                           ! textureID of grain
+       crystallite_postResults(c+1) = real(material_texture(g,i,e),pReal)                                         ! textureID of grain
      case ('volume')
        mySize = 1_pInt
-       detF = math_det33(crystallite_partionedF(1:3,1:3,g,i,e))                 ! V_current = det(F) * V_reference
-       crystallite_postResults(c+1) = detF * mesh_ipVolume(i,e) / homogenization_Ngrains(mesh_element(3,e)) ! grain volume (not fraction but absolute)
+       detF = math_det33(crystallite_partionedF(1:3,1:3,g,i,e))                                                   ! V_current = det(F) * V_reference
+       crystallite_postResults(c+1) = detF * mesh_ipVolume(i,e) / homogenization_Ngrains(mesh_element(3,e))       ! grain volume (not fraction but absolute)
      case ('orientation')
        mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,g,i,e)    ! grain orientation as quaternion
+       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,g,i,e)                                 ! grain orientation as quaternion
      case ('eulerangles')
        mySize = 3_pInt
        crystallite_postResults(c+1:c+mySize) = inDeg * math_QuaternionToEuler(crystallite_orientation(1:4,g,i,e)) ! grain orientation as Euler angles in degree
      case ('grainrotation')
        mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e)) ! grain rotation away from initial orientation as axis-angle 
-       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)      ! angle in degree
+       crystallite_postResults(c+1:c+mySize) = math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e))        ! grain rotation away from initial orientation as axis-angle in crystal reference coordinates
+       crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                                        ! angle in degree
+     case ('grainrotationx')
+       mySize = 1_pInt
+       rotation = math_QuaternionToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
+                                                                 crystallite_rotation(1:4,g,i,e)), &
+                                                                 math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       crystallite_postResults(c+1) = inDeg * rotation(1) * rotation(4)                                           ! angle in degree
+     case ('grainrotationy')
+       mySize = 1_pInt
+       rotation = math_QuaternionToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
+                                                                 crystallite_rotation(1:4,g,i,e)), &
+                                                                 math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       crystallite_postResults(c+1) = inDeg * rotation(2) * rotation(4)                                           ! angle in degree
+     case ('grainrotationz')
+       mySize = 1_pInt
+       rotation = math_QuaternionToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
+                                                                 crystallite_rotation(1:4,g,i,e)), &
+                                                                 math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       crystallite_postResults(c+1) = inDeg * rotation(3) * rotation(4)                                           ! angle in degree
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
