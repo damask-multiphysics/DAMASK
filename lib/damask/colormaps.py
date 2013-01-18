@@ -286,7 +286,7 @@ class Colormap():
     self.left  = left.asModel('MSH')
     self.right = right.asModel('MSH')
 # ------------------------------------------------------------------  
-  def export(self,name='uniformPerceptualColorMap',format = 'paraview', steps = 10, crop = [-1,1]):
+  def export(self,name='uniformPerceptualColorMap',format = 'paraview', steps = 10, crop = [-1.0,1.0]):
   # export method returns colormap as a string w.r.t the specified format eg, paraview,gmsh
   # the colormap can be cropped according to the range of specified values.
   # No need to differentiate between sequential and diverging colormaps 
@@ -352,31 +352,21 @@ class Colormap():
       for i in range(len(RGB_vector)):
         colormap+=str(RGB_vector[i][0])+'\t'+str(RGB_vector[i][1])+'\t'+str(RGB_vector[i][2])+'\n'
       return colormap
-      
-    def croppedVector(RGB_vector):                                                                  
-      zeroPos = int((len(RGB_vector)-1)/2)
-      leftPos,rightPos = crop
-      maxValue = max(abs(leftPos),abs(rightPos))
-      minValue = min(abs(leftPos),abs(rightPos))
-      perUnit = (len(RGB_vector)-1)/(2*maxValue)
-      if abs(leftPos) > abs(rightPos):
-        del RGB_vector[((zeroPos + int(perUnit*minValue))+1):]
-      if abs(leftPos) < abs(rightPos):
-        del RGB_vector[:(zeroPos - int(perUnit*minValue))]
-      return RGB_vector
-      
+
+
     interpolationVector = []                                                                                                                             # a list of equally spaced values(interpolator) between 0 and 1
     RGB_Matrix = []
-    for i in range(steps+1): interpolationVector.append(float(i)/steps)
+    scaledSteps = int(steps/(crop[1] - crop[0])*2.0)
+    for i in range(scaledSteps): interpolationVector.append(float(i)/scaledSteps)
     for i in interpolationVector:
       copySelf = copy.deepcopy(self)
       color = interpolate_color(copySelf.left,copySelf.right,i)
       RGB_Matrix.append(color.color)
-    RGB_Matrix_cropped = croppedVector(RGB_Matrix)
-
+    
+    right = int((scaledSteps - 1)/2.0 + (scaledSteps - 1)/2.0*crop[1])
     return {\
             'paraview': write_paraview,
             'gmsh': write_gmsh,
             'raw': write_raw,
             'list': lambda x: x,
-    }[format.lower()](RGB_Matrix_cropped)      
+    }[format.lower()](RGB_Matrix[max(right-steps,0):min(right,scaledSteps)])      
