@@ -38,7 +38,7 @@ surface = {
 
 parser = OptionParser(option_class=extendedOption, usage='%prog', description = """
 Generate a geometry file of a bicontinuous structure of given type.
-""" + string.replace('$Id: spectral_geomCheck 994 2011-09-05 13:38:10Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-t','--type', dest='type', type='string', \

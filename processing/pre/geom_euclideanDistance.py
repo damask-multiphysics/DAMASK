@@ -109,7 +109,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog options [file[
 Produce geom files containing Euclidean distance to grain structural features:
 boundaries, triple lines, and quadruple points.
 
-""" + string.replace('$Id: addEuclideanDistance.py 2039 2012-12-19 14:50:45Z MPIE\p.shanthraj $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-t','--type',        dest='type', action='extend', type='string', \

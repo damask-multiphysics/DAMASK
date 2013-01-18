@@ -42,7 +42,7 @@ mappings = {
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
-""" + string.replace('$Id: spectral_geomCanvas.py 1576 2012-06-26 18:08:50Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
