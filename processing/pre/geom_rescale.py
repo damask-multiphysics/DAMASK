@@ -173,7 +173,8 @@ for file in files:
 
   file['output'].write(output)
 
-  file['input'].close()
   if file['name'] != 'STDIN':
+    file['input'].close()
     file['output'].close()
+    os.rename(file['name']+'_tmp',file['name'])
     
