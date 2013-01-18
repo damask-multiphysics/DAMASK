@@ -95,15 +95,12 @@ neighborhoods = {
                 }
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
-Add column containing Euclidean distance to grain structural features:
+Add column(s) containing Euclidean distance to grain structural features:
 boundaries, triple lines, and quadruple points.
 
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-g','--geom',        dest='geom', action='store', type='string', \
-                                        help='optional geometry file', \
-                                        metavar='<file>')
 parser.add_option('-i','--identifier',  dest='id', action='store', type='string', \
                                         help='heading of column containing grain identifier [%default]', \
                                         metavar='<label>')
