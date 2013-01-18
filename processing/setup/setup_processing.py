@@ -120,12 +120,12 @@ bin_link = { \
                 'filterTable.py',
                 'mentat_colorMap.py',
                 'nodesFromCentroids.py',
+                'perceptualUniformColorMap.py',
                 'postResults.py',
                 'showTable.py',
                 'spectral_parseLog.py',
                 'table2ang',
                 'tagLabel.py',
-                'uniformPerceptualColorMap.py'
                 ],
             }
 
