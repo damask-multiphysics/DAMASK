@@ -207,21 +207,18 @@ subroutine CPFEM_init
   endif
   ! *** end of restoring
 
-  !$OMP CRITICAL (write2out)
-    write(6,*)
-    write(6,*) '<<<+-  CPFEM init  -+>>>'
-    write(6,*) '$Id$'
+  write(6,'(/,a)') '<<<+-  CPFEM init  -+>>>'
+  write(6,'(a)') '$Id$'
 #include "compilation_info.f90"
-    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
-      write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
-      write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
-      write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
+  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
+    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
+    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
+    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
       write(6,*)
       write(6,*) 'parallelExecution:    ', parallelExecution
       write(6,*) 'symmetricSolver:      ', symmetricSolver
-    endif
-    flush(6)
-  !$OMP END CRITICAL (write2out)
+  endif
+  flush(6)
 
 end subroutine CPFEM_init
 
@@ -354,16 +351,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
   
   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt .and. cp_en == 1 .and. IP == 1) then
     !$OMP CRITICAL (write2out)
-      write(6,*)
-      write(6,'(a)') '#############################################'
+      write(6,'(/,a)') '#############################################'
       write(6,'(a1,a22,1x,f15.7,a6)') '#','theTime',        theTime,      '#'
       write(6,'(a1,a22,1x,f15.7,a6)') '#','theDelta',       theDelta,     '#'
       write(6,'(a1,a22,1x,i8,a13)')   '#','theInc',         theInc,       '#'
       write(6,'(a1,a22,1x,i8,a13)')   '#','cycleCounter',   cycleCounter, '#'
       write(6,'(a1,a22,1x,i8,a13)')   '#','computationMode',mode,         '#'
-      write(6,'(a)') '#############################################'
-      write(6,*)
-      call flush (6)
+      write(6,'(a,/)') '#############################################'
+      flush (6)
     !$OMP END CRITICAL (write2out)
   endif
 
@@ -617,7 +612,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
     !$OMP CRITICAL (write2out)
       write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1.0e6_pReal
       write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') '<< CPFEM >> Jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1.0e9_pReal
-      call flush(6)
+      flush(6)
     !$OMP END CRITICAL (write2out)
   endif
   

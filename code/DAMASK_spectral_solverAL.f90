@@ -282,14 +282,14 @@ type(tSolutionState) function &
    call IO_write_jobBinaryFile(777,'F_lambda_lastInc',size(F_lambda_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lambda_lastInc
    close (777)
+   call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
+   write (777,rec=1) F_aimDot
+   close(777)
    call IO_write_jobBinaryFile(777,'C',size(C))
    write (777,rec=1) C
    close(777)
    call IO_write_jobBinaryFile(777,'C_lastInc',size(C_lastInc))
    write (777,rec=1) C_lastInc
-   close(777)
-   call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
-   write (777,rec=1) F_aimDot
    close(777)
  endif 
  AL_solution%converged =.false.

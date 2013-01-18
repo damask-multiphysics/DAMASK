@@ -82,8 +82,8 @@ subroutine prec_init
  
  implicit none
 
- write(6,'(/,a)') '<<<+-  prec init  -+>>>'
- write(6,'(a)') '$Id$'
+ write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
+ write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
  write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
  write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt

@@ -431,7 +431,7 @@ program DAMASK_spectral_Driver
          cutBack = .False.
          if(solres%termIll .or. .not. solres%converged) then                                        ! no solution found
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
-             write(6,'(/,a)') 'cut back detected'
+             write(6,'(/,a)') ' cut back detected'
              cutBack = .True.
              stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
