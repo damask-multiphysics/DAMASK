@@ -648,7 +648,7 @@ do i = 1_pInt,maxNinstance
              lattice_Qtwin(o,s,index_otherFamily+j,myStructure)
          enddo ; enddo ; enddo ; enddo
        enddo ; enddo ; enddo ; enddo
-       constitutive_dislotwin_Ctwin_66(:,:,k,i) = math_Mandel3333to66(constitutive_dislotwin_Ctwin_3333(:,:,:,:,k,i))
+       constitutive_dislotwin_Ctwin_66(:,:,index_myFamily+j,i) = math_Mandel3333to66(constitutive_dislotwin_Ctwin_3333(:,:,:,:,index_myFamily+j,i))
 
     !* Interaction matrices
 
