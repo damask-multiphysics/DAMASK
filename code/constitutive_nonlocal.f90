@@ -87,7 +87,7 @@ constitutive_nonlocal_output                                         ! name of e
 integer(pInt), dimension(:), allocatable, private :: &
 constitutive_nonlocal_Noutput                                        ! number of outputs per instance of this plasticity 
 
-character(len=32), dimension(:), allocatable, private :: &
+character(len=32), dimension(:), allocatable, public :: &
 constitutive_nonlocal_structureName                                  ! name of the lattice structure
 
 integer(pInt), dimension(:), allocatable, public :: &
@@ -104,11 +104,6 @@ constitutive_nonlocal_colinearSystem                                 ! colinear 
 
 real(pReal), dimension(:), allocatable, private :: &
 constitutive_nonlocal_CoverA, &                                      ! c/a ratio for hex type lattice
-constitutive_nonlocal_C11, &                                         ! C11 element in elasticity matrix
-constitutive_nonlocal_C12, &                                         ! C12 element in elasticity matrix
-constitutive_nonlocal_C13, &                                         ! C13 element in elasticity matrix
-constitutive_nonlocal_C33, &                                         ! C33 element in elasticity matrix
-constitutive_nonlocal_C44, &                                         ! C44 element in elasticity matrix
 constitutive_nonlocal_Gmod, &                                        ! shear modulus
 constitutive_nonlocal_nu, &                                          ! poisson's ratio
 constitutive_nonlocal_atomicVolume, &                                ! atomic volume
@@ -235,6 +230,7 @@ use lattice,  only: lattice_maxNslipFamily, &
                     lattice_maxNinteraction, &
                     lattice_NslipSystem, &
                     lattice_initializeStructure, &
+                    lattice_symmetrizeC66, &
                     lattice_sd, &
                     lattice_sn, &
                     lattice_st, &
@@ -312,11 +308,6 @@ constitutive_nonlocal_slipSystemLattice = 0_pInt
 constitutive_nonlocal_totalNslip = 0_pInt
 
 allocate(constitutive_nonlocal_CoverA(maxNinstance))
-allocate(constitutive_nonlocal_C11(maxNinstance))
-allocate(constitutive_nonlocal_C12(maxNinstance))
-allocate(constitutive_nonlocal_C13(maxNinstance))
-allocate(constitutive_nonlocal_C33(maxNinstance))
-allocate(constitutive_nonlocal_C44(maxNinstance))
 allocate(constitutive_nonlocal_Gmod(maxNinstance))
 allocate(constitutive_nonlocal_nu(maxNinstance))
 allocate(constitutive_nonlocal_atomicVolume(maxNinstance))
@@ -350,11 +341,6 @@ allocate(constitutive_nonlocal_fEdgeMultiplication(maxNinstance))
 allocate(constitutive_nonlocal_linetensionEffect(maxNinstance))
 allocate(constitutive_nonlocal_edgeJogFactor(maxNinstance))
 constitutive_nonlocal_CoverA = 0.0_pReal 
-constitutive_nonlocal_C11 = 0.0_pReal
-constitutive_nonlocal_C12 = 0.0_pReal
-constitutive_nonlocal_C13 = 0.0_pReal
-constitutive_nonlocal_C33 = 0.0_pReal
-constitutive_nonlocal_C44 = 0.0_pReal
 constitutive_nonlocal_Gmod = 0.0_pReal
 constitutive_nonlocal_atomicVolume = 0.0_pReal
 constitutive_nonlocal_Dsd0 = -1.0_pReal
@@ -444,16 +430,24 @@ do                                                                              
         constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
       case ('c/a_ratio','covera_ratio')
         constitutive_nonlocal_CoverA(i) = IO_floatValue(line,positions,2_pInt)
-      case ('c11')
-        constitutive_nonlocal_C11(i) = IO_floatValue(line,positions,2_pInt)
-      case ('c12')
-        constitutive_nonlocal_C12(i) = IO_floatValue(line,positions,2_pInt)
-      case ('c13')
-        constitutive_nonlocal_C13(i) = IO_floatValue(line,positions,2_pInt)
-      case ('c33')
-        constitutive_nonlocal_C33(i) = IO_floatValue(line,positions,2_pInt)
-      case ('c44')
-        constitutive_nonlocal_C44(i) = IO_floatValue(line,positions,2_pInt)
+       case ('c11')
+         constitutive_nonlocal_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c12')
+         constitutive_nonlocal_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c13')
+         constitutive_nonlocal_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c22')
+         constitutive_nonlocal_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c23')
+         constitutive_nonlocal_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c33')
+         constitutive_nonlocal_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c44')
+         constitutive_nonlocal_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c55')
+         constitutive_nonlocal_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c66')
+         constitutive_nonlocal_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
       case ('nslip')
         forall (f = 1_pInt:lattice_maxNslipFamily) &
           constitutive_nonlocal_Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
@@ -850,36 +844,17 @@ do i = 1,maxNinstance
   
   !*** elasticity matrix and shear modulus according to material.config
   
-  select case (myStructure)
-    case(1_pInt:2_pInt)                                                                                                             ! cubic(s)
-      forall(k=1_pInt:3_pInt)
-        forall(j=1_pInt:3_pInt) constitutive_nonlocal_Cslip_66(k,j,i) = constitutive_nonlocal_C12(i)
-        constitutive_nonlocal_Cslip_66(k,k,i) = constitutive_nonlocal_C11(i)
-        constitutive_nonlocal_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_nonlocal_C44(i)
-      end forall
-    case(3_pInt:)                                                                                                                   ! all hex
-      constitutive_nonlocal_Cslip_66(1,1,i) = constitutive_nonlocal_C11(i)
-      constitutive_nonlocal_Cslip_66(2,2,i) = constitutive_nonlocal_C11(i)
-      constitutive_nonlocal_Cslip_66(3,3,i) = constitutive_nonlocal_C33(i)
-      constitutive_nonlocal_Cslip_66(1,2,i) = constitutive_nonlocal_C12(i)
-      constitutive_nonlocal_Cslip_66(2,1,i) = constitutive_nonlocal_C12(i)
-      constitutive_nonlocal_Cslip_66(1,3,i) = constitutive_nonlocal_C13(i)
-      constitutive_nonlocal_Cslip_66(3,1,i) = constitutive_nonlocal_C13(i)
-      constitutive_nonlocal_Cslip_66(2,3,i) = constitutive_nonlocal_C13(i)
-      constitutive_nonlocal_Cslip_66(3,2,i) = constitutive_nonlocal_C13(i)
-      constitutive_nonlocal_Cslip_66(4,4,i) = constitutive_nonlocal_C44(i)
-      constitutive_nonlocal_Cslip_66(5,5,i) = constitutive_nonlocal_C44(i)
-      constitutive_nonlocal_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_nonlocal_C11(i)- constitutive_nonlocal_C12(i))
-  end select
+  constitutive_nonlocal_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_nonlocal_structureName(i),&
+                                                                      constitutive_nonlocal_Cslip_66) 
+  constitutive_nonlocal_Gmod(i) = 0.2_pReal * ( constitutive_nonlocal_Cslip_66(1,1,i) - constitutive_nonlocal_Cslip_66(1,2,i) &
+                                                + 3.0_pReal*constitutive_nonlocal_Cslip_66(4,4,i) )                                          ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+  constitutive_nonlocal_nu(i) =   ( constitutive_nonlocal_Cslip_66(1,1,i) + 4.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) &
+                                    - 2.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) ) &
+                                / ( 4.0_pReal*constitutive_nonlocal_Cslip_66(1,1,i) + 6.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) &
+                                    + 2.0_pReal*constitutive_nonlocal_Cslip_66(4,4,i) )    
   constitutive_nonlocal_Cslip_66(1:6,1:6,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_nonlocal_Cslip_66(1:6,1:6,i)))
   constitutive_nonlocal_Cslip_3333(1:3,1:3,1:3,1:3,i) = math_Voigt66to3333(constitutive_nonlocal_Cslip_66(1:6,1:6,i))
-
-  constitutive_nonlocal_Gmod(i) = 0.2_pReal * ( constitutive_nonlocal_C11(i) - constitutive_nonlocal_C12(i) &
-                                                + 3.0_pReal*constitutive_nonlocal_C44(i) )                                          ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
-  constitutive_nonlocal_nu(i) =   ( constitutive_nonlocal_C11(i) + 4.0_pReal*constitutive_nonlocal_C12(i) &
-                                    - 2.0_pReal*constitutive_nonlocal_C44(i) ) &
-                                / ( 4.0_pReal*constitutive_nonlocal_C11(i) + 6.0_pReal*constitutive_nonlocal_C12(i) &
-                                    + 2.0_pReal*constitutive_nonlocal_C44(i) )                                                      ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+                                                   ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
   
   do s1 = 1_pInt,ns 
     f = constitutive_nonlocal_slipFamily(s1,i)

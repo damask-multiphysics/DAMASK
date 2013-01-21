@@ -57,11 +57,6 @@ integer(pInt),     dimension(:),           allocatable :: constitutive_dislotwin
 integer(pInt),     dimension(:,:),         allocatable :: constitutive_dislotwin_Nslip, &                       ! number of active slip systems for each family and instance
                                                           constitutive_dislotwin_Ntwin                          ! number of active twin systems for each family and instance
 real(pReal),       dimension(:),           allocatable :: constitutive_dislotwin_CoverA, &                      ! c/a ratio for hex type lattice
-                                                          constitutive_dislotwin_C11, &                         ! C11 element in elasticity matrix
-                                                          constitutive_dislotwin_C12, &                         ! C12 element in elasticity matrix
-                                                          constitutive_dislotwin_C13, &                         ! C13 element in elasticity matrix
-                                                          constitutive_dislotwin_C33, &                         ! C33 element in elasticity matrix
-                                                          constitutive_dislotwin_C44, &                         ! C44 element in elasticity matrix
                                                           constitutive_dislotwin_Gmod, &                        ! shear modulus
                                                           constitutive_dislotwin_CAtomicVolume, &               ! atomic volume in Bugers vector unit
                                                           constitutive_dislotwin_D0, &                          ! prefactor for self-diffusion coefficient
@@ -186,16 +181,6 @@ allocate(constitutive_dislotwin_totalNtwin(maxNinstance))
          constitutive_dislotwin_totalNtwin = 0_pInt
 allocate(constitutive_dislotwin_CoverA(maxNinstance))
          constitutive_dislotwin_CoverA = 0.0_pReal
-allocate(constitutive_dislotwin_C11(maxNinstance))
-         constitutive_dislotwin_C11 = 0.0_pReal
-allocate(constitutive_dislotwin_C12(maxNinstance))
-         constitutive_dislotwin_C12 = 0.0_pReal
-allocate(constitutive_dislotwin_C13(maxNinstance))
-         constitutive_dislotwin_C13 = 0.0_pReal
-allocate(constitutive_dislotwin_C33(maxNinstance))
-         constitutive_dislotwin_C33 = 0.0_pReal
-allocate(constitutive_dislotwin_C44(maxNinstance))
-         constitutive_dislotwin_C44 = 0.0_pReal
 allocate(constitutive_dislotwin_Gmod(maxNinstance))
          constitutive_dislotwin_Gmod = 0.0_pReal
 allocate(constitutive_dislotwin_CAtomicVolume(maxNinstance))
@@ -301,15 +286,23 @@ do                                                       ! read thru sections of
        case ('covera_ratio')
               constitutive_dislotwin_CoverA(i) = IO_floatValue(line,positions,2_pInt)
        case ('c11')
-              constitutive_dislotwin_C11(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_dislotwin_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
        case ('c12')
-              constitutive_dislotwin_C12(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_dislotwin_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
        case ('c13')
-              constitutive_dislotwin_C13(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_dislotwin_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c22')
+         constitutive_dislotwin_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c23')
+         constitutive_dislotwin_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
        case ('c33')
-              constitutive_dislotwin_C33(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_dislotwin_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
        case ('c44')
-              constitutive_dislotwin_C44(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_dislotwin_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c55')
+         constitutive_dislotwin_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c66')
+         constitutive_dislotwin_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case ('nslip')
               forall (j = 1_pInt:lattice_maxNslipFamily) &
                 constitutive_dislotwin_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
@@ -549,32 +542,12 @@ do i = 1_pInt,maxNinstance
 
     
    !* Elasticity matrix and shear modulus according to material.config
-   select case (myStructure)
-   case(1_pInt:2_pInt) ! cubic(s)
-     forall(k=1_pInt:3_pInt)
-       forall(j=1_pInt:3_pInt) &
-         constitutive_dislotwin_Cslip_66(k,j,i)               = constitutive_dislotwin_C12(i)
-         constitutive_dislotwin_Cslip_66(k,k,i)               = constitutive_dislotwin_C11(i)
-         constitutive_dislotwin_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_dislotwin_C44(i)
-     end forall
-   case(3_pInt:)       ! all hex
-     constitutive_dislotwin_Cslip_66(1,1,i) = constitutive_dislotwin_C11(i)
-     constitutive_dislotwin_Cslip_66(2,2,i) = constitutive_dislotwin_C11(i)
-     constitutive_dislotwin_Cslip_66(3,3,i) = constitutive_dislotwin_C33(i)
-     constitutive_dislotwin_Cslip_66(1,2,i) = constitutive_dislotwin_C12(i)
-     constitutive_dislotwin_Cslip_66(2,1,i) = constitutive_dislotwin_C12(i)
-     constitutive_dislotwin_Cslip_66(1,3,i) = constitutive_dislotwin_C13(i)
-     constitutive_dislotwin_Cslip_66(3,1,i) = constitutive_dislotwin_C13(i)
-     constitutive_dislotwin_Cslip_66(2,3,i) = constitutive_dislotwin_C13(i)
-     constitutive_dislotwin_Cslip_66(3,2,i) = constitutive_dislotwin_C13(i)
-     constitutive_dislotwin_Cslip_66(4,4,i) = constitutive_dislotwin_C44(i)
-     constitutive_dislotwin_Cslip_66(5,5,i) = constitutive_dislotwin_C44(i)
-     constitutive_dislotwin_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_dislotwin_C11(i)-constitutive_dislotwin_C12(i))
-   end select
+   constitutive_dislotwin_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_dislotwin_structureName(i),&
+                                                                      constitutive_dislotwin_Cslip_66) 
+   constitutive_dislotwin_Gmod(i) = &
+   0.2_pReal*(constitutive_dislotwin_Cslip_66(1,1,i)-constitutive_dislotwin_Cslip_66(1,2,i))+0.3_pReal*constitutive_dislotwin_Cslip_66(4,4,i)
    constitutive_dislotwin_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i)))
    constitutive_dislotwin_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i))
-   constitutive_dislotwin_Gmod(i) = &
-   0.2_pReal*(constitutive_dislotwin_C11(i)-constitutive_dislotwin_C12(i))+0.3_pReal*constitutive_dislotwin_C44(i)
 
 
    !* Process slip related parameters ------------------------------------------------

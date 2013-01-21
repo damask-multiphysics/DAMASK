@@ -46,22 +46,13 @@ module constitutive_none
  integer(pInt),   dimension(:), allocatable, public :: &
    constitutive_none_sizeDotState, &
    constitutive_none_sizeState, &
-   constitutive_none_sizePostResults, &
-   constitutive_none_structure
+   constitutive_none_sizePostResults
    
  character(len=32), dimension(:), allocatable, private :: &
    constitutive_none_structureName
 
  integer(pInt), dimension(:,:), allocatable, target, public :: &
    constitutive_none_sizePostResult     ! size of each post result output
-   
- real(pReal), dimension(:), allocatable, private :: &
-   constitutive_none_CoverA, &
-   constitutive_none_C11, &
-   constitutive_none_C12, &
-   constitutive_none_C13, &
-   constitutive_none_C33, &
-   constitutive_none_C44
 
  real(pReal), dimension(:,:,:), allocatable, private :: &
    constitutive_none_Cslip_66
@@ -100,7 +91,7 @@ subroutine constitutive_none_init(myFile)
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
- use lattice, only: lattice_initializeStructure, lattice_symmetryType
+ use lattice, only: lattice_symmetrizeC66
 
  implicit none
  integer(pInt), intent(in) :: myFile
@@ -132,20 +123,6 @@ subroutine constitutive_none_init(myFile)
           constitutive_none_sizePostResults = 0_pInt
  allocate(constitutive_none_structureName(maxNinstance))
           constitutive_none_structureName        = ''
- allocate(constitutive_none_structure(maxNinstance))
-          constitutive_none_structure            = 0_pInt
- allocate(constitutive_none_CoverA(maxNinstance)) 
-          constitutive_none_CoverA               = 0.0_pReal
- allocate(constitutive_none_C11(maxNinstance))
-          constitutive_none_C11 = 0.0_pReal
- allocate(constitutive_none_C12(maxNinstance))
-          constitutive_none_C12 = 0.0_pReal
- allocate(constitutive_none_C13(maxNinstance))
-          constitutive_none_C13 = 0.0_pReal
- allocate(constitutive_none_C33(maxNinstance))
-          constitutive_none_C33 = 0.0_pReal
- allocate(constitutive_none_C44(maxNinstance))
-          constitutive_none_C44 = 0.0_pReal
  allocate(constitutive_none_Cslip_66(6,6,maxNinstance))
           constitutive_none_Cslip_66 = 0.0_pReal
  
@@ -172,60 +149,40 @@ subroutine constitutive_none_init(myFile)
          cycle
        case ('lattice_structure')
               constitutive_none_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('covera_ratio')
-              constitutive_none_CoverA(i) = IO_floatValue(line,positions,2_pInt)
        case ('c11')
-              constitutive_none_C11(i) = IO_floatValue(line,positions,2_pInt)
+              constitutive_none_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
        case ('c12')
-              constitutive_none_C12(i) = IO_floatValue(line,positions,2_pInt)
+              constitutive_none_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
        case ('c13')
-              constitutive_none_C13(i) = IO_floatValue(line,positions,2_pInt)
+              constitutive_none_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c22')
+              constitutive_none_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c23')
+              constitutive_none_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
        case ('c33')
-              constitutive_none_C33(i) = IO_floatValue(line,positions,2_pInt)
+              constitutive_none_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
        case ('c44')
-              constitutive_none_C44(i) = IO_floatValue(line,positions,2_pInt)
+              constitutive_none_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c55')
+              constitutive_none_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c66')
+              constitutive_none_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case default
               call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_none_label//')')
      end select
    endif
  enddo
 
-100 do i = 1_pInt,maxNinstance                                        ! sanity checks
-   constitutive_none_structure(i) = lattice_initializeStructure(constitutive_none_structureName(i), &    ! get structure
-                                                                         constitutive_none_CoverA(i))
-   myStructure = constitutive_none_structure(i)
-   if (myStructure < 1_pInt)                                          call IO_error(205_pInt,e=i)
+100 do i = 1_pInt,maxNinstance                 
+   if (constitutive_none_structureName(i) == '')              call IO_error(205_pInt,e=i)
  enddo
 
  do i = 1_pInt,maxNinstance
    constitutive_none_sizeDotState(i)    = 1_pInt
    constitutive_none_sizeState(i)       = 1_pInt
 
-   myStructure = constitutive_none_structure(i)
-
-   select case (lattice_symmetryType(myStructure))                                                  ! assign elasticity tensor
-     case(1_pInt)                                                                                   ! cubic(s)
-       forall(k=1_pInt:3_pInt)
-         forall(j=1_pInt:3_pInt) &
-           constitutive_none_Cslip_66(k,j,i) =   constitutive_none_C12(i)
-         constitutive_none_Cslip_66(k,k,i) =     constitutive_none_C11(i)
-         constitutive_none_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_none_C44(i)
-       end forall
-     case(2_pInt)                                                                                   ! hex
-       constitutive_none_Cslip_66(1,1,i) = constitutive_none_C11(i)
-       constitutive_none_Cslip_66(2,2,i) = constitutive_none_C11(i)
-       constitutive_none_Cslip_66(3,3,i) = constitutive_none_C33(i)
-       constitutive_none_Cslip_66(1,2,i) = constitutive_none_C12(i)
-       constitutive_none_Cslip_66(2,1,i) = constitutive_none_C12(i)
-       constitutive_none_Cslip_66(1,3,i) = constitutive_none_C13(i)
-       constitutive_none_Cslip_66(3,1,i) = constitutive_none_C13(i)
-       constitutive_none_Cslip_66(2,3,i) = constitutive_none_C13(i)
-       constitutive_none_Cslip_66(3,2,i) = constitutive_none_C13(i)
-       constitutive_none_Cslip_66(4,4,i) = constitutive_none_C44(i)
-       constitutive_none_Cslip_66(5,5,i) = constitutive_none_C44(i)
-       constitutive_none_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_none_C11(i)- &
-                                                                  constitutive_none_C12(i))
-   end select
+   constitutive_none_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_none_structureName(i),&
+                                                                      constitutive_none_Cslip_66)
    constitutive_none_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_none_Cslip_66(:,:,i)))
 

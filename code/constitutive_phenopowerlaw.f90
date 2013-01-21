@@ -53,16 +53,11 @@ module constitutive_phenopowerlaw
  character(len=64), dimension(:,:), allocatable, target, public :: & 
    constitutive_phenopowerlaw_output                                                                !< name of each post result output
 
- character(len=32), dimension(:), allocatable, private :: &
+ character(len=32), dimension(:), allocatable, public :: &
    constitutive_phenopowerlaw_structureName
 
  real(pReal), dimension(:), allocatable, private :: &
    constitutive_phenopowerlaw_CoverA, &                                                             !< c/a of the crystal (input parameter)
-   constitutive_phenopowerlaw_C11, &                                                                !< component 11 of the stiffness matrix (input parameter)
-   constitutive_phenopowerlaw_C12, &                                                                !< component 12 of the stiffness matrix (input parameter)
-   constitutive_phenopowerlaw_C13, &                                                                !< component 13 of the stiffness matrix (input parameter)
-   constitutive_phenopowerlaw_C33, &                                                                !< component 33 of the stiffness matrix (input parameter)
-   constitutive_phenopowerlaw_C44, &                                                                !< component 44 of the stiffness matrix (input parameter)
    constitutive_phenopowerlaw_gdot0_slip, &                                                         !< reference shear strain rate for slip (input parameter)
    constitutive_phenopowerlaw_gdot0_twin, &                                                         !< reference shear strain rate for twin (input parameter)
    constitutive_phenopowerlaw_n_slip, &                                                             !< stress exponent for slip (input parameter)
@@ -127,7 +122,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  use debug,   only: debug_level,&
                     debug_constitutive,&
                     debug_levelBasic
- use lattice, only: lattice_initializeStructure, lattice_symmetryType, &
+ use lattice, only: lattice_initializeStructure, lattice_symmetrizeC66, &
                     lattice_maxNslipFamily, lattice_maxNtwinFamily, &
                     lattice_maxNinteraction, lattice_NslipSystem, lattice_NtwinSystem, &
                     lattice_interactionSlipSlip, &
@@ -182,16 +177,6 @@ subroutine constitutive_phenopowerlaw_init(myFile)
           constitutive_phenopowerlaw_totalNtwin           = 0_pInt
  allocate(constitutive_phenopowerlaw_CoverA(maxNinstance)) 
           constitutive_phenopowerlaw_CoverA               = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C11(maxNinstance))
-          constitutive_phenopowerlaw_C11                  = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C12(maxNinstance))
-          constitutive_phenopowerlaw_C12                  = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C13(maxNinstance))
-          constitutive_phenopowerlaw_C13                  = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C33(maxNinstance))
-          constitutive_phenopowerlaw_C33                  = 0.0_pReal
- allocate(constitutive_phenopowerlaw_C44(maxNinstance))
-          constitutive_phenopowerlaw_C44                  = 0.0_pReal
  allocate(constitutive_phenopowerlaw_Cslip_66(6,6,maxNinstance))
           constitutive_phenopowerlaw_Cslip_66             = 0.0_pReal
  allocate(constitutive_phenopowerlaw_gdot0_slip(maxNinstance))
@@ -274,15 +259,23 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        case ('covera_ratio')
          constitutive_phenopowerlaw_CoverA(i) = IO_floatValue(line,positions,2_pInt)
        case ('c11')
-         constitutive_phenopowerlaw_C11(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_phenopowerlaw_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
        case ('c12')
-         constitutive_phenopowerlaw_C12(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_phenopowerlaw_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
        case ('c13')
-         constitutive_phenopowerlaw_C13(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_phenopowerlaw_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c22')
+         constitutive_phenopowerlaw_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c23')
+         constitutive_phenopowerlaw_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
        case ('c33')
-         constitutive_phenopowerlaw_C33(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_phenopowerlaw_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
        case ('c44')
-         constitutive_phenopowerlaw_C44(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_phenopowerlaw_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c55')
+         constitutive_phenopowerlaw_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c66')
+         constitutive_phenopowerlaw_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case ('nslip')
          forall (j = 1_pInt:lattice_maxNslipFamily)&
             constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
@@ -448,29 +441,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
    myStructure = constitutive_phenopowerlaw_structure(i)
 
-   select case (lattice_symmetryType(myStructure))                                                  ! assign elasticity tensor
-     case(1_pInt)                                                                                   ! cubic(s)
-       forall(k=1_pInt:3_pInt)
-         forall(j=1_pInt:3_pInt) &
-           constitutive_phenopowerlaw_Cslip_66(k,j,i) =   constitutive_phenopowerlaw_C12(i)
-         constitutive_phenopowerlaw_Cslip_66(k,k,i) =     constitutive_phenopowerlaw_C11(i)
-         constitutive_phenopowerlaw_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_phenopowerlaw_C44(i)
-       end forall
-     case(2_pInt)                                                                                   ! hex
-       constitutive_phenopowerlaw_Cslip_66(1,1,i) = constitutive_phenopowerlaw_C11(i)
-       constitutive_phenopowerlaw_Cslip_66(2,2,i) = constitutive_phenopowerlaw_C11(i)
-       constitutive_phenopowerlaw_Cslip_66(3,3,i) = constitutive_phenopowerlaw_C33(i)
-       constitutive_phenopowerlaw_Cslip_66(1,2,i) = constitutive_phenopowerlaw_C12(i)
-       constitutive_phenopowerlaw_Cslip_66(2,1,i) = constitutive_phenopowerlaw_C12(i)
-       constitutive_phenopowerlaw_Cslip_66(1,3,i) = constitutive_phenopowerlaw_C13(i)
-       constitutive_phenopowerlaw_Cslip_66(3,1,i) = constitutive_phenopowerlaw_C13(i)
-       constitutive_phenopowerlaw_Cslip_66(2,3,i) = constitutive_phenopowerlaw_C13(i)
-       constitutive_phenopowerlaw_Cslip_66(3,2,i) = constitutive_phenopowerlaw_C13(i)
-       constitutive_phenopowerlaw_Cslip_66(4,4,i) = constitutive_phenopowerlaw_C44(i)
-       constitutive_phenopowerlaw_Cslip_66(5,5,i) = constitutive_phenopowerlaw_C44(i)
-       constitutive_phenopowerlaw_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_phenopowerlaw_C11(i)- &
-                                                                  constitutive_phenopowerlaw_C12(i))
-   end select
+   constitutive_phenopowerlaw_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_phenopowerlaw_structureName(i),&
+                                                                      constitutive_phenopowerlaw_Cslip_66)   
+                                                                                                    ! assign elasticity tensor
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))
 

@@ -114,11 +114,6 @@ integer(pInt), dimension(:,:), allocatable :: &
 
 real(pReal), dimension(:), allocatable :: &
   constitutive_titanmod_CoverA, &                                                                   ! c/a ratio for hex type lattice
-  constitutive_titanmod_C11, &                                                                      ! C11 element in elasticity matrix
-  constitutive_titanmod_C12, &                                                                      ! C12 element in elasticity matrix
-  constitutive_titanmod_C13, &                                                                      ! C13 element in elasticity matrix
-  constitutive_titanmod_C33, &                                                                      ! C33 element in elasticity matrix
-  constitutive_titanmod_C44, &                                                                      ! C44 element in elasticity matrix
   constitutive_titanmod_debyefrequency, &                                                           !Debye frequency
   constitutive_titanmod_kinkf0, &                                                                   !Debye frequency
   constitutive_titanmod_Gmod, &                                                                     ! shear modulus
@@ -298,16 +293,6 @@ allocate(constitutive_titanmod_totalNtwin(maxNinstance))
          constitutive_titanmod_totalNtwin = 0_pInt
 allocate(constitutive_titanmod_CoverA(maxNinstance))
          constitutive_titanmod_CoverA = 0.0_pReal 
-allocate(constitutive_titanmod_C11(maxNinstance))
-         constitutive_titanmod_C11 = 0.0_pReal
-allocate(constitutive_titanmod_C12(maxNinstance))
-         constitutive_titanmod_C12 = 0.0_pReal
-allocate(constitutive_titanmod_C13(maxNinstance))
-         constitutive_titanmod_C13 = 0.0_pReal
-allocate(constitutive_titanmod_C33(maxNinstance))
-         constitutive_titanmod_C33 = 0.0_pReal
-allocate(constitutive_titanmod_C44(maxNinstance))
-         constitutive_titanmod_C44 = 0.0_pReal
 allocate(constitutive_titanmod_debyefrequency(maxNinstance))
          constitutive_titanmod_debyefrequency = 0.0_pReal
 allocate(constitutive_titanmod_kinkf0(maxNinstance))
@@ -446,20 +431,32 @@ enddo
               constitutive_titanmod_CoverA(i) = IO_floatValue(line,positions,2_pInt)
                 write(6,*) tag,constitutive_titanmod_CoverA(i)
        case ('c11')
-              constitutive_titanmod_C11(i) = IO_floatValue(line,positions,2_pInt)
-                write(6,*) tag,constitutive_titanmod_C11(i)
+              constitutive_titanmod_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(1,1,i)
        case ('c12')
-              constitutive_titanmod_C12(i) = IO_floatValue(line,positions,2_pInt)
-                write(6,*) tag,constitutive_titanmod_C12(i)
+              constitutive_titanmod_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(1,1,i)
        case ('c13')
-              constitutive_titanmod_C13(i) = IO_floatValue(line,positions,2_pInt)
-                write(6,*) tag,constitutive_titanmod_C13(i)
+              constitutive_titanmod_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(1,1,i)
+       case ('c22')
+              constitutive_titanmod_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(2,2,i)
+       case ('c23')
+              constitutive_titanmod_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(2,3,i)
        case ('c33')
-              constitutive_titanmod_C33(i) = IO_floatValue(line,positions,2_pInt)
-                write(6,*) tag,constitutive_titanmod_C33(i)
+              constitutive_titanmod_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(3,3,i)
        case ('c44')
-              constitutive_titanmod_C44(i) = IO_floatValue(line,positions,2_pInt)
-                write(6,*) tag,constitutive_titanmod_C44(i)
+              constitutive_titanmod_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(4,4,i)
+       case ('c55')
+              constitutive_titanmod_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(5,5,i)
+       case ('c66')
+              constitutive_titanmod_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+                write(6,*) tag,constitutive_titanmod_Cslip_66(6,6,i)
        case ('debyefrequency')
               constitutive_titanmod_debyefrequency(i) = IO_floatValue(line,positions,2_pInt)
                 write(6,*) tag,constitutive_titanmod_debyefrequency(i)
@@ -870,32 +867,12 @@ do i = 1_pInt,maxNinstance
 write(6,*) 'Determining elasticity matrix'
 
    !* Elasticity matrix and shear modulus according to material.config
-   select case (myStructure)
-   case(1_pInt:2_pInt) ! cubic(s)
-     forall(k=1_pInt:3_pInt)
-       forall(j=1_pInt:3_pInt) &
-         constitutive_titanmod_Cslip_66(k,j,i)     = constitutive_titanmod_C12(i)
-         constitutive_titanmod_Cslip_66(k,k,i)     = constitutive_titanmod_C11(i)
-         constitutive_titanmod_Cslip_66(k+3_pInt,k+3_pInt,i) = constitutive_titanmod_C44(i)
-     end forall
-   case(3_pInt:)   ! all hex
-     constitutive_titanmod_Cslip_66(1,1,i) = constitutive_titanmod_C11(i)
-     constitutive_titanmod_Cslip_66(2,2,i) = constitutive_titanmod_C11(i)
-     constitutive_titanmod_Cslip_66(3,3,i) = constitutive_titanmod_C33(i)
-     constitutive_titanmod_Cslip_66(1,2,i) = constitutive_titanmod_C12(i)
-     constitutive_titanmod_Cslip_66(2,1,i) = constitutive_titanmod_C12(i)
-     constitutive_titanmod_Cslip_66(1,3,i) = constitutive_titanmod_C13(i)
-     constitutive_titanmod_Cslip_66(3,1,i) = constitutive_titanmod_C13(i)
-     constitutive_titanmod_Cslip_66(2,3,i) = constitutive_titanmod_C13(i)
-     constitutive_titanmod_Cslip_66(3,2,i) = constitutive_titanmod_C13(i)
-     constitutive_titanmod_Cslip_66(4,4,i) = constitutive_titanmod_C44(i)
-     constitutive_titanmod_Cslip_66(5,5,i) = constitutive_titanmod_C44(i)
-     constitutive_titanmod_Cslip_66(6,6,i) = 0.5_pReal*(constitutive_titanmod_C11(i)-constitutive_titanmod_C12(i))
-   end select
+   constitutive_titanmod_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_titanmod_structureName(i),&
+                                                                      constitutive_titanmod_Cslip_66)  
+   constitutive_titanmod_Gmod(i) = &
+   0.2_pReal*(constitutive_titanmod_Cslip_66(1,1,i)-constitutive_titanmod_Cslip_66(1,2,i))+0.3_pReal*constitutive_titanmod_Cslip_66(4,4,i)
    constitutive_titanmod_Cslip_66(:,:,i) =     math_Mandel3333to66(math_Voigt66to3333(constitutive_titanmod_Cslip_66(:,:,i)))
    constitutive_titanmod_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_titanmod_Cslip_66(:,:,i))
-   constitutive_titanmod_Gmod(i) = &
-   0.2_pReal*(constitutive_titanmod_C11(i)-constitutive_titanmod_C12(i))+0.3_pReal*constitutive_titanmod_C44(i)
    
    !* Construction of the twin elasticity matrices
    do j=1_pInt,lattice_maxNtwinFamily

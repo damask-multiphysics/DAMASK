@@ -139,13 +139,13 @@ subroutine crystallite_init(Temperature)
  
  use constitutive, only: constitutive_microstructure
  use constitutive_phenopowerlaw, only: constitutive_phenopowerlaw_label, &
-                                       constitutive_phenopowerlaw_structure
+                                       constitutive_phenopowerlaw_structureName
  use constitutive_titanmod, only:      constitutive_titanmod_label, &
-                                       constitutive_titanmod_structure
+                                       constitutive_titanmod_structureName
  use constitutive_dislotwin, only:     constitutive_dislotwin_label, &
-                                       constitutive_dislotwin_structure
+                                       constitutive_dislotwin_structureName
  use constitutive_nonlocal, only:      constitutive_nonlocal_label, &
-                                       constitutive_nonlocal_structure
+                                       constitutive_nonlocal_structureName
   
  implicit none
  integer(pInt), parameter :: myFile = 200_pInt, &
@@ -169,7 +169,6 @@ subroutine crystallite_init(Temperature)
                              p, &
                              output, &
                              mySize, &
-                             myStructure, &                ! lattice structure 
                              myPhase, &
                              myMat
  character(len=64)           tag
@@ -351,19 +350,16 @@ do e = FEsolving_execElem(1),FEsolving_execElem(2)
       myMat   = phase_plasticityInstance(myPhase)
       select case (phase_plasticity(myPhase))
         case (constitutive_phenopowerlaw_label)
-          myStructure = constitutive_phenopowerlaw_structure(myMat)
+          crystallite_symmetryID(g,i,e) = lattice_symmetryType(constitutive_phenopowerlaw_structureName(myMat))
         case (constitutive_titanmod_label)
-          myStructure = constitutive_titanmod_structure(myMat)
+          crystallite_symmetryID(g,i,e) = lattice_symmetryType(constitutive_titanmod_structureName(myMat))
         case (constitutive_dislotwin_label)
-          myStructure = constitutive_dislotwin_structure(myMat)
+          crystallite_symmetryID(g,i,e) = lattice_symmetryType(constitutive_dislotwin_structureName(myMat))
         case (constitutive_nonlocal_label)
-          myStructure = constitutive_nonlocal_structure(myMat)
+          crystallite_symmetryID(g,i,e) = lattice_symmetryType(constitutive_nonlocal_structureName(myMat))
         case default
-          myStructure = -1_pInt ! does this happen for j2 material?
+          crystallite_symmetryID(g,i,e) = 0_pInt ! does this happen for j2 material?
       end select
-      if (myStructure > 0_pInt) then   
-        crystallite_symmetryID(g,i,e) = lattice_symmetryType(myStructure) ! structure = 1(fcc) or 2(bcc) => 1; 3(hex)=>2  
-      endif
     enddo
   enddo
 enddo

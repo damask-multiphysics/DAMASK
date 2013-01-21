@@ -60,11 +60,12 @@ module constitutive_j2
    constitutive_j2_output             ! name of each post result output
  
  integer(pInt), dimension(:),  allocatable, private :: &
-   constitutive_j2_Noutput
+   constitutive_j2_Noutput                                                               !< name of each post result output
+
+ character(len=32), dimension(:), allocatable, private :: &
+   constitutive_j2_structureName
    
  real(pReal), dimension(:), allocatable, private :: &
-   constitutive_j2_C11, &
-   constitutive_j2_C12, &
  !* Visco-plastic constitutive_j2 parameters
    constitutive_j2_fTaylor, &
    constitutive_j2_tau0, &
@@ -120,6 +121,7 @@ subroutine constitutive_j2_init(myFile)
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
+ use lattice, only: lattice_symmetrizeC66  
 
  implicit none
  integer(pInt), intent(in) :: myFile
@@ -156,10 +158,8 @@ subroutine constitutive_j2_init(myFile)
           constitutive_j2_output = ''
  allocate(constitutive_j2_Noutput(maxNinstance))
           constitutive_j2_Noutput = 0_pInt
- allocate(constitutive_j2_C11(maxNinstance))
-          constitutive_j2_C11 = 0.0_pReal
- allocate(constitutive_j2_C12(maxNinstance))
-          constitutive_j2_C12 = 0.0_pReal
+ allocate(constitutive_j2_structureName(maxNinstance))
+          constitutive_j2_structureName        = ''
  allocate(constitutive_j2_Cslip_66(6,6,maxNinstance))
           constitutive_j2_Cslip_66 = 0.0_pReal
  allocate(constitutive_j2_fTaylor(maxNinstance))
@@ -213,10 +213,26 @@ subroutine constitutive_j2_init(myFile)
        case ('(output)')
          constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
          constitutive_j2_output(constitutive_j2_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+       case ('lattice_structure')
+         constitutive_j2_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('c11')
-              constitutive_j2_C11(i) = IO_floatValue(line,positions,2_pInt)
+              constitutive_j2_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
        case ('c12')
-              constitutive_j2_C12(i) = IO_floatValue(line,positions,2_pInt)
+              constitutive_j2_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c13')
+              constitutive_j2_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c22')
+              constitutive_j2_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c23')
+              constitutive_j2_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c33')
+              constitutive_j2_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c44')
+              constitutive_j2_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c55')
+              constitutive_j2_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+       case ('c66')
+              constitutive_j2_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case ('tau0')
               constitutive_j2_tau0(i) = IO_floatValue(line,positions,2_pInt)
        case ('gdot0')
@@ -250,6 +266,7 @@ subroutine constitutive_j2_init(myFile)
  enddo
 
 100 do i = 1_pInt,maxNinstance                                        ! sanity checks
+   if (constitutive_j2_structureName(i) == '')            call IO_error(205_pInt,e=i)
    if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='tau0 (' &
                                                                //constitutive_j2_label//')')
    if (constitutive_j2_gdot0(i) <= 0.0_pReal)             call IO_error(211_pInt,ext_msg='gdot0 (' &
@@ -286,14 +303,9 @@ subroutine constitutive_j2_init(myFile)
 
    constitutive_j2_sizeDotState(i) = 1_pInt
    constitutive_j2_sizeState(i)    = 1_pInt
-
-   forall(k=1_pInt:3_pInt)
-     forall(j=1_pInt:3_pInt) 
-       constitutive_j2_Cslip_66(k,j,i) = constitutive_j2_C12(i)
-     end forall
-     constitutive_j2_Cslip_66(k,k,i) = constitutive_j2_C11(i)
-     constitutive_j2_Cslip_66(k+3,k+3,i) = 0.5_pReal*(constitutive_j2_C11(i)-constitutive_j2_C12(i))
-   end forall
+   
+   constitutive_j2_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_j2_structureName(i),&
+                                                                      constitutive_j2_Cslip_66) 
    constitutive_j2_Cslip_66(1:6,1:6,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))
 
