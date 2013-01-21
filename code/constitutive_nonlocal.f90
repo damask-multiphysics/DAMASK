@@ -172,6 +172,9 @@ constitutive_nonlocal_rhoDotThermalAnnihilation
 real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_compatibility                                  ! slip system compatibility between me and my neighbors
 
+real(pReal), dimension(:,:), allocatable, private :: &
+constitutive_nonlocal_nonSchmidCoeff
+
 logical, dimension(:), allocatable, private :: &
 constitutive_nonlocal_shortRangeStressCorrection, &                  ! flag indicating the use of the short range stress correction by a excess density gradient term
 constitutive_nonlocal_deadZoneScaling, &
@@ -234,7 +237,8 @@ use lattice,  only: lattice_maxNslipFamily, &
                     lattice_sd, &
                     lattice_sn, &
                     lattice_st, &
-                    lattice_interactionSlipSlip
+                    lattice_interactionSlipSlip, &
+                    lattice_maxNonSchmid
 
 !*** output variables
 
@@ -398,6 +402,9 @@ allocate(constitutive_nonlocal_peierlsStressPerSlipFamily(lattice_maxNslipFamily
 constitutive_nonlocal_minimumDipoleHeightPerSlipFamily = -1.0_pReal
 constitutive_nonlocal_peierlsStressPerSlipFamily = 0.0_pReal
 
+allocate(constitutive_nonlocal_nonSchmidCoeff(lattice_maxNonSchmid,maxNinstance))
+constitutive_nonlocal_nonSchmidCoeff = 0.0_pReal
+
 !*** readout data from material.config file
 
 rewind(myFile)
@@ -542,6 +549,9 @@ do                                                                              
         constitutive_nonlocal_fEdgeMultiplication(i) = IO_floatValue(line,positions,2_pInt)
       case('shortrangestresscorrection')
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
+      case ('nonschmid_coefficients')
+        forall (f = 1_pInt:lattice_maxNonSchmid) &
+          constitutive_nonlocal_nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
       case('deadzonescaling','deadzone','deadscaling')
         constitutive_nonlocal_deadZoneScaling(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
@@ -1475,7 +1485,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
 !*** local variables
 integer(pInt)                               instance, &                 ! current instance of this plasticity
                                             ns, &                       ! short notation for the total number of active slip systems
-                                            s                           ! index of my current slip system
+                                            s, t                        ! index of my current slip system
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             tauThreshold, &             ! threshold shear stress
                                             tauEff                      ! effective shear stress
@@ -1631,7 +1641,8 @@ use prec,     only: pReal, &
                     pInt, &
                     p_vec
 use math,     only: math_Plain3333to99, &
-                    math_mul6x6
+                    math_mul6x6, &
+                    math_Mandel6to33
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
@@ -1644,7 +1655,8 @@ use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_plasticityInstance
 use lattice,  only: lattice_Sslip, &
-                    lattice_Sslip_v
+                    lattice_Sslip_v, &
+                    NnonSchmid
 use mesh,     only: mesh_ipVolume
 
 implicit none
@@ -1676,15 +1688,16 @@ integer(pInt)                               myInstance, &               ! curren
                                             s, &                        ! index of my current slip system
                                             sLattice                    ! index of my current slip system according to lattice order
 real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
+real(pReal), dimension(3,3,2)   ::          nonSchmid_tensor
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl                      ! single dislocation densities (including used) 
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             v, &                        ! velocity
+                                            tau, &                      ! resolved shear stress including non Schmid and backstress terms
+                                            dgdot_dtau, &          ! derivative of the shear rate with respect to the shear stress
                                             dv_dtau                     ! velocity derivative with respect to the shear stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            tau, &                      ! resolved shear stress including non Schmid and backstress terms
                                             gdotTotal, &                ! shear rate
-                                            dgdotTotal_dtau, &          ! derivative of the shear rate with respect to the shear stress
                                             tauBack, &                  ! back stress from dislocation gradients on same slip system
                                             deadZoneSize
 
@@ -1714,15 +1727,28 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
 !*** get effective resolved shear stress
 
 do s = 1_pInt,ns
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure)) &
+  tau(s,1:4) = math_mul6x6(Tstar_v, lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure)) &
          + tauBack(s)
+!*** adding non schmid contributions to ONLY screw components if present (i.e.  if NnonSchmid(myStructure) > 0)
+  nonSchmid_tensor(1:3,1:3,1)  = math_Mandel6to33(lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+  nonSchmid_tensor(1:3,1:3,2)  = nonSchmid_tensor(1:3,1:3,1)
+  do k = 1_pInt, NnonSchmid(myStructure)
+    tau(s,3) = tau(s,3) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)* &
+                      math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+    tau(s,4) = tau(s,4) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)* &
+                      math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+    nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)*&
+                                           math_Mandel6to33(lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+    nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)*&
+                                           math_Mandel6to33(lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+  enddo
 enddo
 
 
 !*** get dislocation velocity and its tangent and store the velocity in the state array
 
-if (myStructure == 1_pInt) then   ! for fcc all velcities are equal
-  call constitutive_nonlocal_kinetics(v(1:ns,1), tau, 1_pInt, Temperature, state, g, ip, el, dv_dtau(1:ns,1))
+if (myStructure == 1_pInt .and. NnonSchmid(myStructure) == 0_pInt) then   ! for fcc all velcities are equal
+  call constitutive_nonlocal_kinetics(v(1:ns,1), tau(1:ns,1), 1_pInt, Temperature, state, g, ip, el, dv_dtau(1:ns,1))
   do t = 1_pInt,4_pInt
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
@@ -1731,7 +1757,7 @@ if (myStructure == 1_pInt) then   ! for fcc all velcities are equal
 else                              ! for all other lattice structures the velcities may vary with character and sign
   do t = 1_pInt,4_pInt
     c = (t-1_pInt)/2_pInt+1_pInt
-    call constitutive_nonlocal_kinetics(v(1:ns,t), tau, c, Temperature, state, g, ip, el, dv_dtau(1:ns,t))
+    call constitutive_nonlocal_kinetics(v(1:ns,t), tau(1:ns,t), c, Temperature, state, g, ip, el, dv_dtau(1:ns,t))
     state%p((12+t)*ns+1:(13+t)*ns) = v(1:ns,t)
   enddo
 endif
@@ -1751,8 +1777,9 @@ if (constitutive_nonlocal_deadZoneScaling(myInstance)) then
     deadZoneSize(s) = maxval(abs(rhoSgl(s,5:8)) / (rhoSgl(s,1:4) + abs(rhoSgl(s,5:8))))
 endif
 gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * constitutive_nonlocal_burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
-dgdotTotal_dtau = sum(rhoSgl(1:ns,1:4) * dv_dtau, 2) * constitutive_nonlocal_burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
-
+do t = 1_pInt,4_pInt
+  dgdot_dtau(:,t) = rhoSgl(1:ns,t) * dv_dtau(1:ns,t) * constitutive_nonlocal_burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
+enddo
 
 !*** Calculation of Lp and its tangent
 
@@ -1760,8 +1787,11 @@ do s = 1_pInt,ns
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)  
   Lp = Lp + gdotTotal(s) * lattice_Sslip(1:3,1:3,sLattice,myStructure)
   forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-    dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) + dgdotTotal_dtau(s) * lattice_Sslip(i,j, sLattice,myStructure) &
-                                                                           * lattice_Sslip(k,l, sLattice,myStructure) 
+    dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) + &
+                              dgdot_dtau(s,1)*lattice_Sslip(i,j,sLattice,myStructure)*lattice_Sslip(k,l,sLattice,myStructure) +&
+                              dgdot_dtau(s,2)*lattice_Sslip(i,j,sLattice,myStructure)*lattice_Sslip(k,l,sLattice,myStructure) +& 
+                              dgdot_dtau(s,3)*lattice_Sslip(i,j,sLattice,myStructure)*nonSchmid_tensor(k,l,1) +&
+                              dgdot_dtau(s,4)*lattice_Sslip(i,j,sLattice,myStructure)*nonSchmid_tensor(k,l,2)
 enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
