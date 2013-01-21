@@ -43,7 +43,8 @@ module lattice
    lattice_maxNtwinFamily  =  4_pInt, &                                                             !< max # of twin system families over lattice structures
    lattice_maxNslip        = 54_pInt, &                                                             !< max # of slip systems over lattice structures
    lattice_maxNtwin        = 24_pInt, &                                                             !< max # of twin systems over lattice structures
-   lattice_maxNinteraction = 30_pInt                                                                !< max # of interaction types (in hardening matrix part)
+   lattice_maxNinteraction = 30_pInt, &                                                             !< max # of interaction types (in hardening matrix part)
+   lattice_maxNonSchmid    = 6_pInt                                                                 !< max # of non schmid contributions over lattice structures
  
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
    lattice_NslipSystem, &                                                                           !< # of slip systems in each family
@@ -57,10 +58,10 @@ module lattice
 
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
+   lattice_Sslip_v, &
    lattice_Sslip                                                                                    !< Schmid matrices, normal, shear direction and d x n of slip systems                                          
   
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_Sslip_v, &
    lattice_sn, &
    lattice_sd, &
    lattice_st
@@ -88,6 +89,9 @@ module lattice
    interactionSlipTwin, &
    interactionTwinSlip, &
    interactionTwinTwin
+   
+ integer(pInt), allocatable, dimension(:), protected, public :: &
+   NnonSchmid                                                                                       !< # of Non Schmid contributions for each structure
 
 !--------------------------------------------------------------------------------------------------
 ! fcc (1)
@@ -214,6 +218,13 @@ module lattice
      2,2,2,2,2,2,2,2,2,1,1,1, &
      2,2,2,2,2,2,2,2,2,1,1,1  &
      ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])
+     
+! Number of Non Schmid contributions for FCC
+ integer(pInt), parameter, private :: NnonSchmid_fcc = 0_pInt 
+ 
+! Tensor for each non schmid contribution
+ real(pReal), dimension(3,3,2,NnonSchmid_fcc,lattice_fcc_Nslip), parameter, private :: &
+   lattice_nonSchmid_fcc = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_fcc,lattice_fcc_Nslip])
  
  
 !--------------------------------------------------------------------------------------------------
@@ -416,6 +427,13 @@ module lattice
     !< 1 --- self interaction
     !< 2 --- collinear interaction
     !< 3 --- other interaction
+     
+! Number of Non Schmid contributions for BCC
+ integer(pInt), parameter, private :: NnonSchmid_bcc = 0_pInt 
+ 
+! Tensor for each non schmid contribution
+ real(pReal), dimension(3,3,2,NnonSchmid_bcc,lattice_bcc_Nslip), parameter, private :: &
+   lattice_nonSchmid_bcc = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_bcc,lattice_bcc_Nslip])
 
 !--------------------------------------------------------------------------------------------------
 ! hex (3+)
@@ -677,6 +695,13 @@ module lattice
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 4, 8, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 8, 4  &
      ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin],order=[2,1])
+     
+! Number of Non Schmid contributions for hex
+ integer(pInt), parameter, private :: NnonSchmid_hex = 0_pInt 
+ 
+! Tensor for each non schmid contribution
+ real(pReal), dimension(3,3,2,NnonSchmid_hex,lattice_hex_Nslip), parameter, private :: &
+   lattice_nonSchmid_hex = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_hex,lattice_hex_Nslip])
 
  public :: &
   lattice_init, &
@@ -819,8 +844,9 @@ subroutine lattice_init
    !$OMP END CRITICAL (write2out)
  endif
 
+ allocate(NnonSchmid(lattice_Nstructure));                         NnonSchmid = 0_pInt
  allocate(lattice_Sslip(3,3,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip   = 0.0_pReal
- allocate(lattice_Sslip_v(6,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal
+ allocate(lattice_Sslip_v(6,1+2*lattice_maxNonSchmid,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal
  allocate(lattice_sd(3,lattice_maxNslip,lattice_Nstructure));      lattice_sd      = 0.0_pReal
  allocate(lattice_st(3,lattice_maxNslip,lattice_Nstructure));      lattice_st      = 0.0_pReal
  allocate(lattice_sn(3,lattice_maxNslip,lattice_Nstructure));      lattice_sn      = 0.0_pReal
@@ -869,12 +895,13 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
  real(pReal) CoverA
  real(pReal), dimension(3,lattice_maxNslip) :: sd = 0.0_pReal, &
                                                sn = 0.0_pReal
+ real(pReal), dimension(12,lattice_maxNonSchmid,lattice_maxNslip) :: sns = 0.0_pReal
  real(pReal), dimension(3,lattice_maxNtwin) :: td = 0.0_pReal, &
                                                tn = 0.0_pReal
  real(pReal), dimension(lattice_maxNtwin) ::   ts = 0.0_pReal
  integer(pInt), dimension(lattice_maxNslipFamily) :: myNslipSystem = 0_pInt
  integer(pInt), dimension(lattice_maxNtwinFamily) :: myNtwinSystem = 0_pInt
- integer(pInt) :: i,myNslip,myNtwin,myStructure = 0_pInt
+ integer(pInt) :: i,j,myNslip,myNtwin,myStructure = 0_pInt
  logical :: processMe
 
  processMe = .false.
@@ -889,9 +916,14 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      lattice_fcc_Nstructure = lattice_fcc_Nstructure + 1_pInt    ! count fcc instances
      if (lattice_fcc_Nstructure == 1_pInt) then    ! me is first fcc structure
        processMe = .true.
+       NnonSchmid(myStructure) = NnonSchmid_fcc    ! Currently no known non schmid contributions for FCC (to be changed later)
        do i = 1_pInt,myNslip                            ! assign slip system vectors
          sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)
          sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)
+         do j = 1_pInt, NnonSchmid_fcc
+           sns(1:6,j,i)  = math_Mandel33to6(lattice_nonSchmid_fcc(1:3,1:3,1,j,i))
+           sns(7:12,j,i) = math_Mandel33to6(lattice_nonSchmid_fcc(1:3,1:3,2,j,i))
+         enddo  
        enddo
        do i = 1_pInt,myNtwin                            ! assign twin system vectors and shears
          td(1:3,i) = lattice_fcc_systemTwin(1:3,i)
@@ -913,9 +945,14 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      lattice_bcc_Nstructure = lattice_bcc_Nstructure + 1_pInt    ! count bcc instances
      if (lattice_bcc_Nstructure == 1_pInt) then    ! me is first bcc structure
        processMe = .true.
+       NnonSchmid(myStructure) = NnonSchmid_BCC    ! 5 known non schmid contributions for BCC (A. Koester, A. Ma, A. Hartmaier 2012)
        do i = 1_pInt,myNslip                            ! assign slip system vectors
          sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
          sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
+         do j = 1_pInt, NnonSchmid_bcc
+           sns(1:6,j,i)  = math_Mandel33to6(lattice_nonSchmid_bcc(1:3,1:3,1,j,i))
+           sns(7:12,j,i) = math_Mandel33to6(lattice_nonSchmid_bcc(1:3,1:3,2,j,i))
+         enddo  
        enddo
        do i = 1_pInt,myNtwin                            ! assign twin system vectors and shears
          td(1:3,i) = lattice_bcc_systemTwin(1:3,i)
@@ -937,6 +974,7 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
        myNslip = lattice_hex_Nslip                 ! overall number of slip systems
        myNtwin = lattice_hex_Ntwin                 ! overall number of twin systems
        processMe = .true.
+       NnonSchmid(myStructure) = NnonSchmid_hex    ! Currently no known non schmid contributions for hex (to be changed later)
 ! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexgonal system (a, b, c)
        do i = 1_pInt,myNslip
          sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
@@ -945,6 +983,10 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
          sn(1,i) =  lattice_hex_systemSlip(5,i)           ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
          sn(2,i) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
          sn(3,i) =  lattice_hex_systemSlip(8,i)/CoverA
+         do j = 1_pInt, NnonSchmid_hex
+           sns(1:6,j,i)  = math_Mandel33to6(lattice_nonSchmid_hex(1:3,1:3,1,j,i))
+           sns(7:12,j,i) = math_Mandel33to6(lattice_nonSchmid_hex(1:3,1:3,2,j,i))
+         enddo  
        enddo
        do i = 1_pInt,myNtwin
          td(1,i) =  lattice_hex_systemTwin(1,i)*1.5_pReal
@@ -983,7 +1025,11 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
                                                         lattice_sn(1:3,i,myStructure))
      lattice_Sslip(1:3,1:3,i,myStructure) = math_tensorproduct(lattice_sd(1:3,i,myStructure), &
                                                                lattice_sn(1:3,i,myStructure))
-     lattice_Sslip_v(1:6,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,i,myStructure)))
+     lattice_Sslip_v(1:6,1,i,myStructure) = math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,i,myStructure)))
+     do j = 1_pInt, NnonSchmid(myStructure)
+       lattice_Sslip_v(1:6,2*j,i,myStructure)   = sns(1:6,j,i)
+       lattice_Sslip_v(1:6,2*j+1,i,myStructure) = sns(7:12,j,i)
+     enddo 
      if (abs(math_trace33(lattice_Sslip(1:3,1:3,i,myStructure))) > 1.0e-8_pReal) &
        call IO_error(0_pInt,myStructure,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
    enddo

@@ -1343,7 +1343,7 @@ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over
 
       !* Calculation of Lp
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure)) 
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,myStructure)) 
       !*************************************************
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
 !      if(myStructure>=3.and.j>3) then ! for all non-basal slip systems

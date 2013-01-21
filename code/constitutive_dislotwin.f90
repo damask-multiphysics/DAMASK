@@ -1000,7 +1000,7 @@ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over
 
       !* Calculation of Lp
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure))
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,myStructure))
 
       !* Stress ratios
       StressRatio_p = (abs(tau_slip(j))/state(g,ip,el)%p(5*ns+3*nt+j))**constitutive_dislotwin_p(myInstance)
@@ -1197,7 +1197,7 @@ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over
 
 
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure))
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,myStructure))
       !* Stress ratios
       StressRatio_p = (abs(tau_slip(j))/state(g,ip,el)%p(5_pInt*ns+3_pInt*nt+j))**&
                                                                constitutive_dislotwin_p(myInstance)
@@ -1436,7 +1436,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
              j = j + 1_pInt
 
              !* Resolved shear stress on slip system
-             tau = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure))
+             tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,myStructure))
              !* Stress ratios
              StressRatio_p = (abs(tau)/state(g,ip,el)%p(5_pInt*ns+3_pInt*nt+j))**&
                                                                constitutive_dislotwin_p(myInstance)
@@ -1466,7 +1466,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
           do i = 1_pInt,constitutive_dislotwin_Nslip(f,myInstance)          ! process each (active) slip system in family
              j = j + 1_pInt
              constitutive_dislotwin_postResults(c+j) =&
-                               dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure))
+                               dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,myStructure))
        enddo; enddo
        c = c + ns
      case ('threshold_stress_slip')
@@ -1481,7 +1481,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
              j = j + 1_pInt
              constitutive_dislotwin_postResults(c+j) = &
                (3.0_pReal*constitutive_dislotwin_Gmod(myInstance)*constitutive_dislotwin_burgersPerSlipSystem(f,myInstance))/&
-               (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure))))
+               (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,myStructure))))
              constitutive_dislotwin_postResults(c+j) = min(constitutive_dislotwin_postResults(c+j),state(g,ip,el)%p(4*ns+2*nt+j))
 !            constitutive_dislotwin_postResults(c+j) = max(constitutive_dislotwin_postResults(c+j),state(g,ip,el)%p(4*ns+2*nt+j))
        enddo; enddo
@@ -1563,7 +1563,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
              j = j + 1_pInt
 
              !* Resolved shear stress on slip system
-             tau = dot_product(Tstar_v,lattice_Sslip_v(:,index_myFamily+i,myStructure))
+             tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,myStructure))
              !* Stress ratios
              StressRatio_p = (abs(tau)/state(g,ip,el)%p(5_pInt*ns+3_pInt*nt+j))**&
                                                                constitutive_dislotwin_p(myInstance)

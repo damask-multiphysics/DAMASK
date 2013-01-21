@@ -1714,7 +1714,7 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
 !*** get effective resolved shear stress
 
 do s = 1_pInt,ns
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(:,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure)) &
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure)) &
          + tauBack(s)
 enddo
 
@@ -1912,7 +1912,7 @@ enddo
 
 do s = 1_pInt,ns
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)  
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,sLattice,myStructure)) + tauBack(s)
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure)) + tauBack(s)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 dLower = constitutive_nonlocal_minimumDipoleHeight(1:ns,1:2,myInstance)
@@ -2185,7 +2185,7 @@ forall (t = 1_pInt:4_pInt) &
 
 do s = 1_pInt,ns   ! loop over slip systems
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)  
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,sLattice,myStructure)) + tauBack(s)
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure)) + tauBack(s)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
@@ -3246,7 +3246,7 @@ forall (t = 1_pInt:4_pInt) &
 
 do s = 1_pInt,ns
   sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,sLattice,myStructure)) + tauBack(s)
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure)) + tauBack(s)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 
@@ -3429,7 +3429,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
     case ('resolvedstress_external')
       do s = 1_pInt,ns  
         sLattice = constitutive_nonlocal_slipSystemLattice(s,myInstance)
-        constitutive_nonlocal_postResults(cs+s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,sLattice,myStructure))
+        constitutive_nonlocal_postResults(cs+s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure))
       enddo
       cs = cs + ns
       
