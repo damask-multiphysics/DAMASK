@@ -1730,17 +1730,18 @@ do s = 1_pInt,ns
   tau(s,1:4) = math_mul6x6(Tstar_v, lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure)) &
          + tauBack(s)
 !*** adding non schmid contributions to ONLY screw components if present (i.e.  if NnonSchmid(myStructure) > 0)
-  nonSchmid_tensor(1:3,1:3,1)  = math_Mandel6to33(lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+  nonSchmid_tensor(1:3,1:3,1)  = &
+               math_Mandel6to33(lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
   nonSchmid_tensor(1:3,1:3,2)  = nonSchmid_tensor(1:3,1:3,1)
   do k = 1_pInt, NnonSchmid(myStructure)
     tau(s,3) = tau(s,3) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)* &
-                      math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
     tau(s,4) = tau(s,4) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)* &
-                      math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
     nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)*&
-                                           math_Mandel6to33(lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_Mandel6to33(lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
     nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)*&
-                                           math_Mandel6to33(lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_Mandel6to33(lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
   enddo
 enddo
 
@@ -2052,91 +2053,91 @@ use lattice,  only: lattice_Sslip_v, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                g, &                      ! current grain number
-                                            ip, &                     ! current integration point
-                                            el                        ! current element number
-real(pReal), intent(in) ::                  Temperature, &            ! temperature
-                                            timestep                  ! substepped crystallite time increment
-real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
+integer(pInt), intent(in) ::                g, &                      !< current grain number
+                                            ip, &                     !< current integration point
+                                            el                        !< current element number
+real(pReal), intent(in) ::                  Temperature, &            !< temperature
+                                            timestep                  !< substepped crystallite time increment
+real(pReal), dimension(6), intent(in) ::    Tstar_v                   !< current 2nd Piola-Kirchhoff stress in Mandel notation
 real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            subfrac                   ! fraction of timestep at the beginning of the substepped crystallite time increment 
+                                            subfrac                   !< fraction of timestep at the beginning of the substepped crystallite time increment 
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            Fe, &                     ! elastic deformation gradient
-                                            Fp                        ! plastic deformation gradient
+                                            Fe, &                     !< elastic deformation gradient
+                                            Fp                        !< plastic deformation gradient
 type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            state, &                  ! current microstructural state
-                                            state0                    ! microstructural state at beginning of crystallite increment
+                                            state, &                  !< current microstructural state
+                                            state0                    !< microstructural state at beginning of crystallite increment
 
 !*** input/output variables
  
 !*** output variables
 real(pReal), dimension(constitutive_nonlocal_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            constitutive_nonlocal_dotState ! evolution of state variables / microstructure
+                                            constitutive_nonlocal_dotState !< evolution of state variables / microstructure
  
 !*** local variables
-integer(pInt)                               myInstance, &             ! current instance of this plasticity
-                                            myStructure, &            ! current lattice structure
-                                            ns, &                     ! short notation for the total number of active slip systems
-                                            c, &                      ! character of dislocation
-                                            n, &                      ! index of my current neighbor
-                                            neighboring_el, &         ! element number of my neighbor
-                                            neighboring_ip, &         ! integration point of my neighbor
-                                            neighboring_n, &          ! neighbor index pointing to me when looking from my neighbor
-                                            opposite_neighbor, &      ! index of my opposite neighbor
-                                            opposite_ip, &            ! ip of my opposite neighbor
-                                            opposite_el, &            ! element index of my opposite neighbor
-                                            opposite_n, &             ! neighbor index pointing to me when looking from my opposite neighbor
-                                            t, &                      ! type of dislocation
-                                            topp, &                   ! type of dislocation with opposite sign to t
-                                            s, &                      ! index of my current slip system
-                                            sLattice, &               ! index of my current slip system according to lattice order
+integer(pInt)                               myInstance, &             !< current instance of this plasticity
+                                            myStructure, &            !< current lattice structure
+                                            ns, &                     !< short notation for the total number of active slip systems
+                                            c, &                      !< character of dislocation
+                                            n, &                      !< index of my current neighbor
+                                            neighboring_el, &         !< element number of my neighbor
+                                            neighboring_ip, &         !< integration point of my neighbor
+                                            neighboring_n, &          !< neighbor index pointing to me when looking from my neighbor
+                                            opposite_neighbor, &      !< index of my opposite neighbor
+                                            opposite_ip, &            !< ip of my opposite neighbor
+                                            opposite_el, &            !< element index of my opposite neighbor
+                                            opposite_n, &             !< neighbor index pointing to me when looking from my opposite neighbor
+                                            t, &                      !< type of dislocation
+                                            topp, &                   !< type of dislocation with opposite sign to t
+                                            s, &                      !< index of my current slip system
+                                            sLattice, &               !< index of my current slip system according to lattice order
                                             deads
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),10) :: &
-                                            rhoDot, &                     ! density evolution
-                                            rhoDotMultiplication, &       ! density evolution by multiplication
-                                            rhoDotFlux, &                 ! density evolution by flux
-                                            rhoDotSingle2DipoleGlide, &   ! density evolution by dipole formation (by glide)
-                                            rhoDotAthermalAnnihilation, & ! density evolution by athermal annihilation
-                                            rhoDotThermalAnnihilation     ! density evolution by thermal annihilation
+                                            rhoDot, &                     !< density evolution
+                                            rhoDotMultiplication, &       !< density evolution by multiplication
+                                            rhoDotFlux, &                 !< density evolution by flux
+                                            rhoDotSingle2DipoleGlide, &   !< density evolution by dipole formation (by glide)
+                                            rhoDotAthermalAnnihilation, & !< density evolution by athermal annihilation
+                                            rhoDotThermalAnnihilation     !< density evolution by thermal annihilation
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
-                                            rhoSgl, &                     ! current single dislocation densities (positive/negative screw and edge without dipoles)
+                                            rhoSgl, &                     !< current single dislocation densities (positive/negative screw and edge without dipoles)
                                             rhoSglOriginal, &
-                                            rhoSgl0, &                    ! single dislocation densities at start of cryst inc (positive/negative screw and edge without dipoles)
-                                            rhoSglMe, &                   ! single dislocation densities of central ip (positive/negative screw and edge without dipoles)
-                                            neighboring_rhoSgl            ! current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
+                                            rhoSgl0, &                    !< single dislocation densities at start of cryst inc (positive/negative screw and edge without dipoles)
+                                            rhoSglMe, &                   !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
+                                            neighboring_rhoSgl            !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
-                                            v, &                          ! current dislocation glide velocity
-                                            v0, &                         ! dislocation glide velocity at start of cryst inc
-                                            vMe, &                        ! dislocation glide velocity of central ip
-                                            neighboring_v, &              ! dislocation glide velocity of enighboring ip
-                                            gdot                          ! shear rates
+                                            v, &                          !< current dislocation glide velocity
+                                            v0, &                         !< dislocation glide velocity at start of cryst inc
+                                            vMe, &                        !< dislocation glide velocity of central ip
+                                            neighboring_v, &              !< dislocation glide velocity of enighboring ip
+                                            gdot                          !< shear rates
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            rhoForest, &                  ! forest dislocation density
-                                            tauThreshold, &               ! threshold shear stress
-                                            tau, &                        ! current resolved shear stress
-                                            tauBack, &                    ! current back stress from pileups on same slip system
-                                            vClimb, &                     ! climb velocity of edge dipoles
+                                            rhoForest, &                  !< forest dislocation density
+                                            tauThreshold, &               !< threshold shear stress
+                                            tau, &                        !< current resolved shear stress
+                                            tauBack, &                    !< current back stress from pileups on same slip system
+                                            vClimb, &                     !< climb velocity of edge dipoles
                                             nSources
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
-                                            rhoDip, &                     ! current dipole dislocation densities (screw and edge dipoles)
+                                            rhoDip, &                     !< current dipole dislocation densities (screw and edge dipoles)
                                             rhoDipOriginal, & 
-                                            dLower, &                     ! minimum stable dipole distance for edges and screws
-                                            dUpper                        ! current maximum stable dipole distance for edges and screws
+                                            dLower, &                     !< minimum stable dipole distance for edges and screws
+                                            dUpper                        !< current maximum stable dipole distance for edges and screws
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
-                                            m                             ! direction of dislocation motion
-real(pReal), dimension(3,3) ::              my_F, &                       ! my total deformation gradient
-                                            neighboring_F, &              ! total deformation gradient of my neighbor
-                                            my_Fe, &                      ! my elastic deformation gradient
-                                            neighboring_Fe, &             ! elastic deformation gradient of my neighbor
-                                            Favg                          ! average total deformation gradient of me and my neighbor
-real(pReal), dimension(3) ::                normal_neighbor2me, &         ! interface normal pointing from my neighbor to me in neighbor's lattice configuration
-                                            normal_neighbor2me_defConf, & ! interface normal pointing from my neighbor to me in shared deformed configuration
-                                            normal_me2neighbor, &         ! interface normal pointing from me to my neighbor in my lattice configuration
-                                            normal_me2neighbor_defConf    ! interface normal pointing from me to my neighbor in shared deformed configuration
-real(pReal)                                 area, &                       ! area of the current interface
-                                            transmissivity, &             ! overall transmissivity of dislocation flux to neighboring material point
-                                            lineLength, &                 ! dislocation line length leaving the current interface
-                                            D, &                          ! self diffusion
+                                            m                             !< direction of dislocation motion
+real(pReal), dimension(3,3) ::              my_F, &                       !< my total deformation gradient
+                                            neighboring_F, &              !< total deformation gradient of my neighbor
+                                            my_Fe, &                      !< my elastic deformation gradient
+                                            neighboring_Fe, &             !< elastic deformation gradient of my neighbor
+                                            Favg                          !< average total deformation gradient of me and my neighbor
+real(pReal), dimension(3) ::                normal_neighbor2me, &         !< interface normal pointing from my neighbor to me in neighbor's lattice configuration
+                                            normal_neighbor2me_defConf, & !< interface normal pointing from my neighbor to me in shared deformed configuration
+                                            normal_me2neighbor, &         !< interface normal pointing from me to my neighbor in my lattice configuration
+                                            normal_me2neighbor_defConf    !< interface normal pointing from me to my neighbor in shared deformed configuration
+real(pReal)                                 area, &                       !< area of the current interface
+                                            transmissivity, &             !< overall transmissivity of dislocation flux to neighboring material point
+                                            lineLength, &                 !< dislocation line length leaving the current interface
+                                            D, &                          !< self diffusion
                                             rnd, & 
                                             meshlength
 logical                                     considerEnteringFlux, &
