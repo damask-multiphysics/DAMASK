@@ -752,19 +752,15 @@ pure function lattice_symmetrizeC66(structName,C66)
  select case(structName(1:3))
    case ('iso')
      forall(k=1_pInt:3_pInt)
-       forall(j=1_pInt:3_pInt) 
-         lattice_symmetrizeC66(k,j) = C66(1,2)
-       end forall
+       forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) = C66(1,2)
        lattice_symmetrizeC66(k,k) = C66(1,1)
        lattice_symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
      end forall
    case ('fcc','bcc')
      forall(k=1_pInt:3_pInt)
-       forall(j=1_pInt:3_pInt)
-         lattice_symmetrizeC66(k,j) =   C66(1,2)
-         lattice_symmetrizeC66(k,k) =     C66(1,1)
-         lattice_symmetrizeC66(k+3_pInt,k+3_pInt) = C66(4,4)
-       end forall
+       forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) =   C66(1,2)
+       lattice_symmetrizeC66(k,k) =     C66(1,1)
+       lattice_symmetrizeC66(k+3_pInt,k+3_pInt) = C66(4,4)
      end forall    
    case ('hex')
      lattice_symmetrizeC66(1,1) = C66(1,1)

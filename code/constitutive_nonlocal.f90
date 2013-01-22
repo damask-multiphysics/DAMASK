@@ -860,7 +860,7 @@ do i = 1,maxNinstance
                                                 + 3.0_pReal*constitutive_nonlocal_Cslip_66(4,4,i) )                                          ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
   constitutive_nonlocal_nu(i) =   ( constitutive_nonlocal_Cslip_66(1,1,i) + 4.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) &
                                     - 2.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) ) &
-                                / ( 4.0_pReal*constitutive_nonlocal_Cslip_66(1,1,i) + 6.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) &
+                     / ( 4.0_pReal*constitutive_nonlocal_Cslip_66(1,1,i) + 6.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) &
                                     + 2.0_pReal*constitutive_nonlocal_Cslip_66(4,4,i) )    
   constitutive_nonlocal_Cslip_66(1:6,1:6,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_nonlocal_Cslip_66(1:6,1:6,i)))
   constitutive_nonlocal_Cslip_3333(1:3,1:3,1:3,1:3,i) = math_Voigt66to3333(constitutive_nonlocal_Cslip_66(1:6,1:6,i))
