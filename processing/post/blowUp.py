@@ -41,8 +41,8 @@ def index(location,res):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=extendableOption, usage='%prog [options] [file[s]]', description = """
-Average each data block of size 'packing' into single values thus reducing the former resolution
-to resolution/packing. (Requires numpy.)
+Blows up each value to a surrounding data block of size 'packing' thus increasing the former resolution
+to resolution*packing. (Requires numpy.)
 
 """ + string.replace('$Id: averageDown.py 1857 2012-10-31 10:06:11Z MPIE\m.diehl $','\n','\\n')
 )

@@ -115,6 +115,8 @@ bin_link = { \
                 'addStrainTensors.py',
                 'averageDown.py',
                 'binXY.py',
+                'blowUp.py',
+                'stddevDown.py',
                 'deleteColumn.py',
                 'deleteInfo.py',
                 'filterTable.py',
