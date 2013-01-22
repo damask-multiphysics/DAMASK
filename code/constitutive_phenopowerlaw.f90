@@ -680,9 +680,11 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temp
                                            math_Mandel6to33(lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,structID))
      enddo
      gdot_slip_pos(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(matID)* &
-                    ((abs(tau_slip_pos(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*sign(1.0_pReal,tau_slip_pos(j))
+                    ((abs(tau_slip_pos(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*&
+                                                                    sign(1.0_pReal,tau_slip_pos(j))
      gdot_slip_neg(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(matID)* &
-                    ((abs(tau_slip_neg(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*sign(1.0_pReal,tau_slip_neg(j))
+                    ((abs(tau_slip_neg(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*&
+                                                                    sign(1.0_pReal,tau_slip_neg(j))
      Lp = Lp + (1.0_pReal-state(ipc,ip,el)%p(index_F))*&                     ! 1-F
                (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,index_myFamily+i,structID)
 

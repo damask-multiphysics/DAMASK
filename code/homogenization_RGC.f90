@@ -845,7 +845,7 @@ endsubroutine
 !********************************************************************
 ! derive average stress and stiffness from constituent quantities
 !********************************************************************
-function homogenization_RGC_averageTemperature(&
+pure function homogenization_RGC_averageTemperature(&
    Temperature, &   ! temperature
    ip, &            ! my integration point
    el  &            ! my element
@@ -1302,7 +1302,7 @@ endfunction
 !********************************************************************
 ! subroutine to map grain ID from in 3D (local position) to in 1D (global array)
 !********************************************************************
-function homogenization_RGC_grain3to1(&
+pure function homogenization_RGC_grain3to1(&
    grain3, &       ! grain ID in 3D array (pos.x,pos.y,pos.z)
    homID &         ! homogenization ID
   )
@@ -1313,7 +1313,7 @@ function homogenization_RGC_grain3to1(&
  integer(pInt), dimension (3), intent(in) :: grain3
  integer(pInt)                :: homogenization_RGC_grain3to1
  integer(pInt), dimension (3) :: nGDim
- integer(pInt) homID
+ integer(pInt), intent(in) :: homID
 
 !* Get the grain ID
  nGDim = homogenization_RGC_Ngrains(:,homID)
@@ -1324,7 +1324,7 @@ endfunction
 !********************************************************************
 ! subroutine to map interface ID from 4D (normal and local position) into 1D (global array)
 !********************************************************************
-function homogenization_RGC_interface4to1(&
+pure function homogenization_RGC_interface4to1(&
    iFace4D, &        ! interface ID in 4D array (n.dir,pos.x,pos.y,pos.z)
    homID &           ! homogenization ID
   )
@@ -1335,7 +1335,7 @@ function homogenization_RGC_interface4to1(&
  integer(pInt), dimension (4), intent(in) :: iFace4D
  integer(pInt)                :: homogenization_RGC_interface4to1
  integer(pInt), dimension (3) :: nGDim,nIntFace
- integer(pInt) homID
+ integer(pInt), intent(in) :: homID
 
  nGDim = homogenization_RGC_Ngrains(:,homID)
 !* Compute the total number of interfaces, which ...
@@ -1374,7 +1374,7 @@ function homogenization_RGC_interface1to4(&
  integer(pInt), dimension (4) :: homogenization_RGC_interface1to4
  integer(pInt), intent(in)    :: iFace1D
  integer(pInt), dimension (3) :: nGDim,nIntFace
- integer(pInt) homID
+ integer(pInt), intent(in) :: homID
 
  nGDim = homogenization_RGC_Ngrains(:,homID)
 !* Compute the total number of interfaces, which ...

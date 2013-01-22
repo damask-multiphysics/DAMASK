@@ -864,15 +864,18 @@ do i = 1_pInt,maxNinstance
        endif
    enddo
    
-write(6,*) 'Determining elasticity matrix'
+   write(6,*) 'Determining elasticity matrix'
 
    !* Elasticity matrix and shear modulus according to material.config
    constitutive_titanmod_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_titanmod_structureName(i),&
                                                                       constitutive_titanmod_Cslip_66)  
    constitutive_titanmod_Gmod(i) = &
-   0.2_pReal*(constitutive_titanmod_Cslip_66(1,1,i)-constitutive_titanmod_Cslip_66(1,2,i))+0.3_pReal*constitutive_titanmod_Cslip_66(4,4,i)
-   constitutive_titanmod_Cslip_66(:,:,i) =     math_Mandel3333to66(math_Voigt66to3333(constitutive_titanmod_Cslip_66(:,:,i)))
-   constitutive_titanmod_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_titanmod_Cslip_66(:,:,i))
+        0.2_pReal*(constitutive_titanmod_Cslip_66(1,1,i)-constitutive_titanmod_Cslip_66(1,2,i))&
+      + 0.3_pReal*constitutive_titanmod_Cslip_66(4,4,i)
+   constitutive_titanmod_Cslip_66(1:6,1:6,i) = &
+      math_Mandel3333to66(math_Voigt66to3333(constitutive_titanmod_Cslip_66(1:6,1:6,i)))
+   constitutive_titanmod_Cslip_3333(1:3,1:3,1:3,1:3,i) = &
+      math_Voigt66to3333(constitutive_titanmod_Cslip_66(1:6,1:6,i))
    
    !* Construction of the twin elasticity matrices
    do j=1_pInt,lattice_maxNtwinFamily
@@ -887,7 +890,8 @@ write(6,*) 'Determining elasticity matrix'
              lattice_Qtwin(n,r,sum(lattice_NslipSystem(1:j-1_pInt,myStructure))+k,myStructure)* &
              lattice_Qtwin(o,s,sum(lattice_NslipSystem(1:j-1_pInt,myStructure))+k,myStructure)
            enddo ; enddo ; enddo ; enddo ; enddo ; enddo ; enddo ; enddo
-         constitutive_titanmod_Ctwin_66(:,:,k,i) = math_Mandel3333to66(constitutive_titanmod_Ctwin_3333(:,:,:,:,k,i))
+         constitutive_titanmod_Ctwin_66(1:6,1:6,k,i) =  &
+            math_Mandel3333to66(constitutive_titanmod_Ctwin_3333(1:3,1:3,1:3,1:3,k,i))
         enddo
    enddo
 

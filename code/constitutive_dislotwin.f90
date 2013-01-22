@@ -542,12 +542,15 @@ do i = 1_pInt,maxNinstance
 
     
    !* Elasticity matrix and shear modulus according to material.config
-   constitutive_dislotwin_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_dislotwin_structureName(i),&
-                                                                      constitutive_dislotwin_Cslip_66) 
+   constitutive_dislotwin_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(constitutive_dislotwin_structureName(i),&
+                                                                     constitutive_dislotwin_Cslip_66) 
    constitutive_dislotwin_Gmod(i) = &
-   0.2_pReal*(constitutive_dislotwin_Cslip_66(1,1,i)-constitutive_dislotwin_Cslip_66(1,2,i))+0.3_pReal*constitutive_dislotwin_Cslip_66(4,4,i)
-   constitutive_dislotwin_Cslip_66(:,:,i) = math_Mandel3333to66(math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i)))
-   constitutive_dislotwin_Cslip_3333(:,:,:,:,i) = math_Voigt66to3333(constitutive_dislotwin_Cslip_66(:,:,i))
+      0.2_pReal*(constitutive_dislotwin_Cslip_66(1,1,i)-constitutive_dislotwin_Cslip_66(1,2,i)) &
+     +0.3_pReal*constitutive_dislotwin_Cslip_66(4,4,i)
+   constitutive_dislotwin_Cslip_66(1:6,1:6,i) = &
+      math_Mandel3333to66(math_Voigt66to3333(constitutive_dislotwin_Cslip_66(1:6,1:6,i)))
+   constitutive_dislotwin_Cslip_3333(1:3,1:3,1:3,1:3,i) = &
+      math_Voigt66to3333(constitutive_dislotwin_Cslip_66(1:6,1:6,i))
 
 
    !* Process slip related parameters ------------------------------------------------
@@ -621,7 +624,8 @@ do i = 1_pInt,maxNinstance
              lattice_Qtwin(o,s,index_otherFamily+j,myStructure)
          enddo ; enddo ; enddo ; enddo
        enddo ; enddo ; enddo ; enddo
-       constitutive_dislotwin_Ctwin_66(:,:,index_myFamily+j,i) = math_Mandel3333to66(constitutive_dislotwin_Ctwin_3333(:,:,:,:,index_myFamily+j,i))
+       constitutive_dislotwin_Ctwin_66(1:6,1:6,index_myFamily+j,i) = &
+         math_Mandel3333to66(constitutive_dislotwin_Ctwin_3333(1:3,1:3,1:3,1:3,index_myFamily+j,i))
 
     !* Interaction matrices
 
