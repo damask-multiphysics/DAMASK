@@ -451,7 +451,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    myStructure = constitutive_phenopowerlaw_structure(i)
 
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_phenopowerlaw_structureName(i),&
-                                                                      constitutive_phenopowerlaw_Cslip_66)   
+                                                                      constitutive_phenopowerlaw_Cslip_66(:,:,i))   
                                                                                                     ! assign elasticity tensor
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))

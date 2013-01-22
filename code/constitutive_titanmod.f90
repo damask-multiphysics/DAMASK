@@ -868,7 +868,7 @@ do i = 1_pInt,maxNinstance
 
    !* Elasticity matrix and shear modulus according to material.config
    constitutive_titanmod_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_titanmod_structureName(i),&
-                                                                      constitutive_titanmod_Cslip_66)  
+                                                                      constitutive_titanmod_Cslip_66(:,:,i))  
    constitutive_titanmod_Gmod(i) = &
         0.2_pReal*(constitutive_titanmod_Cslip_66(1,1,i)-constitutive_titanmod_Cslip_66(1,2,i))&
       + 0.3_pReal*constitutive_titanmod_Cslip_66(4,4,i)

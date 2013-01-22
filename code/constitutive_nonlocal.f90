@@ -855,7 +855,7 @@ do i = 1,maxNinstance
   !*** elasticity matrix and shear modulus according to material.config
   
   constitutive_nonlocal_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_nonlocal_structureName(i),&
-                                                                      constitutive_nonlocal_Cslip_66) 
+                                                                      constitutive_nonlocal_Cslip_66(:,:,i)) 
   constitutive_nonlocal_Gmod(i) = 0.2_pReal * ( constitutive_nonlocal_Cslip_66(1,1,i) - constitutive_nonlocal_Cslip_66(1,2,i) &
                                                 + 3.0_pReal*constitutive_nonlocal_Cslip_66(4,4,i) )                                          ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
   constitutive_nonlocal_nu(i) =   ( constitutive_nonlocal_Cslip_66(1,1,i) + 4.0_pReal*constitutive_nonlocal_Cslip_66(1,2,i) &

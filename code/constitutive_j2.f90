@@ -305,7 +305,7 @@ subroutine constitutive_j2_init(myFile)
    constitutive_j2_sizeState(i)    = 1_pInt
    
    constitutive_j2_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_j2_structureName(i),&
-                                                                      constitutive_j2_Cslip_66) 
+                                                                      constitutive_j2_Cslip_66(:,:,i)) 
    constitutive_j2_Cslip_66(1:6,1:6,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))
 

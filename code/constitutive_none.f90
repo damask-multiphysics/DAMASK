@@ -182,7 +182,7 @@ subroutine constitutive_none_init(myFile)
    constitutive_none_sizeState(i)       = 1_pInt
 
    constitutive_none_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_none_structureName(i),&
-                                                                      constitutive_none_Cslip_66)
+                                                                      constitutive_none_Cslip_66(:,:,i))
    constitutive_none_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_none_Cslip_66(:,:,i)))
 
