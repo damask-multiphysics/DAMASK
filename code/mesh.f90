@@ -3935,7 +3935,7 @@ enddo
     write(6,*)
     write(6,*) 'periodic surface : ', mesh_periodicSurface
     write(6,*)
-    call flush(6)
+    flush(6)
   endif
 
   if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then

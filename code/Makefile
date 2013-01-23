@@ -124,13 +124,10 @@ endif
 
 ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
-STANDARD_CHECK_gfortran ?=-std=f2008 -fall-intrinsics
+STANDARD_CHECK_gfortran ?=-std=f2008 -Wintrinsics-std
 endif
-#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. This can be useful with -std=f95 to force standard-compliance
 #-std=f2008ts:      for newer gfortran
-#                   but get access to the full range of intrinsics available with gfortran. As a consequence, -Wintrinsics-std will be ignored and no user-defined
-#                   procedure with the same name as any intrinsic will be called except when it is explicitly declared external
-#-Wintrinsics-std:  warnings because of "flush" is not longer in the standard, but still an intrinsic fuction of the compilers
+#-Wintrinsics-std:  only standard intrisics are available, e.g. "call flush(6)" will cause an error
 
 OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
 OPTIMIZATION_OFF_gfortran        :=-O0
@@ -249,13 +246,16 @@ endif
 #        -value:
 #        -parameter:           find usused variables with "parameter" attribute
 #-Wextra:                        
+#-Wsuggest-attribute=const:
+#-Wsuggest-attribute=noreturn:
+#-Wsuggest-attribute=pure: 
+#-pedantic-errors:
 #-Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
 ###################################################################################################
 #MORE OPTIONS FOR DEBUGGING DURING COMPILING                      
 #-Wline-truncation:           too many warnings because we have comments beyond character 132
 #-Warray-temporarieswarnings: because we have many temporary arrays (performance issue?):                     
 #-Wimplicit-interface:
-#-pedantic-errors:
 #-fmodule-private:
 #
 #OPTIONS FOR DEGUBBING DURING RUNTIME
@@ -378,13 +378,20 @@ numerics.o:                    numerics.f90 \
                                
 IO.o:                          IO.f90 \
                                DAMASK_spectral_interface.o
-
+ifeq "$(F90)" "gfortran"
 DAMASK_spectral_interface.o:   DAMASK_spectral_interface.f90 \
                                prec.o
-ifeq "$(F90)" "gfortran"            # fno-range-check because NaN is defined in prec
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -fall-intrinsics DAMASK_spectral_interface.f90 $(SUFFIX)
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored 
+#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
+#      -->   allows the use of 'getcwd'
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -fno-range-check prec.f90 $(SUFFIX)
+# fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
+#      -->   allows the definition of DAMASK_NaN
 else
+DAMASK_spectral_interface.o:   DAMASK_spectral_interface.f90 \
+                               prec.o
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
 endif
