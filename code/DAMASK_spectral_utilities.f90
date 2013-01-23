@@ -683,9 +683,16 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    restartWrite
  use mesh, only: &
    res, &
-   wgt
+   wgt, &
+   mesh_NcpElems
  use CPFEM, only: &
    CPFEM_general
+ use homogenization, only: &
+   materialpoint_F0, &
+   materialpoint_F, &
+   materialpoint_Temperature, &
+   materialpoint_P, &
+   materialpoint_dPdF
  
  implicit none
  real(pReal), intent(inout)                                      :: temperature                     !< temperature (no field)
@@ -738,28 +745,28 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  if (DebugGeneral) write(6,'(/,2(a,i1.1))') ' collect mode: ', collectMode,' calc mode: ', calcMode
  flush(6)
  
- ielem = 0_pInt
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   ielem = ielem + 1_pInt
-   call CPFEM_general(collectMode,&                                                                 ! collect cycle
-                       F_lastInc(1:3,1:3,i,j,k),F(1:3,1:3,i,j,k), &
-                       temperature,timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
-   collectMode = 3_pInt
- enddo; enddo; enddo
+ call CPFEM_general(collectMode,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &                        ! collect mode handles Jacobian backup / restoration
+                   temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
+ 
+ materialpoint_F0 = reshape(F_lastInc, [3,3,1,mesh_NcpElems])
+ write(6,*) 'mat_F0'
+ flush(6)
+ materialpoint_F  = reshape(F,         [3,3,1,mesh_NcpElems])
+ write(6,*) 'mat_F'
+ flush(6)
+ materialpoint_Temperature = temperature
 
- P = 0.0_pReal                                                                                      ! needed because of the padding for FFTW
- C = 0.0_pReal
- ielem = 0_pInt 
  call debug_reset()
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   ielem = ielem + 1_pInt
-   call CPFEM_general(calcMode,&                                                                    ! first element in first iteration retains CPFEM_mode 1, 
-                      F_lastInc(1:3,1:3,i,j,k), F(1:3,1:3,i,j,k), &          ! others get 2 (saves winding forward effort)
-                      temperature,timeinc,ielem,1_pInt,sigma,dsde,P(1:3,1:3,i,j,k),dPdF)
-   calcMode = 2_pInt
-   C = C + dPdF
- enddo; enddo; enddo
- C = C * wgt
+ 
+ call CPFEM_general(calcMode,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &                          ! first call calculates everything
+                    temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
+
+ P = reshape(materialpoint_P, [3,3,res(1),res(2),res(3)])
+ write(6,*) 'mat_P'
+ flush(6)
+ C = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
+ write(6,*) 'mat_dPdF'
+ flush(6)
  call debug_info()
  
  restartWrite = .false.                                                                             ! reset restartWrite status
