@@ -189,7 +189,7 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%deformation%maskFloat   = &                                     ! float (1.0/0.0) mask in 3x3 notation
                merge(ones,zeros,loadCases(currentLoadCase)%deformation%maskLogical)
          loadCases(currentLoadCase)%deformation%values = math_plain9to33(temp_valueVector)          ! values in 3x3 notation
-       case('p','pk1','piolakirchhoff','stress')
+       case('p','pk1','piolakirchhoff','stress', 's')
          temp_valueVector = 0.0_pReal
          forall (j = 1_pInt:9_pInt) temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'  ! true if not a *
          do j = 1_pInt,9_pInt

@@ -340,7 +340,9 @@ class Test():
     if culprit < 0:
       print '%s passed.'%({False: 'The test',
                          True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1])
+      print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
+      return 0
     else:
-     print ' ********\n * Test %i failed...\n ********'%(culprit+1)
-
-    print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
+      print ' ********\n * Test %i failed...\n ********'%(culprit+1)
+      print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
+      return culprit+1

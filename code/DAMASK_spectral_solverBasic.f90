@@ -111,15 +111,15 @@ subroutine basic_init(temperature)
    
    F_aim         = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt                                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
-
-   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
-   read (777,rec=1) C_lastInc
+   
+   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   read (777,rec=1) f_aimDot
    close (777)
    call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
    read (777,rec=1) C
    close (777)
-   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-   read (777,rec=1) f_aimDot
+   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
+   read (777,rec=1) C_lastInc
    close (777)
    call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
    read (777,rec=1) temp3333_Real

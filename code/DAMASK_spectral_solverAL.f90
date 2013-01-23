@@ -174,14 +174,14 @@ subroutine AL_init(temperature)
                                         trim(getSolverJobName()),size(F_lambda_lastInc))
    read (777,rec=1) F_lambda_lastInc
    close (777)
-   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
-   read (777,rec=1) C_lastInc
+   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   read (777,rec=1) f_aimDot
    close (777)
    call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
    read (777,rec=1) C
    close (777)
-   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-   read (777,rec=1) f_aimDot
+   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
+   read (777,rec=1) C_lastInc
    close (777)
    call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
    read (777,rec=1) temp3333_Real
