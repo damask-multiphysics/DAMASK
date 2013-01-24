@@ -708,8 +708,6 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  real(pReal),intent(out),    dimension(3,3,res(1),res(2),res(3)) :: P                               !< PK stress
  
  integer(pInt) :: &
-   i, j, k, &
-   ielem, &
    calcMode, &                                                                                      !< CPFEM mode for calculation
    collectMode                                                                                      !< CPFEM mode for collection
  real(pReal), dimension(3,3,3,3) :: dPdF                                                            !< d P / d F
@@ -749,11 +747,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
                    temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
  
  materialpoint_F0 = reshape(F_lastInc, [3,3,1,mesh_NcpElems])
- write(6,*) 'mat_F0'
- flush(6)
  materialpoint_F  = reshape(F,         [3,3,1,mesh_NcpElems])
- write(6,*) 'mat_F'
- flush(6)
  materialpoint_Temperature = temperature
 
  call debug_reset()
@@ -762,11 +756,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
                     temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
 
  P = reshape(materialpoint_P, [3,3,res(1),res(2),res(3)])
- write(6,*) 'mat_P'
- flush(6)
  C = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
- write(6,*) 'mat_dPdF'
- flush(6)
  call debug_info()
  
  restartWrite = .false.                                                                             ! reset restartWrite status
