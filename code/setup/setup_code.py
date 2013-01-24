@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import os,string,re,damask
+import os,string,re
+import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
