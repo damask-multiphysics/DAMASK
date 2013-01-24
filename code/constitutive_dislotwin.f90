@@ -856,7 +856,7 @@ forall (s = 1_pInt:ns) &
 !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
 !$OMP CRITICAL (evilmatmul)
 state(g,ip,el)%p((3_pInt*ns+nt+1_pInt):(4_pInt*ns+nt)) = 0.0_pReal
-if (nt > 0_pInt) &
+if (nt > 0_pInt .and. ns > 0_pInt) &
   state(g,ip,el)%p((3_pInt*ns+nt+1):(4_pInt*ns+nt)) = &
     matmul(constitutive_dislotwin_interactionMatrix_SlipTwin(1:ns,1:nt,myInstance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
 !$OMP END CRITICAL (evilmatmul)
