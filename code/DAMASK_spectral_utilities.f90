@@ -230,7 +230,7 @@ subroutine utilities_init()
        if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)                                      ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
          do i = 1_pInt, res1_red
            k_s(1) = i - 1_pInt                                                                      ! symmetry, junst running from 0,1,...,N/2,N/2+1
-           xi(1:3,i,j,k) = real(k_s, pReal)/scaledDim                                                ! if divergence_correction is set, frequencies are calculated on unit length
+           xi(1:3,i,j,k) = real(k_s, pReal)/scaledDim                                               ! if divergence_correction is set, frequencies are calculated on unit length
  enddo; enddo; enddo
  
  if(memory_efficient) then                                                                          ! allocate just single fourth order tensor

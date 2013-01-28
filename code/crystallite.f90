@@ -1121,7 +1121,7 @@ if(updateJaco) then                                                             
 
   ! --- STIFFNESS ACCORDING TO PERTURBATION METHOD AND CONVERGENCE ---
 
-  do e = FEsolving_execElem(1),FEsolving_execElem(2)
+  elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
     myNgrains = homogenization_Ngrains(mesh_element(3,e))
     select case(pert_method)
       case(1_pInt)
@@ -1139,10 +1139,9 @@ if(updateJaco) then                                                             
                                                                 + dPdF_perturbation2(1:3,1:3,1:3,1:3,g,i,e))
     end select
     forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains, &
-            crystallite_requested(g,i,e) .and. .not. convergenceFlag_backup(g,i,e))                     ! for any pertubation mode: if central solution did not converge...
+            crystallite_requested(g,i,e) .and. .not. convergenceFlag_backup(g,i,e)) &                   ! for any pertubation mode: if central solution did not converge...
       crystallite_dPdF(1:3,1:3,1:3,1:3,g,i,e) = crystallite_fallbackdPdF(1:3,1:3,1:3,1:3,g,i,e)         ! ...use (elastic) fallback
-    endforall
-  enddo
+  enddo elementLooping
   
 
   ! --- RESTORE ---
