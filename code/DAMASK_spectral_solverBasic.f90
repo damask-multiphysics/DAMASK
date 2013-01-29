@@ -6,7 +6,7 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Basic scheme solver
 !> @details this solver follows closely the original large strain formulation presented by
-!> Suquet. The iterative procedure is solved using a fix-point iteration
+!> Suquet. The iterative procedure is solved using a fix-point iteration.
 !--------------------------------------------------------------------------------------------------
 module DAMASK_spectral_SolverBasic
  use prec, only: & 

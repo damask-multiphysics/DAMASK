@@ -143,7 +143,7 @@ program DAMASK_spectral_Driver
    read(myUnit,'(a1024)',END = 100) line
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    positions = IO_stringPos(line,maxNchunks)
-   do i = 1_pInt, maxNchunks, 1_pInt                                                                ! reading compulsory parameters for loadcase
+   do i = 1_pInt, maxNchunks                                                                        ! reading compulsory parameters for loadcase
        select case (IO_lc(IO_stringValue(line,positions,i)))
             case('l','velocitygrad','velgrad','velocitygradient')
                  N_l = N_l + 1_pInt
@@ -170,7 +170,7 @@ program DAMASK_spectral_Driver
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
    positions = IO_stringPos(line,maxNchunks)
-   do i = 1_pInt,maxNchunks
+   do i = 1_pInt, maxNchunks
      select case (IO_lc(IO_stringValue(line,positions,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient')                          ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
@@ -374,7 +374,7 @@ program DAMASK_spectral_Driver
      endif
      timeinc = timeinc / 2.0_pReal**real(cutBackLevel,pReal)                                        ! depending on cut back level, decrease time step
 
-     if(totalIncsCounter >= restartInc)  then                                                       ! do calculations (otherwise just forwarding) 
+     forwarding: if(totalIncsCounter >= restartInc) then
        stepFraction = 0_pInt
 !--------------------------------------------------------------------------------------------------
 ! loop over sub incs 
@@ -472,10 +472,10 @@ program DAMASK_spectral_Driver
          restartWrite = .true.
          lastRestartWritten = inc
        endif 
-     else                                                                                           !just time forwarding
+     else forwarding
        time = time + timeinc
        guess = .true.
-     endif                                                                                          ! end calculation/forwarding
+     endif forwarding
 
     enddo incLooping
  enddo loadCaseLooping

@@ -797,6 +797,7 @@ logical function IO_globalTagInPart(myFile,part,myTag)
 !--------------------------------------------------------------------------------------------------
 !> @brief locate at most N space-separated parts in line return array containing number of parts 
 !> in line and the left/right positions of at most N to be used by IO_xxxVal
+!> IMPORTANT: first element contains number of chunks!
 !--------------------------------------------------------------------------------------------------
 pure function IO_stringPos(line,N)
 
