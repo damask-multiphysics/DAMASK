@@ -546,7 +546,7 @@ do i = 1_pInt,maxNinstance
                                                                      constitutive_dislotwin_Cslip_66(:,:,i)) 
    constitutive_dislotwin_Gmod(i) = &
       0.2_pReal*(constitutive_dislotwin_Cslip_66(1,1,i)-constitutive_dislotwin_Cslip_66(1,2,i)) &
-     +0.3_pReal*constitutive_dislotwin_Cslip_66(4,4,i)
+     +0.6_pReal*constitutive_dislotwin_Cslip_66(4,4,i)                                             ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
    constitutive_dislotwin_Cslip_66(1:6,1:6,i) = &
       math_Mandel3333to66(math_Voigt66to3333(constitutive_dislotwin_Cslip_66(1:6,1:6,i)))
    constitutive_dislotwin_Cslip_3333(1:3,1:3,1:3,1:3,i) = &
@@ -905,7 +905,7 @@ forall (t = 1_pInt:nt) &
 !* final twin volume after growth
 forall (t = 1_pInt:nt) &
   state(g,ip,el)%p(6_pInt*ns+4_pInt*nt+t) = &
-    (pi/6.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(t,myInstance)*state(g,ip,el)%p(5*ns+2*nt+t)**(2.0_pReal)
+    (pi/4.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(t,myInstance)*state(g,ip,el)%p(5*ns+2*nt+t)**(2.0_pReal)
 
 !if ((ip==1).and.(el==1)) then
 !   write(6,*) '#MICROSTRUCTURE#'
