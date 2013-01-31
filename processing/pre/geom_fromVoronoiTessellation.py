@@ -206,13 +206,10 @@ for file in files:
                                                                          /float(info['resolution'][2])
       undeformed[:,i] += shift
       
-    indices = damask.core.math.math_nearestNeighborSearch(3,\
-              numpy.array(([1.0,0.0,0.0],\
-                           [0.0,1.0,0.0],\
-                           [0.0,0.0,1.0]),'d'),\
+    indices = damask.core.math.periodicNearestNeighbor(\
               info['dimension'],\
-              N,info['grains'],undeformed,coords)//3**3 + 1                     # floor division to kill periodic images
-  
+              numpy.eye(3),\
+              undeformed,coords)//3**3 + 1                         # floor division to kill periodic images
     for n in xrange(info['resolution'][1:3].prod()):                            # loop over 2nd and 3rd dimension
       file['output'].write({ True: ' ',
                              False:'\n'}[options.twoD].\

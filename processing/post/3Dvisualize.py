@@ -132,7 +132,7 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i float'%N1,
-          [[['\t'.join(map(str,mesh[i,j,k])) for i in range(res[0]+1)] for j in range(res[1]+1)] for k in range(res[2]+1)],
+          [[['\t'.join(map(str,mesh[:,i,j,k])) for i in range(res[0]+1)] for j in range(res[1]+1)] for k in range(res[2]+1)],
           'CELLS %i %i'%(N,N*9),
           ]
 
@@ -189,7 +189,7 @@ def gmsh_writeASCII_mesh(mesh,data,res,sep):
           '$EndMeshFormat',
           '$Nodes',
           '%i float'%N1,
-          [[['\t'.join(map(str,l,mesh[i,j,k])) for l in range(1,N1+1) for i in range(res[0]+1)] for j in range(res[1]+1)] for k in range(res[2]+1)],
+          [[['\t'.join(map(str,l,mesh[:,i,j,k])) for l in range(1,N1+1) for i in range(res[0]+1)] for j in range(res[1]+1)] for k in range(res[2]+1)],
           '$EndNodes',
           '$Elements',
           '%i'%N,
@@ -346,7 +346,7 @@ parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
 parser.add_option('--filenodalcoords', dest='filenodalcoords', type='string', \
                   help='ASCII table containing nodal coords')
-parser.add_option('--labelnodalcoords', dest='nodalcoords', type='string', \
+parser.add_option('--labelnodalcoords', dest='nodalcoords', type='string', nargs=3, \
                   help='labels of nodal coords in ASCII table')
 parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',\
                   help='use linear reconstruction of geometry [%default]')
@@ -367,14 +367,14 @@ parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)
 parser.set_defaults(filenodalcoords = '')
-parser.set_defaults(labelnodalcoords = 'coord')
+parser.set_defaults(labelnodalcoords = ['coord.x','coord.y','coord.z'])
 parser.set_defaults(linearreconstruction = False)
 
 sep = {'n': '\n', 't': '\t', 's': ' '}
 
 (options, args) = parser.parse_args()
 if options.scaling !=1.0 and options.linearreconstruction: print 'cannot scale for linear reconstruction'
-if options.scaling !=1.0 and options.filenodalcoords!='': print 'cannot scale when reading coordinate from file'
+if options.scaling !=1.0 and options.filenodalcoords!='':  print 'cannot scale when reading coordinate from file'
 options.separator = options.separator.lower()
 for filename in args:
   if not os.path.exists(filename):
@@ -440,6 +440,7 @@ for filename in args:
                               key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),'d')             # sort with z as fastest and x as slowest index
 
   N = len(values)
+
   grid = [{},{},{}]
   for j in xrange(3):
     for i in xrange(N):
@@ -448,7 +449,9 @@ for filename in args:
   res = numpy.array([len(grid[0]),\
                      len(grid[1]),\
                      len(grid[2]),],'i')
-  
+  if (res[0]%2 != 0 or res[1]%2 != 0 or (res[2] != 1 and res[2]%2 !=0)):
+    print 'using linear reconstruction for uneven resolution'
+    options.linearreconstruction = True
   dim = numpy.ones(3)
 
   for i,r in enumerate(res):
@@ -460,34 +463,42 @@ for filename in args:
     else:
       dim[2] = options.unitlength
  
-  if options.filenodalcoords:
+  if options.undeformed:
+    Favg = numpy.eye(3)
+  else:
+    Favg = damask.core.math.tensorAvg(
+                      numpy.reshape(numpy.transpose(values[:,column['tensor'][options.defgrad]:
+                                                             column['tensor'][options.defgrad]+9]),
+                                                             (3,3,res[0],res[1],res[2])))
+  if not options.filenodalcoords:
+    F = numpy.reshape(numpy.transpose(values[:,column['tensor'][options.defgrad]:
+                                               column['tensor'][options.defgrad]+9]),
+                                                             (3,3,res[0],res[1],res[2]))
+    if options.linearreconstruction:
+      centroids = damask.core.mesh.deformedCoordsLinear(dim,F,Favg)
+    else:
+      centroids = damask.core.mesh.deformedCoordsFFT(dim,F,options.scaling,Favg)
+    mesh = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
+
+  else:
     mesh = numpy.zeros(((res[0]+1)*(res[1]+1)*(res[2]+1),3),'d')
-    mesh=mesh.reshape(res[0]+1,res[1]+1,res[2]+1,3)
+
     filenodalcoords = open(options.filenodalcoords)
     tablenodalcoords = damask.ASCIItable(filenodalcoords)
     tablenodalcoords.head_read()
-    coord = tablenodalcoords.labels.index(options.labelnodalcoords+'.x')
+    columns = [tablenodalcoords.labels.index(options.labelnodalcoords[0]),        
+               tablenodalcoords.labels.index(options.labelnodalcoords[1]),
+               tablenodalcoords.labels.index(options.labelnodalcoords[2])]
     i = 0
-    while tablenodalcoords.data_read(): 
-      mesh[i%(res[0]+1),(i//(res[0]+1))%(res[1]+1),(i//(res[0]+1)//(res[1]+1)) % (res[2]+1),:]=\
-                [float(tablenodalcoords.data[coord]),
-                 float(tablenodalcoords.data[coord+1]),
-                 float(tablenodalcoords.data[coord+2])]
-      i += 1
+    while tablenodalcoords.data_read():                                                    # read next data line of ASCII table
 
-  else:
-    F = numpy.reshape(values[:,column['tensor'][options.defgrad]: column['tensor'][options.defgrad]+9],(res[0],res[1],res[2],3,3))
-    if options.undeformed:
-      Favg = numpy.eye(3)
-    else:
-      Favg = damask.core.math.tensorAvg(F)
-    
-    if options.linearreconstruction:
-      centroids = damask.core.mesh.deformed_linear(res,dim,Favg,F)
-    else:
-      centroids = damask.core.mesh.deformed_fft(res,dim,Favg,options.scaling,F)
-    mesh = damask.core.mesh.mesh_regular_grid(res,dim,Favg,centroids)
-    
+
+      mesh[i,:]=float(tablenodalcoords.data[column[:]])
+
+
+      i += 1
+    mesh=mesh.reshape(res[0]+1,res[1]+1,res[2]+1,3)
+
   fields =  {\
              'tensor': {},\
              'vector': {},\

@@ -3357,8 +3357,8 @@ subroutine crystallite_orientations
 !*** variables and functions from other modules ***!
 
 use math, only:                       math_pDecomposition, &
-                                      math_RtoQuaternion, &
-                                      math_QuaternionDisorientation, &
+                                      math_RtoQ, &
+                                      math_qDisorientation, &
                                       math_qConj
 use FEsolving, only:                  FEsolving_execElem, & 
                                       FEsolving_execIP
@@ -3409,9 +3409,9 @@ logical error
           call IO_warning(650_pInt, e, i, g)
           orientation = [1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]                                ! fake orientation
         else
-          orientation = math_RtoQuaternion(transpose(R))
+          orientation = math_RtoQ(transpose(R))
         endif
-        crystallite_rotation(1:4,g,i,e) = math_QuaternionDisorientation(crystallite_orientation0(1:4,g,i,e), &  ! active rotation from ori0
+        crystallite_rotation(1:4,g,i,e) = math_qDisorientation(crystallite_orientation0(1:4,g,i,e), &  ! active rotation from ori0
                                                                         orientation, &                          ! to current orientation
                                                                         0_pInt )                                ! we don't want symmetry here  
         crystallite_orientation(1:4,g,i,e) = orientation
@@ -3446,7 +3446,7 @@ logical error
               neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure
               if (myStructure == neighboringStructure) then                                               ! if my neighbor has same crystal structure like me
                 crystallite_disorientation(:,n,1,i,e) = &
-                  math_QuaternionDisorientation( crystallite_orientation(1:4,1,i,e), &
+                  math_qDisorientation( crystallite_orientation(1:4,1,i,e), &
                                                  crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
                                                  crystallite_symmetryID(1,i,e))                           ! calculate disorientation
               else                                                                                        ! for neighbor with different phase
@@ -3485,8 +3485,8 @@ function crystallite_postResults(&
  )
 
  !*** variables and functions from other modules ***!
- use math, only:                      math_QuaternionToEuler, &
-                                      math_QuaternionToAxisAngle, &
+ use math, only:                      math_qToEuler, &
+                                      math_qToAxisAngle, &
                                       math_mul33x33, &
                                       math_transpose33, &
                                       math_det33, &
@@ -3549,26 +3549,26 @@ function crystallite_postResults(&
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,g,i,e)                                 ! grain orientation as quaternion
      case ('eulerangles')
        mySize = 3_pInt
-       crystallite_postResults(c+1:c+mySize) = inDeg * math_QuaternionToEuler(crystallite_orientation(1:4,g,i,e)) ! grain orientation as Euler angles in degree
+       crystallite_postResults(c+1:c+mySize) = inDeg * math_qToEuler(crystallite_orientation(1:4,g,i,e)) ! grain orientation as Euler angles in degree
      case ('grainrotation')
        mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = math_QuaternionToAxisAngle(crystallite_rotation(1:4,g,i,e))        ! grain rotation away from initial orientation as axis-angle in crystal reference coordinates
+       crystallite_postResults(c+1:c+mySize) = math_qToAxisAngle(crystallite_rotation(1:4,g,i,e))        ! grain rotation away from initial orientation as axis-angle in crystal reference coordinates
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                                        ! angle in degree
      case ('grainrotationx')
        mySize = 1_pInt
-       rotation = math_QuaternionToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
+       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
                                                                  crystallite_rotation(1:4,g,i,e)), &
                                                                  math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(1) * rotation(4)                                           ! angle in degree
      case ('grainrotationy')
        mySize = 1_pInt
-       rotation = math_QuaternionToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
+       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
                                                                  crystallite_rotation(1:4,g,i,e)), &
                                                                  math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(2) * rotation(4)                                           ! angle in degree
      case ('grainrotationz')
        mySize = 1_pInt
-       rotation = math_QuaternionToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
+       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
                                                                  crystallite_rotation(1:4,g,i,e)), &
                                                                  math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(3) * rotation(4)                                           ! angle in degree

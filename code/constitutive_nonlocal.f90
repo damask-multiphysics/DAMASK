@@ -2598,7 +2598,7 @@ subroutine constitutive_nonlocal_updateCompatibility(orientation,i,e)
 
 use prec,     only:   pReal, &
                       pInt
-use math, only:       math_QuaternionDisorientation, &
+use math, only:       math_qDisorientation, &
                       math_mul3x3, &
                       math_qRot
 use material, only:   material_phase, &
@@ -2727,7 +2727,7 @@ do n = 1_pInt,Nneighbors
   !* Finally the smallest compatibility value is decreased until the sum is exactly equal to one. 
   !* All values below the threshold are set to zero.
   else
-    absoluteMisorientation = math_QuaternionDisorientation(orientation(1:4,1,i,e), &
+    absoluteMisorientation = math_qDisorientation(orientation(1:4,1,i,e), &
                                                            orientation(1:4,1,neighboring_i,neighboring_e), &
                                                            0_pInt)      ! no symmetry
     do s1 = 1_pInt,ns    ! my slip systems

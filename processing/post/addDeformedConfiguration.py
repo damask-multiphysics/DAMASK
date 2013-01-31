@@ -117,8 +117,8 @@ for file in files:
   if key not in table.labels:
     sys.stderr.write('column %s not found...\n'%key)
   else:
-    defgrad = numpy.array([0.0 for i in xrange(N*9)]).reshape(list(res)+[3,3])
-    table.labels_append(['%s_coords'%(coord+1) for coord in xrange(3)])   # extend ASCII header with new labels
+    F = numpy.array([0.0 for i in xrange(N*9)]).reshape([3,3]+list(res))
+    table.labels_append(['%s_coordsMod'%(coord+1) for coord in xrange(3)])   # extend ASCII header with new labels
 
     column = table.labels.index(key)
         
@@ -134,14 +134,16 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
     (x,y,z) = location(idx,res)                                             # figure out (x,y,z) position from line count
     idx += 1
-    defgrad[x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
+    F[:,:,x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)
 
-    # ------------------------------------------ process value field ----------------------------
-  defgrad_av = damask.core.math.tensorAvg(defgrad)
+# ------------------------------------------ process value field ----------------------------
+  Favg = damask.core.math.tensorAvg(F)
   if options.linearreconstruction:
-    centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
+    centroids = damask.core.mesh.deformedCoordsLin(geomdim,F,Favg)
   else:
-    centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
+    print 'ddd'
+    centroids = damask.core.mesh.deformedCoordsFFT(geomdim,F,1.0,Favg)
+  
 # ------------------------------------------ process data ---------------------------------------  
 
   table.data_rewind()
@@ -149,7 +151,7 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
     (x,y,z) = location(idx,res)                                             # figure out (x,y,z) position from line count
     idx += 1
-    table.data_append(list(centroids[x,y,z]))
+    table.data_append(list(centroids[:,x,y,z]))
 
     table.data_write()                                                      # output processed line
 

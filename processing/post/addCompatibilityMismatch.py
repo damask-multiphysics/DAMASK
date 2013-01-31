@@ -50,28 +50,23 @@ parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false', \
                                         help='do not calculate volume mismatch [%default]')
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
                                         help='column heading for coordinates [%default]')
-parser.add_option('-f','--deformation', dest='defgrad', action='extend', type='string', \
+parser.add_option('-f','--deformation', dest='F', action='extend', type='string', \
                                         help='heading(s) of columns containing deformation tensor values %default')
 
 parser.set_defaults(noVolume = False)
 parser.set_defaults(noShape = False)
 parser.set_defaults(coords  = 'ip')
-parser.set_defaults(defgrad = 'f')
+parser.set_defaults(F = 'f')
 
 (options,filenames) = parser.parse_args()
 
-defgrad_av     = {}
-centroids      = {}
-nodes          = {}
-shape_mismatch = {}
-volume_mismatch= {}
 
 datainfo = {                                                               # list of requested labels per datatype
-             'defgrad':     {'len':9,
+             'F':     {'len':9,
                              'label':[]},
            }
 
-if options.defgrad != None:   datainfo['defgrad']['label'] += options.defgrad
+if options.F != None:   datainfo['F']['label'] += options.F
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
@@ -121,13 +116,13 @@ for file in files:
 
 # --------------- figure out columns to process
 
-  key = '1_%s' %options.defgrad
+  key = '1_%s' %options.F
   if key not in table.labels:
     sys.stderr.write('column %s not found...\n'%key)
   else:
-    defgrad = numpy.array([0.0 for i in xrange(N*9)]).reshape(list(res)+[3,3])
-    if not options.noShape:  table.labels_append(['mismatch_shape(%s)' %options.defgrad])
-    if not options.noVolume: table.labels_append(['mismatch_volume(%s)'%options.defgrad])
+    F = numpy.array([0.0 for i in xrange(N*9)]).reshape([3,3]+list(res))
+    if not options.noShape:  table.labels_append(['shapeMismatch(%s)' %options.F])
+    if not options.noVolume: table.labels_append(['volMismatch(%s)'%options.F])
     column = table.labels.index(key)
 
 # ------------------------------------------ assemble header ---------------------------------------  
@@ -142,13 +137,19 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
     (x,y,z) = location(idx,res)                                             # figure out (x,y,z) position from line count
     idx += 1
-    defgrad[x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
+    F[0:3,0:3,x,y,z] = numpy.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
   
-  defgrad_av = damask.core.math.tensorAvg(defgrad)
-  centroids = damask.core.mesh.deformed_fft(res,geomdim,defgrad_av,1.0,defgrad)
-  nodes = damask.core.mesh.mesh_regular_grid(res,geomdim,defgrad_av,centroids)
-  if not options.noShape:   shape_mismatch = damask.core.mesh.shape_compare( res,geomdim,defgrad,nodes,centroids)
-  if not options.noVolume: volume_mismatch = damask.core.mesh.volume_compare(res,geomdim,defgrad,nodes)
+  Favg = damask.core.math.tensorAvg(F)
+
+  if (res[0]%2 != 0 or res[1]%2 != 0 or (res[2] != 1 and res[2]%2 !=0)):
+    print 'using linear reconstruction for uneven resolution'
+    centres = damask.core.mesh.deformedCoordsLin(geomdim,F,Favg)
+  else:
+    centres = damask.core.mesh.deformedCoordsFFT(geomdim,F,1.0,Favg)
+  
+  nodes   = damask.core.mesh.nodesAroundCentres(geomdim,Favg,centres)
+  if not options.noShape:   shapeMismatch = damask.core.mesh.shapeMismatch( geomdim,F,nodes,centres)
+  if not options.noVolume: volumeMismatch = damask.core.mesh.volumeMismatch(geomdim,F,nodes)
 
 # ------------------------------------------ process data ---------------------------------------  
 
@@ -157,8 +158,8 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
     (x,y,z) = location(idx,res)                                             # figure out (x,y,z) position from line count
     idx += 1
-    if not options.noShape:  table.data_append(shape_mismatch[x,y,z])
-    if not options.noVolume: table.data_append(volume_mismatch[x,y,z])
+    if not options.noShape:  table.data_append( shapeMismatch[x,y,z])
+    if not options.noVolume: table.data_append(volumeMismatch[x,y,z])
     
     table.data_write()                                                      # output processed line 
 

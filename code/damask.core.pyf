@@ -9,7 +9,7 @@
 ! The auto-generated file is quite heavily corrected
 ! For modifying, notice the following hints:
 !   - if the dimension of an array depend on a array that is itself an input, use the C-Syntax: (1) becomes [0] etc.
-!   - be sure that the precision defined for math.f90 is integer, real*8, and complex*16
+!   - be sure that the precision defined is integer, real*8, and complex*16
 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 python module core ! in 
    interface  ! in :core
@@ -74,20 +74,16 @@ python module core ! in
             real*8,  dimension(size(field,1),size(field,2),size(field,3),size(field,4)),                   depend(field)  :: math_divergenceFDM
         end function math_divergenceFDM
         
-        subroutine math_nearestNeighborSearch(spatialDim,Favg,geomdim,queryPoints,domainPoints,querySet,domainSet,indices) ! in :math:math.f90
+        function math_periodicNearestNeighbor(geomdim,Favg,querySet,domainSet) ! in :math:math.f90
              ! input variables
-             integer,                                           intent(in) :: spatialDim
-             real*8,  dimension(3,3),                           intent(in) :: Favg
-             real*8,  dimension(3),                             intent(in) :: geomdim
-             integer,                                           intent(in) :: queryPoints
-             integer,                                           intent(in) :: domainPoints
-             real*8,  dimension(spatialDim,queryPoints),        intent(in),  depend(spatialDim,queryPoints)  :: querySet
-             real*8,  dimension(spatialDim,domainPoints),       intent(in),  depend(spatialDim,domainPoints) :: domainSet
-             ! output variable
-             integer, dimension(queryPoints),                   intent(out), depend(queryPoints)             :: indices
+             real*8,  dimension(3),                             intent(in)  :: geomdim
+             real*8,  dimension(3,3),                           intent(in)  :: Favg
+             real*8,  dimension(:,:),                           intent(in)  :: querySet
+             real*8,  dimension(:,:),                           intent(in)  :: domainSet
+             integer, dimension(size(querySet,2)),         depend(querySet) :: math_periodicNearestNeighbor
              ! depending on input
-             real*8,   dimension(spatialDim,(3**spatialDim)*domainPoints), depend(spatialDim,domainPoints)   :: domainSetLarge
-        end subroutine math_nearestNeighborSearch
+             real*8,   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)), depend(domainSet)   :: domainSetLarge
+        end function math_periodicNearestNeighbor
         
         function math_tensorAvg(field) ! in :math:math.f90
             ! input variables
@@ -100,14 +96,14 @@ python module core ! in
             ! input variables
             real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: F
             ! output variables
-            real*8,  dimension(size(F,1),size(F,2),size(F,3),3,3),             depend(F)                     :: math_logstrainSpat            
+            real*8,  dimension(3,3,size(F,3),size(F,4),size(F,5)),             depend(F)                     :: math_logstrainSpat            
         end function math_logstrainSpat
 
         function math_logstrainMat(F) ! in :math:math.f90
             ! input variables
             real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: F
             ! function
-            real*8,  dimension(size(F,1),size(F,2),size(F,3),3,3),             depend(F)                     :: math_logstrainMat            
+            real*8,  dimension(3,3,size(F,3),size(F,4),size(F,5)),             depend(F)                     :: math_logstrainMat            
         end function math_logstrainMat
 
         function math_cauchy(F,P) ! in :math:math.f90
@@ -115,7 +111,7 @@ python module core ! in
             real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: F
             real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: P
             ! function
-            real*8,  dimension(size(F,1),size(F,2),size(F,3),3,3),             depend(F)                     :: math_cauchy  
+            real*8,  dimension(3,3,size(F,3),size(F,4),size(F,5)),             depend(F)                     :: math_cauchy  
         end function math_cauchy
         
      end module math
@@ -126,11 +122,11 @@ python module core ! in
      end module fesolving
 
      module mesh ! in :mesh:mesh.f90
-	      subroutine mesh_init(ip,element)
- 			       integer, parameter                   ::      ip = 1
+        subroutine mesh_init(ip,element)
+             integer, parameter                   ::      ip = 1
              integer, parameter                   :: element = 1
         end subroutine mesh_init
-		
+
         function mesh_regrid(adaptive,resNewInput,minRes) ! in :mesh:mesh.f90
              logical, intent(in)                                  :: adaptive
              integer, dimension(3)                                :: mesh_regrid
@@ -138,62 +134,44 @@ python module core ! in
              integer, dimension(3), intent(in), optional          :: minRes = -1
         end function mesh_regrid   
         
-        subroutine mesh_regular_grid(res,geomdim,defgrad_av,centroids,nodes) ! in :math:math.f90
-            ! input variables
-            integer, dimension(3),                             intent(in)                  :: res
-            real*8,  dimension(3),                             intent(in)                  :: geomdim
-            real*8,  dimension(3,3),                           intent(in)                  :: defgrad_av
-            real*8,  dimension(res[0],  res[1],  res[2],  3),  intent(in),  depend(res[0],res[1],res[2])    :: centroids
-            ! output variables
-            real*8,  dimension(res[0]+1,res[1]+1,res[2]+1,3),  intent(out), depend(res[0],res[1],res[2])    :: nodes
-            ! variables with dimension depending on input
-            real*8,  dimension(res[0]+2,res[1]+2,res[2]+2,3),               depend(res[0],res[1],res[2])    :: wrappedCentroids
-        end subroutine mesh_regular_grid
+        function mesh_nodesAroundCentres(gDim,Favg,centres) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: centres
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(3,3),                           intent(in)                  :: Favg
+            real*8,  dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1), depend(centres)  :: mesh_nodesAroundCentres
+            real*8,  dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1), depend(centres)  :: wrappedCentres
+        end function mesh_nodesAroundCentres
 
-        subroutine deformed_linear(res,geomdim,defgrad_av,defgrad,coord_avgCorner) ! in :math:math.f90
-            ! input variables
-            integer, dimension(3),                             intent(in)                                   :: res
-            real*8,  dimension(3),                             intent(in)                                   :: geomdim
-            real*8,  dimension(3,3),                           intent(in)                                   :: defgrad_av
-            real*8,  dimension(res[0],  res[1],  res[2],  3,3),intent(in),  depend(res[0],res[1],res[2])    :: defgrad
-            ! output variables
-            real*8,  dimension(res[0],  res[1],  res[2],  3),  intent(out), depend(res[0],res[1],res[2])    :: coord_avgCorner
-            ! variables with dimension depending on input
-            real*8,  dimension(8,6,res[0],res[1],res[2],3),                 depend(res[0],res[1],res[2])    :: coord
-            real*8,  dimension(8,res[0],res[1],res[2],3),                   depend(res[0],res[1],res[2])    :: coord_avgOrder
-        end subroutine deformed_linear
+        function mesh_deformedCoordsLinear(gDim,F,FavgIn) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(3,3),                           intent(in), optional        :: FavgIn = -1.0
+            real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),                 depend(F) :: mesh_deformedCoordsLinear  
+            real*8,  dimension(3,0:size(F,3)-1,0:size(F,4)-1,0:size(F,5)-1,0:7), depend(F) :: coordsAvgOrder
+        end function mesh_deformedCoordsLinear
 
-        subroutine deformed_fft(res,geomdim,defgrad_av,scaling,defgrad,coords) ! in :math:math.f90
-            ! input variables
-            integer, dimension(3),                             intent(in)                                   :: res
-            real*8,  dimension(3),                             intent(in)                                   :: geomdim
-            real*8,  dimension(3,3),                           intent(in)                                   :: defgrad_av
-            real*8,                                            intent(in)                                   :: scaling
-            real*8,  dimension(res[0],  res[1],  res[2],  3,3),intent(in),  depend(res[0],res[1],res[2])    :: defgrad
-            ! output variables
-            real*8,  dimension(res[0],  res[1],  res[2],  3),  intent(out), depend(res[0],res[1],res[2])    :: coords
-        end subroutine deformed_fft
+        function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,                                            intent(in), optional,       :: scalingIn = -1.0
+            real*8,  dimension(3,3),                           intent(in), optional        :: FavgIn = -1.0
+            real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),          depend(F)       :: mesh_deformedCoordsFFT  
+        end function mesh_deformedCoordsFFT
         
-        subroutine volume_compare(res,geomdim,defgrad,nodes,volume_mismatch) ! in  :math:math.f90
-            ! input variables
-            integer, dimension(3),                             intent(in)                  :: res
-            real*8,  dimension(3),                             intent(in)                  :: geomdim
-            real*8,  dimension(res[0],  res[1],  res[2],  3,3),intent(in),  depend(res[0],res[1],res[2])    :: defgrad
-            real*8,  dimension(res[0]+1,res[1]+1,res[2]+1,3),  intent(in),  depend(res[0],res[1],res[2])    :: nodes
-            ! output variables
-            real*8, dimension(res[0],   res[1],  res[2]),      intent(out), depend(res[0],res[1],res[2]))   :: volume_mismatch
-        end subroutine volume_compare
+        function mesh_volumeMismatch(gDim,F,nodes) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: nodes
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(size(F,3),size(F,4),size(F,5)), depend(F)                   :: mesh_volumeMismatch
+        end function mesh_volumeMismatch
 
-        subroutine shape_compare(res,geomdim,defgrad,nodes,centroids,shape_mismatch) ! in :math:math.f90
-            ! input variables
-            integer, dimension(3),                             intent(in)                  :: res
-            real*8,  dimension(3),                             intent(in)                  :: geomdim
-            real*8,  dimension(res[0],  res[1],  res[2],  3,3),intent(in),  depend(res[0],res[1],res[2])    :: defgrad
-            real*8,  dimension(res[0]+1,res[1]+1,res[2]+1,3),  intent(in),  depend(res[0],res[1],res[2])    :: nodes
-            real*8,  dimension(res[0],  res[1],  res[2],  3),  intent(in),  depend(res[0],res[1],res[2])    :: centroids
-            ! output variables
-            real*8, dimension(res[0],   res[1],  res[2]),      intent(out), depend(res[0],res[1],res[2]))   :: shape_mismatch
-        end subroutine shape_compare
+        function mesh_shapeMismatch(gDim,F,nodes,centres) ! in :mesh:mesh.f90
+            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: nodes
+            real*8,  dimension(:,:,:,:),                       intent(in)                  :: centres
+            real*8,  dimension(3),                             intent(in)                  :: gDim
+            real*8,  dimension(size(F,3),size(F,4),size(F,5)), depend(F)                   :: mesh_shapeMismatch
+        end function mesh_shapeMismatch
         
      end module mesh
    end interface 
