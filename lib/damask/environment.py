@@ -41,8 +41,12 @@ class Environment():
       for line in content:
         if not (line.startswith('#') or line == ''):
           items = line.split() + ['','']
-          self.pathInfo[items[0].lower()] = {False: os.path.normpath(os.path.join(self.relPath('lib/'),items[1])),
-                                              True: items[1]}[items[1] == '']
+          if items[1] == '':                                # nothing specified
+            self.pathInfo[items[0].lower()] = ''
+          elif items[1].startswith(('/','$')):              # absolute path specified ($shellVar is considered absolute)
+            self.pathInfo[items[0].lower()] = items[1]
+          else:                                             # path relative to DAMASK_ROOT/lib
+            self.pathInfo[items[0].lower()] = os.path.normpath(os.path.join(self.relPath('lib/'),items[1]))
     except:
       pass
 
