@@ -2383,7 +2383,7 @@ subroutine mesh_marc_count_cpElements(myUnit)
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_elements(myUnit)
 
- use math, only: qsort
+ use math, only: math_qsort
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
@@ -2421,7 +2421,7 @@ subroutine mesh_marc_map_elements(myUnit)
    endif
  enddo
 
-660 call qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                 ! should be mesh_NcpElems
+660 call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))            ! should be mesh_NcpElems
 
 end subroutine mesh_marc_map_elements
 
@@ -2432,7 +2432,7 @@ end subroutine mesh_marc_map_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_map_nodes(myUnit)
 
- use math, only: qsort
+ use math, only: math_qsort
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
@@ -2469,7 +2469,7 @@ subroutine mesh_marc_map_nodes(myUnit)
    endif
  enddo
 
-650 call qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
+650 call math_qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
  
 end subroutine mesh_marc_map_nodes
 
@@ -2995,7 +2995,7 @@ end subroutine mesh_abaqus_count_cpElements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_map_elements(myUnit)
 
- use math, only: qsort
+ use math, only: math_qsort
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
@@ -3045,7 +3045,7 @@ subroutine mesh_abaqus_map_elements(myUnit)
    endselect
  enddo
 
-660 call qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                  ! should be mesh_NcpElems
+660 call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                  ! should be mesh_NcpElems
 
  if (int(size(mesh_mapFEtoCPelem),pInt) < 2_pInt) call IO_error(error_ID=907_pInt)
 
@@ -3058,7 +3058,7 @@ end subroutine mesh_abaqus_map_elements
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_map_nodes(myUnit)
 
- use math, only: qsort
+ use math, only: math_qsort
  use IO,   only: IO_lc, &
                  IO_stringValue, &
                  IO_stringPos, &
@@ -3109,7 +3109,7 @@ subroutine mesh_abaqus_map_nodes(myUnit)
    endif
  enddo
 
-650 call qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
+650 call math_qsort(mesh_mapFEtoCPnode,1_pInt,int(size(mesh_mapFEtoCPnode,2_pInt),pInt))
 
  if (int(size(mesh_mapFEtoCPnode),pInt) == 0_pInt) call IO_error(error_ID=908_pInt)
 

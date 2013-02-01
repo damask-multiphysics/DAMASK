@@ -144,6 +144,7 @@ real(pReal), dimension(4,36), parameter, private :: &
 
  public :: &
    math_init, &
+   math_qsort, &
    math_range, &
    math_identity2nd, &
    math_identity4th, &
@@ -235,7 +236,6 @@ real(pReal), dimension(4,36), parameter, private :: &
 #endif
             
  private :: &
-   qsort, &
    math_partition, &
    halton, &
    halton_memory, &
@@ -346,7 +346,7 @@ end subroutine math_init
 ! Sorting is done with respect to array(1,:)
 ! and keeps array(2:N,:) linked to it.
 !--------------------------------------------------------------------------------------------------
-recursive subroutine qsort(a, istart, iend)
+recursive subroutine math_qsort(a, istart, iend)
 
  implicit none
  integer(pInt), dimension(:,:), intent(inout) :: a
@@ -355,11 +355,11 @@ recursive subroutine qsort(a, istart, iend)
 
  if (istart < iend) then
    ipivot = math_partition(a,istart, iend)
-   call qsort(a, istart, ipivot-1_pInt)
-   call qsort(a, ipivot+1_pInt, iend)
+   call math_qsort(a, istart, ipivot-1_pInt)
+   call math_qsort(a, ipivot+1_pInt, iend)
  endif
 
-end subroutine qsort
+end subroutine math_qsort
 
 
 !--------------------------------------------------------------------------------------------------
