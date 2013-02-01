@@ -35,22 +35,24 @@ environment = { 'DAMASK_ROOT':
                               ], 
                 'LD_LIBRARY_PATH':
                               [{'activate':  'pathInfo["acml"]',
-                                'delete':    '"acml"',                                            # what keywords trigger item deletion from existing path 
+                                'delete':    '"acml"',                                             # what keywords trigger item deletion from existing path 
                                 'substitute':'[os.path.join(pathInfo["acml"],"ifort64_mp/lib"),\
-                                               os.path.join(pathInfo["acml"],"ifort64/lib")]',    # what to substitute for deleted path items
-                                'append': True,                                                   # whether new entries append to existing ${env}
+                                               os.path.join(pathInfo["acml"],"ifort64/lib"),\
+                                               os.path.join(pathInfo["acml"],"gfortran64_mp/lib"),\
+                                               os.path.join(pathInfo["acml"],"gfortran64/lib")]',  # what to substitute for deleted path items
+                                'append': True,                                                    # whether new entries append to existing ${env}
                                },
                                {'activate':  'pathInfo["lapack"]',
                                 'delete':    '[os.path.join(pathInfo["lapack"],"lib"),\
-                                               os.path.join(pathInfo["lapack"],"lib64")]',        # deleted current (same) entry
+                                               os.path.join(pathInfo["lapack"],"lib64")]',         # deleted current (same) entry
                                 'substitute':'[os.path.join(pathInfo["lapack"],"lib"),\
-                                               os.path.join(pathInfo["lapack"],"lib64")]',        # what to substitute for deleted path
-                                'append': True,                                                   # whether new entries append to existing ${env}
+                                               os.path.join(pathInfo["lapack"],"lib64")]',         # what to substitute for deleted path
+                                'append': True,                                                    # whether new entries append to existing ${env}
                                },
                                {'activate':  'pathInfo["fftw"]',
-                                'delete':    '[os.path.join(pathInfo["fftw"],"lib")]',            # deleted current (same) entry
-                                'substitute':'[os.path.join(pathInfo["fftw"],"lib")]',            # what to substitute for deleted path items
-                                'append': True,                                                   # whether new entries append to existing ${env}
+                                'delete':    '[os.path.join(pathInfo["fftw"],"lib")]',             # deleted current (same) entry
+                                'substitute':'[os.path.join(pathInfo["fftw"],"lib")]',             # what to substitute for deleted path items
+                                'append': True,                                                    # whether new entries append to existing ${env}
                                },
                               ],
                }
