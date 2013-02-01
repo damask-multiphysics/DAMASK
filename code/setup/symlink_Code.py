@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import os,string,re,damask
+import os
+import damask
 
 bin_link = { \
             '.' : [

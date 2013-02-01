@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-import os,string,re,damask
-
+import os,re
+import damask
 
 architectures = { 
                  'marc': { 
@@ -8,7 +8,6 @@ architectures = {
                           'versions' : ['%%MARCVERSION%%','2010','2011','2012'],
                          }, 
                 }
-
 
 damaskEnv = damask.Environment('../../')          # script location relative to root
 baseDir = damaskEnv.relPath('code/')
@@ -45,19 +44,3 @@ for line in content:
     line = '%sROOT ?= %s\n'%(m.group(1),substitution)
   makefile.write(line)
 makefile.close()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

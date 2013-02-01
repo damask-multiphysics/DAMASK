@@ -1,4 +1,7 @@
 # possible options are MSC, FFTW, IMKL, ACML, LAPACK
+# $id$
+# A relative path (like ./fftw/ in this example) starts from $DAMASK_ROOT/lib/
+# Do not add the proceeding /lib/ to the end of the base installation path
 
 #IMKL    /opt/intel/composerxe/mkl
 #ACML    /opt/acml4.4.0

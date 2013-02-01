@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
 # Makes postprocessing routines acessible from everywhere.
-
-import os,glob,string
+import os
 from damask import Environment
-from optparse import OptionParser, Option
 
 damaskEnv = Environment()
 baseDir = damaskEnv.relPath('processing/')

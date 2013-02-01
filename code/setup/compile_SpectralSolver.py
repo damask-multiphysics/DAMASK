@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-import os,string,re,damask
+
+import os,string
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import damask
 
 # -----------------------------
 class extendedOption(Option):
