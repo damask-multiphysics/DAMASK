@@ -798,9 +798,11 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
      j = j+1_pInt
      left_SlipSlip(j) = 1.0_pReal                                                 ! no system-dependent left part
      left_SlipTwin(j) = 1.0_pReal                                                 ! no system-dependent left part
-     right_SlipSlip(j) = (1.0_pReal-state(ipc,ip,el)%p(j) / &
+     right_SlipSlip(j) = abs(1.0_pReal-state(ipc,ip,el)%p(j) / &
                                     (constitutive_phenopowerlaw_tausat_slip(f,matID)+ssat_offset)) &
-                         **constitutive_phenopowerlaw_a_slip(matID)
+                         **constitutive_phenopowerlaw_a_slip(matID)&
+                         *sign(1.0_pReal,1.0_pReal-state(ipc,ip,el)%p(j) / &
+                                    (constitutive_phenopowerlaw_tausat_slip(f,matID)+ssat_offset))
      right_TwinSlip(j) = 1.0_pReal                                                ! no system-dependent part
      
 !--------------------------------------------------------------------------------------------------
