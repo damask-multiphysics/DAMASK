@@ -43,7 +43,7 @@ try:
   core.mesh.volumeMismatch           = core.mesh.mesh_volumeMismatch
   core.mesh.shapeMismatch            = core.mesh.mesh_shapeMismatch
 
-except ImportError, e:
+except (ImportError,AttributeError) as e:
   core = None # from http://www.python.org/dev/peps/pep-0008/
   if('setup_processing' not in sys.argv[0]):
     sys.stderr.write('\nWARNING: Core module (Fortran code) not available, '\
