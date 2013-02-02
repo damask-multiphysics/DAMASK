@@ -72,7 +72,7 @@ class Color():
     import numpy
     if self.model != 'HSL': return
     
-    sextant = int(self.color[0]*6.0)
+    sextant = self.color[0]*6.0
     c = (1.0 - abs(2.0 * self.color[2] - 1.0))*self.color[1]
     x = c*(1.0 - abs(sextant%2 - 1.0))
     m = self.color[2] - 0.5*c
@@ -84,7 +84,7 @@ class Color():
                                     [m, x+m, c+m],
                                     [x+m, m, c+m],
                                     [c+m, m, x+m],
-                                   ][sextant],'d'))
+                                   ][int(sextant)],'d'))
     self.model = converted.model
     self.color = converted.color
 # ------------------------------------------------------------------
@@ -187,12 +187,12 @@ class Color():
     XYZ       = numpy.zeros(3,'d') 
 
     XYZ[1] = (self.color[0] + 16.0 ) / 116.0
-    XYZ[0] = XYZ[1] + self.color[1]  / 500.0
-    XYZ[2] = XYZ[1] - self.color[2]  / 200.0
+    XYZ[0] = XYZ[1]   + self.color[1]/ 500.0
+    XYZ[2] = XYZ[1]   - self.color[2]/ 200.0
     
     for i in xrange(len(XYZ)):
       if (XYZ[i] > 6./29. ): XYZ[i] = XYZ[i]**3.
-      else:                  XYZ[i] = 108./2523. * (XYZ[i] - 4./29.)
+      else:                  XYZ[i] = 108./841. * (XYZ[i] - 4./29.)
         
     converted = Color('XYZ', XYZ*ref_white) 
     self.model = converted.model
@@ -210,7 +210,7 @@ class Color():
       
     for i in xrange(len(XYZ)):
       if (XYZ[i] > 216./24389 ): XYZ[i] = XYZ[i]**(1.0/3.0)
-      else:                      XYZ[i] = (24389./27. * XYZ[i] + 16.0 ) / 116.0
+      else:                      XYZ[i] = (841./108. * XYZ[i]) + 16.0/116.0
         
     converted = Color('CIELAB', numpy.array([ 116.0 *  XYZ[1] - 16.0,
                                               500.0 * (XYZ[0] - XYZ[1]),
@@ -218,7 +218,7 @@ class Color():
     self.model = converted.model
     self.color = converted.color
 # ------------------------------------------------------------------                                     
-  # convert Cie Lab to msh colorspace  
+  # convert CIE Lab to Msh colorspace  
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _CIELAB2MSH(self):
     import numpy, math
@@ -226,14 +226,16 @@ class Color():
     
     Msh = numpy.zeros(3,'d') 
     Msh[0] = math.sqrt(numpy.dot(self.color,self.color))
-    if (Msh[0] != 0.0) and (Msh[0] > 0.001):        Msh[1] = math.acos( self.color[0]/Msh[0])
-    if (self.color[1] != 0.0) and (Msh[1] > 0.001): Msh[2] = math.atan2(self.color[2],self.color[1])
+    if (Msh[0] > 0.001):
+      Msh[1] = math.acos(self.color[0]/Msh[0])
+      if (self.color[1] != 0.0):
+        Msh[2] = math.atan2(self.color[2],self.color[1])
 
     converted = Color('MSH', Msh)
     self.model = converted.model
     self.color = converted.color
 # ------------------------------------------------------------------
-  # convert msh colorspace to Cie Lab 
+  # convert Msh colorspace to CIE Lab 
   # s,h in radians
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _MSH2CIELAB(self):
@@ -273,9 +275,13 @@ class Colormap():
     self.left  = left.asModel('MSH')
     self.right = right.asModel('MSH')
 # ------------------------------------------------------------------  
-  def export(self,name='uniformPerceptualColorMap',format = 'paraview', steps = 10, crop = [-1.0,1.0]):
+  def export(self,name = 'uniformPerceptualColorMap',\
+                  format = 'paraview',\
+                  steps = 10,\
+                  crop = [-1.0,1.0],
+                  model = 'RGB'):
     ''' 
-    RGB colormap for use in paraview or gmsh, or as raw string, or array.
+    [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
     arguments: name, format, steps, crop.
     format is one of (paraview, gmsh, raw, list).
     crop selects a (sub)range in [-1.0,1.0].
@@ -286,37 +292,34 @@ class Colormap():
  # ------------------------------------------------------------------  
     import copy,numpy,math
     
-    def interpolate_color(left,right,interp):
-      def rad_dif(left,right):
-        return abs((left.color[2]-right.color[2]))
+    def interpolate_Msh(lo,hi,frac,model='RGB'):
+
+      def rad_diff(a,b):
+        return abs(a[2]-b[2])
 
       def adjust_hue(Msh_sat,Msh_unsat):                                                                                              # if saturation of one of the two colors is too less than the other, hue of the less
-                                                                                                                                      # saturated color is adjusted.
-        M_unsat = Msh_unsat.color[0]
-        if ( Msh_sat.color[0] >= (M_unsat-0.1) ):
-          return Msh_sat.color[2]
+        if Msh_sat[0] >= Msh_unsat[0]:
+          return Msh_sat[2]
         else:
-          hSpin = Msh_sat.color[1]*math.sqrt((M_unsat)**2.0-(Msh_sat.color[0])**2)/(Msh_sat.color[0]*math.sin(Msh_sat.color[1]))
-        if Msh_sat.color[2] > - math.pi/3.0:
-          return Msh_sat.color[2] + hSpin
-        else:
-          return Msh_sat.color[2] - hSpin
+          hSpin = Msh_sat[1]/math.sin(Msh_sat[1])*math.sqrt(Msh_unsat[0]**2.0-Msh_sat[0]**2)/Msh_sat[0]
+          if Msh_sat[2] < - math.pi/3.0: hSpin *= -1.0
+          return Msh_sat[2] + hSpin
      
-      Msh1 = copySelf.left
-      Msh2 = copySelf.right
-      Msh_mid = [0.0,0.0,0.0]
-      if ((Msh1.color[1] > 0.05 and Msh2.color[1] > 0.05) and rad_dif(Msh1,Msh2) > math.pi/3.0): 
-        Msh_mid[0] = max(Msh1.color[0],Msh2.color[0],88.0)
-        if interp < 0.5:
-          Msh2.color = [Msh_mid[0],0.0,0.0]
-          interp = 2.0*interp
+      Msh1 = numpy.array(lo[:])
+      Msh2 = numpy.array(hi[:])
+
+      if (Msh1[1] > 0.05 and Msh2[1] > 0.05 and rad_diff(Msh1,Msh2) > math.pi/3.0): 
+        M_mid = max(Msh1[0],Msh2[0],88.0)
+        if frac < 0.5:
+          Msh2 = numpy.array([M_mid,0.0,0.0],'d')
+          frac = 2.0*frac
         else:
-          Msh1.color = [Msh_mid[0],0.0,0.0]
-          interp = 2.0*interp - 1.0
-      if (Msh1.color[1] < 0.05) and (Msh2.color[1] > 0.05):   Msh1.color[2] = adjust_hue(Msh2,Msh1)
-      elif (Msh2.color[1] < 0.05) and (Msh1.color[1] > 0.05): Msh2.color[2] = adjust_hue(Msh1,Msh2)
-      Msh_mid = (1.0-interp)*Msh1.color + interp*Msh2.color
-      return Color('MSH',Msh_mid).to()
+          Msh1 = numpy.array([M_mid,0.0,0.0],'d')
+          frac = 2.0*frac - 1.0
+      if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
+      elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
+      Msh = (1.0-frac)*Msh1 + frac*Msh2
+      return Color('MSH',Msh).to(model)
 
     def write_paraview(RGB_vector):
       colormap ='<ColorMap name="'+str(name)+'" space="RGB">\n'
@@ -335,15 +338,12 @@ class Colormap():
            + '\n'.join(['%s'%('\t'.join(map(lambda x:str(x),v))) for v in RGB_vector])
 
 
-    interpolationVector = []                                                                                                                             # a list of equally spaced values(interpolator) between 0 and 1
-    RGB_Matrix = []
-
+    colors = []
     totalSteps = int(2.0*steps/(crop[1] - crop[0]))
-    for i in range(totalSteps): interpolationVector.append(float(i)/(totalSteps-1))
-    for i in interpolationVector:
-      copySelf = copy.deepcopy(self)
-      color = interpolate_color(copySelf.left,copySelf.right,i)
-      RGB_Matrix.append(color.color)
+
+    for i in range(totalSteps):
+      color = interpolate_Msh(self.left.color,self.right.color,float(i)/(totalSteps-1),model)
+      colors.append(color.color)
 
     leftIndex  = int(round((crop[0]-(-1.0))/(2.0/(totalSteps-1))))
     rightIndex = leftIndex + steps
@@ -352,4 +352,4 @@ class Colormap():
             'gmsh':     write_gmsh,
             'raw':      write_raw,
             'list':     lambda x: x,
-    }[format.lower()](RGB_Matrix[max(leftIndex,0):min(rightIndex,totalSteps)])
+    }[format.lower()](colors[max(leftIndex,0):min(rightIndex,totalSteps)])
