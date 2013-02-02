@@ -1,7 +1,7 @@
 #!/usr/bin/env python 
 
-import sys, os, string, damask
-from colorsys import *
+import sys, os, string
+import damask
 from optparse import OptionParser
 
 
@@ -12,15 +12,15 @@ def readConfig(configFile,ownPath):
   filename = os.path.join(configDir,configFile)
   if os.path.isfile(filename):
     file = open(filename)
-    content = file.readlines()
+    for line in file.readlines():
+      if not line.startswith('#'):
+        item = line.split()
+        for name in item[0].split('|'):
+          config[name] = {}
+          config[name]['left']  = map(float,item[1].split(','))
+          config[name]['right'] = map(float,item[2].split(','))
     file.close()
-    for line in content:
-      item = line.split()
-      config[item[0]] = {}
-      config[item[0]]['lower'] = map(float,item[1].split(','))
-      config[item[0]]['upper'] = map(float,item[2].split(','))
-      config[item[0]]['symmetric'] = len(item) > 3
-  
+
   return config
 
 
@@ -66,28 +66,6 @@ def output(cmds,locals,dest):
 
 
 # -----------------------------
-def interpolate(val0, val1, x):
-    return val0 + (val1 - val0) * x
-
-
-
-# -----------------------------
-def syminterpolate(comp, val0, val1, x):
-    if comp == "hue":
-        return {True:val0,False:val1}[x<0.5]
-
-    if comp == "lightness":
-        val_middle = 1
-    elif comp == "saturation":
-        val_middle = 0
-    if x < 0.5:
-        return interpolate(val0, val_middle, 2*x)
-    else:
-        return interpolate(val_middle, val1, 2*x-1)
-        
-        
-
-# -----------------------------
 def colorMap(colors,baseIdx=32):
     cmds = [ "*color %i %f %f %f"%(idx+baseIdx,color[0],color[1],color[2]) 
              for idx,color in enumerate(colors) ]    
@@ -98,22 +76,14 @@ def colorMap(colors,baseIdx=32):
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
-parser = OptionParser(usage="%prog [options] configured scheme | (lower_h,l,s upper_h,l,s)", description = """
-Changes the color map in mentat. 
+parser = OptionParser(usage="%prog [options] configured scheme | (lower_h,s,l upper_h,s,l)", description = """
+Changes the color map in MSC.Mentat. 
 
-Interpolates colors between "lower_hls" and "upper_hls". 
-For symmetric scales use option "-s". 
-
-Example colors:
-- Non-symmetric scales: 0.167,0.9,0.1  0.167,0.1,0.9
-- Symmetric scales: 0,0.2,0.9  0.333,0.2,0.9
+Interpolates colors between "lower_hsl" and "upper_hsl". 
 """ + string.replace('$Id$','\n','\\n')
 )
 
 
-parser.add_option("-s","--symmetric", action = "store_true", 
-                  dest = "symmetric", \
-                  help = "symmetric legend [%default]")
 parser.add_option("-i","--inverse", action = "store_true", 
                   dest = "inverse", \
                   help = "invert legend [%default]")
@@ -143,7 +113,6 @@ parser.set_defaults(port = 40007)
 parser.set_defaults(baseIdx = 32)
 parser.set_defaults(colorcount = 32)
 parser.set_defaults(config = 'colorMap.config')
-parser.set_defaults(symmetric = False)
 parser.set_defaults(inverse   = False)
 parser.set_defaults(palette   = False)
 parser.set_defaults(verbose   = False)
@@ -154,71 +123,41 @@ msg = []
 
 config = readConfig(options.config,sys.argv[0])
 
-if len(colors) == 0:
-  hlsColor_range = (options.symmetric and [[0,0.2,0.9],[0.333,0.2,0.9]]) or \
-                                          [[0.167,0.9,0.1],[0.167,0.1,0.9]]
+if len(colors) > 0 and colors[0] in config:
+  left  = config[colors[0]][{True:'right',False:'left' }[options.inverse]]
+  right = config[colors[0]][{True:'left' ,False:'right'}[options.inverse]]
 elif len(colors) == 2:
-  hlsColor_range = [map(float, colors[i].split(',')) for i in range(2)]
-elif colors[0] in config:
-  options.symmetric = config[colors[0]]['symmetric']
-  hlsColor_range = [config[colors[0]]['lower'],\
-                    config[colors[0]]['upper']]
+  left  = map(float, colors[{True:1,False:0}[options.inverse]].split(','))
+  right = map(float, colors[{True:0,False:1}[options.inverse]].split(','))
 else:
-  msg.append('two color tuples required')
+  left   = {True:[0.0,0.0,0.0],False:[0.0,0.0,1.0]}[options.inverse]
+  right  = {True:[0.0,0.0,1.0],False:[0.0,0.0,0.0]}[options.inverse]
 
-if msg == []:  
-  hlsColors_limits = [[0.0,0.0,0.0],[1.0,1.0,1.0]]
-
-  if options.inverse:
-    hlsColor_range = [hlsColor_range[1],hlsColor_range[0]]
-
-  for i in range(2):      
-    for j in range(min(3,len(hlsColor_range[i]))):
-      if hlsColor_range[i][j] < hlsColors_limits[0][j] or hlsColor_range[i][j] > hlsColors_limits[1][j]:
-        msg.append('%s of %s color exceeds limit'%(['hue','lightness','saturation'][j],limit))
-    
-if msg != []:
-    parser.error('\n'+'\n'.join(msg)+'\n')
-
-### interpolate hls values
-
-if options.symmetric:
-    hlsColors = [ [ syminterpolate(comp, hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(options.colorcount-1)) 
-                    for j,comp in enumerate(["hue","lightness","saturation"]) ]
-                  for idx in range(options.colorcount) ]
-else:
-    hlsColors = [ [ interpolate(hlsColor_range[0][j], hlsColor_range[1][j], float(idx)/(options.colorcount-1)) 
-                    for j,comp in enumerate(["hue","lightness","saturation"]) ]
-                  for idx in range(options.colorcount) ]
-
-
-
-### convert to rgb values
-
-rgbColors = [ hls_to_rgb(hlsColor[0], hlsColor[1], hlsColor[2]) 
-              for hlsColor in hlsColors ]
+theMap = damask.Colormap(damask.Color('HSL',left),damask.Color('HSL',right))
+theColors = theMap.export(format='list',steps=options.colorcount)
 
 if options.palette or options.palettef:
-  for rgb in rgbColors:
-    print '\t'.join(map(lambda x: {True: str(int(255*x)),
-                                   False:str(        x)}[options.palette],rgb))
+  for theColor in theColors:
+    print '\t'.join(map(lambda x: {True: str(        x),
+                                   False:str(int(255*x))}[options.palettef],theColor))
 else:  
 ### connect to mentat and change colorMap
   sys.path.append(damask.solver.Marc().libraryPath('../../'))
   try:
     from py_mentat import *
+    print 'waiting to connect...'
+    py_connect('',options.port)
+    print 'connected...'
+    mentat = True
   except:
-    sys.stderr.write('error: no valid Mentat release found\n')
-    sys.exit(1)
+    sys.stderr.write('warning: no valid Mentat release found\n')
+    mentat = False
 
   outputLocals = {}
-  print 'waiting to connect...'
-  py_connect('',options.port)
-  print 'connected...'
-  
-  cmds = colorMap(rgbColors,options.baseIdx)
-  output(['*show_table']+cmds+['*show_model *redraw'],outputLocals,'Mentat')
-  py_disconnect()
+  cmds = colorMap(theColors,options.baseIdx)
+  if mentat:
+    output(['*show_table']+cmds+['*show_model *redraw'],outputLocals,'Mentat')
+    py_disconnect()
   
   if options.verbose:
     output(cmds,outputLocals,'Stdout')
