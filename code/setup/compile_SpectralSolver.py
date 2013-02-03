@@ -26,7 +26,7 @@ class extendedOption(Option):
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
 Writes version specific files for different MARC releases, adjustes the make file for the spectral solver and optionally compiles the spectral solver
 
-""" + string.replace('$Id: setup_code.py 1908 2012-11-14 09:57:18Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-c', '--compile', dest='spectralCompile', action='store_true', \
