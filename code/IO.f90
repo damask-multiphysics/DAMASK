@@ -220,13 +220,20 @@ subroutine IO_open_inputFile(myUnit,model)
 
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
+ character(len=4)               :: InputFileExtension2
  
 #ifdef Abaqus
- path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+ InputFileExtension2='.pes'
+ path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension2          ! attempt .pes, if it exists: it should be used
  open(myUnit+1,status='old',iostat=myStat,file=path)
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if(myStat /= 0_pInt) then                                                               !if .pes does not work / exist; use conventional extension, i.e.".inp"
+    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+    open(myUnit+1,status='old',iostat=myStat,file=path)
+    InputFileExtension2=InputFileExtension
+ endif
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)                              !ensure that any file opened works
    
- path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension//'_assembly'
+ path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension2//'_assembly'
  open(myUnit,iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
     if (.not.abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
