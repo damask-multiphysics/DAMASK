@@ -382,6 +382,7 @@ subroutine constitutive_init
            constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(myInstance)
            
          case (constitutive_nonlocal_label)
+           if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
            select case(FE_geomtype(mesh_element(2,e)))
              case (7_pInt,8_pInt,9_pInt,10_pInt)
                ! all fine
