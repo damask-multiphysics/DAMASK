@@ -187,8 +187,8 @@ subroutine AL_init(temperature)
    read (777,rec=1) temp3333_Real
    close (777)
  endif
- mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
-                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
+                                              F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
  call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,temp3333_Real2,&
                                 temp33_Real,.false.,math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
@@ -313,8 +313,8 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
-   mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
-                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
+                                                F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
    F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &

@@ -125,8 +125,7 @@ subroutine basic_init(temperature)
    read (777,rec=1) temp3333_Real
    close (777)
  endif
- mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
-                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,F),[3,1,mesh_NcpElems])
  call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3)     ! constitutive response with no deformation in no time to get reference stiffness
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
    temp3333_Real = C
@@ -245,8 +244,7 @@ type(tSolutionState) function &
    C = C_lastInc
  else
    C_lastInc = C
-   mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
-                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,F),[3,1,mesh_NcpElems])
 
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim

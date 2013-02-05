@@ -175,8 +175,8 @@ subroutine basicPETSc_init(temperature)
    read (777,rec=1) temp3333_Real
    close (777)
  endif
- mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
-                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
+                                              F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
  call Utilities_constitutiveResponse(&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
@@ -264,16 +264,16 @@ type(tSolutionState) function &
    write (777,rec=1) C_lastInc
    close(777)
  endif 
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(F,[3,3,res(1),res(2),res(3)])),&
-                                                        [3,1,mesh_NcpElems])
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
+                                              F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
  if ( cutBack) then 
    F_aim = F_aim_lastInc
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)]) 
    C = C_lastInc
  else
    C_lastInc = C
-   mesh_ipCoordinates = 0.0_pReal !reshape(mesh_deformedCoordsFFT(geomdim,&
-                             !reshape(F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
+                                                F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
 
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
