@@ -398,7 +398,7 @@ end subroutine constitutive_j2_microstructure
 !****************************************************************
 !* calculates plastic velocity gradient and its tangent         *
 !****************************************************************
-pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, Temperature, state, g, ip, el)
+pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_v, Temperature, state, g, ip, el)
 
   !*** variables and functions from other modules ***!
   use prec,     only: p_vec
@@ -413,7 +413,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
 
   implicit none
   !*** input variables ***!
-  real(pReal), dimension(6), intent(in)::       Tstar_dev_v               ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
+  real(pReal), dimension(6), intent(in)::       Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
   real(pReal), intent(in)::                     Temperature
   integer(pInt), intent(in)::                   g, &                      ! grain number
                                                 ip, &                     ! integration point number
@@ -438,17 +438,18 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, 
  
   matID = phase_plasticityInstance(material_phase(g,ip,el))
 
-  ! convert Tstar to matrix and calculate euclidean norm
-  Tstar_dev_33 = math_Mandel6to33(Tstar_dev_v)
-  squarenorm_Tstar_dev = math_mul6x6(Tstar_dev_v,Tstar_dev_v)
+  ! deviatoric part of 2nd Piola-Kirchhoff stress
+  Tstar_dev_33 = math_deviatoric33(math_Mandel6to33(Tstar_v))
+
+  squarenorm_Tstar_dev = math_mul33x33(Tstar_dev_33,Tstar_dev_33)
   norm_Tstar_dev = sqrt(squarenorm_Tstar_dev) 
 
   ! Initialization of Lp and dLp_dTstar
   Lp = 0.0_pReal
   dLp_dTstar_99 = 0.0_pReal
 
-  ! for Tstar==0 both Lp and dLp_dTstar are zero (if not n==1)
-  if (norm_Tstar_dev > 0_pInt) then
+  ! Tstar == 0 --> both Lp and dLp_dTstar are zero
+  if (norm_Tstar_dev > 0.0_pReal) then
    
     ! Calculation of gamma_dot
     gamma_dot = constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
