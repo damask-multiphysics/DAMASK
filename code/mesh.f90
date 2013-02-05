@@ -112,7 +112,6 @@ module mesh
  integer(pInt), public, protected  :: &
    res1_red, &
    homog
- integer(pInt), private :: i
 #endif
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
@@ -158,6 +157,20 @@ module mesh
       8, & ! element   7 (3D 8node 8ip)
      20, & ! element  57 (3D 20node 8ip)
      20  & ! element  21 (3D 20node 27ip)
+  ],pInt)
+
+ integer(pInt), dimension(FE_Ngeomtypes), parameter, public :: FE_dimension = &                        !< dimension of element type
+ int([ &
+      2, & ! element   6 (2D 3node 1ip)
+      2, & ! element 125 (2D 6node 3ip)
+      2, & ! element  11 (2D 4node 4ip)
+      2, & ! element  27 (2D 8node 9ip)
+      3, & ! element 134 (3D 4node 1ip)
+      3, & ! element 127 (3D 10node 4ip)
+      3, & ! element 136 (3D 6node 6ip)
+      3, & ! element 117 (3D 8node 1ip)
+      3, & ! element   7 (3D 8node 8ip)
+      3  & ! element  21 (3D 20node 27ip)
   ],pInt)
 
  integer(pInt), dimension(FE_Ngeomtypes), parameter, public :: FE_Nnodes = &                        !< nodes in a specific type of element (how we use it) 
@@ -386,7 +399,7 @@ contains
 !> @brief initializes the mesh by calling all necessary private routines the mesh module
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_init(ip,element)
+subroutine mesh_init(ip,el)
 
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
@@ -412,7 +425,8 @@ subroutine mesh_init(ip,element)
  
  implicit none
  integer(pInt), parameter :: fileUnit = 222_pInt
- integer(pInt) :: e, element, ip
+ integer(pInt), intent(in) :: el, ip
+ integer(pInt) :: e
  
  write(6,*)
  write(6,*) '<<<+-  mesh init  -+>>>'
@@ -449,12 +463,12 @@ subroutine mesh_init(ip,element)
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and reso-
 ! lution-independent divergence
  if (divergence_correction == 1_pInt) then
-   do i = 1_pInt, 3_pInt
-    if (i/=minloc(geomdim,1) .and. i/=maxloc(geomdim,1)) scaledDim=geomdim/geomdim(i)
+   do e = 1_pInt, 3_pInt
+    if (e /= minloc(geomdim,1) .and. e /= maxloc(geomdim,1)) scaledDim = geomdim/geomdim(e)
    enddo
  elseif (divergence_correction == 2_pInt) then
-   do i = 1_pInt, 3_pInt
-    if (i/=minloc(geomdim/res,1) .and. i/=maxloc(geomdim/res,1)) scaledDim=geomdim/geomdim(i)*res(i)
+   do e = 1_pInt, 3_pInt
+    if (e /= minloc(geomdim/res,1) .and. e /= maxloc(geomdim/res,1)) scaledDim = geomdim/geomdim(e)*res(e)
    enddo
  else
    scaledDim = geomdim
@@ -513,7 +527,7 @@ subroutine mesh_init(ip,element)
 
  parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))                       ! plus potential killer from non-local constitutive
  
- FEsolving_execElem = [ 1_pInt,mesh_NcpElems]
+ FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt
  forall (e = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(FE_geomtype(mesh_element(2,e)))
@@ -521,7 +535,7 @@ subroutine mesh_init(ip,element)
  if (allocated(calcMode)) deallocate(calcMode)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
- calcMode(ip,mesh_FEasCP('elem',element)) = .true.                                                  ! first ip,el needs to be already pingponged to "calc"
+ calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
  lastMode = .true.                                                                                  ! and its mode is already known...
 
 end subroutine mesh_init
@@ -3434,24 +3448,35 @@ subroutine mesh_build_ipAreas
  real(pReal), dimension(3,Ntriangles,FE_NipFaceNodes) :: normal
  real(pReal), dimension(Ntriangles,FE_NipFaceNodes)   :: area
 
- allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ;         mesh_ipArea       = 0.0_pReal
+ allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ;              mesh_ipArea       = 0.0_pReal
  allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
  do e = 1_pInt,mesh_NcpElems                                         ! loop over cpElems
    t = FE_geomtype(mesh_element(2,e))                                ! get elemGeomType
    do i = 1_pInt,FE_Nips(t)                                          ! loop over IPs of elem
-     do f = 1_pInt,FE_NipNeighbors(t)                                ! loop over interfaces of IP 
-       forall (n = 1_pInt:FE_NipFaceNodes) nPos(:,n) = mesh_subNodeCoord(:,FE_subNodeOnIPFace(n,f,i,t),e)
-       forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles)    ! start at each interface node and build valid triangles to cover interface
-         normal(:,j,n) = math_vectorproduct(nPos(:,1_pInt+mod(n+j-1_pInt,FE_NipFaceNodes)) - nPos(:,n), &    ! calc their normal vectors
-                                            nPos(:,1_pInt+mod(n+j-0_pInt,FE_NipFaceNodes)) - nPos(:,n))
-         area(j,n) = sqrt(sum(normal(:,j,n)*normal(:,j,n)))                                                  ! and area
-       end forall
-       forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles, area(j,n) > 0.0_pReal) &
-         normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)               ! make myUnit normal
-       
-       mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                        ! area of parallelograms instead of triangles
-       mesh_ipAreaNormal(:,f,i,e) = sum(sum(normal,3),2_pInt)/&                            ! average of all valid normals
-                                        real(count(area > 0.0_pReal),pReal)
+     do f = 1_pInt,FE_NipNeighbors(t)                                ! loop over interfaces of IP
+       select case (FE_dimension(t))                                 ! treat (1D), 2D, and 3D element types differently
+
+         case (2)
+           forall (n = 1:2) nPos(1:3,n) = mesh_subNodeCoord(1:3,FE_subNodeOnIPFace(n,f,i,t),e)
+           mesh_ipAreaNormal(1,f,i,e) =   nPos(2,2) - nPos(2,1)                                                      ! x_normal =  y_connectingVector
+           mesh_ipAreaNormal(2,f,i,e) = -(nPos(1,2) - nPos(1,1))                                                     ! y_normal = -x_connectingVector
+           mesh_ipArea(f,i,e) = sqrt(sum(mesh_ipAreaNormal(1:3,f,i,e)*mesh_ipAreaNormal(1:3,f,i,e)))                 ! and area
+           mesh_ipAreaNormal(1:3,f,i,e) = mesh_ipAreaNormal(1:3,f,i,e) / mesh_ipArea(f,i,e)                          ! have unit normal
+           
+         case (3)
+           forall (n = 1_pInt:FE_NipFaceNodes) nPos(1:3,n) = mesh_subNodeCoord(1:3,FE_subNodeOnIPFace(n,f,i,t),e)
+           forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles)    ! start at each interface node and build valid triangles to cover interface
+             normal(1:3,j,n) = math_vectorproduct(nPos(1:3,1_pInt+mod(n+j-1_pInt,FE_NipFaceNodes)) - nPos(1:3,n), &    ! calc their normal vectors
+                                                  nPos(1:3,1_pInt+mod(n+j-0_pInt,FE_NipFaceNodes)) - nPos(1:3,n))
+             area(j,n) = sqrt(sum(normal(1:3,j,n)*normal(1:3,j,n)))                                                    ! and area
+           end forall
+           forall (n = 1_pInt:FE_NipFaceNodes, j = 1_pInt:Ntriangles, area(j,n) > 0.0_pReal) &
+             normal(1:3,j,n) = normal(1:3,j,n) / area(j,n)                                     ! have each normal of unit length
+           mesh_ipArea(f,i,e) = sum(area) / (FE_NipFaceNodes*2.0_pReal)                        ! vector product gives area of parallelograms instead of triangles
+           mesh_ipAreaNormal(1:3,f,i,e) = sum(sum(normal,3),2)/ &
+                                          max(1.0_pReal,real(count(area > 0.0_pReal),pReal))   ! average of all valid normals (not necessarily unit length---beware!!/fix?)
+
+       end select
      enddo
    enddo
  enddo
@@ -4364,16 +4389,16 @@ subroutine mesh_build_FEdata
  FE_subNodeParent(1:FE_Nips(me),1:FE_NsubNodes(me),me) = &  ! element  27 (2D 8node 9ip)
     reshape(int([&
     1, 1, 2, 0, 0, 0, 0, 0, 0,  &
-    1, 2, 2, 0, 0, 0, 0, 0, 0,  & 
-    2, 2, 3, 0, 0, 0, 0, 0, 0,  & 
-    2, 3, 3, 0, 0, 0, 0, 0, 0,  & 
-    3, 3, 4, 0, 0, 0, 0, 0, 0,  & 
-    3, 4, 4, 0, 0, 0, 0, 0, 0,  & 
-    4, 4, 1, 0, 0, 0, 0, 0, 0,  & 
-    4, 1, 1, 0, 0, 0, 0, 0, 0,  & 
-    1, 1, 1, 1, 2, 2, 4, 4, 3,  & 
-    2, 2, 2, 2, 1, 1, 3, 3, 4,  & 
-    3, 3, 3, 3, 2, 2, 4, 4, 1,  & 
+    1, 2, 2, 0, 0, 0, 0, 0, 0,  &
+    2, 2, 3, 0, 0, 0, 0, 0, 0,  &
+    2, 3, 3, 0, 0, 0, 0, 0, 0,  &
+    3, 3, 4, 0, 0, 0, 0, 0, 0,  &
+    3, 4, 4, 0, 0, 0, 0, 0, 0,  &
+    4, 4, 1, 0, 0, 0, 0, 0, 0,  &
+    4, 1, 1, 0, 0, 0, 0, 0, 0,  &
+    1, 1, 1, 1, 2, 2, 4, 4, 3,  &
+    2, 2, 2, 2, 1, 1, 3, 3, 4,  &
+    3, 3, 3, 3, 2, 2, 4, 4, 1,  &
     4, 4, 4, 4, 1, 1, 3, 3, 2   &
     ],pInt),[FE_Nips(me),FE_NsubNodes(me)])
 
@@ -4531,16 +4556,16 @@ subroutine mesh_build_FEdata
  FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(me),1:FE_Nips(me),me) = &  ! element 125 (2D 6node 3ip)
     reshape(int([&
      4, 7, 7, 4 , & ! 1
-     1, 6, 6, 1 , &
-     6, 7, 7, 6 , &
+     6, 1, 1, 6 , &
+     7, 6, 6, 7 , &
      1, 4, 4, 1 , &
      2, 5, 5, 2 , & ! 2
-     4, 7, 7, 4 , &
+     7, 4, 4, 7 , &
      5, 7, 7, 5 , &
-     2, 4, 4, 2 , &
-     5, 7, 7, 5 , & ! 3
+     4, 2, 2, 4 , &
+     7, 5, 5, 7 , & ! 3
      3, 6, 6, 3 , &
-     3, 5, 5, 3 , &
+     5, 3, 3, 5 , &
      6, 7, 7, 6   &
     ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(me),FE_Nips(me)])
 
@@ -4548,62 +4573,62 @@ subroutine mesh_build_FEdata
  FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(me),1:FE_Nips(me),me) = &  ! element  11 (2D 4node 4ip)
     reshape(int([&
      5, 9, 9, 5 , & ! 1
-     1, 8, 8, 1 , &
-     8, 9, 9, 8 , &
+     8, 1, 1, 8 , &
+     9, 8, 8, 9 , &
      1, 5, 5, 1 , &
      2, 6, 6, 2 , & ! 2
-     5, 9, 9, 5 , &
+     9, 5, 5, 9 , &
      6, 9, 9, 6 , &
-     2, 5, 5, 2 , &
-     3, 6, 6, 3 , & ! 3
+     5, 2, 2, 5 , &
+     9, 7, 7, 9 , & ! 3
+     4, 8, 8, 4 , &
+     7, 4, 4, 7 , &
+     8, 9, 9, 8 , &
+     6, 3, 3, 6 , & ! 4
      7, 9, 9, 7 , &
      3, 7, 7, 3 , &
-     6, 9, 9, 6 , &
-     7, 9, 9, 7 , & ! 4
-     4, 8, 8, 4 , &
-     4, 7, 7, 4 , &
-     8, 9, 9, 8   &
+     9, 6, 6, 9   &
     ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(me),FE_Nips(me)])
 
  me = me + 1_pInt
  FE_subNodeOnIPFace(1:FE_NipFaceNodes,1:FE_NipNeighbors(me),1:FE_Nips(me),me) = &  ! element  27 (2D 8node 9ip)
     reshape(int([&
-     9,17,17, 9 , & ! 1
-     1,16,16, 1 , &
-    16,17,17,16 , &
-     1, 9, 9, 1 , &
-    10,18,18,10 , & ! 2
-     9,17,17, 9 , &
-    17,18,18,17 , &
-     9,10,10, 9 , &
-     2,11,11, 2 , & ! 3
-    10,18,18,10 , &
-    11,18,18,11 , &
-     2,10,10, 2 , &
-    17,20,20,17 , & ! 4
+     5,13,13, 5 , & ! 1
+    12, 1, 1,12 , &
+    13,12,12,13 , &
+     1, 5, 5, 1 , &
+     6,14,14, 6 , & ! 2
+    13, 5, 5,13 , &
+    14,13,13,14 , &
+     5, 6, 6, 5 , &
+     2, 7, 7, 2 , & ! 3
+    14, 6, 6,14 , &
+     7,14,14, 7 , &
+     6, 2, 2, 6 , &
+    13,16,16,13 , & ! 4
+    11,12,12,11 , &
+    16,11,11,16 , &
+    12,13,13,12 , &
+    14,15,15,14 , & ! 5
+    16,13,13,16 , &
     15,16,16,15 , &
-    15,20,20,15 , &
-    16,17,17,16 , &
-    18,19,19,18 , & ! 5
-    17,20,20,17 , &
-    19,20,20,19 , &
-    17,18,18,17 , &
-    11,12,12,11 , & ! 6
-    18,19,19,18 , &
-    12,19,19,12 , &
-    11,18,18,11 , &
-    14,20,20,14 , & ! 7
-     4,15,15, 4 , &
-     4,14,14, 4 , &
-    15,20,20,15 , &
-    13,19,19,13 , & ! 8
-    14,20,20,14 , &
     13,14,14,13 , &
-    19,20,20,19 , &
-     3,12,12, 3 , & ! 9
-    13,19,19,13 , &
-     3,13,13, 3 , &
-    12,19,19,12   &
+     7, 8, 8, 7 , & ! 6
+    15,14,14,15 , &
+     8,15,15, 8 , &
+    14, 7, 7,14 , &
+    16,10,10,16 , & ! 7
+     4,11,11, 4 , &
+    10, 4, 4,10 , &
+    11,16,16,11 , &
+    15, 9, 9,15 , & ! 8
+    10,16,16,10 , &
+     9,10,10, 9 , &
+    16,15,15,16 , &
+     8, 3, 3, 8 , & ! 9
+     9,15,15, 9 , &
+     3, 9, 9, 3 , &
+    15, 8, 8,15   &
     ],pInt),[FE_NipFaceNodes,FE_NipNeighbors(me),FE_Nips(me)])
 
  me = me + 1_pInt
