@@ -95,7 +95,8 @@ subroutine AL_init(temperature)
    geomdim, &
    wgt, &
    mesh_NcpElems, &
-   mesh_ipCoordinates
+   mesh_ipCoordinates, &
+   mesh_deformedCoordsFFT
  use math, only: &
    math_invSym3333
    
@@ -218,10 +219,12 @@ type(tSolutionState) function &
  use math, only: &
    math_mul33x33 ,&
    math_rotate_backward33
- use mesh, only: &
-   res,&
-   geomdim,&
-   mesh_ipCoordinates
+use mesh, only: &
+   res, &
+   geomdim, &
+   mesh_NcpElems, &
+   mesh_ipCoordinates, &
+   mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobBinaryFile
  use DAMASK_spectral_Utilities, only: &
