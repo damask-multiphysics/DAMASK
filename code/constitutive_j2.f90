@@ -404,7 +404,9 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_v, Temp
   use prec,     only: p_vec
   use math,     only: math_mul6x6, &
                       math_Mandel6to33, &
-                      math_Plain3333to99
+                      math_Plain3333to99, &
+                      math_deviatoric33, &
+                      math_mul33xx33
   use mesh,     only: mesh_NcpElems, &
                       mesh_maxNips
   use material, only: homogenization_maxNgrains, &
@@ -441,7 +443,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_v, Temp
   ! deviatoric part of 2nd Piola-Kirchhoff stress
   Tstar_dev_33 = math_deviatoric33(math_Mandel6to33(Tstar_v))
 
-  squarenorm_Tstar_dev = math_mul33x33(Tstar_dev_33,Tstar_dev_33)
+  squarenorm_Tstar_dev = math_mul33xx33(Tstar_dev_33,Tstar_dev_33)
   norm_Tstar_dev = sqrt(squarenorm_Tstar_dev) 
 
   ! Initialization of Lp and dLp_dTstar
