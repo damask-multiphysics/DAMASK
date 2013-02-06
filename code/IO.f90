@@ -477,7 +477,9 @@ function IO_hybridIA(Nast,ODFfileName)
  read(999,fmt=fileFormat,end=100) line
  myPos = IO_stringPos(line,3_pInt)
  if (myPos(1) == 3) then                                                                            ! found 3 chunks
-   forall(i=1_pInt:3_pInt) limits(i) = IO_floatValue(line,myPos,i)*INRAD
+   do i = 1_pInt, 3_pInt
+     limits(i) = IO_floatValue(line,myPos,i)*INRAD
+   enddo
  else                                                                                               ! wrong line format
    close(999)
    return
@@ -487,7 +489,9 @@ function IO_hybridIA(Nast,ODFfileName)
  read(999,fmt=fileFormat,end=100) line
  myPos = IO_stringPos(line,3_pInt)
  if (myPos(1) == 3) then                                                                            ! found 3 chunks
-  forall(i=1_pInt:3_pInt) deltas(i) = IO_floatValue(line,myPos,i)*INRAD
+   do i = 1_pInt, 3_pInt
+     deltas(i) = IO_floatValue(line,myPos,i)*INRAD
+   enddo
  else                                                                                               ! wrong line format
    close(999)
    return
@@ -809,14 +813,12 @@ logical function IO_globalTagInPart(myFile,part,myTag)
 pure function IO_stringPos(line,N)
 
  implicit none
- integer(pInt),    intent(in) :: N
- integer(pInt)                :: IO_stringPos(1_pInt+N*2_pInt)
- 
- character(len=*), intent(in) :: line
+ integer(pInt),                           intent(in) :: N
+ integer(pInt), dimension(1_pInt+N*2_pInt)           :: IO_stringPos
+ character(len=*),                        intent(in) :: line
  
  character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
-
- integer                      :: left, right                                                        !no pInt (verify and scan return default integer)
+ integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
 
 
  IO_stringPos = -1_pInt
@@ -842,19 +844,17 @@ end function IO_stringPos
 !--------------------------------------------------------------------------------------------------
 !> @brief read string value at myPos from line
 !--------------------------------------------------------------------------------------------------
- pure function IO_stringValue(line,positions,myPos)
+function IO_stringValue(line,positions,myPos)
  
  implicit none
-
- integer(pInt),                                intent(in) :: positions(*), &
-                                                             myPos
-
+ integer(pInt),   dimension(:),                intent(in) :: positions
+ integer(pInt),                                intent(in) :: myPos
  character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
-
  character(len=*),                             intent(in) :: line
 
- if (positions(1) < myPos) then
+ if (myPos > positions(1)) then
    IO_stringValue = ''
+   call IO_warning(201, e=myPos, ext_msg = trim(line)//' (IO_stringValue)')
  else
    IO_stringValue = line(positions(myPos*2):positions(myPos*2+1))
  endif
@@ -869,12 +869,10 @@ pure function IO_fixedStringValue (line,ends,myPos)
  
  implicit none
 
- integer(pInt),                intent(in) :: ends(*), &
-                                             myPos
-                                             
- character(len=ends(myPos+1)-ends(myPos)) :: IO_fixedStringValue
- 
- character(len=*),             intent(in) :: line
+ integer(pInt),                  intent(in) :: myPos
+ integer(pInt),   dimension(:),  intent(in) :: ends
+ character(len=ends(myPos+1)-ends(myPos))   :: IO_fixedStringValue 
+ character(len=*),               intent(in) :: line
 
  IO_fixedStringValue = line(ends(myPos)+1:ends(myPos+1))
 
@@ -884,20 +882,32 @@ end function IO_fixedStringValue
 !--------------------------------------------------------------------------------------------------
 !> @brief read float value at myPos from line
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function IO_floatValue (line,positions,myPos)
- 
- implicit none
- character(len=*), intent(in) :: line
- integer(pInt),    intent(in) :: positions(*), &
-                                 myPos
+real(pReal) function IO_floatValue (line,positions,myPos)
 
- if (positions(1) < myPos) then
-   IO_floatValue = 0.0_pReal
+ implicit none
+ character(len=*),               intent(in) :: line
+ integer(pInt),   dimension(:),  intent(in) :: positions
+ integer(pInt),                  intent(in) :: myPos
+ character(len=64),              parameter  :: myName = 'IO_floatValue'
+ character(len=17),              parameter  :: validCharacters = '0123456789eEdD.+-'
+ integer(pInt)                              :: readStatus, invalidWhere
+
+ IO_floatValue = 0.0_pReal
+ 
+ if (myPos > positions(1) .or. myPos < 1_pInt) then                            ! trying to access non-present value
+   call IO_warning(201,ext_msg=trim(line)//' ('//trim(myName)//')')
  else
-   read(UNIT=line(positions(myPos*2):positions(myPos*2+1)),ERR=100,FMT=*) IO_floatValue
+   invalidWhere = verify(line(positions(myPos*2):positions(myPos*2+1)),validCharacters)
+   if (invalidWhere /= 0_pInt) then
+     invalidWhere = invalidWhere-1
+     call IO_warning(202,ext_msg=line(positions(myPos*2):positions(myPos*2+1))//' ('//trim(myName)//')')
+   else
+     invalidWhere = positions(myPos*2+1)-positions(myPos*2)+1
+   endif
+   read(UNIT=line(positions(myPos*2):positions(myPos*2)+invalidWhere-1),iostat=readStatus,FMT=*) IO_floatValue
+   if (readStatus /= 0_pInt) &
+     call IO_warning(203,ext_msg=line(positions(myPos*2):positions(myPos*2)+invalidWhere-1)//' ('//trim(myName)//')')
  endif
- return
-100 IO_floatValue = huge(1.0_pReal)
 
 end function IO_floatValue
 
@@ -905,45 +915,81 @@ end function IO_floatValue
 !--------------------------------------------------------------------------------------------------
 !> @brief read float value at myPos from fixed format line
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function IO_fixedFloatValue (line,ends,myPos)
- 
+real(pReal) function IO_fixedFloatValue (line,ends,myPos)
+
  implicit none
- character(len=*), intent(in) :: line
- integer(pInt),    intent(in) :: ends(*), &
-                                 myPos
+ character(len=*),               intent(in) :: line
+ integer(pInt),                  intent(in) :: myPos
+ integer(pInt),   dimension(:),  intent(in) :: ends
+ character(len=64),              parameter  :: myName = 'IO_fixedFloatValue'
+ character(len=17),              parameter  :: validCharacters = '0123456789eEdD.+-'
+ integer(pInt)                              :: readStatus, myStart, invalidWhere
 
- read(UNIT=line(ends(myPos-1)+1:ends(myPos)),ERR=100,FMT=*) IO_fixedFloatValue
- return
-100 IO_fixedFloatValue = huge(1.0_pReal)
+ IO_fixedFloatValue = 0.0_pReal
+ 
+ myStart = ends(myPos-1)+1
 
+ invalidWhere = verify(line(myStart:ends(myPos)),validCharacters)
+ if (invalidWhere /= 0_pInt) then
+   invalidWhere = invalidWhere-1
+   call IO_warning(202,ext_msg=line(myStart:ends(myPos))//' ('//trim(myName)//')')
+ else
+   invalidWhere = ends(myPos)-myStart+1
+ endif
+ read(UNIT=line(myStart:myStart+invalidWhere-1),iostat=readStatus,FMT=*) IO_fixedFloatValue
+ if (readStatus /= 0_pInt) &
+   call IO_warning(203,ext_msg=line(myStart:myStart+invalidWhere-1)//' ('//trim(myName)//')')
+  
 end function IO_fixedFloatValue
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief read float x.y+z value at myPos from format line line
 !--------------------------------------------------------------------------------------------------
-real(pReal) pure function IO_fixedNoEFloatValue (line,ends,myPos)
+real(pReal) function IO_fixedNoEFloatValue (line,ends,myPos)
 
  implicit none
- character(len=*), intent(in) :: line
- integer(pInt),    intent(in) :: ends(*), &
-                                 myPos
-
- integer(pInt)                :: expon
- integer                      :: pos_exp
- real(pReal)                  :: base
+ character(len=*),               intent(in) :: line
+ integer(pInt),                  intent(in) :: myPos
+ integer(pInt),   dimension(:),  intent(in) :: ends
+ character(len=64),              parameter  :: myName = 'IO_fixedNoEFloatValue'
+ character(len=13),              parameter  :: validBase = '0123456789.+-'
+ character(len=12),              parameter  :: validExp  = '0123456789+-'
  
- pos_exp = scan(line(ends(myPos)+1:ends(myPos+1)),'+-',back=.true.)
- if (pos_exp > 1) then
-   read(UNIT=line(ends(myPos)+1:ends(myPos)+pos_exp-1),ERR=100,FMT=*) base
-   read(UNIT=line(ends(myPos)+pos_exp:ends(myPos+1)),ERR=100,FMT=*) expon
+ integer(pInt)                :: expon = 0, myStart, readStatus
+ integer                      :: pos_exp, end_base, end_exp
+ real(pReal)                  :: base = 0.0_pReal
+
+ myStart = ends(myPos-1)+1
+ pos_exp = scan(line(myStart:ends(myPos)),'+-',back=.true.)
+ if (pos_exp <= 1_pInt) &          ! no exponent but only base
+   pos_exp = ends(myPos)-myStart+1
+
+ ! --- figure out base ---
+ end_base = verify(line(myStart:myStart+pos_exp-1),validBase)
+ if (end_base /= 0_pInt) then                ! invalid base
+   end_base = end_base-1
+   call IO_warning(202, ext_msg = line(myStart:myStart+pos_exp-1)//' ('//trim(myName)//':base)')
  else
-   read(UNIT=line(ends(myPos)+1:ends(myPos+1)),ERR=100,FMT=*) base
-   expon = 0_pInt
+   end_base = pos_exp
  endif
+ read(UNIT=line(myStart:myStart+end_base-1),iostat=readStatus,FMT=*) base
+ if (readStatus /= 0_pInt) &
+   call IO_warning(203, ext_msg = line(myStart:myStart+end_base-1)//' ('//trim(myName)//':base)')
+
+ ! --- figure out exponent ---
+ end_exp = verify(line(myStart+pos_exp:ends(myPos)),validExp)
+ if (end_exp /= 0_pInt) then                ! invalid exponent
+   end_exp = end_exp-1
+   call IO_warning(202, ext_msg = line(myStart+pos_exp:ends(myPos))//' ('//trim(myName)//':exp)')
+ else
+   end_exp = mystart-ends(myPos)+1
+ endif
+ read(UNIT=line(myStart+pos_exp:myStart+end_exp-1),iostat=readStatus,FMT=*) expon 
+ if (readStatus /= 0_pInt) &
+   call IO_warning(203, ext_msg = line(myStart+pos_exp:myStart+end_exp-1)//' ('//trim(myName)//':exp)')
+
  IO_fixedNoEFloatValue = base*10.0_pReal**expon
- return
-100 IO_fixedNoEFloatValue = huge(1.0_pReal)
 
 end function IO_fixedNoEFloatValue
 
@@ -951,20 +997,32 @@ end function IO_fixedNoEFloatValue
 !--------------------------------------------------------------------------------------------------
 !> @brief read int value at myPos from line
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function IO_intValue(line,positions,myPos)
+integer(pInt) function IO_intValue(line,positions,myPos)
 
  implicit none
- character(len=*), intent(in) :: line
- integer(pInt),    intent(in) :: positions(*), &
-                                 myPos
+ character(len=*),               intent(in) :: line
+ integer(pInt),   dimension(:),  intent(in) :: positions
+ integer(pInt),                  intent(in) :: myPos
+ character(len=64),              parameter  :: myName = 'IO_intValue'
+ character(len=12),              parameter  :: validCharacters = '0123456789+-'
+ integer(pInt)                              :: readStatus, invalidWhere
 
- if (positions(1) < myPos) then
-   IO_intValue = 0_pInt
+ IO_intValue =  0_pInt
+ 
+ if (myPos > positions(1) .or. myPos < 1_pInt) then                            ! trying to access non-present value
+   call IO_warning(201,ext_msg=trim(line)//' ('//trim(myName)//')')
  else
-   read(UNIT=line(positions(myPos*2):positions(myPos*2+1)),ERR=100,FMT=*) IO_intValue
+   invalidWhere = verify(line(positions(myPos*2):positions(myPos*2+1)),validCharacters)
+   if (invalidWhere /= 0_pInt) then
+     invalidWhere = invalidWhere-1
+     call IO_warning(202,ext_msg=line(positions(myPos*2):positions(myPos*2+1))//' ('//trim(myName)//')')
+   else
+     invalidWhere = positions(myPos*2+1)-positions(myPos*2)+1
+   endif
+   read(UNIT=line(positions(myPos*2):positions(myPos*2)+invalidWhere-1),iostat=readStatus,FMT=*) IO_intValue
+   if (readStatus /= 0_pInt) &
+     call IO_warning(203,ext_msg=line(positions(myPos*2):positions(myPos*2)+invalidWhere-1)//' ('//trim(myName)//')')
  endif
- return
-100 IO_intValue = huge(1_pInt)
 
 end function IO_intValue
 
@@ -972,17 +1030,31 @@ end function IO_intValue
 !--------------------------------------------------------------------------------------------------
 !> @brief read int value at myPos from fixed format line
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function IO_fixedIntValue(line,ends,myPos)
+integer(pInt) function IO_fixedIntValue(line,ends,myPos)
  
  implicit none
- character(len=*), intent(in) :: line
- integer(pInt),    intent(in) :: ends(*), &
-                                 myPos
+ character(len=*),               intent(in) :: line
+ integer(pInt),                  intent(in) :: myPos
+ integer(pInt),   dimension(:),  intent(in) :: ends
+ character(len=64),              parameter  :: myName = 'IO_fixedIntValue'
+ character(len=13),              parameter  :: validCharacters = '0123456789.+-'
+ integer(pInt)                              :: readStatus, myStart, invalidWhere
 
- read(UNIT=line(ends(myPos)+1:ends(myPos+1)),ERR=100,FMT=*) IO_fixedIntValue
- return
-100 IO_fixedIntValue = huge(1_pInt)
+ IO_fixedIntValue = 0_pInt
+ 
+ myStart = ends(myPos-1)+1
 
+ invalidWhere = verify(line(myStart:ends(myPos)),validCharacters)
+ if (invalidWhere /= 0_pInt) then
+   invalidWhere = invalidWhere-1
+   call IO_warning(202,ext_msg=line(myStart:ends(myPos))//' ('//trim(myName)//')')
+ else
+   invalidWhere = ends(myPos)-myStart+1
+ endif
+ read(UNIT=line(myStart:myStart+invalidWhere-1),iostat=readStatus,FMT=*) IO_fixedIntValue
+ if (readStatus /= 0_pInt) &
+   call IO_warning(203,ext_msg=line(myStart:myStart+invalidWhere-1)//' ('//trim(myName)//')')
+ 
 end function IO_fixedIntValue
 
 
@@ -997,7 +1069,7 @@ pure function IO_lc(line)
  character(len=*), intent(in) :: line
  character(len=len(line))     :: IO_lc
  
- integer                      :: i,n                      ! no pInt (len returns default integer)
+ integer                      :: i,n                                                                ! no pInt (len returns default integer)
 
  IO_lc = line
  do i=1,len(line)
@@ -1558,6 +1630,12 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
    msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
  case (101_pInt)
    msg = 'crystallite debugging off'
+ case (201_pInt)
+   msg = 'position not found when parsing line'
+ case (202_pInt)
+   msg = 'invalid character in string chunk'
+ case (203_pInt)
+   msg = 'interpretation of string chunk failed'
  case (600_pInt)
    msg = 'crystallite responds elastically'
  case (601_pInt)
