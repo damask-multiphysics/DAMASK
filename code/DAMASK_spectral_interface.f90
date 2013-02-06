@@ -84,7 +84,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  integer :: &
    i
  integer, parameter :: &
-   maxNchunks = 10                                                                                  !< DAMASK_spectral + (l,g,w,r)*2 + h
+   maxNchunks = 128                                                                                  !< DAMASK_spectral + (l,g,w,r)*2 + h
  integer, dimension(1+ 2* maxNchunks) :: &
    positions
  integer, dimension(8) :: &
@@ -110,7 +110,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  else if ( .not.( present(loadcaseParameterIn) .and. present(geometryParameterIn))) then            ! none parameters given in function call, trying to get them from command line
    call get_command(commandLine)
    positions = IIO_stringPos(commandLine,maxNchunks)
-   do i = 1, maxNchunks
+   do i = 1, positions(1)
      tag = IIO_lc(IIO_stringValue(commandLine,positions,i))                                           ! extract key
      select case(tag)
        case ('-h','--help')

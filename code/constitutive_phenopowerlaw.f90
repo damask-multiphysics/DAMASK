@@ -283,30 +283,35 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        case ('c66')
          constitutive_phenopowerlaw_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case ('nslip')
-         forall (j = 1_pInt:lattice_maxNslipFamily)&
+         do j = 1_pInt, lattice_maxNslipFamily
             constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
+          enddo
        case ('gdot0_slip')
          constitutive_phenopowerlaw_gdot0_slip(i) = IO_floatValue(line,positions,2_pInt)
        case ('n_slip')
          constitutive_phenopowerlaw_n_slip(i) = IO_floatValue(line,positions,2_pInt)
        case ('tau0_slip')
-         forall (j = 1_pInt:lattice_maxNslipFamily)&
-            constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         do j = 1_pInt, lattice_maxNslipFamily
+           constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case ('tausat_slip')
-         forall (j = 1_pInt:lattice_maxNslipFamily)&
-            constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         do j = 1_pInt, lattice_maxNslipFamily
+           constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case ('a_slip', 'w0_slip')
          constitutive_phenopowerlaw_a_slip(i) = IO_floatValue(line,positions,2_pInt)
        case ('ntwin')
-         forall (j = 1_pInt:lattice_maxNtwinFamily)& 
-            constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
+         do j = 1_pInt, lattice_maxNtwinFamily
+           constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
+         enddo
        case ('gdot0_twin')
          constitutive_phenopowerlaw_gdot0_twin(i) = IO_floatValue(line,positions,2_pInt)
        case ('n_twin')
          constitutive_phenopowerlaw_n_twin(i) = IO_floatValue(line,positions,2_pInt)
        case ('tau0_twin')
-         forall (j = 1_pInt:lattice_maxNtwinFamily)&
-            constitutive_phenopowerlaw_tau0_twin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         do j = 1_pInt, lattice_maxNtwinFamily
+           constitutive_phenopowerlaw_tau0_twin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case ('s_pr')
          constitutive_phenopowerlaw_spr(i) = IO_floatValue(line,positions,2_pInt)
        case ('twin_b')
@@ -333,20 +338,25 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        case ('atol_twinfrac')
          constitutive_phenopowerlaw_aTolTwinfrac(i)   = IO_floatValue(line,positions,2_pInt)
        case ('interaction_slipslip')
-         forall (j = 1_pInt:lattice_maxNinteraction) &
+         do j = 1_pInt, lattice_maxNinteraction
            constitutive_phenopowerlaw_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case ('interaction_sliptwin')
-         forall (j = 1_pInt:lattice_maxNinteraction) &
+         do j = 1_pInt, lattice_maxNinteraction
            constitutive_phenopowerlaw_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case ('interaction_twinslip')
-         forall (j = 1_pInt:lattice_maxNinteraction) &
+         do j = 1_pInt, lattice_maxNinteraction
            constitutive_phenopowerlaw_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case ('interaction_twintwin')
-         forall (j = 1_pInt:lattice_maxNinteraction) &
+         do j = 1_pInt, lattice_maxNinteraction
            constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case ('nonschmid_coefficients')
-         forall (j = 1_pInt:lattice_maxNonSchmid) &
+         do j = 1_pInt, lattice_maxNonSchmid
            constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
        case default
          call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_phenopowerlaw_label//')')
      end select

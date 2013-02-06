@@ -456,40 +456,51 @@ do                                                                              
        case ('c66')
          constitutive_nonlocal_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
       case ('nslip')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
+        enddo
       case ('rhosgledgepos0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_rhoSglEdgePos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case ('rhosgledgeneg0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_rhoSglEdgeNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case ('rhosglscrewpos0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_rhoSglScrewPos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case ('rhosglscrewneg0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_rhoSglScrewNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case ('rhodipedge0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_rhoDipEdge0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case ('rhodipscrew0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_rhoDipScrew0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case ('lambda0')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case ('burgers')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case('cutoffradius','r')
         constitutive_nonlocal_R(i) = IO_floatValue(line,positions,2_pInt)
       case('minimumdipoleheightedge','ddipminedge')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case('minimumdipoleheightscrew','ddipminscrew')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case('atomicvolume')
         constitutive_nonlocal_atomicVolume(i) = IO_floatValue(line,positions,2_pInt)
       case('selfdiffusionprefactor','dsd0')
@@ -503,18 +514,21 @@ do                                                                              
       case('significantn','significant_n','significantdislocations','significant_dislcations')
         constitutive_nonlocal_significantN(i) = IO_floatValue(line,positions,2_pInt)
       case ('interaction_slipslip')
-        forall (it = 1_pInt:lattice_maxNinteraction) &
+        do it = 1_pInt, lattice_maxNinteraction
           constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
+        enddo
       case('linetension','linetensioneffect','linetension_effect')
         constitutive_nonlocal_linetensionEffect(i) = IO_floatValue(line,positions,2_pInt)
       case('edgejog','edgejogs','edgejogeffect','edgejog_effect')
         constitutive_nonlocal_edgeJogFactor(i) = IO_floatValue(line,positions,2_pInt)
       case('peierlsstressedge','peierlsstress_edge')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case('peierlsstressscrew','peierlsstress_screw')
-        forall (f = 1_pInt:lattice_maxNslipFamily) &
+        do f = 1_pInt, lattice_maxNslipFamily
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case('doublekinkwidth')
         constitutive_nonlocal_doublekinkwidth(i) = IO_floatValue(line,positions,2_pInt)
       case('solidsolutionenergy')
@@ -550,8 +564,9 @@ do                                                                              
       case('shortrangestresscorrection')
         constitutive_nonlocal_shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case ('nonschmid_coefficients')
-        forall (f = 1_pInt:lattice_maxNonSchmid) &
+        do f = 1_pInt, lattice_maxNonSchmid
           constitutive_nonlocal_nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
+        enddo
       case('deadzonescaling','deadzone','deadscaling')
         constitutive_nonlocal_deadZoneScaling(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
       case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')

@@ -304,38 +304,49 @@ do                                                       ! read thru sections of
        case ('c66')
          constitutive_dislotwin_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case ('nslip')
-              forall (j = 1_pInt:lattice_maxNslipFamily) &
+              do j = 1_pInt, lattice_maxNslipFamily
                 constitutive_dislotwin_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
+              enddo
        case ('ntwin')
-              forall (j = 1_pInt:lattice_maxNtwinFamily) &
+              do j = 1_pInt, lattice_maxNtwinFamily
                 constitutive_dislotwin_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
+              enddo
        case ('rhoedge0')
-              forall (j = 1_pInt:lattice_maxNslipFamily) &
+              do j = 1_pInt, lattice_maxNslipFamily
                 constitutive_dislotwin_rhoEdge0(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('rhoedgedip0')
-              forall (j = 1_pInt:lattice_maxNslipFamily) &
+              do j = 1_pInt, lattice_maxNslipFamily
                 constitutive_dislotwin_rhoEdgeDip0(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('slipburgers')
-              forall (j = 1_pInt:lattice_maxNslipFamily) &
+              do j = 1_pInt, lattice_maxNslipFamily
                 constitutive_dislotwin_burgersPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('twinburgers')
-              forall (j = 1_pInt:lattice_maxNtwinFamily) &
+              do j = 1_pInt, lattice_maxNtwinFamily 
                 constitutive_dislotwin_burgersPerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('qedge')
-              forall (j = 1_pInt:lattice_maxNslipFamily) &
+              do j = 1_pInt, lattice_maxNslipFamily
                 constitutive_dislotwin_QedgePerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('v0')
-              forall (j = 1_pInt:lattice_maxNslipFamily) &
+              do j = 1_pInt, lattice_maxNslipFamily
                 constitutive_dislotwin_v0PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('ndot0')
-              forall (j = 1_pInt:lattice_maxNtwinFamily) &
+              do j = 1_pInt, lattice_maxNtwinFamily
                 constitutive_dislotwin_Ndot0PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('twinsize')
-              forall (j = 1_pInt:lattice_maxNtwinFamily) &
+              do j = 1_pInt, lattice_maxNtwinFamily
                 constitutive_dislotwin_twinsizePerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('clambdaslip')
-              forall (j = 1_pInt:lattice_maxNslipFamily) &
+              do j = 1_pInt, lattice_maxNslipFamily
                 constitutive_dislotwin_CLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('grainsize')
               constitutive_dislotwin_GrainSize(i) = IO_floatValue(line,positions,2_pInt)
        case ('maxtwinfraction')
@@ -365,17 +376,21 @@ do                                                       ! read thru sections of
        case ('catomicvolume')
               constitutive_dislotwin_CAtomicVolume(i) = IO_floatValue(line,positions,2_pInt)
        case ('interaction_slipslip','interactionslipslip')
-              forall (j = 1_pInt:lattice_maxNinteraction) &
+              do j = 1_pInt, lattice_maxNinteraction 
                 constitutive_dislotwin_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('interaction_sliptwin','interactionsliptwin')
-              forall (j = 1_pInt:lattice_maxNinteraction) &
+              do j = 1_pInt, lattice_maxNinteraction
                 constitutive_dislotwin_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('interaction_twinslip','interactiontwinslip')
-              forall (j = 1_pInt:lattice_maxNinteraction) &
+              do j = 1_pInt, lattice_maxNinteraction 
                 constitutive_dislotwin_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('interaction_twintwin','interactiontwintwin')
-              forall (j = 1_pInt:lattice_maxNinteraction) &
+              do j = 1_pInt, lattice_maxNinteraction 
                 constitutive_dislotwin_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+              enddo
        case ('sfe_0k')
               constitutive_dislotwin_SFE_0K(i) = IO_floatValue(line,positions,2_pInt)
        case ('dsfe_dt')

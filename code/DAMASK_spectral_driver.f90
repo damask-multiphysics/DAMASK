@@ -143,7 +143,7 @@ program DAMASK_spectral_Driver
    read(myUnit,'(a1024)',END = 100) line
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    positions = IO_stringPos(line,maxNchunks)
-   do i = 1_pInt, maxNchunks                                                                        ! reading compulsory parameters for loadcase
+   do i = 1_pInt, positions(1)                                                                        ! reading compulsory parameters for loadcase
        select case (IO_lc(IO_stringValue(line,positions,i)))
             case('l','velocitygrad','velgrad','velocitygradient')
                  N_l = N_l + 1_pInt
@@ -170,7 +170,7 @@ program DAMASK_spectral_Driver
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
    positions = IO_stringPos(line,maxNchunks)
-   do i = 1_pInt, maxNchunks
+   do i = 1_pInt, positions(1)
      select case (IO_lc(IO_stringValue(line,positions,i)))
        case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient')                          ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
@@ -180,7 +180,9 @@ program DAMASK_spectral_Driver
          else
            loadCases(currentLoadCase)%deformation%myType = 'l'
          endif
-         forall (j = 1_pInt:9_pInt) temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'  ! true if not a *
+         do j = 1_pInt, 9_pInt
+           temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'  ! true if not a *
+         enddo
          do j = 1_pInt,9_pInt 
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,positions,i+j)          ! read value where applicable
          enddo
@@ -191,7 +193,9 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%deformation%values = math_plain9to33(temp_valueVector)          ! values in 3x3 notation
        case('p','pk1','piolakirchhoff','stress', 's')
          temp_valueVector = 0.0_pReal
-         forall (j = 1_pInt:9_pInt) temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'  ! true if not a *
+         do j = 1_pInt, 9_pInt
+           temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'  ! true if not a *
+         enddo
          do j = 1_pInt,9_pInt
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,positions,i+j)          ! read value where applicable
          enddo
@@ -226,12 +230,16 @@ program DAMASK_spectral_Driver
            case default   
              k = 0_pInt           
          end select
-         forall(j = 1_pInt:3_pInt)  temp_valueVector(j) = IO_floatValue(line,positions,i+k+j)
+         do j = 1_pInt, 3_pInt
+           temp_valueVector(j) = IO_floatValue(line,positions,i+k+j)
+         enddo
          if (l == 1_pInt) temp_valueVector(1:3) = temp_valueVector(1:3) * inRad                     ! convert to rad
          loadCases(currentLoadCase)%rotation = math_EulerToR(temp_valueVector(1:3))                 ! convert rad Eulers to rotation matrix
        case('rotation','rot')                                                                       ! assign values for the rotation of currentLoadCase matrix
          temp_valueVector = 0.0_pReal
-         forall (j = 1_pInt:9_pInt) temp_valueVector(j) = IO_floatValue(line,positions,i+j)
+         do j = 1_pInt, 9_pInt
+           temp_valueVector(j) = IO_floatValue(line,positions,i+j)
+         enddo
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
      end select
  enddo; enddo
