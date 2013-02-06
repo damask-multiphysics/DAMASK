@@ -430,11 +430,13 @@ subroutine constitutive_phenopowerlaw_init(myFile)
      select case(constitutive_phenopowerlaw_output(o,i))
        case('resistance_slip', &
             'shearrate_slip', &
+            'accumulatedshear_slip', &
             'resolvedstress_slip' &
             )
          mySize = constitutive_phenopowerlaw_totalNslip(i)
        case('resistance_twin', &
             'shearrate_twin', &
+            'accumulatedshear_twin', &
             'resolvedstress_twin' &
             )
          mySize = constitutive_phenopowerlaw_totalNtwin(i)
@@ -454,9 +456,11 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    enddo
 
    constitutive_phenopowerlaw_sizeDotState(i) = constitutive_phenopowerlaw_totalNslip(i)+ &
-                                                constitutive_phenopowerlaw_totalNtwin(i)+ 2_pInt    ! s_slip, s_twin, sum(gamma), sum(f)
-   constitutive_phenopowerlaw_sizeState(i)    = constitutive_phenopowerlaw_totalNslip(i)+ &
-                                                constitutive_phenopowerlaw_totalNtwin(i)+ 2_pInt    ! s_slip, s_twin, sum(gamma), sum(f)
+                                                constitutive_phenopowerlaw_totalNtwin(i)+ &
+                                                2_pInt + &
+                                                constitutive_phenopowerlaw_totalNslip(i)+ &
+                                                constitutive_phenopowerlaw_totalNtwin(i)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
+   constitutive_phenopowerlaw_sizeState(i)    = constitutive_phenopowerlaw_sizeDotState(i)
 
    myStructure = constitutive_phenopowerlaw_structure(i)
 
@@ -574,6 +578,11 @@ constitutive_phenopowerlaw_aTolState(1+constitutive_phenopowerlaw_totalNslip(myI
 constitutive_phenopowerlaw_aTolState(2+constitutive_phenopowerlaw_totalNslip(myInstance)+ &
                                        constitutive_phenopowerlaw_totalNtwin(myInstance)) = &
   constitutive_phenopowerlaw_aTolTwinFrac(myInstance)
+constitutive_phenopowerlaw_aTolState(3+constitutive_phenopowerlaw_totalNslip(myInstance)+ &
+                                       constitutive_phenopowerlaw_totalNtwin(myInstance): &
+                                     2+2*(constitutive_phenopowerlaw_totalNslip(myInstance)+ &
+                                          constitutive_phenopowerlaw_totalNtwin(myInstance))) = &
+  constitutive_phenopowerlaw_aTolShear(myInstance)
 
 end function constitutive_phenopowerlaw_aTolState
 
@@ -765,7 +774,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
    ipc, &                                                                                           !< component-ID at current integration point
    ip, &                                                                                            !< current integration point
    el                                                                                               !< current element
- integer(pInt) matID,nSlip,nTwin,f,i,j,k,structID,index_Gamma,index_F,index_myFamily 
+ integer(pInt) matID,nSlip,nTwin,f,i,j,k,structID, &
+               index_Gamma,index_F,index_accshear_slip,index_accshear_twin,index_myFamily 
  real(pReal) Temperature,c_SlipSlip,c_SlipTwin,c_TwinSlip,c_TwinTwin, ssat_offset
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
  real(pReal), dimension(6), intent(in) :: Tstar_v                                                   !< 2nd Piola Kirchhoff stress tensor (Mandel)
@@ -784,6 +794,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 
  index_Gamma = nSlip + nTwin + 1_pInt
  index_F     = nSlip + nTwin + 2_pInt
+ index_accshear_slip = nSlip + nTwin + 3_pInt
+ index_accshear_twin = nSlip + nTwin + 3_pInt + nSlip
 
  constitutive_phenopowerlaw_dotState = 0.0_pReal
  
@@ -867,6 +879,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
                    right_SlipTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
      constitutive_phenopowerlaw_dotState(index_Gamma) = constitutive_phenopowerlaw_dotState(index_Gamma) + &
                                                         abs(gdot_slip(j))
+     constitutive_phenopowerlaw_dotState(index_accshear_slip+j) = abs(gdot_slip(j))
    enddo
  enddo
  
@@ -884,6 +897,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
                    right_TwinTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
      constitutive_phenopowerlaw_dotState(index_F) = constitutive_phenopowerlaw_dotState(index_F) + &
                                                     gdot_twin(j)/lattice_shearTwin(index_myFamily+i,structID)
+     constitutive_phenopowerlaw_dotState(index_accshear_twin+j) = abs(gdot_twin(j))
    enddo
  enddo
 
@@ -966,7 +980,8 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
    Temperature
  real(pReal), dimension(6), intent(in) :: Tstar_v                                                   ! 2nd Piola Kirchhoff stress tensor (Mandel)
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
- integer(pInt) matID,o,f,i,c,nSlip,nTwin,j,k,structID,index_Gamma,index_F,index_myFamily 
+ integer(pInt) matID,o,f,i,c,nSlip,nTwin,j,k,structID, &
+               index_Gamma,index_F,index_accshear_slip,index_accshear_twin,index_myFamily 
  real(pReal) tau_slip_pos,tau_slip_neg,tau
  real(pReal), dimension(constitutive_phenopowerlaw_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_phenopowerlaw_postResults
@@ -979,6 +994,8 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
 
  index_Gamma = nSlip + nTwin + 1_pInt
  index_F     = nSlip + nTwin + 2_pInt
+ index_accshear_slip = nSlip + nTwin + 3_pInt
+ index_accshear_twin = nSlip + nTwin + 3_pInt + nSlip
 
  constitutive_phenopowerlaw_postResults = 0.0_pReal
  c = 0_pInt
@@ -987,6 +1004,11 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
    select case(constitutive_phenopowerlaw_output(o,matID))
      case ('resistance_slip')
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(ipc,ip,el)%p(1:nSlip)
+       c = c + nSlip
+
+     case ('accumulatedshear_slip')
+       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(ipc,ip,el)%p(index_accshear_slip:&
+                                                                                     index_accshear_slip+nSlip)
        c = c + nSlip
 
      case ('shearrate_slip')
@@ -1026,6 +1048,11 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,Temperature,dt,stat
 
      case ('resistance_twin')
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = state(ipc,ip,el)%p(1_pInt+nSlip:nTwin+nSlip)
+       c = c + nTwin
+
+     case ('accumulatedshear_twin')
+       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = state(ipc,ip,el)%p(index_accshear_twin:&
+                                                                                     index_accshear_twin+nTwin)
        c = c + nTwin
 
      case ('shearrate_twin')
