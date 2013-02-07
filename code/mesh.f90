@@ -3315,8 +3315,9 @@ subroutine mesh_abaqus_build_elements(myUnit)
        if (e /= 0_pInt) then                                                                       ! disregard non CP elems
          mesh_element(1,e) = IO_intValue(line,myPos,1_pInt)                                        ! FE id
          mesh_element(2,e) = t                                                                     ! elem type
-         forall (j=1_pInt:FE_Nnodes(FE_geomtype(t))) &
+         do j=1_pInt,FE_Nnodes(FE_geomtype(t)))
            mesh_element(4_pInt+j,e) = IO_intValue(line,myPos,1_pInt+j)                             ! copy FE ids of nodes to position 5:
+         enddo
          call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1_pInt)-1_pInt))                    ! read on (even multiple lines) if FE_NoriginalNodes exceeds required node count
        endif
      enddo
