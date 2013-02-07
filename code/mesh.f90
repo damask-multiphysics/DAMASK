@@ -2524,7 +2524,9 @@ use numerics, only: numerics_unitlength
      do i=1_pInt,mesh_Nnodes
        read (myUnit,610,END=670) line
        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1_pInt))
-       forall (j = 1_pInt:3_pInt) mesh_node0(j,m) = numerics_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
+       do j = 1_pInt,3_pInt
+         mesh_node0(j,m) = numerics_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
+       enddo
      enddo
      exit
    endif
@@ -2631,8 +2633,9 @@ subroutine mesh_marc_build_elements(myUnit)
          t = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))                                      ! elem type
          mesh_element(2,e) = t
          mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                        ! FE id
-           forall (j = 1_pInt:FE_Nnodes(FE_geomtype(t))) &
+           do j = 1_pInt,FE_Nnodes(FE_geomtype(t))
              mesh_element(j+4_pInt,e) = IO_IntValue(line,myPos,j+2_pInt)                            ! copy FE ids of nodes
+           enddo  
            call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1_pInt)-2_pInt))                   ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
