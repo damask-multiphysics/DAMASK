@@ -453,7 +453,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        constitutive_phenopowerlaw_sizePostResults(i) = &
        constitutive_phenopowerlaw_sizePostResults(i) + mySize
      endif
-   enddo
+   enddo    ! outputs
 
    constitutive_phenopowerlaw_sizeDotState(i) = constitutive_phenopowerlaw_totalNslip(i)+ &
                                                 constitutive_phenopowerlaw_totalNtwin(i)+ &
@@ -775,7 +775,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
    ip, &                                                                                            !< current integration point
    el                                                                                               !< current element
  integer(pInt) matID,nSlip,nTwin,f,i,j,k,structID, &
-               index_Gamma,index_F,index_accshear_slip,index_accshear_twin,index_myFamily 
+               index_Gamma,index_F,offset_accshear_slip,offset_accshear_twin,index_myFamily 
  real(pReal) Temperature,c_SlipSlip,c_SlipTwin,c_TwinSlip,c_TwinTwin, ssat_offset
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
  real(pReal), dimension(6), intent(in) :: Tstar_v                                                   !< 2nd Piola Kirchhoff stress tensor (Mandel)
@@ -794,8 +794,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
 
  index_Gamma = nSlip + nTwin + 1_pInt
  index_F     = nSlip + nTwin + 2_pInt
- index_accshear_slip = nSlip + nTwin + 3_pInt
- index_accshear_twin = nSlip + nTwin + 3_pInt + nSlip
+ offset_accshear_slip = nSlip + nTwin + 2_pInt
+ offset_accshear_twin = nSlip + nTwin + 2_pInt + nSlip
 
  constitutive_phenopowerlaw_dotState = 0.0_pReal
  
@@ -879,7 +879,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
                    right_SlipTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
      constitutive_phenopowerlaw_dotState(index_Gamma) = constitutive_phenopowerlaw_dotState(index_Gamma) + &
                                                         abs(gdot_slip(j))
-     constitutive_phenopowerlaw_dotState(index_accshear_slip+j) = abs(gdot_slip(j))
+     constitutive_phenopowerlaw_dotState(offset_accshear_slip+j) = abs(gdot_slip(j))
    enddo
  enddo
  
@@ -897,7 +897,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,Temperature,state,ipc,ip,el
                    right_TwinTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
      constitutive_phenopowerlaw_dotState(index_F) = constitutive_phenopowerlaw_dotState(index_F) + &
                                                     gdot_twin(j)/lattice_shearTwin(index_myFamily+i,structID)
-     constitutive_phenopowerlaw_dotState(index_accshear_twin+j) = abs(gdot_twin(j))
+     constitutive_phenopowerlaw_dotState(offset_accshear_twin+j) = abs(gdot_twin(j))
    enddo
  enddo
 
