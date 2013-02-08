@@ -471,7 +471,7 @@ subroutine numerics_init
  if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (divergence_correction < 0_pInt .or. &
-     divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
+     divergence_correction > 3_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
  if (maxCutBack <= 1.0_pInt)               call IO_error(301_pInt,ext_msg='maxCutBack')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
