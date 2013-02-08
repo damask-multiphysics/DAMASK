@@ -45,7 +45,7 @@ baseDir = damaskEnv.relPath('code/')
 
 # compiling spectral code
 if (options.spectralCompile):
-  print 'base directory', baseDir
+  print 'base directory:', baseDir
   os.system('make --directory %s clean'%(baseDir))
-  print options.makeOptions
+  print 'make options:',' '.join(options.makeOptions)
   os.system('make --directory %s %s'%(baseDir,' '.join(options.makeOptions)))
