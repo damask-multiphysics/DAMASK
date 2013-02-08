@@ -85,6 +85,25 @@ PORTABLE_SWITCH =-msse3
 endif
 
 
+ifdef ACMLROOT
+LIB_DIRS  +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
+LIBRARIES +=-lacml$(ACML_ARCH)
+else
+ifdef LAPACKROOT
+LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
+LIBRARIES +=-llapack
+endif
+endif
+
+COMPILE_OPTIONS_ifort :=
+ifeq "$(F90)" "ifort"
+ifdef IMKLROOT
+COMPILE_OPTIONS_ifort +=-I$(IMKLROOT)/include -mkl=sequential
+LIBRARIES :=
+LIB_DIRS  :=
+endif
+endif
+
 # settings for multicore support
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
@@ -96,20 +115,6 @@ endif
 LIBRARIES +=-lfftw3
 LIB_DIRS  +=-L$(FFTWROOT)/lib
 
-ifdef IMKLROOT
-LIB_DIRS  +=-L$(IMKLROOT)/lib/intel64
-LIBRARIES +=-mkl
-else
-ifdef ACMLROOT
-LIB_DIRS  +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
-LIBRARIES +=-lacml$(ACML_ARCH)
-else
-ifdef LAPACKROOT
-LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
-LIBRARIES +=-llapack
-endif
-endif
-endif
 
 ifdef PETSC_DIR
 include ${PETSC_DIR}/conf/variables
@@ -137,11 +142,11 @@ OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
-COMPILE_OPTIONS_ifort    :=-fpp\
+COMPILE_OPTIONS_ifort    +=-fpp\
                            -ftz\
                            -assume byterecl
 ifneq "$(FASTBUILD)" "YES"
-COMPILE_OPTIONS_ifort    :=$(COMPILE_OPTIONS_ifort)\
+COMPILE_OPTIONS_ifort    +=$(COMPILE_OPTIONS_ifort)\
                            -implicitnone\
                            -diag-enable sc3\
                            -diag-disable 5268\
@@ -154,7 +159,8 @@ COMPILE_OPTIONS_ifort    :=$(COMPILE_OPTIONS_ifort)\
                            -warn unused\
                            -warn errors
 endif
-
+###################################################################################################
+#COMPILE SWITCHES
 #-fpp:                     preprocessor
 #-ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
 #-fimplicit-none:          assume "implicit-none" even if not present in source
@@ -172,32 +178,41 @@ endif
 #   stderrors:               warnings about Fortran standard violations are changed to errors (STANDARD_CHECK)
 #
 ###################################################################################################
-#MORE OPTIONS FOR DEBUGGING DURING COMPILING
+#MORE OPTIONS FOR DEBUGGING DURING COMPILATION
 #-warn:                    enables warnings, where
 #   truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files. (too many warnings because we have comments beyond character 132)
 #   uncalled:                Determines whether warnings occur when a statement function is never called
 #   all:
-#
-#OPTIONS FOR DEGUBBING DURING RUNTIME
-# information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
+
+DEBUG_OPTIONS_ifort      :=-g\
+                           -traceback\
+                           -gen-interfaces\
+                           -fp-stack-check\
+                           -check bounds,format,output_conversion,pointers,uninit
+###################################################################################################
+#COMPILE SWITCHES FOR RUNTIME DEBUGGING
 #-g:                       Generate symbolic debugging information in the object file
 #-traceback:               Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
 #-gen-interfaces:          Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/  
 #-fp-stack-check:          Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
 #-check:                   checks at runtime, where  
 #   bounds:                  check if an array index is too small (<1) or too large!
-#   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays
 #   format:                  Checking for the data type of an item being formatted for output.
 #   output_conversion:       Checking for the fit of data items within a designated format descriptor field.
 #   pointers:                Checking for certain disassociated or uninitialized pointers or unallocated allocatable objects.
 #   uninit:                  Checking for uninitialized variables.
-#-heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
 #-fpe-all0                capture all floating-point exceptions, sets -ftz automatically
+# information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
 ###################################################################################################
+#MORE OPTIONS FOR RUNTIME DEBUGGING
+#-heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
+#-check:                   checks at runtime, where  
+#   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
+
 
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
-COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
+COMPILE_OPTIONS_gfortran +=$(COMPILE_OPTIONS_gfortran)\
                            -ffree-line-length-132\
                            -fimplicit-none\
                            -pedantic\
@@ -223,7 +238,8 @@ COMPILE_OPTIONS_gfortran :=$(COMPILE_OPTIONS_gfortran)\
                            -Wreal-q-constant\
                            -pedantic-errors
 endif
-
+###################################################################################################
+#COMPILE SWITCHES
 #-xf95-cpp-input:              preprocessor
 #-ffree-line-length-132:       restrict line length to the standard 132 characters
 #-fno-range-check:             disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
@@ -249,24 +265,36 @@ endif
 #-Wsuggest-attribute=const:
 #-Wsuggest-attribute=noreturn:
 #-Wsuggest-attribute=pure: 
-#-pedantic-errors:
 #-Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
+#-pedantic-errors:
 ###################################################################################################
-#MORE OPTIONS FOR DEBUGGING DURING COMPILING                      
+#MORE OPTIONS FOR RUNTIME DEBUGGING                    
 #-Wline-truncation:           too many warnings because we have comments beyond character 132
 #-Warray-temporarieswarnings: because we have many temporary arrays (performance issue?):                     
 #-Wimplicit-interface:
 #-fmodule-private:
-#
-#OPTIONS FOR DEGUBBING DURING RUNTIME
-#-fcheck-bounds:              check if an array index is too small (<1) or too large!
+
+DEBUG_OPTIONS_gfortran    :=-g\
+                           -fbacktrace\
+                           -fbounds-check\
+                           -ffpe-trap=invalid,zero,overflow
+###################################################################################################
+#COMPILE SWITCHES FOR RUNTIME DEBUGGING
+#-fbounds-check:              check if an array index is too small (<1) or too large!
 #-ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
 #           zero,\
 #           overflow,\
-#           underflow,\
-#           precision,\
-#           denormal
-##################################################################################################
+#           underflow
+###################################################################################################
+#COMPILE SWITCHES FOR RUNTIME DEBUGGING
+#-fbounds-check:              check if an array index is too small (<1) or too large!
+#-ffpe-trap=precision,\
+#           denormal, \
+#           underflow
+
+ifeq "$(DEBUG)" "ON"
+COMPILE_OPTIONS_$(F90) :=$(COMPILE_OPTIONS_$(F90)) $(DEBUG_OPTIONS_$(F90))
+endif
 
 PRECISION_ifort :=-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4
 #-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
