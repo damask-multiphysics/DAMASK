@@ -426,11 +426,10 @@ subroutine mesh_init(ip,el)
  implicit none
  integer(pInt), parameter :: fileUnit = 222_pInt
  integer(pInt), intent(in) :: el, ip
- integer(pInt) :: e
+ integer(pInt) :: j
  
- write(6,*)
- write(6,*) '<<<+-  mesh init  -+>>>'
- write(6,*) '$Id$'
+ write(6,'(/,a)') ' <<<+-  mesh init  -+>>>'
+ write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
 
  if (allocated(mesh_mapFEtoCPelem))  deallocate(mesh_mapFEtoCPelem)
@@ -463,12 +462,17 @@ subroutine mesh_init(ip,el)
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and reso-
 ! lution-independent divergence
  if (divergence_correction == 1_pInt) then
-   do e = 1_pInt, 3_pInt
-    if (e /= minloc(geomdim,1) .and. e /= maxloc(geomdim,1)) scaledDim = geomdim/geomdim(e)
+   do j = 1_pInt, 3_pInt
+    if (j /= minloc(geomdim,1) .and. j /= maxloc(geomdim,1)) scaledDim = geomdim/geomdim(j)
    enddo
  elseif (divergence_correction == 2_pInt) then
-   do e = 1_pInt, 3_pInt
-    if (e /= minloc(geomdim/res,1) .and. e /= maxloc(geomdim/res,1)) scaledDim = geomdim/geomdim(e)*res(e)
+   do j = 1_pInt, 3_pInt
+    if (j /= minloc(geomdim/res,1) .and. j /= maxloc(geomdim/res,1)) scaledDim = geomdim/geomdim(j)*res(j)
+   enddo
+ elseif (divergence_correction == 3_pInt) then
+   do j = 1_pInt, 3_pInt
+    if (j/=minloc(geomdim/sqrt(real(res,pReal)),1) .and. j/=maxloc(geomdim/sqrt(real(res,pReal)),1))&
+      scaledDim=geomdim/geomdim(j)*sqrt(real(res(j),pReal))
    enddo
  else
    scaledDim = geomdim
@@ -530,7 +534,7 @@ subroutine mesh_init(ip,el)
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
  allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt
- forall (e = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,e) = FE_Nips(FE_geomtype(mesh_element(2,e)))
+ forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))
  
  if (allocated(calcMode)) deallocate(calcMode)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
@@ -809,7 +813,7 @@ function mesh_spectral_getResolution(fileUnit)
 
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,7_pInt)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
@@ -819,7 +823,7 @@ function mesh_spectral_getResolution(fileUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
-   select case ( IO_lc(IO_StringValue(line,positions,1_pInt)) )
+   select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
      case ('resolution')
        gotResolution = .true.
        do j = 2_pInt,6_pInt,2_pInt
@@ -890,7 +894,7 @@ function mesh_spectral_getDimension(fileUnit)
 
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,7_pInt)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
@@ -900,7 +904,7 @@ function mesh_spectral_getDimension(fileUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
-   select case ( IO_lc(IO_StringValue(line,positions,1)) )
+   select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
      case ('dimension')
        gotDimension = .true.
        do j = 2_pInt,6_pInt,2_pInt
@@ -964,7 +968,7 @@ function mesh_spectral_getHomogenization(fileUnit)
 
  read(myUnit,'(a1024)') line
  positions = IO_stringPos(line,7_pInt)
- keyword = IO_lc(IO_StringValue(line,positions,2_pInt))
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
@@ -974,7 +978,7 @@ function mesh_spectral_getHomogenization(fileUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
-   select case ( IO_lc(IO_StringValue(line,positions,1)) )
+   select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
      case ('homogenization')
        gotHomogenization = .true.
        mesh_spectral_getHomogenization = IO_intValue(line,positions,2_pInt)
@@ -989,6 +993,8 @@ function mesh_spectral_getHomogenization(fileUnit)
    call IO_error(error_ID = 842_pInt, ext_msg='mesh_spectral_getHomogenization')
    
 end function mesh_spectral_getHomogenization
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Count overall number of nodes and elements in mesh and stores them in
 !! 'mesh_Nelems' and 'mesh_Nnodes'
@@ -1129,7 +1135,7 @@ subroutine mesh_spectral_build_elements(myUnit)
 
  read(myUnit,'(a65536)') line
  myPos = IO_stringPos(line,7_pInt)
- keyword = IO_lc(IO_StringValue(line,myPos,2_pInt))
+ keyword = IO_lc(IO_StringValue(line,myPos,2_pInt,.true.))
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,myPos,1_pInt) + 1_pInt
  else
@@ -1735,7 +1741,7 @@ function mesh_deformedCoordsLinear(gDim,F,FavgIn) result(coords)
  real(pReal),               dimension(3,0:size(F,3)-1,0:size(F,4)-1,0:size(F,5)-1,0:7) :: &
    coordsAvgOrder
  integer(pInt), parameter,  dimension(3) ::  &
-   iOnes = 1.0_pReal
+   iOnes = 1_pInt
  real(pReal),   parameter,  dimension(3) ::  &
    fOnes = 1.0_pReal
  real(pReal),               dimension(3) ::  &

@@ -96,10 +96,10 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! fcc (1)
 
- integer(pInt), dimension(lattice_maxNslipFamily), parameter, private :: & 
+ integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: & 
    lattice_fcc_NslipSystem = int([12, 0, 0, 0, 0],pInt)
    
- integer(pInt), dimension(lattice_maxNtwinFamily), parameter, private :: &
+ integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
    lattice_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)
    
  integer(pInt), parameter, private  :: &
@@ -157,7 +157,7 @@ module lattice
      0.7071067812_pReal  &
      ],[lattice_fcc_Ntwin])                                                                         !< Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
 
- integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Nslip), target, private :: &
+ integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Nslip), target, public :: &
    lattice_fcc_interactionSlipSlip = reshape(int( [&
      1,2,2,4,6,5,3,5,5,4,5,6, &  ! ---> slip
      2,1,2,6,4,5,5,4,6,5,3,5, &  ! |
@@ -180,7 +180,7 @@ module lattice
     !< 5 --- glissile junctions
     !< 6 --- Lomer locks
     
- integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin), target, private :: &
+ integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin), target, public :: &
    lattice_fcc_interactionSlipTwin = reshape(int( [&
      1,1,1,3,3,3,2,2,2,3,3,3, & ! ---> twin
      1,1,1,3,3,3,3,3,3,2,2,2, & ! |
@@ -200,10 +200,10 @@ module lattice
     !< 2 --- screw trace between slip system and twin habit plane (easy cross slip)
     !< 3 --- other interaction
 
- integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip), target, private :: &
+ integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip), target, public :: &
    lattice_fcc_interactionTwinSlip = 0_pInt
 
- integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Ntwin), target, private :: &
+ integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Ntwin), target, public :: &
    lattice_fcc_interactionTwinTwin = reshape(int( [&
      1,1,1,2,2,2,2,2,2,2,2,2, &  ! ---> twin
      1,1,1,2,2,2,2,2,2,2,2,2, &  ! |
@@ -230,10 +230,10 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! bcc (2)
 
- integer(pInt), dimension(lattice_maxNslipFamily), parameter, private :: &
+ integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: &
    lattice_bcc_NslipSystem = int([ 12, 12, 0, 0, 0], pInt)
    
- integer(pInt), dimension(lattice_maxNtwinFamily), parameter, private :: &
+ integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
    lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)
    
  integer(pInt), parameter, private :: &
@@ -334,7 +334,7 @@ module lattice
      ],[lattice_bcc_Ntwin])
 
 ! slip--slip interactions for BCC structures (2)   from Lee et al. Int J Plast 15 (1999) 625-645
- integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Nslip), target, private :: &
+ integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Nslip), target, public :: &
    lattice_bcc_interactionSlipSlip = reshape(int( [&
      1,3,6,6,5,4,4,2,4,2,5,4, 6,6,4,2,2,4,6,6,4,2,6,6, &  ! ---> slip  
      3,1,6,6,4,2,5,4,5,4,4,2, 6,6,2,4,4,2,6,6,2,4,6,6, &  ! |
@@ -370,7 +370,7 @@ module lattice
     !< 5 --- weak sessile interaction
     !< 6 --- strong sessile interaction
  
- integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Ntwin), target, private :: &
+ integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Ntwin), target, public :: &
   lattice_bcc_interactionSlipTwin = reshape(int( [&
      3,3,3,2,2,3,3,3,3,2,3,3, &  ! ---> twin
      3,3,2,3,3,2,3,3,2,3,3,3, &  ! |
@@ -404,11 +404,11 @@ module lattice
     !< 3 --- other interaction
 
 ! twin--slip interactions for BCC structures (2) MISSING: not implemented yet
- integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), target, private :: &
+ integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), target, public :: &
    lattice_bcc_interactionTwinSlip = 0_pInt
 
 ! twin--twin interactions for BCC structures (2)
- integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin), target, private :: &
+ integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin), target, public :: &
    lattice_bcc_interactionTwinTwin = reshape(int( [&
      1,3,3,3,3,3,3,2,3,3,2,3, &  ! ---> twin
      3,1,3,3,3,3,2,3,3,3,3,2, &  ! |
@@ -438,10 +438,10 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! hex (3+)
 
- integer(pInt), dimension(lattice_maxNslipFamily), parameter, private :: &
+ integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: &
    lattice_hex_NslipSystem = int([ 3, 3, 6, 12, 6],pInt)
    
- integer(pInt), dimension(lattice_maxNtwinFamily), parameter, private :: &
+ integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)
    
  integer(pInt), parameter , private :: &
@@ -555,7 +555,7 @@ module lattice
  !* 3. twin-twin interaction - 20 types
  !* 4. twin-slip interaction - 16 types
    
- integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Nslip), target, private :: &
+ integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Nslip), target, public :: &
    lattice_hex_interactionSlipSlip = reshape(int( [&
       1, 6, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &  ! ---> slip
       6, 1, 6,  11,11,11,  15,15,15,15,15,15,  18,18,18,18,18,18,18,18,18,18,18,18,  20,20,20,20,20,20,  &  ! |
@@ -594,7 +594,7 @@ module lattice
      ],pInt),[lattice_hex_Nslip,lattice_hex_Nslip],order=[2,1])
   
 !* isotropic interaction at the moment
- integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Ntwin), target, private :: &
+ integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Ntwin), target, public :: &
    lattice_hex_interactionSlipTwin = reshape(int( [&
       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! --> twin
       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! |
@@ -633,7 +633,7 @@ module lattice
      ],pInt),[lattice_hex_Nslip,lattice_hex_Ntwin],order=[2,1])
 
  !* isotropic interaction at the moment
- integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Nslip), target, private :: &
+ integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Nslip), target, public :: &
    lattice_hex_interactionTwinSlip = reshape(int( [&
       1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! --> slip
       1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! |
@@ -665,7 +665,7 @@ module lattice
      ],pInt),[lattice_hex_Ntwin,lattice_hex_Nslip],order=[2,1])
 
 
- integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Ntwin), target, private :: &
+ integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Ntwin), target, public :: &
    lattice_hex_interactionTwinTwin = reshape(int( [&
       1, 5, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &  ! ---> twin
       5, 1, 5, 5, 5, 5,   9, 9, 9, 9, 9, 9,  12,12,12,12,12,12,  14,14,14,14,14,14, &  ! |

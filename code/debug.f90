@@ -144,12 +144,9 @@ subroutine debug_init
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=64)                        :: tag
  character(len=1024)                      :: line
- !$OMP CRITICAL (write2out)
-   write(6,*)
-   write(6,*) '<<<+-  debug init  -+>>>'
-   write(6,*) '$Id$'
+ write(6,'(/,a)') ' <<<+-  debug init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
- !$OMP END CRITICAL (write2out)
  
  if (allocated(debug_StressLoopDistribution)) &
     deallocate(debug_StressLoopDistribution)
@@ -223,7 +220,7 @@ subroutine debug_init
          what = debug_maxNtype + 2_pInt
      end select
      if(what /= 0) then
-       do i = 2_pInt, maxNchunks
+       do i = 2_pInt, positions(1)
          select case(IO_lc(IO_stringValue(line,positions,i)))
            case('basic')
              debug_level(what) = ior(debug_level(what), debug_levelBasic)
@@ -254,21 +251,14 @@ subroutine debug_init
        debug_level(i) = ior(debug_level(i), debug_level(debug_maxNtype + 1_pInt))                         ! fill all debug types with levels specified by "all" 
    enddo
   
-   if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) then
-     !$OMP CRITICAL (write2out)
-       write(6,*) 'using values from config file'
-       write(6,*)
-     !$OMP END CRITICAL (write2out)
-   endif
+   if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) &
+     write(6,'(a,/)') ' using values from config file'
+
 
  ! no config file, so we use standard values
  else 
-   if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) then
-     !$OMP CRITICAL (write2out)
-       write(6,*) 'using standard values'
-       write(6,*)
-     !$OMP END CRITICAL (write2out)
-   endif
+   if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) &
+     write(6,'(a,/)')  ' using standard values'
  endif
 
  !output switched on (debug level for debug must be extensive)
@@ -302,7 +292,6 @@ subroutine debug_init
        end select
            
        if(debug_level(i) /= 0) then
-   !$OMP CRITICAL (write2out)
          write(6,'(a,a)') tag,' debugging:'
          if(iand(debug_level(i),debug_levelBasic)        /= 0) write(6,'(a)') ' basic'
          if(iand(debug_level(i),debug_levelExtensive)    /= 0) write(6,'(a)') ' extensive'
@@ -317,7 +306,6 @@ subroutine debug_init
          if(iand(debug_level(i),debug_spectralDivergence)/= 0) write(6,'(a)') ' divergence'
          if(iand(debug_level(i),debug_spectralRotation)  /= 0) write(6,'(a)') ' rotation'
          if(iand(debug_level(i),debug_spectralPETSc)     /= 0) write(6,'(a)') ' PETSc'
-   !$OMP END CRITICAL (write2out)
        endif
      enddo
  endif

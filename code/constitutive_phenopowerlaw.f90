@@ -125,20 +125,15 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  use debug,   only: debug_level,&
                     debug_constitutive,&
                     debug_levelBasic
- use lattice, only: lattice_initializeStructure, lattice_symmetrizeC66, &
-                    lattice_maxNslipFamily, lattice_maxNtwinFamily, &
-                    lattice_maxNinteraction, lattice_NslipSystem, lattice_NtwinSystem, &
-                    lattice_maxNonSchmid, &
-                    lattice_interactionSlipSlip, &
-                    lattice_interactionSlipTwin, &
-                    lattice_interactionTwinSlip, &
-                    lattice_interactionTwinTwin
+ use lattice
 
  implicit none
  integer(pInt), intent(in) :: myFile
  integer(pInt), parameter :: maxNchunks = lattice_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt) section, maxNinstance, i,j,k, f,o, &
+               Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
+               Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
                mySize, myStructure, index_myFamily, index_otherFamily
  character(len=64)   :: tag
  character(len=1024) :: line = ''                                                                   ! to start initialized
@@ -151,6 +146,13 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  maxNinstance = int(count(phase_plasticity == constitutive_phenopowerlaw_label),pInt)
  if (maxNinstance == 0) return
 
+ Nchunks_SlipSlip = lattice_maxNinteraction
+ Nchunks_SlipTwin = lattice_maxNinteraction
+ Nchunks_TwinSlip = lattice_maxNinteraction
+ Nchunks_TwinTwin = lattice_maxNinteraction
+ Nchunks_SlipFamilies = lattice_maxNslipFamily
+ Nchunks_TwinFamilies = lattice_maxNtwinFamily
+ 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
    write(6,'(a16,1x,i5)') '# instances:',maxNinstance
    write(6,*)
@@ -262,6 +264,29 @@ subroutine constitutive_phenopowerlaw_init(myFile)
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('lattice_structure')
          constitutive_phenopowerlaw_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         select case (constitutive_phenopowerlaw_structureName(i))
+           case ('fcc')
+             Nchunks_SlipSlip = maxval(lattice_fcc_interactionSlipSlip)
+             Nchunks_SlipTwin = maxval(lattice_fcc_interactionSlipTwin)
+             Nchunks_TwinSlip = maxval(lattice_fcc_interactionTwinSlip)
+             Nchunks_TwinTwin = maxval(lattice_fcc_interactionTwinTwin)
+             Nchunks_SlipFamilies = count(lattice_fcc_NslipSystem > 0_pInt)
+             Nchunks_TwinFamilies = count(lattice_fcc_NtwinSystem > 0_pInt)
+           case ('bcc')
+             Nchunks_SlipSlip = maxval(lattice_bcc_interactionSlipSlip)
+             Nchunks_SlipTwin = maxval(lattice_bcc_interactionSlipTwin)
+             Nchunks_TwinSlip = maxval(lattice_bcc_interactionTwinSlip)
+             Nchunks_TwinTwin = maxval(lattice_bcc_interactionTwinTwin)
+             Nchunks_SlipFamilies = count(lattice_bcc_NslipSystem > 0_pInt)
+             Nchunks_TwinFamilies = count(lattice_bcc_NtwinSystem > 0_pInt)
+           case ('hex')
+             Nchunks_SlipSlip = maxval(lattice_hex_interactionSlipSlip)
+             Nchunks_SlipTwin = maxval(lattice_hex_interactionSlipTwin)
+             Nchunks_TwinSlip = maxval(lattice_hex_interactionTwinSlip)
+             Nchunks_TwinTwin = maxval(lattice_hex_interactionTwinTwin)
+             Nchunks_SlipFamilies = count(lattice_hex_NslipSystem > 0_pInt)
+             Nchunks_TwinFamilies = count(lattice_hex_NtwinSystem > 0_pInt)
+         end select
        case ('covera_ratio')
          constitutive_phenopowerlaw_CoverA(i) = IO_floatValue(line,positions,2_pInt)
        case ('c11')
@@ -283,7 +308,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        case ('c66')
          constitutive_phenopowerlaw_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case ('nslip')
-         do j = 1_pInt, lattice_maxNslipFamily
+         do j = 1_pInt, Nchunks_SlipFamilies
             constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
           enddo
        case ('gdot0_slip')
@@ -291,17 +316,17 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        case ('n_slip')
          constitutive_phenopowerlaw_n_slip(i) = IO_floatValue(line,positions,2_pInt)
        case ('tau0_slip')
-         do j = 1_pInt, lattice_maxNslipFamily
+         do j = 1_pInt, Nchunks_SlipFamilies
            constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('tausat_slip')
-         do j = 1_pInt, lattice_maxNslipFamily
+         do j = 1_pInt, Nchunks_SlipFamilies
            constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('a_slip', 'w0_slip')
          constitutive_phenopowerlaw_a_slip(i) = IO_floatValue(line,positions,2_pInt)
        case ('ntwin')
-         do j = 1_pInt, lattice_maxNtwinFamily
+         do j = 1_pInt, Nchunks_TwinFamilies
            constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
          enddo
        case ('gdot0_twin')
@@ -309,7 +334,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        case ('n_twin')
          constitutive_phenopowerlaw_n_twin(i) = IO_floatValue(line,positions,2_pInt)
        case ('tau0_twin')
-         do j = 1_pInt, lattice_maxNtwinFamily
+         do j = 1_pInt, Nchunks_TwinFamilies
            constitutive_phenopowerlaw_tau0_twin(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('s_pr')
@@ -338,19 +363,19 @@ subroutine constitutive_phenopowerlaw_init(myFile)
        case ('atol_twinfrac')
          constitutive_phenopowerlaw_aTolTwinfrac(i)   = IO_floatValue(line,positions,2_pInt)
        case ('interaction_slipslip')
-         do j = 1_pInt, lattice_maxNinteraction
+         do j = 1_pInt, Nchunks_SlipSlip
            constitutive_phenopowerlaw_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('interaction_sliptwin')
-         do j = 1_pInt, lattice_maxNinteraction
+         do j = 1_pInt, Nchunks_SlipTwin
            constitutive_phenopowerlaw_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('interaction_twinslip')
-         do j = 1_pInt, lattice_maxNinteraction
+         do j = 1_pInt, Nchunks_TwinSlip
            constitutive_phenopowerlaw_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('interaction_twintwin')
-         do j = 1_pInt, lattice_maxNinteraction
+         do j = 1_pInt, Nchunks_TwinTwin
            constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('nonschmid_coefficients')
