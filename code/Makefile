@@ -99,8 +99,8 @@ COMPILE_OPTIONS_ifort :=
 ifeq "$(F90)" "ifort"
 ifdef IMKLROOT
 COMPILE_OPTIONS_ifort +=-I$(IMKLROOT)/include -mkl=sequential
-LIBRARIES :=
-LIB_DIRS  :=
+LIBRARIES :=-lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lm
+LIB_DIRS  :=-L$(IMKLROOT)/lib/intel64
 endif
 endif
 
