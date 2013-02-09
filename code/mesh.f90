@@ -3192,7 +3192,9 @@ use numerics, only: numerics_unitlength
        read (myUnit,610,END=670) line
        myPos = IO_stringPos(line,maxNchunks)
        m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
-       forall (j=1_pInt:3_pInt) mesh_node0(j,m) = numerics_unitlength * IO_floatValue(line,myPos,j+1_pInt)
+       do j=1_pInt, 3_pInt
+         mesh_node0(j,m) = numerics_unitlength * IO_floatValue(line,myPos,j+1_pInt)
+       enddo  
      enddo
    endif
  enddo
@@ -3321,7 +3323,7 @@ subroutine mesh_abaqus_build_elements(myUnit)
        if (e /= 0_pInt) then                                                                       ! disregard non CP elems
          mesh_element(1,e) = IO_intValue(line,myPos,1_pInt)                                        ! FE id
          mesh_element(2,e) = t                                                                     ! elem type
-         do j=1_pInt,FE_Nnodes(FE_geomtype(t)))
+         do j=1_pInt,FE_Nnodes(FE_geomtype(t))
            mesh_element(4_pInt+j,e) = IO_intValue(line,myPos,1_pInt+j)                             ! copy FE ids of nodes to position 5:
          enddo
          call IO_skipChunks(myUnit,FE_NoriginalNodes(t)-(myPos(1_pInt)-1_pInt))                    ! read on (even multiple lines) if FE_NoriginalNodes exceeds required node count
