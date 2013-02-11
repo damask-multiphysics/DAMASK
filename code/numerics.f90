@@ -16,11 +16,14 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!##############################################################
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Managing of parameters related to numerics
+!--------------------------------------------------------------------------------------------------
 module numerics
-!##############################################################
  use prec, only: &
    pInt, &
    pReal
@@ -116,11 +119,12 @@ module numerics
   
 contains
 
-!*******************************************
-!    initialization subroutine
-!*******************************************
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads in parameters from numerics.config and sets openMP related parameters. Also does
+! a sanity check
+!--------------------------------------------------------------------------------------------------
 subroutine numerics_init
-  
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
    IO_error, &
@@ -138,7 +142,7 @@ subroutine numerics_init
 #endif  
  implicit none
 #ifdef Marc
-!$ include "omp_lib.h"                                                                              ! use the non F90 standard include file to prevent crashes with some versions of MSC.Marc
+!$ include "omp_lib.h"                                                                              ! use the not F90 standard conforming include file to prevent crashes with some versions of MSC.Marc
 #endif  
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&
                                              maxNchunks = 2_pInt
@@ -148,9 +152,8 @@ subroutine numerics_init
  character(len=1024) ::                      line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
- write(6,*)
- write(6,*) '<<<+-  numerics init  -+>>>'
- write(6,*) '$Id$'
+ write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
@@ -159,20 +162,19 @@ subroutine numerics_init
 !$ if (DAMASK_NumThreadsInt < 1_pInt) DAMASK_NumThreadsInt = 1_pInt                                 ! ...ensure that its at least one...
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
 
-  ! try to open the config file
- if(IO_open_file_stat(fileunit,numerics_configFile)) then 
-
-   write(6,*) '   ... using values from config file'
-   write(6,*)
+!--------------------------------------------------------------------------------------------------
+! try to open the config file
+ fileExists: if(IO_open_file_stat(fileunit,numerics_configFile)) then 
+   write(6,'(a,/)') ' using values from config file'
     
-   !* read variables from config file and overwrite parameters
-   
+!--------------------------------------------------------------------------------------------------
+! read variables from config file and overwrite default parameters if keyword is present
    line = ''
    do
      read(fileunit,'(a1024)',END=100) line
-     if (IO_isBlank(line)) cycle                           ! skip empty lines
+     if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))         ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('relevantstrain')
              relevantStrain = IO_floatValue(line,positions,2_pInt)
@@ -227,8 +229,8 @@ subroutine numerics_init
        case ('unitlength')
              numerics_unitlength = IO_floatValue(line,positions,2_pInt)
 
-       !* RGC parameters: 
-       
+!--------------------------------------------------------------------------------------------------
+! RGC parameters
        case ('atol_rgc')
              absTol_RGC = IO_floatValue(line,positions,2_pInt)
        case ('rtol_rgc')
@@ -255,10 +257,14 @@ subroutine numerics_init
              volDiscrMod_RGC = IO_floatValue(line,positions,2_pInt)
        case ('discrepancypower_rgc')
              volDiscrPow_RGC = IO_floatValue(line,positions,2_pInt)
-       !* Random seeding parameters
+
+!--------------------------------------------------------------------------------------------------
+! random seeding parameters
        case ('fixed_seed')
              fixedSeed = IO_intValue(line,positions,2_pInt)
-       !* spectral parameters
+
+!--------------------------------------------------------------------------------------------------
+! spectral parameters
 #ifdef Spectral
        case ('err_div_tol')
              err_div_tol = IO_floatValue(line,positions,2_pInt)
@@ -299,31 +305,30 @@ subroutine numerics_init
              err_p_tol = IO_floatValue(line,positions,2_pInt)
 #endif 
 #ifndef PETSc
-       case ('myspectralsolver', 'petsc_options','err_f_tol', 'err_p_tol')
+       case ('myspectralsolver', 'petsc_options','err_f_tol', 'err_p_tol')                          ! found PETSc parameter, but compiled without PETSc
              call IO_warning(41_pInt,ext_msg=tag)
 #endif
 #endif
 #ifndef Spectral
-      case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&
+      case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&                                 ! found spectral parameter for FEM build
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode','myspectralsolver', &
             'rotation_tol','divergence_correction','update_gamma','petsc_options','myfilter', &
             'err_f_tol', 'err_p_tol', 'maxcutback')
              call IO_warning(40_pInt,ext_msg=tag)
 #endif
-       case default 
+       case default                                                                                 ! found unknown keyword
              call IO_error(300_pInt,ext_msg=tag)
      endselect
    enddo
    100 close(fileunit)
-  
-  ! no config file, so we use standard values
- else 
-   write(6,*) '   ... using standard values'
-   write(6,*)
- endif
+
+ else fileExists
+   write(6,'(a,/)') ' using standard values'
+ endif fileExists
+
 #ifdef Spectral
- select case(IO_lc(fftw_plan_mode))                                                                ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-    case('estimate','fftw_estimate')                                                               ! ordered from slow execution (but fast plan creation) to fast execution
+ select case(IO_lc(fftw_plan_mode))                                                                 ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+    case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
       fftw_planner_flag = 64_pInt
     case('measure','fftw_measure')
       fftw_planner_flag = 0_pInt
@@ -337,10 +342,10 @@ subroutine numerics_init
  end select
 #endif
 
- numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                ! timeSyncing only allowed for explicit Euler integrator
+ numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                 ! timeSyncing only allowed for explicit Euler integrator
 
- !* writing parameters to output file
-   
+!--------------------------------------------------------------------------------------------------
+! writing parameters to output file
    write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
    write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
    write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
@@ -368,8 +373,8 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
    write(6,'(a24,1x,i8,/)')   ' nMPstate:               ',nMPstate
 
-   !* RGC parameters
-
+!--------------------------------------------------------------------------------------------------
+! RGC parameters
    write(6,'(a24,1x,es8.1)')   ' aTol_RGC:               ',absTol_RGC
    write(6,'(a24,1x,es8.1)')   ' rTol_RGC:               ',relTol_RGC
    write(6,'(a24,1x,es8.1)')   ' aMax_RGC:               ',absMax_RGC
@@ -382,13 +387,17 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
    write(6,'(a24,1x,es8.1)')   ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
    write(6,'(a24,1x,es8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
-   !* Random seeding parameters
-   
+
+!--------------------------------------------------------------------------------------------------
+! Random seeding parameter
    write(6,'(a24,1x,i16,/)')    ' fixed_seed:             ',fixedSeed
-  !* openMP parameter
+
+!--------------------------------------------------------------------------------------------------
+! openMP parameter
   !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
 
-  !* spectral parameters
+!--------------------------------------------------------------------------------------------------
+! spectral parameters
 #ifdef Spectral
    write(6,'(a24,1x,es8.1)')   ' err_div_tol:            ',err_div_tol
    write(6,'(a24,1x,es8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
@@ -419,8 +428,8 @@ subroutine numerics_init
 #endif
 #endif
 
- !*  sanity check
-
+!--------------------------------------------------------------------------------------------------
+! sanity checks
  if (relevantStrain <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='relevantStrain')
  if (defgradTolerance <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='defgradTolerance')
  if (iJacoStiffness < 1_pInt)              call IO_error(301_pInt,ext_msg='iJacoStiffness')
@@ -446,9 +455,6 @@ subroutine numerics_init
  if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &
                                            call IO_error(301_pInt,ext_msg='integrator')
  if (numerics_unitlength <= 0.0_pReal)     call IO_error(301_pInt,ext_msg='unitlength')
-  
-
- !* RGC parameters
  if (absTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absTol_RGC')
  if (relTol_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='relTol_RGC')
  if (absMax_RGC <= 0.0_pReal)              call IO_error(301_pInt,ext_msg='absMax_RGC')
@@ -462,8 +468,6 @@ subroutine numerics_init
  if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='maxVolDiscr_RGC')
  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
-
- !* spectral parameters
 #ifdef Spectral
  if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
@@ -480,9 +484,8 @@ subroutine numerics_init
  if (err_p_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_p_tol')
 #endif
 #endif
- if (fixedSeed <= 0_pInt) then
-   write(6,'(a,/)') ' Random is random!'
- endif
+ if (fixedSeed <= 0_pInt) &
+   write(6,'(a,/)') ' No fixed Seed: Random is random!'
 
 end subroutine numerics_init
 

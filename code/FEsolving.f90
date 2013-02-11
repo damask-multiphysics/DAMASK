@@ -66,17 +66,16 @@ module FEsolving
 
 contains
 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief determine whether a symmetric solver is used and whether restart is requested
 !--------------------------------------------------------------------------------------------------
 subroutine FE_init
- 
  use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
    debug_FEsolving, &
    debug_levelBasic
- 
  use IO, only: &
    IO_stringPos, &
    IO_stringValue, &
@@ -87,23 +86,21 @@ subroutine FE_init
    IO_open_logFile, &
 #endif
    IO_warning
-
  use DAMASK_interface
  
  implicit none
+#ifndef Spectral
  integer(pInt), parameter :: &
    fileunit = 222_pInt, &
    maxNchunks = 6_pInt
-
-#ifndef Spectral
  integer(pInt) :: j
  character(len=64)   :: tag
  character(len=1024) :: line
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
 #endif
- write(6,*)
- write(6,*) '<<<+-  FEsolving init  -+>>>'
- write(6,*) '$Id$'
+
+ write(6,'(/,a)') ' <<<+-  FEsolving init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
 
  modelName = getSolverJobName()
@@ -173,7 +170,9 @@ subroutine FE_init
 #endif
  200 close(fileunit)
  endif
- ! the following array are allocated by mesh.f90 and need to be deallocated in case of regridding
+
+!--------------------------------------------------------------------------------------------------
+! the following array are allocated by mesh.f90 and need to be deallocated in case of regridding
  if (allocated(calcMode)) deallocate(calcMode)
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
 #endif

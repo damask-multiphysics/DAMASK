@@ -33,13 +33,12 @@ module debug
 
  implicit none
  private
- 
  integer(pInt), parameter, public :: &
    debug_levelSelective     = 2_pInt**0_pInt, &
    debug_levelBasic         = 2_pInt**1_pInt, &
    debug_levelExtensive     = 2_pInt**2_pInt
  integer(pInt), parameter, private :: &
-   debug_maxGeneral         = debug_levelExtensive                                                 ! must be set to the last bitcode used by (potentially) all debug types
+   debug_maxGeneral         = debug_levelExtensive                                                  ! must be set to the last bitcode used by (potentially) all debug types
  integer(pInt), parameter, public :: &
    debug_spectralRestart    = debug_maxGeneral*2_pInt**1_pInt, &
    debug_spectralFFTW       = debug_maxGeneral*2_pInt**2_pInt, &
@@ -116,11 +115,10 @@ module debug
 contains
 
 
-!********************************************************************
-! initialize the debugging capabilities
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief reads in parameters from debug.config and allocates arrays
+!--------------------------------------------------------------------------------------------------
 subroutine debug_init
-
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use numerics, only: nStress, &
                      nState, &
@@ -144,6 +142,7 @@ subroutine debug_init
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=64)                        :: tag
  character(len=1024)                      :: line
+
  write(6,'(/,a)') ' <<<+-  debug init  -+>>>'
  write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
@@ -169,11 +168,9 @@ subroutine debug_init
       allocate(debug_MaterialpointLoopDistribution(nHomog+1))
                debug_MaterialpointLoopDistribution = 0_pInt
  
- 
- ! try to open the config file
- if(IO_open_file_stat(fileunit,debug_configFile)) then
- 
-   ! read variables from config file and overwrite parameters
+!--------------------------------------------------------------------------------------------------
+! try to open the config file
+ fileExists: if(IO_open_file_stat(fileunit,debug_configFile)) then
    do
      read(fileunit,'(a1024)',END=100) line
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
@@ -246,22 +243,20 @@ subroutine debug_init
  
    do i = 1_pInt, debug_maxNtype
      if (debug_level(i) == 0) &
-       debug_level(i) = ior(debug_level(i), debug_level(debug_maxNtype + 2_pInt))                         ! fill undefined debug types with levels specified by "other" 
+       debug_level(i) = ior(debug_level(i), debug_level(debug_maxNtype + 2_pInt))                   ! fill undefined debug types with levels specified by "other" 
 
-       debug_level(i) = ior(debug_level(i), debug_level(debug_maxNtype + 1_pInt))                         ! fill all debug types with levels specified by "all" 
+       debug_level(i) = ior(debug_level(i), debug_level(debug_maxNtype + 1_pInt))                   ! fill all debug types with levels specified by "all" 
    enddo
   
    if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) &
      write(6,'(a,/)') ' using values from config file'
-
-
- ! no config file, so we use standard values
- else 
+ else fileExists
    if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) &
-     write(6,'(a,/)')  ' using standard values'
- endif
+     write(6,'(a,/)') ' using standard values'
+ endif fileExists
 
- !output switched on (debug level for debug must be extensive)
+!--------------------------------------------------------------------------------------------------
+! output switched on (debug level for debug must be extensive)
  if (iand(debug_level(debug_debug),debug_levelExtensive) /= 0) then
      do i = 1_pInt, debug_maxNtype
        select case(i)
@@ -312,14 +307,15 @@ subroutine debug_init
 
 end subroutine debug_init
  
-!********************************************************************
-! reset debug distributions
-!********************************************************************
+
+!--------------------------------------------------------------------------------------------------
+!> @brief resets all debug values
+!--------------------------------------------------------------------------------------------------
 subroutine debug_reset
 
  implicit none
 
- debug_StressLoopDistribution              = 0_pInt ! initialize debugging data
+ debug_StressLoopDistribution              = 0_pInt
  debug_StateLoopDistribution               = 0_pInt
  debug_CrystalliteLoopDistribution         = 0_pInt
  debug_MaterialpointStateLoopDistribution  = 0_pInt
@@ -343,29 +339,28 @@ subroutine debug_reset
 
 end subroutine debug_reset
 
-!********************************************************************
-! write debug statements to standard out
-!********************************************************************
-subroutine debug_info
 
- use numerics, only: nStress, &
-                     nState, &
-                     nCryst, &
-                     nMPstate, &
-                     nHomog
+!--------------------------------------------------------------------------------------------------
+!> @brief writes debug statements to standard out
+!--------------------------------------------------------------------------------------------------
+subroutine debug_info
+ use numerics, only: &
+   nStress, &
+   nState, &
+   nCryst, &
+   nMPstate, &
+   nHomog
 
  implicit none
- integer(pInt)     :: i,integral
+ integer(pInt)     :: j,integral
  integer(pLongInt) :: tickrate
  character(len=1)  :: exceed
 
  call system_clock(count_rate=tickrate)
 
  !$OMP CRITICAL (write2out)
-   if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0) then
-     write(6,*)
-     write(6,*) 'DEBUG Info (from previous cycle)'
-     write(6,*)
+   debugOutputCryst: if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0) then
+     write(6,'(/,a,/)') ' DEBUG Info (from previous cycle)'
      write(6,'(a33,1x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
      if (debug_cumLpCalls > 0_pInt) then
        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumLpTicks,pReal)&
@@ -373,8 +368,7 @@ subroutine debug_info
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
          real(debug_cumLpTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)/real(debug_cumLpCalls,pReal)
      endif
-     write(6,*)
-     write(6,'(a33,1x,i12)')      'total calls to collectDotState  :',debug_cumDotStateCalls
+     write(6,'(/,a33,1x,i12)')     'total calls to collectDotState  :',debug_cumDotStateCalls
      if (debug_cumdotStateCalls > 0_pInt) then
        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotStateTicks,pReal)&
                                                                             /real(tickrate,pReal)
@@ -382,8 +376,7 @@ subroutine debug_info
          real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
                                                                      /real(debug_cumDotStateCalls,pReal)
      endif
-     write(6,*)
-     write(6,'(a33,1x,i12)')      'total calls to collectDeltaState:',debug_cumDeltaStateCalls
+     write(6,'(/,a33,1x,i12)')    'total calls to collectDeltaState:',debug_cumDeltaStateCalls
      if (debug_cumDeltaStateCalls > 0_pInt) then
        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDeltaStateTicks,pReal)&
                                                                             /real(tickrate,pReal)
@@ -391,8 +384,7 @@ subroutine debug_info
          real(debug_cumDeltaStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
                                                                      /real(debug_cumDeltaStateCalls,pReal)
      endif
-     write(6,*)
-     write(6,'(a33,1x,i12)')      'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
+     write(6,'(/,a33,1x,i12)')    'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
      if (debug_cumdotTemperatureCalls > 0_pInt) then
        write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotTemperatureTicks,pReal)&
                                                                             /real(tickrate,pReal)
@@ -402,88 +394,78 @@ subroutine debug_info
      endif
    
      integral = 0_pInt
-     write(6,*)
-     write(6,*)
-     write(6,*) 'distribution_StressLoop :    stress  stiffness'
-     do i=1_pInt,nStress+1_pInt
-       if (any(debug_StressLoopDistribution(i,:)     /= 0_pInt )) then
-         integral = integral + i*(debug_StressLoopDistribution(i,1) + debug_StressLoopDistribution(i,2))
+     write(6,'(3/,a)') 'distribution_StressLoop :    stress  stiffness'
+     do j=1_pInt,nStress+1_pInt
+       if (any(debug_StressLoopDistribution(j,:)     /= 0_pInt )) then
+         integral = integral + j*(debug_StressLoopDistribution(j,1) + debug_StressLoopDistribution(j,2))
          exceed = ' '
-         if (i > nStress) exceed = '+'                                                                    ! last entry gets "+"
-         write(6,'(i25,a1,i10,1x,i10)') min(nStress,i),exceed,debug_StressLoopDistribution(i,1),&
-                                                              debug_StressLoopDistribution(i,2)
+         if (j > nStress) exceed = '+'                                                              ! last entry gets "+"
+         write(6,'(i25,a1,i10,1x,i10)') min(nStress,j),exceed,debug_StressLoopDistribution(j,1),&
+                                                              debug_StressLoopDistribution(j,2)
        endif
      enddo
      write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopDistribution(:,1)), &
                                                                sum(debug_StressLoopDistribution(:,2))
      
      integral = 0_pInt
-     write(6,*)
-     write(6,*) 'distribution_CrystalliteStateLoop :'
-     do i=1_pInt,nState+1_pInt
-       if (any(debug_StateLoopDistribution(i,:) /= 0)) then
-         integral = integral + i*(debug_StateLoopDistribution(i,1) + debug_StateLoopDistribution(i,2))
+     write(6,'(2/,a)') 'distribution_CrystalliteStateLoop :'
+     do j=1_pInt,nState+1_pInt
+       if (any(debug_StateLoopDistribution(j,:) /= 0)) then
+         integral = integral + j*(debug_StateLoopDistribution(j,1) + debug_StateLoopDistribution(j,2))
          exceed = ' '
-         if (i > nState) exceed = '+'                                                                    ! last entry gets "+"
-         write(6,'(i25,a1,i10,1x,i10)') min(nState,i),exceed,debug_StateLoopDistribution(i,1),&
-                                                             debug_StateLoopDistribution(i,2)
+         if (j > nState) exceed = '+'                                                               ! last entry gets "+"
+         write(6,'(i25,a1,i10,1x,i10)') min(nState,j),exceed,debug_StateLoopDistribution(j,1),&
+                                                             debug_StateLoopDistribution(j,2)
        endif
      enddo
      write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StateLoopDistribution(:,1)), &
                                                                sum(debug_StateLoopDistribution(:,2))
     
      integral = 0_pInt
-     write(6,*)
-     write(6,*) 'distribution_CrystalliteCutbackLoop :'
-     do i=1_pInt,nCryst+1_pInt
-       if (debug_CrystalliteLoopDistribution(i) /= 0) then
-         integral = integral + i*debug_CrystalliteLoopDistribution(i)
+     write(6,'(2/,a)') 'distribution_CrystalliteCutbackLoop :'
+     do j=1_pInt,nCryst+1_pInt
+       if (debug_CrystalliteLoopDistribution(j) /= 0) then
+         integral = integral + j*debug_CrystalliteLoopDistribution(j)
          exceed = ' '
-         if (i > nCryst) exceed = '+'
-         write(6,'(i25,a1,i10)') min(nCryst,i),exceed,debug_CrystalliteLoopDistribution(i)
+         if (j > nCryst) exceed = '+'
+         write(6,'(i25,a1,i10)') min(nCryst,j),exceed,debug_CrystalliteLoopDistribution(j)
        endif
      enddo
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
-   endif
+   endif debugOutputCryst
      
-   if (iand(debug_level(debug_homogenization),debug_levelBasic) /= 0) then
+   debugOutputHomog: if (iand(debug_level(debug_homogenization),debug_levelBasic) /= 0) then
      integral = 0_pInt
-     write(6,*)
-     write(6,*) 'distribution_MaterialpointStateLoop :'
-     do i=1_pInt,nMPstate
-       if (debug_MaterialpointStateLoopDistribution(i) /= 0) then
-         integral = integral + i*debug_MaterialpointStateLoopDistribution(i)
-         write(6,'(i25,1x,i10)') i,debug_MaterialpointStateLoopDistribution(i)
+     write(6,'(2/,a)') 'distribution_MaterialpointStateLoop :'
+     do j=1_pInt,nMPstate
+       if (debug_MaterialpointStateLoopDistribution(j) /= 0) then
+         integral = integral + j*debug_MaterialpointStateLoopDistribution(j)
+         write(6,'(i25,1x,i10)') j,debug_MaterialpointStateLoopDistribution(j)
        endif
      enddo
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointStateLoopDistribution) 
     
      integral = 0_pInt
-     write(6,*)
-     write(6,*) 'distribution_MaterialpointCutbackLoop :'
-     do i=1_pInt,nHomog+1_pInt
-       if (debug_MaterialpointLoopDistribution(i) /= 0) then
-         integral = integral + i*debug_MaterialpointLoopDistribution(i)
+     write(6,'(2/,a)') 'distribution_MaterialpointCutbackLoop :'
+     do j=1_pInt,nHomog+1_pInt
+       if (debug_MaterialpointLoopDistribution(j) /= 0) then
+         integral = integral + j*debug_MaterialpointLoopDistribution(j)
          exceed = ' '
-         if (i > nHomog) exceed = '+'
-         write(6,'(i25,a1,i10)') min(nHomog,i),exceed,debug_MaterialpointLoopDistribution(i)
+         if (j > nHomog) exceed = '+'
+         write(6,'(i25,a1,i10)') min(nHomog,j),exceed,debug_MaterialpointLoopDistribution(j)
        endif
      enddo
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
-   endif
+   endif debugOutputHomog
      
-   if (iand(debug_level(debug_CPFEM),debug_levelBasic) /= 0) then
-     write(6,*)
-     write(6,*)
-     write(6,*) 'Extreme values of returned stress and jacobian'
-     write(6,*)
+   debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_levelBasic) /= 0) then
+     write(6,'(2/,a,/)') ' Extreme values of returned stress and jacobian'
      write(6,'(a39)')                      '                      value     el   ip'
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') 'stress   min :', debug_stressMin, debug_stressMinLocation
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') '         max :', debug_stressMax, debug_stressMaxLocation
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') 'jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
-     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)') '         max :', debug_jacobianMax, debug_jacobianMaxLocation  
-     write(6,*)
-   endif
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   ' stress   min :', debug_stressMin, debug_stressMinLocation
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   '          max :', debug_stressMax, debug_stressMaxLocation
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   ' jacobian min :', debug_jacobianMin, debug_jacobianMinLocation
+     write(6,'(a14,1x,e12.3,1x,i6,1x,i4,/)') '          max :', debug_jacobianMax, debug_jacobianMaxLocation  
+   endif debugOutputCPFEM
  !$OMP END CRITICAL (write2out)
  
 end subroutine debug_info

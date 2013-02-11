@@ -45,19 +45,25 @@ module DAMASK_interface
    loadCaseFile = ''                                                                                !< parameter given for load case file
  character(len=1024), private           :: workingDirectory                                         !< accessed by getSolverWorkingDirectoryName for compatibility reasons
 
- public  :: getSolverWorkingDirectoryName, &
-            getSolverJobName, &
-            DAMASK_interface_init
- private :: storeWorkingDirectory, &
-            getGeometryFile, &
-            getLoadCaseFile, &
-            rectifyPath, &
-            makeRelativePath, &
-            getPathSep, &
-            IIO_stringValue, &
-            IIO_intValue, &
-            IIO_lc, &
-            IIO_stringPos
+ public :: &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName, &
+   DAMASK_interface_init
+ private :: &
+   storeWorkingDirectory, &
+   getGeometryFile, &
+   getLoadCaseFile, &
+   rectifyPath, &
+   makeRelativePath, &
+   getPathSep, &
+   IIO_stringValue, &
+   IIO_intValue, &
+   IIO_lc, &
+   IIO_stringPos
+ external :: &
+   quit, &
+   PetscInitialize, &
+   MPI_abort
 
 contains
 
@@ -243,6 +249,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
       /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
+ !here check if exists and use chdir!
  else                                                                                               ! using path to geometry file as working dir
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))

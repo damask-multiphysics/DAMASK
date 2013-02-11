@@ -233,8 +233,7 @@ real(pReal), dimension(4,36), parameter, private :: &
    math_logstrainMat, &
    math_cauchy, &
    math_periodicNearestNeighbor
-#endif
-            
+#endif     
  private :: &
    math_partition, &
    halton, &
@@ -243,6 +242,10 @@ real(pReal), dimension(4,36), parameter, private :: &
    halton_seed_set, &
    i_to_halton, &
    prime
+ external :: &
+   dsyev, &
+   dgetrf, &
+   dgetri
 
 contains
 
@@ -2689,8 +2692,10 @@ integer(pInt) function prime(n)
  else if (n <= prime_max) then
    prime = npvec(n)
  else
+   prime = -1_pInt
    call IO_error(error_ID=406_pInt)
  end if
+
 end function prime
 
 

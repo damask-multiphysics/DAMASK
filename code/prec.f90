@@ -70,7 +70,10 @@ module prec
    real(pReal), dimension(:), pointer :: p
  end type p_vec
 
- public :: prec_init
+ public :: &
+   prec_init
+ external :: &
+   quit
  
 contains
 

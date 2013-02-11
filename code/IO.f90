@@ -26,60 +26,67 @@
 !> @brief input/output functions, partly depending on chosen solver
 !--------------------------------------------------------------------------------------------------
 module IO   
- use prec, only: pInt, pReal
+ use prec, only: &
+   pInt, &
+   pReal
  
  implicit none
  private
- public ::  IO_init, &
-            IO_checkAndRewind, &
-            IO_open_file_stat, &
-            IO_open_jobFile_stat, &
-            IO_open_file, &
-            IO_open_jobFile, &
-            IO_write_jobFile, &
-            IO_write_jobBinaryFile, &
-            IO_write_jobBinaryIntFile, &
-            IO_read_jobBinaryFile, &
-            IO_read_jobBinaryIntFile, &
-            IO_hybridIA, &
-            IO_isBlank, &
-            IO_getTag, &
-            IO_countSections, &
-            IO_countTagInPart, &
-            IO_spotTagInPart, &
-            IO_globalTagInPart, &
-            IO_stringPos, &
-            IO_stringValue, &
-            IO_fixedStringValue ,&
-            IO_floatValue, &
-            IO_fixedNoEFloatValue, &
-            IO_intValue, &
-            IO_fixedIntValue, &
-            IO_lc, &
-            IO_skipChunks, &
-            IO_extractValue, &
-            IO_countDataLines, &
-            IO_countContinuousIntValues, &
-            IO_continuousIntValues, &
-            IO_error, &
-            IO_warning, &
-            IO_intOut
+ public :: &
+   IO_init, &
+   IO_checkAndRewind, &
+   IO_open_file_stat, &
+   IO_open_jobFile_stat, &
+   IO_open_file, &
+   IO_open_jobFile, &
+   IO_write_jobFile, &
+   IO_write_jobBinaryFile, &
+   IO_write_jobBinaryIntFile, &
+   IO_read_jobBinaryFile, &
+   IO_read_jobBinaryIntFile, &
+   IO_hybridIA, &
+   IO_isBlank, &
+   IO_getTag, &
+   IO_countSections, &
+   IO_countTagInPart, &
+   IO_spotTagInPart, &
+   IO_globalTagInPart, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_fixedStringValue ,&
+   IO_floatValue, &
+   IO_fixedNoEFloatValue, &
+   IO_intValue, &
+   IO_fixedIntValue, &
+   IO_lc, &
+   IO_skipChunks, &
+   IO_extractValue, &
+   IO_countDataLines, &
+   IO_countContinuousIntValues, &
+   IO_continuousIntValues, &
+   IO_error, &
+   IO_warning, &
+   IO_intOut
 #ifndef Spectral
- public ::  IO_open_inputFile, &
-            IO_open_logFile
+ public :: &
+   IO_open_inputFile, &
+   IO_open_logFile
 #endif
-
 #ifdef Abaqus  
- public ::  IO_abaqus_hasNoPart
+ public :: &
+   IO_abaqus_hasNoPart
 #endif
-
- private :: IO_fixedFloatValue, &
-            IO_lcInplace ,&
-            hybridIA_reps
-
+ private :: &
+   IO_fixedFloatValue, &
+   IO_lcInplace ,&
+   hybridIA_reps
 #ifdef Abaqus 
- private :: abaqus_assembleInputFile
+ private :: &
+   abaqus_assembleInputFile
 #endif
+
+ external :: &
+   quit
 
 contains
 
@@ -90,11 +97,9 @@ contains
 subroutine IO_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
-  write(6,*)
-  write(6,*) '<<<+-  IO init  -+>>>'
-  write(6,*) '$Id$'
+  write(6,'(/,a)') ' <<<+-  IO init  -+>>>'
+  write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
-  flush(6)
 
 end subroutine IO_init
 
@@ -163,8 +168,8 @@ end function IO_open_JobFile_stat
 !> @brief Open existing file to given unit path to file is relative to working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_file(myUnit,relPath)
-
- use DAMASK_interface,       only: getSolverWorkingDirectoryName
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName
  
  implicit none
  integer(pInt),      intent(in) :: myUnit
@@ -184,9 +189,9 @@ end subroutine IO_open_file
 !> @brief Open (write) file related to current job but with different extension to given unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_jobFile(myUnit,newExt)
-
- use DAMASK_interface,       only: getSolverWorkingDirectoryName, &
-                                   getSolverJobName
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName
 
  implicit none
  integer(pInt),      intent(in) :: myUnit
@@ -208,7 +213,6 @@ end subroutine IO_open_jobFile
 !> @brief open FEM input file to given unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_inputFile(myUnit,model)
-
  use DAMASK_interface, only: &
    getSolverWorkingDirectoryName,&
    getSolverJobName, &
@@ -220,10 +224,9 @@ subroutine IO_open_inputFile(myUnit,model)
 
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
- character(len=4)               :: InputFileExtension2
+ character(len=4), parameter    :: InputFileExtension2 = '.pes'
  
 #ifdef Abaqus
- InputFileExtension2='.pes'
  path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension2          ! attempt .pes, if it exists: it should be used
  open(myUnit+1,status='old',iostat=myStat,file=path)
  if(myStat /= 0_pInt) then                                                               !if .pes does not work / exist; use conventional extension, i.e.".inp"
@@ -252,7 +255,6 @@ end subroutine IO_open_inputFile
 !> @brief open FEM log file to given Unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_open_logFile(myUnit)
-
  use DAMASK_interface, only: &
    getSolverWorkingDirectoryName, &
    getSolverJobName, &
@@ -330,9 +332,9 @@ end subroutine IO_write_jobBinaryFile
 !> given unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobBinaryIntFile(myUnit,newExt,recMultiplier)
-
- use DAMASK_interface,                 only: getSolverWorkingDirectoryName, &
-                                             getSolverJobName
+ use DAMASK_interface,  only: &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName
  
  implicit none
  integer(pInt),      intent(in)           :: myUnit
@@ -361,8 +363,8 @@ end subroutine IO_write_jobBinaryIntFile
 !> given unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_read_jobBinaryFile(myUnit,newExt,jobName,recMultiplier)
-
- use DAMASK_interface,                 only: getSolverWorkingDirectoryName
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName
  
  implicit none
  integer(pInt),      intent(in)           :: myUnit
@@ -390,8 +392,8 @@ end subroutine IO_read_jobBinaryFile
 !> given unit
 !--------------------------------------------------------------------------------------------------
 subroutine IO_read_jobBinaryIntFile(myUnit,newExt,jobName,recMultiplier)
-
- use DAMASK_interface,                 only: getSolverWorkingDirectoryName
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName
  
  implicit none
  integer(pInt),      intent(in)           :: myUnit
@@ -453,7 +455,9 @@ function IO_hybridIA(Nast,ODFfileName)
  real(pReal), dimension(3,Nast) :: IO_hybridIA
 
  character(len=*), intent(in)   :: ODFfileName
-
+  
+!--------------------------------------------------------------------------------------------------
+! math module is not available
  real(pReal),      parameter  :: PI = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal),      parameter  :: INRAD = PI/180.0_pReal
  character(len=*), parameter  :: fileFormat = '(A80)'
@@ -469,11 +473,13 @@ function IO_hybridIA(Nast,ODFfileName)
  real(pReal), dimension(:,:,:), allocatable :: dV_V
  character(len=80) :: line
  
-!--- parse header of ODF file ---
+!--------------------------------------------------------------------------------------------------
+! parse header of ODF file 
  call IO_open_file(999_pInt,ODFfileName)
  IO_hybridIA = -1.0_pReal                                                                           ! initialize return value for case of error
 
-!--- limits in phi1, Phi, phi2 ---
+!--------------------------------------------------------------------------------------------------
+! limits in phi1, Phi, phi2
  read(999,fmt=fileFormat,end=100) line
  myPos = IO_stringPos(line,3_pInt)
  if (myPos(1) == 3) then                                                                            ! found 3 chunks
@@ -485,7 +491,8 @@ function IO_hybridIA(Nast,ODFfileName)
    return
  endif
 
-!--- deltas in phi1, Phi, phi2 ---
+!--------------------------------------------------------------------------------------------------
+! deltas in phi1, Phi, phi2 
  read(999,fmt=fileFormat,end=100) line
  myPos = IO_stringPos(line,3_pInt)
  if (myPos(1) == 3) then                                                                            ! found 3 chunks
@@ -500,7 +507,8 @@ function IO_hybridIA(Nast,ODFfileName)
  steps = nint(limits/deltas,pInt)
  allocate(dV_V(steps(3),steps(2),steps(1)))
 
-!--- box boundary/center at origin? ---
+!--------------------------------------------------------------------------------------------------
+! box boundary/center at origin? 
  read(999,fmt=fileFormat,end=100) line
  if (index(IO_lc(line),'bound')>0) then
    center = 0.5_pReal
@@ -508,8 +516,7 @@ function IO_hybridIA(Nast,ODFfileName)
    center = 0.0_pReal
  endif
  
-!--- skip blank line ---
- read(999,fmt=fileFormat,end=100) line
+ read(999,fmt=fileFormat,end=100) line                                                              ! skip blank line
 
  sum_dV_V = 0.0_pReal
  dV_V = 0.0_pReal
@@ -531,10 +538,11 @@ function IO_hybridIA(Nast,ODFfileName)
    enddo
  enddo  
 
- dV_V = dV_V/sum_dV_V  ! normalize to 1
+ dV_V = dV_V/sum_dV_V                                                                               ! normalize to 1
  
-!--- now fix bounds ---
- Nset = max(Nast,NnonZero)                             ! if less than non-zero voxel count requested, sample at least that much
+!--------------------------------------------------------------------------------------------------
+! now fix bounds
+ Nset = max(Nast,NnonZero)                                                                          ! if less than non-zero voxel count requested, sample at least that much
  lowerC = 0.0_pReal
  upperC = real(Nset, pReal)
  
@@ -542,7 +550,9 @@ function IO_hybridIA(Nast,ODFfileName)
    lowerC = upperC
    upperC = upperC*2.0_pReal
  enddo
-!--- binary search for best C ---
+
+!--------------------------------------------------------------------------------------------------
+! binary search for best C
  do
    C = (upperC+lowerC)/2.0_pReal
    Nreps = hybridIA_reps(dV_V,steps,C)
@@ -560,15 +570,15 @@ function IO_hybridIA(Nast,ODFfileName)
  enddo
 
  allocate(binSet(Nreps))
- bin = 0_pInt ! bin counter
- i = 1_pInt ! set counter
+ bin = 0_pInt                                                                                       ! bin counter
+ i = 1_pInt                                                                                         ! set counter
  do phi1=1_pInt,steps(1)
    do Phi=1_pInt,steps(2)
      do phi2=1_pInt,steps(3)
        reps = nint(C*dV_V(phi2,Phi,phi1), pInt)
        binSet(i:i+reps-1) = bin
-       bin = bin+1_pInt ! advance bin
-       i = i+reps ! advance set
+       bin = bin+1_pInt                                                                             ! advance bin
+       i = i+reps                                                                                   ! advance set
      enddo
    enddo
  enddo
@@ -600,10 +610,10 @@ logical pure function IO_isBlank(line)
  implicit none
  character(len=*), intent(in) :: line
 
- character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
- character(len=*),  parameter :: comment = achar(35)                               ! comment id '#'
+ character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13)              ! whitespaces
+ character(len=*),  parameter :: comment = achar(35)                                                ! comment id '#'
 
- integer :: posNonBlank, posComment                                                ! no pInt
+ integer :: posNonBlank, posComment                                                                 ! no pInt
  
  posNonBlank = verify(line,blankChar)
  posComment  = scan(line,comment)
@@ -624,15 +634,15 @@ pure function IO_getTag(line,openChar,closeChar)
  character(len=*), intent(in)  :: openChar, & 
                                   closeChar
 
- character(len=*), parameter   :: sep=achar(32)//achar(9)//achar(10)//achar(13) ! whitespaces
+ character(len=*), parameter   :: sep=achar(32)//achar(9)//achar(10)//achar(13)                     ! whitespaces
 
- integer :: left,right                                                          ! no pInt
+ integer :: left,right                                                                              ! no pInt
 
  IO_getTag = ''
  left = scan(line,openChar)
  right = scan(line,closeChar)
  
- if (left == verify(line,sep) .and. right > left) & ! openChar is first and closeChar occurs
+ if (left == verify(line,sep) .and. right > left) &                                                 ! openChar is first and closeChar occurs
    IO_getTag = line(left+1:right-1)
 
 end function IO_getTag
@@ -653,15 +663,15 @@ integer(pInt) function IO_countSections(myFile,part)
  IO_countSections = 0_pInt
  rewind(myFile)
 
- do while (IO_getTag(line,'<','>') /= part)              ! search for part
+ do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
    read(myFile,'(a1024)',END=100) line
  enddo
 
  do
    read(myFile,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
      IO_countSections = IO_countSections + 1_pInt
  enddo
 
@@ -693,20 +703,20 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
  section = 0_pInt
 
  rewind(myFile) 
- do while (IO_getTag(line,'<','>') /= part)               ! search for part
+ do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
    read(myFile,'(a1024)',END=100) line
  enddo
 
  do
    read(myFile,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
      section = section + 1_pInt
    if (section > 0) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
-     if (tag == myTag) &                                  ! match
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     if (tag == myTag) &                                                                            ! match
        counter(section) = counter(section) + 1_pInt
    endif   
  enddo
@@ -736,30 +746,31 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
  character(len=1024)                      :: line, &
                                              tag
 
- IO_spotTagInPart = .false.                               ! assume to nowhere spot tag
+ IO_spotTagInPart = .false.                                                                         ! assume to nowhere spot tag
  section = 0_pInt
  line =''
 
  rewind(myFile)
- do while (IO_getTag(line,'<','>') /= part)               ! search for part
+ do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
    read(myFile,'(a1024)',END=100) line
  enddo
 
  do
    read(myFile,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
      section = section + 1_pInt
    if (section > 0_pInt) then
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
-     if (tag == myTag) &                                  ! match
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     if (tag == myTag) &                                                                            ! match
        IO_spotTagInPart(section) = .true.
    endif   
  enddo
 
 100 end function IO_spotTagInPart
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return logical whether myTag is present within <part> before any [sections]
@@ -767,7 +778,6 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
 logical function IO_globalTagInPart(myFile,part,myTag)
 
  implicit none
- 
  integer(pInt),    intent(in)  :: myFile
  character(len=*), intent(in)  :: part, &
                                   myTag
@@ -779,20 +789,20 @@ logical function IO_globalTagInPart(myFile,part,myTag)
  character(len=1024)                      :: line, &
                                              tag
 
- IO_globalTagInPart = .false.                             ! assume to nowhere spot tag
+ IO_globalTagInPart = .false.                                                                       ! assume to nowhere spot tag
  section = 0_pInt
  line =''
 
  rewind(myFile)
- do while (IO_getTag(line,'<','>') /= part)               ! search for part
+ do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
    read(myFile,'(a1024)',END=100) line
  enddo
 
  do
    read(myFile,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                            ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') &                   ! found [section] identifier
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
      section = section + 1_pInt
    if (section == 0_pInt) then
      positions = IO_stringPos(line,maxNchunks)
@@ -1101,7 +1111,7 @@ pure subroutine IO_lcInplace(line)
  character(len=*), intent(inout) :: line
  character(len=len(line))        :: IO_lc
 
- integer                         :: i,n                   ! no pInt (len returns default integer)
+ integer                         :: i,n                                                             ! no pInt (len returns default integer)
 
  do i=1,len(line)
    n = index(upper,line(i:i))
@@ -1112,7 +1122,7 @@ pure subroutine IO_lcInplace(line)
    endif 
  enddo
 
- end subroutine IO_lcInplace
+end subroutine IO_lcInplace
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1181,7 +1191,7 @@ integer(pInt) function IO_countDataLines(myUnit)
    read(myUnit,'(A300)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
    tmp = IO_lc(IO_stringValue(line,myPos,1_pInt))
-   if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then  ! found keyword
+   if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
      exit
    else
      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
@@ -1216,7 +1226,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
  do
    read(myUnit,'(A300)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
-   if (myPos(1) < 1_pInt) then                                                                         ! empty line
+   if (myPos(1) < 1_pInt) then                                                                      ! empty line
      exit
    elseif (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                                  ! found range indicator
      IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) &
@@ -1242,7 +1252,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
  do l = 1_pInt,c
    read(myUnit,'(A300)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
-   IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &    ! assuming range generation
+   IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &                           ! assuming range generation
                                 (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
                                                      max(1_pInt,IO_intValue(line,myPos,3_pInt))
  enddo
@@ -1323,7 +1333,8 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
    backspace(myUnit)
  enddo
  
-   !check if the element values in the elset are auto generated
+!--------------------------------------------------------------------------------------------------
+! check if the element values in the elset are auto generated
  backspace(myUnit)
  read(myUnit,'(A65536)',end=100) line
  myPos = IO_stringPos(line,maxNchunks)
@@ -1392,13 +1403,13 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  
  select case (error_ID)
 
- !* internal errors
- 
+!--------------------------------------------------------------------------------------------------
+! internal errors
  case (0_pInt)
    msg = 'internal check failed:'
 
- !* file handling errors
- 
+!--------------------------------------------------------------------------------------------------
+! file handling errors
  case (100_pInt)
    msg = 'could not open file:'
  case (101_pInt)
@@ -1408,9 +1419,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (103_pInt)
    msg = 'could not assemble input files'
  
-
- !* material error messages and related messages in mesh
- 
+!--------------------------------------------------------------------------------------------------
+! material error messages and related messages in mesh
  case (150_pInt)
    msg = 'crystallite index out of bounds'
  case (151_pInt)
@@ -1432,9 +1442,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (180_pInt)
    msg = 'no microstructure specified via State Variable 3'
 
-
- !* plasticity error messages
-
+!--------------------------------------------------------------------------------------------------
+! plasticity error messages
  case (200_pInt)
    msg = 'unknown elasticity specified:' 
  case (201_pInt)
@@ -1454,17 +1463,15 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (253_pInt)
    msg = 'element type not supported for nonlocal plasticity'
 
- 
- !* numerics error messages 
-
+!--------------------------------------------------------------------------------------------------
+! numerics error messages 
  case (300_pInt)
    msg = 'unknown numerics parameter:'
  case (301_pInt)
    msg = 'numerics parameter out of bounds:'
  
- 
- !* math errors
- 
+!--------------------------------------------------------------------------------------------------
+! math errors
  case (400_pInt)
    msg = 'matrix inversion error'
  case (401_pInt)
@@ -1488,20 +1495,18 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (460_pInt)
    msg = 'kdtree2 error'
 
- !* homogenization errors
-
+!-------------------------------------------------------------------------------------------------
+! homogenization errors
  case (500_pInt)
    msg = 'unknown homogenization specified'
 
-
- !* DAMASK_marc errors
- 
+!-------------------------------------------------------------------------------------------------
+! DAMASK_marc errors
  case (700_pInt)
    msg = 'invalid materialpoint result requested'
 
-
- !* errors related to spectral solver
-
+!-------------------------------------------------------------------------------------------------
+! errors related to spectral solver
  case (809_pInt)
    msg = 'initializing FFTW'
  case (831_pInt)
@@ -1543,8 +1548,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (892_pInt)
    msg = 'unknown filter type selected'
    
- !* Error messages related to parsing of Abaqus input file
-
+!-------------------------------------------------------------------------------------------------
+! error messages related to parsing of Abaqus input file
  case (900_pInt)
    msg = 'improper definition of nodes in input file (Nnodes < 2)'
  case (901_pInt)
@@ -1569,8 +1574,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'incorrect element type mapping in '
  
  
- !* general error messages
- 
+!-------------------------------------------------------------------------------------------------
+! general error messages
  case (666_pInt)
    msg = 'memory leak detected'
  case default
@@ -1689,7 +1694,9 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
 end subroutine IO_warning
 
 
-! INTERNAL (HELPER) FUNCTIONS:
+!--------------------------------------------------------------------------------------------------
+! internal helper functions 
+
 
 #ifdef Abaqus 
 !--------------------------------------------------------------------------------------------------
@@ -1746,6 +1753,7 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
 
 end function abaqus_assembleInputFile
 #endif
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief hybrid IA repetition counter
