@@ -42,6 +42,7 @@ module crystallite
             crystallite_integrateStateRKCK45, &
             crystallite_integrateStress, &
             crystallite_stateJump
+ external :: dgesv
  
 ! ****************************************************************
 ! *** General variables for the crystallite calculation        ***

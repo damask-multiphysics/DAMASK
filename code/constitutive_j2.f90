@@ -129,7 +129,7 @@ subroutine constitutive_j2_init(myFile)
  integer(pInt), parameter :: maxNchunks = 7_pInt
  
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
- integer(pInt) :: section = 0_pInt, maxNinstance, i,j,k,o, mySize
+ integer(pInt) :: section = 0_pInt, maxNinstance, i,o, mySize
  character(len=64)   :: tag
  character(len=1024) :: line = ''                                                                   ! to start initialized
 
@@ -371,7 +371,7 @@ pure function constitutive_j2_homogenizedC(state,ipc,ip,el)
 end function constitutive_j2_homogenizedC
 
 
-subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
+pure subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
 !*********************************************************************
 !* calculate derived quantities from state (not used here)           *
 !* INPUT:                                                            *

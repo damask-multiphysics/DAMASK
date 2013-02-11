@@ -131,10 +131,10 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  integer(pInt), intent(in) :: myFile
  integer(pInt), parameter :: maxNchunks = lattice_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) section, maxNinstance, i,j,k, f,o, &
-               Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
-               Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
-               mySize, myStructure, index_myFamily, index_otherFamily
+ integer(pInt) :: section, maxNinstance, i,j,k, f,o, &
+                  Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
+                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
+                  mySize=0_pInt, myStructure, index_myFamily, index_otherFamily
  character(len=64)   :: tag
  character(len=1024) :: line = ''                                                                   ! to start initialized
  
@@ -639,7 +639,7 @@ end function constitutive_phenopowerlaw_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate derived quantities from state (dummy subroutine, not used here) 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el)
+pure subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el)
 
  use prec, only: pReal,pInt,p_vec
  use mesh, only: mesh_NcpElems,mesh_maxNips

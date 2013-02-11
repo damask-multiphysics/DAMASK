@@ -249,14 +249,12 @@ integer(pInt), intent(in) ::                myFile
 integer(pInt), parameter ::                 maxNchunks = 21_pInt
 integer(pInt), &
     dimension(1_pInt+2_pInt*maxNchunks) ::  positions
-integer(pInt)                               section, &
+integer(pInt)          ::                   section, &
                                             maxNinstance, &
                                             maxTotalNslip, &
                                             myStructure, &
                                             f, &                ! index of my slip family
                                             i, &                ! index of my instance of this plasticity
-                                            j, &
-                                            k, &
                                             l, &
                                             ns, &               ! short notation for total number of active slip systems for the current instance
                                             o, &                ! index of my output
@@ -264,7 +262,7 @@ integer(pInt)                               section, &
                                             s1, &               ! index of my slip system
                                             s2, &               ! index of my slip system
                                             it, &               ! index of my interaction type
-                                            mySize
+                                            mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
 character(len=64)                           tag
 character(len=1024) :: line = ''                                ! to start initialized
  
@@ -970,7 +968,6 @@ real(pReal), dimension(:), allocatable :: &
                               rhoDipScrew                     ! screw dipole dislocation density
 integer(pInt)                 el, &
                               ip, &
-                              g, &
                               ns, &                           ! short notation for total number of active slip systems 
                               f, &                            ! index of lattice family
                               from, &
@@ -1498,9 +1495,9 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                    intent(out), optional :: dv_dtau                     ! velocity derivative with respect to resolved shear stress
 
 !*** local variables
-integer(pInt)                               instance, &                 ! current instance of this plasticity
+integer(pInt)    ::                         instance, &                 ! current instance of this plasticity
                                             ns, &                       ! short notation for the total number of active slip systems
-                                            s, t                        ! index of my current slip system
+                                            s                           ! index of my current slip system
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             tauThreshold, &             ! threshold shear stress
                                             tauEff                      ! effective shear stress

@@ -139,7 +139,7 @@ integer(pInt), intent(in) :: file
 !* Local variables
 integer(pInt), parameter :: maxNchunks = 21_pInt
 integer(pInt), dimension(1+2*maxNchunks) :: positions
-integer(pInt) :: section, maxNinstance,mySize,myStructure,maxTotalNslip,maxTotalNtwin,&
+integer(pInt) :: section, maxNinstance,mySize=0_pInt,myStructure,maxTotalNslip,maxTotalNtwin,&
                  f,i,j,k,l,m,n,o,p,q,r,s,ns,nt, &
                  index_myFamily, index_otherFamily
 character(len=64) tag
@@ -1509,7 +1509,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
            constitutive_dislotwin_postResults(c+j) = dot_product(Tstar_v, constitutive_dislotwin_sbSv(1:6,j,g,ip,el))
        enddo
        c = c + 6_pInt
-      case ('schmid_factor_shearband')
+      case ('schmid_factor_shearband') !ToDo: j  has no value!!!!!!
         constitutive_dislotwin_postResults(c+1_pInt:c+6_pInt) = constitutive_dislotwin_sbSv(1:6,j,g,ip,el)
        c = c + 6_pInt
       case ('shear_rate_shearband')

@@ -802,6 +802,7 @@ function mesh_spectral_getResolution(fileUnit)
  logical :: gotResolution = .false.
  integer(pInt) :: myUnit
  
+ mesh_spectral_getResolution = -1_pInt
  if(.not. present(fileUnit)) then
    myUnit = 289_pInt
    call IO_open_file(myUnit,trim(geometryFile))
@@ -883,6 +884,7 @@ function mesh_spectral_getDimension(fileUnit)
  logical :: gotDimension = .false.
  integer(pInt) :: myUnit
  
+ mesh_spectral_getDimension = -1.0_pReal
  if(.not. present(fileUnit)) then
    myUnit = 289_pInt
    call IO_open_file(myUnit,trim(geometryFile))
@@ -957,6 +959,7 @@ function mesh_spectral_getHomogenization(fileUnit)
  logical :: gotHomogenization = .false.
  integer(pInt) :: myUnit
  
+ mesh_spectral_getHomogenization = -1_pInt
  if(.not. present(fileUnit)) then
    myUnit = 289_pInt
    call IO_open_file(myUnit,trim(geometryFile))
@@ -1976,18 +1979,18 @@ function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) result(coords)
  
  
  do k = 1_pInt, iRes(3); do j = 1_pInt, iRes(2); do i = 1_pInt, iRes(1)
-   F_real(i,j,k,1:3,1:3) = F(1:3,1:3,i,j,k)                                        ! ensure that data is aligned properly (fftw_alloc)
+   F_real(i,j,k,1:3,1:3) = F(1:3,1:3,i,j,k)                                                         ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
  call fftw_execute_dft_r2c(fftw_forth, F_real, F_fourier)
  
  if (present(FavgIn)) then
    if (all(FavgIn < 0.0_pReal)) then
-     Favg = real(F_fourier(1,1,1,1:3,1:3)*real(product(iRes),pReal),pReal)                                                 !the f2py way to tell it is not present
+     Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)*real(product(iRes),pReal)                          !the f2py way to tell it is not present
    else
      Favg = FavgIn
    endif
  else
-   Favg = real(F_fourier(1,1,1,1:3,1:3)*real(product(iRes),pReal),pReal)
+   Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)*real(product(iRes),pReal)
  endif
  
  !remove highest frequency in each direction
@@ -2014,7 +2017,7 @@ function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) result(coords)
          coords_fourier(i,j,k,m) = sum(F_fourier(i,j,k,m,1:3)*cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
       enddo
       if (k_s(3) /= 0_pInt .or. k_s(2) /= 0_pInt .or. k_s(1) /= 0_pInt) &
-        coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3) / real(-sum(k_s*k_s),pReal)
+        coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3) / cmplx(-sum(k_s*k_s),0.0_pReal,pReal)
  enddo; enddo; enddo
 
  call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
