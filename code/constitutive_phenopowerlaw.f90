@@ -640,10 +640,15 @@ end function constitutive_phenopowerlaw_homogenizedC
 !> @brief calculate derived quantities from state (dummy subroutine, not used here) 
 !--------------------------------------------------------------------------------------------------
 pure subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,ip,el)
-
- use prec, only: pReal,pInt,p_vec
- use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
+ use prec, only: &
+   p_vec
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains, &
+   material_phase, &
+   phase_plasticityInstance
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -652,7 +657,7 @@ pure subroutine constitutive_phenopowerlaw_microstructure(Temperature,state,ipc,
    el                                                                                               !current element
  integer(pInt) :: matID
  real(pReal), intent(in) :: Temperature                                                             ! temperature
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
 
  matID = phase_plasticityInstance(material_phase(ipc,ip,el))
   

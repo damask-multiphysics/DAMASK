@@ -386,9 +386,10 @@ pure subroutine constitutive_j2_microstructure(Temperature,state,ipc,ip,el)
  
  implicit none
 !* Definition of variables
- integer(pInt) ipc,ip,el, matID
- real(pReal) Temperature
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
+ integer(pInt), intent(in) :: ipc,ip,el
+ real(pReal), intent(in) :: Temperature
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
+ integer(pInt) :: matID
 
  matID = phase_plasticityInstance(material_phase(ipc,ip,el))
 
