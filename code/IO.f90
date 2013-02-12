@@ -79,6 +79,8 @@ module IO
  private :: &
    IO_fixedFloatValue, &
    IO_lcInplace ,&
+   IO_verifyFloatValue, &
+   IO_verifyIntValue, &
    hybridIA_reps
 #ifdef Abaqus 
  private :: &
@@ -815,6 +817,63 @@ logical function IO_globalTagInPart(myFile,part,myTag)
 100 end function IO_globalTagInPart
 
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief verify integer value in given string
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function IO_verifyIntValue (line,validChars,myName)
+ 
+ implicit none
+ character(len=*), intent(in) :: line,validChars,myName
+ integer(pInt)                :: readStatus, invalidWhere
+ character(len=len(trim(adjustl(line)))) :: trimmed
+ 
+ trimmed = trim(adjustl(line))
+ IO_verifyIntValue = 0.0_pReal
+
+ invalidWhere = verify(trimmed,validChars)
+ if (invalidWhere == 0_pInt) then
+   read(UNIT=trimmed,iostat=readStatus,FMT=*) IO_verifyIntValue                                       ! no offending chars found
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+     call IO_warning(203,ext_msg=myName//'"'//trimmed//'"')
+ else
+   call IO_warning(202,ext_msg=myName//'"'//trimmed//'"')                                             ! complain about offending characters
+   read(UNIT=trimmed(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue           ! interpret remaining string
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+     call IO_warning(203,ext_msg=myName//'"'//trimmed(1_pInt:invalidWhere-1_pInt)//'"')
+ endif
+  
+end function IO_verifyIntValue
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief verify float value in given string
+!--------------------------------------------------------------------------------------------------
+real(pReal) function IO_verifyFloatValue (line,validChars,myName)
+ 
+ implicit none
+ character(len=*), intent(in) :: line,validChars,myName
+ integer(pInt)                :: readStatus, invalidWhere
+ character(len=len(trim(adjustl(line)))) :: trimmed
+ 
+ trimmed = trim(adjustl(line))
+ IO_verifyFloatValue = 0.0_pReal
+
+ invalidWhere = verify(trimmed,validChars)
+ if (invalidWhere == 0_pInt) then
+   read(UNIT=trimmed,iostat=readStatus,FMT=*) IO_verifyFloatValue                                     ! no offending chars found
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+     call IO_warning(203,ext_msg=myName//'"'//trimmed//'"')
+ else
+   call IO_warning(202,ext_msg=myName//'"'//trimmed//'"')                                             ! complain about offending characters
+   read(UNIT=trimmed(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyFloatValue         ! interpret remaining string
+   if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
+     call IO_warning(203,ext_msg=myName//'"'//trimmed(1_pInt:invalidWhere-1_pInt)//'"')
+ endif
+  
+end function IO_verifyFloatValue
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief locate at most N space-separated parts in line return array containing number of parts 
 !> in line and the left/right positions of at most N to be used by IO_xxxVal
@@ -907,23 +966,14 @@ real(pReal) function IO_floatValue (line,positions,myPos)
  integer(pInt),                  intent(in) :: myPos
  character(len=15),              parameter  :: myName = 'IO_floatValue: '
  character(len=17),              parameter  :: validCharacters = '0123456789eEdD.+-'
- integer(pInt)                              :: readStatus, invalidWhere
 
  IO_floatValue = 0.0_pReal
+
  if (myPos > positions(1) .or. myPos < 1_pInt) then                                                 ! trying to access non-present value
    call IO_warning(201,ext_msg=myName//trim(line))
  else
-   invalidWhere = verify(line(positions(myPos*2):positions(myPos*2+1)),validCharacters)             ! search for invalid characters
-   if (invalidWhere /= 0_pInt) then                                                                 ! found invaldid character, only read in substring
-     invalidWhere = invalidWhere - 1_pInt
-     call IO_warning(202,ext_msg=myName//line(positions(myPos*2):positions(myPos*2+1)))
-   else
-     invalidWhere = positions(myPos*2+1)-positions(myPos*2) + 1_pInt                                ! read until position(myPos*2+1)
-   endif
-   read(UNIT=line(positions(myPos*2):positions(myPos*2)+invalidWhere-1),iostat=readStatus,FMT=*) &
-                                                                                      IO_floatValue
-   if (readStatus /= 0_pInt) &                                                                      ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//line(positions(myPos*2):positions(myPos*2)+invalidWhere-1))
+   IO_floatValue = IO_verifyFloatValue(line(positions(myPos*2):positions(myPos*2+1)),&
+                                       validCharacters,myName)
  endif
 
 end function IO_floatValue
@@ -933,34 +983,22 @@ end function IO_floatValue
 !> @brief read float value at myPos from fixed format line
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_fixedFloatValue (line,ends,myPos)
-
+ 
  implicit none
  character(len=*),               intent(in) :: line
  integer(pInt),                  intent(in) :: myPos
  integer(pInt),   dimension(:),  intent(in) :: ends
  character(len=20),              parameter  :: myName = 'IO_fixedFloatValue: '
  character(len=17),              parameter  :: validCharacters = '0123456789eEdD.+-'
- integer(pInt)                              :: readStatus, myStart, invalidWhere
 
- IO_fixedFloatValue = 0.0_pReal
- myStart = ends(myPos-1) + 1_pInt
+ IO_fixedFloatValue = IO_verifyFloatValue(line(ends(myPos)+1_pInt:ends(myPos+1_pInt)),&
+                                          validCharacters,myName)
 
- invalidWhere = verify(line(myStart:ends(myPos)),validCharacters)                                   ! search for invalid character
- if (invalidWhere /= 0_pInt) then                                                                   ! found invaldid character, only read in substring
-   invalidWhere = invalidWhere - 1_pInt
-   call IO_warning(202,ext_msg=myName//line(myStart:ends(myPos)))
- else
-   invalidWhere = ends(myPos)-myStart + 1_pInt                                                      ! read until ends(myPos)
- endif
- read(UNIT=line(myStart:myStart+invalidWhere-1),iostat=readStatus,FMT=*) IO_fixedFloatValue
- if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-   call IO_warning(203,ext_msg=myName//line(myStart:myStart+invalidWhere-1))
-  
 end function IO_fixedFloatValue
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief read float x.y+z value at myPos from format line line
+!> @brief read float x.y+z value at myPos from format line
 !--------------------------------------------------------------------------------------------------
 real(pReal) function IO_fixedNoEFloatValue (line,ends,myPos)
 
@@ -971,44 +1009,22 @@ real(pReal) function IO_fixedNoEFloatValue (line,ends,myPos)
  character(len=22),              parameter  :: myName = 'IO_fixedNoEFloatValue '
  character(len=13),              parameter  :: validBase = '0123456789.+-'
  character(len=12),              parameter  :: validExp  = '0123456789+-'
+ real(pReal)   :: base
+ integer(pInt) :: expon
+ integer       :: pos_exp
  
- integer(pInt)                :: expon, myStart, readStatus
- integer                      :: pos_exp, end_base, end_exp
- real(pReal)                  :: base
- 
- base  = 0.0_pReal
- expon = 0_pInt
-
- myStart = ends(myPos-1) + 1_pInt
- pos_exp = scan(line(myStart:ends(myPos)),'+-',back=.true.)
- if (pos_exp <= 1_pInt) &                                                                           ! no exponent but only base
-   pos_exp = ends(myPos)-myStart + 1_pInt
-
- ! --- figure out base ---
- end_base = verify(line(myStart:myStart+pos_exp-1),validBase)                                       ! search for invalid character in base
- if (end_base /= 0_pInt) then                                                                       ! found invaldid character, only read in substring
-   end_base = end_base-1
-   call IO_warning(202, ext_msg = myName//'(base): '//line(myStart:myStart+pos_exp-1))
+ pos_exp = scan(line(ends(myPos)+1:ends(myPos+1)),'+-',back=.true.)
+ if (pos_exp > 1) then
+   base  = IO_verifyFloatValue(line(ends(myPos)+1_pInt:ends(myPos)+pos_exp-1_pInt),&
+                               validBase,myName//'(base): ')
+   expon = IO_verifyIntValue(line(ends(myPos)+pos_exp:ends(myPos+1_pInt)),&
+                             validExp,myName//'(exp): ')
  else
-   end_base = pos_exp                                                                               ! read until begin of exponent
+   base  = IO_verifyFloatValue(line(ends(myPos)+1_pInt:ends(myPos+1_pInt)),&
+                               validBase,myName//'(base): ')
+   expon = 0_pInt
  endif
- read(UNIT=line(myStart:myStart+end_base-1),iostat=readStatus,FMT=*) base
- if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-   call IO_warning(203, ext_msg = myName//'(base): '//line(myStart:myStart+end_base-1))
-
- ! --- figure out exponent ---
- end_exp = verify(line(myStart+pos_exp:ends(myPos)),validExp)                                       ! search for invalid character in exponent
- if (end_exp /= 0_pInt) then                                                                        ! found invaldid character, only read in substring
-   end_exp = end_exp - 1_pInt
-   call IO_warning(202, ext_msg = myName//'(exp): '//line(myStart+pos_exp:ends(myPos)))
- else
-   end_exp = mystart-ends(myPos) + 1_pInt                                                           ! read until end of string
- endif
- read(UNIT=line(myStart+pos_exp:myStart+end_exp-1),iostat=readStatus,FMT=*) expon 
- if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-   call IO_warning(203, ext_msg = myName//'(base): '//line(myStart+pos_exp:myStart+end_exp-1))
-
- IO_fixedNoEFloatValue = base*10.0_pReal**expon
+ IO_fixedNoEFloatValue = base*10.0_pReal**real(expon,pReal)
 
 end function IO_fixedNoEFloatValue
 
@@ -1024,24 +1040,14 @@ integer(pInt) function IO_intValue(line,positions,myPos)
  integer(pInt),                  intent(in) :: myPos
  character(len=13),              parameter  :: myName = 'IO_intValue: '
  character(len=12),              parameter  :: validCharacters = '0123456789+-'
- integer(pInt)                              :: readStatus, invalidWhere
 
- IO_intValue =  0_pInt
- 
+ IO_intValue = 0.0_pReal
+
  if (myPos > positions(1) .or. myPos < 1_pInt) then                                                 ! trying to access non-present value
    call IO_warning(201,ext_msg=myName//trim(line))
  else
-   invalidWhere = verify(line(positions(myPos*2):positions(myPos*2+1)),validCharacters)
-   if (invalidWhere /= 0_pInt) then                                                                 ! found invaldid character, only read in substring
-     invalidWhere = invalidWhere-1
-     call IO_warning(202,ext_msg=line(positions(myPos*2):positions(myPos*2+1)))
-   else
-     invalidWhere = positions(myPos*2+1)-positions(myPos*2)+1
-   endif
-   read(UNIT=line(positions(myPos*2):positions(myPos*2)+invalidWhere-1),iostat=readStatus,FMT=*) &
-                                                                                        IO_intValue
-   if (readStatus /= 0_pInt) &                                                                      ! error during string to int conversion
-     call IO_warning(203,ext_msg=myName//line(positions(myPos*2):positions(myPos*2)+invalidWhere-1))
+   IO_intValue = IO_verifyIntValue(line(positions(myPos*2):positions(myPos*2+1)),&
+                                   validCharacters,myName)
  endif
 
 end function IO_intValue
@@ -1056,25 +1062,12 @@ integer(pInt) function IO_fixedIntValue(line,ends,myPos)
  character(len=*),               intent(in) :: line
  integer(pInt),                  intent(in) :: myPos
  integer(pInt),   dimension(:),  intent(in) :: ends
- character(len=18),              parameter  :: myName = 'IO_fixedIntValue: '
- character(len=13),              parameter  :: validCharacters = '0123456789.+-'
- integer(pInt)                              :: readStatus, myStart, invalidWhere
+ character(len=20),              parameter  :: myName = 'IO_fixedIntValue: '
+ character(len=12),              parameter  :: validCharacters = '0123456789+-'
 
- IO_fixedIntValue = 0_pInt
- 
- myStart = ends(myPos-1)+1
+ IO_fixedIntValue = IO_verifyIntValue(line(ends(myPos)+1_pInt:ends(myPos+1_pInt)),&
+                                          validCharacters,myName)
 
- invalidWhere = verify(line(myStart:ends(myPos)),validCharacters)
- if (invalidWhere /= 0_pInt) then
-   invalidWhere = invalidWhere-1
-   call IO_warning(202,ext_msg=myName//line(myStart:ends(myPos)))
- else
-   invalidWhere = ends(myPos)-myStart+1
- endif
- read(UNIT=line(myStart:myStart+invalidWhere-1),iostat=readStatus,FMT=*) IO_fixedIntValue
- if (readStatus /= 0_pInt) &
-   call IO_warning(203,ext_msg=myName//line(myStart:myStart+invalidWhere-1))
- 
 end function IO_fixedIntValue
 
 
