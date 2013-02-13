@@ -384,6 +384,11 @@ function homogenization_RGC_updateState(&
 !
  real(pReal), dimension(:,:), allocatable :: tract,jmatrix,jnverse,smatrix,pmatrix,rmatrix
  real(pReal), dimension(:), allocatable   :: resid,relax,p_relax,p_resid,drelax
+ 
+ if (dt==0.0_pReal) then                             ! no need to do anything if time increment is zero (thgis is usually the first call in FEM)
+   homogenization_RGC_updateState = .true.           ! pretend everything is fine
+   return
+ endif
 
 !* -------------------------------------------------------------------------------------------------------------
 !*** Initialization of RGC update state calculation

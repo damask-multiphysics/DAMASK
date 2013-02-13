@@ -226,7 +226,7 @@ subroutine IO_open_inputFile(myUnit,model)
 
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
- character(len=4), parameter    :: InputFileExtension2 = '.pes'
+ character(len=4)               :: InputFileExtension2 = '.pes'
  
 #ifdef Abaqus
  path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension2          ! attempt .pes, if it exists: it should be used
