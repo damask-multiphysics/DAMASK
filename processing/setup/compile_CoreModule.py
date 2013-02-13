@@ -40,7 +40,7 @@ Sets up the pre and post processing tools of DAMASK
 compilers = ['intel','ifort','intel32','gfortran','gnu95']
 
 parser.add_option('--F90', '--f90',     dest='compiler', type='string', \
-                                        help='name of F90 compiler')
+                                        help='name of F90 [%default]')
 parser.set_defaults(compiler  = {True:'ifort',False:'gfortran'}[\
                                  subprocess.call(['which', 'ifort'],\
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0])

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import os,string
+import os,string,subprocess
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 import damask
 
@@ -33,10 +33,12 @@ parser.add_option('-c', '--compile', dest='spectralCompile', action='store_true'
                   help='compiles the spectral solver [%default]')
 parser.add_option('-o', '--options', dest='makeOptions', action='extend', type='string', \
                   metavar="KEY=VALUE", \
-                  help='comma-separated list of options passed to Makefile when compiling spectral code %default')
-parser.set_defaults(spectralCompile = True)
-parser.set_defaults(makeOptions = ['F90=ifort'])
+                  help='comma-separated list of options passed to Makefile when compiling spectral code')
 
+parser.set_defaults(spectralCompile = False)
+parser.set_defaults(makeOptions = ['F90='+{True:'ifort',False:'gfortran'}[\
+                                             subprocess.call(['which', 'ifort'],\
+                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]])
 (options, args) = parser.parse_args()
 
 damaskEnv = damask.Environment('../../')          # script location relative to root
