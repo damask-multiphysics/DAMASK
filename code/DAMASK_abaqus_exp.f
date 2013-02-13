@@ -52,8 +52,8 @@
 module DAMASK_interface
 
 implicit none
-character(len=4),  parameter :: InputFileExtension = '.inp'
-character(len=4),  parameter :: LogFileExtension = '.log'
+character(len=4), dimension(2),  parameter :: InputFileExtension = ['.pes','.inp']
+character(len=4),                parameter :: LogFileExtension = '.log'
 
 contains
 

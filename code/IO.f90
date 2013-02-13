@@ -226,26 +226,28 @@ subroutine IO_open_inputFile(myUnit,model)
 
  integer(pInt)                  :: myStat
  character(len=1024)            :: path
- character(len=4)               :: InputFileExtension2 = '.pes'
  
 #ifdef Abaqus
- path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension2          ! attempt .pes, if it exists: it should be used
+ integer(pInt)                  :: fileType
+ 
+ fileType = 1_pInt                                                                                  ! assume .pes
+ path = trim(getSolverWorkingDirectoryName())//trim(model)//inputFileExtension(fileType)            ! attempt .pes, if it exists: it should be used
  open(myUnit+1,status='old',iostat=myStat,file=path)
- if(myStat /= 0_pInt) then                                                               !if .pes does not work / exist; use conventional extension, i.e.".inp"
-    path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+ if(myStat /= 0_pInt) then                                                                          ! if .pes does not work / exist; use conventional extension, i.e.".inp"
+    fileType = 2_pInt
+    path = trim(getSolverWorkingDirectoryName())//trim(model)//inputFileExtension(fileType)
     open(myUnit+1,status='old',iostat=myStat,file=path)
-    InputFileExtension2=InputFileExtension
  endif
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)                              !ensure that any file opened works
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)                                         ! ensure that any file opened works
    
- path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension2//'_assembly'
+ path = trim(getSolverWorkingDirectoryName())//trim(model)//inputFileExtension(fileType)//'_assembly'
  open(myUnit,iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-    if (.not.abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)     ! strip comments and concatenate any "include"s
+    if (.not.abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)                ! strip comments and concatenate any "include"s
  close(myUnit+1_pInt) 
 #endif
 #ifdef Marc
-   path = trim(getSolverWorkingDirectoryName())//trim(model)//InputFileExtension
+   path = trim(getSolverWorkingDirectoryName())//trim(model)//inputFileExtension
    open(myUnit,status='old',iostat=myStat,file=path)
    if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
 #endif
