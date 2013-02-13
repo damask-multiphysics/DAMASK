@@ -81,7 +81,6 @@ module DAMASK_spectral_utilities
    utilities_calculateRate, &
    utilities_forwardField, &
    utilities_destroy
-
  private :: &
    utilities_getFilter
 
@@ -128,6 +127,10 @@ subroutine utilities_init()
 
  implicit none
 #ifdef PETSc
+ external :: &
+   PETScOptionsClear, &
+   PETScOptionsInsertString, &
+   MPI_Abort
  PetscErrorCode :: ierr
 #endif  
  integer(pInt)               :: i, j, k

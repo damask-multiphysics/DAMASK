@@ -129,11 +129,11 @@ endif
 
 ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
-STANDARD_CHECK_gfortran ?=-std=f2008 -Wintrinsics-std
+STANDARD_CHECK_gfortran ?=-std=f2008 -pedantic-errors
 endif
 #-std=f2008ts:      for newer gfortran
-#-Wintrinsics-std:  only standard intrisics are available, e.g. "call flush(6)" will cause an error
-
+#-pedantic:                    more strict on standard, enables some warnings
+#   -pedantic-errors:          like pedantic, but errors instead of warnings
 OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
@@ -188,7 +188,8 @@ DEBUG_OPTIONS_ifort      :=-g\
                            -traceback\
                            -gen-interfaces\
                            -fp-stack-check\
-                           -check bounds,format,output_conversion,pointers,uninit
+                           -check bounds,format,output_conversion,pointers,uninit\
+                           -fpe-all0
 ###################################################################################################
 #COMPILE SWITCHES FOR RUNTIME DEBUGGING
 #-g:                       Generate symbolic debugging information in the object file
@@ -210,33 +211,20 @@ DEBUG_OPTIONS_ifort      :=-g\
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 
 
+#-fmodule-private add later
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_gfortran +=$(COMPILE_OPTIONS_gfortran)\
                            -ffree-line-length-132\
                            -fimplicit-none\
-                           -pedantic\
-                           -Warray-bounds\
-                           -Wampersand\
-                           -Wno-tabs\
-                           -Wcharacter-truncation\
-                           -Wintrinsic-shadow\
-                           -Waliasing\
-                           -Wconversion\
-                           -Wsurprising\
-                           -Wunderflow\
-                           -Wswitch\
-                           -Wstrict-overflow\
-                           -Wattributes\
-                           -Wunsafe-loop-optimizations\
-                           -Wunused\
                            -Wall\
                            -Wextra\
-                           -Wsuggest-attribute=const\
+                           -Wcharacter-truncation\
+                           -Wunderflow\
                            -Wsuggest-attribute=pure\
                            -Wsuggest-attribute=noreturn\
-                           -Wreal-q-constant\
-                           -pedantic-errors
+                           -Wconversion-extra\
+                           -Wimplicit-procedure
 endif
 ###################################################################################################
 #COMPILE SWITCHES
@@ -244,50 +232,92 @@ endif
 #-ffree-line-length-132:       restrict line length to the standard 132 characters
 #-fno-range-check:             disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
 #-fimplicit-none:              assume "implicit-none" even if not present in source
-#-pedantic:                    more strict on standard, enables some of the warnings below
-#-Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
-#-Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
-#-Wno-tabs:                    do not allow tabs in source
 #-Wcharacter-truncation:       warn if character expressions (strings) are truncated
-#-Wintrinsic-shadow:           warn if a user-defined procedure or module procedure has the same name as an intrinsic
-#-Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface. 
-#-Wconversion:                 warn about implicit conversions between different type
-#-Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made. 
 #-Wunderflow:                  produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
-#-Wswitch:                     warn whenever a "switch" statement has an index of enumerated type and lacks a "case" for one or more of the named codes of that enumeration.  (The presence of a "default" label prevents this warning.) "case" labels outside the enumeration range also provokewarnings when this option is used (even if there is a "default" label)
-#-Wstrict-overflow:
-#-Wattributes:                 warn about inappropriate attribute usage                              
-#-Wunsafe-loop-optimizations:  warn if the loop cannot be optimized due to nontrivial assumptions.
-#-Wunused:   
-#        -value:
-#        -parameter:           find usused variables with "parameter" attribute
-#-Wextra:                        
-#-Wsuggest-attribute=const:
+#-Wsuggest-attribute=pure:
 #-Wsuggest-attribute=noreturn:
-#-Wsuggest-attribute=pure: 
-#-Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
-#-pedantic-errors:
+#-Wconversion-extra
+#-Wimplicit-procedure
+#-Wall:                        sets the following Fortran options:
+#  -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
+#  -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line#-Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
+#  -Wconversion:                 warn about implicit conversions between different type
+#  -Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made.
+#  -Wc-binding-type:
+#  -Wintrinsics-std:             only standard intrisics are available, e.g. "call flush(6)" will cause an error
+#  -Wno-tabs:                    do not allow tabs in source
+#  -Wintrinsic-shadow:           warn if a user-defined procedure or module procedure has the same name as an intrinsic
+#  -Wline-truncation:
+#  -Wtarget-lifetime:
+#  -Wreal-q-constant:            warn about real-literal-constants with 'q'  exponent-letter
+#  -Wunused:                     a number of unused-xxx warnings
+# these are general (non -Fortran options) implied by -Wall
+#  -Waddress   
+#  -Warray-bounds (only with -O2)  
+#  -Wc++11-compat  
+#  -Wchar-subscripts  
+#  -Wcomment  
+#  -Wformat    
+#  -Wmaybe-uninitialized 
+#  -Wnonnull  
+#  -Wparentheses  
+#  -Wpointer-sign  
+#  -Wreorder   
+#  -Wreturn-type  
+#  -Wsequence-point   
+#  -Wstrict-aliasing  
+#  -Wstrict-overflow=1  
+#  -Wswitch  
+#  -Wtrigraphs  
+#  -Wuninitialized  
+#  -Wunknown-pragmas  
+#  -Wunused-function  
+#  -Wunused-label     
+#  -Wunused-value     
+#  -Wunused-variable  
+#  -Wvolatile-register-var 
+#-Wextra:                      sets the following Fortran options:
+#  -Wunuses-parameter:
+#  -Wcompare-reals:
+# these are general (non -Fortran options) implied by -Wextra
+#  -Wclobbered  
+#  -Wempty-body  
+#  -Wignored-qualifiers 
+#  -Wmissing-field-initializers  
+#  -Woverride-init  
+#  -Wsign-compare  
+#  -Wtype-limits  
+#  -Wuninitialized  
+#  -Wunused-but-set-parameter (only with -Wunused or -Wall)
+#  -Wno-globals
+
 ###################################################################################################
-#MORE OPTIONS FOR RUNTIME DEBUGGING                    
-#-Wline-truncation:           too many warnings because we have comments beyond character 132
-#-Warray-temporarieswarnings: because we have many temporary arrays (performance issue?):                     
-#-Wimplicit-interface:
-#-fmodule-private:
+#MORE OPTIONS FOR DEBUGGING DURING COMPILATION
+#-Warray-temporarieswarnings:   because we have many temporary arrays (performance issue?):                     
+#-Wimplicit-interface:          no interfaces for lapack routines
+#-Wunsafe-loop-optimizations:   warn if the loop cannot be optimized due to nontrivial assumptions.
+#-Wstrict-overflow:
 
 DEBUG_OPTIONS_gfortran    :=-g\
                            -fbacktrace\
-                           -fbounds-check\
+                           -fdump-core\
+                           -fcheck=all\
                            -ffpe-trap=invalid,zero,overflow
+
 ###################################################################################################
 #COMPILE SWITCHES FOR RUNTIME DEBUGGING
-#-fbounds-check:              check if an array index is too small (<1) or too large!
 #-ffpe-trap=invalid,\         stop execution if floating point exception is detected (NaN is silent)
 #           zero,\
-#           overflow,\
-#           underflow
+#           overflow
+#-fcheck=all:                   sets the following Fortran options:
+#array-temps
+#bounds
+#do
+#mem
+#pointer
+#recursion
 ###################################################################################################
-#COMPILE SWITCHES FOR RUNTIME DEBUGGING
-#-fbounds-check:              check if an array index is too small (<1) or too large!
+#MORE OPTIONS FOR RUNTIME DEBUGGING
 #-ffpe-trap=precision,\
 #           denormal, \
 #           underflow

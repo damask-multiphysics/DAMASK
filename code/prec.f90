@@ -72,8 +72,6 @@ module prec
 
  public :: &
    prec_init
- external :: &
-   quit
  
 contains
 
@@ -84,7 +82,9 @@ subroutine prec_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  
  implicit none
-
+ external :: &
+   quit
+   
  write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"

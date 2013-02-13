@@ -60,10 +60,6 @@ module DAMASK_interface
    IIO_intValue, &
    IIO_lc, &
    IIO_stringPos
- external :: &
-   quit, &
-   PetscInitialize, &
-   MPI_abort
 
 contains
 
@@ -95,7 +91,12 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    positions
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
+ external :: &
+   quit
 #ifdef PETSc
+ external :: &
+   PETScInitialize, &
+   MPI_abort
  PetscErrorCode :: ierr
 
 !--------------------------------------------------------------------------------------------------
