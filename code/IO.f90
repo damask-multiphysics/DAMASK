@@ -831,7 +831,7 @@ integer(pInt) function IO_verifyIntValue (line,validChars,myName)
  character(len=len(trim(adjustl(line)))) :: trimmed
  
  trimmed = trim(adjustl(line))
- IO_verifyIntValue = 0.0_pReal
+ IO_verifyIntValue = 0_pInt
 
  invalidWhere = verify(trimmed,validChars)
  if (invalidWhere == 0_pInt) then
@@ -1043,7 +1043,7 @@ integer(pInt) function IO_intValue(line,positions,myPos)
  character(len=13),              parameter  :: myName = 'IO_intValue: '
  character(len=12),              parameter  :: validCharacters = '0123456789+-'
 
- IO_intValue = 0.0_pReal
+ IO_intValue = 0_pInt
 
  if (myPos > positions(1) .or. myPos < 1_pInt) then                                                 ! trying to access non-present value
    call IO_warning(201,ext_msg=myName//trim(line))
