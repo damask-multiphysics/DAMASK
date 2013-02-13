@@ -111,13 +111,14 @@ def servoLink():
   baseCorner = baseNode["%.8e"%box['min'][0]]["%.8e"%box['min'][1]]["%.8e"%box['min'][2]]     # detect ultimate base node
   
   
-  for node in linkNodes:                        # loop over all linked nodes
-    linkCoord = [node['coord']]                 # start list of control node coords with my coords
-    for dir in xrange(3):                       # check for each direction
-      if node['faceMember'][dir]:               # me on this front face
-        linkCoord[0][dir] = box['min'][dir]     # project me onto rear face along dir
-        linkCoord.append(box['min'])            # append base corner
-        linkCoord[-1][dir] = box['max'][dir]    # stretch it to corresponding control leg of "dir"
+  for node in linkNodes:                          # loop over all linked nodes
+    linkCoord = [node['coord']]                   # start list of control node coords with my coords
+    for dir in xrange(3):                         # check for each direction
+      if node['faceMember'][dir]:                 # me on this front face
+        linkCoord[0][dir] = box['min'][dir]       # project me onto rear face along dir
+        linkCoord.append(numpy.array(box['min'])) # append base corner
+        
+        linkCoord[-1][dir] = box['max'][dir]      # stretch it to corresponding control leg of "dir"
 
     nLinks = len(linkCoord)
 
