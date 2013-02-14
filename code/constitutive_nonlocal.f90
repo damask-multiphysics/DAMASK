@@ -228,17 +228,7 @@ use material, only: homogenization_maxNgrains, &
                     phase_plasticity, &
                     phase_plasticityInstance, &
                     phase_Noutput
-use lattice,  only: lattice_maxNslipFamily, &
-                    lattice_maxNslip, &
-                    lattice_maxNinteraction, &
-                    lattice_NslipSystem, &
-                    lattice_initializeStructure, &
-                    lattice_symmetrizeC66, &
-                    lattice_sd, &
-                    lattice_sn, &
-                    lattice_st, &
-                    lattice_interactionSlipSlip, &
-                    lattice_maxNonSchmid
+use lattice
 
 !*** output variables
 
@@ -249,6 +239,7 @@ integer(pInt), intent(in) ::                myFile
 integer(pInt), parameter ::                 maxNchunks = 21_pInt
 integer(pInt), &
     dimension(1_pInt+2_pInt*maxNchunks) ::  positions
+integer(pInt), dimension(6) ::              configNchunks
 integer(pInt)          ::                   section, &
                                             maxNinstance, &
                                             maxTotalNslip, &
@@ -262,6 +253,8 @@ integer(pInt)          ::                   section, &
                                             s1, &               ! index of my slip system
                                             s2, &               ! index of my slip system
                                             it, &               ! index of my interaction type
+                                            Nchunks_SlipSlip, &
+                                            Nchunks_SlipFamilies, &
                                             mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
 character(len=64)                           tag
 character(len=1024) :: line = ''                                ! to start initialized
@@ -276,10 +269,10 @@ if (maxNinstance == 0) return                                                   
 
 if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
   write(6,'(a16,1x,i5)') '# instances:',maxNinstance
+  write(6,*)
 endif
 
-
-!*** space allocation for global variables
+!*** memory allocation for global variables
 
 allocate(constitutive_nonlocal_sizeDotState(maxNinstance))
 allocate(constitutive_nonlocal_sizeDependentState(maxNinstance))
@@ -433,8 +426,11 @@ do                                                                              
         constitutive_nonlocal_output(constitutive_nonlocal_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
       case ('lattice_structure')
         constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+        configNchunks = lattice_configNchunks(constitutive_nonlocal_structureName(i))
+        Nchunks_SlipFamilies = configNchunks(1)
+        Nchunks_SlipSlip =     configNchunks(3)
       case ('c/a_ratio','covera_ratio')
-        constitutive_nonlocal_CoverA(i) = IO_floatValue(line,positions,2_pInt)
+        constitutive_nonlocal_CoverA(i)        = IO_floatValue(line,positions,2_pInt)
        case ('c11')
          constitutive_nonlocal_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
        case ('c12')
@@ -454,49 +450,49 @@ do                                                                              
        case ('c66')
          constitutive_nonlocal_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
       case ('nslip')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
         enddo
       case ('rhosgledgepos0')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_rhoSglEdgePos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case ('rhosgledgeneg0')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_rhoSglEdgeNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case ('rhosglscrewpos0')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_rhoSglScrewPos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case ('rhosglscrewneg0')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_rhoSglScrewNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case ('rhodipedge0')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_rhoDipEdge0(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case ('rhodipscrew0')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_rhoDipScrew0(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case ('lambda0')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case ('burgers')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case('cutoffradius','r')
         constitutive_nonlocal_R(i) = IO_floatValue(line,positions,2_pInt)
       case('minimumdipoleheightedge','ddipminedge')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case('minimumdipoleheightscrew','ddipminscrew')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_minimumDipoleHeightPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case('atomicvolume')
@@ -512,7 +508,7 @@ do                                                                              
       case('significantn','significant_n','significantdislocations','significant_dislcations')
         constitutive_nonlocal_significantN(i) = IO_floatValue(line,positions,2_pInt)
       case ('interaction_slipslip')
-        do it = 1_pInt, lattice_maxNinteraction
+        do it = 1_pInt, Nchunks_SlipSlip
           constitutive_nonlocal_interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
         enddo
       case('linetension','linetensioneffect','linetension_effect')
@@ -520,11 +516,11 @@ do                                                                              
       case('edgejog','edgejogs','edgejogeffect','edgejog_effect')
         constitutive_nonlocal_edgeJogFactor(i) = IO_floatValue(line,positions,2_pInt)
       case('peierlsstressedge','peierlsstress_edge')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case('peierlsstressscrew','peierlsstress_screw')
-        do f = 1_pInt, lattice_maxNslipFamily
+        do f = 1_pInt, Nchunks_SlipFamilies
           constitutive_nonlocal_peierlsStressPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
         enddo
       case('doublekinkwidth')

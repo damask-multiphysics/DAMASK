@@ -707,7 +707,8 @@ module lattice
   lattice_init, &
   lattice_initializeStructure, &
   lattice_symmetryType, &
-  lattice_symmetrizeC66
+  lattice_symmetrizeC66, &
+  lattice_configNchunks
 
 contains
 
@@ -1053,5 +1054,47 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
  lattice_initializeStructure = myStructure        ! report my structure index back
 
 end function lattice_initializeStructure
+
+!--------------------------------------------------------------------------------------------------
+!> @brief   Number of parameters to expect in material.config section
+! NslipFamilies
+! NtwinFamilies
+! SlipSlipInteraction
+! SlipTwinInteraction
+! TwinSlipInteraction
+! TwinTwinInteraction
+!--------------------------------------------------------------------------------------------------
+function lattice_configNchunks(struct)
+ use prec, only: pReal,pInt
+
+ implicit none
+ integer(pInt), dimension(6)  :: lattice_configNchunks
+ character(len=*), intent(in) :: struct
+
+ select case(struct(1:3))                          ! check first three chars of structure name
+   case ('fcc')
+     lattice_configNchunks(1) = count(lattice_fcc_NslipSystem > 0_pInt)
+     lattice_configNchunks(2) = count(lattice_fcc_NtwinSystem > 0_pInt)
+     lattice_configNchunks(3) = maxval(lattice_fcc_interactionSlipSlip)
+     lattice_configNchunks(4) = maxval(lattice_fcc_interactionSlipTwin)
+     lattice_configNchunks(5) = maxval(lattice_fcc_interactionTwinSlip)
+     lattice_configNchunks(6) = maxval(lattice_fcc_interactionTwinTwin)
+   case ('bcc')
+     lattice_configNchunks(1) = count(lattice_bcc_NslipSystem > 0_pInt)
+     lattice_configNchunks(2) = count(lattice_bcc_NtwinSystem > 0_pInt)
+     lattice_configNchunks(3) = maxval(lattice_bcc_interactionSlipSlip)
+     lattice_configNchunks(4) = maxval(lattice_bcc_interactionSlipTwin)
+     lattice_configNchunks(5) = maxval(lattice_bcc_interactionTwinSlip)
+     lattice_configNchunks(6) = maxval(lattice_bcc_interactionTwinTwin)
+   case ('hex')
+     lattice_configNchunks(1) = count(lattice_hex_NslipSystem > 0_pInt)
+     lattice_configNchunks(2) = count(lattice_hex_NtwinSystem > 0_pInt)
+     lattice_configNchunks(3) = maxval(lattice_hex_interactionSlipSlip)
+     lattice_configNchunks(4) = maxval(lattice_hex_interactionSlipTwin)
+     lattice_configNchunks(5) = maxval(lattice_hex_interactionTwinSlip)
+     lattice_configNchunks(6) = maxval(lattice_hex_interactionTwinTwin)
+ end select
+
+end function lattice_configNchunks
 
 end module lattice
