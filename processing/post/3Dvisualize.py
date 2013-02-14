@@ -373,8 +373,8 @@ parser.set_defaults(linearreconstruction = False)
 sep = {'n': '\n', 't': '\t', 's': ' '}
 
 (options, args) = parser.parse_args()
-if options.scaling !=1.0 and options.linearreconstruction: print 'cannot scale for linear reconstruction'
-if options.scaling !=1.0 and options.filenodalcoords!='':  print 'cannot scale when reading coordinate from file'
+if options.scaling != 1.0 and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
+if options.scaling != 1.0 and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 options.separator = options.separator.lower()
 for filename in args:
   if not os.path.exists(filename):
@@ -407,7 +407,7 @@ for filename in args:
   for label in [options.defgrad] + options.tensor:
     column['tensor'][label] = -1
     for col,head in enumerate(headings):
-      if head == label or head == '1_%s'%label:
+      if head == label or head == '1_'+label:
         column['tensor'][label] = col
         maxcol = max(maxcol,col+9)
         break
@@ -420,17 +420,17 @@ for filename in args:
   for label in options.vector:
     column['vector'][label] = -1
     for col,head in enumerate(headings):
-      if head == label or head == '1_%s'%label:
+      if head == label or head == '1_'+label:
         column['vector'][label] = col
         maxcol = max(maxcol,col+3)
         break
 
   for length,what in enumerate(['scalar','double','triple','quadruple']):
     column[what] = {}
-    for label in eval('options.%s'%what):
+    for label in eval('options.'+what):
       column[what][label] = -1
       for col,head in enumerate(headings):
-        if head == label or head == '1_%s'%label:
+        if head == label or head == '1_'+label:
           column[what][label] = col
           maxcol = max(maxcol,col+1+length)
           break
@@ -526,7 +526,7 @@ for filename in args:
 
   for datatype in fields.keys():
     print '\n%s:'%datatype,
-    for what in eval('options.%s'%datatype):
+    for what in eval('options.'+datatype):
       col = column[datatype][what]
       if col != -1:
         print what,
@@ -541,7 +541,7 @@ for filename in args:
   for what in out.keys():
     print what
     (head,tail) = os.path.split(filename)
-    vtk = open(os.path.join(head,'%s_'%what+os.path.splitext(tail)[0]+'.vtk'), 'w')
+    vtk = open(os.path.join(head,what+'_'+os.path.splitext(tail)[0]+'.vtk'), 'w')
     output(out[what],{'filepointer':vtk},'File')
     vtk.close()
   print
