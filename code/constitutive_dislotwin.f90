@@ -76,7 +76,8 @@ real(pReal),       dimension(:),           allocatable :: constitutive_dislotwin
                                                           constitutive_dislotwin_sbQedge, &                     ! FIXED (for now) value for shearband systems Qedge
                                                           constitutive_dislotwin_SFE_0K, &                      ! stacking fault energy at zero K
                                                           constitutive_dislotwin_dSFE_dT, &                     ! temperature dependance of stacking fault energy
-                                                          constitutive_dislotwin_aTolRho                        ! absolute tolerance for integration of dislocation density
+                                                          constitutive_dislotwin_aTolRho, &                     ! absolute tolerance for integration of dislocation density
+                                                          constitutive_dislotwin_aTolTwinFrac                   ! absolute tolerance for integration of twin volume fraction
 real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin_Cslip_66                       ! elasticity matrix in Mandel notation for each instance
 real(pReal),       dimension(:,:,:,:),     allocatable :: constitutive_dislotwin_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
 real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_dislotwin_Cslip_3333                     ! elasticity matrix for each instance
@@ -211,6 +212,8 @@ allocate(constitutive_dislotwin_L0(maxNinstance))
          constitutive_dislotwin_L0 = 0.0_pReal
 allocate(constitutive_dislotwin_aTolRho(maxNinstance))
          constitutive_dislotwin_aTolRho = 0.0_pReal
+allocate(constitutive_dislotwin_aTolTwinFrac(maxNinstance))
+         constitutive_dislotwin_aTolTwinFrac = 0.0_pReal
 allocate(constitutive_dislotwin_Cslip_66(6,6,maxNinstance))
          constitutive_dislotwin_Cslip_66 = 0.0_pReal
 allocate(constitutive_dislotwin_Cslip_3333(3,3,3,3,maxNinstance))
@@ -363,6 +366,8 @@ do                                                       ! read thru sections of
               constitutive_dislotwin_Qsd(i) = IO_floatValue(line,positions,2_pInt)
        case ('atol_rho')
               constitutive_dislotwin_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
+       case ('atol_twinfrac')
+              constitutive_dislotwin_aTolTwinFrac(i) = IO_floatValue(line,positions,2_pInt)
        case ('cmfptwin')
               constitutive_dislotwin_Cmfptwin(i) = IO_floatValue(line,positions,2_pInt)
        case ('cthresholdtwin')
@@ -444,14 +449,16 @@ enddo
                                                                                  //constitutive_dislotwin_label//')')
    if (constitutive_dislotwin_Qsd(i) <= 0.0_pReal)                          call IO_error(211_pInt,e=i,ext_msg='Qsd (' &
                                                                                  //constitutive_dislotwin_label//')')
-   if (constitutive_dislotwin_aTolRho(i) <= 0.0_pReal)                      call IO_error(211_pInt,e=i,ext_msg='aTolRho (' &
+   if (constitutive_dislotwin_SFE_0K(i) == 0.0_pReal .and. &
+       constitutive_dislotwin_dSFE_dT(i) == 0.0_pReal)                      call IO_error(211_pInt,e=i,ext_msg='SFE (' &
                                                                                  //constitutive_dislotwin_label//')')
-   if (constitutive_dislotwin_sbResistance(i) <= 0.0_pReal)                 call IO_error(211_pInt,e=i,ext_msg='sbResistance (' &
+   if (constitutive_dislotwin_aTolRho(i) <= 0.0_pReal)                      call IO_error(211_pInt,e=i,ext_msg='aTolRho (' &
+                                                                                 //constitutive_dislotwin_label//')')   
+   if (constitutive_dislotwin_aTolTwinFrac(i) <= 0.0_pReal)                 call IO_error(211_pInt,e=i,ext_msg='aTolTwinFrac (' &
+                                                                                 //constitutive_dislotwin_label//')')
+   if (constitutive_dislotwin_sbResistance(i) < 0.0_pReal)                  call IO_error(211_pInt,e=i,ext_msg='sbResistance (' &
                                                                                  //constitutive_dislotwin_label//')')
    if (constitutive_dislotwin_sbVelocity(i) < 0.0_pReal)                    call IO_error(211_pInt,e=i,ext_msg='sbVelocity (' &
-                                                                                 //constitutive_dislotwin_label//')')
-   if (constitutive_dislotwin_SFE_0K(i) == 0.0_pReal .AND. &
-       constitutive_dislotwin_dSFE_dT(i) == 0.0_pReal)                      call IO_error(211_pInt,e=i,ext_msg='SFE (' &
                                                                                  //constitutive_dislotwin_label//')')
 
    !* Determine total number of active slip or twin systems
@@ -750,18 +757,22 @@ constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1_pInt:6_pInt*ns+5_pInt*nt)
 end function
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief absolute state tolerance
+!--------------------------------------------------------------------------------------------------
 pure function constitutive_dislotwin_aTolState(myInstance)
-!*********************************************************************
-!* absolute state tolerance                                          *
-!*********************************************************************
-use prec,     only: pReal, pInt
-implicit none
+ implicit none
+ integer(pInt), intent(in) ::  myInstance                                                           ! number specifying the current instance of the plasticity
+ real(pReal), dimension(constitutive_dislotwin_sizeState(myInstance)) :: &
+                              constitutive_dislotwin_aTolState                                      ! relevant state values for the current instance of this plasticity
 
-!* Input-Output variables
-integer(pInt), intent(in) :: myInstance
-real(pReal), dimension(constitutive_dislotwin_sizeState(myInstance)) :: constitutive_dislotwin_aTolState
 
-constitutive_dislotwin_aTolState = constitutive_dislotwin_aTolRho(myInstance)
+ constitutive_dislotwin_aTolState(1:2*constitutive_dislotwin_totalNslip(myInstance)) = &
+   constitutive_dislotwin_aTolRho(myInstance)
+ constitutive_dislotwin_aTolState(2*constitutive_dislotwin_totalNslip(myInstance)+1: &
+                                  2*constitutive_dislotwin_totalNslip(myInstance)+&
+                                   constitutive_dislotwin_totalNtwin(myInstance)) = &
+   constitutive_dislotwin_aTolTwinFrac(myInstance)
 
 end function constitutive_dislotwin_aTolState
 
@@ -1052,7 +1063,8 @@ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over
 enddo
 
 !* Shear banding (shearband) part
-if(constitutive_dislotwin_sbVelocity(myInstance) /= 0.0_pReal) then
+if(constitutive_dislotwin_sbVelocity(myInstance) /= 0.0_pReal .or. &
+   constitutive_dislotwin_sbResistance(myInstance) /= 0.0_pReal) then
   gdot_sb = 0.0_pReal
   dgdot_dtausb = 0.0_pReal
   call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
