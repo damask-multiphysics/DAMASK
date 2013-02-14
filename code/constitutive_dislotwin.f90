@@ -539,8 +539,6 @@ do i = 1_pInt,maxNinstance
              'shear_rate_shearband' &
              )
            mySize = 6_pInt
-        case('schmid_factor_shearband')
-           mySize = 6_pInt
         case('sb_eigenvalues')
            mySize = 3_pInt  
         case('sb_eigenvectors')
@@ -1505,13 +1503,10 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
        enddo; enddo
        c = c + ns
       case ('resolved_stress_shearband')
-       do j = 1_pInt,6_pInt                                                ! loop over all shearband families
+        do j = 1_pInt,6_pInt                                                ! loop over all shearband families
            constitutive_dislotwin_postResults(c+j) = dot_product(Tstar_v, constitutive_dislotwin_sbSv(1:6,j,g,ip,el))
-       enddo
-       c = c + 6_pInt
-      case ('schmid_factor_shearband') !ToDo: j  has no value!!!!!!
-        constitutive_dislotwin_postResults(c+1_pInt:c+6_pInt) = constitutive_dislotwin_sbSv(1:6,j,g,ip,el)
-       c = c + 6_pInt
+        enddo
+        c = c + 6_pInt
       case ('shear_rate_shearband')
         do j = 1_pInt,6_pInt                                                ! loop over all shearband families
              !* Resolved shear stress on shearband system
