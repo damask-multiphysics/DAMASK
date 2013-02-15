@@ -1,10 +1,17 @@
-# possible options are MSC, FFTW, IMKL, ACML, LAPACK
-# $id$
+# $Id$
+# possible options are
+# IMKL      base installation directory of Intel Math Kernel Library
+# ACML      base installation directory of AMD Core Math Library
+# LAPACK    base installation directory of (system) LAPACK Library
+# MSC       base installation directory of MSC.Marc/Mentat
+# FFTW      base installation directory of Fastest Fourier Transform in the West library
 # A relative path (like ./fftw/ in this example) starts from $DAMASK_ROOT/lib/
-# Do not add the proceeding /lib/ to the end of the base installation path
+# Do NOT add any trailing /lib/ to the end
+#  of the base installation path---this will be done automatically
+# Out of IMKL, ACML, LAPACK the first defined value is used to access BLAS functionality
 
 #IMKL    /opt/intel/composerxe/mkl
 #ACML    /opt/acml4.4.0
 LAPACK  /usr
-FFTW    /usr/local
+FFTW    ./fftw
 MSC     /msc
