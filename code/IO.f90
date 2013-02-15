@@ -918,11 +918,12 @@ end function IO_stringPos
 function IO_stringValue(line,positions,myPos,silent)
  
  implicit none
+ character(len=*),                             intent(in) :: line
  integer(pInt),   dimension(:),                intent(in) :: positions
  integer(pInt),                                intent(in) :: myPos
- character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
- character(len=*),                             intent(in) :: line
  logical,                             optional,intent(in) :: silent
+ character(len=16), parameter                             :: myName = 'IO_stringValue: '
+ character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
  logical                                                  :: warn
  
  if (.not. present(silent)) then
@@ -933,7 +934,7 @@ function IO_stringValue(line,positions,myPos,silent)
  
  IO_stringValue = ''
  if (myPos > positions(1) .or. myPos < 1_pInt) then                                               ! trying to access non-present value
-   if (warn) call IO_warning(201, e=myPos, ext_msg = 'IO_stringValue: '//trim(line))
+   if (warn) call IO_warning(201,e=myPos,ext_msg=myName//trim(line))
  else
    IO_stringValue = line(positions(myPos*2):positions(myPos*2+1))
  endif
@@ -972,7 +973,7 @@ real(pReal) function IO_floatValue (line,positions,myPos)
  IO_floatValue = 0.0_pReal
 
  if (myPos > positions(1) .or. myPos < 1_pInt) then                                                 ! trying to access non-present value
-   call IO_warning(201,ext_msg=myName//trim(line))
+   call IO_warning(201,e=myPos,ext_msg=myName//trim(line))
  else
    IO_floatValue = IO_verifyFloatValue(line(positions(myPos*2):positions(myPos*2+1)),&
                                        validCharacters,myName)
@@ -1046,7 +1047,7 @@ integer(pInt) function IO_intValue(line,positions,myPos)
  IO_intValue = 0_pInt
 
  if (myPos > positions(1) .or. myPos < 1_pInt) then                                                 ! trying to access non-present value
-   call IO_warning(201,ext_msg=myName//trim(line))
+   call IO_warning(201,e=myPos,ext_msg=myName//trim(line))
  else
    IO_intValue = IO_verifyIntValue(line(positions(myPos*2):positions(myPos*2+1)),&
                                    validCharacters,myName)
