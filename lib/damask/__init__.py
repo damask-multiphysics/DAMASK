@@ -1,5 +1,5 @@
 # $Id$
-import sys
+import sys, os
 
 from .environment import Environment      # only one class
 from .asciitable  import ASCIItable       # only one class
