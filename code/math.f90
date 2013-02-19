@@ -232,7 +232,8 @@ real(pReal), dimension(4,36), parameter, private :: &
    math_logstrainSpat, &
    math_logstrainMat, &
    math_cauchy, &
-   math_periodicNearestNeighbor
+   math_periodicNearestNeighbor, &
+   math_periodicNearestNeighborDistances
 #endif     
  private :: &
    math_partition, &
@@ -1965,7 +1966,7 @@ end function math_sampleGaussVar
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief symmetric Euler angles for given symmetry string 'triclinic' or '', 'monoclinic', 'orthotropic'
+!> @brief symmetric Euler angles for given symmetry 1:triclinic, 2:monoclinic, 4:orthotropic
 !--------------------------------------------------------------------------------------------------
 pure function math_symmetricEulers(sym,Euler)
 
@@ -3120,7 +3121,7 @@ function math_divergenceFDM(geomdim,order,field)
 end function math_divergenceFDM
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Obtain the nearest neighbor in domain set for all points in querySet
+!> @brief Obtain the nearest neighbor from domainSet at points in querySet
 !--------------------------------------------------------------------------------------------------
 function math_periodicNearestNeighbor(geomdim, Favg, querySet, domainSet)
  use kdtree2_module
@@ -3145,7 +3146,6 @@ function math_periodicNearestNeighbor(geomdim, Favg, querySet, domainSet)
  if (size(querySet,1)  /= size(domainSet,1))  call IO_error(407_pInt,ext_msg='query set')
  spatialDim = size(querySet,1)
 
- print*, geomdim
  i = 0_pInt
  if(spatialDim == 2_pInt) then
    do j = 1_pInt, size(domainSet,2)
@@ -3170,9 +3170,65 @@ function math_periodicNearestNeighbor(geomdim, Favg, querySet, domainSet)
    math_periodicNearestNeighbor(j) = Results(1)%idx
  enddo
  math_periodicNearestNeighbor = math_periodicNearestNeighbor -1_pInt                                    ! let them run from 0 to domainPoints -1
- print*, math_periodicNearestNeighbor
  
 end function math_periodicNearestNeighbor
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Obtain the distances to the next N nearest neighbors from domainSet at points in querySet
+!--------------------------------------------------------------------------------------------------
+function math_periodicNearestNeighborDistances(geomdim, Favg, querySet, domainSet, Ndist) result(distances)
+ use kdtree2_module
+ use IO, only: &
+   IO_error
+ implicit none
+ ! input variables
+ real(pReal),   dimension(3),            intent(in) :: geomdim
+ real(pReal),   dimension(3,3),          intent(in) :: Favg
+ integer(pInt),                          intent(in) :: Ndist
+ real(pReal),   dimension(:,:),          intent(in) :: querySet
+ real(pReal),   dimension(:,:),          intent(in) :: domainSet
+ ! output variable
+ real(pReal),   dimension(Ndist,size(querySet,2))   :: distances
+
+ real(pReal),   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)) &
+   :: domainSetLarge
+
+ integer(pInt)                             :: i,j, l,m,n, spatialDim
+ type(kdtree2), pointer                    :: tree
+ type(kdtree2_result), dimension(:), allocatable :: Results
+
+ allocate(Results(Ndist))
+ if (size(querySet,1)  /= size(domainSet,1))  call IO_error(407_pInt,ext_msg='query set')
+ spatialDim = size(querySet,1)
+
+ i = 0_pInt
+ if(spatialDim == 2_pInt) then
+   do j = 1_pInt, size(domainSet,2)
+     do l = -1_pInt, 1_pInt; do m = -1_pInt, 1_pInt
+       i = i + 1_pInt
+       domainSetLarge(1:2,i) =  domainSet(1:2,j) +matmul(Favg(1:2,1:2),real([l,m],pReal)*geomdim(1:2))
+     enddo; enddo
+   enddo
+ else
+   do j = 1_pInt, size(domainSet,2)
+     do l = -1_pInt, 1_pInt; do m = -1_pInt, 1_pInt; do n = -1_pInt, 1_pInt
+       i = i + 1_pInt
+       domainSetLarge(1:3,i) = domainSet(1:3,j) + math_mul33x3(Favg,real([l,m,n],pReal)*geomdim)
+     enddo; enddo; enddo
+   enddo
+ endif
+
+ tree => kdtree2_create(domainSetLarge,sort=.true.,rearrange=.true.)
+
+ do j = 1_pInt, size(querySet,2)
+   call kdtree2_n_nearest(tp=tree, qv=querySet(1:spatialDim,j),nn=Ndist, results = Results)
+   distances(1:Ndist,j) = sqrt(Results(1:Ndist)%dis)
+ enddo
+
+ deallocate(Results)
+ 
+end function math_periodicNearestNeighborDistances
 #endif
 
 

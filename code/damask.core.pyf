@@ -85,6 +85,18 @@ python module core ! in
              real*8,   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)), depend(domainSet)   :: domainSetLarge
         end function math_periodicNearestNeighbor
         
+        function math_periodicNearestNeighborDistances(geomdim,Favg,querySet,domainSet,Ndist) ! in :math:math.f90
+             ! input variables
+             real*8,  dimension(3),                             intent(in)  :: geomdim
+             real*8,  dimension(3,3),                           intent(in)  :: Favg
+             integer,                                           intent(in)  :: Ndist
+             real*8,  dimension(:,:),                           intent(in)  :: querySet
+             real*8,  dimension(:,:),                           intent(in)  :: domainSet
+             real*8,  dimension(Ndist,size(querySet,2)), depend(Ndist,querySet) :: math_periodicNearestNeighborDistances
+             ! depending on input
+             real*8,   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)), depend(domainSet)   :: domainSetLarge
+        end function math_periodicNearestNeighborDistances
+        
         function math_tensorAvg(field) ! in :math:math.f90
             ! input variables
             real*8  dimension(:,:,:,:,:),                    intent(in),                                     :: field
@@ -155,7 +167,7 @@ python module core ! in
             real*8,  dimension(3),                             intent(in)                  :: gDim
             real*8,                                            intent(in), optional,       :: scalingIn = -1.0
             real*8,  dimension(3,3),                           intent(in), optional        :: FavgIn = -1.0
-            real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),          depend(F)       :: mesh_deformedCoordsFFT  
+            real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),           depend(F)       :: mesh_deformedCoordsFFT  
         end function mesh_deformedCoordsFFT
         
         function mesh_volumeMismatch(gDim,F,nodes) ! in :mesh:mesh.f90

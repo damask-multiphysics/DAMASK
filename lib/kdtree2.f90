@@ -1355,8 +1355,8 @@ subroutine validate_query_storage(n)
  implicit none
  integer(pInt), intent(in) :: n
 
- if (int(size(sr%results,1),pInt) .lt. n) then
-    call IO_error (460_pInt,ext_msg='KD_TREE_TRANS: not enough storage for results(1:n)')
+ if (int(size(sr%results,1),pInt) < n) then
+    call IO_error (460_pInt,e=n,i=int(size(sr%results,1),pInt),ext_msg='KD_TREE_TRANS: not enough storage for results(1:n)')
  endif
 
  return

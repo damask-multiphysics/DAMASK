@@ -19,7 +19,7 @@ try:
   core.IO                            = core.io
   core.FEsolving                     = core.fesolving
   core.DAMASK_interface              = core.damask_interface
-# remove XXX_
+# remove modulePrefix_
   core.prec.init                     = core.prec.prec_init
   core.DAMASK_interface.init         = core.DAMASK_interface.DAMASK_interface_init
   core.IO.init                       = core.IO.IO_init
@@ -30,6 +30,7 @@ try:
   core.math.divergenceFFT            = core.math.math_divergenceFFT
   core.math.divergenceFDM            = core.math.math_divergenceFDM
   core.math.periodicNearestNeighbor  = core.math.math_periodicNearestNeighbor
+  core.math.periodicNearestNeighborDistances  = core.math.math_periodicNearestNeighborDistances
   core.math.tensorAvg                = core.math.math_tensorAvg
   core.math.logstrainSpat            = core.math.math_logstrainSpat
   core.math.logstrainMat             = core.math.math_logstrainMat
@@ -45,8 +46,8 @@ try:
 
 except (ImportError,AttributeError) as e:
   core = None # from http://www.python.org/dev/peps/pep-0008/
-  if('setup_processing' not in sys.argv[0]):
+  if os.path.split(sys.argv[0])[1] not in ('symLink_Processing.py',
+                                           'compile_CoreModule.py',
+                                          ):
     sys.stderr.write('\nWARNING: Core module (Fortran code) not available, '\
                      'try to run setup_processing.py\nError Message when importing core.so: %s\n\n'%e)
-  
-  
