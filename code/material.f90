@@ -34,87 +34,87 @@ module material
  implicit none
  private
  character(len=64), parameter, public  :: &
-   material_configFile         = 'material.config', &                                               !> generic name for material configuration file 
-   material_localFileExt       = 'materialConfig'                                                   !> extension of solver job name depending material configuration file  
+   material_configFile         = 'material.config', &                                               !< generic name for material configuration file 
+   material_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file  
    
  character(len=32), parameter, public  :: &
-   material_partHomogenization = 'homogenization', &                                                !> keyword for homogenization part
-   material_partCrystallite    = 'crystallite', &                                                   !> keyword for crystallite part
-   material_partPhase          = 'phase'                                                            !> keyword for phase part
+   material_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
+   material_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
+   material_partPhase          = 'phase'                                                            !< keyword for phase part
  
  character(len=64), dimension(:), allocatable, public, protected :: &
-   phase_elasticity, &                                                                              !> elasticity of each phase  
-   phase_plasticity, &                                                                              !> plasticity of each phase  
-   phase_name, &                                                                                    !> name of each phase
-   homogenization_name, &                                                                           !> name of each homogenization
-   homogenization_type, &                                                                           !> type of each homogenization
-   crystallite_name                                                                                 !> name of each crystallite setting
+   phase_elasticity, &                                                                              !< elasticity of each phase  
+   phase_plasticity, &                                                                              !< plasticity of each phase  
+   phase_name, &                                                                                    !< name of each phase
+   homogenization_name, &                                                                           !< name of each homogenization
+   homogenization_type, &                                                                           !< type of each homogenization
+   crystallite_name                                                                                 !< name of each crystallite setting
 
  integer(pInt), public, protected :: &
-   homogenization_maxNgrains, &                                                                     !> max number of grains in any USED homogenization
-   material_Nphase, &                                                                               !> number of phases
-   material_Nhomogenization, &                                                                      !> number of homogenizations
-   material_Nmicrostructure, &                                                                      !> number of microstructures
-   material_Ncrystallite                                                                            !> number of crystallite settings
+   homogenization_maxNgrains, &                                                                     !< max number of grains in any USED homogenization
+   material_Nphase, &                                                                               !< number of phases
+   material_Nhomogenization, &                                                                      !< number of homogenizations
+   material_Nmicrostructure, &                                                                      !< number of microstructures
+   material_Ncrystallite                                                                            !< number of crystallite settings
  
  integer(pInt), dimension(:), allocatable, public, protected :: &
-   homogenization_Ngrains, &                                                                        !> number of grains in each homogenization
-   homogenization_Noutput, &                                                                        !> number of '(output)' items per homogenization
-   phase_Noutput, &                                                                                 !> number of '(output)' items per phase
-   phase_elasticityInstance, &                                                                      !> instance of particular elasticity of each phase
-   phase_plasticityInstance, &                                                                      !> instance of particular plasticity of each phase
-   crystallite_Noutput, &                                                                           !> number of '(output)' items per crystallite setting
-   homogenization_typeInstance, &                                                                   !> instance of particular type of each homogenization
-   microstructure_crystallite                                                                       !> crystallite setting ID of each microstructure
+   homogenization_Ngrains, &                                                                        !< number of grains in each homogenization
+   homogenization_Noutput, &                                                                        !< number of '(output)' items per homogenization
+   phase_Noutput, &                                                                                 !< number of '(output)' items per phase
+   phase_elasticityInstance, &                                                                      !< instance of particular elasticity of each phase
+   phase_plasticityInstance, &                                                                      !< instance of particular plasticity of each phase
+   crystallite_Noutput, &                                                                           !< number of '(output)' items per crystallite setting
+   homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
+   microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
 
  integer(pInt), dimension(:,:,:), allocatable, public:: &
-   material_phase                                                                                   !> phase   (index) of each grain,IP,element
+   material_phase                                                                                   !< phase   (index) of each grain,IP,element
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
-   material_texture                                                                                 !> texture (index) of each grain,IP,element
+   material_texture                                                                                 !< texture (index) of each grain,IP,element
  
  real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
-   material_EulerAngles                                                                             !> initial orientation of each grain,IP,element
+   material_EulerAngles                                                                             !< initial orientation of each grain,IP,element
  
  logical, dimension(:), allocatable, public, protected :: &
    microstructure_active, & 
-   microstructure_elemhomo, &                                                                       !> flag to indicate homogeneous microstructure distribution over element's IPs
-   phase_localPlasticity                                                                            !> flags phases with local constitutive law
+   microstructure_elemhomo, &                                                                       !< flag to indicate homogeneous microstructure distribution over element's IPs
+   phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
 
  character(len=32), parameter, private :: &
-   material_partMicrostructure = 'microstructure', &                                                !> keyword for microstructure part
-   material_partTexture        = 'texture'                                                          !> keyword for texture part
+   material_partMicrostructure = 'microstructure', &                                                !< keyword for microstructure part
+   material_partTexture        = 'texture'                                                          !< keyword for texture part
    
  character(len=64), dimension(:), allocatable, private :: &
-   microstructure_name, &                                                                           !> name of each microstructure
-   texture_name                                                                                     !> name of each texture
+   microstructure_name, &                                                                           !< name of each microstructure
+   texture_name                                                                                     !< name of each texture
      
  character(len=256), dimension(:), allocatable, private :: &
-   texture_ODFfile                                                                                  !> name of each ODF file         
+   texture_ODFfile                                                                                  !< name of each ODF file         
 
  integer(pInt), private :: &
-   material_Ntexture, &                                                                             !> number of textures
-   microstructure_maxNconstituents, &                                                               !> max number of constituents in any phase
-   texture_maxNgauss, &                                                                             !> max number of Gauss components in any texture
-   texture_maxNfiber                                                                                !> max number of Fiber components in any texture
+   material_Ntexture, &                                                                             !< number of textures
+   microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
+   texture_maxNgauss, &                                                                             !< max number of Gauss components in any texture
+   texture_maxNfiber                                                                                !< max number of Fiber components in any texture
 
  integer(pInt), dimension(:), allocatable, private :: &
-   microstructure_Nconstituents, &                                                                  !> number of constituents in each microstructure
-   texture_symmetry, &                                                                              !> number of symmetric orientations per texture
-   texture_Ngauss, &                                                                                !> number of Gauss components per texture
-   texture_Nfiber                                                                                   !> number of Fiber components per texture
+   microstructure_Nconstituents, &                                                                  !< number of constituents in each microstructure
+   texture_symmetry, &                                                                              !< number of symmetric orientations per texture
+   texture_Ngauss, &                                                                                !< number of Gauss components per texture
+   texture_Nfiber                                                                                   !< number of Fiber components per texture
  
  integer(pInt), dimension(:,:), allocatable, private :: &
-   microstructure_phase, &                                                                          !> phase IDs of each microstructure
-   microstructure_texture                                                                           !> texture IDs of each microstructure
+   microstructure_phase, &                                                                          !< phase IDs of each microstructure
+   microstructure_texture                                                                           !< texture IDs of each microstructure
  
  real(pReal), dimension(:,:), allocatable, private :: &
-   microstructure_fraction                                                                          !> vol fraction of each constituent in microstructure
+   microstructure_fraction                                                                          !< vol fraction of each constituent in microstructure
  
  real(pReal), dimension(:,:,:), allocatable, private :: &
-   material_volume, &                                                                               !> volume of each grain,IP,element
-   texture_Gauss, &                                                                                 !> data of each Gauss component
-   texture_Fiber                                                                                    !> data of each Fiber component
+   material_volume, &                                                                               !< volume of each grain,IP,element
+   texture_Gauss, &                                                                                 !< data of each Gauss component
+   texture_Fiber                                                                                    !< data of each Fiber component
  
  logical, dimension(:), allocatable, private :: &
    homogenization_active
