@@ -99,7 +99,7 @@ execute = { \
                         ' %s'%'math.f90'+\
                         ' %s'%'FEsolving.f90'+\
                         ' %s'%'mesh.f90'+\
-                        ' %s'%'spectral_quit.f90'+\
+                        ' %s'%'core_quit.f90'+\
                         ' -L%s/lib -lfftw3'%(damaskEnv.pathInfo['fftw'])+\
                         ' %s'%lib_lapack,
                         'mv %s `readlink -f %s`' %(os.path.join(codeDir,'core.so'),os.path.join(damaskEnv.relPath('lib/damask'),'core.so')),

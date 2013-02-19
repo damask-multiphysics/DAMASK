@@ -43,21 +43,5 @@ subroutine quit(stop_id)
    
  implicit none
  integer(pInt), intent(in) :: stop_id
- integer, dimension(8) :: dateAndTime                                                               ! type default integer
 
- call date_and_time(values = dateAndTime)
- write(6,'(/,a)') 'DAMASK terminated on:'
- write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
-                                                      dateAndTime(2),'/',&
-                                                      dateAndTime(1) 
- write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
-                                                      dateAndTime(6),':',&
-                                                      dateAndTime(7)  
- if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
- if (stop_id <  0_pInt) then                                                                        ! trigger regridding
-   write(0,'(a,i6)') 'restart at ', stop_id*(-1_pInt)
-   stop 2
- endif
- if (stop_id == 3_pInt) stop 3                                                                      ! not all steps converged
- stop 1                                                                                             ! error (message from IO_error)
 end subroutine
