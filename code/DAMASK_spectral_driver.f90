@@ -61,7 +61,7 @@ program DAMASK_spectral_Driver
  use DAMASK_spectral_SolverBasicPETSC
  use DAMASK_spectral_SolverAL
 #endif
- 
+
  implicit none
  type tLoadCase
    real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
@@ -126,7 +126,7 @@ program DAMASK_spectral_Driver
  character(len=1024)  :: incInfo                                                                    !< string parsed to solution with information about current load case
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tSolutionState) solres
-
+ external :: quit
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
