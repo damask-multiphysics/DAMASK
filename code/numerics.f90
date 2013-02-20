@@ -157,7 +157,8 @@ subroutine numerics_init
 #include "compilation_info.f90"
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
-!$ if(gotDAMASK_NUM_THREADS /= 0) call IO_warning(35_pInt,ext_msg=DAMASK_NumThreadsString)
+!$ if(gotDAMASK_NUM_THREADS /= 0) & 
+!$   call IO_warning(35_pInt,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
 !$ read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                        ! ...convert it to integer...
 !$ if (DAMASK_NumThreadsInt < 1_pInt) DAMASK_NumThreadsInt = 1_pInt                                 ! ...ensure that its at least one...
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution

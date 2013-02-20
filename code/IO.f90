@@ -1584,12 +1584,12 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  write(6,'(a)')        ' +                         error                          +'
  write(6,'(a,i3,a)')   ' +                         ',error_ID,'                            +'
  write(6,'(a)')        ' +                                                        +'
- write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(msg)),',',&
-                                         max(1,60-len(trim(msg))-5),'x,a)'
+ write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(msg))),',',&
+                                                    max(1,60-len(trim(msg))-5),'x,a)'
  write(6,formatString) '+ ', trim(msg),'+'
  if (present(ext_msg)) then
-   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(ext_msg)),',',&
-                                         max(1,60-len(trim(ext_msg))-5),'x,a)'
+   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(ext_msg))),',',&
+                                                      max(1,60-len(trim(ext_msg))-5),'x,a)'
    write(6,formatString) '+ ', trim(ext_msg),'+'
  endif
  if (present(e)) then
@@ -1664,12 +1664,12 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
  write(6,'(a)')        ' +                        warning                         +'
  write(6,'(a,i3,a)')   ' +                         ',warning_ID,'                            +'
  write(6,'(a)')        ' +                                                        +'
- write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(msg)),',',&
-                                         max(1,60-len(trim(msg))-5),'x,a)'
+ write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(msg))),',',&
+                                                    max(1,60-len(trim(msg))-5),'x,a)'
  write(6,formatString) '+ ', trim(msg),'+'
  if (present(ext_msg)) then
-   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',len(trim(ext_msg)),',',&
-                                         max(1,60-len(trim(ext_msg))-5),'x,a)'
+   write(formatString,'(a,i6.6,a,i6.6,a)') '(1x,a2,a',max(1,len(trim(ext_msg))),',',&
+                                                      max(1,60-len(trim(ext_msg))-5),'x,a)'
    write(6,formatString) '+ ', trim(ext_msg),'+'
  endif
  if (present(e)) then
