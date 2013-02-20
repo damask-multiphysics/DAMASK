@@ -97,7 +97,7 @@ for file in files:
     else:                                                               # finished with comments block
       if options.config:                                                # write configuration (line by line)
         point += 1
-        me = str(point).rjust(formatwidth)
+        me = str(point).zfill(formatwidth)
         microstructure += ['[Grain%s]\n'%me + \
                            'crystallite\t%i\n'%options.crystallite + \
                            '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]],me)
