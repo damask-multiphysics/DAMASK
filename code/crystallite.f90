@@ -2271,7 +2271,7 @@ subroutine crystallite_integrateStateAdaptiveEuler(gg,ii,ee)
                                                  relStateResiduum(1:mySizeDotState,g,i,e) / rTol_crystalliteState
            write(6,*)
            write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState) &
-                                                       - 2.0_pReal * stateResiduum(1:mySizeDotState,g,i,e) / crystallite_subdt(g,i,e)  ! calculate former dotstate from higher order solution and state residuum
+                                                    - 2.0_pReal * stateResiduum(1:mySizeDotState,g,i,e) / crystallite_subdt(g,i,e)  ! calculate former dotstate from higher order solution and state residuum
            write(6,*)
            write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
            write(6,*)
