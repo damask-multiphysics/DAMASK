@@ -5,10 +5,15 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Driver controlling inner and outer load case looping of the various spectral solvers
+!> @details doing cutbacking, forwarding in case of restart, reporting statistics, writing
+!> results
 !--------------------------------------------------------------------------------------------------
 program DAMASK_spectral_Driver
  use, intrinsic :: &
    iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
+ use prec, only: &
+   pInt, &
+   pReal
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &
@@ -16,9 +21,6 @@ program DAMASK_spectral_Driver
    getSolverWorkingDirectoryName, &
    getSolverJobName, &
    appendToOutFile
- use prec, only: &
-   pInt, &
-   pReal
  use IO, only: &
    IO_isBlank, &
    IO_open_file, &
@@ -87,10 +89,10 @@ program DAMASK_spectral_Driver
  integer(pInt), dimension(1_pInt + maxNchunks*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
  
  integer(pInt) :: &
-   N_l    = 0_pInt, &
-   N_t    = 0_pInt, &
-   N_n    = 0_pInt, &
-   N_Fdot = 0_pInt
+   N_l    = 0_pInt, &                                                                               !< # of L specifiers found in load case file
+   N_t    = 0_pInt, &                                                                               !< # of time indicators found in load case file 
+   N_n    = 0_pInt, &                                                                               !< # of increment specifiers found in load case file
+   N_Fdot = 0_pInt                                                                                  !< # of rate of F specifiers found in load case file
  character(len=1024) :: &
    line
 
@@ -130,9 +132,8 @@ program DAMASK_spectral_Driver
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
- write(6,'(a)') ''
- write(6,'(a)') ' <<<+-  DAMASK_spectral_driver init  -+>>>'
- write(6,'(a)') ' $Id$'
+ write(6,'(/,a)') ' <<<+-  DAMASK_spectral_driver init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
 
 !--------------------------------------------------------------------------------------------------
@@ -144,16 +145,16 @@ program DAMASK_spectral_Driver
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    positions = IO_stringPos(line,maxNchunks)
    do i = 1_pInt, positions(1)                                                                        ! reading compulsory parameters for loadcase
-       select case (IO_lc(IO_stringValue(line,positions,i)))
-            case('l','velocitygrad','velgrad','velocitygradient')
-                 N_l = N_l + 1_pInt
-            case('fdot','dotf')
-                 N_Fdot = N_Fdot + 1_pInt
-            case('t','time','delta')
-                 N_t = N_t + 1_pInt
-            case('n','incs','increments','steps','logincs','logincrements','logsteps')
-                 N_n = N_n + 1_pInt
-        end select
+     select case (IO_lc(IO_stringValue(line,positions,i)))
+       case('l','velocitygrad','velgrad','velocitygradient')
+         N_l = N_l + 1_pInt
+       case('fdot','dotf')
+         N_Fdot = N_Fdot + 1_pInt
+       case('t','time','delta')
+         N_t = N_t + 1_pInt
+       case('n','incs','increments','steps','logincs','logincrements','logsteps')
+         N_n = N_n + 1_pInt
+     end select
    enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
  enddo
 
@@ -212,7 +213,7 @@ program DAMASK_spectral_Driver
        case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
          loadCases(currentLoadCase)%incs = IO_intValue(line,positions,i+1_pInt)
          loadCases(currentLoadCase)%logscale = 1_pInt
-       case('f','freq','frequency','outputfreq')                                                    ! frequency of result writings
+       case('freq','frequency','outputfreq')                                                        ! frequency of result writings
          loadCases(currentLoadCase)%outputfrequency = IO_intValue(line,positions,i+1_pInt)                
        case('r','restart','restartwrite')                                                           ! frequency of writing restart information
          loadCases(currentLoadCase)%restartfrequency = &
@@ -345,6 +346,7 @@ program DAMASK_spectral_Driver
    if (debugGeneral) write(6,'(/,a)') ' header of result file written out'
    flush(6)
  endif
+
 !--------------------------------------------------------------------------------------------------
 ! loopping over loadcases
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
@@ -384,11 +386,13 @@ program DAMASK_spectral_Driver
 
      forwarding: if(totalIncsCounter >= restartInc) then
        stepFraction = 0_pInt
+
 !--------------------------------------------------------------------------------------------------
 ! loop over sub incs 
        subIncLooping: do while (stepFraction/subStepFactor**cutBackLevel <1_pInt)
          time = time + timeinc                                                                      ! forward time
          stepFraction = stepFraction + 1_pInt 
+
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
          write(6,'(/,a)') ' ###########################################################################'
@@ -434,6 +438,7 @@ program DAMASK_spectral_Driver
                  rotation_BC        = loadCases(currentLoadCase)%rotation)
 #endif
          end select 
+
 !--------------------------------------------------------------------------------------------------
 ! check solution 
          cutBack = .False.
@@ -457,19 +462,19 @@ program DAMASK_spectral_Driver
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
          endif
        if(guess) &                                                                                  ! write statistics about accepted solution
-         write(statUnit,*) inc, time, cutBackLevel, solres%converged, solres%iterationsNeeded
+         write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
+                           solres%converged, solres%iterationsNeeded
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
        if(solres%converged) then                                                                    ! report converged inc
          convergedCounter = convergedCounter + 1_pInt
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',A)') &
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
                                      ' increment ', totalIncsCounter, ' converged'
        else
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',A)') &                                       ! report non-converged inc
+         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
                                      ' increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
-       endif
-       flush(6)
+       endif; flush(6)
 
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          write(6,'(1/,a)') ' ... writing results to file ......................................'
@@ -502,7 +507,7 @@ program DAMASK_spectral_Driver
  end select
  
 !--------------------------------------------------------------------------------------------------
-! done report summary 
+! report summary of whole calculation
  write(6,'(/,a)') ' ##################################################################'
  write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
                                    notConvergedCounter + convergedCounter, ' (', &
@@ -515,10 +520,15 @@ program DAMASK_spectral_Driver
 
 end program DAMASK_spectral_Driver
 
-!********************************************************************
-! quit subroutine to satisfy IO_error
-!
-!********************************************************************
+
+!--------------------------------------------------------------------------------------------------
+!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief quit subroutine to mimic behavior of FEM solvers
+!> @details exits the Spectral solver and reports time and duration. Exit code 0 signals
+!> everything went fine. Exit code 1 signals an error, message according to IO_error. Exit code 
+!> 2 signals request for regridding, increment of last saved restart information is written to
+!> stderr. Exit code 3 signals no severe problems, but some increments did not converge
+!--------------------------------------------------------------------------------------------------
 subroutine quit(stop_id)
  use prec, only: &
    pInt
@@ -540,6 +550,7 @@ subroutine quit(stop_id)
    write(0,'(a,i6)') 'restart at ', stop_id*(-1_pInt)
    stop 2
  endif
- if (stop_id == 3_pInt) stop 3                                                                      ! not all steps converged
+ if (stop_id == 3_pInt) stop 3                                                                      ! not all incs converged
  stop 1                                                                                             ! error (message from IO_error)
-end subroutine
+
+end subroutine quit
