@@ -78,7 +78,8 @@ subroutine AL_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_read_JobBinaryFile, &
-   IO_write_JobBinaryFile
+   IO_write_JobBinaryFile, &
+   IO_timeStamp
  use FEsolving, only: &
    restartInc
  use DAMASK_interface, only: &
@@ -120,6 +121,7 @@ subroutine AL_init(temperature)
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverAL.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  
  allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)

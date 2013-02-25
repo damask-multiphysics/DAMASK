@@ -92,7 +92,8 @@ subroutine constitutive_init
    IO_open_file, &
    IO_open_jobFile_stat, &
    IO_write_jobFile, &
-   IO_write_jobBinaryIntFile
+   IO_write_jobBinaryIntFile, &
+   IO_timeStamp
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
@@ -155,6 +156,7 @@ subroutine constitutive_init
  write(6,*)
  write(6,*) '<<<+-  constitutive init  -+>>>'
  write(6,*) '$Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  
 !--------------------------------------------------------------------------------------------------

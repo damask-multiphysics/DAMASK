@@ -258,7 +258,7 @@ subroutine math_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
  use numerics, only: fixedSeed
- use IO,       only: IO_error
+ use IO,       only: IO_error, IO_timeStamp
 
  implicit none
  integer(pInt) :: i
@@ -273,6 +273,7 @@ subroutine math_init
 
  write(6,'(/,a)') ' <<<+-  math init  -+>>>'
  write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
  call random_seed(size=randSize)

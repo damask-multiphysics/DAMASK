@@ -66,7 +66,8 @@ module IO
    IO_continuousIntValues, &
    IO_error, &
    IO_warning, &
-   IO_intOut
+   IO_intOut, &
+   IO_timeStamp
 #ifndef Spectral
  public :: &
    IO_open_inputFile, &
@@ -99,8 +100,9 @@ contains
 subroutine IO_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
-  write(6,'(/,a)') ' <<<+-  IO init  -+>>>'
-  write(6,'(a)')   ' $Id$'
+ write(6,'(/,a)') ' <<<+-  IO init  -+>>>'
+ write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
 end subroutine IO_init
@@ -1382,6 +1384,20 @@ pure function IO_intOut(intToPrint)
   IO_intOut = 'I'//trim(N_Digits)//'.'//trim(N_Digits)
 
 end function IO_intOut
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns time stamp
+!--------------------------------------------------------------------------------------------------
+function IO_timeStamp()
+  implicit none
+  character(len=10) :: IO_timeStamp
+  integer(pInt), dimension(8) :: values
+  
+  call DATE_AND_TIME(VALUES=values)
+  write(IO_timeStamp,'(i2.2,a1,i2.2,a1,i2.2)') values(5),':',values(6),':',values(7)
+
+end function IO_timeStamp
 
 
 !--------------------------------------------------------------------------------------------------

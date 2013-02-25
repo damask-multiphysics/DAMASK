@@ -135,7 +135,8 @@ subroutine numerics_init
    IO_lc, &
    IO_floatValue, &
    IO_intValue, &
-   IO_warning
+   IO_warning, &
+   IO_timeStamp
 
 #ifndef Marc
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if not using MSC.Marc
@@ -154,6 +155,7 @@ subroutine numerics_init
 
  write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
  write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...

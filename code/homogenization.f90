@@ -104,7 +104,8 @@ subroutine homogenization_init(Temperature)
    IO_open_file, &
    IO_open_jobFile_stat, &
    IO_write_jobFile, &
-   IO_write_jobBinaryIntFile 
+   IO_write_jobBinaryIntFile, &
+   IO_timeStamp 
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
@@ -250,6 +251,7 @@ subroutine homogenization_init(Temperature)
  
  write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'
  write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
    write(6,'(a32,1x,7(i8,1x))') 'homogenization_state0:          ', shape(homogenization_state0)

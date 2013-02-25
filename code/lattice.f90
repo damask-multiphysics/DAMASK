@@ -806,7 +806,8 @@ subroutine lattice_init
                      IO_open_jobFile_stat, &
                      IO_countSections, &
                      IO_countTagInPart, &
-                     IO_error
+                     IO_error, &
+                     IO_timeStamp
  use material, only: material_configfile, &
                      material_localFileExt, &
                      material_partPhase
@@ -822,6 +823,7 @@ subroutine lattice_init
    write(6,*)
    write(6,*) '<<<+-  lattice init  -+>>>'
    write(6,*) '$Id$'
+   write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  !$OMP END CRITICAL (write2out)
 

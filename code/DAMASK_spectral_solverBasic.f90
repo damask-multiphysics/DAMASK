@@ -49,7 +49,8 @@ subroutine basic_init(temperature)
  use IO, only: &
    IO_read_JobBinaryFile, &
    IO_write_JobBinaryFile, &
-   IO_intOut
+   IO_intOut, &
+   IO_timeStamp
  use FEsolving, only: &
    restartInc
  use DAMASK_interface, only: &
@@ -82,6 +83,7 @@ subroutine basic_init(temperature)
  call Utilities_Init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(a)') ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 

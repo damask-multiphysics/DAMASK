@@ -404,6 +404,7 @@ subroutine mesh_init(ip,el)
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
+   IO_timeStamp, &
 #ifdef Abaqus
    IO_abaqus_hasNoPart, &
 #endif
@@ -430,6 +431,7 @@ subroutine mesh_init(ip,el)
  
  write(6,'(/,a)') ' <<<+-  mesh init  -+>>>'
  write(6,'(a)') ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
  if (allocated(mesh_mapFEtoCPelem))  deallocate(mesh_mapFEtoCPelem)

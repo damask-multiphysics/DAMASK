@@ -217,7 +217,8 @@ use IO,       only: IO_lc, &
                     IO_stringValue, &
                     IO_floatValue, &
                     IO_intValue, &
-                    IO_error
+                    IO_error, &
+                    IO_timeStamp
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
@@ -262,6 +263,7 @@ character(len=1024) :: line = ''                                ! to start initi
  write(6,*)
  write(6,*) '<<<+-  constitutive_',trim(constitutive_nonlocal_label),' init  -+>>>'
  write(6,*) '$Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
 maxNinstance = int(count(phase_plasticity == constitutive_nonlocal_label),pInt)

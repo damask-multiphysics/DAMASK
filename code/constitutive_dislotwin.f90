@@ -155,6 +155,7 @@ character(len=1024) :: line = ''                                                
 write(6,*)
 write(6,*) '<<<+-  constitutive_',trim(constitutive_dislotwin_label),' init  -+>>>'
 write(6,*) '$Id$'
+write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
 maxNinstance = int(count(phase_plasticity == constitutive_dislotwin_label),pInt)

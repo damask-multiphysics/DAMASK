@@ -132,7 +132,8 @@ subroutine debug_init
                      IO_stringValue, &
                      IO_lc, &
                      IO_floatValue, &
-                     IO_intValue
+                     IO_intValue, &
+                     IO_timeStamp
 
  implicit none
  integer(pInt), parameter                 :: fileunit    = 300_pInt  
@@ -145,6 +146,7 @@ subroutine debug_init
 
  write(6,'(/,a)') ' <<<+-  debug init  -+>>>'
  write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  
  if (allocated(debug_StressLoopDistribution)) &

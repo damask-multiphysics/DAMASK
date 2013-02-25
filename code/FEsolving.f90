@@ -85,7 +85,8 @@ subroutine FE_init
    IO_open_inputFile, &
    IO_open_logFile, &
 #endif
-   IO_warning
+   IO_warning, &
+   IO_timeStamp
  use DAMASK_interface
  
  implicit none
@@ -101,6 +102,7 @@ subroutine FE_init
 
  write(6,'(/,a)') ' <<<+-  FEsolving init  -+>>>'
  write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
  modelName = getSolverJobName()

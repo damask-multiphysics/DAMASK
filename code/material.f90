@@ -142,7 +142,8 @@ subroutine material_init
  use IO, only: &
    IO_error, &
    IO_open_file, &
-   IO_open_jobFile_stat
+   IO_open_jobFile_stat, &
+   IO_timeStamp
  use debug, only: &
    debug_level, &
    debug_material, &
@@ -157,6 +158,7 @@ subroutine material_init
  
  write(6,'(/,a)') ' <<<+-  material init  -+>>>'
  write(6,'(a)') ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
  

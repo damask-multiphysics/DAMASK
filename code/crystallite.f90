@@ -180,6 +180,7 @@ subroutine crystallite_init(Temperature)
  
  write(6,'(/,a)') ' <<<+-  crystallite init  -+>>>'
  write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  
  

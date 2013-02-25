@@ -115,7 +115,8 @@ subroutine constitutive_j2_init(myFile)
    IO_stringPos, &
    IO_stringValue, &
    IO_floatValue, &
-   IO_error
+   IO_error, &
+   IO_timeStamp
  use material
  use debug, only: &
    debug_level, &
@@ -136,6 +137,7 @@ subroutine constitutive_j2_init(myFile)
  write(6,*)
  write(6,*) '<<<+-  constitutive_',trim(constitutive_j2_label),' init  -+>>>'
  write(6,*) '$Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  
  maxNinstance = int(count(phase_plasticity == constitutive_j2_label),pInt)

@@ -74,6 +74,7 @@ subroutine homogenization_isostrain_init(myFile)
  write(6,*)
  write(6,*) '<<<+-  homogenization_',trim(homogenization_isostrain_label),' init  -+>>>'
  write(6,*) '$Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
 

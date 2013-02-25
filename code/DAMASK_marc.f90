@@ -78,12 +78,15 @@ contains
 
 subroutine DAMASK_interface_init
 
+use IO, only: IO_timeStamp
+
 implicit none
 
 !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  DAMASK_marc init  -+>>>'
  write(6,*) '$Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 

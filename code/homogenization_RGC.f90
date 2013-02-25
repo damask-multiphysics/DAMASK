@@ -113,6 +113,7 @@ subroutine homogenization_RGC_init(myFile)
  
  write(6,'(/,3a)') ' <<<+-  homogenization_',trim(homogenization_RGC_label),' init  -+>>>'
  write(6,'(a)')    ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
  maxNinstance = int(count(homogenization_type == homogenization_RGC_label),pInt)

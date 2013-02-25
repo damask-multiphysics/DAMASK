@@ -76,7 +76,8 @@ subroutine basicPETSc_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_read_JobBinaryFile, &
-   IO_write_JobBinaryFile
+   IO_write_JobBinaryFile, &
+   IO_timeStamp
  use FEsolving, only: &
    restartInc
  use DAMASK_interface, only: &
@@ -117,6 +118,7 @@ subroutine basicPETSc_init(temperature)
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 

@@ -121,7 +121,8 @@ subroutine CPFEM_init
                                                   debug_levelBasic, &
                                                   debug_levelExtensive
   use IO, only:                                   IO_read_jobBinaryFile,&
-                                                  IO_read_jobBinaryIntFile
+                                                  IO_read_jobBinaryIntFile, &
+                                                  IO_timeStamp
   use FEsolving, only:                            parallelExecution, &
                                                   symmetricSolver, &
                                                   restartRead, &
@@ -209,6 +210,7 @@ subroutine CPFEM_init
 
   write(6,'(/,a)') '<<<+-  CPFEM init  -+>>>'
   write(6,'(a)') '$Id$'
+  write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
     write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)

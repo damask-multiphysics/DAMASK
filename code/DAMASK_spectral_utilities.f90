@@ -98,7 +98,8 @@ subroutine utilities_init()
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_error, &
-   IO_warning
+   IO_warning, &
+   IO_timeStamp
  use numerics, only: &                        
    DAMASK_NumThreadsInt, &
    fftw_planner_flag, &
@@ -142,6 +143,7 @@ subroutine utilities_init()
    divergence                                                                                       !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
  write(6,'(a)')   ' $Id$'
+ write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  write(6,'(a)')   ''
  flush(6)
