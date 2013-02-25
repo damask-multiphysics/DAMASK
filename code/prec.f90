@@ -70,6 +70,10 @@ module prec
    real(pReal), dimension(:), pointer :: p
  end type p_vec
 
+ type, public :: p_intvec
+   integer(pInt), dimension(:), pointer :: p
+ end type p_intvec
+
  public :: &
    prec_init
  
