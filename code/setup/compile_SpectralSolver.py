@@ -29,13 +29,10 @@ Writes version specific files for different MARC releases, adjustes the make fil
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-c', '--compile', dest='spectralCompile', action='store_true', \
-                  help='compiles the spectral solver [%default]')
 parser.add_option('-o', '--options', dest='makeOptions', action='extend', type='string', \
                   metavar="KEY=VALUE", \
                   help='comma-separated list of options passed to Makefile when compiling spectral code')
 
-parser.set_defaults(spectralCompile = False)
 parser.set_defaults(makeOptions = ['F90='+{True:'ifort',False:'gfortran'}[\
                                              subprocess.call(['which', 'ifort'],\
                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]])
@@ -46,8 +43,7 @@ baseDir = damaskEnv.relPath('code/')
 
 
 # compiling spectral code
-if (options.spectralCompile):
-  print 'base directory:', baseDir
-  os.system('make --directory %s clean'%(baseDir))
-  print 'make options:',' '.join(options.makeOptions)
-  os.system('make --directory %s %s'%(baseDir,' '.join(options.makeOptions)))
+print 'base directory:', baseDir
+os.system('make --directory %s clean'%(baseDir))
+print 'make options:',' '.join(options.makeOptions)
+os.system('make --directory %s %s'%(baseDir,' '.join(options.makeOptions)))
