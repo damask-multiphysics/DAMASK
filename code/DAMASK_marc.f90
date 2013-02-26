@@ -66,6 +66,7 @@
 #define Marc
 
 #include "prec.f90"
+#include "IO.f90"
 
 module DAMASK_interface
  use prec, only: pInt
@@ -127,7 +128,6 @@ end function getSolverJobName
 
 end module DAMASK_interface
 
-#include "IO.f90"
 #include "numerics.f90"
 #include "debug.f90"
 #include "math.f90"
