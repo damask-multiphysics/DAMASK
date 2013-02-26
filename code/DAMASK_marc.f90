@@ -66,7 +66,6 @@
 #define Marc
 
 #include "prec.f90"
-#include "IO.f90"
 
 module DAMASK_interface
  use prec, only: pInt
@@ -79,15 +78,12 @@ contains
 
 subroutine DAMASK_interface_init
 
-use IO, only: IO_timeStamp
-
 implicit none
 
 !$OMP CRITICAL (write2out)
  write(6,*)
  write(6,*) '<<<+-  DAMASK_marc init  -+>>>'
  write(6,*) '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
@@ -128,6 +124,7 @@ end function getSolverJobName
 
 end module DAMASK_interface
 
+#include "IO.f90"
 #include "numerics.f90"
 #include "debug.f90"
 #include "math.f90"
