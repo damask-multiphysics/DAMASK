@@ -21,7 +21,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief reading in of data when doing a restart
+!> @brief triggering reading in of restart information when doing a restart
 !--------------------------------------------------------------------------------------------------
 module FEsolving
  use prec, only: &
@@ -69,9 +69,11 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief determine whether a symmetric solver is used and whether restart is requested
+!> @details restart information is found in input file in case of FEM solvers, in case of spectal
+!> solver the information is provided by the interface module
 !--------------------------------------------------------------------------------------------------
 subroutine FE_init
- use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
    debug_FEsolving, &

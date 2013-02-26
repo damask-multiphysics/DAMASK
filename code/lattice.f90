@@ -16,28 +16,22 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!************************************
-!*         Module: LATTICE          *
-!************************************
-!* contains:                        *
-!* - Lattice structure definition   *
-!* - Slip system definition         *
-!* - Schmid matrices calculation    *
-!************************************
-
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief  defines lattice structure definitions, slip and twin system definitions, Schimd matrix
+!>         calculation and non-Schmid behavior
+!--------------------------------------------------------------------------------------------------
 module lattice
-
- use prec, only: pReal, &
-                 pInt
+ use prec, only: &
+   pReal, &
+   pInt
 
  implicit none
  private
-!************************************
-!*      Lattice structures          *
-!************************************
-
  integer(pInt), parameter, public :: &
    lattice_maxNslipFamily  =  5_pInt, &                                                             !< max # of slip system families over lattice structures
    lattice_maxNtwinFamily  =  4_pInt, &                                                             !< max # of twin system families over lattice structures
@@ -51,10 +45,10 @@ module lattice
    lattice_NtwinSystem                                                                              !< # of twin systems in each family
 
  integer(pInt), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_interactionSlipSlip, &                                                                   !< interaction type between slip/slip
-   lattice_interactionSlipTwin, &                                                                   !< interaction type between slip/twin
-   lattice_interactionTwinSlip, &                                                                   !< interaction type between twin/slip
-   lattice_interactionTwinTwin                                                                      !< interaction type between twin/twin
+   lattice_interactionSlipSlip, &                                                                   !< Slip--slip interaction type 
+   lattice_interactionSlipTwin, &                                                                   !< Slip--twin interaction type 
+   lattice_interactionTwinSlip, &                                                                   !< Twin--slip interaction type 
+   lattice_interactionTwinTwin                                                                      !< Twin--twin interaction type 
 
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
@@ -91,20 +85,19 @@ module lattice
    interactionTwinTwin
    
  integer(pInt), allocatable, dimension(:), protected, public :: &
-   NnonSchmid                                                                                       !< # of Non Schmid contributions for each structure
+   NnonSchmid                                                                                       !< # of non-Schmid contributions for each structure
 
 !--------------------------------------------------------------------------------------------------
 ! fcc (1)
-
  integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: & 
-   lattice_fcc_NslipSystem = int([12, 0, 0, 0, 0],pInt)
+   lattice_fcc_NslipSystem = int([12, 0, 0, 0, 0],pInt)                                             !< # of slip systems per family for fcc
    
  integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
-   lattice_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)
+   lattice_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< # of twin systems per family for fcc
    
  integer(pInt), parameter, private  :: &
-   lattice_fcc_Nslip = 12_pInt, &                                                                   ! sum(lattice_fcc_NslipSystem)
-   lattice_fcc_Ntwin = 12_pInt                                                                      ! sum(lattice_fcc_NtwinSystem)
+   lattice_fcc_Nslip = sum(lattice_fcc_NslipSystem), &                                              !< total # of slip systems for fcc
+   lattice_fcc_Ntwin = sum(lattice_fcc_NtwinSystem)                                                 !< total # of twin systems for fcc
  
  integer(pInt), private :: &
    lattice_fcc_Nstructure = 0_pInt
@@ -123,7 +116,7 @@ module lattice
       0, 1, 1,    -1, 1,-1, &
       1, 0,-1,    -1, 1,-1, &
      -1,-1, 0,    -1, 1,-1  &
-     ],pReal),[ 3_pInt + 3_pInt,lattice_fcc_Nslip])                                                 !< Slip system <110>{111}  Sorted according to Eisenlohr & Hantcherli
+     ],pReal),[ 3_pInt + 3_pInt,lattice_fcc_Nslip])                                                 !< Slip system <110>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
  real(pReal), dimension(3+3,lattice_fcc_Ntwin), parameter, private :: &
    lattice_fcc_systemTwin = reshape(real( [&
@@ -139,7 +132,7 @@ module lattice
       2, 1,-1,    -1, 1,-1, &
      -1,-2,-1,    -1, 1,-1, &
      -1, 1, 2,    -1, 1,-1  &
-     ],pReal),[ 3_pInt + 3_pInt ,lattice_fcc_Ntwin])                                                !< Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
+     ],pReal),[ 3_pInt + 3_pInt ,lattice_fcc_Ntwin])                                                !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
  real(pReal), dimension(lattice_fcc_Ntwin), parameter, private :: &
    lattice_fcc_shearTwin = reshape([&
@@ -155,7 +148,7 @@ module lattice
      0.7071067812_pReal, &
      0.7071067812_pReal, &
      0.7071067812_pReal  &
-     ],[lattice_fcc_Ntwin])                                                                         !< Twin system <112>{111}  Sorted according to Eisenlohr & Hantcherli
+     ],[lattice_fcc_Ntwin])                                                                         !< Twin system <112>{111} ??? Sorted according to Eisenlohr & Hantcherli
 
  integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Nslip), target, public :: &
    lattice_fcc_interactionSlipSlip = reshape(int( [&
@@ -171,15 +164,13 @@ module lattice
      4,5,6,3,5,5,4,6,5,1,2,2, &
      5,3,5,5,4,6,6,4,5,2,1,2, &
      6,5,4,5,6,4,5,5,3,2,2,1  &
-     ],pInt),[lattice_fcc_Nslip,lattice_fcc_Nslip],order=[2,1])
-    !< Interaction types
-    !< 1 --- self interaction
-    !< 2 --- coplanar interaction
-    !< 3 --- collinear interaction
-    !< 4 --- Hirth locks
-    !< 5 --- glissile junctions
-    !< 6 --- Lomer locks
-    
+     ],pInt),[lattice_fcc_Nslip,lattice_fcc_Nslip],order=[2,1])                                     !< Slip--slip interaction types for fcc
+                                                                                                    !< 1: self interaction
+                                                                                                    !< 2: coplanar interaction
+                                                                                                    !< 3: collinear interaction
+                                                                                                    !< 4: Hirth locks
+                                                                                                    !< 5: glissile junctions
+                                                                                                    !< 6: Lomer locks
  integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Ntwin), target, public :: &
    lattice_fcc_interactionSlipTwin = reshape(int( [&
      1,1,1,3,3,3,2,2,2,3,3,3, & ! ---> twin
@@ -194,14 +185,12 @@ module lattice
      3,3,3,2,2,2,3,3,3,1,1,1, &
      2,2,2,3,3,3,3,3,3,1,1,1, &
      3,3,3,3,3,3,2,2,2,1,1,1  &
-     ],pInt),[lattice_fcc_Nslip,lattice_fcc_Ntwin],order=[2,1])
-    !< Interaction types
-    !< 1 --- coplanar interaction
-    !< 2 --- screw trace between slip system and twin habit plane (easy cross slip)
-    !< 3 --- other interaction
-
+     ],pInt),[lattice_fcc_Nslip,lattice_fcc_Ntwin],order=[2,1])                                     !< Slip--twin interaction types for fcc
+                                                                                                    !< 1: coplanar interaction
+                                                                                                    !< 2: screw trace between slip system and twin habit plane (easy cross slip)
+                                                                                                    !< 3: other interaction
  integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip), target, public :: &
-   lattice_fcc_interactionTwinSlip = 0_pInt
+   lattice_fcc_interactionTwinSlip = 0_pInt                                                         !< Twin--Slip interaction types for fcc
 
  integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Ntwin), target, public :: &
    lattice_fcc_interactionTwinTwin = reshape(int( [&
@@ -217,30 +206,25 @@ module lattice
      2,2,2,2,2,2,2,2,2,1,1,1, &
      2,2,2,2,2,2,2,2,2,1,1,1, &
      2,2,2,2,2,2,2,2,2,1,1,1  &
-     ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])
+     ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for fcc
      
-! Number of Non Schmid contributions for FCC
- integer(pInt), parameter, private :: NnonSchmid_fcc = 0_pInt 
+ integer(pInt), parameter, private :: NnonSchmid_fcc = 0_pInt                                       !< # of non-Schmid contributions for fcc
  
-! Tensor for each non schmid contribution
  real(pReal), dimension(3,3,2,NnonSchmid_fcc,lattice_fcc_Nslip), parameter, private :: &
-   lattice_nonSchmid_fcc = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_fcc,lattice_fcc_Nslip])
+   lattice_nonSchmid_fcc = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_fcc,lattice_fcc_Nslip])         !< Tensor for each non-Schmid contribution for fcc
  
  
 !--------------------------------------------------------------------------------------------------
 ! bcc (2)
-
  integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: &
-   lattice_bcc_NslipSystem = int([ 12, 12, 0, 0, 0], pInt)
+   lattice_bcc_NslipSystem = int([ 12, 12, 0, 0, 0], pInt)                                          !< # of slip systems per family for bcc
    
  integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
-   lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)
+   lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< # of twin systems per family for bcc
    
- integer(pInt), parameter, private :: &
-   lattice_bcc_Nslip = 24_pInt                                                                     ! sum(lattice_bcc_NslipSystem)
-   
- integer(pInt), parameter, private :: &
-   lattice_bcc_Ntwin = 12_pInt                                                                     ! sum(lattice_bcc_NtwinSystem)
+ integer(pInt), parameter, private  :: &
+   lattice_bcc_Nslip = sum(lattice_bcc_NslipSystem), &                                              !< total # of slip systems for bcc
+   lattice_bcc_Ntwin = sum(lattice_bcc_NtwinSystem)                                                 !< total # of twin systems for bcc
    
  integer(pInt), private :: &
    lattice_bcc_Nstructure = 0_pInt
@@ -333,7 +317,6 @@ module lattice
      0.7071067812_pReal  &
      ],[lattice_bcc_Ntwin])
 
-! slip--slip interactions for BCC structures (2)   from Lee et al. Int J Plast 15 (1999) 625-645
  integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Nslip), target, public :: &
    lattice_bcc_interactionSlipSlip = reshape(int( [&
      1,3,6,6,5,4,4,2,4,2,5,4, 6,6,4,2,2,4,6,6,4,2,6,6, &  ! ---> slip  
@@ -361,15 +344,13 @@ module lattice
      2,4,6,6,6,6,4,2,4,2,6,6, 6,5,6,2,2,5,6,6,6,1,5,6, &
      6,6,4,2,2,4,6,6,2,4,6,6, 2,6,5,6,6,6,5,2,6,5,1,6, &
      6,6,2,4,6,6,2,4,6,6,2,4, 6,2,6,5,6,6,2,5,5,6,6,1  &
-     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip],order=[2,1])
-    !< Interaction types
-    !< 1 --- self interaction
-    !< 2 --- no interaction
-    !< 3 --- coplanar interaction
-    !< 4 --- glissile interaction
-    !< 5 --- weak sessile interaction
-    !< 6 --- strong sessile interaction
- 
+     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Nslip],order=[2,1])                                     !< Slip--slip interaction types for bcc from Lee et al. Int J Plast 15 (1999) 625-645
+                                                                                                    !< 1: self interaction
+                                                                                                    !< 2: no interaction
+                                                                                                    !< 3: coplanar interaction
+                                                                                                    !< 4: glissile interaction
+                                                                                                    !< 5: weak sessile interaction
+                                                                                                    !< 6: strong sessile interaction
  integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Ntwin), target, public :: &
   lattice_bcc_interactionSlipTwin = reshape(int( [&
      3,3,3,2,2,3,3,3,3,2,3,3, &  ! ---> twin
@@ -397,17 +378,13 @@ module lattice
      3,3,3,2,2,3,3,3,3,1,3,3, &
      2,3,3,3,3,3,3,2,3,3,1,3, &
      3,2,3,3,3,3,2,3,3,3,3,1  &
-     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Ntwin],order=[2,1])
-    !< Interaction types
-    !< 1 --- coplanar interaction
-    !< 2 --- screw trace between slip system and twin habit plane (easy cross slip)
-    !< 3 --- other interaction
-
-! twin--slip interactions for BCC structures (2) MISSING: not implemented yet
+     ],pInt),[lattice_bcc_Nslip,lattice_bcc_Ntwin],order=[2,1])                                     !< Slip--twin interaction types for bcc
+                                                                                                    !< 1: coplanar interaction
+                                                                                                    !< 2: screw trace between slip system and twin habit plane (easy cross slip)
+                                                                                                    !< 3: other interaction
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), target, public :: &
-   lattice_bcc_interactionTwinSlip = 0_pInt
+   lattice_bcc_interactionTwinSlip = 0_pInt                                                         !< Twin--slip interaction types for bcc @todo not implemented yet
 
-! twin--twin interactions for BCC structures (2)
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin), target, public :: &
    lattice_bcc_interactionTwinTwin = reshape(int( [&
      1,3,3,3,3,3,3,2,3,3,2,3, &  ! ---> twin
@@ -422,38 +399,30 @@ module lattice
      3,3,3,2,2,3,3,3,3,1,3,3, &
      2,3,3,3,3,3,3,2,3,3,1,3, &
      3,2,3,3,3,3,2,3,3,3,3,1  &
-     ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Ntwin],order=[2,1])
-    !< Interaction types
-    !< 1 --- self interaction
-    !< 2 --- collinear interaction
-    !< 3 --- other interaction
-     
-! Number of Non Schmid contributions for BCC
- integer(pInt), parameter, private :: NnonSchmid_bcc = 0_pInt 
+     ],pInt),[lattice_bcc_Ntwin,lattice_bcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for bcc
+                                                                                                    !< 1: self interaction
+                                                                                                    !< 2: collinear interaction
+                                                                                                    !< 3: other interaction
+ integer(pInt), parameter, private :: NnonSchmid_bcc = 0_pInt                                       !< # of non-Schmid contributions for bcc
  
-! Tensor for each non schmid contribution
  real(pReal), dimension(3,3,2,NnonSchmid_bcc,lattice_bcc_Nslip), parameter, private :: &
-   lattice_nonSchmid_bcc = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_bcc,lattice_bcc_Nslip])
+   lattice_nonSchmid_bcc = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_bcc,lattice_bcc_Nslip])         !< Tensor for each non-Schmid contribution for bcc
 
 !--------------------------------------------------------------------------------------------------
 ! hex (3+)
-
  integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: &
-   lattice_hex_NslipSystem = int([ 3, 3, 6, 12, 6],pInt)
+   lattice_hex_NslipSystem = int([ 3, 3, 6, 12, 6],pInt)                                            !< # of slip systems per family for hex
    
  integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
-   lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)
+   lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex 
    
  integer(pInt), parameter , private :: &
-   lattice_hex_Nslip = 30_pInt                                       ! sum(lattice_hex_NslipSystem)
- 
- integer(pInt), parameter, private :: &
-   lattice_hex_Ntwin = 24_pInt                                       ! sum(lattice_hex_NtwinSystem)
+   lattice_hex_Nslip = sum(lattice_hex_NslipSystem),&                                               !< total # of slip systems for hex 
+   lattice_hex_Ntwin = sum(lattice_hex_NtwinSystem)                                                 !< total # of twin systems for hex
    
  integer(pInt), private :: &
    lattice_hex_Nstructure = 0_pInt
 
- !* sorted by A. Alankar & P. Eisenlohr
  real(pReal), dimension(4+4,lattice_hex_Nslip), parameter, private :: &
    lattice_hex_systemSlip = reshape(real([&
     ! Basal systems <1120>{0001} (independent of c/a-ratio, Bravais notation (4 coordinate base))
@@ -486,12 +455,12 @@ module lattice
       2, -1, -1, -3,     1,  0, -1,  1, &
     ! pyramidal system: c+a slip <11.-3>{11.2} -- as for hexagonal Ice (Castelnau et al 1996, similar to twin system found below) 
       2, -1, -1, -3,     2, -1, -1,  2, & ! <11.-3>{11.2} shear = 2((c/a)^2-2)/(3 c/a)
-      1,  1, -2, -3,     1,  1, -2,  2, & ! not sorted, just copied from twin system
+      1,  1, -2, -3,     1,  1, -2,  2, & ! sorted according to similar twin system
      -1,  2, -1, -3,    -1,  2, -1,  2, &
      -2,  1,  1, -3,    -2,  1,  1,  2, &
      -1, -1,  2, -3,    -1, -1,  2,  2, &
       1, -2,  1, -3,     1, -2,  1,  2  &
-     ],pReal),[ 4_pInt + 4_pInt,lattice_hex_Nslip])
+     ],pReal),[ 4_pInt + 4_pInt,lattice_hex_Nslip])                                                 !< slip systems for hex sorted by A. Alankar & P. Eisenlohr
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter, private :: &
    lattice_hex_systemTwin =  reshape(real([&
@@ -519,7 +488,7 @@ module lattice
       0, -1,  1, -2,     0, -1,  1,  1, &
       1, -1,  0, -2,     1, -1,  0,  1, &
      -1,  1,  0, -2,    -1,  1,  0,  1  &
-     ],pReal),[ 4_pInt + 4_pInt ,lattice_hex_Ntwin])                 !* Sort? Numbering of twin system follows Prof. Tom Bieler's scheme (to be consistent with his work); but numbering in data was restarted from 1 &
+     ],pReal),[ 4_pInt + 4_pInt ,lattice_hex_Ntwin])                                                !< twin systems for hex, order follows Prof. Tom Bieler's scheme; but numbering in data was restarted from 1 
 
  integer(pInt), dimension(lattice_hex_Ntwin), parameter, private :: &
    lattice_hex_shearTwin = reshape(int( [&   ! indicator to formula further below
@@ -548,12 +517,6 @@ module lattice
      4, &
      4  &
      ],pInt),[lattice_hex_Ntwin])
-
-!* four different interaction type matrix
- !* 1. slip-slip interaction - 30 types
- !* 2. slip-twin interaction - 20 types
- !* 3. twin-twin interaction - 20 types
- !* 4. twin-slip interaction - 16 types
    
  integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Nslip), target, public :: &
    lattice_hex_interactionSlipSlip = reshape(int( [&
@@ -591,9 +554,8 @@ module lattice
      30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10, 5,10,10,  &
      30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10,10, 5,10,  &
      30,30,30,  29,29,29,  27,27,27,27,27,27,  24,24,24,24,24,24,24,24,24,24,24,24,  10,10,10,10,10, 5   &
-     ],pInt),[lattice_hex_Nslip,lattice_hex_Nslip],order=[2,1])
+     ],pInt),[lattice_hex_Nslip,lattice_hex_Nslip],order=[2,1])                                     !< Slip--slip interaction types for hex (30 in total)
   
-!* isotropic interaction at the moment
  integer(pInt), dimension(lattice_hex_Nslip,lattice_hex_Ntwin), target, public :: &
    lattice_hex_interactionSlipTwin = reshape(int( [&
       1, 1, 1, 1, 1, 1,   2, 2, 2, 2, 2, 2,   3, 3, 3, 3, 3, 3,   4, 4, 4, 4, 4, 4, & ! --> twin
@@ -630,9 +592,8 @@ module lattice
      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20, &
      17,17,17,17,17,17,  18,18,18,18,18,18,  19,19,19,19,19,19,  20,20,20,20,20,20  &
-     ],pInt),[lattice_hex_Nslip,lattice_hex_Ntwin],order=[2,1])
+     ],pInt),[lattice_hex_Nslip,lattice_hex_Ntwin],order=[2,1])                                     !< Slip--twin interaction types for hex (isotropic, 20 in total) 
 
- !* isotropic interaction at the moment
  integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Nslip), target, public :: &
    lattice_hex_interactionTwinSlip = reshape(int( [&
       1, 1, 1,   5, 5, 5,   9, 9, 9, 9, 9, 9,  13,13,13,13,13,13,13,13,13,13,13,13,  17,17,17,17,17,17, & ! --> slip
@@ -662,8 +623,7 @@ module lattice
       4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20, &
       4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20, &
       4, 4, 4,   8, 8, 8,  12,12,12,12,12,12,  16,16,16,16,16,16,16,16,16,16,16,16,  20,20,20,20,20,20  &
-     ],pInt),[lattice_hex_Ntwin,lattice_hex_Nslip],order=[2,1])
-
+     ],pInt),[lattice_hex_Ntwin,lattice_hex_Nslip],order=[2,1])                                     !< Twin--twin interaction types for hex (isotropic, 20 in total)
 
  integer(pInt), dimension(lattice_hex_Ntwin,lattice_hex_Ntwin), target, public :: &
    lattice_hex_interactionTwinTwin = reshape(int( [&
@@ -694,14 +654,12 @@ module lattice
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 4, 8, 8, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 4, 8, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  17,17,17,17,17,17,   8, 8, 8, 8, 8, 4  &
-     ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin],order=[2,1])
+     ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin],order=[2,1])                                     !< Twin--slip interaction types for hex (isotropic, 16 in total)
      
-! Number of Non Schmid contributions for hex
- integer(pInt), parameter, private :: NnonSchmid_hex = 0_pInt 
+ integer(pInt), parameter, private :: NnonSchmid_hex = 0_pInt                                       !< # of non-Schmid contributions for hex
  
-! Tensor for each non schmid contribution
  real(pReal), dimension(3,3,2,NnonSchmid_hex,lattice_hex_Nslip), parameter, private :: &
-   lattice_nonSchmid_hex = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_hex,lattice_hex_Nslip])
+   lattice_nonSchmid_hex = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_hex,lattice_hex_Nslip])         !< Tensor for each non-Schmid contribution for hex
 
  public :: &
   lattice_init, &
@@ -712,135 +670,44 @@ module lattice
 
 contains
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Maps structure to symmetry type 
-!> @details fcc(1) and bcc(2) are cubic(1) hex(3+) is hexagonal(2)
-!--------------------------------------------------------------------------------------------------
-integer(pInt) pure function lattice_symmetryType(structName)
-
- implicit none
- character(len=32), intent(in) :: structName
-
- select case(structName(1:3))
-   case ('fcc','bcc')
-     lattice_symmetryType = 1_pInt
-   case ('hex')
-     lattice_symmetryType = 2_pInt
-   case default
-     lattice_symmetryType = 0_pInt
-  end select
-
- return
- 
-end function lattice_symmetryType
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Symmetrizes stiffness matrix according to lattice type
-!--------------------------------------------------------------------------------------------------
-pure function lattice_symmetrizeC66(structName,C66)
-
- implicit none
- 
- character(len=32), intent(in) :: structName
- real(pReal), dimension(6,6), intent(in) :: C66
- real(pReal), dimension(6,6) :: lattice_symmetrizeC66
- integer(pInt) :: j,k
-
- lattice_symmetrizeC66 = 0.0_pReal
- 
- select case(structName(1:3))
-   case ('iso')
-     forall(k=1_pInt:3_pInt)
-       forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) = C66(1,2)
-       lattice_symmetrizeC66(k,k) = C66(1,1)
-       lattice_symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
-     end forall
-   case ('fcc','bcc')
-     forall(k=1_pInt:3_pInt)
-       forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) =   C66(1,2)
-       lattice_symmetrizeC66(k,k) =     C66(1,1)
-       lattice_symmetrizeC66(k+3_pInt,k+3_pInt) = C66(4,4)
-     end forall    
-   case ('hex')
-     lattice_symmetrizeC66(1,1) = C66(1,1)
-     lattice_symmetrizeC66(2,2) = C66(1,1)
-     lattice_symmetrizeC66(3,3) = C66(3,3)
-     lattice_symmetrizeC66(1,2) = C66(1,2)
-     lattice_symmetrizeC66(2,1) = C66(1,2)
-     lattice_symmetrizeC66(1,3) = C66(1,3)
-     lattice_symmetrizeC66(3,1) = C66(1,3)
-     lattice_symmetrizeC66(2,3) = C66(1,3)
-     lattice_symmetrizeC66(3,2) = C66(1,3)
-     lattice_symmetrizeC66(4,4) = C66(4,4)
-     lattice_symmetrizeC66(5,5) = C66(4,4)
-     lattice_symmetrizeC66(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
-   case ('ort')
-     lattice_symmetrizeC66(1,1) = C66(1,1)
-     lattice_symmetrizeC66(2,2) = C66(2,2)
-     lattice_symmetrizeC66(3,3) = C66(3,3)
-     lattice_symmetrizeC66(1,2) = C66(1,2)
-     lattice_symmetrizeC66(2,1) = C66(1,2)
-     lattice_symmetrizeC66(1,3) = C66(1,3)
-     lattice_symmetrizeC66(3,1) = C66(1,3)
-     lattice_symmetrizeC66(2,3) = C66(2,3)
-     lattice_symmetrizeC66(3,2) = C66(2,3)
-     lattice_symmetrizeC66(4,4) = C66(4,4)
-     lattice_symmetrizeC66(5,5) = C66(5,5)
-     lattice_symmetrizeC66(6,6) = C66(6,6)
-  end select
-  
-  return
-  
- end function lattice_symmetrizeC66
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief Module initialization
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
-
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use IO,       only: IO_open_file,&
-                     IO_open_jobFile_stat, &
-                     IO_countSections, &
-                     IO_countTagInPart, &
-                     IO_error, &
-                     IO_timeStamp
- use material, only: material_configfile, &
-                     material_localFileExt, &
-                     material_partPhase
- use debug,    only: debug_level, &
-                     debug_lattice, &
-                     debug_levelBasic
+ use IO, only: &
+   IO_open_file,&
+   IO_open_jobFile_stat, &
+   IO_countSections, &
+   IO_countTagInPart, &
+   IO_error
+ use material, only: &
+   material_configfile, &
+   material_localFileExt, &
+   material_partPhase
+ use debug, only: &
+   debug_level, &
+   debug_lattice, &
+   debug_levelBasic
 
  implicit none
  integer(pInt), parameter :: fileunit = 200_pInt
  integer(pInt) :: Nsections
 
- !$OMP CRITICAL (write2out)
-   write(6,*)
-   write(6,*) '<<<+-  lattice init  -+>>>'
-   write(6,*) '$Id$'
-   write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
+   write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
- !$OMP END CRITICAL (write2out)
 
  if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then                               ! no local material configuration present...
    call IO_open_file(fileunit,material_configFile)                                                  ! ... open material.config file
  endif
  Nsections = IO_countSections(fileunit,material_partPhase)
  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
-! lattice_Nstructure = Nsections + 2_pInt                                                           ! most conservative assumption
  close(fileunit)
 
  if (iand(debug_level(debug_lattice),debug_levelBasic) /= 0_pInt) then
-   !$OMP CRITICAL (write2out)
-     write(6,'(a16,1x,i5)') '# phases:',Nsections
-     write(6,'(a16,1x,i5)') '# structures:',lattice_Nstructure
-     write(6,*)
-   !$OMP END CRITICAL (write2out)
+   write(6,'(a16,1x,i5)')   ' # phases:',Nsections
+   write(6,'(a16,1x,i5,/)') ' # structures:',lattice_Nstructure
  endif
 
  allocate(NnonSchmid(lattice_Nstructure));                         NnonSchmid = 0_pInt
@@ -878,16 +745,17 @@ end subroutine lattice_init
 !> @brief   Calculation of Schmid matrices, etc.
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function lattice_initializeStructure(struct,CoverA)
- use prec, only: pReal,pInt
- use math, only: math_vectorproduct, &
-                 math_tensorproduct, &
-                 math_norm3, &
-                 math_trace33, &
-                 math_symmetric33, &
-                 math_Mandel33to6, &
-                 math_axisAngleToR, &
-                 INRAD
- use IO, only: IO_error
+ use math, only: &
+   math_vectorproduct, &
+   math_tensorproduct, &
+   math_norm3, &
+   math_trace33, &
+   math_symmetric33, &
+   math_Mandel33to6, &
+   math_axisAngleToR, &
+   INRAD
+ use IO, only: &
+   IO_error
  
  implicit none
  character(len=*) struct
@@ -1016,10 +884,10 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
 
  if (processMe) then
    if  (myStructure > lattice_Nstructure) &
-     call IO_error(666_pInt,myStructure,ext_msg = 'structure index out of bounds')     ! check for memory leakage
-   do i = 1_pInt,myNslip                                                               ! store slip system vectors and Schmid matrix for my structure
-     lattice_sd(1:3,i,myStructure) = sd(1:3,i)/math_norm3(sd(1:3,i))                   ! make unit vector
-     lattice_sn(1:3,i,myStructure) = sn(1:3,i)/math_norm3(sn(1:3,i))                   ! make unit vector
+     call IO_error(666_pInt,myStructure,ext_msg = 'structure index out of bounds')                  ! check for memory leakage
+   do i = 1_pInt,myNslip                                                                            ! store slip system vectors and Schmid matrix for my structure
+     lattice_sd(1:3,i,myStructure) = sd(1:3,i)/math_norm3(sd(1:3,i))                                ! make unit vector
+     lattice_sn(1:3,i,myStructure) = sn(1:3,i)/math_norm3(sn(1:3,i))                                ! make unit vector
      lattice_st(1:3,i,myStructure) = math_vectorproduct(lattice_sd(1:3,i,myStructure), &
                                                         lattice_sn(1:3,i,myStructure))
      lattice_Sslip(1:3,1:3,i,myStructure) = math_tensorproduct(lattice_sd(1:3,i,myStructure), &
@@ -1032,9 +900,9 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      if (abs(math_trace33(lattice_Sslip(1:3,1:3,i,myStructure))) > 1.0e-8_pReal) &
        call IO_error(0_pInt,myStructure,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
    enddo
-   do i = 1_pInt,myNtwin                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
-     lattice_td(1:3,i,myStructure) = td(1:3,i)/math_norm3(td(1:3,i))                   ! make unit vector
-     lattice_tn(1:3,i,myStructure) = tn(1:3,i)/math_norm3(tn(1:3,i))                   ! make unit vector
+   do i = 1_pInt,myNtwin                                                                            ! store twin system vectors and Schmid plus rotation matrix for my structure
+     lattice_td(1:3,i,myStructure) = td(1:3,i)/math_norm3(td(1:3,i))                                ! make unit vector
+     lattice_tn(1:3,i,myStructure) = tn(1:3,i)/math_norm3(tn(1:3,i))                                ! make unit vector
      lattice_tt(1:3,i,myStructure) = math_vectorproduct(lattice_td(1:3,i,myStructure), &
                                                         lattice_tn(1:3,i,myStructure))
      lattice_Stwin(1:3,1:3,i,myStructure) = math_tensorproduct(lattice_td(1:3,i,myStructure), &
@@ -1045,17 +913,98 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      if (abs(math_trace33(lattice_Stwin(1:3,1:3,i,myStructure))) > 1.0e-8_pReal) &
        call IO_error(0_pInt,myStructure,i,0_pInt,ext_msg = 'dilatational twin Schmid matrix')
    enddo
-   lattice_NslipSystem(1:lattice_maxNslipFamily,myStructure) = myNslipSystem                                ! number of slip systems in each family
-   lattice_NtwinSystem(1:lattice_maxNtwinFamily,myStructure) = myNtwinSystem                                ! number of twin systems in each family
+   lattice_NslipSystem(1:lattice_maxNslipFamily,myStructure) = myNslipSystem                        ! number of slip systems in each family
+   lattice_NtwinSystem(1:lattice_maxNtwinFamily,myStructure) = myNtwinSystem                        ! number of twin systems in each family
    lattice_interactionSlipSlip(1:myNslip,1:myNslip,myStructure) = interactionSlipSlip(1:myNslip,1:myNslip)
    lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myStructure) = interactionSlipTwin(1:myNslip,1:myNtwin)
    lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myStructure) = interactionTwinSlip(1:myNtwin,1:myNslip)
    lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myStructure) = interactionTwinTwin(1:myNtwin,1:myNtwin)
  endif
 
- lattice_initializeStructure = myStructure        ! report my structure index back
+ lattice_initializeStructure = myStructure                                                          ! report my structure index back
 
 end function lattice_initializeStructure
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Maps structure to symmetry type 
+!> @details fcc(1) and bcc(2) are cubic(1) hex(3+) is hexagonal(2)
+!--------------------------------------------------------------------------------------------------
+integer(pInt) pure function lattice_symmetryType(structName)
+
+ implicit none
+ character(len=32), intent(in) :: structName
+
+ select case(structName(1:3))
+   case ('fcc','bcc')
+     lattice_symmetryType = 1_pInt
+   case ('hex')
+     lattice_symmetryType = 2_pInt
+   case default
+     lattice_symmetryType = 0_pInt
+  end select
+
+ return
+ 
+end function lattice_symmetryType
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Symmetrizes stiffness matrix according to lattice type
+!--------------------------------------------------------------------------------------------------
+pure function lattice_symmetrizeC66(structName,C66)
+
+ implicit none
+ character(len=32), intent(in) :: structName
+ real(pReal), dimension(6,6), intent(in) :: C66
+ real(pReal), dimension(6,6) :: lattice_symmetrizeC66
+ integer(pInt) :: j,k
+
+ lattice_symmetrizeC66 = 0.0_pReal
+ 
+ select case(structName(1:3))
+   case ('iso')
+     forall(k=1_pInt:3_pInt)
+       forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) = C66(1,2)
+       lattice_symmetrizeC66(k,k) = C66(1,1)
+       lattice_symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
+     end forall
+   case ('fcc','bcc')
+     forall(k=1_pInt:3_pInt)
+       forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) =   C66(1,2)
+       lattice_symmetrizeC66(k,k) =     C66(1,1)
+       lattice_symmetrizeC66(k+3_pInt,k+3_pInt) = C66(4,4)
+     end forall    
+   case ('hex')
+     lattice_symmetrizeC66(1,1) = C66(1,1)
+     lattice_symmetrizeC66(2,2) = C66(1,1)
+     lattice_symmetrizeC66(3,3) = C66(3,3)
+     lattice_symmetrizeC66(1,2) = C66(1,2)
+     lattice_symmetrizeC66(2,1) = C66(1,2)
+     lattice_symmetrizeC66(1,3) = C66(1,3)
+     lattice_symmetrizeC66(3,1) = C66(1,3)
+     lattice_symmetrizeC66(2,3) = C66(1,3)
+     lattice_symmetrizeC66(3,2) = C66(1,3)
+     lattice_symmetrizeC66(4,4) = C66(4,4)
+     lattice_symmetrizeC66(5,5) = C66(4,4)
+     lattice_symmetrizeC66(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
+   case ('ort')
+     lattice_symmetrizeC66(1,1) = C66(1,1)
+     lattice_symmetrizeC66(2,2) = C66(2,2)
+     lattice_symmetrizeC66(3,3) = C66(3,3)
+     lattice_symmetrizeC66(1,2) = C66(1,2)
+     lattice_symmetrizeC66(2,1) = C66(1,2)
+     lattice_symmetrizeC66(1,3) = C66(1,3)
+     lattice_symmetrizeC66(3,1) = C66(1,3)
+     lattice_symmetrizeC66(2,3) = C66(2,3)
+     lattice_symmetrizeC66(3,2) = C66(2,3)
+     lattice_symmetrizeC66(4,4) = C66(4,4)
+     lattice_symmetrizeC66(5,5) = C66(5,5)
+     lattice_symmetrizeC66(6,6) = C66(6,6)
+  end select
+  
+ end function lattice_symmetrizeC66
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief   Number of parameters to expect in material.config section
@@ -1073,7 +1022,7 @@ function lattice_configNchunks(struct)
  integer(pInt), dimension(6)  :: lattice_configNchunks
  character(len=*), intent(in) :: struct
 
- select case(struct(1:3))                          ! check first three chars of structure name
+ select case(struct(1:3))                                                                           ! check first three chars of structure name
    case ('fcc')
      lattice_configNchunks(1) = count(lattice_fcc_NslipSystem > 0_pInt)
      lattice_configNchunks(2) = count(lattice_fcc_NtwinSystem > 0_pInt)
