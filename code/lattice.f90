@@ -417,8 +417,8 @@ module lattice
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex 
    
  integer(pInt), parameter , private :: &
-   lattice_hex_Nslip = 30_pInt, ! sum(lattice_hex_NslipSystem),&                                    !< total # of slip systems for hex 
-   lattice_hex_Ntwin = 24_pInt  ! sum(lattice_hex_NtwinSystem)                                      !< total # of twin systems for hex
+   lattice_hex_Nslip = 30_pInt, & ! sum(lattice_hex_NslipSystem),                                   !< total # of slip systems for hex 
+   lattice_hex_Ntwin = 24_pInt    ! sum(lattice_hex_NtwinSystem)                                    !< total # of twin systems for hex
    
  integer(pInt), private :: &
    lattice_hex_Nstructure = 0_pInt
