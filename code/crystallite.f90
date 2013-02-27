@@ -635,8 +635,15 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
           crystallite_todo = .false.
         endwhere
       else
-        crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:) .or. crystallite_syncSubFrac
-        crystallite_clearToCutback = crystallite_localPlasticity(1,:,:)
+        !$OMP PARALLEL DO PRIVATE(myNgrains)
+        do e = FEsolving_execElem(1),FEsolving_execElem(2)
+          myNgrains = homogenization_Ngrains(mesh_element(3,e))
+          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+            crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e) .or. crystallite_syncSubFrac(i,e)
+            crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e)
+          enddo
+        enddo
+        !$OMP END PARALLEL DO
         if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
           !$OMP CRITICAL (write2out)
           write(6,'(a,i6)') '<< CRYST >> time synchronization: wind forward'
@@ -649,11 +656,15 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
       ! Just completed a time synchronization.
       ! Make sure that the ips that synchronized their time step start non-converged 
 
-      where(crystallite_syncSubFracCompleted) &
-        crystallite_converged(1,:,:) = .false.
-      crystallite_syncSubFracCompleted = .false.
-      crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:)
-      crystallite_clearToCutback = crystallite_localPlasticity(1,:,:) .or. .not. crystallite_converged(1,:,:)
+      do e = FEsolving_execElem(1),FEsolving_execElem(2)
+        myNgrains = homogenization_Ngrains(mesh_element(3,e))
+        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+          if (crystallite_syncSubFracCompleted(i,e)) crystallite_converged(1,i,e) = .false.
+          crystallite_syncSubFracCompleted(i,e) = .false.
+          crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e)
+          crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e) .or. .not. crystallite_converged(1,i,e)
+        enddo
+      enddo
       if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
         !$OMP CRITICAL (write2out)
         write(6,'(a,i6)') '<< CRYST >> time synchronization: done, proceed with cutback'
@@ -674,8 +685,15 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
       ! takes place, all other ips have to wait and only the synchronizers do a cutback. In the next 
       ! iteration those will do a wind forward while all others still wait. 
 
-      crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:)
-      crystallite_clearToCutback = crystallite_localPlasticity(1,:,:)
+      !$OMP PARALLEL DO PRIVATE(myNgrains)
+      do e = FEsolving_execElem(1),FEsolving_execElem(2)
+        myNgrains = homogenization_Ngrains(mesh_element(3,e))
+        do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+          crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e)
+          crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e)
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
       if (all(crystallite_localPlasticity .or. crystallite_converged)) then
         if (all(crystallite_localPlasticity .or. crystallite_subStep + crystallite_subFrac >= 1.0_pReal)) then
           crystallite_clearToWindForward = .true.   ! final wind forward
@@ -685,7 +703,14 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
             !$OMP END CRITICAL (write2out)
           endif
         else
-          crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:) .or. crystallite_subStep(1,:,:) < 1.0_pReal
+          !$OMP PARALLEL DO PRIVATE(myNgrains)
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e) .or. crystallite_subStep(1,i,e) < 1.0_pReal
+            enddo
+          enddo
+          !$OMP END PARALLEL DO
           if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
             !$OMP CRITICAL (write2out)
             write(6,'(a,i6)') '<< CRYST >> wind forward'
@@ -696,7 +721,8 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
         subFracIntermediate = maxval(crystallite_subFrac, mask=.not.crystallite_localPlasticity)
         if (subFracIntermediate == 0.0_pReal) then
           crystallite_neighborEnforcedCutback = .false.  ! look for ips that require a cutback because of a nonconverged neighbor
-          !$OMP PARALLEL DO PRIVATE(neighboring_e,neighboring_i)
+          !$OMP PARALLEL 
+          !$OMP DO PRIVATE(neighboring_e,neighboring_i)
             do e = FEsolving_execElem(1),FEsolving_execElem(2) 
               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
                 if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_converged(1,i,e)) then
@@ -719,12 +745,20 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
                 endif
               enddo
             enddo
-          !$OMP END PARALLEL DO
-          where(crystallite_neighborEnforcedCutback) &
-            crystallite_converged(1,:,:) = .false.
+          !$OMP END DO
+          !$OMP DO PRIVATE(myNgrains)
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              if(crystallite_neighborEnforcedCutback(i,e)) crystallite_converged(1,i,e) = .false.
+            enddo
+          enddo
+          !$OMP END DO
+          !$OMP END PARALLEL
         else
           crystallite_syncSubFrac = .false.  ! look for ips that have to do a time synchronization because of a nonconverged neighbor
-          !$OMP PARALLEL DO PRIVATE(neighboring_e,neighboring_i)
+          !$OMP PARALLEL 
+          !$OMP DO PRIVATE(neighboring_e,neighboring_i)
             do e = FEsolving_execElem(1),FEsolving_execElem(2) 
               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
                 if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_subFrac(1,i,e) == 0.0_pReal) then
@@ -747,23 +781,43 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
                 endif
               enddo
             enddo
-          !$OMP END PARALLEL DO
-          where(crystallite_syncSubFrac) &
-            crystallite_converged(1,:,:) = .false.
+          !$OMP END DO
+          !$OMP DO PRIVATE(myNgrains)
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              if(crystallite_syncSubFrac(i,e)) crystallite_converged(1,i,e) = .false.
+            enddo
+          enddo
+          !$OMP END DO
+          !$OMP END PARALLEL
         endif
         where(.not. crystallite_localPlasticity .and. crystallite_subStep < 1.0_pReal) &
           crystallite_converged = .false.
         if (any(crystallite_syncSubFrac)) then   ! have to do syncing now, so all wait except for the synchronizers which do a cutback
-          crystallite_clearToWindForward = crystallite_localPlasticity(1,:,:)
-          crystallite_clearToCutback = crystallite_localPlasticity(1,:,:) .or. crystallite_syncSubFrac
+          !$OMP PARALLEL DO PRIVATE(myNgrains)
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              crystallite_clearToWindForward(i,e) = crystallite_localPlasticity(1,i,e)
+              crystallite_clearToCutback(i,e) = crystallite_localPlasticity(1,i,e) .or. crystallite_syncSubFrac(i,e)
+            enddo
+          enddo
+          !$OMP END PARALLEL DO
           if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
             !$OMP CRITICAL (write2out)
             write(6,'(a,i6)') '<< CRYST >> time synchronization: cutback'
             !$OMP END CRITICAL (write2out)
           endif
         else
-          where(.not. crystallite_converged(1,:,:)) &
-            crystallite_clearToCutback = .true.
+          !$OMP PARALLEL DO PRIVATE(myNgrains)
+          do e = FEsolving_execElem(1),FEsolving_execElem(2)
+            myNgrains = homogenization_Ngrains(mesh_element(3,e))
+            do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+              if(.not. crystallite_converged(1,i,e)) crystallite_clearToCutback(i,e) = .true.
+            enddo
+          enddo
+          !$OMP END PARALLEL DO
           if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt) then
             !$OMP CRITICAL (write2out)
             write(6,'(a,i6)') '<< CRYST >> cutback'
@@ -781,8 +835,15 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
 
     ! Those that do neither wind forward nor cutback are not to do
 
-    where(.not. crystallite_clearToWindForward .and. .not. crystallite_clearToCutback) &
-      crystallite_todo(1,:,:) = .false.
+    !$OMP PARALLEL DO PRIVATE(myNgrains)
+    do e = FEsolving_execElem(1),FEsolving_execElem(2)
+      myNgrains = homogenization_Ngrains(mesh_element(3,e))
+      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+        if(.not. crystallite_clearToWindForward(i,e) .and. .not. crystallite_clearToCutback(i,e)) &
+          crystallite_todo(1,i,e) = .false.
+      enddo
+    enddo
+    !$OMP END PARALLEL DO
       
   endif
 
