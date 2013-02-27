@@ -44,7 +44,8 @@ module mesh
    mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
    mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
    mesh_maxNsharedElems, &                                                                          !< max number of CP elements sharing a node
-   mesh_maxNsubNodes
+   mesh_maxNsubNodes, &
+   mesh_Nelems                                                                                      !< total number of elements in mesh
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices
@@ -71,9 +72,7 @@ module mesh
    mesh_ipAreaNormal                                                                                !< area normal of interface to neighboring IP (initially!)
     
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
-                                                              
- integer(pInt), private :: &
-   mesh_Nelems                                                                                      !< total number of elements in mesh
+
 #ifdef Marc
  integer(pInt), private :: &  
    hypoelasticTableStyle, &                                                                         !< Table style (Marc only)

@@ -83,7 +83,6 @@ module numerics
  integer(pInt), protected, public :: &
                                 DAMASK_NumThreadsInt       = 0_pInt                                 !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
 
-
 !* spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &

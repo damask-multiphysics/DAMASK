@@ -1511,6 +1511,13 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 ! homogenization errors
  case (500_pInt)
    msg = 'unknown homogenization specified'
+ 
+!--------------------------------------------------------------------------------------------------
+! user errors
+ case (600_pInt)
+   msg = 'Non-local plasticity and non-CP elements in model'
+ case (601_pInt)
+   msg = 'OpenMP threads > 1 and using non-CP elements'
 
 !-------------------------------------------------------------------------------------------------
 ! DAMASK_marc errors
