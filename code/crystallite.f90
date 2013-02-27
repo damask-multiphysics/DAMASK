@@ -712,6 +712,7 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
                           write(6,'(a12,i5,1x,i2,a,i5,1x,i2)') '<< CRYST >> ', neighboring_e,neighboring_i, &
                                                                  ' enforced cutback at ',e,i
 #endif
+                        exit
                       endif
                     endif
                   enddo
@@ -739,6 +740,7 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
                           write(6,'(a12,i5,1x,i2,a,i5,1x,i2)') '<< CRYST >> ',neighboring_e,neighboring_i, &
                                                                ' enforced time synchronization at ',e,i
 #endif
+                        exit
                       endif
                     endif
                   enddo
@@ -3351,16 +3353,18 @@ subroutine crystallite_orientations
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
          
-         call math_pDecomposition(crystallite_Fe(1:3,1:3,g,i,e), U, R, error)                              ! polar decomposition of Fe
+         !$OMP CRITICAL (polarDecomp) ! somehow this subroutine is not threadsafe, so need critical statement here; not clear, what exactly the problem is
+         call math_pDecomposition(crystallite_Fe(1:3,1:3,g,i,e), U, R, error)  ! polar decomposition of Fe
+         !$OMP END CRITICAL (polarDecomp)
          if (error) then
            call IO_warning(650_pInt, e, i, g)
-           orientation = [1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]                                ! fake orientation
+           orientation = [1.0_pReal, 0.0_pReal, 0.0_pReal, 0.0_pReal]  ! fake orientation
          else
            orientation = math_RtoQ(transpose(R))
          endif
          crystallite_rotation(1:4,g,i,e) = math_qDisorientation(crystallite_orientation0(1:4,g,i,e), &  ! active rotation from ori0
-                                                                         orientation, &                          ! to current orientation
-                                                                         0_pInt )                                ! we don't want symmetry here  
+                                                                orientation, &                          ! to current orientation
+                                                                0_pInt )                                ! we don't want symmetry here  
          crystallite_orientation(1:4,g,i,e) = orientation
        enddo
      enddo
