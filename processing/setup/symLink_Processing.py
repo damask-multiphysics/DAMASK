@@ -20,6 +20,7 @@ bin_link = { \
                 'geom_fromAng.py',
                 'geom_fromMinimalSurface.py',
                 'geom_fromVoronoiTessellation.py',
+                'geom_Osteon.py',
                 'geom_canvas.py',
                 'geom_check.py',
                 'geom_rescale.py',
