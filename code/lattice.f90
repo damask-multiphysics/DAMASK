@@ -96,8 +96,8 @@ module lattice
    lattice_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< # of twin systems per family for fcc
    
  integer(pInt), parameter, private  :: &
-   lattice_fcc_Nslip = sum(lattice_fcc_NslipSystem), &                                              !< total # of slip systems for fcc
-   lattice_fcc_Ntwin = sum(lattice_fcc_NtwinSystem)                                                 !< total # of twin systems for fcc
+   lattice_fcc_Nslip = 12_pInt, & ! sum(lattice_fcc_NslipSystem), &                                 !< total # of slip systems for fcc
+   lattice_fcc_Ntwin = 12_pInt    ! sum(lattice_fcc_NtwinSystem)                                    !< total # of twin systems for fcc
  
  integer(pInt), private :: &
    lattice_fcc_Nstructure = 0_pInt
@@ -223,8 +223,8 @@ module lattice
    lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< # of twin systems per family for bcc
    
  integer(pInt), parameter, private  :: &
-   lattice_bcc_Nslip = sum(lattice_bcc_NslipSystem), &                                              !< total # of slip systems for bcc
-   lattice_bcc_Ntwin = sum(lattice_bcc_NtwinSystem)                                                 !< total # of twin systems for bcc
+   lattice_bcc_Nslip = 24_pInt, & ! sum(lattice_bcc_NslipSystem), &                                 !< total # of slip systems for bcc
+   lattice_bcc_Ntwin = 12_pInt    ! sum(lattice_bcc_NtwinSystem)                                    !< total # of twin systems for bcc
    
  integer(pInt), private :: &
    lattice_bcc_Nstructure = 0_pInt
@@ -417,8 +417,8 @@ module lattice
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex 
    
  integer(pInt), parameter , private :: &
-   lattice_hex_Nslip = sum(lattice_hex_NslipSystem),&                                               !< total # of slip systems for hex 
-   lattice_hex_Ntwin = sum(lattice_hex_NtwinSystem)                                                 !< total # of twin systems for hex
+   lattice_hex_Nslip = 30_pInt, ! sum(lattice_hex_NslipSystem),&                                    !< total # of slip systems for hex 
+   lattice_hex_Ntwin = 24_pInt  ! sum(lattice_hex_NtwinSystem)                                      !< total # of twin systems for hex
    
  integer(pInt), private :: &
    lattice_hex_Nstructure = 0_pInt
