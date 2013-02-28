@@ -92,7 +92,9 @@ module numerics
                                 err_f_tol                  =  1e-6_pReal,  &
                                 err_p_tol                  =  1e-5_pReal,  &
                                 fftw_timelimit             = -1.0_pReal, &                          !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
-                                rotation_tol               =  1.0e-12_pReal                         !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
+                                rotation_tol               =  1.0e-12_pReal, &                      !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
+                                polarAlpha                 =  1.0_pReal, &                          !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
+                                polarBeta                  =  1.0_pReal                             !< polarization scheme parameter 0.0 < beta < 2.0. beta = 1.0 ==> AL scheme, beta = 2.0 ==> accelerated scheme 
  character(len=64), private :: &
                                 fftw_plan_mode             = 'FFTW_PATIENT'                         !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
  character(len=64), protected, public :: & 
@@ -305,9 +307,14 @@ subroutine numerics_init
              err_f_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_p_tol')
              err_p_tol = IO_floatValue(line,positions,2_pInt)
+       case ('polaralpha')
+             polarAlpha = IO_floatValue(line,positions,2_pInt)
+       case ('polarbeta')
+             polarBeta = IO_floatValue(line,positions,2_pInt)
 #endif 
 #ifndef PETSc
-       case ('myspectralsolver', 'petsc_options','err_f_tol', 'err_p_tol')                          ! found PETSc parameter, but compiled without PETSc
+       case ('myspectralsolver', 'petsc_options','err_f_tol', 'err_p_tol', &
+             'polaralpha','polarBeta')                                                             ! found PETSc parameter, but compiled without PETSc
              call IO_warning(41_pInt,ext_msg=tag)
 #endif
 #endif
@@ -315,7 +322,7 @@ subroutine numerics_init
       case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&                                 ! found spectral parameter for FEM build
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode','myspectralsolver', &
             'rotation_tol','divergence_correction','update_gamma','petsc_options','myfilter', &
-            'err_f_tol', 'err_p_tol', 'maxcutback')
+            'err_f_tol', 'err_p_tol', 'maxcutback','polaralpha','polarbeta')
              call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                 ! found unknown keyword
@@ -425,6 +432,8 @@ subroutine numerics_init
 #ifdef PETSc
    write(6,'(a24,1x,es8.1)')   ' err_f_tol:              ',err_f_tol
    write(6,'(a24,1x,es8.1)')   ' err_p_tol:              ',err_p_tol
+   write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
+   write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
    write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
    write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
@@ -483,6 +492,11 @@ subroutine numerics_init
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
 #ifdef PETSc
  if (err_f_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_f_tol')
+ if (err_p_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_p_tol')
+ if (polarAlpha <= 0.0_pReal .or. &
+     polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')
+ if (polarBeta <= 0.0_pReal .or. &
+     polarBeta >  2.0_pReal)               call IO_error(301_pInt,ext_msg='polarBeta')
  if (err_p_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_p_tol')
 #endif
 #endif

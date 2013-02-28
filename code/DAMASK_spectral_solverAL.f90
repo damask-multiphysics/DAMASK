@@ -106,7 +106,6 @@ subroutine AL_init(temperature)
    temperature
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
- integer(pInt) :: i,j,k
  real(pReal), dimension(3,3,  res(1),  res(2),res(3)) ::  P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
@@ -376,7 +375,9 @@ end function AL_solution
 subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  use numerics, only: &
    itmax, &
-   itmin
+   itmin, &
+   polarAlpha, &
+   polarBeta
  use math, only: &
    math_rotate_backward33, &
    math_transpose33, &
@@ -395,7 +396,6 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 
  implicit none
  integer(pInt), save :: callNo = 3_pInt
- real(pReal), dimension(3,3)            :: temp33_Real
 
 !--------------------------------------------------------------------------------------------------
 ! strange syntax in the next line because otherwise macros expand beyond 132 character limit 
@@ -451,10 +451,29 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    reportIter = reportIter + 1_pInt
  endif
  callNo = callNo +1_pInt
+  
+!--------------------------------------------------------------------------------------------------
+! 
+ field_real = 0.0_pReal
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+   field_real(i,j,k,1:3,1:3) = math_mul3333xx33(C_scale,(polarAlpha + polarBeta)*F(1:3,1:3,i,j,k) - &
+                                                               (polarAlpha)*F_lambda(1:3,1:3,i,j,k))
+ enddo; enddo; enddo
+ 
+!--------------------------------------------------------------------------------------------------
+! doing convolution in Fourier space 
+ call Utilities_FFTforward()
+ call Utilities_fourierConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
+ call Utilities_FFTbackward()
+ 
+!--------------------------------------------------------------------------------------------------
+! constructing residual                         
+ residual_F_lambda = polarBeta*F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),&
+                                      [3,3,res(1),res(2),res(3)],order=[3,4,5,1,2])
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(F_lastInc,F,params%temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,F - residual_F_lambda/polarBeta,params%temperature,params%timeinc, &
                                      residual_F,C,P_av,ForwardData,params%rotation_BC)
  ForwardData = .False.
   
@@ -462,31 +481,19 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! stress BC handling
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC))) ! S = 0.0 for no bc
  err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))     ! mask = 0.0 for no bc
-  
+ 
 !--------------------------------------------------------------------------------------------------
-! 
- field_real = 0.0_pReal
+! constructing residual
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   temp33_Real = math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) + math_I3
-   residual_F(1:3,1:3,i,j,k) = temp33_Real
-   field_real(i,j,k,1:3,1:3) = -math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k)-F(1:3,1:3,i,j,k))
+   residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
+                               F_lambda(1:3,1:3,i,j,k) + &
+                               F(1:3,1:3,i,j,k) + &
+                               residual_F_lambda(1:3,1:3,i,j,k)
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
-! doing convolution in Fourier space 
- call Utilities_FFTforward()
- call Utilities_fourierConvolution(math_rotate_backward33(F_aim,params%rotation_BC)) 
- call Utilities_FFTbackward()
- 
-!--------------------------------------------------------------------------------------------------
-! constructing residual                         
- residual_F_lambda = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),&
-                                 [3,3,res(1),res(2),res(3)],order=[3,4,5,1,2])
- residual_F = residual_F - F_lambda + residual_F_lambda
- 
-!--------------------------------------------------------------------------------------------------
 ! calculating errors  
- err_f = wgt*sqrt(sum(residual_F_lambda**2.0_pReal))
+ err_f = wgt*sqrt(sum(residual_F_lambda**2.0_pReal))/polarBeta
  err_p = wgt*sqrt(sum((residual_F - residual_F_lambda)**2.0_pReal))
    
 end subroutine AL_formResidual
