@@ -187,7 +187,13 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
                       debug_abaqus
  use mesh, only:      mesh_FEasCP, &
                       mesh_ipCoordinates
- use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
+ use CPFEM, only: &
+   CPFEM_general, &
+   CPFEM_init_done, &
+   CPFEM_initAll, &
+   CPFEM_CALCRESULTS, &
+   CPFEM_AGERESULTS, &
+   CPFEM_EXPLICIT
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 
  include 'vaba_param.inc'      ! Abaqus exp initializes a first step in single prec. for this a two-step compilation is used.
@@ -216,8 +222,8 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  real(pReal), dimension(6,6) :: ddsdde
  real(pReal) temp, timeInc
  integer(pInt) computationMode, n, i, cp_en
- logical :: cutBack
 
+ computationMode = ior(CPFEM_CALCRESULTS,CPFEM_EXPLICIT)               ! always calculate, always explicit
  do n = 1,nblock                                                       ! loop over vector of IPs
 
    temp    = tempOld(n)
@@ -249,16 +255,15 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
      outdatedByNewInc = .false.
      call debug_info()                                             ! first after new inc reports debugging
      call debug_reset()                                            ! resets debugging
-     computationMode = 8                                           ! calc and age results with implicit collection
-   else
-     computationMode = 9                                           ! plain calc with implicit collection
+     computationMode = ior(computationMode, CPFEM_AGERESULTS)      ! age results
    endif
 
    theTime  = totalTime                                            ! record current starting time
 
    if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
      !$OMP CRITICAL (write2out)
-       write(6,'(a16,1x,i2,1x,a,i8,1x,i5,a)') 'computationMode',computationMode,'(',nElement(n),nMatPoint(n),')'; call flush(6)
+       write(6,'(i2,1x,a,i8,1x,i5,a)') '(',nElement(n),nMatPoint(n),')'; call flush(6)
+       write(6,'(a,l1)') 'Aging Results: ', iand(computationMode, CPFEM_AGERESULTS) /= 0_pInt
      !$OMP END CRITICAL (write2out)
    endif
   

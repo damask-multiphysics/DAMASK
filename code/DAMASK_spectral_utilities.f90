@@ -691,7 +691,12 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    wgt, &
    mesh_NcpElems
  use CPFEM, only: &
-   CPFEM_general
+   CPFEM_general, &
+   CPFEM_COLLECT, &
+   CPFEM_CALCRESULTS, &
+   CPFEM_AGERESULTS, &
+   CPFEM_BACKUPJACOBIAN, &
+   CPFEM_RESTOREJACOBIAN
  use homogenization, only: &
    materialpoint_F0, &
    materialpoint_F, &
@@ -720,16 +725,16 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  real(pReal), dimension(6,6)     :: dsde                                                            !< d sigma / d Epsilon
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
+ calcMode    = CPFEM_CALCRESULTS
+ collectMode = CPFEM_COLLECT
  if (forwardData) then                                                                              ! aging results
-   calcMode = 1_pInt
-   collectMode = 4_pInt
-  else                                                                                              ! normal calculation
-   calcMode = 2_pInt
-   collectMode = 3_pInt
+   calcMode    = ior(calcMode,    CPFEM_AGERESULTS)             
+   collectMode = ior(collectMode, CPFEM_BACKUPJACOBIAN)
  endif
  if (cutBack) then                                                                                  ! restore saved variables
-  calcMode = 2_pInt
-  collectMode = 5_pInt
+  collectMode = ior(collectMode , CPFEM_RESTOREJACOBIAN)
+  collectMode = iand(collectMode, not(CPFEM_BACKUPJACOBIAN))
+  calcMode    = iand(calcMode,    not(CPFEM_AGERESULTS)) 
  endif
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report

@@ -1515,9 +1515,9 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 !--------------------------------------------------------------------------------------------------
 ! user errors
  case (600_pInt)
-   msg = 'Non-local plasticity and non-CP elements in model'
+   msg = 'Cannot combine Non-local plasticity and non-DAMASK elements'
  case (601_pInt)
-   msg = 'OpenMP threads > 1 and using non-CP elements'
+   msg = 'Cannot combine OpenMP threading and non-DAMASK elements'
 
 !-------------------------------------------------------------------------------------------------
 ! DAMASK_marc errors

@@ -89,9 +89,9 @@ module crystallite
  logical,     dimension (:,:,:),           allocatable, public :: &
    crystallite_requested                                                                            !< flag to request crystallite calculation
  logical,     dimension (:,:,:),           allocatable, public, protected :: &
-   crystallite_converged                                                                            !< convergence flag
+   crystallite_converged, &                                                                         !< convergence flag
+   crystallite_localPlasticity                                                                      !< indicates this grain to have purely local constitutive law
  logical,     dimension (:,:,:),           allocatable, private :: &
-   crystallite_localPlasticity, &                                                                   !< indicates this grain to have purely local constitutive law
    crystallite_todo                                                                                 !< flag to indicate need for further computation
  logical,     dimension (:,:),             allocatable, private :: &
    crystallite_clearToWindForward, &

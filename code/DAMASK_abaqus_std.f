@@ -151,7 +151,16 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
                       debug_abaqus
  use mesh, only:      mesh_FEasCP, &
                       mesh_ipCoordinates
- use CPFEM, only:     CPFEM_general,CPFEM_init_done, CPFEM_initAll
+ use CPFEM, only: &
+   CPFEM_general, &
+   CPFEM_init_done, &
+   CPFEM_initAll, &
+   CPFEM_CALCRESULTS, &
+   CPFEM_AGERESULTS, &
+   CPFEM_COLLECT, &
+   CPFEM_RESTOREJACOBIAN, &
+   CPFEM_BACKUPJACOBIAN
+
  use homogenization, only: materialpoint_sizeResults, materialpoint_results
 
 
@@ -173,7 +182,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) computationMode, i, cp_en
- logical :: cutBack
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
    !$OMP CRITICAL (write2out)
@@ -216,9 +224,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         !$OMP END CRITICAL (write2out)
     endif
     
- else if ( dtime < theDelta ) then                                     ! >> cutBack <<
-
-    cutBack = .true.                                                    
+ else if ( dtime < theDelta ) then                                     ! >> cutBack <<                                                  
     terminallyIll = .false.
     cycleCounter = -1                                                   ! first calc step increments this to cycle = 0
     calcMode = .true.                                                   ! pretend last step was calculation
@@ -230,33 +236,27 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                        ! ping pong (calc <--> collect)
 
- if ( calcMode(npt,cp_en) ) then                                        ! now calc
-    if ( lastMode .neqv. calcMode(npt,cp_en) ) then                         ! first after ping pong
-        call debug_reset()                                              ! resets debugging
-        outdatedFFN1 = .false.
-        cycleCounter = cycleCounter + 1
-    endif
-    if ( outdatedByNewInc ) then
-        outdatedByNewInc = .false.
-        computationMode = 1                                                ! calc and age results
-    else
-        computationMode = 2                                                ! plain calc
-    endif
+ if (calcMode(npt,cp_en)) then                                          ! now calc
+   computationMode = CPFEM_CALCRESULTS
+   if ( lastMode .neqv. calcMode(npt,cp_en) ) then                      ! first after ping pong
+     call debug_reset()                                                 ! resets debugging
+     outdatedFFN1 = .false.
+     cycleCounter = cycleCounter + 1
+   endif
+   if(outdatedByNewInc) then
+     outdatedByNewInc = .false.
+     computationMode = ior(computationMode,CPFEM_AGERESULTS)           ! calc and age results
+   endif
  else                                                                  ! now collect
-    if ( lastMode .neqv. calcMode(npt,cp_en) .and. &
-         .not. terminallyIll) then
-        call debug_info()                                              ! first after ping pong reports debugging
-    endif
-    if ( lastIncConverged ) then
-        lastIncConverged = .false.
-        computationMode = 4                                            ! collect and backup Jacobian after convergence
-    elseif ( cutBack ) then
-        cutBack = .false.
-        computationMode = 5                                            ! collect and restore Jacobian after cutback
-    else
-        computationMode = 3                                            ! plain collect
-    endif
-    mesh_ipCoordinates(1:3,npt,cp_en) = numerics_unitlength * COORDS
+   computationMode = CPFEM_COLLECT
+   if(lastMode .neqv. calcMode(npt,cp_en) .and. .not. terminallyIll) then
+     call debug_info()                                                 ! first after ping pong reports debugging
+   endif
+   if (lastIncConverged) then
+     lastIncConverged = .false.
+     computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)       ! backup Jacobian after convergence
+   endif
+   mesh_ipCoordinates(1:3,npt,cp_en) = numerics_unitlength * COORDS
  endif
 
  theTime  = time(2)                                                    ! record current starting time

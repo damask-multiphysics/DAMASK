@@ -16,44 +16,37 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!********************************************************************
-! Material subroutine for MSC.Marc
-!
-! written by P. Eisenlohr,
-!            F. Roters,
-!            L. Hantcherli,
-!            W.A. Counts
-!            D.D. Tjahjanto
-!            C. Kords
-!
-! MPI fuer Eisenforschung, Duesseldorf
-!
-!********************************************************************
-!     Usage:
-!             - choose material as hypela2
-!             - set statevariable 2 to index of homogenization
-!             - set statevariable 3 to index of microstructure
-!             - make sure the file "material.config" exists in the working
-!               directory
-!             - make sure the file "numerics.config" exists in the working 
-!               directory
-!             - use nonsymmetric option for solver (e.g. direct 
-!               profile or multifrontal sparse, the latter seems
-!               to be faster!)
-!             - in case of ddm (domain decomposition)a SYMMETRIC
-!               solver has to be used, i.e uncheck "non-symmetric"
-!********************************************************************
-!     Marc subroutines used:
-!             - hypela2
-!             - plotv
-!             - quit
-!********************************************************************
-!     Marc common blocks included:
-!             - concom: lovl, ncycle, inc, incsub
-!             - creeps: timinc
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Luc Hantcherli, Max-Planck-Institut für Eisenforschung GmbH
+!> @author W.A. Counts
+!> @author Denny Tjahjanto, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief Material subroutine for MSC.Marc
+!> @details     Usage:
+!> @details             - choose material as hypela2
+!> @details             - set statevariable 2 to index of homogenization
+!> @details             - set statevariable 3 to index of microstructure
+!> @details             - make sure the file "material.config" exists in the working
+!> @details               directory
+!> @details             - make sure the file "numerics.config" exists in the working 
+!> @details               directory
+!> @details             - use nonsymmetric option for solver (e.g. direct 
+!> @details               profile or multifrontal sparse, the latter seems
+!> @details               to be faster!)
+!> @details             - in case of ddm (domain decomposition)a SYMMETRIC
+!> @details               solver has to be used, i.e uncheck "non-symmetric"
+!> @details     Marc subroutines used:
+!> @details             - hypela2
+!> @details             - plotv
+!> @details             - quit
+!> @details     Marc common blocks included:
+!> @details             - concom: lovl, ncycle, inc, incsub
+!> @details             - creeps: timinc
+!--------------------------------------------------------------------------------------------------
 
 #ifndef INT
 #define INT 4
@@ -68,7 +61,6 @@
 #include "prec.f90"
 
 module DAMASK_interface
- use prec, only: pInt
  
  implicit none
  character(len=4), parameter :: InputFileExtension = '.dat'
@@ -76,24 +68,29 @@ module DAMASK_interface
 
 contains
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief only output of current version
+!--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init
 
 implicit none
 
 !$OMP CRITICAL (write2out)
- write(6,*)
- write(6,*) '<<<+-  DAMASK_marc init  -+>>>'
- write(6,*) '$Id$'
+ write(6,'(/,a)') ' <<<+-  DAMASK_marc init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
 !$OMP END CRITICAL (write2out)
 
 end subroutine DAMASK_interface_init
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the current workingDir 
+!--------------------------------------------------------------------------------------------------
 function getSolverWorkingDirectoryName()
 
  implicit none
- 
  character(1024) getSolverWorkingDirectoryName, inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
 
@@ -105,10 +102,16 @@ function getSolverWorkingDirectoryName()
 
 end function getSolverWorkingDirectoryName
 
-function getSolverJobName()
- 
- implicit none
 
+!--------------------------------------------------------------------------------------------------
+!> @brief solver job name (no extension) as combination of geometry and load case name
+!--------------------------------------------------------------------------------------------------
+function getSolverJobName()
+ use prec, only: &
+   pReal, &
+   pInt
+
+ implicit none
  character(1024) :: getSolverJobName, inputName
  character(len=*), parameter :: pathSep = achar(47)//achar(92) ! forward and backward slash
  integer(pInt) :: extPos
@@ -118,9 +121,9 @@ function getSolverJobName()
  inquire(5, name=inputName) ! determine inputfile
  extPos = len_trim(inputName)-4
  getSolverJobName=inputName(scan(inputName,pathSep,back=.true.)+1:extPos)
-! write(6,*) 'getSolverJobName', getSolverJobName
 
 end function getSolverJobName
+
 
 end module DAMASK_interface
 
@@ -146,77 +149,70 @@ end module DAMASK_interface
 #include "CPFEM.f90"
 
 
-!********************************************************************
-! This is the Marc material routine
-!********************************************************************
-!
-! *************   user subroutine for defining material behavior  **************
-!
-!
-! CAUTION : Due to calculation of the Deformation gradients, Stretch Tensors and
-!         Rotation tensors at previous and current states, the analysis can be
-!         computationally expensive. Please use the user subroutine ->  hypela
-!         if these kinematic quantities are not needed in the constitutive model
-!
-!
-! IMPORTANT NOTES :
-!
-! (1) F,R,U are only available for continuum and membrane elements (not for
-!     shells and beams).
-!
-! (2) For total Lagrangian formulation use the -> 'Elasticity,1' card(=
-!     total Lagrange with large disp) in the parameter section of input deck.
-!     For updated Lagrangian formulation use the -> 'Plasticity,3' card(=
-!     update+finite+large disp+constant d) in the parameter section of
-!     input deck.
-!
-!     The following operation obtains U (stretch tensor) at t=n+1 :
-!
-!     call scla(un1,0.d0,itel,itel,1)
-!     do 3 k=1,3
-!      do 2 i=1,3
-!       do 1 j=1,3
-!        un1(i,j)=un1(i,j)+dsqrt(strechn1(k))*eigvn1(i,k)*eigvn1(j,k)
-!1      continue
-!2     continue
-!3    continue
-!
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief This is the MSC.Marc user subroutine for defining material behavior
+!> @details CAUTION : Due to calculation of the Deformation gradients, Stretch Tensors and
+!> @details         Rotation tensors at previous and current states, the analysis can be
+!> @details         computationally expensive. Please use the user subroutine ->  hypela
+!> @details         if these kinematic quantities are not needed in the constitutive model
+!> @details
+!> @details IMPORTANT NOTES :
+!> @details
+!> @details (1) F,R,U are only available for continuum and membrane elements (not for
+!> @details     shells and beams).
+!> @details
+!> @details (2) For total Lagrangian formulation use the -> 'Elasticity,1' card(=
+!> @details     total Lagrange with large disp) in the parameter section of input deck.
+!> @details     For updated Lagrangian formulation use the -> 'Plasticity,3' card(=
+!> @details     update+finite+large disp+constant d) in the parameter section of
+!> @details     input deck.
+!> @details
+!> @details     The following operation obtains U (stretch tensor) at t=n+1 :
+!> @details
+!> @details     call scla(un1,0.d0,itel,itel,1)
+!> @details     do k=1,3
+!> @details      do i=1,3
+!> @details       do  j=1,3
+!> @details        un1(i,j)=un1(i,j)+dsqrt(strechn1(k))*eigvn1(i,k)*eigvn1(j,k)
+!> @details       enddo
+!> @details      enddo
+!> @details     enddo
+!--------------------------------------------------------------------------------------------------
 subroutine hypela2(&
-     d,&          ! stress strain law to be formed
-     g,&          ! change in stress due to temperature effects
-     e,&          ! total elastic strain
-     de,&         ! increment of strain
-     s,&          ! stress - should be updated by user
-     t,&          ! state variables (comes in at t=n, must be updated to have state variables at t=n+1)
-     dt,&         ! increment of state variables
-     ngens,&      ! size of stress - strain law
-     n,&          ! element number
-     nn,&         ! integration point number
-     kcus,&       ! (1) layer number, (2) internal layer number
-     matus,&      ! (1) user material identification number, (2) internal material identification number
-     ndi,&        ! number of direct components
-     nshear,&     ! number of shear components
-     disp,&       ! incremental displacements
-     dispt,&      ! displacements at t=n (at assembly, lovl=4) and displacements at t=n+1 (at stress recovery, lovl=6)
-     coord,&      ! coordinates
-     ffn,&        ! deformation gradient
-     frotn,&      ! rotation tensor
-     strechn,&    ! square of principal stretch ratios, lambda(i)
-     eigvn,&      ! i principal direction components for j eigenvalues
-     ffn1,&       ! deformation gradient
-     frotn1,&     ! rotation tensor
-     strechn1,&   ! square of principal stretch ratios, lambda(i)
-     eigvn1,&     ! i principal direction components for j eigenvalues
-     ncrd,&       ! number of coordinates
-     itel,&       ! dimension of F and R, either 2 or 3
-     ndeg,&       ! number of degrees of freedom  ==> is this at correct list position ?!?
-     ndm,&        !
-     nnode,&      ! number of nodes per element
-     jtype,&      ! element type
-     lclass,&     ! element class
-     ifr,&        ! set to 1 if R has been calculated
-     ifu &        ! set to 1 if stretch has been calculated
+     d,&          !< stress strain law to be formed
+     g,&          !< change in stress due to temperature effects
+     e,&          !< total elastic strain
+     de,&         !< increment of strain
+     s,&          !< stress - should be updated by user
+     t,&          !< state variables (comes in at t=n, must be updated to have state variables at t=n+1)
+     dt,&         !< increment of state variables
+     ngens,&      !< size of stress - strain law
+     n,&          !< element number
+     nn,&         !< integration point number
+     kcus,&       !< (1) layer number, (2) internal layer number
+     matus,&      !< (1) user material identification number, (2) internal material identification number
+     ndi,&        !< number of direct components
+     nshear,&     !< number of shear components
+     disp,&       !< incremental displacements
+     dispt,&      !< displacements at t=n (at assembly, lovl=4) and displacements at t=n+1 (at stress recovery, lovl=6)
+     coord,&      !< coordinates
+     ffn,&        !< deformation gradient
+     frotn,&      !< rotation tensor
+     strechn,&    !< square of principal stretch ratios, lambda(i)
+     eigvn,&      !< i principal direction components for j eigenvalues
+     ffn1,&       !< deformation gradient
+     frotn1,&     !< rotation tensor
+     strechn1,&   !< square of principal stretch ratios, lambda(i)
+     eigvn1,&     !< i principal direction components for j eigenvalues
+     ncrd,&       !< number of coordinates
+     itel,&       !< dimension of F and R, either 2 or 3
+     ndeg,&       !< number of degrees of freedom  ==> is this at correct list position ?!?
+     ndm,&        !< 
+     nnode,&      !< number of nodes per element
+     jtype,&      !< element type
+     lclass,&     !< element class
+     ifr,&        !< set to 1 if R has been calculated
+     ifu &        !< set to 1 if stretch has been calculated
    )
 
  use prec, only:      pReal, &
@@ -244,7 +240,16 @@ subroutine hypela2(&
                       mesh_build_ipCoordinates, &
                       FE_Nnodes, &
                       FE_geomtype
- use CPFEM, only:     CPFEM_initAll,CPFEM_general,CPFEM_init_done
+ use CPFEM, only: &
+   CPFEM_general, &
+   CPFEM_init_done, &
+   CPFEM_initAll, &
+   CPFEM_CALCRESULTS, &
+   CPFEM_AGERESULTS, &
+   CPFEM_COLLECT, &
+   CPFEM_RESTOREJACOBIAN, &
+   CPFEM_BACKUPJACOBIAN
+   
 !$ use numerics, only: DAMASK_NumThreadsInt                                   ! number of threads set by DAMASK_NUM_THREADS
  
  implicit none
@@ -286,12 +291,9 @@ subroutine hypela2(&
 
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                         ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
- if (lovl == 4) then                                                      ! Marc requires stiffness in separate call (lovl == 4)
-   if ( timinc < theDelta .and. theInc == inc ) then                      ! first after cutback
-     computationMode = 7                                                  !  --> restore tangent and return it
-   else
-     computationMode = 6                                                  !  --> just return known tangent
-   endif
+ if (lovl == 4 ) then
+   if(timinc < theDelta .and. theInc == inc ) &                           ! first after cutback
+     computationMode = CPFEM_RESTOREJACOBIAN
  else                                                                     ! stress requested (lovl == 6)
    cp_en = mesh_FEasCP('elem',n(1))
    if (cptim > theTime .or. inc /= theInc) then                           ! reached "convergence"
@@ -346,10 +348,10 @@ subroutine hypela2(&
        call mesh_build_ipCoordinates()                                    ! update ip coordinates
      endif
      if ( outdatedByNewInc ) then
+       computationMode = ior(CPFEM_CALCRESULTS,CPFEM_AGERESULTS)
        outdatedByNewInc = .false.                                         ! reset flag
-       computationMode = 1                                                ! calc and age results
      else
-       computationMode = 2                                                ! plain calc
+       computationMode = CPFEM_CALCRESULTS
      endif
    else                                                                   ! now --- COLLECT ---
      if ( lastMode /= calcMode(nn,cp_en) .and. &
@@ -357,10 +359,10 @@ subroutine hypela2(&
        call debug_info()                                                  ! first after ping pong reports (meaningful) debugging
      endif
      if ( lastIncConverged ) then
+       computationMode = ior(CPFEM_COLLECT,CPFEM_BACKUPJACOBIAN)          ! collect and backup Jacobian after convergence
        lastIncConverged = .false.                                         ! reset flag
-       computationMode = 4                                                ! collect and backup Jacobian after convergence
      else
-       computationMode = 3                                                ! plain collect
+       computationMode = CPFEM_COLLECT                                    ! plain collect
      endif
      do node = 1,FE_Nnodes(FE_geomtype(mesh_element(2,cp_en)))
        FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
@@ -389,27 +391,24 @@ subroutine hypela2(&
 end subroutine hypela2
 
 
-!********************************************************************
-!     This routine sets user defined output variables for Marc
-!********************************************************************
-!
-!     select a variable contour plotting (user subroutine).
-!
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief sets user defined output variables for Marc
+!> @details select a variable contour plotting (user subroutine).
+!--------------------------------------------------------------------------------------------------
 subroutine plotv(&
-     v,&          ! variable
-     s,&          ! stress array
-     sp,&         ! stresses in preferred direction
-     etot,&       ! total strain (generalized)
-     eplas,&      ! total plastic strain
-     ecreep,&     ! total creep strain
-     t,&          ! current temperature
-     m,&          ! element number
-     nn,&         ! integration point number
-     layer,&      ! layer number
-     ndi,&        ! number of direct stress components
-     nshear,&     ! number of shear stress components
-     jpltcd &     ! user variable index
+     v,&          !< variable
+     s,&          !< stress array
+     sp,&         !< stresses in preferred direction
+     etot,&       !< total strain (generalized)
+     eplas,&      !< total plastic strain
+     ecreep,&     !< total creep strain
+     t,&          !< current temperature
+     m,&          !< element number
+     nn,&         !< integration point number
+     layer,&      !< layer number
+     ndi,&        !< number of direct stress components
+     nshear,&     !< number of shear stress components
+     jpltcd &     !< user variable index
     )
  use prec,  only: pReal,pInt
  use mesh,  only: mesh_FEasCP
@@ -421,7 +420,7 @@ subroutine plotv(&
  real(pReal) v, t(*)
  integer(pInt) m, nn, layer, ndi, nshear, jpltcd
 
- if (jpltcd > materialpoint_sizeResults) call IO_error(700_pInt,jpltcd)                  ! complain about out of bounds error
+ if (jpltcd > materialpoint_sizeResults) call IO_error(700_pInt,jpltcd)                             ! complain about out of bounds error
 
  v = materialpoint_results(jpltcd,nn,mesh_FEasCP('elem', m))
 
