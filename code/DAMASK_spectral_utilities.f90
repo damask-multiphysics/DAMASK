@@ -490,8 +490,8 @@ subroutine utilities_fourierConvolution(fieldAim)
    enddo; enddo; enddo
  else                                                                                               ! use precalculated gamma-operator
    do k = 1_pInt, res(3);  do j = 1_pInt, res(2);  do i = 1_pInt,res1_red
-     forall( m = 1_pInt:3_pInt, n = 1_pInt:3_pInt) &
-       temp33_Complex(m,n) = sum(gamma_hat(m,n,1:3,1:3, i,j,k) * field_fourier(i,j,k,1:3,1:3))
+     forall(l = 1_pInt:3_pInt, m = 1_pInt:3_pInt) &
+       temp33_Complex(l,m) = sum(gamma_hat(l,m,1:3,1:3, i,j,k) * field_fourier(i,j,k,1:3,1:3))
      field_fourier(i,j,k, 1:3,1:3) = temp33_Complex
    enddo; enddo; enddo
  endif
