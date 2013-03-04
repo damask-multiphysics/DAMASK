@@ -36,6 +36,8 @@ class Test():
     '''
     Run all variants and report first failure.
     '''
+    if not self.testPossible():
+      return -1
     if len(update)   == 0 and self.options.update: print ' This test has no reference to update'
     if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
     self.clean()
@@ -48,12 +50,18 @@ class Test():
         if variant in update:
           self.update(variant)
         elif not self.compare(variant):
-          return variant
+          return variant+1
       except Exception,e :
         print '\nWARNING:\n %s\n'%e
-        return variant
-    return -1
-
+        return variant+1
+    return 0
+  
+  def testPossible(self):
+    '''
+    Check if test is possible or not (e.g. no license available).
+    '''
+    return True
+    
   def clean(self):
     '''
     Delete directory tree containing current results.
@@ -337,12 +345,15 @@ class Test():
     
   def report_Success(self,culprit):
     
-    if culprit < 0:
+    if culprit == 0:
       print '%s passed.'%({False: 'The test',
                          True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1])
       print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
       return 0
+    if culprit == -1:
+      print 'Warning: Could not start test'
+      return 0
     else:
-      print ' ********\n * Test %i failed...\n ********'%(culprit+1)
+      print ' ********\n * Test %i failed...\n ********'%(culprit)
       print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
-      return culprit+1
+      return culprit
