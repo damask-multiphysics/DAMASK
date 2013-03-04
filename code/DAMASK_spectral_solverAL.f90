@@ -44,9 +44,9 @@ module DAMASK_spectral_solverAL
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
    F_lastInc, &                                                                                     !< field of previous compatible deformation gradients
-   F_lambda_lastInc, &                                                                              !< field of previous incompatible deformation gradient 
+   F_tau_lastInc, &                                                                              !< field of previous incompatible deformation gradient 
    Fdot, &                                                                                          !< field of assumed rate of compatible deformation gradient
-   F_lambdaDot                                                                                      !< field of assumed rate of incopatible deformation gradient
+   F_tauDot                                                                                      !< field of assumed rate of incopatible deformation gradient
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -115,7 +115,7 @@ subroutine AL_init(temperature)
 
  PetscErrorCode :: ierr
  PetscObject :: dummy
- PetscScalar, pointer, dimension(:,:,:,:) :: xx_psc, F, F_lambda
+ PetscScalar, pointer, dimension(:,:,:,:) :: xx_psc, F, F_tau
  
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
@@ -126,8 +126,8 @@ subroutine AL_init(temperature)
  allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (Fdot  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  !   allocate (Fdot,source = F_lastInc) somethin like that should be possible
- allocate (F_lambda_lastInc(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (F_lambdaDot(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (F_tau_lastInc(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (F_tauDot(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
@@ -148,12 +148,12 @@ subroutine AL_init(temperature)
 ! init fields                 
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                                ! places pointer xx_psc on PETSc data
  F => xx_psc(0:8,:,:,:)
- F_lambda => xx_psc(9:17,:,:,:)
+ F_tau => xx_psc(9:17,:,:,:)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F_lastInc         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                   ! initialize to identity
-   F_lambda_lastInc = F_lastInc
+   F_tau_lastInc = F_lastInc
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)])
-   F_lambda = F
+   F_tau = F
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (debugRestart) write(6,'(/,a,i6,a)') ' reading values of increment ',&
                                              restartInc - 1_pInt,' from file' 
@@ -168,13 +168,13 @@ subroutine AL_init(temperature)
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
-   call IO_read_jobBinaryFile(777,'F_lambda',&
-                                           trim(getSolverJobName()),size(F_lambda))
-   read (777,rec=1) F_lambda
+   call IO_read_jobBinaryFile(777,'F_tau',&
+                                           trim(getSolverJobName()),size(F_tau))
+   read (777,rec=1) F_tau
    close (777)
-   call IO_read_jobBinaryFile(777,'F_lambda_lastInc',&
-                                        trim(getSolverJobName()),size(F_lambda_lastInc))
-   read (777,rec=1) F_lambda_lastInc
+   call IO_read_jobBinaryFile(777,'F_tau_lastInc',&
+                                        trim(getSolverJobName()),size(F_tau_lastInc))
+   read (777,rec=1) F_tau_lastInc
    close (777)
    call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
@@ -259,7 +259,7 @@ use mesh, only: &
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
- PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_lambda
+ PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_tau
  PetscErrorCode :: ierr   
  SNESConvergedReason ::reason
 
@@ -267,7 +267,7 @@ use mesh, only: &
  
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
  F => xx_psc(0:8,:,:,:)
- F_lambda => xx_psc(9:17,:,:,:)
+ F_tau => xx_psc(9:17,:,:,:)
  
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
@@ -280,11 +280,11 @@ use mesh, only: &
    call IO_write_jobBinaryFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
-   call IO_write_jobBinaryFile(777,'F_lambda',size(F_lambda))                                                     ! writing deformation gradient field to file
-   write (777,rec=1) F_lambda
+   call IO_write_jobBinaryFile(777,'F_tau',size(F_tau))                                                     ! writing deformation gradient field to file
+   write (777,rec=1) F_tau
    close (777)
-   call IO_write_jobBinaryFile(777,'F_lambda_lastInc',size(F_lambda_lastInc))                                     ! writing F_lastInc field to file
-   write (777,rec=1) F_lambda_lastInc
+   call IO_write_jobBinaryFile(777,'F_tau_lastInc',size(F_tau_lastInc))                                     ! writing F_lastInc field to file
+   write (777,rec=1) F_tau_lastInc
    close (777)
    call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
    write (777,rec=1) F_aimDot
@@ -300,7 +300,7 @@ use mesh, only: &
 
  if ( cutBack) then 
    F_aim = F_aim_lastInc
-   F_lambda= reshape(F_lambda_lastInc,[9,res(1),res(2),res(3)]) 
+   F_tau= reshape(F_tau_lastInc,[9,res(1),res(2),res(3)]) 
    F = reshape(F_lastInc,[9,res(1),res(2),res(3)]) 
    C = C_lastInc
  else
@@ -321,11 +321,11 @@ use mesh, only: &
                                                 F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
-   F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,res(1),res(2),res(3)]))  
+   F_tauDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+                  timeinc_old,guess,F_tau_lastInc,reshape(F_tau,[3,3,res(1),res(2),res(3)]))  
                 
    F_lastInc        = reshape(F,       [3,3,res(1),res(2),res(3)])
-   F_lambda_lastInc = reshape(F_lambda,[3,3,res(1),res(2),res(3)])
+   F_tau_lastInc = reshape(F_tau,[3,3,res(1),res(2),res(3)])
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
@@ -333,7 +333,7 @@ use mesh, only: &
 ! update local deformation gradient
  F        = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                ! ensure that it matches rotated F_aim
                                math_rotate_backward33(F_aim,rotation_BC)),[9,res(1),res(2),res(3)])
- F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &                 ! does not have any average value as boundary condition
+ F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &                 ! does not have any average value as boundary condition
                                                                           [9,res(1),res(2),res(3)])
 
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
@@ -381,7 +381,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  use math, only: &
    math_rotate_backward33, &
    math_transpose33, &
-   math_mul3333xx33
+   math_mul3333xx33, &
+   math_invSym3333
  use mesh, only: &
    res, &
    wgt
@@ -393,6 +394,9 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    Utilities_constitutiveResponse, &
    debugRotation
  use IO, only: IO_intOut
+ use homogenization, only: &
+   materialpoint_P, &
+   materialpoint_dPdF
 
  implicit none
  integer(pInt), save :: callNo = 3_pInt
@@ -410,24 +414,24 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    f_scal
  PetscScalar, pointer, dimension(:,:,:,:,:) :: &
    F, &
-   F_lambda, &
+   F_tau, &
    residual_F, &
-   residual_F_lambda
+   residual_F_tau
  PetscInt :: &
    iter, &
    nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
  integer(pInt) :: &
-   i, j, k
+   i, j, k, n_ele
 
  F                 => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
- F_lambda          => x_scal(1:3,1:3,2,&
+ F_tau          => x_scal(1:3,1:3,2,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
  residual_F        => f_scal(1:3,1:3,1,&
   X_RANGE,Y_RANGE,Z_RANGE)
- residual_F_lambda => f_scal(1:3,1:3,2,&
+ residual_F_tau => f_scal(1:3,1:3,2,&
   X_RANGE,Y_RANGE,Z_RANGE)
  
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
@@ -457,7 +461,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  field_real = 0.0_pReal
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    field_real(i,j,k,1:3,1:3) = math_mul3333xx33(C_scale,(polarAlpha + polarBeta)*F(1:3,1:3,i,j,k) - &
-                                                               (polarAlpha)*F_lambda(1:3,1:3,i,j,k))
+                                                               (polarAlpha)*F_tau(1:3,1:3,i,j,k))
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
@@ -468,12 +472,12 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
- residual_F_lambda = polarBeta*F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),&
+ residual_F_tau = polarBeta*F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),&
                                       [3,3,res(1),res(2),res(3)],order=[3,4,5,1,2])
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- call Utilities_constitutiveResponse(F_lastInc,F - residual_F_lambda/polarBeta,params%temperature,params%timeinc, &
+ call Utilities_constitutiveResponse(F_lastInc,F - residual_F_tau/polarBeta,params%temperature,params%timeinc, &
                                      residual_F,C,P_av,ForwardData,params%rotation_BC)
  ForwardData = .False.
   
@@ -484,17 +488,23 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
+ n_ele = 0_pInt
+ err_p = 0.0_pReal
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-   residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
-                               F_lambda(1:3,1:3,i,j,k) + &
-                               F(1:3,1:3,i,j,k) + &
-                               residual_F_lambda(1:3,1:3,i,j,k)
+   n_ele = n_ele + 1_pInt
+   err_p = err_p + sum((math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
+                        (F_tau(1:3,1:3,i,j,k) - &
+                         F(1:3,1:3,i,j,k) + residual_F_tau(1:3,1:3,i,j,k)/polarBeta))**2.0_pReal)
+   residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(:,:,:,:,1,n_ele) + C_scale), &
+                                                residual_F(1:3,1:3,i,j,k) - &
+                                                math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k))) &
+                               + residual_F_tau(1:3,1:3,i,j,k)
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
 ! calculating errors  
- err_f = wgt*sqrt(sum(residual_F_lambda**2.0_pReal))/polarBeta
- err_p = wgt*sqrt(sum((residual_F - residual_F_lambda)**2.0_pReal))
+ err_f = wgt*sqrt(sum(residual_F_tau**2.0_pReal))/polarBeta
+ err_p = wgt*sqrt(err_p) 
    
 end subroutine AL_formResidual
 
