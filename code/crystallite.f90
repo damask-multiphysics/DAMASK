@@ -33,11 +33,11 @@ module crystallite
  character(len=64), dimension(:,:),        allocatable, private :: &
    crystallite_output                                                                               !< name of each post result output
  integer(pInt),                                         public, protected :: &
-   crystallite_maxSizePostResults
+   crystallite_maxSizePostResults                                                                   !< description now available
  integer(pInt),     dimension(:),          allocatable, public, protected :: &
-   crystallite_sizePostResults
+   crystallite_sizePostResults                                                                      !< description now available
  integer(pInt),     dimension(:,:),        allocatable, private :: &
-   crystallite_sizePostResult
+   crystallite_sizePostResult                                                                       !< description now available
  integer(pInt),     dimension(:,:,:),      allocatable, private :: &
    crystallite_symmetryID                                                                           !< crystallographic symmetry 1=cubic 2=hexagonal, needed in all orientation calcs     
      
@@ -94,11 +94,11 @@ module crystallite
  logical,     dimension (:,:,:),           allocatable, private :: &
    crystallite_todo                                                                                 !< flag to indicate need for further computation
  logical,     dimension (:,:),             allocatable, private :: &
-   crystallite_clearToWindForward, &
-   crystallite_clearToCutback, &
-   crystallite_syncSubFrac, &
-   crystallite_syncSubFracCompleted, &
-   crystallite_neighborEnforcedCutback
+   crystallite_clearToWindForward, &                                                                !< description now available
+   crystallite_clearToCutback, &                                                                    !< description now available
+   crystallite_syncSubFrac, &                                                                       !< description now available
+   crystallite_syncSubFracCompleted, &                                                              !< description now available
+   crystallite_neighborEnforcedCutback                                                              !< description now available
 
  public :: &
    crystallite_init, &

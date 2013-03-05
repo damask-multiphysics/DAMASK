@@ -61,12 +61,12 @@ module math
  real(pReal), dimension(6), parameter, private :: &
    nrmMandel = [&
      1.0_pReal,                1.0_pReal,                1.0_pReal,&
-     1.414213562373095_pReal,  1.414213562373095_pReal,  1.414213562373095_pReal]                   !< weighting for Mandel notation (forward)
+     1.414213562373095_pReal,  1.414213562373095_pReal,  1.414213562373095_pReal ]                  !< weighting for Mandel notation (forward)
 
  real(pReal), dimension(6), parameter , public :: &
    invnrmMandel = [&
      1.0_pReal,                1.0_pReal,                1.0_pReal,&
-     0.7071067811865476_pReal, 0.7071067811865476_pReal, 0.7071067811865476_pReal]                  !< weighting for Mandel notation (backward)
+     0.7071067811865476_pReal, 0.7071067811865476_pReal, 0.7071067811865476_pReal ]                 !< weighting for Mandel notation (backward)
 
  integer(pInt), dimension (2,6), parameter, private :: &
    mapVoigt = reshape([&
@@ -419,7 +419,7 @@ end function math_partition
 pure function math_range(N)
 
  implicit none
- integer(pInt), intent(in) :: N
+ integer(pInt), intent(in) :: N                                                                     !< length of range
  integer(pInt) :: i
  integer(pInt), dimension(N) :: math_range
 
@@ -434,7 +434,7 @@ end function math_range
 pure function math_identity2nd(dimen)
 
  implicit none
- integer(pInt), intent(in) :: dimen
+ integer(pInt), intent(in) :: dimen                                                                 !< tensor dimension
  integer(pInt) :: i
  real(pReal), dimension(dimen,dimen) :: math_identity2nd
 
@@ -450,7 +450,7 @@ end function math_identity2nd
 pure function math_identity4th(dimen)
 
  implicit none
- integer(pInt), intent(in) :: dimen
+ integer(pInt), intent(in) :: dimen                                                                 !< tensor dimension
  integer(pInt) :: i,j,k,l
  real(pReal), dimension(dimen,dimen,dimen,dimen) ::  math_identity4th
 
@@ -469,7 +469,6 @@ end function math_identity4th
  real(pReal) pure function math_civita(i,j,k)
 
  implicit none
-
  integer(pInt), intent(in) :: i,j,k
 
  math_civita = 0.0_pReal

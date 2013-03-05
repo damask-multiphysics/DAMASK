@@ -41,8 +41,8 @@ module lattice
    lattice_maxNonSchmid    = 6_pInt                                                                 !< max # of non schmid contributions over lattice structures
  
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
-   lattice_NslipSystem, &                                                                           !< # of slip systems in each family
-   lattice_NtwinSystem                                                                              !< # of twin systems in each family
+   lattice_NslipSystem, &                                                                           !< total # of slip systems in each family
+   lattice_NtwinSystem                                                                              !< total # of twin systems in each family
 
  integer(pInt), allocatable, dimension(:,:,:), protected, public :: &
    lattice_interactionSlipSlip, &                                                                   !< Slip--slip interaction type 
@@ -75,8 +75,8 @@ module lattice
    lattice_shearTwin                                                                                !< characteristic twin shear
 
  integer(pInt), private :: &
-   lattice_Nhexagonal, &                                                                            !< # of hexagonal lattice structure (from tag CoverA_ratio)
-   lattice_Nstructure                                                                               !< # of lattice structures (1: fcc,2: bcc,3+: hexagonal)
+   lattice_Nhexagonal, &                                                                            !< total # of hexagonal lattice structure (from tag CoverA_ratio)
+   lattice_Nstructure                                                                               !< total # of lattice structures (1: fcc,2: bcc,3+: hexagonal)
 
  integer(pInt), dimension(:,:), pointer, private :: &
    interactionSlipSlip, &
@@ -85,15 +85,15 @@ module lattice
    interactionTwinTwin
    
  integer(pInt), allocatable, dimension(:), protected, public :: &
-   NnonSchmid                                                                                       !< # of non-Schmid contributions for each structure
+   NnonSchmid                                                                                       !< total # of non-Schmid contributions for each structure
 
 !--------------------------------------------------------------------------------------------------
 ! fcc (1)
  integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: & 
-   lattice_fcc_NslipSystem = int([12, 0, 0, 0, 0],pInt)                                             !< # of slip systems per family for fcc
+   lattice_fcc_NslipSystem = int([12, 0, 0, 0, 0],pInt)                                             !< total # of slip systems per family for fcc
    
  integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
-   lattice_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< # of twin systems per family for fcc
+   lattice_fcc_NtwinSystem = int([12, 0, 0, 0],pInt)                                                !< total # of twin systems per family for fcc
    
  integer(pInt), parameter, private  :: &
    lattice_fcc_Nslip = 12_pInt, & ! sum(lattice_fcc_NslipSystem), &                                 !< total # of slip systems for fcc
@@ -208,7 +208,7 @@ module lattice
      2,2,2,2,2,2,2,2,2,1,1,1  &
      ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for fcc
      
- integer(pInt), parameter, private :: NnonSchmid_fcc = 0_pInt                                       !< # of non-Schmid contributions for fcc
+ integer(pInt), parameter, private :: NnonSchmid_fcc = 0_pInt                                       !< total # of non-Schmid contributions for fcc
  
  real(pReal), dimension(3,3,2,NnonSchmid_fcc,lattice_fcc_Nslip), parameter, private :: &
    lattice_nonSchmid_fcc = 0.0_pReal ! reshape([],[3,3,2,NnonSchmid_fcc,lattice_fcc_Nslip])         !< Tensor for each non-Schmid contribution for fcc
@@ -217,10 +217,10 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! bcc (2)
  integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: &
-   lattice_bcc_NslipSystem = int([ 12, 12, 0, 0, 0], pInt)                                          !< # of slip systems per family for bcc
+   lattice_bcc_NslipSystem = int([ 12, 12, 0, 0, 0], pInt)                                          !< total # of slip systems per family for bcc
    
  integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
-   lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< # of twin systems per family for bcc
+   lattice_bcc_NtwinSystem = int([ 12, 0, 0, 0], pInt)                                              !< total # of twin systems per family for bcc
    
  integer(pInt), parameter, private  :: &
    lattice_bcc_Nslip = 24_pInt, & ! sum(lattice_bcc_NslipSystem), &                                 !< total # of slip systems for bcc
