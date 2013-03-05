@@ -18,6 +18,7 @@ bin_link = { \
                 'patchFromReconstructedBoundaries.py',
                 'randomSeeding.py',
                 'geom_fromAng.py',
+                'geom_fromVPSC.py',
                 'geom_fromMinimalSurface.py',
                 'geom_fromVoronoiTessellation.py',
                 'geom_Osteon.py',
