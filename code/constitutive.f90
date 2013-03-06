@@ -17,10 +17,10 @@
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
 !--------------------------------------------------------------------------------------------------
-!* $Id$
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!! Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief elasticity, plasticity, internal microstructure state
 !--------------------------------------------------------------------------------------------------
 module constitutive

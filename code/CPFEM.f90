@@ -16,25 +16,29 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!##############################################################
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief CPFEM engine
+!--------------------------------------------------------------------------------------------------
 module CPFEM
-!##############################################################
-!    *** CPFEM engine ***
+ use prec, only: &
+   pReal, &
+   pInt
 
- use prec, only:                                   pReal, pInt
  implicit none
- real(pReal), parameter ::                         CPFEM_odd_stress    = 1e15_pReal, &
-                                                   CPFEM_odd_jacobian  = 1e50_pReal
+ real(pReal), parameter ::                         CPFEM_odd_stress    = 1e15_pReal, &               !< return value for stress in case of ping pong dummy cycle
+                                                   CPFEM_odd_jacobian  = 1e50_pReal                  !< return value for jacobian in case of ping pong dummy cycle
 
- real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                                          !> Cauchy stress
- real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                                       !> Cauchy stress tangent
- real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood                             !> known good tangent
+ real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                                          !< Cauchy stress
+ real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                                       !< Cauchy stress tangent
+ real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood                             !< known good tangent
 
- logical ::                                        CPFEM_init_done       = .false., &                !> remember whether init has been done already
-                                                   CPFEM_init_inProgress = .false., &                !> remember whether first IP is currently performing init
-                                                   CPFEM_calc_done       = .false.                   !> remember whether first IP has already calced the results
+ logical ::                                        CPFEM_init_done       = .false., &                !< remember whether init has been done already
+                                                   CPFEM_init_inProgress = .false., &                !< remember whether first IP is currently performing init
+                                                   CPFEM_calc_done       = .false.                   !< remember whether first IP has already calced the results
  logical, public, protected ::                     usePingPong           = .false.
  integer(pInt), parameter, public :: &
    CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
@@ -46,24 +50,35 @@ module CPFEM
 
 contains
 
-!*********************************************************
-!***    call (thread safe) all module initializations  ***
-!*********************************************************
 
+!--------------------------------------------------------------------------------------------------
+!> @brief call (thread safe) all module initializations
+!--------------------------------------------------------------------------------------------------
 subroutine CPFEM_initAll(Temperature,element,IP)
-
- use prec, only:                                     prec_init
- use numerics, only:                                 numerics_init
- use debug, only:                                    debug_init
- use FEsolving, only:                                FE_init
- use math, only:                                     math_init
- use mesh, only:                                     mesh_init
- use lattice, only:                                  lattice_init
- use material, only:                                 material_init
- use constitutive, only:                             constitutive_init
- use crystallite, only:                              crystallite_init
- use homogenization, only:                           homogenization_init
- use IO, only:                                       IO_init
+ use prec, only: &
+   prec_init
+ use numerics, only: &
+   numerics_init
+ use debug, only: &
+   debug_init
+ use FEsolving, only: &
+   FE_init
+ use math, only: &
+   math_init
+ use mesh, only: &
+   mesh_init
+ use lattice, only: &
+   lattice_init
+ use material, only: &
+   material_init
+ use constitutive, only: &
+   constitutive_init
+ use crystallite, only: &
+   crystallite_init
+ use homogenization, only: &
+   homogenization_init
+ use IO, only: &
+   IO_init
  use DAMASK_interface
 
  implicit none
@@ -112,11 +127,10 @@ subroutine CPFEM_initAll(Temperature,element,IP)
 
 end subroutine CPFEM_initAll
 
-!*********************************************************
-!***    allocate the arrays defined in module CPFEM    ***
-!***    and initialize them                            ***
-!*********************************************************
 
+!--------------------------------------------------------------------------------------------------
+!> @brief allocate the arrays defined in module CPFEM and initialize them
+!--------------------------------------------------------------------------------------------------
 subroutine CPFEM_init
  use, intrinsic :: iso_fortran_env                                                                 ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: &
@@ -246,10 +260,9 @@ subroutine CPFEM_init
 end subroutine CPFEM_init
 
 
-!***********************************************************************
-!***    perform initialization at first call, update variables and   ***
-!***    call the actual material model                               ***
-!***********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief perform initialization at first call, update variables and call the actual material model
+!--------------------------------------------------------------------------------------------------
 subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress,&
      & jacobian, pstress, dPdF)
  ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
@@ -608,20 +621,20 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
  if (mode < 3) then
    cauchyStress33 = math_Mandel6to33(cauchyStress)
    if (maxval(cauchyStress33) > debug_stressMax) then                        
-     debug_stressMaxLocation = (/cp_en, IP/)
+     debug_stressMaxLocation = [cp_en, IP]
      debug_stressMax = maxval(cauchyStress33)
    endif
    if (minval(cauchyStress33) < debug_stressMin) then
-     debug_stressMinLocation = (/cp_en, IP/)
+     debug_stressMinLocation = [cp_en, IP]
      debug_stressMin = minval(cauchyStress33)
    endif
    jacobian3333 = math_Mandel66to3333(jacobian)
    if (maxval(jacobian3333) > debug_jacobianMax) then
-     debug_jacobianMaxLocation = (/cp_en, IP/)
+     debug_jacobianMaxLocation = [cp_en, IP]
      debug_jacobianMax = maxval(jacobian3333)
    endif
    if (minval(jacobian3333) < debug_jacobianMin) then
-     debug_jacobianMinLocation = (/cp_en, IP/)
+     debug_jacobianMinLocation = [cp_en, IP]
      debug_jacobianMin = minval(jacobian3333)
    endif
  endif
