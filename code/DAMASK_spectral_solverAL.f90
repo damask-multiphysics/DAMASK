@@ -57,7 +57,7 @@ module DAMASK_spectral_solverAL
    P_av = 0.0_pReal                                                                                 !< average 1st Piola--Kirchhoff stress
  character(len=1024), private :: incInfo                                                            !< time and increment information
  real(pReal), private, dimension(3,3,3,3) :: &
-   C = 0.0_pReal, &                                                                                 !< current average stiffness
+   C = 0.0_pReal, C_minmaxAvg = 0.0_pReal, &                                                        !< current average stiffness
    C_lastInc = 0.0_pReal, &                                                                         !< previous average stiffness
    S = 0.0_pReal, &                                                                                 !< current compliance (filled up with zeros)
    C_scale = 0.0_pReal, &                             
@@ -186,25 +186,25 @@ subroutine AL_init(temperature)
    read (777,rec=1) C_lastInc
    close (777)
    call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
-   read (777,rec=1) temp3333_Real
+   read (777,rec=1) C_minmaxAvg
    close (777)
  endif
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
                                               F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
- call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,temp3333_Real2,&
+ call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,temp3333_Real,temp3333_Real2,&
                                 temp33_Real,.false.,math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! reference stiffness
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
-   temp3333_Real = temp3333_Real2
-   C = temp3333_Real2
+   C_minmaxAvg = temp3333_Real2
+   C = temp3333_Real
  endif 
 
- call Utilities_updateGamma(temp3333_Real,.True.)
- C_scale = temp3333_Real
- S_scale = math_invSym3333(temp3333_Real)
+ call Utilities_updateGamma(temp3333_Real2,.True.)
+ C_scale = temp3333_Real2
+ S_scale = math_invSym3333(temp3333_Real2)
  
 end subroutine AL_init
 
@@ -219,7 +219,8 @@ type(tSolutionState) function &
    itmax
  use math, only: &
    math_mul33x33 ,&
-   math_rotate_backward33
+   math_rotate_backward33, &
+   math_invSym3333
 use mesh, only: &
    res, &
    geomdim, &
@@ -342,7 +343,11 @@ use mesh, only: &
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
- if (update_gamma) call Utilities_updateGamma(C,restartWrite)
+ if (update_gamma) then
+   call Utilities_updateGamma(C_minmaxAvg,restartWrite)
+   C_scale = C_minmaxAvg
+   S_scale = math_invSym3333(C_minmaxAvg)
+ endif  
  
  ForwardData = .True.
  mask_stress = P_BC%maskFloat
@@ -478,7 +483,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
  call Utilities_constitutiveResponse(F_lastInc,F - residual_F_tau/polarBeta,params%temperature,params%timeinc, &
-                                     residual_F,C,P_av,ForwardData,params%rotation_BC)
+                                     residual_F,C,C_minmaxAvg,P_av,ForwardData,params%rotation_BC)
  ForwardData = .False.
   
 !--------------------------------------------------------------------------------------------------
@@ -520,6 +525,8 @@ subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
   err_p_tol, &
   err_stress_tolrel, &
   err_stress_tolabs
+ use FEsolving, only: &
+   terminallyIll
 
  implicit none
  SNES :: snes_local
@@ -538,7 +545,8 @@ subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
  Converged = (it > itmin .and. &
                all([ err_f/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_f_tol, &
                      err_p/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_p_tol, &
-                     err_stress/err_stress_tol] < 1.0_pReal))
+                     err_stress/err_stress_tol] < 1.0_pReal)) &
+             .or.    terminallyIll     
  
  if (Converged) then
    reason = 1

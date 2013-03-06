@@ -35,7 +35,7 @@ module DAMASK_spectral_SolverBasic
    F_aim_lastInc = math_I3, &                                                                       !< deformation gradient aim last increment
    F_aimDot = 0.0_pReal                                                                             !< assumed rate
  real(pReal), private,dimension(3,3,3,3) :: &
-   C = 0.0_pReal, &                                                                                 !< average stiffness
+   C = 0.0_pReal, C_minmaxAvg = 0.0_pReal, &                                                        !< average stiffness
    C_lastInc = 0.0_pReal                                                                            !< average stiffness last increment
  
 contains
@@ -128,9 +128,9 @@ subroutine basic_init(temperature)
    close (777)
  endif
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,F),[3,1,mesh_NcpElems])
- call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3)     ! constitutive response with no deformation in no time to get reference stiffness
+ call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,C_minmaxAvg,temp33_Real,.false.,math_I3)     ! constitutive response with no deformation in no time to get reference stiffness
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
-   temp3333_Real = C
+   temp3333_Real = C_minmaxAvg
  endif 
    
  call Utilities_updateGamma(temp3333_Real,.True.)
@@ -270,7 +270,7 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
- if (update_gamma) call Utilities_updateGamma(C,restartWrite)
+ if (update_gamma) call Utilities_updateGamma(C_minmaxAvg,restartWrite)
  
 !--------------------------------------------------------------------------------------------------
 ! iteration till converged
@@ -294,7 +294,7 @@ type(tSolutionState) function &
    F_aim_lastIter = F_aim
    basic_solution%termIll = .false.
    call Utilities_constitutiveResponse(F_lastInc,F,temperature_bc,timeinc,&
-                                 P,C,P_av,ForwardData,rotation_BC)
+                                 P,C,C_minmaxAvg,P_av,ForwardData,rotation_BC)
    basic_solution%termIll = terminallyIll
    terminallyIll = .false.
    ForwardData = .false.

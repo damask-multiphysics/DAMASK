@@ -53,7 +53,7 @@ module DAMASK_spectral_SolverBasicPETSc
    F_aimDot=0.0_pReal
  character(len=1024), private :: incInfo   
  real(pReal), private, dimension(3,3,3,3) :: &
-   C = 0.0_pReal, C_lastInc= 0.0_pReal, &
+   C = 0.0_pReal, C_minmaxAvg = 0.0_pReal, C_lastInc= 0.0_pReal, &
    S = 0.0_pReal
 
  real(pReal), private :: err_stress, err_div
@@ -182,10 +182,10 @@ subroutine basicPETSc_init(temperature)
  call Utilities_constitutiveResponse(&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
                reshape(F(0:8,0:res(1)-1_pInt,0:res(2)-1_pInt,0:res(3)-1_pInt),[3,3,res(1),res(2),res(3)]),&
-               temperature,0.0_pReal,P,C,temp33_Real,.false.,math_I3)
+               temperature,0.0_pReal,P,C,C_minmaxAvg,temp33_Real,.false.,math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back into PETSc
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
-   temp3333_Real = C
+   temp3333_Real = C_minmaxAvg
  endif 
    
  call Utilities_updateGamma(temp3333_Real,.True.)
@@ -302,7 +302,7 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
- if (update_gamma) call Utilities_updateGamma(C,restartWrite)
+ if (update_gamma) call Utilities_updateGamma(C_minmaxAvg,restartWrite)
  
  ForwardData = .True.
 
@@ -393,7 +393,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
  call Utilities_constitutiveResponse(F_lastInc,x_scal,params%temperature,params%timeinc, &
-                                     f_scal,C,P_av,ForwardData,params%rotation_BC)
+                                     f_scal,C,C_minmaxAvg,P_av,ForwardData,params%rotation_BC)
  ForwardData = .false.
   
 !--------------------------------------------------------------------------------------------------
@@ -433,6 +433,8 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
    math_mul33x33, &
    math_eigenvalues33, &
    math_transpose33
+ use FEsolving, only: &
+   terminallyIll
  
  implicit none
  SNES :: snes_local
@@ -453,7 +455,8 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
  pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,math_transpose33(P_av)))))
  Converged = (it >= itmin .and. &
                            all([ err_div/pAvgDivL2/err_div_tol, &
-                                 err_stress/err_stress_tol       ] < 1.0_pReal))
+                                 err_stress/err_stress_tol       ] < 1.0_pReal)) &
+             .or.    terminallyIll                 
  
  if (Converged) then
    reason = 1

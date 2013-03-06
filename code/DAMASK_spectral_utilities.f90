@@ -573,6 +573,66 @@ real(pReal) function utilities_divergenceRMS()
  endif
 
 end function utilities_divergenceRMS
+ 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate max of curl of field_fourier
+!--------------------------------------------------------------------------------------------------
+real(pReal) function utilities_curlRMS()
+ use math                                                                                           !< must use the whole module for use of FFTW
+ use mesh, only: &
+   res, &
+   res1_red, &
+   wgt
+
+ implicit none
+ integer(pInt)  ::  i, j, k, l 
+ complex(pReal), dimension(3,3) ::  curl_fourier
+ real(pReal)    ::  curl_abs
+
+ write(6,'(/,a)') ' ... calculating curl ................................................'
+ flush(6)
+!--------------------------------------------------------------------------------------------------
+! calculating max curl criterion in Fourier space
+ utilities_curlRMS = 0.0_pReal
+ 
+ do k = 1_pInt, res(3); do j = 1_pInt, res(2); 
+ do i = 2_pInt, res1_red - 1_pInt
+   do l = 1_pInt, 3_pInt
+     curl_fourier(l,1) = (field_fourier(i,j,k,l,3)*xi(2,i,j,k)&
+                                - field_fourier(i,j,k,l,2)*xi(3,i,j,k))*TWOPIIMG
+     curl_fourier(l,2) = (-field_fourier(i,j,k,l,3)*xi(1,i,j,k)&
+                                +field_fourier(i,j,k,l,1)*xi(3,i,j,k) )*TWOPIIMG
+     curl_fourier(l,3) = ( field_fourier(i,j,k,l,2)*xi(1,i,j,k)&
+                                -field_fourier(i,j,k,l,1)*xi(2,i,j,k) )*TWOPIIMG
+   enddo
+   utilities_curlRMS = utilities_curlRMS + &
+                       2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)
+ enddo 
+ do l = 1_pInt, 3_pInt
+   curl_fourier = (field_fourier(1,j,k,l,3)*xi(2,1,j,k)&
+                              - field_fourier(1,j,k,l,2)*xi(3,1,j,k))*TWOPIIMG
+   curl_fourier = (-field_fourier(1,j,k,l,3)*xi(1,1,j,k)&
+                              +field_fourier(1,j,k,l,1)*xi(3,1,j,k) )*TWOPIIMG
+   curl_fourier = ( field_fourier(1,j,k,l,2)*xi(1,1,j,k)&
+                              -field_fourier(1,j,k,l,1)*xi(2,1,j,k) )*TWOPIIMG
+ enddo
+ utilities_curlRMS = utilities_curlRMS + &
+                     2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)   
+ do l = 1_pInt, 3_pInt  
+   curl_fourier = (field_fourier(res1_red,j,k,l,3)*xi(2,res1_red,j,k)&
+                              - field_fourier(res1_red,j,k,l,2)*xi(3,res1_red,j,k))*TWOPIIMG
+   curl_fourier = (-field_fourier(res1_red,j,k,l,3)*xi(1,res1_red,j,k)&
+                              +field_fourier(res1_red,j,k,l,1)*xi(3,res1_red,j,k) )*TWOPIIMG
+   curl_fourier = ( field_fourier(res1_red,j,k,l,2)*xi(1,res1_red,j,k)&
+                              -field_fourier(res1_red,j,k,l,1)*xi(2,res1_red,j,k) )*TWOPIIMG
+ enddo
+ utilities_curlRMS = utilities_curlRMS + &
+                     2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal) 
+ enddo; enddo
+ utilities_curlRMS = sqrt(utilities_curlRMS) *wgt 
+
+end function utilities_curlRMS
 
 
 !--------------------------------------------------------------------------------------------------
@@ -677,7 +737,7 @@ end function utilities_maskedCompliance
 !> @brief calculates constitutive response
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
-                                          P,C,P_av,forwardData,rotation_BC)
+                                          P,C_volAvg,C_minmaxAvg,P_av,forwardData,rotation_BC)
  use debug, only: &
    debug_reset, &
    debug_info
@@ -713,7 +773,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  logical,     intent(in)                                         :: forwardData                     !< age results
  real(pReal), intent(in),    dimension(3,3)                      :: rotation_BC                     !< rotation of load frame
  
- real(pReal),intent(out),    dimension(3,3,3,3)                  :: C                               !< average stiffness
+ real(pReal),intent(out),    dimension(3,3,3,3)                  :: C_volAvg, C_minmaxAvg           !< average stiffness
  real(pReal),intent(out),    dimension(3,3)                      :: P_av                            !< average PK stress
  real(pReal),intent(out),    dimension(3,3,res(1),res(2),res(3)) :: P                               !< PK stress
  
@@ -723,6 +783,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  real(pReal), dimension(3,3,3,3) :: dPdF                                                            !< d P / d F
  real(pReal), dimension(6)       :: sigma                                                           !< cauchy stress in mandel notation
  real(pReal), dimension(6,6)     :: dsde                                                            !< d sigma / d Epsilon
+ real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
+ real(pReal)  :: max_dPdF_norm, min_dPdF_norm
+ integer(pInt) :: k
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  calcMode    = CPFEM_CALCRESULTS
@@ -764,9 +827,26 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  
  call CPFEM_general(calcMode,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &                          ! first call calculates everything
                     temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
+ 
+ max_dPdF = 0.0_pReal
+ max_dPdF_norm = 0.0_pReal
+ min_dPdF = huge(1.0_pReal)
+ min_dPdF_norm = huge(1.0_pReal)
+ do k = 1_pInt, res(3)*res(2)*res(3)
+   if (max_dPdF_norm < sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)) then
+     max_dPdF = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)
+     max_dPdF_norm = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)
+   endif  
+   if (min_dPdF_norm > sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)) then
+     min_dPdF = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)
+     min_dPdF_norm = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)
+   endif  
+ enddo
 
  P = reshape(materialpoint_P, [3,3,res(1),res(2),res(3)])
- C = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
+ C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt
+ C_minmaxAvg = 0.5_pReal*(max_dPdF + min_dPdF)
+ 
  call debug_info()
  
  restartWrite = .false.                                                                             ! reset restartWrite status
