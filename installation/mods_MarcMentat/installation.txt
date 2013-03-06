@@ -1,10 +1,10 @@
-Install MPIE modifications to use DAMASK_marc2010/11
+Install MPIE modifications to use DAMASK_marc2010/11/12
 
 Refer to http://damask.mpie.de for complete installation instructions.
 
 Usually you will need to be root for this to work!
 
-This is for the Linux64 version of Marc/Mentat2010(.2)/11.
+This is for the Linux64 version of Marc/Mentat2010(.2)/11/12.
 See Marc and Mentat Release Guide for List of Build and Supported Platforms!
 
 The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1(_18)! The 2011/2012 release of Marc/Mentat relies on Intel Fortran 12.0! Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly, refer to the Intel installation guide for instructions on how to do this.

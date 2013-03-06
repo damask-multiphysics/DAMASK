@@ -392,12 +392,12 @@ FORTLOW="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
+FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -fpp -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
@@ -409,12 +409,12 @@ then
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+  FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
-  FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+  FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -fpp -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
