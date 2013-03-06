@@ -20,14 +20,13 @@
 #include "kdtree2.f90"
 #endif
 !--------------------------------------------------------------------------------------------------
-!* $Id$
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Mathematical library, including random number generation and tensor represenations
 !--------------------------------------------------------------------------------------------------
-
 module math
  use, intrinsic :: iso_c_binding
  use prec, only: &
@@ -36,10 +35,10 @@ module math
 
  implicit none
  public                                                                                             ! because FFTW is included in math.f90
- real(pReal),    parameter, public :: PI = 3.14159265358979323846264338327950288419716939937510_pReal
- real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI
- real(pReal),    parameter, public :: INRAD = PI/180.0_pReal
- complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* PI
+ real(pReal),    parameter, public :: PI = 3.14159265358979323846264338327950288419716939937510_pReal !< ratio of a circle's circumference to its diameter
+ real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI                                        !< conversion from radian into degree
+ real(pReal),    parameter, public :: INRAD = PI/180.0_pReal                                        !< conversion from degree into radian
+ complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* PI                          !< Re(0.0), Im(2xPi)
 
  real(pReal), dimension(3,3), parameter, public :: &
    math_I3 = reshape([&
@@ -1417,8 +1416,9 @@ end function math_RtoEuler
 
 !--------------------------------------------------------------------------------------------------
 !> @brief quaternion (w+ix+jy+kz) from orientation matrix
+!> @details math adopted from 
+!> @details http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
 !--------------------------------------------------------------------------------------------------
-! math adopted from http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
 pure function math_RtoQ(R)
 
  implicit none
@@ -2201,7 +2201,6 @@ end function  math_eigenvalues33
 pure subroutine math_hi(M,HI1M,HI2M,HI3M)
 
  implicit none
-
  real(pReal), intent(in) :: M(3,3)
  real(pReal), intent(out) :: HI1M, HI2M, HI3M
 
@@ -2215,23 +2214,14 @@ end subroutine math_hi
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief HALTON computes the next element in the Halton sequence.
-!
-!  Parameters:
-!  Input, integer NDIM, the dimension of the element.
-!  Output, real R(NDIM), the next element of the current Halton sequence.
-!
-!  Modified: 09 March 2003
-!  Author: John Burkardt
-!
-!  Modified: 29 April 2005
-!  Author: Franz Roters
+!> @brief computes the next element in the Halton sequence.
+!> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 subroutine halton(ndim, r)
+ 
  implicit none
-
- integer(pInt), intent(in) :: ndim
- real(pReal), intent(out), dimension(ndim) :: r
+ integer(pInt), intent(in)                   :: ndim                                                  !< dimension of the element
+ real(pReal),   intent(out), dimension(ndim) :: r                                                     !< next element of the current Halton sequence
  integer(pInt), dimension(ndim) :: base
  integer(pInt) :: seed
  integer(pInt), dimension(1) :: value_halton
@@ -2250,49 +2240,29 @@ end subroutine halton
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief HALTON_MEMORY sets or returns quantities associated with the Halton sequence.
-!
-!  Parameters:
-!  Input, character (len = *) action_halton, the desired action.
-!  'GET' means get the value of a particular quantity.
-!  'SET' means set the value of a particular quantity.
-!  'INC' means increment the value of a particular quantity.
-!   (Only the SEED can be incremented.)
-!
-!  Input, character (len = *) name_halton, the name of the quantity.
-!  'BASE' means the Halton base or bases.
-!  'NDIM' means the spatial dimension.
-!  'SEED' means the current Halton seed.
-!
-!  Input/output, integer NDIM, the dimension of the quantity.
-!  If action_halton is 'SET' and action_halton is 'BASE', then NDIM is input, and
-!  is the number of entries in value_halton to be put into BASE.
-!
-!  Input/output, integer value_halton(NDIM), contains a value.
-!  If action_halton is 'SET', then on input, value_halton contains values to be assigned
-!  to the internal variable.
-!  If action_halton is 'GET', then on output, value_halton contains the values of
-!  the specified internal variable.
-!  If action_halton is 'INC', then on input, value_halton contains the increment to
-!  be added to the specified internal variable.
-!
-!  Modified: 09 March 2003
-!  Author: John Burkardt
-!
-!  Modified: 29 April 2005
-!  Author:  Franz Roters
+!> @brief sets or returns quantities associated with the Halton sequence.
+!> @details If action_halton is 'SET' and action_halton is 'BASE', then NDIM is input, and
+!> @details is the number of entries in value_halton to be put into BASE.
+!> @details If action_halton is 'SET', then on input, value_halton contains values to be assigned
+!> @details to the internal variable.
+!> @details If action_halton is 'GET', then on output, value_halton contains the values of
+!> @details the specified internal variable.
+!> @details If action_halton is 'INC', then on input, value_halton contains the increment to
+!> @details be added to the specified internal variable.
+!> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
  implicit none
 
- character(len = *), intent(in) :: action_halton, name_halton
+ character(len = *), intent(in) :: & 
+   action_halton, &                                                                                 !< desired action: GET the value of a particular quantity, SET the value of a particular quantity, INC the value of a particular quantity (only for SEED)
+   name_halton                                                                                      !< name of the quantity: BASE: Halton base(s), NDIM: spatial dimension, SEED: current Halton seed
  integer(pInt), dimension(*), intent(inout) :: value_halton
  integer(pInt), allocatable, save, dimension(:) :: base
  logical, save :: first_call = .true.
- integer(pInt), intent(in) :: ndim
+ integer(pInt), intent(in) :: ndim                                                                  !< dimension of the quantity
  integer(pInt):: i
  integer(pInt), save :: ndim_save = 0_pInt, seed = 1_pInt
-
 
  if (first_call) then
    ndim_save = 1_pInt
@@ -2300,9 +2270,9 @@ subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
    base(1) = 2_pInt
    first_call = .false.
  endif
-!
-!  Set
-!
+ 
+!--------------------------------------------------------------------------------------------------
+! Set
  if(action_halton(1:1) == 'S' .or. action_halton(1:1) == 's') then
 
    if(name_halton(1:1) == 'B' .or. name_halton(1:1) == 'b') then
@@ -2330,9 +2300,9 @@ subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
    elseif(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
      seed = value_halton(1)
  endif
-!
-!  Get
-!
+ 
+!--------------------------------------------------------------------------------------------------
+! Get
  elseif(action_halton(1:1) == 'G' .or. action_halton(1:1) == 'g') then
    if(name_halton(1:1) == 'B' .or. name_halton(1:1) == 'b') then
      if(ndim /= ndim_save) then
@@ -2349,9 +2319,9 @@ subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
    elseif(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
      value_halton(1) = seed
    endif
-!
-!  Increment
-!
+   
+!--------------------------------------------------------------------------------------------------
+!   Increment
  elseif(action_halton(1:1) == 'I' .or. action_halton(1:1) == 'i') then
    if(name_halton(1:1) == 'S' .or. name_halton(1:1) == 's') then
      seed = seed + value_halton(1)
@@ -2362,21 +2332,13 @@ end subroutine halton_memory
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief HALTON_NDIM_SET sets the dimension for a Halton sequence.
-!
-!  Parameters:
-!  Input, integer NDIM, the dimension of the Halton vectors.
-!
-!  Modified: 26 February 2001
-!  Author: John Burkardt
-!
-!  Modified: 29 April 2005
-!  Author: Franz Roters
+!> @brief sets the dimension for a Halton sequence
+!> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 subroutine halton_ndim_set (ndim)
  implicit none
 
- integer(pInt), intent(in) :: ndim
+ integer(pInt), intent(in) :: ndim                                                                  !< dimension of the Halton vectors
  integer(pInt) :: value_halton(1)
 
  value_halton(1) = ndim
@@ -2385,35 +2347,23 @@ subroutine halton_ndim_set (ndim)
 end subroutine halton_ndim_set
 
 
-
-!> HALTON_SEED_SET sets the "seed" for the Halton sequence.
-!
-!  Calling HALTON repeatedly returns the elements of the
-!  Halton sequence in order, starting with element number 1.
-!  An internal counter, called SEED, keeps track of the next element
-!  to return. Each time the routine is called, the SEED-th element
-!  is computed, and then SEED is incremented by 1.
-!
-!  To restart the Halton sequence, it is only necessary to reset
-!  SEED to 1. It might also be desirable to reset SEED to some other value.
-!  This routine allows the user to specify any value of SEED.
-!
-!  The default value of SEED is 1, which restarts the Halton sequence.
-!
-!  Parameters:
-!  Input, integer SEED, the seed for the Halton sequence.
-!
-!  Modified: 26 February 2001
-!  Author: John Burkardt
-!
-!  Modified: 29 April 2005
-!  Author: Franz Roters
 !--------------------------------------------------------------------------------------------------
-subroutine halton_seed_set (seed)
+!> @brief  sets the seed for the Halton sequence.
+!> @details Calling HALTON repeatedly returns the elements of the Halton sequence in order, 
+!> @details starting with element number 1.
+!> @details An internal counter, called SEED, keeps track of the next element to return. Each time 
+!> @details is computed, and then SEED is incremented by 1.
+!> @details To restart the Halton sequence, it is only necessary to reset SEED to 1. It might also 
+!> @details be desirable to reset SEED to some other value. This routine allows the user to specify 
+!> @details any value of SEED.
+!> @details The default value of SEED is 1, which restarts the Halton sequence.
+!> @author John Burkardt
+!--------------------------------------------------------------------------------------------------
+subroutine halton_seed_set(seed)
  implicit none
 
  integer(pInt), parameter :: ndim = 1_pInt
- integer(pInt), intent(in) :: seed
+ integer(pInt), intent(in) :: seed                                                                  !< seed for the Halton sequence.
  integer(pInt) :: value_halton(ndim)
 
  value_halton(1) = seed
@@ -2423,43 +2373,26 @@ end subroutine halton_seed_set
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief I_TO_HALTON computes an element of a Halton sequence.
-!
-!  Reference:
-!  J H Halton: On the efficiency of certain quasi-random sequences of points
-!  in evaluating multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
-!
-!  Parameters:
-!  Input, integer SEED, the index of the desired element.
-!  Only the absolute value of SEED is considered. SEED = 0 is allowed,
-!  and returns R = 0.
-!
-!  Input, integer BASE(NDIM), the Halton bases, which should be
-!  distinct prime numbers.  This routine only checks that each base
-!  is greater than 1.
-!
-!  Input, integer NDIM, the dimension of the sequence.
-!
-!  Output, real R(NDIM), the SEED-th element of the Halton sequence
-!  for the given bases.
-!
-!  Modified: 26 February 2001
-!  Author: John Burkardt
-!
-!  Modified: 29 April 2005
-!  Author: Franz Roters
+!> @brief computes an element of a Halton sequence.
+!> @details Only the absolute value of SEED is considered. SEED = 0 is allowed, and returns R = 0.
+!> @details Halton Bases should be distinct prime numbers. This routine only checks that each base 
+!> @details is greater than 1.
+!> @details Reference:
+!> @details J.H. Halton: On the efficiency of certain quasi-random sequences of points in evaluating 
+!> @details multi-dimensional integrals, Numerische Mathematik, Volume 2, pages 84-90, 1960.
+!> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 subroutine i_to_halton (seed, base, ndim, r)
-
- use IO, only: IO_error
+ use IO, only: &
+   IO_error
+ 
  implicit none
-
- integer(pInt), intent(in) :: ndim
- integer(pInt), intent(in), dimension(ndim) :: base
+ integer(pInt), intent(in) :: ndim                                                                  !< dimension of the sequence
+ integer(pInt), intent(in), dimension(ndim) :: base                                                 !< Halton bases
  real(pReal), dimension(ndim) ::  base_inv
  integer(pInt), dimension(ndim) :: digit
- real(pReal), dimension(ndim), intent(out) ::r
- integer(pInt) :: seed
+ real(pReal), dimension(ndim), intent(out) ::r                                                      !< the SEED-th element of the Halton sequence for the given bases
+ integer(pInt) , intent(in):: seed                                                                  !< index of the desired element
  integer(pInt), dimension(ndim) :: seed2
 
  seed2(1:ndim) = abs(seed)
@@ -2481,37 +2414,22 @@ end subroutine i_to_halton
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief PRIME returns any of the first PRIME_MAX prime numbers.
-!
-!  Note:
-!  PRIME_MAX is 1500, and the largest prime stored is 12553.
-!  Reference:
-!  Milton Abramowitz and Irene Stegun: Handbook of Mathematical Functions,
-!  US Department of Commerce, 1964, pages 870-873.
-!
-!  Daniel Zwillinger: CRC Standard Mathematical Tables and Formulae,
-!  30th Edition, CRC Press, 1996, pages 95-98.
-!
-!  Parameters:
-!  Input, integer N, the index of the desired prime number.
-!  N = -1 returns PRIME_MAX, the index of the largest prime available.
-!  N = 0 is legal, returning PRIME = 1.
-!  It should generally be true that 0 <= N <= PRIME_MAX.
-!
-!  Output, integer PRIME, the N-th prime.  If N is out of range, PRIME
-!  is returned as 0.
-!
-!  Modified:  21 June 2002
-!  Author: John Burkardt
-!
-!  Modified: 29 April 2005
-!  Author: Franz Roters
+!> @brief returns any of the first 1500 prime numbers.
+!> @details n <= 0 returns 1500, the index of the largest prime (12553) available.
+!> @details n = 0 is legal, returning PRIME = 1.
+!> @details Reference:
+!> @details Milton Abramowitz and Irene Stegun: Handbook of Mathematical Functions,
+!> @details US Department of Commerce, 1964, pages 870-873.
+!> @details Daniel Zwillinger: CRC Standard Mathematical Tables and Formulae,
+!> @details 30th Edition, CRC Press, 1996, pages 95-98.
+!> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function prime(n)
- use IO, only: IO_error
+ use IO, only: &
+   IO_error
 
  implicit none
- integer(pInt), intent(in) :: n
+ integer(pInt), intent(in) :: n                                                                     !< index of the desired prime number
  integer(pInt), parameter :: prime_max = 1500_pInt
  integer(pInt), save :: icall = 0_pInt
  integer(pInt), save, dimension(prime_max) :: npvec
@@ -2686,7 +2604,7 @@ integer(pInt) function prime(n)
         12491_pInt,12497_pInt,12503_pInt,12511_pInt,12517_pInt,12527_pInt,12539_pInt,12541_pInt,12547_pInt,12553_pInt]
  endif
 
- if(n == -1_pInt) then
+ if(n < 0_pInt) then
    prime = prime_max
  else if (n == 0_pInt) then
    prime = 1_pInt
@@ -2778,21 +2696,20 @@ end function math_rotate_forward3333
 !> @brief calculates curl field using differentation in Fourier space
 !--------------------------------------------------------------------------------------------------
 function math_curlFFT(geomdim,field)
-
- use IO, only: IO_error
- use numerics, only: fftw_timelimit, fftw_planner_flag  
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic
+ use IO, only: &
+   IO_error
+ use numerics, only: &
+   fftw_timelimit, &
+   fftw_planner_flag  
+ use debug, only: &
+   debug_math, &
+   debug_level, &
+   debug_levelBasic
  
  implicit none
- ! input variables
- real(pReal), intent(in), dimension(3) :: geomdim
  real(pReal), intent(in),  dimension(:,:,:,:,:) :: field
- ! function
  real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4),size(field,5)) :: math_curlFFT
- ! variables with dimension depending on input
- real(pReal),              dimension(size(field,1)/2_pInt+1_pInt,size(field,2),size(field,3),3) :: xi
+ real(pReal), intent(in), dimension(3) :: geomdim
  ! allocatable arrays for fftw c routines
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: field_fftw, curl_fftw
@@ -2804,8 +2721,9 @@ function math_curlFFT(geomdim,field)
  integer(pInt) i, j, k, l, res1_red
  integer(pInt), dimension(3) :: k_s,res
  real(pReal) :: wgt
+ complex(pReal), dimension(3) :: xi
  integer(pInt) :: vec_tens
- 
+
  res =  [size(field,1),size(field,2),size(field,3)]
  vec_tens = size(field,4)
 
@@ -2835,16 +2753,16 @@ function math_curlFFT(geomdim,field)
  call c_f_pointer(curl_fftw, curl_real,     [res(1)+2_pInt,res(2),res(3),vec_tens,3_pInt])
  call c_f_pointer(curl_fftw, curl_fourier,  [res1_red     ,res(2),res(3),vec_tens,3_pInt])
 
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&                      ! dimensions , length in each dimension in reversed order
-                            field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                               ! input data , physical length in each dimension in reversed order
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&                      ! dimensions , length in each dimension in reversed order
+                            field_real,[res(3),res(2) ,res(1)+2_pInt],&                               ! input data , physical length in each dimension in reversed order
                                      1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
-                         field_fourier,(/res(3),res(2) ,res1_red/),&
+                         field_fourier,[res(3),res(2) ,res1_red],&
                                      1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)
 
- fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&
-                          curl_fourier,(/res(3),res(2) ,res1_red/),&
+ fftw_back  = fftw_plan_many_dft_c2r(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&
+                          curl_fourier,[res(3),res(2) ,res1_red],&
                                      1_pInt,  res(3)*res(2)* res1_red,&
-                             curl_real,(/res(3),res(2) ,res(1)+2_pInt/),&
+                             curl_real,[res(3),res(2) ,res(1)+2_pInt],&
                                      1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
 
 
@@ -2865,26 +2783,23 @@ function math_curlFFT(geomdim,field)
    field_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
                                 1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
 
- do k = 1_pInt, res(3)                                                                             ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
+ do k = 1_pInt, res(3)
    k_s(3) = k - 1_pInt
    if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
-     do j = 1_pInt, res(2)
-       k_s(2) = j - 1_pInt
-       if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)
-         do i = 1_pInt, res1_red
-           k_s(1) = i - 1_pInt
-           xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
- enddo; enddo; enddo
-
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-   do l = 1_pInt, vec_tens
-     curl_fourier(i,j,k,l,1) = ( field_fourier(i,j,k,l,3)*xi(i,j,k,2)&
-                                -field_fourier(i,j,k,l,2)*xi(i,j,k,3) )*TWOPIIMG
-     curl_fourier(i,j,k,l,2) = (-field_fourier(i,j,k,l,3)*xi(i,j,k,1)&
-                                +field_fourier(i,j,k,l,1)*xi(i,j,k,3) )*TWOPIIMG
-     curl_fourier(i,j,k,l,3) = ( field_fourier(i,j,k,l,2)*xi(i,j,k,1)&
-                                -field_fourier(i,j,k,l,1)*xi(i,j,k,2) )*TWOPIIMG
-   enddo
+   do j = 1_pInt, res(2)
+     k_s(2) = j - 1_pInt
+     if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)
+     do i = 1_pInt, res1_red
+       k_s(1) = i - 1_pInt
+       xi = cmplx(real(k_s, pReal)/geomdim,0.0_pReal)
+       do l = 1_pInt, vec_tens
+         curl_fourier(i,j,k,l,1) = ( field_fourier(i,j,k,l,3)*xi(2)&
+                                    -field_fourier(i,j,k,l,2)*xi(3))*TWOPIIMG
+         curl_fourier(i,j,k,l,2) = (-field_fourier(i,j,k,l,3)*xi(1)&
+                                    +field_fourier(i,j,k,l,1)*xi(3))*TWOPIIMG
+         curl_fourier(i,j,k,l,3) = ( field_fourier(i,j,k,l,2)*xi(1)&
+                                    -field_fourier(i,j,k,l,1)*xi(2))*TWOPIIMG
+       enddo
  enddo; enddo; enddo
 
  call fftw_execute_dft_c2r(fftw_back, curl_fourier, curl_real)
@@ -2897,7 +2812,7 @@ function math_curlFFT(geomdim,field)
      math_curlFFT(i,j,k,1:3,1:3) = math_transpose33(curl_real(i,j,k,1:3,1:3))                      ! ensure that data is aligned properly (fftw_alloc)
    enddo; enddo; enddo
  endif
- 
+
  math_curlFFT = math_curlFFT * wgt
  call fftw_destroy_plan(fftw_forth)
  call fftw_destroy_plan(fftw_back)
@@ -2906,25 +2821,25 @@ function math_curlFFT(geomdim,field)
 
 end function math_curlFFT
  
+
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates divergence field using integration in Fourier space
 !--------------------------------------------------------------------------------------------------
 function math_divergenceFFT(geomdim,field)
- 
- use IO, only: IO_error
- use numerics, only: fftw_timelimit, fftw_planner_flag  
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic
+ use IO, only: &
+   IO_error
+ use numerics, only: &
+   fftw_timelimit, &
+   fftw_planner_flag  
+ use debug, only: &
+   debug_math, &
+   debug_level, &
+   debug_levelBasic
                   
  implicit none
-
- real(pReal), intent(in), dimension(3)   :: geomdim
  real(pReal), intent(in),  dimension(:,:,:,:,:) :: field
-! function
  real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4)) :: math_divergenceFFT
-! variables with dimension depending on input
- real(pReal), dimension(size(field,1)/2_pInt+1_pInt,size(field,2),size(field,3),3) :: xi
+ real(pReal), intent(in), dimension(3)   :: geomdim
 ! allocatable arrays for fftw c routines
  type(C_PTR) :: fftw_forth, fftw_back
  type(C_PTR) :: field_fftw, divergence_fftw
@@ -2932,11 +2847,12 @@ function math_divergenceFFT(geomdim,field)
  complex(pReal), dimension(:,:,:,:,:), pointer :: field_fourier
  real(pReal),    dimension(:,:,:,:),   pointer :: divergence_real
  complex(pReal), dimension(:,:,:,:),   pointer :: divergence_fourier
- ! other variables
+
  integer(pInt) :: i, j, k, l, res1_red
- real(pReal) :: wgt
  integer(pInt), dimension(3) :: k_s, res
- integer(pInt)  :: vec_tens
+ real(pReal) :: wgt
+ complex(pReal), dimension(3) :: xi
+ integer(pInt) :: vec_tens
  
  res =  [size(field,1),size(field,2),size(field,3)]
  vec_tens = size(field,4)
@@ -2956,6 +2872,7 @@ function math_divergenceFFT(geomdim,field)
    call IO_error(0_pInt,ext_msg='Resolution in math_divergenceFFT')
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
    call IO_error(0_pInt,ext_msg='Fortran to C in math_divergenceFFT')
+ 
  res1_red = res(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  wgt = 1.0_pReal/real(res(1)*res(2)*res(3),pReal)
 
@@ -2967,32 +2884,23 @@ function math_divergenceFFT(geomdim,field)
  call c_f_pointer(divergence_fftw, divergence_real,   [res(1)+2_pInt,res(2),res(3),vec_tens])
  call c_f_pointer(divergence_fftw, divergence_fourier,[res1_red     ,res(2),res(3),vec_tens])
 
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens*3_pInt,&             ! dimensions , length in each dimension in reversed order
-                            field_real,(/res(3),res(2) ,res(1)+2_pInt/),&                           ! input data , physical length in each dimension in reversed order
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,[res(3),res(2) ,res(1)],vec_tens*3_pInt,&             ! dimensions , length in each dimension in reversed order
+                            field_real,[res(3),res(2) ,res(1)+2_pInt],&                           ! input data , physical length in each dimension in reversed order
                                      1_pInt,  res(3)*res(2)*(res(1)+2_pInt),&                       ! striding   , product of physical lenght in the 3 dimensions
-                         field_fourier,(/res(3),res(2) ,res1_red/),&
+                         field_fourier,[res(3),res(2) ,res1_red],&
                                      1_pInt,  res(3)*res(2)* res1_red,fftw_planner_flag)   
 
- fftw_back  = fftw_plan_many_dft_c2r(3_pInt,(/res(3),res(2) ,res(1)/),vec_tens,&
-                    divergence_fourier,(/res(3),res(2) ,res1_red/),&
+ fftw_back  = fftw_plan_many_dft_c2r(3_pInt,[res(3),res(2) ,res(1)],vec_tens,&
+                    divergence_fourier,[res(3),res(2) ,res1_red],&
                                      1_pInt,  res(3)*res(2)* res1_red,&
-                       divergence_real,(/res(3),res(2) ,res(1)+2_pInt/),&
+                       divergence_real,[res(3),res(2) ,res(1)+2_pInt],&
                                      1_pInt,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)      ! padding
+ 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
    field_real(i,j,k,1:vec_tens,1:3) = field(i,j,k,1:vec_tens,1:3)                                   ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
  call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
- do k = 1_pInt, res(3)                                                                              ! calculation of discrete angular frequencies, ordered as in FFTW (wrap around)
-   k_s(3) = k - 1_pInt
-   if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
-     do j = 1_pInt, res(2)
-       k_s(2) = j - 1_pInt
-       if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)
-         do i = 1_pInt, res1_red
-           k_s(1) = i - 1_pInt
-           xi(i,j,k,1:3) = real(k_s, pReal)/geomdim
- enddo; enddo; enddo
 
  !remove highest frequency in each direction
  if(res(1)>1_pInt) &
@@ -3005,12 +2913,20 @@ function math_divergenceFFT(geomdim,field)
    field_fourier(1:res1_red            ,1:res(2)           ,res(3)/2_pInt+1_pInt,&
                                 1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
 
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-   do l = 1_pInt, vec_tens
-     divergence_fourier(i,j,k,l)=sum(field_fourier(i,j,k,l,1:3)*cmplx(xi(i,j,k,1:3),0.0_pReal,pReal))&
-                                   *TWOPIIMG
-   enddo
+ do k = 1_pInt, res(3)
+   k_s(3) = k - 1_pInt
+   if(k > res(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - res(3)
+   do j = 1_pInt, res(2)
+     k_s(2) = j - 1_pInt
+     if(j > res(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - res(2)
+     do i = 1_pInt, res1_red
+       k_s(1) = i - 1_pInt
+       xi = cmplx(real(k_s, pReal)/geomdim,0.0_pReal)
+       do l = 1_pInt, vec_tens
+         divergence_fourier(i,j,k,l)=sum(field_fourier(i,j,k,l,1:3)*xi)*TWOPIIMG
+       enddo
  enddo; enddo; enddo
+
  call fftw_execute_dft_c2r(fftw_back, divergence_fourier, divergence_real)
 
  do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
@@ -3031,17 +2947,19 @@ end function math_divergenceFFT
 ! use vec_tes to decide if tensor (3) or vector (1)
 !--------------------------------------------------------------------------------------------------
 function math_divergenceFDM(geomdim,order,field)
- use IO, only: IO_error
- use debug, only: debug_math, &
-                  debug_level, &
-                  debug_levelBasic 
+ use IO, only: &
+   IO_error
+ use debug, only: &
+   debug_math, &
+   debug_level, &
+   debug_levelBasic
+ 
  implicit none
+ real(pReal),   intent(in), dimension(:,:,:,:,:) :: field
+ real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4))  :: math_divergenceFDM
  integer(pInt), intent(in)            :: order
  real(pReal), intent(in), dimension(3)   :: geomdim
- real(pReal),   intent(in), dimension(:,:,:,:,:) :: field
- ! function
- real(pReal), dimension(size(field,1),size(field,2),size(field,3),size(field,4))  :: math_divergenceFDM
- ! other variables
+
  integer(pInt), dimension(6,3) :: coordinates
  integer(pInt) i, j, k, m, l, vec_tens
  integer(pInt), dimension(3) :: res
@@ -3087,6 +3005,7 @@ function math_divergenceFDM(geomdim,order,field)
      enddo
    enddo
  enddo; enddo; enddo
+ 
  contains
  !--------------------------------------------------------------------------------------------------
  !> @brief  ! small helper functions for indexing CAREFUL, index and location runs from 
@@ -3104,12 +3023,12 @@ function math_divergenceFDM(geomdim,order,field)
 
  end function periodic_location
 
- 
  !--------------------------------------------------------------------------------------------------
  !> @brief  ! small helper functions for indexing CAREFUL, index and location runs from 
  ! 0 to N-1 (python style)
  !--------------------------------------------------------------------------------------------------
  integer(pInt) pure function periodic_index(location,res)
+  
   implicit none
   integer(pInt), intent(in), dimension(3) :: res, location
 
@@ -3127,17 +3046,15 @@ function math_periodicNearestNeighbor(geomdim, Favg, querySet, domainSet)
  use kdtree2_module
  use IO, only: &
    IO_error
+
  implicit none
- ! input variables
  real(pReal),   dimension(3,3),          intent(in) :: Favg
  real(pReal),   dimension(3),            intent(in) :: geomdim
  real(pReal),   dimension(:,:),          intent(in) :: querySet
  real(pReal),   dimension(:,:),          intent(in) :: domainSet
- ! output variable
  integer(pInt), dimension(size(querySet,2))         :: math_periodicNearestNeighbor
-
- real(pReal),   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)) &
-   :: domainSetLarge
+ real(pReal),   dimension(size(domainSet,1),(3_pInt**size(domainSet,1))*size(domainSet,2)) :: &
+   domainSetLarge
 
  integer(pInt)                             :: i,j, l,m,n, spatialDim
  type(kdtree2), pointer                    :: tree
@@ -3182,7 +3099,6 @@ function math_periodicNearestNeighborDistances(geomdim, Favg, querySet, domainSe
  use IO, only: &
    IO_error
  implicit none
- ! input variables
  real(pReal),   dimension(3),            intent(in) :: geomdim
  real(pReal),   dimension(3,3),          intent(in) :: Favg
  integer(pInt),                          intent(in) :: Ndist
@@ -3236,12 +3152,10 @@ end function math_periodicNearestNeighborDistances
 !> @brief calculate average of tensor field
 !--------------------------------------------------------------------------------------------------
 function math_tensorAvg(field)
+ 
  implicit none
- ! input variables
- real(pReal), intent(in), dimension(:,:,:,:,:) :: field
- ! output variables
  real(pReal), dimension(3,3) :: math_tensorAvg
- ! other variables
+ real(pReal), intent(in), dimension(:,:,:,:,:) :: field
  real(pReal) :: wgt
  
  wgt = 1.0_pReal/real(size(field,3)*size(field,4)*size(field,5), pReal) 
@@ -3254,12 +3168,10 @@ end function math_tensorAvg
 !> @brief calculate logarithmic strain in spatial configuration for given F field
 !--------------------------------------------------------------------------------------------------
 function math_logstrainSpat(F)
+
  implicit none
- ! input variables
  real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
- ! output variables
  real(pReal) ,             dimension(3,3,size(F,3),size(F,4),size(F,5)) :: math_logstrainSpat
- ! other variables
  integer(pInt),            dimension(3) :: res
  real(pReal),              dimension(3,3) ::  temp33_Real, temp33_Real2
  real(pReal),              dimension(3,3,3) :: evbasis
@@ -3287,6 +3199,7 @@ end function math_logstrainSpat
 !> @brief calculate logarithmic strain in material configuration for given F field
 !--------------------------------------------------------------------------------------------------
 function math_logstrainMat(F)
+ 
  implicit none
  real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
  real(pReal) ,             dimension(3,3,size(F,3),size(F,4),size(F,5)) :: math_logstrainMat
@@ -3315,6 +3228,7 @@ end function math_logstrainMat
 !> @brief calculate cauchy stress for given PK1 stress and F field
 !--------------------------------------------------------------------------------------------------
 function math_cauchy(F,P)
+ 
  implicit none
  real(pReal), intent(in),  dimension(:,:,:,:,:)   :: F
  real(pReal), intent(in),  dimension(:,:,:,:,:)   :: P

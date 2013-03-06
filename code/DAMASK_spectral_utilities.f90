@@ -35,7 +35,6 @@ module DAMASK_spectral_utilities
 ! debug divergence
  real(pReal),   private, dimension(:,:,:,:), pointer     :: divergence_real                         !< scalar field real representation for debugging divergence calculation
  complex(pReal),private, dimension(:,:,:,:), pointer     :: divergence_fourier                      !< scalar field real representation for debugging divergence calculation
- real(pReal),   private, dimension(:,:,:,:), allocatable :: divergence_post                         !< data of divergence calculation using function from core modules (serves as a reference)
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
@@ -76,6 +75,7 @@ module DAMASK_spectral_utilities
    utilities_FFTbackward, &
    utilities_fourierConvolution, &
    utilities_divergenceRMS, &
+   utilities_curlRMS, &
    utilities_maskedCompliance, &
    utilities_constitutiveResponse, &
    utilities_calculateRate, &
@@ -166,6 +166,7 @@ subroutine utilities_init()
 #else
  call IO_warning(41_pInt, ext_msg='debug PETSc')
 #endif
+
 !--------------------------------------------------------------------------------------------------
 ! allocation
  allocate (xi(3,res1_red,res(2),res(3)),source = 0.0_pReal)                                         ! frequencies, only half the size for first dimension
@@ -203,7 +204,6 @@ subroutine utilities_init()
    divergence = fftw_alloc_complex(int(res1_red*res(2)*res(3)*3_pInt,C_SIZE_T))
    call c_f_pointer(divergence, divergence_real,    [ res(1)+2_pInt,res(2),res(3),3])
    call c_f_pointer(divergence, divergence_fourier, [ res1_red,     res(2),res(3),3])
-   allocate (divergence_post(res(1),res(2),res(3),3),source = 0.0_pReal)
    plan_divergence = fftw_plan_many_dft_c2r(3,[ res(3),res(2) ,res(1)],3,&
                            divergence_fourier,[ res(3),res(2) ,res1_red],&
                                             1,  res(3)*res(2)* res1_red,&
@@ -321,24 +321,17 @@ subroutine utilities_FFTforward(row,column)
   
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
-  if (debugFFTW) then
-    if (.not. present(row) .or. .not. present(column)) stop
+  if (debugFFTW .and. present(row) .and. present(column)) &
     scalarField_real(1:res(1),1:res(2),1:res(3)) =&                                                 ! store the selected component
            cmplx(field_real(1:res(1),1:res(2),1:res(3),row,column),0.0_pReal,pReal)
-  endif
-  
-!--------------------------------------------------------------------------------------------------
-! call function to calculate divergence from math (for post processing) to check results
-  if (debugDivergence) &
-    divergence_post = math_divergenceFFT(scaledDim,field_real(1:res(1),1:res(2),1:res(3),1:3,1:3))   ! some elements are padded
-  
+
 !--------------------------------------------------------------------------------------------------
 ! doing the FFT
   call fftw_execute_dft_r2c(plan_forward,field_real,field_fourier)
   
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 FT results
-  if (debugFFTW) then
+  if (debugFFTW .and. present(row) .and. present(column)) then
     call fftw_execute_dft(plan_scalarField_forth,scalarField_real,scalarField_fourier)
     write(6,'(/,a,i1,1x,i1,a)') ' .. checking FT results of compontent ', row, column, ' ..'
     flush(6)
@@ -384,7 +377,7 @@ subroutine utilities_FFTbackward(row,column)
   
 !--------------------------------------------------------------------------------------------------
 ! unpack FFT data for conj complex symmetric part. This data is not transformed when using c2r
- if (debugFFTW) then
+ if (debugFFTW .and. present(row) .and. present(column)) then
    scalarField_fourier = field_fourier(1:res1_red,1:res(2),1:res(3),row,column)
    do i = 0_pInt, res(1)/2_pInt-2_pInt
     m = 1_pInt
@@ -406,7 +399,7 @@ subroutine utilities_FFTbackward(row,column)
 
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
-  if (debugFFTW) then
+  if (debugFFTW .and. present(row) .and. present(column)) then
     write(6,'(/,a,i1,1x,i1,a)') ' ... checking iFT results of compontent ', row, column, ' ..'
     flush(6)
     call fftw_execute_dft(plan_scalarField_back,scalarField_fourier,scalarField_real)
@@ -418,29 +411,6 @@ subroutine utilities_FFTbackward(row,column)
   endif
   
   field_real = field_real * wgt                                                                     ! normalize the result by number of elements
-
-!--------------------------------------------------------------------------------------------------
-! calculate some additional output
- ! if(debugGeneral) then
- !   maxCorrectionSkew = 0.0_pReal
- !   maxCorrectionSym  = 0.0_pReal
- !   temp33_Real = 0.0_pReal
- !   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
- !     maxCorrectionSym  = max(maxCorrectionSym,&
- !                             maxval(math_symmetric33(field_real(i,j,k,1:3,1:3))))
- !     maxCorrectionSkew = max(maxCorrectionSkew,&
- !                             maxval(math_skew33(field_real(i,j,k,1:3,1:3))))
- !     temp33_Real = temp33_Real + field_real(i,j,k,1:3,1:3)
- !   enddo; enddo; enddo
- !   write(6,'(a,1x,es11.4)') 'max symmetric correction of deformation =',&
- !                                 maxCorrectionSym*wgt
- !   write(6,'(a,1x,es11.4)') 'max skew      correction of deformation =',&
- !                                 maxCorrectionSkew*wgt
- !   write(6,'(a,1x,es11.4)') 'max sym/skew of avg correction =         ',&
- !                                 maxval(math_symmetric33(temp33_real))/&
- !                                 maxval(math_skew33(temp33_real))
- ! endif
-
 
 end subroutine utilities_FFTbackward
 
@@ -513,9 +483,7 @@ real(pReal) function utilities_divergenceRMS()
  implicit none
  integer(pInt) :: i, j, k 
  real(pReal) :: &
-   err_div_RMS, &                                                                                   !< RMS of divergence in Fourier space
    err_real_div_RMS, &                                                                              !< RMS of divergence in real space
-   err_post_div_RMS, &                                                                              !< RMS of divergence in Fourier space, calculated using function for post processing
    err_div_max, &                                                                                   !< maximum value of divergence in Fourier space
    err_real_div_max                                                                                 !< maximum value of divergence in real space
  complex(pReal), dimension(3) ::  temp3_complex
@@ -560,13 +528,11 @@ real(pReal) function utilities_divergenceRMS()
    call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)                   ! already weighted
 
    err_real_div_RMS = sqrt(wgt*sum(divergence_real**2.0_pReal))                                    ! RMS in real space
-   err_post_div_RMS = sqrt(wgt*sum(divergence_post**2.0_pReal))                                    ! RMS in real space from funtion in math.f90
    err_real_div_max = sqrt(maxval(sum(divergence_real**2.0_pReal,dim=4)))                          ! max in real space                                       
    err_div_max      = sqrt(    err_div_max)                                                        ! max in Fourier space
    
-   write(6,'(/,1x,a,es11.4)')      'error divergence  FT  RMS = ',err_div_RMS
+   write(6,'(/,1x,a,es11.4)')      'error divergence  FT  RMS = ',utilities_divergenceRMS
    write(6,'(1x,a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
-   write(6,'(1x,a,es11.4)')        'error divergence post RMS = ',err_post_div_RMS
    write(6,'(1x,a,es11.4)')        'error divergence  FT  max = ',err_div_max
    write(6,'(1x,a,es11.4)')        'error divergence Real max = ',err_real_div_max
    flush(6)
@@ -702,8 +668,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
             j = j + 1_pInt
             temp99_Real(n,m) = s_reduced(k,j)
    endif; enddo; endif; enddo
+   
 !--------------------------------------------------------------------------------------------------
-! check if inversion was successfull
+! check if inversion was successful
    sTimesC = matmul(c_reduced,s_reduced)
    do m=1_pInt, size_reduced
      do n=1_pInt, size_reduced
@@ -743,7 +710,8 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    debug_info
  use math, only: &
    math_transpose33, &
-   math_rotate_forward33
+   math_rotate_forward33, &
+   math_det33
  use FEsolving, only: &
    restartWrite
  use mesh, only: &
@@ -784,8 +752,8 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  real(pReal), dimension(6)       :: sigma                                                           !< cauchy stress in mandel notation
  real(pReal), dimension(6,6)     :: dsde                                                            !< d sigma / d Epsilon
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
- real(pReal)  :: max_dPdF_norm, min_dPdF_norm
- integer(pInt) :: k
+ real(pReal)  :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
+ integer(pInt) :: i,j,k
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  calcMode    = CPFEM_CALCRESULTS
@@ -799,22 +767,22 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
   collectMode = iand(collectMode, not(CPFEM_BACKUPJACOBIAN))
   calcMode    = iand(calcMode,    not(CPFEM_AGERESULTS)) 
  endif
+
 !--------------------------------------------------------------------------------------------------
 ! calculate bounds of det(F) and report
-  ! if(debugGeneral) then
-    ! defgradDetMax = -huge(1.0_pReal)
-    ! defgradDetMin = +huge(1.0_pReal)
-    ! do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-      ! defgradDet = math_det33(F(i,j,k,1:3,1:3))
-      ! defgradDetMax = max(defgradDetMax,defgradDet)
-      ! defgradDetMin = min(defgradDetMin,defgradDet) 
-    ! enddo; enddo; enddo
+ if(debugGeneral) then
+   defgradDetMax = -huge(1.0_pReal)
+   defgradDetMin = +huge(1.0_pReal)
+   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+     defgradDet = math_det33(F(1:3,1:3,i,j,k))
+     defgradDetMax = max(defgradDetMax,defgradDet)
+     defgradDetMin = min(defgradDetMin,defgradDet) 
+   enddo; enddo; enddo
 
-    ! write(6,'(a,1x,es11.4)') 'max determinant of deformation =', defgradDetMax
-    ! write(6,'(a,1x,es11.4)') 'min determinant of deformation =', defgradDetMin
-  ! endif
- if (DebugGeneral) write(6,'(/,2(a,i1.1))') ' collect mode: ', collectMode,' calc mode: ', calcMode
- flush(6)
+   write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
+   write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
+   flush(6)
+ endif
  
  call CPFEM_general(collectMode,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &                        ! collect mode handles Jacobian backup / restoration
                    temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
@@ -832,7 +800,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  max_dPdF_norm = 0.0_pReal
  min_dPdF = huge(1.0_pReal)
  min_dPdF_norm = huge(1.0_pReal)
- do k = 1_pInt, res(3)*res(2)*res(3)
+ do k = 1_pInt, mesh_NcpElems
    if (max_dPdF_norm < sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)) then
      max_dPdF = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)
      max_dPdF_norm = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)

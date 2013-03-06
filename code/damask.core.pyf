@@ -51,8 +51,6 @@ python module core ! in
             real*8,  dimension(:,:,:,:,:),                             intent(in),                                         :: field
             ! function definition
             real*8,  dimension(size(field,1),size(field,2),size(field,3),size(field,4),size(field,5)),      depend(field)  :: math_curlFFT
-            ! variables with dimension depending on input
-            real*8,     dimension(size(field,1)/2+1,size(field,2),size(field,3),3),                         depend(field)  :: xi
         end function math_curlFFT 
 
         function math_divergenceFFT(geomdim,field) ! in :math:math.f90
@@ -61,8 +59,6 @@ python module core ! in
             real*8,  dimension(:,:,:,:,:),                             intent(in),                                         :: field
             ! function definition
             real*8,  dimension(size(field,1),size(field,2),size(field,3),size(field,4)),                    depend(field)  :: math_divergenceFFT
-            ! variables with dimension depending on input   
-            real*8,     dimension(size(field,1)/2+1,size(field,2),size(field,3),3),                         depend(field)  :: xi
         end function math_divergenceFFT
 
         function math_divergenceFDM(geomdim,order,field) ! in :math:math.f90
