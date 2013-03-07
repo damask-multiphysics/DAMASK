@@ -680,7 +680,8 @@ subroutine lattice_init
    IO_open_jobFile_stat, &
    IO_countSections, &
    IO_countTagInPart, &
-   IO_error
+   IO_error, &
+   IO_timeStamp
  use material, only: &
    material_configfile, &
    material_localFileExt, &
@@ -694,8 +695,9 @@ subroutine lattice_init
  integer(pInt), parameter :: fileunit = 200_pInt
  integer(pInt) :: Nsections
 
-   write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
-   write(6,'(a)')   ' $Id$'
+ write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
+ write(6,'(a)')   ' $Id$'
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then                               ! no local material configuration present...
