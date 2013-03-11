@@ -26,6 +26,7 @@ bin_link = { \
                 'geom_check.py',
                 'geom_rescale.py',
                 'geom_pack.py',
+                'geom_periodicCopies.py',
                 'geom_unpack.py',
                 'geom_translate.py',
                 'geom_vicinityOffset.py',
