@@ -105,7 +105,6 @@ subroutine basicPETSc_init(temperature)
    temperature
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
- integer(pInt) :: i,j,k
  real(pReal),  dimension(3,3,res(1),res(2),res(3)) ::  P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
  PetscErrorCode :: ierr
@@ -118,7 +117,7 @@ subroutine basicPETSc_init(temperature)
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 
@@ -232,10 +231,6 @@ type(tSolutionState) function &
  type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
  character(len=*), intent(in) :: incInfoIn
-
-!--------------------------------------------------------------------------------------------------
-! loop variables, convergence etc.
- real(pReal), dimension(3,3)            :: temp33_Real 
  
 !--------------------------------------------------------------------------------------------------
 ! 

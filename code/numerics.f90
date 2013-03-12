@@ -86,11 +86,11 @@ module numerics
 !* spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &
-                                err_div_tol                =  0.1_pReal, &                          !< Div(P)/avg(P)*meter
+                                err_div_tol                =  1.0e-5_pReal, &                       !< Div(P)/avg(P)*meter
                                 err_stress_tolrel          =  0.01_pReal, &                         !< relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
                                 err_stress_tolabs          =  huge(1.0_pReal),  &                   !< absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
-                                err_f_tol                  =  1e-6_pReal,  &
-                                err_p_tol                  =  1e-5_pReal,  &
+                                err_f_tol                  =  1.0e-6_pReal,  &
+                                err_p_tol                  =  1.0e-5_pReal,  &
                                 fftw_timelimit             = -1.0_pReal, &                          !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
                                 rotation_tol               =  1.0e-12_pReal, &                      !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
                                 polarAlpha                 =  1.0_pReal, &                          !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
@@ -109,7 +109,7 @@ module numerics
                                 itmin                      =  2_pInt, &                             !< minimum number of iterations
                                 maxCutBack                 =  3_pInt, &                             !< max number of cut backs
                                 regridMode                 =  0_pInt, &                             !< 0: no regrid; 1: regrid if DAMASK doesn't converge; 2: regrid if DAMASK or BVP Solver doesn't converge 
-                                divergence_correction      =  0_pInt                                !< correct divergence calculation in fourier space 0: no correction, 1: dimension scaled to 1, 2: dimension scaled to Npoints
+                                divergence_correction      =  2_pInt                                !< correct divergence calculation in fourier space 0: no correction, 1: dimension scaled to 1, 2: dimension scaled to Npoints, 3: dimension scaled to sqrt(Npoints)
  logical, protected , public :: &
                                 memory_efficient           = .true., &                              !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
                                 update_gamma               = .false.                                !< update gamma operator with current stiffness, Default .false.: use initial stiffness 

@@ -83,7 +83,7 @@ subroutine basic_init(temperature)
  call Utilities_Init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
  write(6,'(a)') ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 
@@ -208,13 +208,12 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal)   :: err_div, err_stress       
- integer(pInt) :: iter, row, column, i, j, k
+ integer(pInt) :: iter, row, column
  logical       :: ForwardData
  real(pReal)   :: & 
    defgradDet, &
    defgradDetMax, &
-   defgradDetMin 
- real(pReal), dimension(3,3)            :: temp33_Real 
+   defgradDetMin
 
 !--------------------------------------------------------------------------------------------------
 ! write restart information for spectral solver
@@ -359,7 +358,7 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
  basic_Converged = all([ err_div/pAvgDivL2/err_div_tol,&
                            err_stress/err_stress_tol    ]  < 1.0_pReal)
   
- write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
+ write(6,'(/,a,f10.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
             err_div/pAvgDivL2/err_div_tol, ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
  write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC =  ', &
                    err_stress/err_stress_tol, ' (',err_stress, ' Pa  , tol =',err_stress_tol,')'  
