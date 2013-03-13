@@ -156,7 +156,7 @@ for file in files:
   data /= packing.prod()
 
 
-  posOffset = (shift+[0.5,0.5,0.5])*dimension/resolution
+  posOffset = (shift+[0.5,0.5,0.5])*dimension/resolution*packing
   elementSize = dimension/resolution*packing
   elem = 1
   for c in xrange(downSized[2]):
