@@ -105,7 +105,7 @@ module numerics
                                                              &-snes_ngmres_anderson '
  integer(pInt), protected, public :: &
                                 fftw_planner_flag          =  32_pInt, &                            !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
-                                itmax                      =  20_pInt, &                            !< maximum number of iterations
+                                itmax                      =  250_pInt, &                           !< maximum number of iterations
                                 itmin                      =  2_pInt, &                             !< minimum number of iterations
                                 maxCutBack                 =  3_pInt, &                             !< max number of cut backs
                                 regridMode                 =  0_pInt, &                             !< 0: no regrid; 1: regrid if DAMASK doesn't converge; 2: regrid if DAMASK or BVP Solver doesn't converge 
