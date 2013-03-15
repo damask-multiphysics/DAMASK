@@ -182,6 +182,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) computationMode, i, cp_en
+ logical :: cutBack
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
    !$OMP CRITICAL (write2out)
@@ -225,6 +226,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
     endif
     
  else if ( dtime < theDelta ) then                                     ! >> cutBack <<                                                  
+    cutBack = .true.                                                    
     terminallyIll = .false.
     cycleCounter = -1                                                   ! first calc step increments this to cycle = 0
     calcMode = .true.                                                   ! pretend last step was calculation
@@ -255,6 +257,9 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    if (lastIncConverged) then
      lastIncConverged = .false.
      computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)       ! backup Jacobian after convergence
+    elseif ( cutBack ) then
+        cutBack = .false.
+     computationMode = ior(computationMode,CPFEM_RESTOREJACOBIAN)       ! restore Jacobian after cutback
    endif
    mesh_ipCoordinates(1:3,npt,cp_en) = numerics_unitlength * COORDS
  endif
