@@ -336,8 +336,13 @@ class Colormap():
     def write_raw(RGB_vector):
       return 'ColorMap name = '+str(name)+'\n' \
            + '\n'.join(['%s'%('\t'.join(map(lambda x:str(x),v))) for v in RGB_vector])
-
-
+    
+    def write_GOM(RGB_vector):
+      return '1 1 '+str(name)+' 9 '+str(name)+' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 '\
+                  + '30 NO_UNIT 1 1 64 64 64 255 1 0 0 0 0 0 0 3 0 ' + str(len(RGB_vector))+' '\
+                  .join([' 0 %s 255 1'%(' '.join(map(lambda x:str(int(x*255.0)),v))) for v in reversed(RGB_vector)])+'  '
+      
+      
     colors = []
     totalSteps = int(2.0*steps/(crop[1] - crop[0]))
 
@@ -350,6 +355,7 @@ class Colormap():
     return {\
             'paraview': write_paraview,
             'gmsh':     write_gmsh,
+            'gom':      write_GOM,
             'raw':      write_raw,
             'list':     lambda x: x,
     }[format.lower()](colors[max(leftIndex,0):min(rightIndex,totalSteps)])

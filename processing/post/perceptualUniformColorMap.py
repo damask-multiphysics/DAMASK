@@ -36,17 +36,17 @@ deformation gradient and first Piola--Kirchhoff stress.
 )
 
 parser.add_option('-l','--left', dest='left', type='float', nargs=3, \
-                  help='left color [%default]')
+                  help='left color %default')
 parser.add_option('-r','--right', dest='right', type='float', nargs=3, \
-                  help='right color [%default]')
+                  help='right color %default')
 parser.add_option('-c','--colormodel', dest='colormodel', \
                   help='colormodel of left and right "RGB","HSL","XYZ","CIELAB","MSH" [%default]')
 parser.add_option('-f','--format', dest='format', action='extend', \
-                  help='output file format "paraview","gmsh","raw" [%default]')
+                  help='output file format "paraview","gmsh","raw","GOM",[paraview, autodetect if output file extension is given]')
 parser.add_option('-s','--steps', dest='steps', type='int', nargs = 1, \
                   help='no of interpolation steps [%default]')
 parser.add_option('-t','--trim', dest='trim', type='float', nargs = 2, \
-                  help='trim the colormap w.r.t the given values [%default]')
+                  help='trim the colormap w.r.t the given values %default')
 
 parser.set_defaults(colormodel = 'RGB')
 parser.set_defaults(format = [''])
@@ -56,8 +56,8 @@ parser.set_defaults(left = [1.0,1.0,1.0])
 parser.set_defaults(right = [0.0,0.0,0.0])
 (options,filenames) = parser.parse_args()
 
-outtypes   = ['paraview','gmsh','raw']
-extensions = ['.xml','.msh','.txt']
+outtypes   = ['paraview','gmsh','raw','GOM']
+extensions = ['.xml','.msh','.txt','.legend']
 if options.trim[0]< -1.0 or \
    options.trim[1] > 1.0 or \
    options.trim[0]>= options.trim[1]:
