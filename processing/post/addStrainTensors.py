@@ -57,14 +57,14 @@ parser.add_option('-b','-1','--biot',   action='store_true', dest='biot', \
 parser.add_option('-g','-2','--green',  action='store_true', dest='green', \
                                         help='calculate green strain tensor')
 parser.add_option('-f','--deformation', dest='defgrad', action='extend', type='string', \
-                                        help='heading(s) of columns containing deformation tensor values %default')
+                                        help='heading(s) of columns containing deformation tensor values [f]')
 
 parser.set_defaults(right       = False)
 parser.set_defaults(left        = False)
 parser.set_defaults(logarithmic = False)
 parser.set_defaults(biot        = False)
 parser.set_defaults(green       = False)
-parser.set_defaults(defgrad     = ['f'])
+parser.set_defaults(defgrad     = [])
 
 (options,filenames) = parser.parse_args()
 
@@ -83,9 +83,10 @@ datainfo = {                                                               # lis
                              'label':[]},
            }
 
-
-if options.defgrad != None:   datainfo['defgrad']['label'] += options.defgrad
-
+if options.defgrad == []:
+  datainfo['defgrad']['label'] = ['f']
+else:
+  datainfo['defgrad']['label'] = options.defgrad 
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
@@ -124,7 +125,8 @@ for file in files:
         column[datatype][label] = table.labels.index(key)
         for theStretch in stretches:
           for theStrain in strains:
-            table.labels_append(['%i_%s(%s)'%(i+1,theStrain,theStretch) 
+            table.labels_append(['%i_%s(%s)%s'%(i+1,theStrain,theStretch,
+                                {True: label,False: ''}[label!='f']) 
                                 for i in xrange(datainfo['defgrad']['len'])])         # extend ASCII header with new labels
 
 # ------------------------------------------ assemble header ---------------------------------------  
