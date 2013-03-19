@@ -341,8 +341,18 @@ class Test():
     if headingsCur == '': headingsCur = headingsRef
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
-    return self.compare_Table(headingsRef,refName,headingsCur,curName,normHeadings,normType,absoluteTolerance,perLine,skipLines)
+    return self.compare_Table(headingsRef,refName,headingsCur,curName,normHeadings,normType,
+                                                               absoluteTolerance,perLine,skipLines)
     
+  def compare_TableCurCur(self,headingsCur0,Cur0,Cur1,headingsCur1='',normHeadings='',normType=None,\
+                                                 absoluteTolerance=False,perLine=False,skipLines=[]):
+    
+    if headingsCur1 == '': headingsCur1 = headingsCur0
+    cur0Name = self.fileInCurrent(Cur0)
+    cur1Name = self.fileInCurrent(Cur1)
+    return self.compare_Table(headingsCur0,cur0Name,headingsCur1,cur1Name,normHeadings,normType,
+                                                               absoluteTolerance,perLine,skipLines)
+
   def report_Success(self,culprit):
     
     if culprit == 0:
