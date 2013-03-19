@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import os,sys
+import os
 import glob
 from subprocess import call
 
@@ -10,7 +10,6 @@ postResults = 'postResults --cr f,p --split --separation x,y,z '+geom_name+'.spe
 sts = call(postResults, shell=True)
 
 os.chdir('./postProc/')
-env = os.environ
 ascii_files = glob.glob(geom_name+'_inc*.txt')
 print ascii_files
 
