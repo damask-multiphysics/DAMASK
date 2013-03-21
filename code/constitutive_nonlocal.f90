@@ -121,7 +121,6 @@ constitutive_nonlocal_p, &                                           ! parameter
 constitutive_nonlocal_q, &                                           ! parameter for kinetic law (Kocks,Argon,Ashby)
 constitutive_nonlocal_viscosity, &                                   ! viscosity for dislocation glide in Pa s
 constitutive_nonlocal_fattack, &                                     ! attack frequency in Hz
-constitutive_nonlocal_vmax, &                                        ! maximum allowed velocity
 constitutive_nonlocal_rhoSglScatter, &                               ! standard deviation of scatter in initial dislocation density
 constitutive_nonlocal_surfaceTransmissivity, &                       ! transmissivity at free surface
 constitutive_nonlocal_grainboundaryTransmissivity, &                 ! transmissivity at grain boundary (identified by different texture)
@@ -324,7 +323,6 @@ allocate(constitutive_nonlocal_p(maxNinstance))
 allocate(constitutive_nonlocal_q(maxNinstance))
 allocate(constitutive_nonlocal_viscosity(maxNinstance))
 allocate(constitutive_nonlocal_fattack(maxNinstance))
-allocate(constitutive_nonlocal_vmax(maxNinstance))
 allocate(constitutive_nonlocal_rhoSglScatter(maxNinstance))
 allocate(constitutive_nonlocal_rhoSglRandom(maxNinstance))
 allocate(constitutive_nonlocal_rhoSglRandomBinning(maxNinstance))
@@ -357,7 +355,6 @@ constitutive_nonlocal_p = 1.0_pReal
 constitutive_nonlocal_q = 1.0_pReal
 constitutive_nonlocal_viscosity = 0.0_pReal
 constitutive_nonlocal_fattack = 0.0_pReal
-constitutive_nonlocal_vmax = 0.0_pReal
 constitutive_nonlocal_rhoSglScatter = 0.0_pReal
 constitutive_nonlocal_rhoSglRandom = 0.0_pReal
 constitutive_nonlocal_rhoSglRandomBinning = 1.0_pReal
@@ -541,8 +538,6 @@ do                                                                              
         constitutive_nonlocal_viscosity(i) = IO_floatValue(line,positions,2_pInt)
       case('attackfrequency','fattack')
         constitutive_nonlocal_fattack(i) = IO_floatValue(line,positions,2_pInt)
-      case('maximumvelocity','vmax')
-        constitutive_nonlocal_vmax(i) = IO_floatValue(line,positions,2_pInt)
       case('rhosglscatter')
         constitutive_nonlocal_rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
       case('rhosglrandom')
@@ -660,8 +655,6 @@ enddo
   if (constitutive_nonlocal_viscosity(i) <= 0.0_pReal)                  call IO_error(211_pInt,ext_msg='viscosity (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_fattack(i) <= 0.0_pReal)                    call IO_error(211_pInt,ext_msg='attackFrequency (' &
-                                                                             //constitutive_nonlocal_label//')')
-  if (constitutive_nonlocal_vmax(i) <= 0.0_pReal)                       call IO_error(211_pInt,ext_msg='maximumVelocity (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_rhoSglScatter(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='rhoSglScatter (' &
                                                                              //constitutive_nonlocal_label//')')
@@ -1592,30 +1585,15 @@ if (Temperature > 0.0_pReal) then
 
 
       !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of 
-      !* free flight at glide velocity in between. Backward jumps at low stresses are considered only at peierls barriers,
-      !* since those have the smallest activation volume, thus are decisive.
-      
-      v(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
-           * (1.0_pReal - exp(-tauEff(s) * activationVolume_P / (kB * Temperature)))
-      if (present(dv_dtau)) then
-        dv_dtau(s) = 1.0_pReal / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous) &
-                   * (v(s) * (  dtPeierls_dtau / meanfreepath_P + dtSolidSolution_dtau / meanfreepath_S &
-                              + 1.0_pReal / (mobility * tauEff(s)*tauEff(s))) &
-                      + activationVolume_P / (kB * Temperature) * exp(-tauEff(s) * activationVolume_P / (kB * Temperature)))
-      endif
-
-      
-      !* relativistic correction
-
-      if (present(dv_dtau)) then
-        dv_dtau(s) = dv_dtau(s) * exp( -v(s) / constitutive_nonlocal_vmax(instance))
-      endif
-      v(s) = constitutive_nonlocal_vmax(instance) * (1.0_pReal - exp( -v(s) / constitutive_nonlocal_vmax(instance)))
-
-
+      !* free flight at glide velocity in between.       
       !* adopt sign from resolved stress
 
-      v(s) = sign(v(s),tau(s))
+      v(s) = sign(1.0_pReal,tau(s)) / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous)
+      if (present(dv_dtau)) then
+        dv_dtau(s) = v(s) * v(s) * (dtPeierls_dtau / meanfreepath_P + dtSolidSolution_dtau / meanfreepath_S &
+                                    + 1.0_pReal / (mobility * tauEff(s)*tauEff(s)))
+      endif
+
 
     endif
   enddo
