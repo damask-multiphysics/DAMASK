@@ -122,30 +122,49 @@ end module DAMASK_interface
 #include "CPFEM.f90"
 
 subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
-                  stepTime, totalTime, dt, cmname, coordMp, charLength, &
+stepTime, totalTime, dt, cmname, coordMp, charLength, &
                   props, density, strainInc, relSpinInc, &
                   tempOld, stretchOld, defgradOld, fieldOld, &
                   stressOld, stateOld, enerInternOld, enerInelasOld, &
                   tempNew, stretchNew, defgradNew, fieldNew, &
                   stressNew, stateNew, enerInternNew, enerInelasNew )
 
- include 'vaba_param.inc'
+ use prec, only: pInt, pReal
 
- dimension jblock(*), props(nprops), density(*), coordMp(*), &
-           charLength(*), strainInc(*), &
-           relSpinInc(*), tempOld(*), &
-           stretchOld(*), &
-           defgradOld(*), &
-           fieldOld(*), stressOld(*), &
-           stateOld(*), enerInternOld(*), &
-           enerInelasOld(*), tempNew(*), &
-           stretchNew(*), &
-           defgradNew(*), &
-           fieldNew(*), &
-           stressNew(*), stateNew(*), &
-           enerInternNew(*), enerInelasNew(*)
+ implicit none
+ 
+ integer(pInt) ndir, nshr, nstatev, nfieldv, nprops, lanneal
+ 
+ real(pReal) stepTime, totalTime, dt
 
- character(80) cmname
+ integer(pInt), dimension(5) :: jblock
+ real(pReal), dimension(nprops) :: props(nprops)
+ real(pReal), dimension(jblock(1)) :: &
+   density, &
+   charLength, &
+   enerInternOld, &
+   enerInternNew, &
+   enerInelasOld, &
+   enerInelasNew, &
+   tempOld, &
+   tempNew
+
+ real(pReal):: &
+   strainInc(jblock(1),ndir+nshr), &
+   relSpinInc(jblock(1),nshr), &
+   coordMp(jblock(1),3), &
+   defgradOld(jblock(1),ndir+nshr+nshr), &
+   defgradNew(jblock(1),ndir+nshr+nshr), &
+   stressOld(jblock(1),ndir+nshr), &
+   stressNew(jblock(1),ndir+nshr), &
+   fieldOld(jblock(1),nfieldv), &
+   fieldNew(jblock(1),nfieldv), &
+   stateOld(jblock(1),nstatev), &
+   stateNew(jblock(1),nstatev), &
+   stretchOld(jblock(1),ndir+nshr), &
+   stretchNew(jblock(1),ndir+nshr)
+
+ character(80) :: cmname
 
 
  call vumatXtrArg ( jblock(1), &
@@ -173,20 +192,24 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
  use prec, only:      pReal, &
                       pInt
  use numerics, only:  numerics_unitlength
- use FEsolving, only: cycleCounter, &
-                      theTime, &
-                      outdatedByNewInc, &
-                      outdatedFFN1, &
-                      terminallyIll, &
-                      symmetricSolver
- use math, only:      invnrmMandel
- use debug, only:     debug_info, &
-                      debug_reset, &
-                      debug_levelBasic, &
-                      debug_level, &
-                      debug_abaqus
- use mesh, only:      mesh_FEasCP, &
-                      mesh_ipCoordinates
+ use FEsolving, only: &
+   cycleCounter, &
+   theTime, &
+   outdatedByNewInc, &
+   outdatedFFN1, &
+   terminallyIll, &
+   symmetricSolver
+ use math, only: &
+   invnrmMandel
+ use debug, only: &
+   debug_info, &
+   debug_reset, &
+   debug_levelBasic, &
+   debug_level, &
+   debug_abaqus
+ use mesh, only: &
+   mesh_FEasCP, &
+   mesh_ipCoordinates
  use CPFEM, only: &
    CPFEM_general, &
    CPFEM_init_done, &
@@ -194,23 +217,30 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
    CPFEM_CALCRESULTS, &
    CPFEM_AGERESULTS, &
    CPFEM_EXPLICIT
- use homogenization, only: materialpoint_sizeResults, materialpoint_results
+ use homogenization, only: &
+   materialpoint_sizeResults, &
+   materialpoint_results
 
- include 'vaba_param.inc'      ! Abaqus exp initializes a first step in single prec. for this a two-step compilation is used.
-                               ! symbolic linking switches between .._sp.inc and .._dp.inc for both consecutive compilations...
+ implicit none
 
+ integer(pInt) nblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal
+ 
+ real(pReal) stepTime, totalTime, dt
 
- dimension props(nprops), density(nblock), &
-           strainInc(nblock,ndir+nshr), &
-           relSpinInc(nblock,nshr), defgradOld(nblock,ndir+nshr+nshr), &
-           stressOld(nblock,ndir+nshr), &
-           stateOld(nblock,nstatev), enerInternOld(nblock), &
-           enerInelasOld(nblock), tempNew(nblock), tempOld(nblock), &
-           stretchNew(nblock,ndir+nshr), defgradNew(nblock,ndir+nshr+nshr), &
-           stressNew(nblock,ndir+nshr), coordMp(nblock,3) 
-
- dimension enerInelasNew(nblock),stateNew(nblock,nstatev),enerInternNew(nblock)
- dimension nElement(nblock),nMatPoint(nblock)
+ real(pReal) props(nprops), density(nblock),&
+           charLength(nblock), strainInc(nblock,ndir+nshr),&
+           relSpinInc(nblock,nshr), coordMp(nblock,3),&
+           defgradOld(nblock,ndir+nshr+nshr),  defgradNew(nblock,ndir+nshr+nshr),&
+           stressOld(nblock,ndir+nshr), stressNew(nblock,ndir+nshr),&
+           fieldOld(nblock,nfieldv), fieldNew(nblock,nfieldv),&
+           stateOld(nblock,nstatev), stateNew(nblock,nstatev),&
+           enerInternOld(nblock), enerInternNew(nblock),&
+           enerInelasOld(nblock), enerInelasNew(nblock),&
+           tempOld(nblock), tempNew(nblock),&
+           stretchOld(nblock,ndir+nshr), stretchNew(nblock,ndir+nshr)
+           
+ integer(pInt), dimension(nblock) :: nElement(nblock)
+ integer(pInt) :: nMatPoint
 
  character(80) cmname
  real(pReal), dimension (3,3) :: pstress                ! not used, but needed for call of cpfem_general
@@ -228,29 +258,27 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
    temp    = tempOld(n)
    if ( .not. CPFEM_init_done ) then
-     call CPFEM_initAll(temp,nElement(n),nMatPoint(n))
+     call CPFEM_initAll(temp,nElement(n),nMatPoint)
      outdatedByNewInc = .false.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write(6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint(n),'first call special case..!'; call flush(6)
+         write(6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint,'first call special case..!'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
-
    else if (theTime < totalTime) then                                  ! reached convergence
      outdatedByNewInc = .true.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write (6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint(n),'lastIncConverged + outdated'; call flush(6)
+         write (6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint,'lastIncConverged + outdated'; call flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
    endif
-
    outdatedFFN1 = .false.
    terminallyIll = .false.
-   cycleCounter = 1
+   cycleCounter = 1_pInt
    if ( outdatedByNewInc ) then
      outdatedByNewInc = .false.
      call debug_info()                                             ! first after new inc reports debugging
@@ -259,14 +287,12 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
    endif
 
    theTime  = totalTime                                            ! record current starting time
-
    if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
      !$OMP CRITICAL (write2out)
-       write(6,'(i2,1x,a,i8,1x,i5,a)') '(',nElement(n),nMatPoint(n),')'; call flush(6)
+       write(6,'(a,i8,i2,a)') '(',nElement(n),nMatPoint,')'; call flush(6)
        write(6,'(a,l1)') 'Aging Results: ', iand(computationMode, CPFEM_AGERESULTS) /= 0_pInt
      !$OMP END CRITICAL (write2out)
    endif
-  
    defgrd0 = 0.0_pReal
    defgrd1 = 0.0_pReal
    timeInc = dt
@@ -297,11 +323,10 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
      defgrd0(3,2) = defgradOld(n,8)
      defgrd1(3,2) = defgradNew(n,8)
    endif
-
    cp_en = mesh_FEasCP('elem',nElement(n))
    mesh_ipCoordinates(1:3,n,cp_en) = numerics_unitlength * coordMp(n,1:3)
 
-   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nMatPoint(n),stress,ddsdde, pstress, dPdF)
+   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nMatPoint,stress,ddsdde, pstress, dPdF)
   
   !     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
   !     straight:   11, 22, 33, 12, 23, 13
@@ -311,7 +336,7 @@ subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
 
    stressNew(n,1:ndir+nshr) = stress(1:ndir+nshr)*invnrmMandel(1:ndir+nshr)
   
-   stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),nMatPoint(n),mesh_FEasCP('elem', nElement(n)))
+   stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),nMatPoint,mesh_FEasCP('elem', nElement(n)))
    tempNew(n) = temp
   
  enddo
