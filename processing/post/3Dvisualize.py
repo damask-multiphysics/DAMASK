@@ -340,8 +340,8 @@ parser.add_option('--nobox', dest='output_box', action='store_false', \
                   help='omit VTK box file')
 parser.add_option('--separator', dest='separator', type='string', \
                   help='data separator [t(ab), n(ewline), s(pace)]')
-parser.add_option('--scaling', dest='scaling', type='float', \
-                  help='scaling of fluctuation [%default]')
+parser.add_option('--scaling', dest='scaling', action='extend', type='float', \
+                  help='scaling of fluctuation')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
 parser.add_option('--filenodalcoords', dest='filenodalcoords', type='string', \
@@ -362,7 +362,7 @@ parser.set_defaults(tensor = [])
 parser.set_defaults(output_mesh = True)
 parser.set_defaults(output_points = False)
 parser.set_defaults(output_box = False)
-parser.set_defaults(scaling = 1.0)
+parser.set_defaults(scaling = [])
 parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)
@@ -373,8 +373,10 @@ parser.set_defaults(linearreconstruction = False)
 sep = {'n': '\n', 't': '\t', 's': ' '}
 
 (options, args) = parser.parse_args()
-if options.scaling != 1.0 and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
-if options.scaling != 1.0 and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
+
+options.scaling += numpy.ones(max(0,len(options.scaling)-3,'d'))
+if numpy.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
+if numpy.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 options.separator = options.separator.lower()
 for filename in args:
   if not os.path.exists(filename):
@@ -477,7 +479,7 @@ for filename in args:
     if options.linearreconstruction:
       centroids = damask.core.mesh.deformedCoordsLinear(dim,F,Favg)
     else:
-      centroids = damask.core.mesh.deformedCoordsFFT(dim,F,options.scaling,Favg)
+      centroids = damask.core.mesh.deformedCoordsFFT(dim,F,Favg,options.scaling)
     mesh = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
 
   else:

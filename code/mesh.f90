@@ -1282,8 +1282,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      read (777,rec=1) spectralF33
      close (777)
      Favg = sum(sum(sum(spectralF33,dim=5),dim=4),dim=3) * wgt
-     coordinates = reshape(mesh_deformedCoordsFFT(geomdim,spectralF33,1.0_pReal,Favg),&
-                                                                                [3,mesh_NcpElems])
+     coordinates = reshape(mesh_deformedCoordsFFT(geomdim,spectralF33,Favg),[3,mesh_NcpElems])
    case('basicpetsc','al')
      allocate(spectralF9(9,res(1),res(2),res(3)))
      call IO_read_jobBinaryFile(777,'F',trim(getSolverJobName()),size(spectralF9))
@@ -1291,7 +1290,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      close (777)
      Favg = reshape(sum(sum(sum(spectralF9,dim=4),dim=3),dim=2) * wgt, [3,3])
      coordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(spectralF9, &
-                                      [3,3,res(1),res(2),res(3)]),1.0_pReal,Favg),[3,mesh_NcpElems])
+                                      [3,3,res(1),res(2),res(3)]),Favg),[3,mesh_NcpElems])
   end select
   
 !--------------------------------------------------------------------------------------------------
@@ -1894,7 +1893,7 @@ end function mesh_deformedCoordsLinear
 !> @brief calculate coordinates in current configuration for given defgrad
 ! using integration in Fourier space 
 !--------------------------------------------------------------------------------------------------
-function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) result(coords)
+function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
  use IO, only: &
    IO_error
  use numerics, only: &
@@ -1913,7 +1912,7 @@ function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) result(coords)
  real(pReal),             dimension(3,size(F,3),size(F,4),size(F,5)) ::          coords
  real(pReal), intent(in), dimension(3) ::                                        gDim
  real(pReal), intent(in), dimension(3,3),                           optional  :: FavgIn
- real(pReal), intent(in),                                           optional  :: scalingIn
+ real(pReal), intent(in), dimension(3),                             optional  :: scalingIn
 ! function
 
 ! allocatable arrays for fftw c routines
@@ -1926,16 +1925,15 @@ function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) result(coords)
  ! other variables
  integer(pInt) :: i, j, k, m, res1_red
  integer(pInt), dimension(3) :: k_s, iRes
- real(pReal),   dimension(3) ::      step, offset_coords, integrator
+ real(pReal),   dimension(3) :: scaling, step, offset_coords, integrator
  real(pReal),   dimension(3,3) :: Favg
- real(pReal)   :: scaling
 
  if (present(scalingIn)) then
-   if (scalingIn < 0.0_pReal) then                                                                       !the f2py way to tell it is not present
-     scaling = 1.0_pReal
-   else
+   where (scalingIn < 0.0_pReal)                                                                       !the f2py way to tell it is not present
+     scaling = [1.0_pReal,1.0_pReal,1.0_pReal]
+   elsewhere
      scaling = scalingIn
-   endif
+   endwhere
  else
    scaling = 1.0_pReal
  endif
@@ -2028,9 +2026,9 @@ function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) result(coords)
    coords(1:3,i,j,k) = coords_real(i,j,k,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
  enddo; enddo; enddo
 
- offset_coords = math_mul33x3(F(1:3,1:3,1,1,1),step/2.0_pReal) - scaling*coords(1:3,1,1,1)
+ offset_coords = math_mul33x3(F(1:3,1:3,1,1,1),step/2.0_pReal) - scaling(1:3)*coords(1:3,1,1,1)
  do k = 1_pInt, iRes(3); do j = 1_pInt, iRes(2); do i = 1_pInt, iRes(1)
-     coords(1:3,i,j,k) =  scaling*coords(1:3,i,j,k) &
+     coords(1:3,i,j,k) =  scaling(1:3)*coords(1:3,i,j,k) &
      + offset_coords + math_mul33x3(Favg,[step(1)*real(i-1_pInt,pReal),&
                                     step(2)*real(j-1_pInt,pReal),&
                                     step(3)*real(k-1_pInt,pReal)])

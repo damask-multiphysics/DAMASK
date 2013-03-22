@@ -141,8 +141,7 @@ for file in files:
   if options.linearreconstruction:
     centroids = damask.core.mesh.deformedCoordsLin(geomdim,F,Favg)
   else:
-    print 'ddd'
-    centroids = damask.core.mesh.deformedCoordsFFT(geomdim,F,1.0,Favg)
+    centroids = damask.core.mesh.deformedCoordsFFT(geomdim,F,Favg)
   
 # ------------------------------------------ process data ---------------------------------------  
 

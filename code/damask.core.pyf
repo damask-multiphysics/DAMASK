@@ -158,11 +158,11 @@ python module core ! in
             real*8,  dimension(3,0:size(F,3)-1,0:size(F,4)-1,0:size(F,5)-1,0:7), depend(F) :: coordsAvgOrder
         end function mesh_deformedCoordsLinear
 
-        function mesh_deformedCoordsFFT(gDim,F,scalingIn,FavgIn) ! in :mesh:mesh.f90
+        function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) ! in :mesh:mesh.f90
             real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
             real*8,  dimension(3),                             intent(in)                  :: gDim
-            real*8,                                            intent(in), optional,       :: scalingIn = -1.0
             real*8,  dimension(3,3),                           intent(in), optional        :: FavgIn = -1.0
+            real*8,  dimension(3),                             intent(in), optional,       :: scalingIn = -1.0
             real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),           depend(F)       :: mesh_deformedCoordsFFT  
         end function mesh_deformedCoordsFFT
         
