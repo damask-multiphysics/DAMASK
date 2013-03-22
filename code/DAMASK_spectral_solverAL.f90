@@ -541,10 +541,10 @@ subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
  logical :: Converged
  real(pReal) :: err_stress_tol
  
- err_stress_tol = min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
+ err_stress_tol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
  Converged = (it > itmin .and. &
-               all([ err_f/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_f_tol, &
-                     err_p/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_p_tol, &
+               all([ err_f/err_f_tol, &
+                     err_p/err_p_tol, &
                      err_stress/err_stress_tol] < 1.0_pReal)) &
              .or.    terminallyIll     
  
@@ -557,11 +557,11 @@ subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
  endif 
  write(6,'(1/,a)') ' ... reporting ....................................................'
  write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' mismatch F =      ', &
-                     err_f/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_f_tol, &
-                ' (',err_f/sqrt(sum((F_aim-math_I3)**2.0_pReal)),' -,  tol =',err_f_tol,')'
+                     err_f/err_f_tol, &
+                ' (',err_f,' -,  tol =',err_f_tol,')'
  write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' mismatch P =      ', &
-                     err_p/sqrt(sum((F_aim-math_I3)**2.0_pReal))/err_p_tol, &
-                ' (',err_p/sqrt(sum((F_aim-math_I3)**2.0_pReal)),' -,  tol =',err_p_tol,')'
+                     err_p/err_p_tol, &
+                ' (',err_p,' -,  tol =',err_p_tol,')'
  write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC = ', &
                    err_stress/err_stress_tol, ' (',err_stress, ' Pa, tol =',err_stress_tol,')' 
  write(6,'(/,a)') ' =========================================================================='

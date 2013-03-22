@@ -353,7 +353,7 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
    pAvgDivL2
   
  pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(pAvgDiv,math_transpose33(pAvgDiv)))))                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
- err_stress_tol = min(maxval(abs(pAvgStress))*err_stress_tolrel,err_stress_tolabs)
+ err_stress_tol = max(maxval(abs(pAvgStress))*err_stress_tolrel,err_stress_tolabs)
  
  basic_Converged = all([ err_div/pAvgDivL2/err_div_tol,&
                            err_stress/err_stress_tol    ]  < 1.0_pReal)

@@ -446,7 +446,7 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
    pAvgDivL2, &
    err_stress_tol 
  
- err_stress_tol =min(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
+ err_stress_tol =max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
  pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,math_transpose33(P_av)))))
  Converged = (it >= itmin .and. &
                            all([ err_div/pAvgDivL2/err_div_tol, &
