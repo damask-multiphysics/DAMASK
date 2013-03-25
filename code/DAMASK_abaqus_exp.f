@@ -204,8 +204,6 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal), dimension(nblock(1),nstatev),     intent(out) :: &
    stateNew                                                                                         !< state variables at each material point at the end of the increment
 
- integer(pInt), dimension(nblock(1)) :: nElement
-
  real(pReal), dimension(3,3) :: pstress                                                             ! not used, but needed for call of cpfem_general
  real(pReal), dimension(3,3,3,3) :: dPdF                                                            ! not used, but needed for call of cpfem_general
  real(pReal), dimension(3) :: coordinates
@@ -215,17 +213,16 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal) :: temp, timeInc
  integer(pInt) :: computationMode, n, i, cp_en
 
- nElement = nBlock(5:nBlock(1)+5)
  computationMode = ior(CPFEM_CALCRESULTS,CPFEM_EXPLICIT)                                            ! always calculate, always explicit
  do n = 1,nblock(1)                                                                                 ! loop over vector of IPs
    temp    = tempOld(n)
    if ( .not. CPFEM_init_done ) then
-     call CPFEM_initAll(temp,nElement(n),nBlock(2))
+     call CPFEM_initAll(temp,nBlock(4_pInt+n),nBlock(2))
      outdatedByNewInc = .false.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write(6,'(i8,1x,i2,1x,a)') nElement(n),nBlock(2),'first call special case..!'; flush(6)
+         write(6,'(i8,1x,i2,1x,a)') nBlock(4_pInt+n),nBlock(2),'first call special case..!'; flush(6)
        !$OMP END CRITICAL (write2out)
      endif
    else if (theTime < totalTime) then                                                               ! reached convergence
@@ -233,7 +230,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write (6,'(i8,1x,i2,1x,a)') nElement(n),nBlock(2),'lastIncConverged + outdated'; flush(6)
+         write (6,'(i8,1x,i2,1x,a)') nBlock(4_pInt+n),nBlock(2),'lastIncConverged + outdated'; flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
@@ -251,7 +248,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    theTime  = totalTime                                                                             ! record current starting time
    if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
      !$OMP CRITICAL (write2out)
-       write(6,'(a,i8,i2,a)') '(',nElement(n),nBlock(2),')'; flush(6)
+       write(6,'(a,i8,i2,a)') '(',nBlock(4_pInt+n),nBlock(2),')'; flush(6)
        write(6,'(a,l1)') 'Aging Results: ', iand(computationMode, CPFEM_AGERESULTS) /= 0_pInt
      !$OMP END CRITICAL (write2out)
    endif
@@ -286,7 +283,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
      defgrd1(3,2) = defgradNew(n,8)
 
    endif
-   cp_en = mesh_FEasCP('elem',nElement(n))
+   cp_en = mesh_FEasCP('elem',nBlock(4_pInt+n))
    mesh_ipCoordinates(1:3,n,cp_en) = numerics_unitlength * coordMp(n,1:3)
 
    call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde, pstress, dPdF)
@@ -298,7 +295,8 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
   !     ABAQUS explicit:     11, 22, 33, 12
 
    stressNew(n,1:ndir+nshr) = stress(1:ndir+nshr)*invnrmMandel(1:ndir+nshr)
-   stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),nBlock(2),mesh_FEasCP('elem', nElement(n)))
+   stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),&
+                                         nBlock(2),mesh_FEasCP('elem', nBlock(4_pInt+n)))
   
  enddo
 
