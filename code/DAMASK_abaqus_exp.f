@@ -163,7 +163,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    lAnneal                                                                                          !< indicating whether the routine is being called during an annealing process
  integer(pInt), dimension(*),                   intent(in) :: &
    nBlock                                                                                           !< 1: No of Materialpoints in this call, 2: No of Materialpoint (IP)
-                                                                                                    !< 3: No of layer, 4: No of secPoint, 5: No of elements 6+: element numbers
+                                                                                                    !< 3: No of layer, 4: No of secPoint, 5+: element numbers
  character(len=80),                             intent(in) :: &
    cmname                                                                                           !< uses-specified material name, left justified
  real(pReal),   dimension(nprops),              intent(in) :: &
