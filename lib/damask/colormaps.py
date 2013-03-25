@@ -142,7 +142,7 @@ class Color():
       else:                         RGB_lin[i] =   self.color[i]        /12.92
     XYZ = numpy.dot(convert,RGB_lin)
     for i in xrange(3):
-      XYZ[i] = min(XYZ[i],1.0) 
+      
       XYZ[i] = max(XYZ[i],0.0) 
 
     converted = Color('XYZ', XYZ) 
