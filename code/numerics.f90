@@ -139,11 +139,11 @@ subroutine numerics_init
    IO_warning, &
    IO_timeStamp
 
-#ifndef Marc
+#ifdef Spectral
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if not using MSC.Marc
 #endif  
  implicit none
-#ifdef Marc
+#ifndef Spectral
 !$ include "omp_lib.h"                                                                              ! use the not F90 standard conforming include file to prevent crashes with some versions of MSC.Marc
 #endif  
  integer(pInt), parameter ::                 fileunit = 300_pInt ,&

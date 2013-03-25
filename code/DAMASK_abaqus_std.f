@@ -1,7 +1,7 @@
 ! Copyright 2011-13 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the Düsseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -16,26 +16,18 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!********************************************************************
-! Material subroutine for Abaqus
-!
-! written by P. Eisenlohr,
-!            F. Roters,
-!            K. Janssens 2,
-!            A. Prakash 3
-!
-!   MPI fuer Eisenforschung, Duesseldorf
-! 2 PSI, Switzerland
-! 3 Fraunhofer IWM, Freiburg
-!
-! REMARK: put the included file abaqus_v6.env in either your home
-!         or model directory, it is a minimum Abaqus environment file
-!         containing all changes necessary to use the MPIE subroutine
-!        (see Abaqus documentation for more information on the use of abaqus_v6.env)
-!
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Koen Janssens, Paul Scherrer Institut
+!> @author Arun Prakash, Fraunhofer IWM
+!> @brief interfaces DAMASK with Abaqus/Standard
+!> @details put the included file abaqus_v6.env in either your home or model directory, 
+!> it is a minimum Abaqus environment file  containing all changes necessary to use the 
+!> DAMASK subroutine (see Abaqus documentation for more information on the use of abaqus_v6.env)
+!--------------------------------------------------------------------------------------------------
 
 #ifndef INT
 #define INT 4
@@ -52,51 +44,48 @@
 module DAMASK_interface
 
 implicit none
-character(len=4), dimension(2),  parameter :: InputFileExtension = ['.pes','.inp']
-character(len=4),                parameter :: LogFileExtension = '.log'
+character(len=4), dimension(2),  parameter :: INPUTFILEEXTENSION = ['.pes','.inp']
+character(len=4),                parameter :: LOGFILEEXTENSION   =  '.log'
 
 contains
 
-!--------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief just reporting 
+!--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init()
-!--------------------
-  write(6,*)
-  write(6,*) '<<<+-  DAMASK_abaqus init  -+>>>'
-  write(6,*) '$Id$'
+
+ write(6,'(/,a)') ' <<<+-  DAMASK_abaqus init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"  
-  write(6,*)
 
 end subroutine DAMASK_interface_init
 
-!--------------------
-function getSolverWorkingDirectoryName()
-!--------------------
- use prec
+
+!--------------------------------------------------------------------------------------------------
+!> @brief using Abaqus/Standard function to get working directory name
+!--------------------------------------------------------------------------------------------------
+character(1024) function getSolverWorkingDirectoryName()
 
  implicit none
- character(1024) getSolverWorkingDirectoryName
- integer(pInt) LENOUTDIR
+ integer :: lenOutDir
 
  getSolverWorkingDirectoryName=''
- CALL GETOUTDIR( getSolverWorkingDirectoryName, LENOUTDIR )
+ call getoutdir(getSolverWorkingDirectoryName, lenOutDir)
  getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
-! write(6,*) 'getSolverWorkingDirectoryName', getSolverWorkingDirectoryName
-
+ 
 end function getSolverWorkingDirectoryName
 
 
-!--------------------
-function getSolverJobName()
-!--------------------
- use prec
+!--------------------------------------------------------------------------------------------------
+!> @brief using Abaqus/Standard function to get solver job name
+!--------------------------------------------------------------------------------------------------
+character(1024) function getSolverJobName()
  
  implicit none
- character(1024) getSolverJobName, JOBNAME
- integer(pInt) LENJOBNAME
+ integer :: lenJobName
 
  getSolverJobName=''
- CALL GETJOBNAME(getSolverJobName , LENJOBNAME )
-! write(6,*) 'getSolverJobName', getSolverJobName
+ call getJobName(getSolverJobName, lenJobName)
 
 end function getSolverJobName
 
@@ -124,33 +113,39 @@ end module DAMASK_interface
 #include "CPFEM.f90"
  
 subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
-       RPL,DDSDDT,DRPLDE,DRPLDT,STRAN,DSTRAN,&
-       TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,NDI,NSHR,NTENS,&
-       NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,CELENT,&
-       DFGRD0,DFGRD1,NOEL,NPT,KSLAY,KSPT,KSTEP,KINC)
+                RPL,DDSDDT,DRPLDE,DRPLDT,STRAN,DSTRAN,&
+                TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,NDI,NSHR,NTENS,&
+                NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,CELENT,&
+                DFGRD0,DFGRD1,NOEL,NPT,KSLAY,KSPT,KSTEP,KINC)
  
- use prec, only:      pReal, &
-                      pInt
- use numerics, only:  numerics_unitlength
- use FEsolving, only: cycleCounter, &
-                      theInc, &
-                      calcMode, &
-                      lastMode, &
-                      theTime, &
-                      theDelta, &
-                      lastIncConverged, &
-                      outdatedByNewInc, &
-                      outdatedFFN1, &
-                      terminallyIll, &
-                      symmetricSolver
- use math, only:      invnrmMandel
- use debug, only:     debug_info, &
-                      debug_reset, &
-                      debug_levelBasic, &
-                      debug_level, &
-                      debug_abaqus
- use mesh, only:      mesh_FEasCP, &
-                      mesh_ipCoordinates
+ use prec, only: &
+   pReal, &
+   pInt
+ use numerics, only:  &
+   numerics_unitlength
+ use FEsolving, only: &
+   cycleCounter, &
+   theInc, &
+   calcMode, &
+   lastMode, &
+   theTime, &
+   theDelta, &
+   lastIncConverged, &
+   outdatedByNewInc, &
+   outdatedFFN1, &
+   terminallyIll, &
+   symmetricSolver
+ use math, only: &
+   invnrmMandel
+ use debug, only: &
+   debug_info, &
+   debug_reset, &
+   debug_levelBasic, &
+   debug_level, &
+   debug_abaqus
+ use mesh, only:  &
+   mesh_FEasCP, &
+   mesh_ipCoordinates
  use CPFEM, only: &
    CPFEM_general, &
    CPFEM_init_done, &
@@ -160,122 +155,165 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    CPFEM_COLLECT, &
    CPFEM_RESTOREJACOBIAN, &
    CPFEM_BACKUPJACOBIAN
-
- use homogenization, only: materialpoint_sizeResults, materialpoint_results
-
+ use homogenization, only: &
+   materialpoint_sizeResults, &
+   materialpoint_results
 
  implicit none
- CHARACTER(80) CMNAME
- integer(pInt) ndi, nshr, ntens, nstatv, nprops, noel, npt,&
-               kslay, kspt, kstep, kinc
- real(pReal) STRESS(NTENS),STATEV(NSTATV),&
-       DDSDDE(NTENS,NTENS),DDSDDT(NTENS),DRPLDE(NTENS),&
-       STRAN(NTENS),DSTRAN(NTENS),TIME(2),PREDEF(1),DPRED(1),&
-       PROPS(NPROPS),COORDS(3),DROT(3,3),&
-       DFGRD0(3,3),DFGRD1(3,3)
- real(pReal) SSE, SPD, SCD, RPL, DRPLDT, DTIME, TEMP,&
-        DTEMP, PNEWDT, CELENT
- real(pReal), dimension (3,3) :: pstress             ! not used, but needed for call of cpfem_general
- real(pReal), dimension (3,3,3,3) :: dPdF            ! not used, but needed for call of cpfem_general
+ integer(pInt),                       intent(in) :: &
+   nDi, &                                                                                           !< Number of direct stress components at this point
+   nShr, &                                                                                          !< Number of engineering shear stress components at this point
+   nTens, &                                                                                         !< Size of the stress or strain component array (NDI + NSHR)
+   nStatV, &                                                                                        !< Number of solution-dependent state variables
+   nProps, &                                                                                        !< User-defined number of material constants
+   noEl, &                                                                                          !< element number
+   nPt,&                                                                                            !< integration point number
+   kSlay, &                                                                                         !< layer number (shell elements etc.)
+   kSpt, &                                                                                          !< section point within the current layer
+   kStep, &                                                                                         !< step number
+   kInc                                                                                             !< increment number
+ character(len=80),                   intent(in) :: &
+   cmname                                                                                           !< uses-specified material name, left justified
+ real(pReal),                         intent(in) :: &
+   DTIME, &
+   TEMP, &
+   DTEMP, &
+   CELENT
+ real(pReal), dimension(1),           intent(in) :: & 
+   PREDEF, & 
+   DPRED
+ real(pReal), dimension(2),           intent(in) :: &
+   TIME                                                                                             !< step time/total time at beginning of the current increment
+ real(pReal), dimension(3),           intent(in) :: &
+   COORDS
+ real(pReal), dimension(nTens),       intent(in) :: &
+   STRAN, &                                                                                         !< total strains at beginning of the increment
+   DSTRAN                                                                                           !< strain increments
+ real(pReal), dimension(nProps),      intent(in) :: &
+   PROPS
+ real(pReal), dimension(3,3),         intent(in) :: &
+   DROT, &                                                                                          !< rotation increment matrix
+   DFGRD0, &                                                                                        !< F at beginning of increment
+   DFGRD1                                                                                           !< F at end of increment
+ real(pReal),                         intent(inout) :: &                                                             
+   PNEWDT, &                                                                                        !< ratio of suggested new time increment
+   SSE, &                                                                                           !< specific elastic strain engergy
+   SPD, &                                                                                           !< specific plastic dissipation
+   SCD, &                                                                                           !< specific creep dissipation
+   RPL, &                                                                                           !< volumetric heat generation per unit time at the end of the increment 
+   DRPLDT                                                                                           !< varation of RPL with respect to the temperature
+ real(pReal), dimension(nTens),       intent(inout) :: &
+   STRESS                                                                                           !< stress tensor at the beginning of the increment, needs to be updated
+ real(pReal), dimension(nStatV),      intent(inout) :: &
+   STATEV                                                                                           !< solution-dependent state variables
+ real(pReal), dimension(nTens),       intent(out) :: &
+   DDSDDT, &
+   DRPLDE
+ real(pReal), dimension(nTens,nTens), intent(out) :: &
+   DDSDDE                                                                                           !< Jacobian matrix of the constitutive model
 
-! local variables
+ real(pReal) :: temperature                                                                         ! temp by Abaqus is intent(in)
+ real(pReal), dimension (3,3) :: pstress                                                            ! not used, but needed for call of cpfem_general
+ real(pReal), dimension (3,3,3,3) :: dPdF                                                           ! not used, but needed for call of cpfem_general
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
- integer(pInt) computationMode, i, cp_en
+ integer(pInt) :: computationMode, i, cp_en
  logical :: cutBack
+
+ temperature = temp                                                                                 ! temp is intent(in)
+ DDSDDT = 0.0_pReal
+ DRPLDE = 0.0_pReal
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
    !$OMP CRITICAL (write2out)
-     write(6,*) 'el',noel,'ip',npt
-     write(6,*) 'got kinc as',kinc
-     write(6,*) 'got dStran',dstran
-     call flush(6)
+   write(6,*) 'el',noel,'ip',npt
+   write(6,*) 'got kInc as',kInc
+   write(6,*) 'got dStran',dStran
+   flush(6)
    !$OMP END CRITICAL (write2out)
  endif
 
- if (.not. CPFEM_init_done) call CPFEM_initAll(temp,noel,npt)
+ if (.not. CPFEM_init_done) call CPFEM_initAll(temperature,noel,npt)
 
  cp_en = mesh_FEasCP('elem',noel)
- if (time(2) > theTime .or. kinc /= theInc) then                         ! reached convergence
-    terminallyIll = .false.
-    cycleCounter = -1                                                    ! first calc step increments this to cycle = 0
-    if (kinc == 1) then                                                  ! >> start of analysis <<
-        lastIncConverged = .false.                                       ! no Jacobian backup
-        outdatedByNewInc = .false.                                       ! no aging of state
-        lastMode = .false.                                               ! pretend last step was collection
-        calcMode = .false.                                               ! pretend last step was collection
-        !$OMP CRITICAL (write2out)
-        write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!'; call flush(6)
-        !$OMP END CRITICAL (write2out)
-    else if (kinc - theInc > 1) then                                     ! >> restart of broken analysis <<
-        lastIncConverged = .false.                                       ! no Jacobian backup
-        outdatedByNewInc = .false.                                       ! no aging of state
-        lastMode = .true.                                                ! pretend last step was calculation
-        calcMode = .true.                                                ! pretend last step was calculation
-        !$OMP CRITICAL (write2out)
-        write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; call flush(6)
-        !$OMP END CRITICAL (write2out)
-    else                                                                 ! >> just the next inc <<
-        lastIncConverged = .true.                                        ! request Jacobian backup
-        outdatedByNewInc = .true.                                        ! request aging of state
-        lastMode = .true.                                                ! assure last step was calculation
-        calcMode = .true.                                                ! assure last step was calculation
-        !$OMP CRITICAL (write2out)
-        write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!'; call flush(6)
-        !$OMP END CRITICAL (write2out)
-    endif
-    
- else if ( dtime < theDelta ) then                                     ! >> cutBack <<                                                  
-    cutBack = .true.                                                    
-    terminallyIll = .false.
-    cycleCounter = -1                                                   ! first calc step increments this to cycle = 0
-    calcMode = .true.                                                   ! pretend last step was calculation
-    !$OMP CRITICAL (write2out)
-    write(6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> cutback detected..!'; call flush(6)
-    !$OMP END CRITICAL (write2out)
+ if (time(2) > theTime .or. kinc /= theInc) then                                                    ! reached convergence
+   terminallyIll = .false.
+   cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
+   if (kinc == 1) then                                                                              ! start of analysis 
+     lastIncConverged = .false.                                                                     ! no Jacobian backup
+     outdatedByNewInc = .false.                                                                     ! no aging of state
+     lastMode = .false.                                                                             ! pretend last step was collection
+     calcMode = .false.                                                                             ! pretend last step was collection
+     !$OMP CRITICAL (write2out)
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!'; flush(6)
+     !$OMP END CRITICAL (write2out)
+   else if (kinc - theInc > 1) then                                                                 ! restart of broken analysis 
+     lastIncConverged = .false.                                                                     ! no Jacobian backup
+     outdatedByNewInc = .false.                                                                     ! no aging of state
+     lastMode = .true.                                                                              ! pretend last step was calculation
+     calcMode = .true.                                                                              ! pretend last step was calculation
+     !$OMP CRITICAL (write2out)
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; flush(6)
+     !$OMP END CRITICAL (write2out)
+   else                                                                                             ! just the next inc 
+     lastIncConverged = .true.                                                                      ! request Jacobian backup
+     outdatedByNewInc = .true.                                                                      ! request aging of state
+     lastMode = .true.                                                                              ! assure last step was calculation
+     calcMode = .true.                                                                              ! assure last step was calculation
+     !$OMP CRITICAL (write2out)
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!'; flush(6)
+     !$OMP END CRITICAL (write2out)
+   endif
+ else if ( dtime < theDelta ) then                                                                  ! cutBack
+   cutBack = .true.                                                                                 
+   terminallyIll = .false.
+   cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
+   calcMode = .true.                                                                                ! pretend last step was calculation
+   !$OMP CRITICAL (write2out)
+   write(6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> cutback detected..!'; flush(6)
+   !$OMP END CRITICAL (write2out)
+ endif                                                                                              ! convergence treatment end
 
- endif                                                                  ! convergence treatment end
+ calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                                                    ! ping pong (calc <--> collect)
 
- calcMode(npt,cp_en) = .not. calcMode(npt,cp_en)                        ! ping pong (calc <--> collect)
-
- if (calcMode(npt,cp_en)) then                                          ! now calc
+ if (calcMode(npt,cp_en)) then                                                                      ! now calc
    computationMode = CPFEM_CALCRESULTS
-   if ( lastMode .neqv. calcMode(npt,cp_en) ) then                      ! first after ping pong
-     call debug_reset()                                                 ! resets debugging
+   if ( lastMode .neqv. calcMode(npt,cp_en) ) then                                                  ! first after ping pong
+     call debug_reset()                                                                             ! resets debugging
      outdatedFFN1 = .false.
      cycleCounter = cycleCounter + 1
    endif
    if(outdatedByNewInc) then
      outdatedByNewInc = .false.
-     computationMode = ior(computationMode,CPFEM_AGERESULTS)           ! calc and age results
+     computationMode = ior(computationMode,CPFEM_AGERESULTS)                                        ! calc and age results
    endif
- else                                                                  ! now collect
+ else                                                                                               ! now collect
    computationMode = CPFEM_COLLECT
    if(lastMode .neqv. calcMode(npt,cp_en) .and. .not. terminallyIll) then
-     call debug_info()                                                 ! first after ping pong reports debugging
+     call debug_info()                                                                              ! first after ping pong reports debugging
    endif
    if (lastIncConverged) then
      lastIncConverged = .false.
-     computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)       ! backup Jacobian after convergence
+     computationMode = ior(computationMode,CPFEM_BACKUPJACOBIAN)                                    ! backup Jacobian after convergence
     elseif ( cutBack ) then
         cutBack = .false.
-     computationMode = ior(computationMode,CPFEM_RESTOREJACOBIAN)       ! restore Jacobian after cutback
+     computationMode = ior(computationMode,CPFEM_RESTOREJACOBIAN)                                   ! restore Jacobian after cutback
    endif
    mesh_ipCoordinates(1:3,npt,cp_en) = numerics_unitlength * COORDS
  endif
 
- theTime  = time(2)                                                    ! record current starting time
- theDelta = dtime                                                      ! record current time increment
- theInc   = kinc                                                       ! record current increment number
- lastMode = calcMode(npt,cp_en)                                        ! record calculationMode
+ theTime  = time(2)                                                                                 ! record current starting time
+ theDelta = dtime                                                                                   ! record current time increment
+ theInc   = kinc                                                                                    ! record current increment number
+ lastMode = calcMode(npt,cp_en)                                                                     ! record calculationMode
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
    !$OMP CRITICAL (write2out)
-     write(6,'(a16,1x,i2,1x,a,i8,a,i8,1x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'; call flush(6)
+   write(6,'(a16,1x,i2,1x,a,i8,a,i8,1x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')';  flush(6)
    !$OMP END CRITICAL (write2out)
  endif
    
- call CPFEM_general(computationMode,dfgrd0,dfgrd1,temp,dtime,noel,npt,stress_h,ddsdde_h, pstress, dPdF)
+ call CPFEM_general(computationMode,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h, pstress, dPdF)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     straight:            11, 22, 33, 12, 23, 13
@@ -300,19 +338,22 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
 
- if ( terminallyIll ) pnewdt = 0.5_pReal                               ! force cutback directly ?
+ if ( terminallyIll ) pnewdt = 0.5_pReal                                                            ! force cutback directly ?
 
- end subroutine UMAT
+end subroutine UMAT
 
-!********************************************************************
-!     This subroutine replaces the corresponding Marc subroutine
-!********************************************************************
- subroutine quit(mpie_error)
 
- use prec, only: pInt
+!--------------------------------------------------------------------------------------------------
+!> @brief calls the exit function of Abaqus/Standard
+!--------------------------------------------------------------------------------------------------
+subroutine quit(mpie_error)
+ use prec, only: &
+   pInt
  
  implicit none
  integer(pInt) mpie_error
+
  flush(6)
  call xit
- end subroutine quit
+
+end subroutine quit
