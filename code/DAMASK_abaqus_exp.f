@@ -1,7 +1,7 @@
 ! Copyright 2011-13 Max-Planck-Institut für Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced MAterial Simulation Kit.
+! the Düsseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -16,26 +16,19 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Koen Janssens, Paul Scherrer Institut
+!> @author Arun Prakash, Fraunhofer IWM
 ! Material subroutine for Abaqus
-!
-! written by P. Eisenlohr,
-!            F. Roters,
-!            K. Janssens 2,
-!            A. Prakash 3
-!
-!   MPI fuer Eisenforschung, Duesseldorf
-! 2 PSI, Switzerland
-! 3 Fraunhofer IWM, Freiburg
-!
 ! REMARK: put the included file abaqus_v6.env in either your home
 !         or model directory, it is a minimum Abaqus environment file
 !         containing all changes necessary to use the MPIE subroutine
 !        (see Abaqus documentation for more information on the use of abaqus_v6.env)
-!
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
 
 #ifndef INT
 #define INT 4
@@ -52,49 +45,52 @@
 module DAMASK_interface
 
 implicit none
-character(len=4), dimension(2),  parameter :: InputFileExtension = ['.pes','.inp']
-character(len=4),                parameter :: LogFileExtension = '.log'
+character(len=4), dimension(2),  parameter :: INPUTFILEEXTENSION = ['.pes','.inp']
+character(len=4),                parameter :: LOGFILEEXTENSION   =  '.log'
 
 contains
 
-!--------------------
+!--------------------------------------------------------------------------------------------------
+!> @brief just reporting 
+!--------------------------------------------------------------------------------------------------
 subroutine DAMASK_interface_init()
-!--------------------
 
-  write(6,*)
-  write(6,*) '<<<+-  DAMASK_abaqus init  -+>>>'
-  write(6,*) '$Id$'
+ write(6,'(/,a)') ' <<<+-  DAMASK_abaqus init  -+>>>'
+ write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"  
-  write(6,*)
 
 end subroutine DAMASK_interface_init
 
-!--------------------
-function getSolverWorkingDirectoryName()
-!--------------------
- use prec, only: pInt
+
+!--------------------------------------------------------------------------------------------------
+!> @brief using Abaqus Explit function to get working directory name
+!--------------------------------------------------------------------------------------------------
+character(1024) function getSolverWorkingDirectoryName()
+ use prec, only: &
+   pInt
 
  implicit none
- character(1024) getSolverWorkingDirectoryName
- integer(pInt) LENOUTDIR
+ integer(pInt)   :: lenOutDir
 
  getSolverWorkingDirectoryName=''
- CALL VGETOUTDIR( getSolverWorkingDirectoryName, LENOUTDIR )
+ call vgetoutdir(getSolverWorkingDirectoryName, lenOutDir)
  getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
  
 end function getSolverWorkingDirectoryName
 
-!--------------------
-function getSolverJobName()
-!--------------------
- use prec, only: pInt
+
+!--------------------------------------------------------------------------------------------------
+!> @brief using Abaqus Explit function to get solver job name
+!--------------------------------------------------------------------------------------------------
+character(1024) function getSolverJobName()
+ use prec, only: &
+   pInt
  
  implicit none
- character(1024) getSolverJobName, JOBNAME
- integer(pInt) LENJOBNAME
+ integer(pInt)   :: lenJobName
 
  getSolverJobName=''
- CALL VGETJOBNAME(getSolverJobName , LENJOBNAME )
+ call vGetJobName(getSolverJobName , lenJobName)
  
 end function getSolverJobName
 
@@ -337,7 +333,7 @@ stepTime, totalTime, dt, cmname, coordMp, charLength, &
    stressNew(n,1:ndir+nshr) = stress(1:ndir+nshr)*invnrmMandel(1:ndir+nshr)
   
    stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),nMatPoint,mesh_FEasCP('elem', nElement(n)))
-   tempNew(n) = temp
+   !tempNew(n) = temp
   
  enddo
 
@@ -346,13 +342,13 @@ stepTime, totalTime, dt, cmname, coordMp, charLength, &
 !********************************************************************
 !     This subroutine replaces the corresponding Marc subroutine
 !********************************************************************
- subroutine quit(mpie_error)
-
+subroutine quit(mpie_error)
  use prec, only: pInt
  
  implicit none
  integer(pInt) mpie_error
-
- call xit
+ 
  flush(6)
- end subroutine quit
+ call xplb_exit
+ 
+end subroutine quit
