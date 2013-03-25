@@ -23,11 +23,10 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Koen Janssens, Paul Scherrer Institut
 !> @author Arun Prakash, Fraunhofer IWM
-! Material subroutine for Abaqus
-! REMARK: put the included file abaqus_v6.env in either your home
-!         or model directory, it is a minimum Abaqus environment file
-!         containing all changes necessary to use the MPIE subroutine
-!        (see Abaqus documentation for more information on the use of abaqus_v6.env)
+!> @brief interfaces DAMASK with Abaqus/Explicit
+!> @details put the included file abaqus_v6.env in either your home or model directory, 
+!> it is a minimum Abaqus environment file  containing all changes necessary to use the 
+!> DAMASK subroutine (see Abaqus documentation for more information on the use of abaqus_v6.env)
 !--------------------------------------------------------------------------------------------------
 
 #ifndef INT
@@ -63,34 +62,30 @@ end subroutine DAMASK_interface_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief using Abaqus Explit function to get working directory name
+!> @brief using Abaqus/Explicit function to get working directory name
 !--------------------------------------------------------------------------------------------------
 character(1024) function getSolverWorkingDirectoryName()
- use prec, only: &
-   pInt
 
  implicit none
- integer(pInt)   :: lenOutDir
+ integer :: lenOutDir
 
  getSolverWorkingDirectoryName=''
- call vgetoutdir(getSolverWorkingDirectoryName, lenOutDir)
+ call vgetOutDir(getSolverWorkingDirectoryName, lenOutDir)
  getSolverWorkingDirectoryName=trim(getSolverWorkingDirectoryName)//'/'
  
 end function getSolverWorkingDirectoryName
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief using Abaqus Explit function to get solver job name
+!> @brief using Abaqus/Explicit function to get solver job name
 !--------------------------------------------------------------------------------------------------
 character(1024) function getSolverJobName()
- use prec, only: &
-   pInt
- 
+
  implicit none
- integer(pInt)   :: lenJobName
+ integer :: lenJobName
 
  getSolverJobName=''
- call vGetJobName(getSolverJobName , lenJobName)
+ call vGetJobName(getSolverJobName, lenJobName)
  
 end function getSolverJobName
 
@@ -117,77 +112,18 @@ end module DAMASK_interface
 #include "homogenization.f90"
 #include "CPFEM.f90"
 
-subroutine vumat (jblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
-stepTime, totalTime, dt, cmname, coordMp, charLength, &
-                  props, density, strainInc, relSpinInc, &
-                  tempOld, stretchOld, defgradOld, fieldOld, &
-                  stressOld, stateOld, enerInternOld, enerInelasOld, &
-                  tempNew, stretchNew, defgradNew, fieldNew, &
-                  stressNew, stateNew, enerInternNew, enerInelasNew )
-
- use prec, only: pInt, pReal
-
- implicit none
- 
- integer(pInt) ndir, nshr, nstatev, nfieldv, nprops, lanneal
- 
- real(pReal) stepTime, totalTime, dt
-
- integer(pInt), dimension(5) :: jblock
- real(pReal), dimension(nprops) :: props(nprops)
- real(pReal), dimension(jblock(1)) :: &
-   density, &
-   charLength, &
-   enerInternOld, &
-   enerInternNew, &
-   enerInelasOld, &
-   enerInelasNew, &
-   tempOld, &
-   tempNew
-
- real(pReal):: &
-   strainInc(jblock(1),ndir+nshr), &
-   relSpinInc(jblock(1),nshr), &
-   coordMp(jblock(1),3), &
-   defgradOld(jblock(1),ndir+nshr+nshr), &
-   defgradNew(jblock(1),ndir+nshr+nshr), &
-   stressOld(jblock(1),ndir+nshr), &
-   stressNew(jblock(1),ndir+nshr), &
-   fieldOld(jblock(1),nfieldv), &
-   fieldNew(jblock(1),nfieldv), &
-   stateOld(jblock(1),nstatev), &
-   stateNew(jblock(1),nstatev), &
-   stretchOld(jblock(1),ndir+nshr), &
-   stretchNew(jblock(1),ndir+nshr)
-
- character(80) :: cmname
-
-
- call vumatXtrArg ( jblock(1), &
-                    ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
-                    stepTime, totalTime, dt, cmname, coordMp, charLength, &
-                    props, density, strainInc, relSpinInc, &
-                    tempOld, stretchOld, defgradOld, fieldOld, &
-                    stressOld, stateOld, enerInternOld, enerInelasOld, &
-                    tempNew, stretchNew, defgradNew, fieldNew, &
-                    stressNew, stateNew, enerInternNew, enerInelasNew, &
-                    jblock(5), jblock(2))
-
- end subroutine vumat
-
-
- subroutine vumatXtrArg (nblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal, &
-                         stepTime, totalTime, dt, cmname, coordMp, charLength, &
-                         props, density, strainInc, relSpinInc, &
-                         tempOld, stretchOld, defgradOld, fieldOld, &
-                         stressOld, stateOld, enerInternOld, enerInelasOld, &
-                         tempNew, stretchNew, defgradNew, fieldNew, &
-                         stressNew, stateNew, enerInternNew, enerInelasNew, &
-                         nElement, nMatPoint)
-
- use prec, only:      pReal, &
-                      pInt
- use numerics, only:  numerics_unitlength
+subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
+                 stepTime, totalTime, dt, cmName, coordMp, charLength, &
+                 props, density, strainInc, relSpinInc, &
+                 tempOld, stretchOld, defgradOld, fieldOld, &
+                 stressOld, stateOld, enerInternOld, enerInelasOld, &
+                 tempNew, stretchNew, defgradNew, fieldNew, &
+                 stressNew, stateNew, enerInternNew, enerInelasNew)
+ use prec, only: &
+   pReal, &
+   pInt
+ use numerics, only:  &
+   numerics_unitlength
  use FEsolving, only: &
    cycleCounter, &
    theTime, &
@@ -218,56 +154,86 @@ stepTime, totalTime, dt, cmname, coordMp, charLength, &
    materialpoint_results
 
  implicit none
+ integer(pInt),                                 intent(in) :: &
+   nDir, &                                                                                          !< number of direct components in a symmetric tensor
+   nshr, &                                                                                          !< number of indirect components in a symmetric tensor
+   nStateV, &                                                                                       !< number of user-defined state variables that are associated with this material type
+   nFieldV, &                                                                                       !< number of user-defined external field variables
+   nprops, &                                                                                        !< user-specified number of user-defined material properties
+   lAnneal                                                                                          !< indicating whether the routine is being called during an annealing process
+ integer(pInt), dimension(*),                   intent(in) :: &
+   nBlock                                                                                           !< 1: No of Materialpoints in this call, 2: No of Materialpoint (IP)
+                                                                                                    !< 3: No of layer, 4: No of secPoint, 5: No of elements 6+: element numbers
+ character(len=80),                             intent(in) :: &
+   cmname                                                                                           !< uses-specified material name, left justified
+ real(pReal),   dimension(nprops),              intent(in) :: &
+   props                                                                                            !< user-supplied material properties
+ real(pReal),                                   intent(in) :: &
+   stepTime, &                                                                                      !< value of time since the step began
+   totalTime, &                                                                                     !< value of total time
+   dt                                                                                               !< time increment size
+ real(pReal),   dimension(nblock(1)),           intent(in) :: &
+   density, &                                                                                       !< current density at material points in the midstep configuration
+   charLength, &                                                                                    !< characteristic element length
+   enerInternOld, &
+   enerInelasOld, &
+   tempOld, &                                                                                       !< temperature
+   tempNew 
+ real(pReal), dimension(nblock(1),*),           intent(in) :: &
+   coordMp                                                                                          !< material point coordinates
+ real(pReal), dimension(nblock(1),ndir+nshr),   intent(in) :: &
+   strainInc, &                                                                                     !< strain increment tensor at each material point
+   stretchOld, &                                                                                    !< stretch tensor U at each material point 
+   stretchNew, &                                                                                    !< stretch tensor U at each material point 
+   stressOld                                                                                        !< stress tensor at each material point
+ real(pReal), dimension(nblock(1),nshr),        intent(in) ::  &
+   relSpinInc                                                                                       !< incremental relative rotation vector
+ real(pReal), dimension(nblock(1),nstatev),     intent(in) :: &
+   stateOld
+ real(pReal), dimension(nblock(1),nfieldv),     intent(in) :: &
+   fieldOld, &                                                                                      !< user-defined field variables
+   fieldNew                                                                                         !< user-defined field variables
+ real(pReal), dimension(nblock(1),ndir+2*nshr), intent(in) :: &
+   defgradOld, &
+   defgradNew 
+ real(pReal), dimension(nblock(1)),             intent(out) :: &
+   enerInternNew, &                                                                                 !< internal energy per unit mass at each material point at the end of the increment
+   enerInelasNew                                                                                    !< dissipated inelastic energy per unit mass at each material point at the end of the increment
+ real(pReal), dimension(nblock(1),ndir+nshr),   intent(out) :: &
+   stressNew                                                                                        !< stress tensor at each material point at the end of the increment
+ real(pReal), dimension(nblock(1),nstatev),     intent(out) :: &
+   stateNew                                                                                         !< state variables at each material point at the end of the increment
 
- integer(pInt) nblock, ndir, nshr, nstatev, nfieldv, nprops, lanneal
- 
- real(pReal) stepTime, totalTime, dt
+ integer(pInt), dimension(nblock(1)) :: nElement
 
- real(pReal) props(nprops), density(nblock),&
-           charLength(nblock), strainInc(nblock,ndir+nshr),&
-           relSpinInc(nblock,nshr), coordMp(nblock,3),&
-           defgradOld(nblock,ndir+nshr+nshr),  defgradNew(nblock,ndir+nshr+nshr),&
-           stressOld(nblock,ndir+nshr), stressNew(nblock,ndir+nshr),&
-           fieldOld(nblock,nfieldv), fieldNew(nblock,nfieldv),&
-           stateOld(nblock,nstatev), stateNew(nblock,nstatev),&
-           enerInternOld(nblock), enerInternNew(nblock),&
-           enerInelasOld(nblock), enerInelasNew(nblock),&
-           tempOld(nblock), tempNew(nblock),&
-           stretchOld(nblock,ndir+nshr), stretchNew(nblock,ndir+nshr)
-           
- integer(pInt), dimension(nblock) :: nElement(nblock)
- integer(pInt) :: nMatPoint
-
- character(80) cmname
- real(pReal), dimension (3,3) :: pstress                ! not used, but needed for call of cpfem_general
- real(pReal), dimension (3,3,3,3) :: dPdF               ! not used, but needed for call of cpfem_general
-! local variables
+ real(pReal), dimension(3,3) :: pstress                                                             ! not used, but needed for call of cpfem_general
+ real(pReal), dimension(3,3,3,3) :: dPdF                                                            ! not used, but needed for call of cpfem_general
  real(pReal), dimension(3) :: coordinates
  real(pReal), dimension(3,3) :: defgrd0,defgrd1
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
- real(pReal) temp, timeInc
- integer(pInt) computationMode, n, i, cp_en
+ real(pReal) :: temp, timeInc
+ integer(pInt) :: computationMode, n, i, cp_en
 
- computationMode = ior(CPFEM_CALCRESULTS,CPFEM_EXPLICIT)               ! always calculate, always explicit
- do n = 1,nblock                                                       ! loop over vector of IPs
-
+ nElement = nBlock(5:nBlock(1)+5)
+ computationMode = ior(CPFEM_CALCRESULTS,CPFEM_EXPLICIT)                                            ! always calculate, always explicit
+ do n = 1,nblock(1)                                                                                 ! loop over vector of IPs
    temp    = tempOld(n)
    if ( .not. CPFEM_init_done ) then
-     call CPFEM_initAll(temp,nElement(n),nMatPoint)
+     call CPFEM_initAll(temp,nElement(n),nBlock(2))
      outdatedByNewInc = .false.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write(6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint,'first call special case..!'; call flush(6)
+         write(6,'(i8,1x,i2,1x,a)') nElement(n),nBlock(2),'first call special case..!'; flush(6)
        !$OMP END CRITICAL (write2out)
      endif
-   else if (theTime < totalTime) then                                  ! reached convergence
+   else if (theTime < totalTime) then                                                               ! reached convergence
      outdatedByNewInc = .true.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
        !$OMP CRITICAL (write2out)
-         write (6,'(i8,1x,i2,1x,a)') nElement(n),nMatPoint,'lastIncConverged + outdated'; call flush(6)
+         write (6,'(i8,1x,i2,1x,a)') nElement(n),nBlock(2),'lastIncConverged + outdated'; flush(6)
        !$OMP END CRITICAL (write2out)
      endif
 
@@ -277,15 +243,15 @@ stepTime, totalTime, dt, cmname, coordMp, charLength, &
    cycleCounter = 1_pInt
    if ( outdatedByNewInc ) then
      outdatedByNewInc = .false.
-     call debug_info()                                             ! first after new inc reports debugging
-     call debug_reset()                                            ! resets debugging
-     computationMode = ior(computationMode, CPFEM_AGERESULTS)      ! age results
+     call debug_info()                                                                              ! first after new inc reports debugging
+     call debug_reset()                                                                             ! resets debugging
+     computationMode = ior(computationMode, CPFEM_AGERESULTS)                                       ! age results
    endif
 
-   theTime  = totalTime                                            ! record current starting time
+   theTime  = totalTime                                                                             ! record current starting time
    if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
      !$OMP CRITICAL (write2out)
-       write(6,'(a,i8,i2,a)') '(',nElement(n),nMatPoint,')'; call flush(6)
+       write(6,'(a,i8,i2,a)') '(',nElement(n),nBlock(2),')'; flush(6)
        write(6,'(a,l1)') 'Aging Results: ', iand(computationMode, CPFEM_AGERESULTS) /= 0_pInt
      !$OMP END CRITICAL (write2out)
    endif
@@ -318,11 +284,12 @@ stepTime, totalTime, dt, cmname, coordMp, charLength, &
      defgrd1(3,1) = defgradNew(n,6)
      defgrd0(3,2) = defgradOld(n,8)
      defgrd1(3,2) = defgradNew(n,8)
+
    endif
    cp_en = mesh_FEasCP('elem',nElement(n))
    mesh_ipCoordinates(1:3,n,cp_en) = numerics_unitlength * coordMp(n,1:3)
 
-   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nMatPoint,stress,ddsdde, pstress, dPdF)
+   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde, pstress, dPdF)
   
   !     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
   !     straight:   11, 22, 33, 12, 23, 13
@@ -331,19 +298,19 @@ stepTime, totalTime, dt, cmname, coordMp, charLength, &
   !     ABAQUS explicit:     11, 22, 33, 12
 
    stressNew(n,1:ndir+nshr) = stress(1:ndir+nshr)*invnrmMandel(1:ndir+nshr)
-  
-   stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),nMatPoint,mesh_FEasCP('elem', nElement(n)))
-   !tempNew(n) = temp
+   stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),nBlock(2),mesh_FEasCP('elem', nElement(n)))
   
  enddo
 
- end subroutine vumatXtrArg
+end subroutine vumat
 
-!********************************************************************
-!     This subroutine replaces the corresponding Marc subroutine
-!********************************************************************
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calls the exit function of Abaqus/Explicit
+!--------------------------------------------------------------------------------------------------
 subroutine quit(mpie_error)
- use prec, only: pInt
+ use prec, only: &
+   pInt
  
  implicit none
  integer(pInt) mpie_error
