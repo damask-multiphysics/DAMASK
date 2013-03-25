@@ -1272,7 +1272,7 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(instance)) &
   rhoSgl = 0.0_pReal
 where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(instance) &
-       .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(instance)) &
+       .or. abs(rhoDip) < constitutive_nonlocal_significantRho(instance)) &
   rhoDip = 0.0_pReal
 
 
@@ -1902,7 +1902,7 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
 where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
-       .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
+       .or. abs(rhoDip) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoDip = 0.0_pReal
 
 
@@ -2169,7 +2169,7 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
 where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
-       .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
+       .or. abs(rhoDip) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoDip = 0.0_pReal
 
 
@@ -3241,7 +3241,7 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
 where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
-       .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
+       .or. abs(rhoDip) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoDip = 0.0_pReal
 
 
