@@ -86,9 +86,9 @@ module numerics
 !* spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &
-                                err_div_tol                =  1.0e-5_pReal, &                       !< Div(P)/avg(P)*meter
-                                err_stress_tolrel          =  0.01_pReal, &                         !< relative tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
-                                err_stress_tolabs          =  huge(1.0_pReal),  &                   !< absolute tolerance for fullfillment of stress BC, Default: 0.01 allowing deviation of 1% of maximum stress 
+                                err_div_tol                =  5.0e-4_pReal, &                       !< Div(P)/avg(P)*meter
+                                err_stress_tolrel          =  0.01_pReal, &                         !< relative tolerance for fullfillment of stress BC in percent
+                                err_stress_tolabs          =  1.0e3_pReal,  &                       !< absolute tolerance for fullfillment of stress BC
                                 err_f_tol                  =  1.0e-6_pReal,  &
                                 err_p_tol                  =  1.0e-5_pReal,  &
                                 fftw_timelimit             = -1.0_pReal, &                          !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
