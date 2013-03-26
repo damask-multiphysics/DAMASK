@@ -340,7 +340,7 @@ parser.add_option('--nobox', dest='output_box', action='store_false', \
                   help='omit VTK box file')
 parser.add_option('--separator', dest='separator', type='string', \
                   help='data separator [t(ab), n(ewline), s(pace)]')
-parser.add_option('--scaling', dest='scaling', action='extend', type='float', \
+parser.add_option('--scaling', dest='scaling', action='extend', type='string', \
                   help='scaling of fluctuation')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
                   help='set unit length for 2D model [%default]')
@@ -374,7 +374,8 @@ sep = {'n': '\n', 't': '\t', 's': ' '}
 
 (options, args) = parser.parse_args()
 
-options.scaling += numpy.ones(max(0,len(options.scaling)-3,'d'))
+options.scaling += numpy.ones(max(0,3-len(options.scaling)))
+options.scaling = map(float, options.scaling)
 if numpy.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
 if numpy.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 options.separator = options.separator.lower()
