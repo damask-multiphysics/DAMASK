@@ -2803,9 +2803,9 @@ _PickedSet13, 6, 6
 ** STEP: Step-1
 ** 
 *Step, name=Step-1, nlgeom=YES, inc=10000
-drücken
+drÃ¼cken
 *Static
-0.01, 10., 0.0001, 1.
+0.01, 7., 0.0001, 1.
 ** 
 ** BOUNDARY CONDITIONS
 ** 
