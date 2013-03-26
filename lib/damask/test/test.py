@@ -36,8 +36,7 @@ class Test():
     '''
     Run all variants and report first failure.
     '''
-    if not self.testPossible():
-      return -1
+    if not self.testPossible(): return -1
     if len(update)   == 0 and self.options.update: print ' This test has no reference to update'
     if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
     self.clean()
@@ -162,6 +161,17 @@ class Test():
       except:
         print 'Reference2Current: Unable to copy file ', file
  
+  def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
+    
+    source=os.path.normpath(os.path.join(self.dirBase,'../../'+sourceDir))
+    if len(targetfiles) == 0: targetfiles = sourcefiles
+    for i,file in enumerate(sourcefiles):
+      try:
+        shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))  
+      except:
+        print os.path.join(source,file)
+        print 'Base2Current: Unable to copy file ', file
+
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
     
     if len(targetfiles) == 0: targetfiles = sourcefiles
