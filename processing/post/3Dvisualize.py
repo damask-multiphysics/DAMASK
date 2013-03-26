@@ -374,8 +374,9 @@ sep = {'n': '\n', 't': '\t', 's': ' '}
 
 (options, args) = parser.parse_args()
 
-options.scaling += numpy.ones(max(0,3-len(options.scaling)))
+options.scaling += [1.0 for i in xrange(max(0,3-len(options.scaling)))]
 options.scaling = map(float, options.scaling)
+
 if numpy.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
 if numpy.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 options.separator = options.separator.lower()
