@@ -3177,7 +3177,7 @@ function math_divergenceFDM(geomdim,order,field)
 end function math_divergenceFDM
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Obtain the nearest neighbor from domainSet at points in querySet
+!> @brief Obtain the nearest neighbor from periodic domainSet at points in querySet
 !--------------------------------------------------------------------------------------------------
 function math_periodicNearestNeighbor(geomdim, Favg, querySet, domainSet)
  use kdtree2_module
@@ -3226,6 +3226,36 @@ function math_periodicNearestNeighbor(geomdim, Favg, querySet, domainSet)
  math_periodicNearestNeighbor = math_periodicNearestNeighbor -1_pInt                                    ! let them run from 0 to domainPoints -1
  
 end function math_periodicNearestNeighbor
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Obtain the nearest neighbor from domainSet at points in querySet
+!--------------------------------------------------------------------------------------------------
+function math_nearestNeighbor(querySet, domainSet)
+ use kdtree2_module
+ use IO, only: &
+   IO_error
+
+ implicit none
+ real(pReal),   dimension(:,:),          intent(in) :: querySet
+ real(pReal),   dimension(:,:),          intent(in) :: domainSet
+ integer(pInt), dimension(size(querySet,2))         :: math_nearestNeighbor
+
+ integer(pInt)                             :: i,j, l,m,n, spatialDim
+ type(kdtree2), pointer                    :: tree
+ type(kdtree2_result), dimension(1)        :: Results
+
+ if (size(querySet,1) /= size(domainSet,1))  call IO_error(407_pInt,ext_msg='query set')
+ spatialDim = size(querySet,1)
+
+ tree => kdtree2_create(domainSet,sort=.true.,rearrange=.true.)
+
+ do j = 1_pInt, size(querySet,2)
+   call kdtree2_n_nearest(tp=tree, qv=querySet(1:spatialDim,j),nn=1_pInt, results = Results)
+   math_nearestNeighbor(j) = Results(1)%idx
+ enddo
+ math_nearestNeighbor = math_nearestNeighbor -1_pInt                                    ! let them run from 0 to domainPoints -1
+ 
+end function math_nearestNeighbor
 
 
 !--------------------------------------------------------------------------------------------------

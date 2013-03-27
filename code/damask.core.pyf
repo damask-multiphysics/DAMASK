@@ -70,6 +70,14 @@ python module core ! in
             real*8,  dimension(size(field,1),size(field,2),size(field,3),size(field,4)),                   depend(field)  :: math_divergenceFDM
         end function math_divergenceFDM
         
+        function math_nearestNeighbor(querySet,domainSet) ! in :math:math.f90
+             ! input variables
+             real*8,  dimension(:,:),                           intent(in)  :: querySet
+             real*8,  dimension(:,:),                           intent(in)  :: domainSet
+            ! function definition
+             integer, dimension(size(querySet,2)),         depend(querySet) :: math_nearestNeighbor
+        end function math_nearestNeighbor
+        
         function math_periodicNearestNeighbor(geomdim,Favg,querySet,domainSet) ! in :math:math.f90
              ! input variables
              real*8,  dimension(3),                             intent(in)  :: geomdim
