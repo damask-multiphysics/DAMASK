@@ -79,11 +79,27 @@ module DAMASK_spectral_SolverBasicPETSc
  integer(pInt), private :: reportIter = 0_pInt
  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
-
  public :: &
    basicPETSc_init, &
    basicPETSc_solution ,&
    basicPETSc_destroy
+ external :: &
+  VecDestroy, &
+  DMDestroy, &
+  DMDACreate3D, &
+  DMCreateGlobalVector, &
+  DMDASetLocalFunction, &
+  PETScFinalize, &
+  SNESDestroy, &
+  SNESGetNumberFunctionEvals, &
+  SNESGetIterationNumber, &
+  SNESSolve, &
+  SNESSetDM, &
+  SNESGetConvergedReason, &
+  SNESSetConvergenceTest, &
+  SNESSetFromOptions, &
+  SNESCreate, &
+  MPI_Abort
 
 contains
 
@@ -379,7 +395,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscObject :: dummy
  PetscErrorCode :: ierr
  integer(pInt), save :: callNo = 3_pInt
- logical :: report
 
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,iter,ierr); CHKERRQ(ierr)

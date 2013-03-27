@@ -175,6 +175,11 @@ subroutine CPFEM_init
  implicit none
  integer(pInt) i,j,k,l,m
 
+ write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+#include "compilation_info.f90"
+
  if (any(.not. crystallite_localPlasticity) .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(600)
  if ((DAMASK_NumThreadsInt > 1_pInt)        .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(601)
  usePingPong = (any(.not. crystallite_localPlasticity) .or. (DAMASK_NumThreadsInt > 1_pInt))
@@ -241,12 +246,7 @@ subroutine CPFEM_init
    close (777)
    restartRead = .false.
  endif
- ! *** end of restoring
 
- write(6,'(/,a)') '<<<+-  CPFEM init  -+>>>'
- write(6,'(a)') '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
-#include "compilation_info.f90"
  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
@@ -361,7 +361,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                                                      H, &
                                                      jacobian3333                                  ! jacobian in Matrix notation
  integer(pInt)                                       cp_en, &                                      ! crystal plasticity element number
-                                                     i, j, k, l, m, n, e                          
+                                                     i, j, k, l, m, n                         
  logical                                             updateJaco                                    ! flag indicating if JAcobian has to be updated
  
  

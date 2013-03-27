@@ -1232,22 +1232,22 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  real(pReal),   dimension(3,3)                          :: Favg, Favg_LastInc,       &
                                                            FavgNew, Favg_LastIncNew, &
                                                            deltaF, deltaF_lastInc
- real(pReal),   dimension(:,:),    allocatable :: & 
+ real(pReal),   dimension(:,:),           allocatable :: & 
    coordinates,   coordinatesNew  
- real(pReal),   dimension(:,:,:),    allocatable :: & 
+ real(pReal),   dimension(:,:,:),         allocatable :: & 
    stateHomog
- real(pReal),   dimension (:,:,:,:),        allocatable :: &
+ real(pReal),   dimension (:,:,:,:),      allocatable :: &
    spectralF9,   spectralF9New, &
    Tstar,           TstarNew, &
    stateConst 
- real(pReal),   dimension(:,:,:,:,:),    allocatable :: & 
+ real(pReal),   dimension(:,:,:,:,:),     allocatable :: & 
    spectralF33,  spectralF33New, &
    F,                  FNew, &
    Fp,                FpNew, &
    Lp,                LpNew, &
    dcsdE,          dcsdENew, &
    F_lastIncNew
- real(pReal),   dimension (:,:,:,:,:,:,:),  allocatable :: &
+ real(pReal),   dimension (:,:,:,:,:,:,:), allocatable :: &
    dPdF,            dPdFNew
 
  integer(pInt), dimension(:,:), allocatable :: &
@@ -1282,7 +1282,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      read (777,rec=1) spectralF33
      close (777)
      Favg = sum(sum(sum(spectralF33,dim=5),dim=4),dim=3) * wgt
-     coordinates = reshape(mesh_deformedCoordsFFT(geomdim,spectralF33,Favg),[3,mesh_NcpElems])
+     coordinates = reshape(mesh_deformedCoordsFFT(geomdim,spectralF33),[3,mesh_NcpElems])
    case('basicpetsc','al')
      allocate(spectralF9(9,res(1),res(2),res(3)))
      call IO_read_jobBinaryFile(777,'F',trim(getSolverJobName()),size(spectralF9))
@@ -1290,7 +1290,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      close (777)
      Favg = reshape(sum(sum(sum(spectralF9,dim=4),dim=3),dim=2) * wgt, [3,3])
      coordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(spectralF9, &
-                                      [3,3,res(1),res(2),res(3)]),Favg),[3,mesh_NcpElems])
+                                      [3,3,res(1),res(2),res(3)])),[3,mesh_NcpElems])
   end select
   
 !--------------------------------------------------------------------------------------------------
@@ -1696,7 +1696,7 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
        if (k==0_pInt .or. k==iRes(3)+1_pInt .or. &                                                   ! z skin
            j==0_pInt .or. j==iRes(2)+1_pInt .or. &                                                   ! y skin
            i==0_pInt .or. i==iRes(1)+1_pInt      ) then                                              ! x skin
-         me = [i,j,k]                                                                               ! me on skin
+         me = [i,j,k]                                                                                ! me on skin
          shift = sign(abs(iRes+diag-2_pInt*me)/(iRes+diag),iRes+diag-2_pInt*me)
          lookup = me-diag+shift*iRes
          wrappedCentres(1:3,i+1_pInt,        j+1_pInt,        k+1_pInt) = &
@@ -1929,7 +1929,7 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
  real(pReal),   dimension(3,3) :: Favg
 
  if (present(scalingIn)) then
-   where (scalingIn < 0.0_pReal)                                                                       !the f2py way to tell it is not present
+   where (scalingIn < 0.0_pReal)                                                                    ! the f2py way to tell it is not present
      scaling = [1.0_pReal,1.0_pReal,1.0_pReal]
    elsewhere
      scaling = scalingIn
@@ -1939,7 +1939,9 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
  endif
  
  iRes =  [size(F,3),size(F,4),size(F,5)]
- integrator = gDim / 2.0_pReal / PI                                                                   ! see notes where it is used
+ integrator = gDim / 2.0_pReal / PI                                                                 ! see notes where it is used
+ res1_red = iRes(1)/2_pInt + 1_pInt                                                                 ! size of complex array in first dimension (c2r, r2c)
+ step = gDim/real(iRes, pReal)
 
 !--------------------------------------------------------------------------------------------------
 ! report
@@ -1948,25 +1950,29 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
    write(6,'(a,3(e12.5))') ' Dimension: ', gDim
    write(6,'(a,3(i5))')    ' Resolution:', iRes
  endif
- 
- res1_red = iRes(1)/2_pInt + 1_pInt                                                                         ! size of complex array in first dimension (c2r, r2c)
- step = gDim/real(iRes, pReal)
+
+!--------------------------------------------------------------------------------------------------
+! sanity checks
+
  if ((mod(iRes(3),2_pInt)/=0_pInt .and. iRes(3) /= 1_pInt) .or. &
       mod(iRes(2),2_pInt)/=0_pInt .or. &
       mod(iRes(1),2_pInt)/=0_pInt) & 
    call IO_error(0_pInt,ext_msg='Resolution in mesh_deformedCoordsFFT')
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) &
    call IO_error(0_pInt,ext_msg='Fortran to C in mesh_deformedCoordsFFT')
+
+!--------------------------------------------------------------------------------------------------
+! allocation and FFTW initialization
  call fftw_set_timelimit(fftw_timelimit)
- defgrad_fftw =         fftw_alloc_complex(int(res1_red     *iRes(2)*iRes(3)*9_pInt,C_SIZE_T)) !C_SIZE_T is of type integer(8)
+ defgrad_fftw =         fftw_alloc_complex(int(res1_red     *iRes(2)*iRes(3)*9_pInt,C_SIZE_T))      ! C_SIZE_T is of type integer(8)
  call c_f_pointer(defgrad_fftw, F_real,   [iRes(1)+2_pInt,iRes(2),iRes(3),3_pInt,3_pInt])
  call c_f_pointer(defgrad_fftw, F_fourier,[res1_red     ,iRes(2),iRes(3),3_pInt,3_pInt])
- coords_fftw =          fftw_alloc_complex(int(res1_red     *iRes(2)*iRes(3)*3_pInt,C_SIZE_T))        !C_SIZE_T is of type integer(8)
+ coords_fftw =          fftw_alloc_complex(int(res1_red     *iRes(2)*iRes(3)*3_pInt,C_SIZE_T))      ! C_SIZE_T is of type integer(8)
  call c_f_pointer(coords_fftw, coords_real,     [iRes(1)+2_pInt,iRes(2),iRes(3),3_pInt])
  call c_f_pointer(coords_fftw, coords_fourier,  [res1_red     ,iRes(2),iRes(3),3_pInt])
- fftw_forth = fftw_plan_many_dft_r2c(3_pInt,[iRes(3),iRes(2) ,iRes(1)],9_pInt,&                      ! dimensions , length in each dimension in reversed order
-                          F_real,[iRes(3),iRes(2) ,iRes(1)+2_pInt],&                               ! input data , physical length in each dimension in reversed order
-                                     1_pInt,  iRes(3)*iRes(2)*(iRes(1)+2_pInt),&                                ! striding   , product of physical lenght in the 3 dimensions
+ fftw_forth = fftw_plan_many_dft_r2c(3_pInt,[iRes(3),iRes(2) ,iRes(1)],9_pInt,&                     ! dimensions , length in each dimension in reversed order
+                          F_real,[iRes(3),iRes(2) ,iRes(1)+2_pInt],&                                ! input data , physical length in each dimension in reversed order
+                                     1_pInt,  iRes(3)*iRes(2)*(iRes(1)+2_pInt),&                    ! striding   , product of physical lenght in the 3 dimensions
                        F_fourier,[iRes(3),iRes(2) ,res1_red],&
                                      1_pInt,  iRes(3)*iRes(2)* res1_red,fftw_planner_flag)
 
@@ -1975,34 +1981,37 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
                                      1_pInt,  iRes(3)*iRes(2)* res1_red,&
                            coords_real,[iRes(3),iRes(2) ,iRes(1)+2_pInt],&
                                      1_pInt,  iRes(3)*iRes(2)*(iRes(1)+2_pInt),fftw_planner_flag)
- 
- 
- do k = 1_pInt, iRes(3); do j = 1_pInt, iRes(2); do i = 1_pInt, iRes(1)
-   F_real(i,j,k,1:3,1:3) = F(1:3,1:3,i,j,k)                                                         ! ensure that data is aligned properly (fftw_alloc)
- enddo; enddo; enddo
+ forall(k = 1_pInt:iRes(3), j = 1_pInt:iRes(2), i = 1_pInt:iRes(1)) &
+   F_real(i,j,k,1:3,1:3) = F(1:3,1:3,i,j,k)                                                         ! F_real is overwritten during plan creation and is larger (padding)
+
+!--------------------------------------------------------------------------------------------------
+! FFT
  call fftw_execute_dft_r2c(fftw_forth, F_real, F_fourier)
  
+!--------------------------------------------------------------------------------------------------
+! if no average F is given, compute it in Fourier space
  if (present(FavgIn)) then
    if (all(FavgIn < 0.0_pReal)) then
-     Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)*real(product(iRes),pReal)                          !the f2py way to tell it is not present
+     Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)/real(product(iRes),pReal)                          !the f2py way to tell it is not present
    else
      Favg = FavgIn
    endif
  else
-   Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)*real(product(iRes),pReal)
+   Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)/real(product(iRes),pReal)
  endif
  
- !remove highest frequency in each direction
- if(iRes(1)>1_pInt) &
-   F_fourier( iRes(1)/2_pInt+1_pInt,1:iRes(2)           ,1:iRes(3)             ,&
-                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(iRes(2)>1_pInt) &
-   F_fourier(1:res1_red           ,iRes(2)/2_pInt+1_pInt,1:iRes(3)            ,&
-                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+!--------------------------------------------------------------------------------------------------
+! remove highest frequency in each direction, in third direction only if not 2D
+ F_fourier(   iRes(1)/2_pInt+1_pInt,1:iRes(2)            ,1:iRes(3)            ,1:3,1:3) &
+                                                               = cmplx(0.0_pReal,0.0_pReal,pReal)
+ F_fourier(   1:res1_red           ,iRes(2)/2_pInt+1_pInt,1:iRes(3)            ,1:3,1:3) &
+                                                               = cmplx(0.0_pReal,0.0_pReal,pReal)
  if(iRes(3)>1_pInt) &
-   F_fourier(1:res1_red            ,1:iRes(2)           ,iRes(3)/2_pInt+1_pInt,&
-                                           1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+    F_fourier(1:res1_red           ,1:iRes(2)            ,iRes(3)/2_pInt+1_pInt,1:3,1:3) &
+                                                               = cmplx(0.0_pReal,0.0_pReal,pReal)
 
+!--------------------------------------------------------------------------------------------------
+! integration in Fourier space
  coords_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
  do k = 1_pInt, iRes(3)
    k_s(3) = k-1_pInt
@@ -2013,39 +2022,38 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
      do i = 1_pInt, res1_red
        k_s(1) = i-1_pInt
        do m = 1_pInt,3_pInt
-         coords_fourier(i,j,k,m) = sum(F_fourier(i,j,k,m,1:3)*cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
-      enddo
-      if (k_s(3) /= 0_pInt .or. k_s(2) /= 0_pInt .or. k_s(1) /= 0_pInt) &
-        coords_fourier(i,j,k,1:3) = coords_fourier(i,j,k,1:3) / cmplx(-sum(k_s*k_s),0.0_pReal,pReal)
+         coords_fourier(i,j,k,m) = sum(F_fourier(i,j,k,m,1:3)*&
+                                       cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
+       enddo
+       if (any(k_s /= 0_pInt)) coords_fourier(i,j,k,1:3) = &
+                               coords_fourier(i,j,k,1:3) / cmplx(-sum(k_s*k_s),0.0_pReal,pReal)
  enddo; enddo; enddo
 
+!--------------------------------------------------------------------------------------------------
+! iFFT and freeing memory
  call fftw_execute_dft_c2r(fftw_back,coords_fourier,coords_real)
- coords_real = coords_real/real(iRes(1)*iRes(2)*iRes(3),pReal)
-
- do k = 1_pInt, iRes(3); do j = 1_pInt, iRes(2); do i = 1_pInt, iRes(1)
-   coords(1:3,i,j,k) = coords_real(i,j,k,1:3)                                        ! ensure that data is aligned properly (fftw_alloc)
- enddo; enddo; enddo
-
- offset_coords = math_mul33x3(F(1:3,1:3,1,1,1),step/2.0_pReal) - scaling(1:3)*coords(1:3,1,1,1)
- do k = 1_pInt, iRes(3); do j = 1_pInt, iRes(2); do i = 1_pInt, iRes(1)
-     coords(1:3,i,j,k) =  scaling(1:3)*coords(1:3,i,j,k) &
-     + offset_coords + math_mul33x3(Favg,[step(1)*real(i-1_pInt,pReal),&
-                                    step(2)*real(j-1_pInt,pReal),&
-                                    step(3)*real(k-1_pInt,pReal)])
-
- enddo; enddo; enddo
- 
+ coords_real = coords_real/real(product(iRes),pReal)
+ forall(k = 1_pInt:iRes(3), j = 1_pInt:iRes(2), i = 1_pInt:iRes(1)) &
+   coords(1:3,i,j,k) = coords_real(i,j,k,1:3)
  call fftw_destroy_plan(fftw_forth)
  call fftw_destroy_plan(fftw_back)
  call fftw_free(defgrad_fftw)
  call fftw_free(coords_fftw)
 
+!--------------------------------------------------------------------------------------------------
+! add average to scaled fluctuation and put (0,0,0) on (0,0,0)
+ offset_coords = math_mul33x3(F(1:3,1:3,1,1,1),step/2.0_pReal) - scaling*coords(1:3,1,1,1)
+ forall(k = 1_pInt:iRes(3), j = 1_pInt:iRes(2), i = 1_pInt:iRes(1)) &
+   coords(1:3,i,j,k) = scaling(1:3)*coords(1:3,i,j,k) &
+                     + offset_coords &
+                     + math_mul33x3(Favg,step*real([i,j,k]-1_pInt,pReal))
+
 end function mesh_deformedCoordsFFT
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates the mismatch between volume of reconstructed (compatible
-! cube and determinant of defgrad at the FP
+!> @brief calculates the mismatch between volume of reconstructed (compatible) cube and 
+! determinant of defgrad at the FP
 !--------------------------------------------------------------------------------------------------
 function mesh_volumeMismatch(gDim,F,nodes) result(vMismatch)
  use IO, only: &
@@ -2230,7 +2238,7 @@ subroutine mesh_marc_get_tableStyles(myUnit)
    read (myUnit,610,END=620) line
    myPos = IO_stringPos(line,maxNchunks)
 
-   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'table' .and. myPos(1_pInt) .GT. 5) then
+   if ( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'table' .and. myPos(1_pInt) > 5) then
      initialcondTableStyle = IO_intValue(line,myPos,4_pInt)
      hypoelasticTableStyle = IO_intValue(line,myPos,5_pInt)
      exit

@@ -87,8 +87,27 @@ module DAMASK_spectral_solverAL
    err_p                                                                                            !< difference of stress resulting from compatible and incompatible F
  logical, private :: ForwardData
  integer(pInt), private :: reportIter = 0_pInt
+
+ external :: &
+  VecDestroy, &
+  DMDestroy, &
+  DMDACreate3D, &
+  DMCreateGlobalVector, &
+  DMDASetLocalFunction, &
+  PETScFinalize, &
+  SNESDestroy, &
+  SNESGetNumberFunctionEvals, &
+  SNESGetIterationNumber, &
+  SNESSolve, &
+  SNESSetDM, &
+  SNESGetConvergedReason, &
+  SNESSetConvergenceTest, &
+  SNESSetFromOptions, &
+  SNESCreate, &
+  MPI_Abort
+
 contains
- 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------

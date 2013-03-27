@@ -159,12 +159,10 @@ subroutine utilities_init()
    scalarField_realC, &                                                                             !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
    scalarField_fourierC, &                                                                          !< field cotaining data for FFTW in fourier space when debugging FFTW (no in place)
    divergence                                                                                       !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
- write(6,'(a)')   ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- write(6,'(a)')   ''
- flush(6)
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
@@ -572,7 +570,6 @@ real(pReal) function utilities_curlRMS()
  implicit none
  integer(pInt)  ::  i, j, k, l 
  complex(pReal), dimension(3,3) ::  curl_fourier
- real(pReal)    ::  curl_abs
 
  write(6,'(/,a)') ' ... calculating curl ................................................'
  flush(6)
@@ -922,9 +919,10 @@ real(pReal) function utilities_getFilter(k)
  implicit none
  real(pReal),intent(in), dimension(3) :: k                                                          !< indices of frequency
   
+ utilities_getFilter = 1.0_pReal
+
  select case (myfilter)
     case ('none')
-      utilities_getFilter = 1.0_pReal
     case ('cosine')                                                                                 !< cosine curve with 1 for avg and zero for highest freq
       utilities_getFilter = (1.0_pReal + cos(PI*k(3)/res(3))) &
                            *(1.0_pReal + cos(PI*k(2)/res(2))) &

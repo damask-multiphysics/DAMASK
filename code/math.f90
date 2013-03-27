@@ -271,9 +271,9 @@ subroutine math_init
                                                                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
 
- write(6,'(/,a)') ' <<<+-  math init  -+>>>'
- write(6,'(a)')   ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  call random_seed(size=randSize)
@@ -1757,12 +1757,12 @@ function math_qDisorientation(Q1, Q2, symmetryType)
   implicit none
 
   !*** input variables
-  real(pReal), dimension(4), intent(in) ::      Q1, &                       ! 1st orientation
-                                                Q2                          ! 2nd orientation
-  integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
+  real(pReal), dimension(4), intent(in) ::      Q1, &                                              ! 1st orientation
+                                                Q2                                                 ! 2nd orientation
+  integer(pInt), intent(in) ::                  symmetryType                                       ! Type of crystal symmetry; 1:cubic, 2:hexagonal
 
   !*** output variables
-  real(pReal), dimension(4) ::                  math_qDisorientation         ! disorientation
+  real(pReal), dimension(4) ::                  math_qDisorientation                               ! disorientation
 
   !*** local variables
   real(pReal), dimension(4) ::                  dQ,dQsymA,mis
@@ -1774,25 +1774,25 @@ function math_qDisorientation(Q1, Q2, symmetryType)
   select case (symmetryType)
     case (0_pInt)
       if (math_qDisorientation(1) < 0.0_pReal) &
-        math_qDisorientation = -math_qDisorientation          ! keep omega within 0 to 180 deg
+        math_qDisorientation = -math_qDisorientation                                              ! keep omega within 0 to 180 deg
 
     case (1_pInt,2_pInt)
       s = sum(math_NsymOperations(1:symmetryType-1_pInt))
       do i = 1_pInt,2_pInt
-        dQ = math_qConj(dQ)                                     ! switch order of "from -- to"
-        do j = 1_pInt,math_NsymOperations(symmetryType)              ! run through first crystal's symmetries
-          dQsymA = math_qMul(math_symOperations(1:4,s+j),dQ)      ! apply sym
-          do k = 1_pInt,math_NsymOperations(symmetryType)            ! run through 2nd crystal's symmetries
-            mis = math_qMul(dQsymA,math_symOperations(1:4,s+k))   ! apply sym
-            if (mis(1) < 0.0_pReal) &                           ! want positive angle
+        dQ = math_qConj(dQ)                                                                       ! switch order of "from -- to"
+        do j = 1_pInt,math_NsymOperations(symmetryType)                                           ! run through first crystal's symmetries
+          dQsymA = math_qMul(math_symOperations(1:4,s+j),dQ)                                      ! apply sym
+          do k = 1_pInt,math_NsymOperations(symmetryType)                                         ! run through 2nd crystal's symmetries
+            mis = math_qMul(dQsymA,math_symOperations(1:4,s+k))                                   ! apply sym
+            if (mis(1) < 0.0_pReal) &                                                             ! want positive angle
               mis = -mis
             if (mis(1)-math_qDisorientation(1) > -1e-8_pReal .and. &
                 math_qInSST(mis,symmetryType)) &
-              math_qDisorientation = mis               ! found better one
+              math_qDisorientation = mis                                                          ! found better one
       enddo; enddo; enddo
 
     case default
-      call IO_error(450_pInt,symmetryType)                           ! complain about unknown symmetry
+      call IO_error(450_pInt,symmetryType)                                                        ! complain about unknown symmetry
   end select
 
 end function math_qDisorientation
@@ -2778,7 +2778,7 @@ function math_curlFFT(geomdim,field)
  call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
 
 !--------------------------------------------------------------------------------------------------
-! remove highest frequency in each direction
+! remove highest frequency in each direction, in third direction only if not 2D
  field_fourier( res(1)/2_pInt+1_pInt,1:res(2)            ,1:res(3)            ,&
                               1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
  field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
@@ -2814,7 +2814,7 @@ function math_curlFFT(geomdim,field)
  math_curlFFT = curl_real(1:res(1),1:res(2),1:res(3),1:vec_tens,1:3)*wgt                            ! copy to output and weight
 
  if (vec_tens == 3_pInt) &
-   forall(k = 1_pInt:res(3), j = 1_pInt:res(2), i = 1_pInt: res(1)) &
+   forall(k = 1_pInt:res(3), j = 1_pInt:res(2), i = 1_pInt:res(1)) &
      math_curlFFT(i,j,k,1:3,1:3) = math_transpose33(math_curlFFT(i,j,k,1:3,1:3))                    ! results are stored transposed
 
  call fftw_destroy_plan(fftw_forth)
@@ -2910,7 +2910,7 @@ function math_gradFFT(geomdim,field)
  call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
 
 !--------------------------------------------------------------------------------------------------
-! remove highest frequency in each direction
+! remove highest frequency in each direction, in third direction only if not 2D
  field_fourier( res(1)/2_pInt+1_pInt,1:res(2)            ,1:res(3)            ,&
                               1:vec_tens) = cmplx(0.0_pReal,0.0_pReal,pReal)
  field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
@@ -3039,7 +3039,7 @@ function math_divergenceFFT(geomdim,field)
  call fftw_execute_dft_r2c(fftw_forth, field_real, field_fourier)
 
 !--------------------------------------------------------------------------------------------------
-! remove highest frequency in each direction
+! remove highest frequency in each direction, in third direction only if not 2D
  field_fourier( res(1)/2_pInt+1_pInt,1:res(2)            ,1:res(3)            ,&
                               1:vec_tens,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
  field_fourier(1:res1_red           ,res(2)/2_pInt+1_pInt,1:res(3)            ,&
@@ -3240,7 +3240,7 @@ function math_nearestNeighbor(querySet, domainSet)
  real(pReal),   dimension(:,:),          intent(in) :: domainSet
  integer(pInt), dimension(size(querySet,2))         :: math_nearestNeighbor
 
- integer(pInt)                             :: i,j, l,m,n, spatialDim
+ integer(pInt)                             :: j, spatialDim
  type(kdtree2), pointer                    :: tree
  type(kdtree2_result), dimension(1)        :: Results
 

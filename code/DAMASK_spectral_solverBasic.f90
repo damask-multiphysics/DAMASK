@@ -55,7 +55,7 @@ module DAMASK_spectral_SolverBasic
  real(pReal), private,dimension(3,3,3,3) :: &
    C = 0.0_pReal, C_minmaxAvg = 0.0_pReal, &                                                        !< average stiffness
    C_lastInc = 0.0_pReal                                                                            !< average stiffness last increment
- 
+
 contains
  
 !--------------------------------------------------------------------------------------------------
@@ -91,17 +91,15 @@ subroutine basic_init(temperature)
  real(pReal), intent(inout) :: &
    temperature
  real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
- integer(pInt) :: &
-   i, j, k
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
  real(pReal), dimension(3,3,3,3) :: &
    temp3333_Real
  
  call Utilities_Init()
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
- write(6,'(a)') ' $Id$'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_solverBasic init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 
@@ -228,10 +226,6 @@ type(tSolutionState) function &
  real(pReal)   :: err_div, err_stress       
  integer(pInt) :: iter, row, column
  logical       :: ForwardData
- real(pReal)   :: & 
-   defgradDet, &
-   defgradDetMax, &
-   defgradDetMin
 
 !--------------------------------------------------------------------------------------------------
 ! write restart information for spectral solver
