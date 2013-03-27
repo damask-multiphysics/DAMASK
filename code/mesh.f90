@@ -3938,11 +3938,8 @@ enddo
     write(6,*)
     write(6,'(a6,3(3x,a6))') '  node','twin_x','twin_y','twin_z'
     do n = 1_pInt,mesh_Nnodes                    ! loop over cpNodes
-      if (debug_e <= mesh_NcpElems) then
-        if (any(mesh_element(5:,debug_e) == n)) then
-          write(6,'(i6,3(3x,i6))') n, mesh_nodeTwins(1:3,n)
-        endif
-      endif
+      if (iand(myDebug,debug_levelSelective) /= 0_pInt .and. .not. any(mesh_element(5:,debug_e) == n)) cycle
+      write(6,'(i6,3(3x,i6))') n, mesh_nodeTwins(1:3,n)
     enddo
     write(6,*)
     write(6,*) 'Input Parser: IP NEIGHBORHOOD'
