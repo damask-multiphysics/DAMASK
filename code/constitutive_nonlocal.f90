@@ -253,8 +253,8 @@ integer(pInt)          ::                   section, &
                                             s1, &               ! index of my slip system
                                             s2, &               ! index of my slip system
                                             it, &               ! index of my interaction type
-                                            Nchunks_SlipSlip, &
-                                            Nchunks_SlipFamilies, &
+                                            Nchunks_SlipSlip = 0_pInt, &
+                                            Nchunks_SlipFamilies = 0_pInt, &
                                             mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
 character(len=64)                           tag
 character(len=1024) :: line = ''                                ! to start initialized
@@ -995,6 +995,7 @@ do myInstance = 1_pInt,maxNinstance
     ! ititalize all states to zero and get the total volume of the instance
 
     minimumIpVolume = 1e99_pReal
+    totalVolume = 0.0_pReal
     do el = 1_pInt,mesh_NcpElems
       do ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,el)))
         if (constitutive_nonlocal_label == phase_plasticity(material_phase(1,ip,el)) &
@@ -1210,6 +1211,7 @@ integer(pInt)                   neighboring_el, &             ! element number o
                                 t, &                          ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
                                 dir, &
                                 n, &
+                                nRealNeighbors, &             ! number of really existing neighbors
                                 interactionCoefficient
 integer(pInt), dimension(2) ::  neighbor
 real(pReal)                     nu, &                         ! poisson's ratio
@@ -1247,7 +1249,8 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                        constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
 real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip),FE_maxNipNeighbors) :: &
-                                neighboring_rhoExcess         ! excess density at neighboring material point
+                                neighboring_rhoExcess, &      ! excess density at neighboring material point
+                                neighboring_rhoTotal          ! total density at neighboring material point
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                 m                             ! direction of dislocation motion
 logical                         inversionError
@@ -1332,6 +1335,8 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
   
   !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
   
+  nRealNeighbors = 0_pInt
+  neighboring_rhoTotal = 0.0_pReal
   do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,el)))
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
@@ -1346,10 +1351,17 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
           .and. neighboring_instance == instance) then
         if (neighboring_ns == ns) then
           if (neighboring_el /= el .or. neighboring_ip /= ip) then
+            nRealNeighbors = nRealNeighbors + 1_pInt
             connection_latticeConf(1:3,n) = math_mul33x3(invFe, neighboring_ipCoords - ipCoords)
-            forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-              neighboring_rhoExcess(c,s,n) = state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s) &                     ! positive mobiles
-                                           - state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s)                       ! negative mobiles
+            forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
+              neighboring_rhoExcess(c,s,n) = max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &     ! positive mobiles
+                                           - max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal)       ! negative mobiles
+              neighboring_rhoTotal(c,s,n) = max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &      ! positive mobiles
+                                          + max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal) &      ! negative mobiles
+                                          + abs(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c+2_pInt)*ns+s)) &                 ! positive deads
+                                          + abs(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c+3_pInt)*ns+s)) &                 ! negative deads
+                                          + max(state(g,neighboring_ip,neighboring_el)%p((c+7_pInt)*ns+s), 0.0_pReal)               ! dipoles
+            endforall
           else
             ! thats myself! probably using periodic images -> assume constant excess density
             connection_latticeConf(1:3,n) = math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))                   ! direction of area normal
@@ -1407,8 +1419,9 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
     !* normalized with the total density
     
     rhoExcessGradient_over_rho = 0.0_pReal
-    rhoTotal(1_pInt) = sum(abs(rhoSgl(s,[1_pInt,2_pInt,5_pInt,6_pInt]))) + rhoDip(s,1_pInt)
-    rhoTotal(2_pInt) = sum(abs(rhoSgl(s,[3_pInt,4_pInt,7_pInt,8_pInt]))) + rhoDip(s,2_pInt)
+    forall (c = 1_pInt:2_pInt) &
+      rhoTotal(c) = (sum(abs(rhoSgl(s,[2*c-1,2*c,2*c+3,2*c+4]))) + rhoDip(s,c) + sum(neighboring_rhoTotal(c,s,:))) &
+                  / (1_pInt + nRealNeighbors)
     forall (c = 1_pInt:2_pInt, rhoTotal(c) > 0.0_pReal) &
       rhoExcessGradient_over_rho(c) = rhoExcessGradient(c) / rhoTotal(c)
     
