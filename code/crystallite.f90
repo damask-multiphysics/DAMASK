@@ -284,7 +284,7 @@ subroutine crystallite_init(Temperature)
          mySize = 1_pInt
        case('orientation','grainrotation')                                                          ! orientation as quaternion, or deviation from initial grain orientation in axis-angle form (angle in degrees)
          mySize = 4_pInt
-       case('eulerangles')                                                                          ! Bunge (3-1-3) Euler angles
+       case('eulerangles','ipcoords')
          mySize = 3_pInt
        case('defgrad','f','fe','fp','lp','e','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
          mySize = 9_pInt
@@ -3506,7 +3506,8 @@ function crystallite_postResults(&
                                       math_qMul, &
                                       math_qConj
  use mesh, only:                      mesh_element, &
-                                      mesh_ipVolume
+                                      mesh_ipVolume, &
+                                      mesh_ipCoordinates
  use material, only:                  microstructure_crystallite, &
                                       crystallite_Noutput, &
                                       material_phase, &
@@ -3580,6 +3581,9 @@ function crystallite_postResults(&
                                                                  crystallite_rotation(1:4,g,i,e)), &
                                                                  math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(3) * rotation(4)                                           ! angle in degree
+     case ('ipcoords')
+       mySize = 3_pInt
+       crystallite_postResults(c+1:c+mySize) = mesh_ipCoordinates(1:3,i,e)                                        ! current ip coordinates
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
