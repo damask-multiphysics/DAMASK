@@ -41,8 +41,8 @@ module numerics
    nCryst                     = 20_pInt, &                                                          !< crystallite loop limit (only for debugging info, loop limit is determined by "subStepMinCryst")
    nState                     = 10_pInt, &                                                          !< state loop limit
    nStress                    = 40_pInt, &                                                          !< stress loop limit
-   pert_method                =  1_pInt                                                             !< method used in perturbation technique for tangent
-   fixedSeed                  =  0_pInt                                                             !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+   pert_method                =  1_pInt, &                                                          !< method used in perturbation technique for tangent
+   fixedSeed                  =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
    DAMASK_NumThreadsInt       =  0_pInt                                                             !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  integer(pInt), public :: &
    numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file

@@ -31,6 +31,7 @@ module DAMASK_spectral_utilities
    pInt
 
  implicit none
+ private
 #ifdef PETSc
 #include <finclude/petscsys.h>
 #endif
@@ -922,7 +923,7 @@ real(pReal) function utilities_getFilter(k)
  utilities_getFilter = 1.0_pReal
 
  select case (myfilter)
-    case ('none')
+    case ('none')                                                                                   !< default is already nothing (1.0_pReal)
     case ('cosine')                                                                                 !< cosine curve with 1 for avg and zero for highest freq
       utilities_getFilter = (1.0_pReal + cos(PI*k(3)/res(3))) &
                            *(1.0_pReal + cos(PI*k(2)/res(2))) &
@@ -939,12 +940,12 @@ end function utilities_getFilter
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_destroy()
  use math
- implicit none
- if (debugDivergence) call fftw_destroy_plan(plan_divergence)
 
+ implicit none
+
+ if (debugDivergence) call fftw_destroy_plan(plan_divergence)
  if (debugFFTW) call fftw_destroy_plan(plan_scalarField_forth)
  if (debugFFTW) call fftw_destroy_plan(plan_scalarField_back)
-  
  call fftw_destroy_plan(plan_forward)
  call fftw_destroy_plan(plan_backward)
 

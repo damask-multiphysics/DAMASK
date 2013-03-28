@@ -36,6 +36,7 @@ module DAMASK_spectral_SolverBasic
    tSolutionState
  
  implicit none
+ private
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasic_label = 'basic'
 

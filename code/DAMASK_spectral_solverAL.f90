@@ -34,6 +34,7 @@ module DAMASK_spectral_solverAL
    tSolutionState
  
  implicit none
+ private
 #include <finclude/petscsys.h>
 #include <finclude/petscdmda.h>
 #include <finclude/petscsnes.h>
