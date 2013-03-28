@@ -481,11 +481,11 @@ subroutine numerics_init
  if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolabs')
- if (itmax <= 1.0_pInt)                    call IO_error(301_pInt,ext_msg='itmax')
+ if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (divergence_correction < 0_pInt .or. &
      divergence_correction > 3_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
- if (maxCutBack <= 1.0_pInt)               call IO_error(301_pInt,ext_msg='maxCutBack')
+ if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
 #ifdef PETSc
