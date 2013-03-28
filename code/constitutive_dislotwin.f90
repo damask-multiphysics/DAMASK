@@ -29,7 +29,7 @@ use prec, only: pReal,pInt
 implicit none
 
 !* Lists of states and physical parameters
-character(len=*), parameter :: constitutive_dislotwin_label = 'dislotwin'
+character(len=*), parameter, public :: constitutive_dislotwin_label = 'dislotwin'
 character(len=18), dimension(2), parameter:: constitutive_dislotwin_listBasicSlipStates = (/'rhoEdge   ', &
                                                                                             'rhoEdgeDip'/)
 character(len=18), dimension(1), parameter:: constitutive_dislotwin_listBasicTwinStates = (/'twinFraction'/)
@@ -44,13 +44,16 @@ character(len=18), dimension(4), parameter:: constitutive_dislotwin_listDependen
 real(pReal), parameter :: kB = 1.38e-23_pReal ! Boltzmann constant in J/Kelvin
 
 !* Definition of global variables
-integer(pInt),     dimension(:),           allocatable :: constitutive_dislotwin_sizeDotState, &                ! number of dotStates
-                                                          constitutive_dislotwin_sizeState, &                   ! total number of microstructural state variables
-                                                          constitutive_dislotwin_sizePostResults                ! cumulative size of post results
-integer(pInt),     dimension(:,:), allocatable, target :: constitutive_dislotwin_sizePostResult                 ! size of each post result output
-character(len=64), dimension(:,:), allocatable, target :: constitutive_dislotwin_output                         ! name of each post result output
+integer(pInt),     dimension(:),           allocatable, public, protected :: &
+  constitutive_dislotwin_sizeDotState, &                ! number of dotStates
+  constitutive_dislotwin_sizeState, &                   ! total number of microstructural state variables
+  constitutive_dislotwin_sizePostResults                ! cumulative size of post results
+integer(pInt),     dimension(:,:), allocatable, target, public :: &
+  constitutive_dislotwin_sizePostResult                 ! size of each post result output
+character(len=64), dimension(:,:), allocatable, target, public :: &
+  constitutive_dislotwin_output                         ! name of each post result output
 integer(pInt),     dimension(:),           allocatable :: constitutive_dislotwin_Noutput                        ! number of outputs per instance of this plasticity 
-character(len=32), dimension(:),           allocatable :: constitutive_dislotwin_structureName                  ! name of the lattice structure
+character(len=32), dimension(:),           allocatable, public, protected :: constitutive_dislotwin_structureName                  ! name of the lattice structure
 integer(pInt),     dimension(:),           allocatable :: constitutive_dislotwin_structure, &                   ! number representing the kind of lattice structure
                                                           constitutive_dislotwin_totalNslip, &                  ! total number of active slip systems for each instance
                                                           constitutive_dislotwin_totalNtwin                     ! total number of active twin systems for each instance
@@ -78,50 +81,57 @@ real(pReal),       dimension(:),           allocatable :: constitutive_dislotwin
                                                           constitutive_dislotwin_dSFE_dT, &                     ! temperature dependance of stacking fault energy
                                                           constitutive_dislotwin_aTolRho, &                     ! absolute tolerance for integration of dislocation density
                                                           constitutive_dislotwin_aTolTwinFrac                   ! absolute tolerance for integration of twin volume fraction
-real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin_Cslip_66                       ! elasticity matrix in Mandel notation for each instance
-real(pReal),       dimension(:,:,:,:),     allocatable :: constitutive_dislotwin_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
-real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_dislotwin_Cslip_3333                     ! elasticity matrix for each instance
-real(pReal),       dimension(:,:,:,:,:,:), allocatable :: constitutive_dislotwin_Ctwin_3333                     ! twin elasticity matrix for each instance
-real(pReal),       dimension(:,:),         allocatable :: constitutive_dislotwin_rhoEdge0, &                    ! initial edge dislocation density per slip system for each family and instance
-                                                          constitutive_dislotwin_rhoEdgeDip0, &                 ! initial edge dipole density per slip system for each family and instance
-                                                          constitutive_dislotwin_burgersPerSlipFamily, &        ! absolute length of burgers vector [m] for each slip family and instance
-                                                          constitutive_dislotwin_burgersPerSlipSystem, &        ! absolute length of burgers vector [m] for each slip system and instance
-                                                          constitutive_dislotwin_burgersPerTwinFamily, &        ! absolute length of burgers vector [m] for each twin family and instance
-                                                          constitutive_dislotwin_burgersPerTwinSystem, &        ! absolute length of burgers vector [m] for each twin system and instance
-                                                          constitutive_dislotwin_QedgePerSlipFamily, &          ! activation energy for glide [J] for each slip family and instance
-                                                          constitutive_dislotwin_QedgePerSlipSystem, &          ! activation energy for glide [J] for each slip system and instance
-                                                          constitutive_dislotwin_v0PerSlipFamily, &             ! dislocation velocity prefactor [m/s] for each family and instance
-                                                          constitutive_dislotwin_v0PerSlipSystem, &             ! dislocation velocity prefactor [m/s] for each slip system and instance
-                                                          constitutive_dislotwin_Ndot0PerTwinFamily, &          ! twin nucleation rate [1/m³s] for each twin family and instance
-                                                          constitutive_dislotwin_Ndot0PerTwinSystem, &          ! twin nucleation rate [1/m³s] for each twin system and instance
-                                                          constitutive_dislotwin_twinsizePerTwinFamily, &       ! twin thickness [m] for each twin family and instance
-                                                          constitutive_dislotwin_twinsizePerTwinSystem, &       ! twin thickness [m] for each twin system and instance
-                                                          constitutive_dislotwin_CLambdaSlipPerSlipFamily, &    ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
-                                                          constitutive_dislotwin_CLambdaSlipPerSlipSystem, &    ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
-                                                          constitutive_dislotwin_interaction_SlipSlip, &        ! coefficients for slip-slip interaction for each interaction type and instance
-                                                          constitutive_dislotwin_interaction_SlipTwin, &        ! coefficients for slip-twin interaction for each interaction type and instance
-                                                          constitutive_dislotwin_interaction_TwinSlip, &        ! coefficients for twin-slip interaction for each interaction type and instance
-                                                          constitutive_dislotwin_interaction_TwinTwin           ! coefficients for twin-twin interaction for each interaction type and instance
-real(pReal),       dimension(:,:,:),       allocatable :: constitutive_dislotwin_interactionMatrix_SlipSlip, &  ! interaction matrix of the different slip systems for each instance
-                                                          constitutive_dislotwin_interactionMatrix_SlipTwin, &  ! interaction matrix of slip systems with twin systems for each instance
-                                                          constitutive_dislotwin_interactionMatrix_TwinSlip, &  ! interaction matrix of twin systems with slip systems for each instance
-                                                          constitutive_dislotwin_interactionMatrix_TwinTwin, &  ! interaction matrix of the different twin systems for each instance
-                                                          constitutive_dislotwin_forestProjectionEdge           ! matrix of forest projections of edge dislocations for each instance
+real(pReal),       dimension(:,:,:),       allocatable :: &
+  constitutive_dislotwin_Cslip_66                       ! elasticity matrix in Mandel notation for each instance
+real(pReal),       dimension(:,:,:,:),     allocatable :: &
+  constitutive_dislotwin_Ctwin_66                       ! twin elasticity matrix in Mandel notation for each instance
+real(pReal),       dimension(:,:,:,:,:),   allocatable :: &
+  constitutive_dislotwin_Cslip_3333                     ! elasticity matrix for each instance
+real(pReal),       dimension(:,:,:,:,:,:), allocatable :: &
+  constitutive_dislotwin_Ctwin_3333                     ! twin elasticity matrix for each instance
+real(pReal),       dimension(:,:),         allocatable :: &
+  constitutive_dislotwin_rhoEdge0, &                    ! initial edge dislocation density per slip system for each family and instance
+  constitutive_dislotwin_rhoEdgeDip0, &                 ! initial edge dipole density per slip system for each family and instance
+  constitutive_dislotwin_burgersPerSlipFamily, &        ! absolute length of burgers vector [m] for each slip family and instance
+  constitutive_dislotwin_burgersPerSlipSystem, &        ! absolute length of burgers vector [m] for each slip system and instance
+  constitutive_dislotwin_burgersPerTwinFamily, &        ! absolute length of burgers vector [m] for each twin family and instance
+  constitutive_dislotwin_burgersPerTwinSystem, &        ! absolute length of burgers vector [m] for each twin system and instance
+  constitutive_dislotwin_QedgePerSlipFamily, &          ! activation energy for glide [J] for each slip family and instance
+  constitutive_dislotwin_QedgePerSlipSystem, &          ! activation energy for glide [J] for each slip system and instance
+  constitutive_dislotwin_v0PerSlipFamily, &             ! dislocation velocity prefactor [m/s] for each family and instance
+  constitutive_dislotwin_v0PerSlipSystem, &             ! dislocation velocity prefactor [m/s] for each slip system and instance
+  constitutive_dislotwin_Ndot0PerTwinFamily, &          ! twin nucleation rate [1/m³s] for each twin family and instance
+  constitutive_dislotwin_Ndot0PerTwinSystem, &          ! twin nucleation rate [1/m³s] for each twin system and instance
+  constitutive_dislotwin_twinsizePerTwinFamily, &       ! twin thickness [m] for each twin family and instance
+  constitutive_dislotwin_twinsizePerTwinSystem, &       ! twin thickness [m] for each twin system and instance
+  constitutive_dislotwin_CLambdaSlipPerSlipFamily, &    ! Adj. parameter for distance between 2 forest dislocations for each slip family and instance
+  constitutive_dislotwin_CLambdaSlipPerSlipSystem, &    ! Adj. parameter for distance between 2 forest dislocations for each slip system and instance
+  constitutive_dislotwin_interaction_SlipSlip, &        ! coefficients for slip-slip interaction for each interaction type and instance
+  constitutive_dislotwin_interaction_SlipTwin, &        ! coefficients for slip-twin interaction for each interaction type and instance
+  constitutive_dislotwin_interaction_TwinSlip, &        ! coefficients for twin-slip interaction for each interaction type and instance
+  constitutive_dislotwin_interaction_TwinTwin           ! coefficients for twin-twin interaction for each interaction type and instance
+real(pReal),       dimension(:,:,:),       allocatable :: &
+  constitutive_dislotwin_interactionMatrix_SlipSlip, &  ! interaction matrix of the different slip systems for each instance
+  constitutive_dislotwin_interactionMatrix_SlipTwin, &  ! interaction matrix of slip systems with twin systems for each instance
+  constitutive_dislotwin_interactionMatrix_TwinSlip, &  ! interaction matrix of twin systems with slip systems for each instance
+  constitutive_dislotwin_interactionMatrix_TwinTwin, &  ! interaction matrix of the different twin systems for each instance
+  constitutive_dislotwin_forestProjectionEdge           ! matrix of forest projections of edge dislocations for each instance
 real(pReal),       dimension(:,:,:,:,:),   allocatable :: constitutive_dislotwin_sbSv
 
+!****************************************
+public :: constitutive_dislotwin_microstructure, &
+ constitutive_dislotwin_init, &
+ constitutive_dislotwin_stateInit, &
+ constitutive_dislotwin_homogenizedC, &
+ constitutive_dislotwin_LpAndItsTangent, &
+ constitutive_dislotwin_dotState, &
+ constitutive_dislotwin_deltaState, &
+ constitutive_dislotwin_dotTemperature, &
+ constitutive_dislotwin_postResults, &
+ constitutive_dislotwin_aTolState
+!****************************************
+
 CONTAINS
-!****************************************
-!* - constitutive_dislotwin_init
-!* - constitutive_dislotwin_stateInit
-!* - constitutive_dislotwin_relevantState
-!* - constitutive_dislotwin_homogenizedC
-!* - constitutive_dislotwin_microstructure
-!* - constitutive_dislotwin_LpAndItsTangent
-!* - constitutive_dislotwin_dotState
-!* - constitutive_dislotwin_deltaState
-!* - constitutive_dislotwin_dotTemperature
-!* - constitutive_dislotwin_postResults
-!****************************************
 
 subroutine constitutive_dislotwin_init(file)
 !**************************************

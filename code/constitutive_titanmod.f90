@@ -44,25 +44,25 @@
 ! shear_pyra
 ! shear_pyrca 
 
-MODULE constitutive_titanmod
-
-!* Include other modules
-use prec, only: pReal,pInt
+module constitutive_titanmod
+ use prec, only: &
+   pReal, &
+   pInt
 
 implicit none
 !* Lists of states and physical parameters
-character(len=*), parameter :: &
+character(len=*), parameter, public :: &
   constitutive_titanmod_label = 'titanmod'
 character(len=18), dimension(3), parameter :: &
-  constitutive_titanmod_listBasicSlipStates = (/'rho_edge    ', &
+  constitutive_titanmod_listBasicSlipStates = ['rho_edge    ', &
                                                 'rho_screw   ', &
-                                                'shear_system'/)
+                                                'shear_system']
 
 character(len=18), dimension(1), parameter :: &
-  constitutive_titanmod_listBasicTwinStates = (/'gdot_twin'/)
+  constitutive_titanmod_listBasicTwinStates = ['gdot_twin']
                                                                                             
 character(len=19), dimension(11), parameter :: &
-  constitutive_titanmod_listDependentSlipStates =(/'segment_edge       ', &
+  constitutive_titanmod_listDependentSlipStates =['segment_edge       ', &
                                                    'segment_screw      ', &
                                                    'resistance_edge    ', &
                                                    'resistance_screw   ', &
@@ -73,30 +73,30 @@ character(len=19), dimension(11), parameter :: &
                                                    'gdot_slip_screw    ', &
                                                    'stressratio_edge_p ', &
                                                    'stressratio_screw_p' &
-                                                   /)
+                                                   ]
 
 character(len=18), dimension(2), parameter :: &
-  constitutive_titanmod_listDependentTwinStates =(/'twin_fraction', &
+  constitutive_titanmod_listDependentTwinStates =['twin_fraction', &
                                                    'tau_twin     ' &
-                                                  /)
+                                                  ]
 real(pReal), parameter :: kB = 1.38e-23_pReal ! Boltzmann constant in J/Kelvin
 
 !* Definition of global variables
-integer(pInt), dimension(:), allocatable :: &
-  constitutive_titanmod_sizeDotState, &                ! number of dotStates
+integer(pInt), dimension(:), allocatable, public, protected :: &
   constitutive_titanmod_sizeState, &                   ! total number of microstructural state variables
+  constitutive_titanmod_sizeDotState, &                ! number of dotStates
   constitutive_titanmod_sizePostResults                ! cumulative size of post results
 
-integer(pInt), dimension(:,:), allocatable, target :: &
+integer(pInt), dimension(:,:), allocatable, target, public :: &
   constitutive_titanmod_sizePostResult                 ! size of each post result output
 
-character(len=64), dimension(:,:), allocatable, target :: &
+character(len=64), dimension(:,:), allocatable, target, public :: &
   constitutive_titanmod_output                         ! name of each post result output
 
 integer(pInt), dimension(:), allocatable :: & 
   constitutive_titanmod_Noutput                        ! number of outputs per instance of this plasticity 
 
-character(len=32), dimension(:), allocatable :: &
+character(len=32), dimension(:), allocatable, public, protected :: &
   constitutive_titanmod_structureName                  ! name of the lattice structure
 
 integer(pInt), dimension(:), allocatable :: & 
@@ -212,20 +212,20 @@ real(pReal), dimension(:,:,:),allocatable :: &
   constitutive_titanmod_forestProjectionScrew, &        ! matrix of forest projections of screw dislocations for each instance  
   constitutive_titanmod_TwinforestProjectionEdge, &     ! matrix of forest projections of edge dislocations in twin system for each instance  
   constitutive_titanmod_TwinforestProjectionScrew       ! matrix of forest projections of screw dislocations in twin system for each instance  
-CONTAINS
 !****************************************
-!* - constitutive_titanmod_init
-!* - constitutive_titanmod_stateInit
-!* - constitutive_titanmod_relevantState
-!* - constitutive_titanmod_homogenizedC
-!* - constitutive_titanmod_microstructure
-!* - constitutive_titanmod_LpAndItsTangent
-!* - constitutive_titanmod_dotState
-!* - constitutive_titanmod_deltaState
-!* - constitutive_titanmod_dotTemperature
-!* - constitutive_titanmod_postResults
+public :: constitutive_titanmod_microstructure, &
+ constitutive_titanmod_stateInit, &
+ constitutive_titanmod_init, &
+ constitutive_titanmod_LpAndItsTangent, &
+ constitutive_titanmod_dotState, &
+ constitutive_titanmod_deltaState, &
+ constitutive_titanmod_dotTemperature, &
+ constitutive_titanmod_postResults, &
+ constitutive_titanmod_homogenizedC, &
+ constitutive_titanmod_aTolState
 !****************************************
 
+CONTAINS
 
 subroutine constitutive_titanmod_init(file)
 !**************************************

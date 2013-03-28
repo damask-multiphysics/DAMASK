@@ -147,7 +147,6 @@ COMPILE_OPTIONS_ifort    +=-fpp\
                            -assume byterecl
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_ifort    +=$(COMPILE_OPTIONS_ifort)\
-                           -implicitnone\
                            -diag-enable sc3\
                            -diag-disable 5268\
                            -warn declarations\
@@ -167,7 +166,7 @@ endif
 #-diag-disable:            disables warnings, where                           
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
 #-warn:                    enables warnings, where
-#   declarations:            any undeclared names
+#   declarations:            any undeclared names (alternative name: -implicitnone)
 #   general:                 warning messages and informational messages are issued by the compiler
 #   usage:                   questionable programming practices
 #   interfaces:              checks the interfaces of all SUBROUTINEs called and FUNCTIONs invoked in your compilation against an external set of interface blocks
@@ -183,6 +182,7 @@ endif
 #   truncated_source:        Determines whether warnings occur when source exceeds the maximum column width in fixed-format files. (too many warnings because we have comments beyond character 132)
 #   uncalled:                Determines whether warnings occur when a statement function is never called
 #   all:
+# -name as_is: case sensitive Fortran!
 
 DEBUG_OPTIONS_ifort      :=-g\
                            -traceback\
@@ -209,14 +209,13 @@ DEBUG_OPTIONS_ifort      :=-g\
 #-heap-arrays:            should not be done for OpenMP, but set "ulimit -s unlimited" on shell. Probably it helps also to unlimit other limits
 #-check:                   checks at runtime, where  
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
-
-
-#-fmodule-private add later
+#   stack:
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_gfortran +=$(COMPILE_OPTIONS_gfortran)\
                            -ffree-line-length-132\
                            -fimplicit-none\
+                           -fmodule-private\
                            -Wall\
                            -Wextra\
                            -Wcharacter-truncation\
@@ -232,6 +231,7 @@ endif
 #-ffree-line-length-132:       restrict line length to the standard 132 characters
 #-fno-range-check:             disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
 #-fimplicit-none:              assume "implicit-none" even if not present in source
+#-fmodule-private:             assume "private" even if not present in source
 #-Wcharacter-truncation:       warn if character expressions (strings) are truncated
 #-Wunderflow:                  produce a warning when numerical constant expressions are encountered, which yield an UNDERFLOW during compilation
 #-Wsuggest-attribute=pure:

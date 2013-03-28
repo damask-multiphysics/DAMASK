@@ -55,7 +55,10 @@ module DAMASK_spectral_SolverBasic
  real(pReal), private,dimension(3,3,3,3) :: &
    C = 0.0_pReal, C_minmaxAvg = 0.0_pReal, &                                                        !< average stiffness
    C_lastInc = 0.0_pReal                                                                            !< average stiffness last increment
-
+ public :: &
+   basic_init, &
+   basic_solution, &
+   basic_destroy
 contains
  
 !--------------------------------------------------------------------------------------------------

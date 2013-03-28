@@ -87,7 +87,11 @@ module DAMASK_spectral_solverAL
    err_p                                                                                            !< difference of stress resulting from compatible and incompatible F
  logical, private :: ForwardData
  integer(pInt), private :: reportIter = 0_pInt
-
+ 
+ public :: &
+   AL_init, &
+   AL_solution, &
+   AL_destroy
  external :: &
   VecDestroy, &
   DMDestroy, &

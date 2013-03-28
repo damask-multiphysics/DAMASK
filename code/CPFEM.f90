@@ -47,6 +47,9 @@ module CPFEM
    CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt, &
    CPFEM_COLLECT         = 2_pInt**4_pInt, &
    CPFEM_EXPLICIT        = 2_pInt**5_pInt
+ 
+ public ::CPFEM_general, &
+   CPFEM_initAll
 
 contains
 

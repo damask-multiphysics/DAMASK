@@ -72,14 +72,14 @@ module DAMASK_spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type tSolutionState                                                                                !< return type of solution from spectral solver variants
+ type, public :: tSolutionState                                                                                !< return type of solution from spectral solver variants
    logical       :: converged         = .true.   
    logical       :: regrid            = .false.   
    logical       :: termIll           = .false.   
    integer(pInt) :: iterationsNeeded  = 0_pInt
  end type tSolutionState
 
- type tBoundaryCondition                                                                            !< set of parameters defining a boundary condition
+ type, public :: tBoundaryCondition                                                                            !< set of parameters defining a boundary condition
    real(pReal), dimension(3,3) :: values      = 0.0_pReal
    real(pReal), dimension(3,3) :: maskFloat   = 0.0_pReal
    logical,     dimension(3,3) :: maskLogical = .false.
