@@ -146,8 +146,7 @@ COMPILE_OPTIONS_ifort    +=-fpp\
                            -ftz\
                            -assume byterecl
 ifneq "$(FASTBUILD)" "YES"
-COMPILE_OPTIONS_ifort    +=$(COMPILE_OPTIONS_ifort)\
-                           -diag-enable sc3\
+COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
                            -diag-disable 5268\
                            -warn declarations\
                            -warn general\
@@ -212,8 +211,7 @@ DEBUG_OPTIONS_ifort      :=-g\
 #   stack:
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
-COMPILE_OPTIONS_gfortran +=$(COMPILE_OPTIONS_gfortran)\
-                           -ffree-line-length-132\
+COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
                            -fimplicit-none\
                            -fmodule-private\
                            -Wall\
