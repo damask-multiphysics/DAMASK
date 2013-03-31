@@ -63,9 +63,9 @@ module DAMASK_spectral_solverAL
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
    F_lastInc, &                                                                                     !< field of previous compatible deformation gradients
-   F_tau_lastInc, &                                                                              !< field of previous incompatible deformation gradient 
+   F_tau_lastInc, &                                                                                 !< field of previous incompatible deformation gradient 
    Fdot, &                                                                                          !< field of assumed rate of compatible deformation gradient
-   F_tauDot                                                                                      !< field of assumed rate of incopatible deformation gradient
+   F_tauDot                                                                                         !< field of assumed rate of incopatible deformation gradient
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -166,8 +166,7 @@ subroutine AL_init(temperature)
 #include "compilation_info.f90"
  
  allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (Fdot  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- !   allocate (Fdot,source = F_lastInc) somethin like that should be possible
+ allocate (Fdot  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)                               !< @Todo  sourced allocation allocate(Fdot,source = F_lastInc)
  allocate (F_tau_lastInc(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
  allocate (F_tauDot(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
     
@@ -367,18 +366,16 @@ use mesh, only: &
    F_tauDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_tau_lastInc,reshape(F_tau,[3,3,res(1),res(2),res(3)]))  
                 
-   F_lastInc        = reshape(F,       [3,3,res(1),res(2),res(3)])
+   F_lastInc     = reshape(F,       [3,3,res(1),res(2),res(3)])
    F_tau_lastInc = reshape(F_tau,[3,3,res(1),res(2),res(3)])
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient
- F        = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                ! ensure that it matches rotated F_aim
+ F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
                                math_rotate_backward33(F_aim,rotation_BC)),[9,res(1),res(2),res(3)])
- F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot), &                 ! does not have any average value as boundary condition
-                                                                          [9,res(1),res(2),res(3)])
-
+ F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot),  [9,res(1),res(2),res(3)]) ! does not have any average value as boundary condition
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
  CHKERRQ(ierr)
 
@@ -472,11 +469,11 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  integer(pInt) :: &
    i, j, k, n_ele
 
- F                 => x_scal(1:3,1:3,1,&
+ F              => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
  F_tau          => x_scal(1:3,1:3,2,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
- residual_F        => f_scal(1:3,1:3,1,&
+ residual_F     => f_scal(1:3,1:3,1,&
   X_RANGE,Y_RANGE,Z_RANGE)
  residual_F_tau => f_scal(1:3,1:3,2,&
   X_RANGE,Y_RANGE,Z_RANGE)

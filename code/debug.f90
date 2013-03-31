@@ -34,33 +34,34 @@ module debug
  implicit none
  private
  integer(pInt), parameter, public :: &
-   debug_levelSelective     = 2_pInt**0_pInt, &
-   debug_levelBasic         = 2_pInt**1_pInt, &
-   debug_levelExtensive     = 2_pInt**2_pInt
+   debug_LEVELSELECTIVE     = 2_pInt**0_pInt, &
+   debug_LEVELBASIC         = 2_pInt**1_pInt, &
+   debug_LEVELEXTENSIVE     = 2_pInt**2_pInt
  integer(pInt), parameter, private :: &
-   debug_maxGeneral         = debug_levelExtensive                                                  ! must be set to the last bitcode used by (potentially) all debug types
+   debug_MAXGENERAL         = debug_LEVELEXTENSIVE                                                  ! must be set to the last bitcode used by (potentially) all debug types
  integer(pInt), parameter, public :: &
-   debug_spectralRestart    = debug_maxGeneral*2_pInt**1_pInt, &
-   debug_spectralFFTW       = debug_maxGeneral*2_pInt**2_pInt, &
-   debug_spectralDivergence = debug_maxGeneral*2_pInt**3_pInt, &
-   debug_spectralRotation   = debug_maxGeneral*2_pInt**4_pInt, &
-   debug_spectralPETSc      = debug_maxGeneral*2_pInt**5_pInt
+   debug_SPECTRALRESTART    = debug_MAXGENERAL*2_pInt**1_pInt, &
+   debug_SPECTRALFFTW       = debug_MAXGENERAL*2_pInt**2_pInt, &
+   debug_SPECTRALDIVERGENCE = debug_MAXGENERAL*2_pInt**3_pInt, &
+   debug_SPECTRALROTATION   = debug_MAXGENERAL*2_pInt**4_pInt, &
+   debug_SPECTRALPETSC      = debug_MAXGENERAL*2_pInt**5_pInt
 
  integer(pInt), parameter, public :: &
-   debug_debug                   =  1_pInt, &
-   debug_math                    =  2_pInt, &
-   debug_FEsolving               =  3_pInt, &
-   debug_mesh                    =  4_pInt, &                                                       !< stores debug level for mesh part of DAMASK bitwise coded
-   debug_material                =  5_pInt, &                                                       !< stores debug level for material part of DAMASK bitwise coded
-   debug_lattice                 =  6_pInt, &                                                       !< stores debug level for lattice part of DAMASK bitwise coded
-   debug_constitutive            =  7_pInt, &                                                       !< stores debug level for constitutive part of DAMASK bitwise coded
-   debug_crystallite             =  8_pInt, &
-   debug_homogenization          =  9_pInt, &
+   debug_DEBUG                   =  1_pInt, &
+   debug_MATH                    =  2_pInt, &
+   debug_FESOLVING               =  3_pInt, &
+   debug_MESH                    =  4_pInt, &                                                       !< stores debug level for mesh part of DAMASK bitwise coded
+   debug_MATERIAL                =  5_pInt, &                                                       !< stores debug level for material part of DAMASK bitwise coded
+   debug_LATTICE                 =  6_pInt, &                                                       !< stores debug level for lattice part of DAMASK bitwise coded
+   debug_CONSTITUTIVE            =  7_pInt, &                                                       !< stores debug level for constitutive part of DAMASK bitwise coded
+   debug_CRYSTALLITE             =  8_pInt, &
+   debug_HOMOGENIZATION          =  9_pInt, &
    debug_CPFEM                   = 10_pInt, &
-   debug_spectral                = 11_pInt, &
-   debug_abaqus                  = 12_pInt
+   debug_SPECTRAL                = 11_pInt, &
+   debug_MARC                    = 12_pInt, &
+   debug_ABAQUS                  = 13_pInt
  integer(pInt), parameter, private :: &
-   debug_maxNtype                = debug_abaqus                                                     ! must be set to the maximum defined debug type
+   debug_MAXNTYPE                = debug_ABAQUS                                                     ! must be set to the maximum defined debug type
    
  integer(pInt),protected, dimension(debug_maxNtype+2_pInt),  public :: &                            ! specific ones, and 2 for "all" and "other"
    debug_level                    = 0_pInt
@@ -102,11 +103,11 @@ module debug
    debug_jacobianMin             =  huge(1.0_pReal)
  
  character(len=64), parameter, private ::  &
-   debug_configFile         = 'debug.config'                                                        ! name of configuration file
+   debug_CONFIGFILE         = 'debug.config'                                                        ! name of configuration file
 
 #ifdef PETSc 
  character(len=1024), parameter, public :: &
-   PETScDebug = ' -snes_view -snes_monitor ' 
+   PETSCDEBUG = ' -snes_view -snes_monitor ' 
 #endif
  public :: debug_init, &
            debug_reset, &
@@ -120,20 +121,22 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine debug_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use numerics, only: nStress, &
-                     nState, &
-                     nCryst, &
-                     nMPstate, &
-                     nHomog
- use IO,       only: IO_error, &
-                     IO_open_file_stat, &
-                     IO_isBlank, &
-                     IO_stringPos, &
-                     IO_stringValue, &
-                     IO_lc, &
-                     IO_floatValue, &
-                     IO_intValue, &
-                     IO_timeStamp
+ use numerics, only: &
+   nStress, &
+   nState, &
+   nCryst, &
+   nMPstate, &
+   nHomog
+ use IO, only: &
+   IO_error, &
+   IO_open_file_stat, &
+   IO_isBlank, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_lc, &
+   IO_floatValue, &
+   IO_intValue, &
+   IO_timeStamp
 
  implicit none
  integer(pInt), parameter                 :: fileunit    = 300_pInt  
@@ -190,53 +193,55 @@ subroutine debug_init
      what = 0_pInt
      select case(tag)
        case ('debug')
-         what = debug_debug
+         what = debug_DEBUG
        case ('math')
-         what = debug_math
+         what = debug_MATH
        case ('fesolving', 'fe')
-         what = debug_FEsolving
+         what = debug_FESOLVING
        case ('mesh')
-         what = debug_mesh
+         what = debug_MESH
        case ('material')
-         what = debug_material
+         what = debug_MATERIAL
        case ('lattice')
-         what = debug_lattice
+         what = debug_LATTICE
        case ('constitutive')
-         what = debug_constitutive
+         what = debug_CONSTITUTIVE
        case ('crystallite')
-         what = debug_crystallite
+         what = debug_CRYSTALLITE
        case ('homogenization')
-         what = debug_homogenization
+         what = debug_HOMOGENIZATION
        case ('cpfem')
          what = debug_CPFEM
        case ('spectral')
-         what = debug_spectral
+         what = debug_SPECTRAL
+       case ('MARC')
+         what = debug_MARC
        case ('abaqus')
-         what = debug_abaqus
+         what = debug_ABAQUS
        case ('all')
-         what = debug_maxNtype + 1_pInt
+         what = debug_MAXNTYPE + 1_pInt
        case ('other')
-         what = debug_maxNtype + 2_pInt
+         what = debug_MAXNTYPE + 2_pInt
      end select
      if(what /= 0) then
        do i = 2_pInt, positions(1)
          select case(IO_lc(IO_stringValue(line,positions,i)))
            case('basic')
-             debug_level(what) = ior(debug_level(what), debug_levelBasic)
+             debug_level(what) = ior(debug_level(what), debug_LEVELBASIC)
            case('extensive')
-             debug_level(what) = ior(debug_level(what), debug_levelExtensive)
+             debug_level(what) = ior(debug_level(what), debug_LEVELEXTENSIVE)
            case('selective')
-             debug_level(what) = ior(debug_level(what), debug_levelSelective)
+             debug_level(what) = ior(debug_level(what), debug_LEVELSELECTIVE)
            case('restart')
-             debug_level(what) = ior(debug_level(what), debug_spectralRestart)
+             debug_level(what) = ior(debug_level(what), debug_SPECTRALRESTART)
            case('fft','fftw')
-             debug_level(what) = ior(debug_level(what), debug_spectralFFTW)
+             debug_level(what) = ior(debug_level(what), debug_SPECTRALFFTW)
            case('divergence')
-             debug_level(what) = ior(debug_level(what), debug_spectralDivergence)
+             debug_level(what) = ior(debug_level(what), debug_SPECTRALDIVERGENCE)
            case('rotation')
-             debug_level(what) = ior(debug_level(what), debug_spectralRotation)
+             debug_level(what) = ior(debug_level(what), debug_SPECTRALROTATION)
            case('petsc')
-             debug_level(what) = ior(debug_level(what), debug_spectralPETSc)
+             debug_level(what) = ior(debug_level(what), debug_SPECTRALPETSC)
          end select
        enddo
       endif
@@ -245,64 +250,66 @@ subroutine debug_init
  
    do i = 1_pInt, debug_maxNtype
      if (debug_level(i) == 0) &
-       debug_level(i) = ior(debug_level(i), debug_level(debug_maxNtype + 2_pInt))                   ! fill undefined debug types with levels specified by "other" 
+       debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 2_pInt))                   ! fill undefined debug types with levels specified by "other" 
 
-       debug_level(i) = ior(debug_level(i), debug_level(debug_maxNtype + 1_pInt))                   ! fill all debug types with levels specified by "all" 
+       debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 1_pInt))                   ! fill all debug types with levels specified by "all" 
    enddo
   
-   if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) &
+   if (iand(debug_level(debug_debug),debug_LEVELBASIC) /= 0) &
      write(6,'(a,/)') ' using values from config file'
  else fileExists
-   if (iand(debug_level(debug_debug),debug_levelBasic) /= 0) &
+   if (iand(debug_level(debug_debug),debug_LEVELBASIC) /= 0) &
      write(6,'(a,/)') ' using standard values'
  endif fileExists
 
 !--------------------------------------------------------------------------------------------------
 ! output switched on (debug level for debug must be extensive)
- if (iand(debug_level(debug_debug),debug_levelExtensive) /= 0) then
-     do i = 1_pInt, debug_maxNtype
+ if (iand(debug_level(debug_debug),debug_LEVELEXTENSIVE) /= 0) then
+     do i = 1_pInt, debug_MAXNTYPE
        select case(i)
-         case (debug_debug)
+         case (debug_DEBUG)
            tag = 'Debug'
-         case (debug_math)
+         case (debug_MATH)
            tag = 'Math'
-         case (debug_FEsolving)
+         case (debug_FESOLVING)
            tag = 'FEsolving'
-         case (debug_mesh)
+         case (debug_MESH)
            tag = 'Mesh'
-         case (debug_material)
+         case (debug_MATERIAL)
            tag = 'Material'
-         case (debug_lattice)
+         case (debug_LATTICE)
            tag = 'Lattice'
-         case (debug_constitutive)
+         case (debug_CONSTITUTIVE)
            tag = 'Constitutive'
-         case (debug_crystallite)
+         case (debug_CRYSTALLITE)
            tag = 'Crystallite'
-         case (debug_homogenization)
+         case (debug_HOMOGENIZATION)
            tag = 'Homogenizaiton'
          case (debug_CPFEM)
            tag = 'CPFEM'
-         case (debug_spectral)
+         case (debug_SPECTRAL)
            tag = 'Spectral solver'
-         case (debug_abaqus)
+         case (debug_MARC)
+           tag = 'MSC.MARC FEM solver'
+         case (debug_ABAQUS)
            tag = 'ABAQUS FEM solver'
        end select
            
        if(debug_level(i) /= 0) then
          write(6,'(a,a)') tag,' debugging:'
-         if(iand(debug_level(i),debug_levelBasic)        /= 0) write(6,'(a)') ' basic'
-         if(iand(debug_level(i),debug_levelExtensive)    /= 0) write(6,'(a)') ' extensive'
-         if(iand(debug_level(i),debug_levelSelective)    /= 0) then
+         if(iand(debug_level(i),debug_LEVELBASIC)        /= 0) write(6,'(a)') ' basic'
+         if(iand(debug_level(i),debug_LEVELEXTENSIVE)    /= 0) write(6,'(a)') ' extensive'
+         if(iand(debug_level(i),debug_LEVELSELECTIVE)    /= 0) then
            write(6,'(a)') 'selective on:'
            write(6,'(a24,1x,i8)') 'element:              ',debug_e
            write(6,'(a24,1x,i8)') 'ip:                   ',debug_i
            write(6,'(a24,1x,i8)') 'grain:                ',debug_g
          endif
-         if(iand(debug_level(i),debug_spectralRestart)   /= 0) write(6,'(a)') ' restart'
-         if(iand(debug_level(i),debug_spectralFFTW)      /= 0) write(6,'(a)') ' FFTW'
-         if(iand(debug_level(i),debug_spectralDivergence)/= 0) write(6,'(a)') ' divergence'
-         if(iand(debug_level(i),debug_spectralRotation)  /= 0) write(6,'(a)') ' rotation'
-         if(iand(debug_level(i),debug_spectralPETSc)     /= 0) write(6,'(a)') ' PETSc'
+         if(iand(debug_level(i),debug_SPECTRALRESTART)   /= 0) write(6,'(a)') ' restart'
+         if(iand(debug_level(i),debug_SPECTRALFFTW)      /= 0) write(6,'(a)') ' FFTW'
+         if(iand(debug_level(i),debug_SPECTRALDIVERGENCE)/= 0) write(6,'(a)') ' divergence'
+         if(iand(debug_level(i),debug_SPECTRALROTATION)  /= 0) write(6,'(a)') ' rotation'
+         if(iand(debug_level(i),debug_SPECTRALPETSC)     /= 0) write(6,'(a)') ' PETSc'
        endif
      enddo
  endif
@@ -361,38 +368,35 @@ subroutine debug_info
  call system_clock(count_rate=tickrate)
 
  !$OMP CRITICAL (write2out)
-   debugOutputCryst: if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0) then
+   debugOutputCryst: if (iand(debug_level(debug_CRYSTALLITE),debug_LEVELBASIC) /= 0) then
      write(6,'(/,a,/)') ' DEBUG Info (from previous cycle)'
      write(6,'(a33,1x,i12)')      'total calls to LpAndItsTangent  :',debug_cumLpCalls
      if (debug_cumLpCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumLpTicks,pReal)&
-                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
+         real(debug_cumLpTicks,pReal)/real(tickrate,pReal)
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumLpTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)/real(debug_cumLpCalls,pReal)
+         real(debug_cumLpTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumLpCalls,pReal)
      endif
      write(6,'(/,a33,1x,i12)')     'total calls to collectDotState  :',debug_cumDotStateCalls
      if (debug_cumdotStateCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotStateTicks,pReal)&
-                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
+         real(debug_cumDotStateTicks,pReal)/real(tickrate,pReal)
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
-                                                                     /real(debug_cumDotStateCalls,pReal)
+         real(debug_cumDotStateTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDotStateCalls,pReal)
      endif
      write(6,'(/,a33,1x,i12)')    'total calls to collectDeltaState:',debug_cumDeltaStateCalls
      if (debug_cumDeltaStateCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDeltaStateTicks,pReal)&
-                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
+         real(debug_cumDeltaStateTicks,pReal)/real(tickrate,pReal)
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumDeltaStateTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
-                                                                     /real(debug_cumDeltaStateCalls,pReal)
+         real(debug_cumDeltaStateTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDeltaStateCalls,pReal)
      endif
      write(6,'(/,a33,1x,i12)')    'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
      if (debug_cumdotTemperatureCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',real(debug_cumDotTemperatureTicks,pReal)&
-                                                                            /real(tickrate,pReal)
+       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
+         real(debug_cumDotTemperatureTicks,pReal)/real(tickrate,pReal)
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumDotTemperatureTicks,pReal)*1.0e6_pReal/real(tickrate,pReal)&
-                                                                 /real(debug_cumDotTemperatureCalls,pReal)
+         real(debug_cumDotTemperatureTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDotTemperatureCalls,pReal)
      endif
    
      integral = 0_pInt
@@ -436,7 +440,7 @@ subroutine debug_info
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_CrystalliteLoopDistribution)
    endif debugOutputCryst
      
-   debugOutputHomog: if (iand(debug_level(debug_homogenization),debug_levelBasic) /= 0) then
+   debugOutputHomog: if (iand(debug_level(debug_HOMOGENIZATION),debug_LEVELBASIC) /= 0) then
      integral = 0_pInt
      write(6,'(2/,a)') 'distribution_MaterialpointStateLoop :'
      do j=1_pInt,nMPstate
@@ -460,7 +464,7 @@ subroutine debug_info
      write(6,'(a15,i10,1x,i10)') '          total',integral,sum(debug_MaterialpointLoopDistribution)    
    endif debugOutputHomog
      
-   debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_levelBasic) /= 0) then
+   debugOutputCPFEM: if (iand(debug_level(debug_CPFEM),debug_LEVELBASIC) /= 0) then
      write(6,'(2/,a,/)') ' Extreme values of returned stress and jacobian'
      write(6,'(a39)')                      '                      value     el   ip'
      write(6,'(a14,1x,e12.3,1x,i6,1x,i4)')   ' stress   min :', debug_stressMin, debug_stressMinLocation

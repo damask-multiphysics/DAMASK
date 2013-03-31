@@ -30,7 +30,6 @@ module prec
 
  implicit none
  private 
-
 #if (FLOAT==4)
 #ifdef Spectral
  SPECTRAL SOLVER DOES NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
