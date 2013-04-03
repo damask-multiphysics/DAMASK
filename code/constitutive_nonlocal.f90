@@ -2364,14 +2364,18 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     
     if (considerEnteringFlux) then
       if(numerics_timeSyncing .and. (subfrac(g,neighboring_ip,neighboring_el) /= subfrac(g,ip,el))) then                            ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
-        forall (t = 1_pInt:4_pInt) &
+        forall (t = 1_pInt:4_pInt)
           neighboring_v(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
-        forall (t = 1_pInt:8_pInt) &
+          neighboring_rhoSgl(1_pInt:ns,t) = max(state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
+        endforall
+        forall (t = 5_pInt:8_pInt) &
           neighboring_rhoSgl(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
       else
-        forall (t = 1_pInt:4_pInt) &
+        forall (t = 1_pInt:4_pInt)
           neighboring_v(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
-        forall (t = 1_pInt:8_pInt) &
+          neighboring_rhoSgl(1_pInt:ns,t) = max(state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
+        endforall
+        forall (t = 5_pInt:8_pInt) &
           neighboring_rhoSgl(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
       endif
       where (abs(neighboring_rhoSgl) * mesh_ipVolume(neighboring_ip,neighboring_el) ** 0.667_pReal &
@@ -3260,15 +3264,6 @@ where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
 
 
 !* Calculate shear rate
-
-do t = 1_pInt,4_pInt
-  do s = 1_pInt,ns
-    if (rhoSgl(s,t+4_pInt) * v(s,t) < 0.0_pReal) then
-      rhoSgl(s,t) = rhoSgl(s,t) + abs(rhoSgl(s,t+4_pInt))                                                                  ! remobilization of immobile singles for changing sign of v (bauschinger effect)
-      rhoSgl(s,t+4_pInt) = 0.0_pReal                                                                                       ! remobilization of immobile singles for changing sign of v (bauschinger effect)
-    endif
-  enddo
-enddo
 
 forall (t = 1_pInt:4_pInt) &
   gdot(1:ns,t) = rhoSgl(1:ns,t) * constitutive_nonlocal_burgers(1:ns,myInstance) * v(1:ns,t)
