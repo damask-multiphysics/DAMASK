@@ -1691,11 +1691,11 @@ integer(pInt)                               myInstance, &               ! curren
 real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
 real(pReal), dimension(3,3,2)   ::          nonSchmid_tensor
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
-                                            rhoSgl                      ! single dislocation densities (including used) 
+                                            rhoSgl                      ! single dislocation densities (including blocked) 
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             v, &                        ! velocity
                                             tau, &                      ! resolved shear stress including non Schmid and backstress terms
-                                            dgdot_dtau, &          ! derivative of the shear rate with respect to the shear stress
+                                            dgdot_dtau, &               ! derivative of the shear rate with respect to the shear stress
                                             dv_dtau                     ! velocity derivative with respect to the shear stress
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             gdotTotal, &                ! shear rate
@@ -1728,21 +1728,21 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal
 !*** get effective resolved shear stress
 
 do s = 1_pInt,ns
-  tau(s,1:4) = math_mul6x6(Tstar_v, lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure)) &
+  tau(s,1:4) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure)) &
          + tauBack(s)
 !*** adding non schmid contributions to ONLY screw components if present (i.e.  if NnonSchmid(myStructure) > 0)
   nonSchmid_tensor(1:3,1:3,1)  = &
-               math_Mandel6to33(lattice_Sslip_v(:,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_Mandel6to33(lattice_Sslip_v(1:6,1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
   nonSchmid_tensor(1:3,1:3,2)  = nonSchmid_tensor(1:3,1:3,1)
   do k = 1_pInt, NnonSchmid(myStructure)
     tau(s,3) = tau(s,3) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)* &
-               math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
     tau(s,4) = tau(s,4) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)* &
-               math_mul6x6(Tstar_v, lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
     nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)*&
-               math_Mandel6to33(lattice_Sslip_v(:,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_Mandel6to33(lattice_Sslip_v(1:6,2*k,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
     nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_nonlocal_nonSchmidCoeff(k,myInstance)*&
-               math_Mandel6to33(lattice_Sslip_v(:,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+               math_Mandel6to33(lattice_Sslip_v(1:6,2*k+1,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
   enddo
 enddo
 
@@ -2394,6 +2394,7 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
           if (neighboring_v(s,t) * math_mul3x3(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &                                        ! flux from my neighbor to me == entering flux for me
               .and. v(s,t) * neighboring_v(s,t) >= 0.0_pReal ) then                                                                 ! ... only if no sign change in flux density  
             do deads = 0_pInt,4_pInt,4_pInt
+              if (deads == 4_pInt .and. neighboring_rhoSgl(s,t+4_pInt) * neighboring_v(s,t) < 0.0_pReal) exit                       ! make sure that formerly blocked density due to stress sign change is first remobilized, otherwise we directly enter here without having produced any strain at neighbor
               lineLength = abs(neighboring_rhoSgl(s,t+deads)) * neighboring_v(s,t) &
                          * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                                                       ! positive line length that wants to enter through this interface
               where (constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) > 0.0_pReal) &                                      ! positive compatibility...
@@ -2461,8 +2462,10 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
             rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                   ! subtract dislocation flux from current type
             rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
                                                              * sign(1.0_pReal, vMe(s,t))                                            ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
-            lineLength = rhoSglMe(s,t+4_pInt) * vMe(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                       ! positive line length of deads that wants to leave through this interface
-            rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) - lineLength / mesh_ipVolume(ip,el) * transmissivity                    ! dead dislocations leaving through this interface
+            if (rhoSglMe(s,t+4_pInt) * vMe(s,t) > 0.0_pReal) then                                                                   ! make sure that formerly blocked density due to stress sign change is first remobilized, otherwise we directly jump to neighbor without having produced any strain here
+              lineLength = rhoSglMe(s,t+4_pInt) * vMe(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                     ! positive line length of deads that wants to leave through this interface
+              rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) - lineLength / mesh_ipVolume(ip,el) * transmissivity                  ! dead dislocations leaving through this interface
+            endif
           endif
         enddo
       enddo
