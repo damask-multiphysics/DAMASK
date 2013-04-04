@@ -41,7 +41,7 @@ private
 character (len=*), parameter, public :: &
 constitutive_nonlocal_label = 'nonlocal'
 
-character(len=22), dimension(10), parameter, private :: &
+character(len=22), dimension(11), parameter, private :: &
 constitutive_nonlocal_listBasicStates = (/'rhoSglEdgePosMobile   ', &
                                           'rhoSglEdgeNegMobile   ', &
                                           'rhoSglScrewPosMobile  ', &
@@ -51,7 +51,8 @@ constitutive_nonlocal_listBasicStates = (/'rhoSglEdgePosMobile   ', &
                                           'rhoSglScrewPosImmobile', &
                                           'rhoSglScrewNegImmobile', &
                                           'rhoDipEdge            ', &
-                                          'rhoDipScrew           ' /)! list of "basic" microstructural state variables that are independent from other state variables
+                                          'rhoDipScrew           ', &
+                                          'accumulatedshear      ' /)! list of "basic" microstructural state variables that are independent from other state variables
 
 character(len=16), dimension(3), parameter, private :: &
 constitutive_nonlocal_listDependentStates = (/'rhoForest       ', &
@@ -64,7 +65,7 @@ constitutive_nonlocal_listOtherStates = (/'velocityEdgePos     ', &
                                           'velocityScrewPos    ', &
                                           'velocityScrewNeg    ', &
                                           'maxDipoleHeightEdge ', &
-                                          'maxDipoleHeightScrew' /)      ! list of other dependent state variables that are not updated by microstructure
+                                          'maxDipoleHeightScrew'  /) ! list of other dependent state variables that are not updated by microstructure
 
 real(pReal), parameter, private :: &
 kB = 1.38e-23_pReal                                                  ! Physical parameter, Boltzmann constant in J/Kelvin
@@ -110,6 +111,7 @@ constitutive_nonlocal_atomicVolume, &                                ! atomic vo
 constitutive_nonlocal_Dsd0, &                                        ! prefactor for self-diffusion coefficient
 constitutive_nonlocal_Qsd, &                                         ! activation enthalpy for diffusion
 constitutive_nonlocal_aTolRho, &                                     ! absolute tolerance for dislocation density in state integration
+constitutive_nonlocal_aTolShear, &                                   ! absolute tolerance for accumulated shear in state integration
 constitutive_nonlocal_significantRho, &                              ! density considered significant
 constitutive_nonlocal_significantN, &                                ! number of dislocations considered significant
 constitutive_nonlocal_R, &                                           ! cutoff radius for dislocation stress
@@ -156,7 +158,6 @@ constitutive_nonlocal_interactionMatrixSlipSlip                      ! interacti
 
 real(pReal), dimension(:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_lattice2slip, &                                ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
-constitutive_nonlocal_accumulatedShear, &                            ! accumulated shear per slip system up to the start of the FE increment
 constitutive_nonlocal_rhoDotEdgeJogs, &
 constitutive_nonlocal_sourceProbability
 
@@ -310,6 +311,7 @@ allocate(constitutive_nonlocal_atomicVolume(maxNinstance))
 allocate(constitutive_nonlocal_Dsd0(maxNinstance))
 allocate(constitutive_nonlocal_Qsd(maxNinstance))
 allocate(constitutive_nonlocal_aTolRho(maxNinstance))
+allocate(constitutive_nonlocal_aTolShear(maxNinstance))
 allocate(constitutive_nonlocal_significantRho(maxNinstance))
 allocate(constitutive_nonlocal_significantN(maxNinstance))
 allocate(constitutive_nonlocal_Cslip_66(6,6,maxNinstance))
@@ -341,6 +343,7 @@ constitutive_nonlocal_atomicVolume = 0.0_pReal
 constitutive_nonlocal_Dsd0 = -1.0_pReal
 constitutive_nonlocal_Qsd = 0.0_pReal
 constitutive_nonlocal_aTolRho = 0.0_pReal
+constitutive_nonlocal_aTolShear = 0.0_pReal
 constitutive_nonlocal_significantRho = 0.0_pReal
 constitutive_nonlocal_significantN = 0.0_pReal
 constitutive_nonlocal_nu = 0.0_pReal
@@ -500,8 +503,10 @@ do                                                                              
         constitutive_nonlocal_Dsd0(i) = IO_floatValue(line,positions,2_pInt)
       case('selfdiffusionenergy','qsd')
         constitutive_nonlocal_Qsd(i) = IO_floatValue(line,positions,2_pInt)
-      case('atol_rho','absolutetolerancerho','absolutetolerance_rho','absolutetolerancedensity','absolutetolerance_density')
+      case('atol_rho','atol_density','absolutetolerancedensity','absolutetolerance_density')
         constitutive_nonlocal_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
+      case('atol_shear','atol_plasticshear','atol_accumulatedshear','absolutetoleranceshear','absolutetolerance_shear')
+        constitutive_nonlocal_aTolShear(i) = IO_floatValue(line,positions,2_pInt)
       case('significantrho','significant_rho','significantdensity','significant_density')
         constitutive_nonlocal_significantRho(i) = IO_floatValue(line,positions,2_pInt)
       case('significantn','significant_n','significantdislocations','significant_dislcations')
@@ -634,6 +639,8 @@ enddo
   if (constitutive_nonlocal_Qsd(i) <= 0.0_pReal)                        call IO_error(211_pInt,ext_msg='selfDiffusionEnergy (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_aTolRho(i) <= 0.0_pReal)                    call IO_error(211_pInt,ext_msg='aTol_rho (' &
+                                                                             //constitutive_nonlocal_label//')')
+  if (constitutive_nonlocal_aTolShear(i) <= 0.0_pReal)                  call IO_error(211_pInt,ext_msg='aTol_shear (' &
                                                                              //constitutive_nonlocal_label//')')
   if (constitutive_nonlocal_significantRho(i) < 0.0_pReal)              call IO_error(211_pInt,ext_msg='significantRho (' &
                                                                              //constitutive_nonlocal_label//')')
@@ -1059,6 +1066,14 @@ do myInstance = 1_pInt,maxNinstance
       enddo
     enddo
   endif
+  do el = 1_pInt,mesh_NcpElems
+    do ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,el)))
+      if (constitutive_nonlocal_label == phase_plasticity(material_phase(1,ip,el)) &
+          .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
+        state(1,ip,el)%p(10*ns+1:11*ns) = 0.0_pReal
+      endif
+    enddo
+  enddo
 enddo
 
 if (maxNinstance > 0_pInt) then
@@ -1084,15 +1099,19 @@ use prec,     only: pReal, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the plasticity
+integer(pInt), intent(in) :: myInstance                       ! number specifying the current instance of the plasticity
 
 !*** output variables
 real(pReal), dimension(constitutive_nonlocal_sizeState(myInstance)) :: &
                               constitutive_nonlocal_aTolState ! absolute state tolerance for the current instance of this plasticity
 
 !*** local variables
+integer(pInt)             :: ns
 
-constitutive_nonlocal_aTolState = constitutive_nonlocal_aTolRho(myInstance)
+ns = constitutive_nonlocal_totalNslip(myInstance)
+constitutive_nonlocal_aTolState = 0.0_pReal
+constitutive_nonlocal_aTolState(1:10*ns) = constitutive_nonlocal_aTolRho(myInstance)
+constitutive_nonlocal_aTolState(10*ns+1:11*ns) = constitutive_nonlocal_aTolShear(myInstance)
 
 endfunction
 
@@ -1436,9 +1455,9 @@ endif
 
 !*** set dependent states
 
-state(g,ip,el)%p(10_pInt*ns+1:11_pInt*ns) = rhoForest
-state(g,ip,el)%p(11_pInt*ns+1:12_pInt*ns) = tauThreshold
-state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauBack
+state(g,ip,el)%p(11_pInt*ns+1:12_pInt*ns) = rhoForest
+state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauThreshold
+state(g,ip,el)%p(13_pInt*ns+1:14_pInt*ns) = tauBack
 
 
 #ifndef _OPENMP
@@ -1532,7 +1551,7 @@ real(pReal)                                 tauRel_P, &
 instance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = constitutive_nonlocal_totalNslip(instance)
 
-tauThreshold = state%p(11_pInt*ns+1:12_pInt*ns)
+tauThreshold = state%p(12_pInt*ns+1:13_pInt*ns)
 tauEff = abs(tau) - tauThreshold
 
 p = constitutive_nonlocal_p(instance)
@@ -1719,7 +1738,7 @@ forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
   rhoSgl(s,t) = max(state%p((t-1_pInt)*ns+s), 0.0_pReal)
 forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
   rhoSgl(s,t) = state%p((t-1_pInt)*ns+s)
-tauBack = state%p(12_pInt*ns+1:13_pInt*ns)
+tauBack = state%p(13_pInt*ns+1:14_pInt*ns)
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
@@ -1754,13 +1773,13 @@ if (myStructure == 1_pInt .and. NnonSchmid(myStructure) == 0_pInt) then   ! for 
   do t = 1_pInt,4_pInt
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
-    state%p((12_pInt+t)*ns+1:(13_pInt+t)*ns) = v(1:ns,1)
+    state%p((13_pInt+t)*ns+1:(14_pInt+t)*ns) = v(1:ns,1)
   enddo
 else                              ! for all other lattice structures the velcities may vary with character and sign
   do t = 1_pInt,4_pInt
     c = (t-1_pInt)/2_pInt+1_pInt
     call constitutive_nonlocal_kinetics(v(1:ns,t), tau(1:ns,t), c, Temperature, state, g, ip, el, dv_dtau(1:ns,t))
-    state%p((12+t)*ns+1:(13+t)*ns) = v(1:ns,t)
+    state%p((13+t)*ns+1:(14+t)*ns) = v(1:ns,t)
   enddo
 endif
 
@@ -1906,11 +1925,11 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
   rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
   rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)
-tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
+tauBack = state(g,ip,el)%p(13_pInt*ns+1:14_pInt*ns)
 forall (t = 1_pInt:4_pInt) &
-  v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+  v(1_pInt:ns,t) = state(g,ip,el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
 forall (c = 1_pInt:2_pInt) &
-  dUpperOld(1_pInt:ns,c) = state(g,ip,el)%p((16_pInt+c)*ns+1_pInt:(17_pInt+c)*ns)
+  dUpperOld(1_pInt:ns,c) = state(g,ip,el)%p((17_pInt+c)*ns+1_pInt:(18_pInt+c)*ns)
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
@@ -1974,7 +1993,7 @@ forall (t=1_pInt:4_pInt) &
 !*** store new maximum dipole height in state
 
 forall (c = 1_pInt:2_pInt) &
-  state(g,ip,el)%p((16_pInt+c)*ns+1_pInt:(17_pInt+c)*ns) = dUpper(1_pInt:ns,c) 
+  state(g,ip,el)%p((17_pInt+c)*ns+1_pInt:(18_pInt+c)*ns) = dUpper(1_pInt:ns,c) 
 
 
 
@@ -2031,7 +2050,7 @@ use math,     only: math_norm3, &
                     math_inv33, &
                     math_det33, &
                     math_transpose33, &  
-                    pi                
+                    pi
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_element, &
@@ -2171,11 +2190,11 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
   rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
   rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)
-rhoForest = state(g,ip,el)%p(10_pInt*ns+1:11_pInt*ns)
-tauThreshold = state(g,ip,el)%p(11_pInt*ns+1_pInt:12_pInt*ns)
-tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
+rhoForest = state(g,ip,el)%p(11_pInt*ns+1:12_pInt*ns)
+tauThreshold = state(g,ip,el)%p(12_pInt*ns+1_pInt:13_pInt*ns)
+tauBack = state(g,ip,el)%p(13_pInt*ns+1:14_pInt*ns)
 forall (t = 1_pInt:4_pInt) &
-  v(1_pInt:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+  v(1_pInt:ns,t) = state(g,ip,el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
 rhoSglOriginal = rhoSgl
 rhoDipOriginal = rhoDip
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
@@ -2365,14 +2384,14 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
     if (considerEnteringFlux) then
       if(numerics_timeSyncing .and. (subfrac(g,neighboring_ip,neighboring_el) /= subfrac(g,ip,el))) then                            ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
         forall (t = 1_pInt:4_pInt)
-          neighboring_v(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+          neighboring_v(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
           neighboring_rhoSgl(1_pInt:ns,t) = max(state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
         endforall
         forall (t = 5_pInt:8_pInt) &
           neighboring_rhoSgl(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
       else
         forall (t = 1_pInt:4_pInt)
-          neighboring_v(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+          neighboring_v(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
           neighboring_rhoSgl(1_pInt:ns,t) = max(state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
         endforall
         forall (t = 5_pInt:8_pInt) &
@@ -2588,6 +2607,7 @@ if (    any(rhoSglOriginal(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constituti
   return
 else
   constitutive_nonlocal_dotState(1:10_pInt*ns) = reshape(rhoDot,(/10_pInt*ns/))
+  constitutive_nonlocal_dotState(10_pInt*ns+1:11_pInt*ns) = sum(gdot,2)
 endif
 
 endfunction
@@ -3251,12 +3271,12 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
   rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
 forall (c = 1_pInt:2_pInt) &
   rhoDip(1:ns,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+1_pInt:(8_pInt+c)*ns), 0.0_pReal)
-rhoForest = state(g,ip,el)%p(10_pInt*ns+1:11_pInt*ns)
-tauThreshold = state(g,ip,el)%p(11_pInt*ns+1:12_pInt*ns)
-tauBack = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
+rhoForest = state(g,ip,el)%p(11_pInt*ns+1:12_pInt*ns)
+tauThreshold = state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns)
+tauBack = state(g,ip,el)%p(13_pInt*ns+1:14_pInt*ns)
 forall (t = 1_pInt:8_pInt) rhoDotSgl(1:ns,t) = dotState%p((t-1_pInt)*ns+1_pInt:t*ns)
 forall (c = 1_pInt:2_pInt) rhoDotDip(1:ns,c) = dotState%p((7_pInt+c)*ns+1_pInt:(8_pInt+c)*ns)
-forall (t = 1_pInt:4_pInt) v(1:ns,t) = state(g,ip,el)%p((12_pInt+t)*ns+1_pInt:(13_pInt+t)*ns)
+forall (t = 1_pInt:4_pInt) v(1:ns,t) = state(g,ip,el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(myInstance) &
        .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
@@ -3625,9 +3645,7 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
       cs = cs + 6_pInt
     
     case('accumulatedshear')
-      constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el) + sum(gdot,2)*dt
-      !$OMP FLUSH(constitutive_nonlocal_accumulatedShear)
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = constitutive_nonlocal_accumulatedShear(1:ns,g,ip,el)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(g,ip,el)%p(10*ns+1:11*ns)
       cs = cs + ns
     
     case('boundarylayer')
