@@ -715,9 +715,6 @@ constitutive_nonlocal_interactionMatrixSlipSlip = 0.0_pReal
 allocate(constitutive_nonlocal_lattice2slip(1:3, 1:3, maxTotalNslip, maxNinstance))
 constitutive_nonlocal_lattice2slip = 0.0_pReal
 
-allocate(constitutive_nonlocal_accumulatedShear(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-constitutive_nonlocal_accumulatedShear = 0.0_pReal
-
 allocate(constitutive_nonlocal_sourceProbability(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_sourceProbability = 2.0_pReal
 
