@@ -346,8 +346,8 @@ module mesh
 
  private :: &
 #ifdef Spectral
-            mesh_spectral_getResolution, &
-            mesh_spectral_getDimension, &
+            mesh_spectral_getGrid, &
+            mesh_spectral_getSize, &
             mesh_spectral_getHomogenization, &
             mesh_spectral_count_nodesAndElements, &
             mesh_spectral_count_cpElements, &
@@ -453,10 +453,10 @@ subroutine mesh_init(ip,el)
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
 #ifdef Spectral
  call IO_open_file(fileUnit,geometryFile)                                                           ! parse info from geometry file...
- res = mesh_spectral_getResolution(fileUnit)
+ res = mesh_spectral_getGrid(fileUnit)
  res1_red = res(1)/2_pInt + 1_pInt
  wgt = 1.0/real(product(res),pReal)
- geomdim = mesh_spectral_getDimension(fileUnit)
+ geomdim = mesh_spectral_getSize(fileUnit)
  homog = mesh_spectral_getHomogenization(fileUnit)
  
 !--------------------------------------------------------------------------------------------------
@@ -776,10 +776,10 @@ endfunction mesh_cellCenterCoordinates
 
 #ifdef Spectral
 !--------------------------------------------------------------------------------------------------
-!> @brief Reads resolution information from geometry file. If fileUnit is given, 
+!> @brief Reads grid information from geometry file. If fileUnit is given, 
 !! assumes an opened file, otherwise tries to open the one specified in geometryFile
 !--------------------------------------------------------------------------------------------------
-function mesh_spectral_getResolution(fileUnit)
+function mesh_spectral_getGrid(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
@@ -793,17 +793,17 @@ function mesh_spectral_getResolution(fileUnit)
    geometryFile
   
  implicit none
- integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                     ! for a,b c + 3 values + keyword
- integer(pInt), intent(in), optional :: fileUnit
- integer(pInt)           :: headerLength = 0_pInt
- integer(pInt), dimension(3) :: mesh_spectral_getResolution
+ integer(pInt), dimension(3)                      :: mesh_spectral_getGrid
+ integer(pInt), intent(in), optional              :: fileUnit
+ integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                     ! for a,b,c + 3 values + keyword
+
+ integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
                         keyword
- integer(pInt) :: i, j 
- logical :: gotResolution = .false.
- integer(pInt) :: myUnit
+ integer(pInt) :: i, j, myUnit
+ logical :: gotGrid = .false.
  
- mesh_spectral_getResolution = -1_pInt
+ mesh_spectral_getGrid = -1_pInt
  if(.not. present(fileUnit)) then
    myUnit = 289_pInt
    call IO_open_file(myUnit,trim(geometryFile))
@@ -819,23 +819,23 @@ function mesh_spectral_getResolution(fileUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getResolution')
+   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getGrid')
  endif
  rewind(myUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
    select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
-     case ('resolution')
-       gotResolution = .true.
+     case ('resolution','grid')
+       gotGrid = .true.
        do j = 2_pInt,6_pInt,2_pInt
          select case (IO_lc(IO_stringValue(line,positions,j)))
            case('a')
-              mesh_spectral_getResolution(1) = IO_intValue(line,positions,j+1_pInt)
+              mesh_spectral_getGrid(1) = IO_intValue(line,positions,j+1_pInt)
            case('b')
-              mesh_spectral_getResolution(2) = IO_intValue(line,positions,j+1_pInt)
+              mesh_spectral_getGrid(2) = IO_intValue(line,positions,j+1_pInt)
            case('c')
-              mesh_spectral_getResolution(3) = IO_intValue(line,positions,j+1_pInt)
+              mesh_spectral_getGrid(3) = IO_intValue(line,positions,j+1_pInt)
          end select
        enddo
    end select
@@ -843,25 +843,21 @@ function mesh_spectral_getResolution(fileUnit)
  
  if(.not. present(fileUnit)) close(myUnit)
  
- if (.not. gotResolution) &
-   call IO_error(error_ID = 845_pInt, ext_msg='resolution')
-  if((mod(mesh_spectral_getResolution(1),2_pInt)/=0_pInt .or.  &                                    ! must be a even number
-          mesh_spectral_getResolution(1) < 2_pInt        .or.  &                                    ! and larger than 1
-      mod(mesh_spectral_getResolution(2),2_pInt)/=0_pInt .or.  &                                    !    -"-
-          mesh_spectral_getResolution(2) < 2_pInt        .or.  &                                    !    -"-
-     (mod(mesh_spectral_getResolution(3),2_pInt)/=0_pInt .and. &
-      mesh_spectral_getResolution(3)/= 1_pInt))          .or.  &                                    ! third res might be 1
-         mesh_spectral_getResolution(3) < 1_pInt)              &
-   call IO_error(error_ID = 843_pInt, ext_msg='mesh_spectral_getResolution')
+ if (.not. gotGrid) &
+   call IO_error(error_ID = 845_pInt, ext_msg='grid')
+  if(mesh_spectral_getGrid(1) < 2_pInt        .or.  &                                              ! must be at least 2
+     mesh_spectral_getGrid(2) < 2_pInt        .or.  &                                              !    -"-
+     mesh_spectral_getGrid(3) < 1_pInt)             &                                              ! must be at least 1
+   call IO_error(error_ID = 843_pInt, ext_msg='mesh_spectral_getGrid')
 
-end function mesh_spectral_getResolution
+end function mesh_spectral_getGrid
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Reads dimension information from geometry file. If fileUnit is given, 
+!> @brief Reads size information from geometry file. If fileUnit is given, 
 !! assumes an opened file, otherwise tries to open the one specified in geometryFile
 !--------------------------------------------------------------------------------------------------
-function mesh_spectral_getDimension(fileUnit)
+function mesh_spectral_getSize(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
@@ -875,17 +871,16 @@ function mesh_spectral_getDimension(fileUnit)
    geometryFile
   
  implicit none
- integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                      ! for a,b c + 3 values + keyword
- integer(pInt), intent(in), optional :: fileUnit
- integer(pInt)           :: headerLength = 0_pInt
- real(pReal), dimension(3) :: mesh_spectral_getDimension
+ real(pReal), dimension(3)                        :: mesh_spectral_getSize
+ integer(pInt), intent(in), optional              :: fileUnit
+ integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                      ! for x,y,z + 3 values + keyword
+ integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
                         keyword
- integer(pInt) :: i, j 
- logical :: gotDimension = .false.
- integer(pInt) :: myUnit
+ integer(pInt) :: i, j, myUnit 
+ logical :: gotSize = .false.
  
- mesh_spectral_getDimension = -1.0_pReal
+ mesh_spectral_getSize = -1.0_pReal
  if(.not. present(fileUnit)) then
    myUnit = 289_pInt
    call IO_open_file(myUnit,trim(geometryFile))
@@ -901,23 +896,23 @@ function mesh_spectral_getDimension(fileUnit)
  if (keyword(1:4) == 'head') then
    headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
-   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getDimension')
+   call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_getSize')
  endif
  rewind(myUnit)
  do i = 1_pInt, headerLength
    read(myUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
    select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
-     case ('dimension')
-       gotDimension = .true.
+     case ('dimension', 'size')
+       gotSize = .true.
        do j = 2_pInt,6_pInt,2_pInt
          select case (IO_lc(IO_stringValue(line,positions,j)))
            case('x')
-              mesh_spectral_getDimension(1) = IO_floatValue(line,positions,j+1_pInt)
+              mesh_spectral_getSize(1) = IO_floatValue(line,positions,j+1_pInt)
            case('y')
-              mesh_spectral_getDimension(2) = IO_floatValue(line,positions,j+1_pInt)
+              mesh_spectral_getSize(2) = IO_floatValue(line,positions,j+1_pInt)
            case('z')
-              mesh_spectral_getDimension(3) = IO_floatValue(line,positions,j+1_pInt)
+              mesh_spectral_getSize(3) = IO_floatValue(line,positions,j+1_pInt)
          end select
        enddo
    end select
@@ -925,19 +920,19 @@ function mesh_spectral_getDimension(fileUnit)
  
  if(.not. present(fileUnit)) close(myUnit)
 
- if (.not. gotDimension) &
-   call IO_error(error_ID = 845_pInt, ext_msg='dimension')
- if (any(mesh_spectral_getDimension<=0.0_pReal)) &
-   call IO_error(error_ID = 844_pInt, ext_msg='mesh_spectral_getDimension')
+ if (.not. gotSize) &
+   call IO_error(error_ID = 845_pInt, ext_msg='size')
+ if (any(mesh_spectral_getSize<=0.0_pReal)) &
+   call IO_error(error_ID = 844_pInt, ext_msg='mesh_spectral_getSize')
 
-end function mesh_spectral_getDimension
+end function mesh_spectral_getSize
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Reads homogenization information from geometry file. If fileUnit is given, 
 !! assumes an opened file, otherwise tries to open the one specified in geometryFile
 !--------------------------------------------------------------------------------------------------
-function mesh_spectral_getHomogenization(fileUnit)
+integer(pInt) function mesh_spectral_getHomogenization(fileUnit)
  use IO, only: &
    IO_checkAndRewind, &
    IO_open_file, &
@@ -950,15 +945,13 @@ function mesh_spectral_getHomogenization(fileUnit)
    geometryFile
   
  implicit none
+ integer(pInt), intent(in), optional              :: fileUnit
  integer(pInt), dimension(1_pInt + 7_pInt*2_pInt) :: positions                                      ! for a, b,  c + 3 values + keyword
- integer(pInt), intent(in), optional :: fileUnit
- integer(pInt)           :: headerLength = 0_pInt
- integer(pInt)           :: mesh_spectral_getHomogenization
+ integer(pInt)                                    :: headerLength = 0_pInt
  character(len=1024) :: line, &
                         keyword
- integer(pInt) :: i
+ integer(pInt) :: i, myUnit
  logical :: gotHomogenization = .false.
- integer(pInt) :: myUnit
  
  mesh_spectral_getHomogenization = -1_pInt
  if(.not. present(fileUnit)) then

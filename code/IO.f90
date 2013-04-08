@@ -1547,9 +1547,9 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (842_pInt)
    msg = 'homogenization in spectral mesh'
  case (843_pInt)
-   msg = 'resolution in spectral mesh'
+   msg = 'grid in spectral mesh'
  case (844_pInt)
-   msg = 'dimension in spectral mesh'
+   msg = 'size in spectral mesh'
  case (845_pInt)
    msg = 'incomplete information in spectral mesh header'
  case (846_pInt)
