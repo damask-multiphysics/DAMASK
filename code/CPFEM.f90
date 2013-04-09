@@ -266,8 +266,7 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress,&
-     & jacobian, pstress, dPdF)
+subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian)
  ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
  use numerics, only:       defgradTolerance, &
                            iJacoStiffness
@@ -343,19 +342,17 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
  use DAMASK_interface
  
  implicit none
- integer(pInt), intent(in) ::                        element, &                                    ! FE element number
-                                                     IP                                            ! FE integration point number
- real(pReal), intent(inout) ::                       Temperature                                   ! temperature
- real(pReal), intent(in) ::                          dt                                            ! time increment
- real(pReal), dimension (3,3), intent(in) ::         ffn, &                                        ! deformation gradient for t=t0
-                                                     ffn1                                          ! deformation gradient for t=t1
- integer(pInt), intent(in) ::                        mode                                          ! computation mode  1: regular computation plus aging of results
+ integer(pInt), intent(in) ::                        element, &                                     !< FE element number
+                                                     IP                                             !< FE integration point number
+ real(pReal), intent(inout) ::                       Temperature                                    !< temperature
+ real(pReal), intent(in) ::                          dt                                             !< time increment
+ real(pReal), dimension (3,3), intent(in) ::         ffn, &                                         !< deformation gradient for t=t0
+                                                     ffn1                                           !< deformation gradient for t=t1
+ integer(pInt), intent(in) ::                        mode                                           !< computation mode  1: regular computation plus aging of results
  
- real(pReal), dimension(6), intent(out) ::           cauchyStress                                  ! stress vector in Mandel notation
- real(pReal), dimension(6,6), intent(out) ::         jacobian                                      ! jacobian in Mandel notation
- real(pReal), dimension (3,3), intent(out) ::        pstress                                       ! Piola-Kirchhoff stress in Matrix notation
- real(pReal), dimension (3,3,3,3), intent(out) ::    dPdF                                          ! 
- 
+ real(pReal), dimension(6), intent(out), optional ::           cauchyStress                         !< stress vector in Mandel notation
+ real(pReal), dimension(6,6), intent(out), optional ::         jacobian                             !< jacobian in Mandel notation
+
  real(pReal)                                         J_inverse, &                                  ! inverse of Jacobian
                                                      rnd
  real(pReal), dimension (3,3) ::                     Kirchhoff, &                                  ! Piola-Kirchhoff stress in Matrix notation
@@ -573,9 +570,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
      endif
    endif
 
-   ! --+>> COLLECTION OF FEM INPUT WITH RETURNING OF RANDOMIZED ODD STRESS AND JACOBIAN <<+-- 
-
-
+!--------------------------------------------------------------------------------------------------
+! collection of FEM input with returning of randomize odd stress and jacobian
      if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
        CPFEM_dcsde_knownGood = CPFEM_dcsde
      if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
@@ -592,11 +588,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
        CPFEM_calc_done = .false.
      endif
 
- 
- cauchyStress = CPFEM_cs(1:6,IP,cp_en)
- jacobian = CPFEM_dcsdE(1:6,1:6,IP,cp_en)
- pstress = materialpoint_P(1:3,1:3,IP,cp_en)
- dPdF = materialpoint_dPdF(1:3,1:3,1:3,1:3,IP,cp_en)
  if (theTime > 0.0_pReal) then
    Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
  endif
@@ -605,24 +596,24 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                     .and. ((debug_e == cp_en .and. debug_i == IP) &
                             .or. .not. iand(debug_level(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
    !$OMP CRITICAL (write2out)
-     write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') '<< CPFEM >> stress/MPa at el ip ', cp_en, IP, cauchyStress/1.0e6_pReal
-     write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') '<< CPFEM >> Jacobian/GPa at el ip ', cp_en, IP, transpose(jacobian)/1.0e9_pReal
+     write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)')    '<< CPFEM >> stress/MPa at el ip ', &
+                                   cp_en, IP, CPFEM_cs(1:6,IP,cp_en)/1.0e6_pReal
+     write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') '<< CPFEM >> Jacobian/GPa at el ip ', &
+                                   cp_en, IP, transpose(CPFEM_dcsdE(1:6,1:6,IP,cp_en))/1.0e9_pReal
      flush(6)
    !$OMP END CRITICAL (write2out)
  endif
  
- 
- !*** warn if stiffness close to zero
- 
- if (all(abs(jacobian) < 1e-10_pReal)) then
+!--------------------------------------------------------------------------------------------------
+! warn if stiffness close to zero
+ if (all(abs(CPFEM_dcsdE(1:6,1:6,IP,cp_en)) < 1e-10_pReal)) then
    call IO_warning(601,cp_en,IP)
  endif
  
- 
- !*** remember extreme values of stress and jacobian
- 
+!--------------------------------------------------------------------------------------------------
+! remember extreme values of stress and jacobian
  if (mode < 3) then
-   cauchyStress33 = math_Mandel6to33(cauchyStress)
+   cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,IP,cp_en))
    if (maxval(cauchyStress33) > debug_stressMax) then                        
      debug_stressMaxLocation = [cp_en, IP]
      debug_stressMax = maxval(cauchyStress33)
@@ -631,7 +622,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
      debug_stressMinLocation = [cp_en, IP]
      debug_stressMin = minval(cauchyStress33)
    endif
-   jacobian3333 = math_Mandel66to3333(jacobian)
+   jacobian3333 = math_Mandel66to3333(CPFEM_dcsdE(1:6,1:6,IP,cp_en))
    if (maxval(jacobian3333) > debug_jacobianMax) then
      debug_jacobianMaxLocation = [cp_en, IP]
      debug_jacobianMax = maxval(jacobian3333)
@@ -641,6 +632,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
      debug_jacobianMin = minval(jacobian3333)
    endif
  endif
+
+!--------------------------------------------------------------------------------------------------
+! copy to output if required (FEM solver)
+ if(present(cauchyStress)) cauchyStress = CPFEM_cs(1:6,IP,cp_en)
+ if(present(jacobian)) jacobian = CPFEM_dcsdE(1:6,1:6,IP,cp_en)
  
 end subroutine CPFEM_general
 

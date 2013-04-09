@@ -147,9 +147,9 @@ subroutine debug_init
  character(len=64)                        :: tag
  character(len=1024)                      :: line
 
- write(6,'(/,a)') ' <<<+-  debug init  -+>>>'
- write(6,'(a)')   ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a16,a)') ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
  
  if (allocated(debug_StressLoopDistribution)) &
@@ -214,7 +214,7 @@ subroutine debug_init
          what = debug_CPFEM
        case ('spectral')
          what = debug_SPECTRAL
-       case ('MARC')
+       case ('marc')
          what = debug_MARC
        case ('abaqus')
          what = debug_ABAQUS
@@ -268,48 +268,48 @@ subroutine debug_init
      do i = 1_pInt, debug_MAXNTYPE
        select case(i)
          case (debug_DEBUG)
-           tag = 'Debug'
+           tag = ' Debug'
          case (debug_MATH)
-           tag = 'Math'
+           tag = ' Math'
          case (debug_FESOLVING)
-           tag = 'FEsolving'
+           tag = ' FEsolving'
          case (debug_MESH)
-           tag = 'Mesh'
+           tag = ' Mesh'
          case (debug_MATERIAL)
-           tag = 'Material'
+           tag = ' Material'
          case (debug_LATTICE)
-           tag = 'Lattice'
+           tag = ' Lattice'
          case (debug_CONSTITUTIVE)
-           tag = 'Constitutive'
+           tag = ' Constitutive'
          case (debug_CRYSTALLITE)
-           tag = 'Crystallite'
+           tag = ' Crystallite'
          case (debug_HOMOGENIZATION)
-           tag = 'Homogenizaiton'
+           tag = ' Homogenizaiton'
          case (debug_CPFEM)
-           tag = 'CPFEM'
+           tag = ' CPFEM'
          case (debug_SPECTRAL)
-           tag = 'Spectral solver'
+           tag = ' Spectral solver'
          case (debug_MARC)
-           tag = 'MSC.MARC FEM solver'
+           tag = ' MSC.MARC FEM solver'
          case (debug_ABAQUS)
-           tag = 'ABAQUS FEM solver'
+           tag = ' ABAQUS FEM solver'
        end select
            
        if(debug_level(i) /= 0) then
-         write(6,'(a,a)') tag,' debugging:'
-         if(iand(debug_level(i),debug_LEVELBASIC)        /= 0) write(6,'(a)') ' basic'
-         if(iand(debug_level(i),debug_LEVELEXTENSIVE)    /= 0) write(6,'(a)') ' extensive'
+         write(6,'(3a)') ' debug level for ', trim(tag), ':'
+         if(iand(debug_level(i),debug_LEVELBASIC)        /= 0) write(6,'(a)') '  basic'
+         if(iand(debug_level(i),debug_LEVELEXTENSIVE)    /= 0) write(6,'(a)') '  extensive'
          if(iand(debug_level(i),debug_LEVELSELECTIVE)    /= 0) then
-           write(6,'(a)') 'selective on:'
-           write(6,'(a24,1x,i8)') 'element:              ',debug_e
-           write(6,'(a24,1x,i8)') 'ip:                   ',debug_i
-           write(6,'(a24,1x,i8)') 'grain:                ',debug_g
+           write(6,'(a)') ' selective on:'
+           write(6,'(a24,1x,i8)') '  element:              ',debug_e
+           write(6,'(a24,1x,i8)') '  ip:                   ',debug_i
+           write(6,'(a24,1x,i8)') '  grain:                ',debug_g
          endif
-         if(iand(debug_level(i),debug_SPECTRALRESTART)   /= 0) write(6,'(a)') ' restart'
-         if(iand(debug_level(i),debug_SPECTRALFFTW)      /= 0) write(6,'(a)') ' FFTW'
-         if(iand(debug_level(i),debug_SPECTRALDIVERGENCE)/= 0) write(6,'(a)') ' divergence'
-         if(iand(debug_level(i),debug_SPECTRALROTATION)  /= 0) write(6,'(a)') ' rotation'
-         if(iand(debug_level(i),debug_SPECTRALPETSC)     /= 0) write(6,'(a)') ' PETSc'
+         if(iand(debug_level(i),debug_SPECTRALRESTART)   /= 0) write(6,'(a)') '  restart'
+         if(iand(debug_level(i),debug_SPECTRALFFTW)      /= 0) write(6,'(a)') '  FFTW'
+         if(iand(debug_level(i),debug_SPECTRALDIVERGENCE)/= 0) write(6,'(a)') '  divergence'
+         if(iand(debug_level(i),debug_SPECTRALROTATION)  /= 0) write(6,'(a)') '  rotation'
+         if(iand(debug_level(i),debug_SPECTRALPETSC)     /= 0) write(6,'(a)') '  PETSc'
        endif
      enddo
  endif

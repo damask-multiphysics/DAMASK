@@ -364,7 +364,7 @@ subroutine utilities_FFTforward(row,column)
 
 !--------------------------------------------------------------------------------------------------
 ! removing highest frequencies
- field_fourier  (  res1_red,1:res(2) ,             1:res(3)              ,1:3,1:3)&
+ field_fourier  (  res1_red,1:res(2) ,                           1:res(3)              ,1:3,1:3)&
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
  field_fourier  (1:res1_red,  res(2)/2_pInt+1_pInt,1:res(3)              ,1:3,1:3)& 
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
@@ -764,9 +764,6 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  integer(pInt) :: &
    calcMode, &                                                                                      !< CPFEM mode for calculation
    collectMode                                                                                      !< CPFEM mode for collection
- real(pReal), dimension(3,3,3,3) :: dPdF                                                            !< d P / d F
- real(pReal), dimension(6)       :: sigma                                                           !< cauchy stress in mandel notation
- real(pReal), dimension(6,6)     :: dsde                                                            !< d sigma / d Epsilon
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)  :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
  integer(pInt) :: i,j,k
@@ -784,33 +781,32 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
   calcMode    = iand(calcMode,    not(CPFEM_AGERESULTS)) 
  endif
 
-!--------------------------------------------------------------------------------------------------
-! calculate bounds of det(F) and report
- if(debugGeneral) then
-   defgradDetMax = -huge(1.0_pReal)
-   defgradDetMin = +huge(1.0_pReal)
-   do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
-     defgradDet = math_det33(F(1:3,1:3,i,j,k))
-     defgradDetMax = max(defgradDetMax,defgradDet)
-     defgradDetMin = min(defgradDetMin,defgradDet) 
-   enddo; enddo; enddo
-
-   write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
-   write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
-   flush(6)
- endif
- 
  call CPFEM_general(collectMode,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &                        ! collect mode handles Jacobian backup / restoration
-                   temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
+                   temperature,timeinc,1_pInt,1_pInt)
  
  materialpoint_F0 = reshape(F_lastInc, [3,3,1,mesh_NcpElems])
  materialpoint_F  = reshape(F,         [3,3,1,mesh_NcpElems])
  materialpoint_Temperature = temperature
 
  call debug_reset()
- 
+
+!--------------------------------------------------------------------------------------------------
+! calculate bounds of det(F) and report
+ if(debugGeneral) then
+   defgradDetMax = -huge(1.0_pReal)
+   defgradDetMin = +huge(1.0_pReal)
+   do j = 1_pInt, mesh_NcpElems
+     defgradDet = math_det33(materialpoint_F(1:3,1:3,1,j))
+     defgradDetMax = max(defgradDetMax,defgradDet)
+     defgradDetMin = min(defgradDetMin,defgradDet) 
+   end do
+   write(6,'(a,1x,es11.4)') ' max determinant of deformation =', defgradDetMax
+   write(6,'(a,1x,es11.4)') ' min determinant of deformation =', defgradDetMin
+   flush(6)
+ endif
+  
  call CPFEM_general(calcMode,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &                          ! first call calculates everything
-                    temperature,timeinc,1_pInt,1_pInt,sigma,dsde,P(1:3,1:3,1,1,1),dPdF)
+                    temperature,timeinc,1_pInt,1_pInt)
  
  max_dPdF = 0.0_pReal
  max_dPdF_norm = 0.0_pReal
@@ -825,7 +821,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
      min_dPdF = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)
      min_dPdF_norm = sum(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,k)**2.0_pReal)
    endif  
- enddo
+ end do
 
  P = reshape(materialpoint_P, [3,3,res(1),res(2),res(3)])
  C_volAvg = sum(sum(materialpoint_dPdF,dim=6),dim=5) * wgt

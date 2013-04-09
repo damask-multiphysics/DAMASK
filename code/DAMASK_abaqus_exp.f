@@ -204,8 +204,6 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal), dimension(nblock(1),nstatev),     intent(out) :: &
    stateNew                                                                                         !< state variables at each material point at the end of the increment
 
- real(pReal), dimension(3,3) :: pstress                                                             ! not used, but needed for call of cpfem_general
- real(pReal), dimension(3,3,3,3) :: dPdF                                                            ! not used, but needed for call of cpfem_general
  real(pReal), dimension(3) :: coordinates
  real(pReal), dimension(3,3) :: defgrd0,defgrd1
  real(pReal), dimension(6) ::   stress
@@ -286,7 +284,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    cp_en = mesh_FEasCP('elem',nBlock(4_pInt+n))
    mesh_ipCoordinates(1:3,n,cp_en) = numerics_unitlength * coordMp(n,1:3)
 
-   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde, pstress, dPdF)
+   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde)
   
   !     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
   !     straight:   11, 22, 33, 12, 23, 13

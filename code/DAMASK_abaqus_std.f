@@ -213,8 +213,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    DDSDDE                                                                                           !< Jacobian matrix of the constitutive model
 
  real(pReal) :: temperature                                                                         ! temp by Abaqus is intent(in)
- real(pReal), dimension (3,3) :: pstress                                                            ! not used, but needed for call of cpfem_general
- real(pReal), dimension (3,3,3,3) :: dPdF                                                           ! not used, but needed for call of cpfem_general
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) :: computationMode, i, cp_en
@@ -313,7 +311,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    !$OMP END CRITICAL (write2out)
  endif
    
- call CPFEM_general(computationMode,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h, pstress, dPdF)
+ call CPFEM_general(computationMode,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     straight:            11, 22, 33, 12, 23, 13
