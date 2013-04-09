@@ -1472,8 +1472,6 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 
  case (252_pInt)
    msg = 'nonlocal plasticity works only for direct CPFEM, i.e. one grain per integration point'
- case (253_pInt)
-   msg = 'element type not supported for nonlocal plasticity'
 
 !--------------------------------------------------------------------------------------------------
 ! numerics error messages 

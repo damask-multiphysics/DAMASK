@@ -385,12 +385,6 @@ subroutine constitutive_init
            
          case (constitutive_nonlocal_label)
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
-           select case(FE_geomtype(mesh_element(2,e)))
-             case (7_pInt,8_pInt,9_pInt,10_pInt)
-               ! all fine
-             case default
-               call IO_error(253_pInt,e,i,g)
-           end select
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
