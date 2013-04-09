@@ -219,6 +219,7 @@ real(pReal), dimension(4,36), parameter, private :: &
    math_hi, &
    math_eigenvalues33, &
    math_volTetrahedron, &
+   math_areaTriangle, &
    math_rotate_forward33, &
    math_rotate_backward33, &
    math_rotate_forward3333
@@ -2635,6 +2636,19 @@ real(pReal) pure function math_volTetrahedron(v1,v2,v3,v4)
  math_volTetrahedron = math_det33(m)/6.0_pReal
 
 end function math_volTetrahedron
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief area of triangle given by three vertices
+!--------------------------------------------------------------------------------------------------
+real(pReal) pure function math_areaTriangle(v1,v2,v3)
+
+ implicit none
+ real(pReal), dimension (3), intent(in) :: v1,v2,v3
+
+ math_areaTriangle = 0.5_pReal * math_norm3(math_vectorproduct(v1-v2,v1-v3))
+
+end function math_areaTriangle
 
 
 !--------------------------------------------------------------------------------------------------
