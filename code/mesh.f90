@@ -657,9 +657,12 @@ subroutine mesh_build_ipVolumes
                  math_areaTriangle
  implicit none
  
- integer(pInt) :: e,f,t,i,j,n,Ntriangles                                     ! each interface is made up of this many triangles
- integer(pInt), dimension(FE_maxNipFaceNodes) :: mySubNodes
- real(pReal), dimension(3,FE_maxNipFaceNodes) :: nPos                        ! coordinates of nodes on IP face
+ integer(pInt) ::                                e,f,t,i,j,n, &
+                                                 NmySubNodes, &              !< number of subnodes already found for this (2d) ip cell
+                                                 Ntriangles                  !< each interface is made up of this many triangles
+ integer(pInt), dimension(FE_maxNipFaceNodes) :: mySubNodes                  !< list of subnodes that constitute this (2d) ip cell
+ real(pReal)                                  :: myVolume
+ real(pReal), dimension(3,FE_maxNipFaceNodes) :: nPos                        !< coordinates of nodes on IP face
  real(pReal), dimension(FE_maxNipFaceNodes-2_pInt,FE_maxNipFaceNodes) :: volume
 
  if (.not. allocated(mesh_ipVolume)) then
@@ -667,36 +670,40 @@ subroutine mesh_build_ipVolumes
  endif
  
  mesh_ipVolume = 0.0_pReal 
+!$OMP PARALLEL DO PRIVATE(t,Ntriangles,nPos,volume,mySubNodes,NmySubNodes,myVolume)
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
    t = FE_geomtype(mesh_element(2,e))                                                               ! get elemGeomType
    select case (FE_dimension(t))                                                                    ! treat (1D), 2D, and 3D element types differently
 
-     case (2)
+     case (2_pInt)
        Ntriangles = FE_NipNeighbors(t) - 2_pInt
        do i = 1_pInt,FE_Nips(t)                                                                     ! loop over IPs of elem
          nPos = 0.0_pReal
          volume = 0.0_pReal
          mySubNodes = 0_pInt
-         do f = 1_pInt,FE_NipNeighbors(t)                                                           ! loop over interfaces of IP and add tetrahedra which connect to CoG
+         NmySubNodes = 0_pInt
+faceLoop:do f = 1_pInt,FE_NipNeighbors(t)                                                           ! loop over interfaces of IP and add tetrahedra which connect to CoG
            do n = 1_pInt,FE_NipFaceNodes(t)
              if (all(mySubNodes /= FE_subNodeOnIPFace(n,f,i,t))) then
-               mySubNodes(1) = mySubNodes(1) + 1_pInt
-               mySubNodes(mySubNodes(1)) = FE_subNodeOnIPFace(n,f,i,t)
-               nPos(1:3,f) = mesh_subNodeCoord(1:3,mySubNodes(mySubNodes(1)),e)
+               NmySubNodes = NmySubNodes + 1_pInt
+               mySubNodes(NmySubNodes) = FE_subNodeOnIPFace(n,f,i,t)
+               nPos(1:3,NmySubNodes) = mesh_subNodeCoord(1:3,mySubNodes(NmySubNodes),e)
+             elseif (NmySubNodes == Fe_maxNipFaceNodes) then
+               exit faceLoop
              endif
            enddo
-         enddo
+         enddo faceLoop
          forall (n = 1_pInt:FE_NipNeighbors(t), j = 1_pInt:Ntriangles) &                            ! start at each interface node and build valid triangles to cover interface
            volume(j,n) = math_areaTriangle(nPos(1:3,n), &
-                                           nPos(1:3,1_pInt+mod(n-1_pInt +j       ,FE_NipFaceNodes(t))), &
-                                           nPos(1:3,1_pInt+mod(n-1_pInt +j+1_pInt,FE_NipFaceNodes(t))))
+                                           nPos(1:3,1_pInt+mod(n+j-1_pInt,FE_NipNeighbors(t))), &
+                                           nPos(1:3,1_pInt+mod(n+j       ,FE_NipNeighbors(t))))     ! assuming element depth of 1
          mesh_ipVolume(i,e) = sum(volume) / FE_NipFaceNodes(t)                                      ! renormalize with interfaceNodeNum due to loop over them
-
        enddo
 
-     case (3)
+     case (3_pInt)
        Ntriangles = FE_NipFaceNodes(t) - 2_pInt
        do i = 1_pInt,FE_Nips(t)                                                                     ! loop over IPs of elem
+         myVolume = 0.0_pReal
          do f = 1_pInt,FE_NipNeighbors(t)                                                           ! loop over interfaces of IP and add tetrahedra which connect to CoG
            nPos = 0.0_pReal
            volume = 0.0_pReal
@@ -707,12 +714,13 @@ subroutine mesh_build_ipVolumes
                                                nPos(:,1_pInt+mod(n-1_pInt +j       ,FE_NipFaceNodes(t))),& ! start at offset j
                                                nPos(:,1_pInt+mod(n-1_pInt +j+1_pInt,FE_NipFaceNodes(t))),& ! and take j's neighbor
                                                mesh_cellCenterCoordinates(i,e))
-           mesh_ipVolume(i,e) = mesh_ipVolume(i,e) + sum(volume)                                    ! add contribution from this interface
+           myVolume = myVolume + sum(volume)                                                        ! add contribution from this interface
          enddo
-         mesh_ipVolume(i,e) = mesh_ipVolume(i,e) / FE_NipFaceNodes(t)                               ! renormalize with interfaceNodeNum due to loop over them
+         mesh_ipVolume(i,e) = myVolume / FE_NipFaceNodes(t)                                         ! renormalize with interfaceNodeNum due to loop over them
        enddo
    endselect
  enddo
+!$OMP END PARALLEL DO
 
 end subroutine mesh_build_ipVolumes
 
