@@ -1453,6 +1453,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'no homogenization specified via State Variable 2'
  case (180_pInt)
    msg = 'no microstructure specified via State Variable 3'
+ case (190_pInt)
+   msg = 'unknown element type:'
 
 !--------------------------------------------------------------------------------------------------
 ! plasticity error messages
@@ -1586,9 +1588,7 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (908_pInt)
    msg = 'size of mesh_mapFEtoCPnode in mesh_abaqus_map_nodes'
  case (909_pInt)
-   msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes'
- case (910_pInt)
-   msg = 'incorrect element type mapping in '
+   msg = 'size of mesh_node in mesh_abaqus_build_nodes not equal to mesh_Nnodes' 
  
  
 !-------------------------------------------------------------------------------------------------

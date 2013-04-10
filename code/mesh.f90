@@ -117,7 +117,7 @@ module mesh
 ! Hence, I suggest to prefix with "FE_"
 
  integer(pInt), parameter, public :: &
-   FE_Nelemtypes       = 12_pInt, &
+   FE_Nelemtypes       = 13_pInt, &
    FE_Ngeomtypes       = 10_pInt, &
    FE_maxNnodes        = 8_pInt, &
    FE_maxNsubNodes     = 56_pInt, &
@@ -132,6 +132,7 @@ module mesh
       2, & ! element 125 (2D 6node 3ip)
       3, & ! element  11 (2D 4node 4ip)
       4, & ! element  27 (2D 8node 9ip)
+      3, & ! element  54 (2D 8node 4ip)
       5, & ! element 134 (3D 4node 1ip)
       6, & ! element 157 (3D 5node 4ip)
       6, & ! element 127 (3D 10node 4ip)
@@ -148,6 +149,7 @@ module mesh
       6, & ! element 125 (2D 6node 3ip)
       4, & ! element  11 (2D 4node 4ip)
       8, & ! element  27 (2D 8node 9ip)
+      8, & ! element  54 (2D 8node 4ip)
       4, & ! element 134 (3D 4node 1ip)
       5, & ! element 157 (3D 5node 4ip)
      10, & ! element 127 (3D 10node 4ip)
@@ -3308,7 +3310,6 @@ subroutine mesh_abaqus_count_cpSizes(myUnit)
          IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
      ) then
      t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'type'))           ! remember elem type
-     if (t == 0_pInt) call IO_error(error_ID=910_pInt,ext_msg='mesh_abaqus_count_cpSizes')
      g = FE_geomtype(t)
      mesh_maxNnodes =       max(mesh_maxNnodes,FE_Nnodes(g))
      mesh_maxNips =         max(mesh_maxNips,FE_Nips(g))
@@ -3367,7 +3368,6 @@ subroutine mesh_abaqus_build_elements(myUnit)
          IO_lc(IO_stringValue(line,myPos,2_pInt)) /= 'response' ) &
      ) then
      t = FE_mapElemtype(IO_extractValue(IO_lc(IO_stringValue(line,myPos,2_pInt)),'type'))          ! remember elem type
-     if (t == 0_pInt) call IO_error(error_ID=910_pInt,ext_msg='mesh_abaqus_build_elements')
      c = IO_countDataLines(myUnit)
      do i = 1_pInt,c
        backspace(myUnit)
@@ -4029,7 +4029,7 @@ end subroutine mesh_tell_statistics
 !***********************************************************
 integer(pInt) function FE_mapElemtype(what)
  
- use IO, only: IO_lc
+ use IO, only: IO_lc, IO_error
 
  implicit none
  character(len=*), intent(in) :: what
@@ -4047,6 +4047,8 @@ integer(pInt) function FE_mapElemtype(what)
     case ( '27', &
            'cpe8')
       FE_mapElemtype = 4_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral
+    case ( '54')
+      FE_mapElemtype = 3_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
     case ('134', &
           'c3d4')
       FE_mapElemtype = 5_pInt            ! Three-dimensional Four-node Tetrahedron
@@ -4071,7 +4073,7 @@ integer(pInt) function FE_mapElemtype(what)
            'c3d20')
       FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
     case default 
-      FE_mapElemtype = 0_pInt            ! unknown element --> should raise an error upstream..!
+      call IO_error(error_ID=190_pInt,ext_msg=IO_lc(what))
  end select
 
 end function FE_mapElemtype
