@@ -107,8 +107,8 @@ module numerics
    itmin                      =  2_pInt, &                                                          !< minimum number of iterations
    maxCutBack                 =  3_pInt, &                                                          !< max number of cut backs
    regridMode                 =  0_pInt, &                                                          !< 0: no regrid; 1: regrid if DAMASK doesn't converge; 2: regrid if DAMASK or BVP Solver doesn't converge 
-   divergence_correction      =  2_pInt                                                             !< correct divergence calculation in fourier space 0: no correction, 1: dimension scaled to 1, 2: dimension scaled to Npoints, 3: dimension scaled to sqrt(Npoints)
- logical, protected , public :: &
+   divergence_correction      =  2_pInt                                                             !< correct divergence calculation in fourier space 0: no correction, 1: size scaled to 1, 2: size scaled to Npoints
+ logical, protected, public :: &
    memory_efficient           = .true., &                                                           !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
    update_gamma               = .false.                                                             !< update gamma operator with current stiffness, Default .false.: use initial stiffness 
 #endif
@@ -484,7 +484,7 @@ subroutine numerics_init
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (divergence_correction < 0_pInt .or. &
-     divergence_correction > 3_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
+     divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
  if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)

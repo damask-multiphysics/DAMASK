@@ -52,14 +52,17 @@ module DAMASK_spectral_utilities
  
 !--------------------------------------------------------------------------------------------------
 ! debug divergence
- real(pReal),   private, dimension(:,:,:,:), pointer     :: divergence_real                         !< scalar field real representation for debugging divergence calculation
- complex(pReal),private, dimension(:,:,:,:), pointer     :: divergence_fourier                      !< scalar field real representation for debugging divergence calculation
+ real(pReal),   private, dimension(:,:,:,:), pointer     :: divReal                                 !< scalar field real representation for debugging divergence calculation
+ complex(pReal),private, dimension(:,:,:,:), pointer     :: divFourier                              !< scalar field real representation for debugging divergence calculation
 
 !--------------------------------------------------------------------------------------------------
 ! plans for FFTW
- type(C_PTR),   private                            :: plan_scalarField_forth, plan_scalarField_back !< plans for FFTW in case of debugging the Fourier transform
- type(C_PTR),   private                            :: plan_forward, plan_backward                   !< plans for FFTW
- type(C_PTR),   private                            :: plan_divergence                               !< plan for FFTW in case of debugging divergence calculation
+ type(C_PTR),   private :: &
+   planForth, &                                                                                     !< FFTW plan P(x) to P(k)
+   planBack, &                                                                                      !< FFTW plan F(k) to F(x)
+   planDebugForth, &                                                                                !< FFTW plan for scalar field (proof that order of usual transform is correct)
+   planDebugBack, &                                                                                 !< FFTW plan for scalar field inverse (proof that order of usual transform is correct)
+   planDiv                                                                                          !< plan for FFTW in case of debugging divergence calculation
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
@@ -73,14 +76,14 @@ module DAMASK_spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! derived types
- type, public :: tSolutionState                                                                                !< return type of solution from spectral solver variants
+ type, public :: tSolutionState                                                                     !< return type of solution from spectral solver variants
    logical       :: converged         = .true.   
    logical       :: regrid            = .false.   
    logical       :: termIll           = .false.   
    integer(pInt) :: iterationsNeeded  = 0_pInt
  end type tSolutionState
 
- type, public :: tBoundaryCondition                                                                            !< set of parameters defining a boundary condition
+ type, public :: tBoundaryCondition                                                                 !< set of parameters defining a boundary condition
    real(pReal), dimension(3,3) :: values      = 0.0_pReal
    real(pReal), dimension(3,3) :: maskFloat   = 0.0_pReal
    logical,     dimension(3,3) :: maskLogical = .false.
@@ -159,7 +162,7 @@ subroutine utilities_init()
    tensorField, &                                                                                   !< field cotaining data for FFTW in real and fourier space (in place)
    scalarField_realC, &                                                                             !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
    scalarField_fourierC, &                                                                          !< field cotaining data for FFTW in fourier space when debugging FFTW (no in place)
-   divergence                                                                                       !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
+   div                                                                                              !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -188,8 +191,8 @@ subroutine utilities_init()
 ! allocation
  allocate (xi(3,res1_red,res(2),res(3)),source = 0.0_pReal)                                         ! frequencies, only half the size for first dimension
  tensorField = fftw_alloc_complex(int(res1_red*res(2)*res(3)*9_pInt,C_SIZE_T))                      ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
- call c_f_pointer(tensorField, field_real,      [ res(1)+2_pInt,res(2),res(3),3,3])                 ! place a pointer for a real representation on tensorField
- call c_f_pointer(tensorField, field_fourier,   [ res1_red,     res(2),res(3),3,3])                 ! place a pointer for a complex representation on tensorField
+ call c_f_pointer(tensorField, field_real,   [res(1)+2_pInt-mod(res(1),2_pInt),res(2),res(3),3,3])  ! place a pointer for a real representation on tensorField
+ call c_f_pointer(tensorField, field_fourier,[res1_red,                        res(2),res(3),3,3])  ! place a pointer for a complex representation on tensorField
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
@@ -203,29 +206,31 @@ subroutine utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! creating plans for the convolution
- plan_forward =  fftw_plan_many_dft_r2c(3, [res(3),res(2) ,res(1)],        9,&                      ! dimensions,  logical length in each dimension in reversed order,  no. of transforms
-                               field_real, [res(3),res(2) ,res(1)+2_pInt],&                         ! input data,  physical length in each dimension in reversed order
-                                        1,  res(3)*res(2)*(res(1)+2_pInt),&                         ! striding,    product of physical length in the 3 dimensions
-                            field_fourier, [res(3),res(2) ,res1_red],&                              ! output data, physical length in each dimension in reversed order
-                                        1,  res(3)*res(2)* res1_red,       fftw_planner_flag)       ! striding,    product of physical length in the 3 dimensions,      planner precision
+ planForth =  fftw_plan_many_dft_r2c(3,[res(3),res(2) ,res(1)], 9, &                                ! dimensions,  logical length in each dimension in reversed order,  no. of transforms
+                            field_real,[res(3),res(2) ,res(1)+2_pInt-mod(res(1),2_pInt)], &         ! input data,  physical length in each dimension in reversed order
+                                     1, res(3)*res(2)*(res(1)+2_pInt-mod(res(1),2_pInt)), &         ! striding,    product of physical length in the 3 dimensions
+                         field_fourier,[res(3),res(2) ,res1_red], &                                 ! output data, physical length in each dimension in reversed order
+                                     1, res(3)*res(2)* res1_red,       fftw_planner_flag)           ! striding,    product of physical length in the 3 dimensions,      planner precision
 
- plan_backward = fftw_plan_many_dft_c2r(3, [res(3),res(2) ,res(1)],        9,&                      ! dimensions,  logical length in each dimension in reversed order,  no. of transforms
-                            field_fourier, [res(3),res(2) ,res1_red],&                              ! input data,  physical length in each dimension in reversed order
-                                        1,  res(3)*res(2)* res1_red,&                               ! striding,    product of physical length in the 3 dimensions
-                               field_real, [res(3),res(2) ,res(1)+2_pInt],&                         ! output data, physical length in each dimension in reversed order
-                                        1,  res(3)*res(2)*(res(1)+2_pInt), fftw_planner_flag)       ! striding,    product of physical length in the 3 dimensions,      planner precision
+ planBack  =  fftw_plan_many_dft_c2r(3,[res(3),res(2) ,res(1)], 9, &                                ! dimensions,  logical length in each dimension in reversed order,  no. of transforms
+                         field_fourier,[res(3),res(2) ,res1_red], &                                 ! input data,  physical length in each dimension in reversed order
+                                     1, res(3)*res(2)* res1_red, &                                  ! striding,    product of physical length in the 3 dimensions
+                            field_real,[res(3),res(2) ,res(1)+2_pInt-mod(res(1),2_pInt)], &         ! output data, physical length in each dimension in reversed order
+                                     1, res(3)*res(2)*(res(1)+2_pInt-mod(res(1),2_pInt)), &         ! striding,    product of physical length in the 3 dimensions
+                                                                       fftw_planner_flag)           ! planner precision
 
 !--------------------------------------------------------------------------------------------------
 ! depending on debug options, allocate more memory and create additional plans 
  if (debugDivergence) then
-   divergence = fftw_alloc_complex(int(res1_red*res(2)*res(3)*3_pInt,C_SIZE_T))
-   call c_f_pointer(divergence, divergence_real,    [ res(1)+2_pInt,res(2),res(3),3])
-   call c_f_pointer(divergence, divergence_fourier, [ res1_red,     res(2),res(3),3])
-   plan_divergence = fftw_plan_many_dft_c2r(3,[ res(3),res(2) ,res(1)],3,&
-                           divergence_fourier,[ res(3),res(2) ,res1_red],&
-                                            1,  res(3)*res(2)* res1_red,&
-                              divergence_real,[ res(3),res(2) ,res(1)+2_pInt],&
-                                            1,  res(3)*res(2)*(res(1)+2_pInt),fftw_planner_flag)
+   div = fftw_alloc_complex(int(res1_red*res(2)*res(3)*3_pInt,C_SIZE_T))
+   call c_f_pointer(div,divReal,   [res(1)+2_pInt-mod(res(1),2_pInt),res(2),res(3),3])
+   call c_f_pointer(div,divFourier,[res1_red,                        res(2),res(3),3])
+   planDiv  = fftw_plan_many_dft_c2r(3,[res(3),res(2) ,res(1)],3,&
+                            divFourier,[res(3),res(2) ,res1_red],&
+                                     1, res(3)*res(2)* res1_red,&
+                               divReal,[res(3),res(2) ,res(1)+2_pInt-mod(res(1),2_pInt)], &
+                                     1, res(3)*res(2)*(res(1)+2_pInt-mod(res(1),2_pInt)), &
+                                                                       fftw_planner_flag)
  endif
 
  if (debugFFTW) then
@@ -233,9 +238,9 @@ subroutine utilities_init()
    scalarField_fourierC = fftw_alloc_complex(int(res(1)*res(2)*res(3),C_SIZE_T))                    ! allocate data for fourier representation (no in place transform)
    call c_f_pointer(scalarField_realC,    scalarField_real,    [res(1),res(2),res(3)])              ! place a pointer for a real representation
    call c_f_pointer(scalarField_fourierC, scalarField_fourier, [res(1),res(2),res(3)])              ! place a pointer for a fourier representation
-   plan_scalarField_forth = fftw_plan_dft_3d(res(3),res(2),res(1),&                                 ! reversed order (C style)
+   planDebugForth = fftw_plan_dft_3d(res(3),res(2),res(1),&                                         ! reversed order (C style)
                                       scalarField_real,scalarField_fourier,-1,fftw_planner_flag)    ! input, output, forward FFT(-1), planner precision
-   plan_scalarField_back  = fftw_plan_dft_3d(res(3),res(2),res(1),&                                 ! reversed order (C style)
+   planDebugBack  = fftw_plan_dft_3d(res(3),res(2),res(1),&                                         ! reversed order (C style)
                                       scalarField_fourier,scalarField_real,+1,fftw_planner_flag)    ! input, output, backward (1), planner precision
  endif 
 
@@ -326,7 +331,7 @@ end subroutine utilities_updateGamma
 !> In case of debugging the FFT, also one component of the tensor (specified by row and column)
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTforward(row,column)
+subroutine utilities_FFTforward()                                                                   !< @ToDo make row and column between randomly between 1 and 3
  use math
  use mesh, only : &
    scaledDim, &
@@ -334,42 +339,55 @@ subroutine utilities_FFTforward(row,column)
    res1_red
 
  implicit none
- integer(pInt), intent(in), optional :: row, column                                                 !< if debug FFTW, compare 3D array field of row and column
-  
+ integer(pInt)  :: row, column                                                                      ! if debug FFTW, compare 3D array field of row and column
+ integer(pInt), dimension(2:3,2) :: Nyquist                                                         ! highest frequencies to be removed (1 if even, 2 if odd)
+ real(pReal), dimension(2) :: myRand                                                                ! random numbers
+
 !--------------------------------------------------------------------------------------------------
 ! copy one component of the stress field to to a single FT and check for mismatch
-  if (debugFFTW .and. present(row) .and. present(column)) &
-    scalarField_real(1:res(1),1:res(2),1:res(3)) =&                                                 ! store the selected component
-           cmplx(field_real(1:res(1),1:res(2),1:res(3),row,column),0.0_pReal,pReal)
+ if (debugFFTW) then
+   call random_number(myRand)                                                                       ! two numbers: 0 <= x < 1
+   row    = nint(myRand(1)*2_pReal + 1_pReal,pInt)
+   column = nint(myRand(2)*2_pReal + 1_pReal,pInt)
+   scalarField_real = cmplx(field_real(1:res(1),1:res(2),1:res(3),row,column),0.0_pReal,pReal)      ! store the selected component 
+ endif
 
 !--------------------------------------------------------------------------------------------------
 ! doing the FFT
-  call fftw_execute_dft_r2c(plan_forward,field_real,field_fourier)
+ call fftw_execute_dft_r2c(planForth,field_real,field_fourier)
   
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 FT results
-  if (debugFFTW .and. present(row) .and. present(column)) then
-    call fftw_execute_dft(plan_scalarField_forth,scalarField_real,scalarField_fourier)
-    write(6,'(/,a,i1,1x,i1,a)') ' .. checking FT results of compontent ', row, column, ' ..'
-    flush(6)
-    write(6,'(/,a,2(es11.4,1x))')  ' max FT relative error = ',&                                    ! print real and imaginary part seperately
-      maxval( real((scalarField_fourier(1:res1_red,1:res(2),1:res(3))-& 
-                          field_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
-                    scalarField_fourier(1:res1_red,1:res(2),1:res(3)))), &
-      maxval(aimag((scalarField_fourier(1:res1_red,1:res(2),1:res(3))-&
-                          field_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
-                    scalarField_fourier(1:res1_red,1:res(2),1:res(3))))
-    flush(6)
-  endif
+ if (debugFFTW) then
+   call fftw_execute_dft(planDebugForth,scalarField_real,scalarField_fourier)
+   where(abs(scalarField_fourier(1:res1_red,1:res(2),1:res(3))) > tiny(1.0_pReal))                  ! avoid division by zero
+     scalarField_fourier(1:res1_red,1:res(2),1:res(3)) = &  
+                         (scalarField_fourier(1:res1_red,1:res(2),1:res(3))-&
+                                field_fourier(1:res1_red,1:res(2),1:res(3),row,column))/&
+                          scalarField_fourier(1:res1_red,1:res(2),1:res(3))
+   else where
+     scalarField_real = cmplx(0.0,0.0,pReal)
+   end where
+   write(6,'(/,a,i1,1x,i1,a)') ' .. checking FT results of compontent ', row, column, ' ..'
+   write(6,'(/,a,2(es11.4,1x))')  ' max FT relative error = ',&                                     ! print real and imaginary part seperately
+     maxval(real (scalarField_fourier(1:res1_red,1:res(2),1:res(3)))),&
+     maxval(aimag(scalarField_fourier(1:res1_red,1:res(2),1:res(3))))
+   flush(6)
+ endif
 
 !--------------------------------------------------------------------------------------------------
 ! removing highest frequencies
- field_fourier  (  res1_red,1:res(2) ,                           1:res(3)              ,1:3,1:3)&
+ Nyquist(2,1:2) = [res(2)/2_pInt + 1_pInt, res(2)/2_pInt + 1_pInt + mod(res(2),2_pInt)]
+ Nyquist(3,1:2) = [res(3)/2_pInt + 1_pInt, res(3)/2_pInt + 1_pInt + mod(res(3),2_pInt)]
+
+ if(res(1)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
+   field_fourier (res1_red,  1:res(2),                 1:res(3),                 1:3,1:3) &
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
- field_fourier  (1:res1_red,  res(2)/2_pInt+1_pInt,1:res(3)              ,1:3,1:3)& 
+ if(res(2)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
+   field_fourier (1:res1_red,Nyquist(2,1):Nyquist(2,2),1:res(3),                 1:3,1:3) & 
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(res(3)>1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
-  field_fourier (1:res1_red,1:res(2),                res(3)/2_pInt+1_pInt,1:3,1:3)&
+ if(res(3)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
+   field_fourier (1:res1_red,1:res(2),                 Nyquist(3,1):Nyquist(3,2),1:3,1:3) &
                                                      = cmplx(0.0_pReal,0.0_pReal,pReal)
 end subroutine utilities_FFTforward
 
@@ -381,7 +399,7 @@ end subroutine utilities_FFTforward
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !> results is weighted by number of points stored in wgt
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTbackward(row,column)
+subroutine utilities_FFTbackward()
  use math                                                                                           !< must use the whole module for use of FFTW
  use mesh, only: &
    wgt, &
@@ -389,14 +407,19 @@ subroutine utilities_FFTbackward(row,column)
    res1_red
 
  implicit none
- integer(pInt), intent(in), optional :: row, column                                                 !< if debug FFTW, compare 3D array field of row and column
+ integer(pInt) :: row, column                                                                       !< if debug FFTW, compare 3D array field of row and column
  integer(pInt) ::  i, j, k, m, n
-  
+ real(pReal), dimension(2) :: myRand 
+
 !--------------------------------------------------------------------------------------------------
 ! unpack FFT data for conj complex symmetric part. This data is not transformed when using c2r
- if (debugFFTW .and. present(row) .and. present(column)) then
-   scalarField_fourier = field_fourier(1:res1_red,1:res(2),1:res(3),row,column)
-   do i = 0_pInt, res(1)/2_pInt-2_pInt
+ if (debugFFTW) then
+   call random_number(myRand)                                                                       ! two numbers: 0 <= x < 1
+   row    = nint(myRand(1)*2_pReal + 1_pReal,pInt)
+   column = nint(myRand(2)*2_pReal + 1_pReal,pInt)
+   scalarField_fourier(1:res1_red,1:res(2),1:res(3)) &
+                                         = field_fourier(1:res1_red,1:res(2),1:res(3),row,column)
+   do i = 0_pInt, res(1)/2_pInt-2_pInt + mod(res(1),2_pInt)
     m = 1_pInt
     do k = 1_pInt, res(3)
       n = 1_pInt
@@ -412,22 +435,25 @@ subroutine utilities_FFTbackward(row,column)
  
 !--------------------------------------------------------------------------------------------------
 ! doing the iFFT
- call fftw_execute_dft_c2r(plan_backward,field_fourier,field_real)                                  ! back transform of fluct deformation gradient
+ call fftw_execute_dft_c2r(planBack,field_fourier,field_real)                                       ! back transform of fluct deformation gradient
 
 !--------------------------------------------------------------------------------------------------
 ! comparing 1 and 3x3 inverse FT results
-  if (debugFFTW .and. present(row) .and. present(column)) then
-    write(6,'(/,a,i1,1x,i1,a)') ' ... checking iFT results of compontent ', row, column, ' ..'
-    flush(6)
-    call fftw_execute_dft(plan_scalarField_back,scalarField_fourier,scalarField_real)
-    write(6,'(/,a,es11.4)') ' max iFT relative error = ',&
-        maxval((real(scalarField_real(1:res(1),1:res(2),1:res(3)))-&
-                field_real(1:res(1),1:res(2),1:res(3),row,column))/&
-                real(scalarField_real(1:res(1),1:res(2),1:res(3))))
-    flush(6)
-  endif
-  
-  field_real = field_real * wgt                                                                     ! normalize the result by number of elements
+ if (debugFFTW) then
+   call fftw_execute_dft(planDebugBack,scalarField_fourier,scalarField_real)
+   where(abs(real(scalarField_real,pReal)) > tiny(1.0_pReal))                                       ! avoid division by zero
+     scalarField_real = (scalarField_real &
+                         - cmplx(field_real(1:res(1),1:res(2),1:res(3),row,column), 0.0, pReal))/ &
+                         scalarField_real
+   else where
+     scalarField_real = cmplx(0.0,0.0,pReal)
+   end where
+   write(6,'(/,a,i1,1x,i1,a)') ' ... checking iFT results of compontent ', row, column, ' ..'
+   write(6,'(/,a,es11.4)')     ' max iFT relative error = ', maxval(real(scalarField_real,pReal))
+   flush(6)
+ endif
+ 
+ field_real = field_real * wgt                                                                      ! normalize the result by number of elements
 
 end subroutine utilities_FFTbackward
 
@@ -507,46 +533,47 @@ real(pReal) function utilities_divergenceRMS()
 
  write(6,'(/,a)') ' ... calculating divergence ................................................'
  flush(6)
+
 !--------------------------------------------------------------------------------------------------
 ! calculating RMS divergence criterion in Fourier space
  utilities_divergenceRMS = 0.0_pReal
  do k = 1_pInt, res(3); do j = 1_pInt, res(2)
-   do i = 2_pInt, res1_red -1_pInt                                                                 ! Has somewhere a conj. complex counterpart. Therefore count it twice.
+   do i = 2_pInt, res1_red -1_pInt                                                                  ! Has somewhere a conj. complex counterpart. Therefore count it twice.
      utilities_divergenceRMS = utilities_divergenceRMS &
-           + 2.0_pReal*(sum (real(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),&              ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
-                                           xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&                   ! --> sum squared L_2 norm of vector 
+           + 2.0_pReal*(sum (real(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),&               ! (sqrt(real(a)**2 + aimag(a)**2))**2 = real(a)**2 + aimag(a)**2. do not take square root and square again
+                                           xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal)&                    ! --> sum squared L_2 norm of vector 
                        +sum(aimag(math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3),& 
                                                           xi(1:3,i,j,k))*TWOPIIMG)**2.0_pReal))
    enddo
-   utilities_divergenceRMS = utilities_divergenceRMS &                                             ! these two layers (DC and Nyquist) do not have a conjugate complex counterpart
-                 + sum( real(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
-                                                     xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
-                 + sum(aimag(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
-                                                     xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
-                 + sum( real(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
-                                                     xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)&
-                 + sum(aimag(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
-                                                     xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
+   utilities_divergenceRMS = utilities_divergenceRMS &                                              ! these two layers (DC and Nyquist) do not have a conjugate complex counterpart (if res(1) /= 1)
+              + sum( real(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
+                                                  xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+              + sum(aimag(math_mul33x3_complex(field_fourier(1       ,j,k,1:3,1:3),&
+                                                  xi(1:3,1       ,j,k))*TWOPIIMG)**2.0_pReal)&
+              + sum( real(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
+                                                  xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)&
+              + sum(aimag(math_mul33x3_complex(field_fourier(res1_red,j,k,1:3,1:3),&
+                                                  xi(1:3,res1_red,j,k))*TWOPIIMG)**2.0_pReal)
  enddo; enddo
+ if(res(1) == 1_pInt) utilities_divergenceRMS = utilities_divergenceRMS * 0.5_pReal                 ! counted twice in case of res(1) == 1
+ utilities_divergenceRMS = sqrt(utilities_divergenceRMS) * wgt                                      ! RMS in real space calculated with Parsevals theorem from Fourier space
 
- utilities_divergenceRMS = sqrt(utilities_divergenceRMS) *wgt                                      ! RMS in real space calculated with Parsevals theorem from Fourier space
- 
 !--------------------------------------------------------------------------------------------------
 ! calculate additional divergence criteria and report
- if (debugDivergence) then                                                                         ! calculate divergence again
+ if (debugDivergence) then                                                                          ! calculate divergence again
    err_div_max = 0.0_pReal
    do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res1_red
-     temp3_Complex = math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3)*wgt,&                       ! weighting P_fourier
+     temp3_Complex = math_mul33x3_complex(field_fourier(i,j,k,1:3,1:3)*wgt,&                        ! weighting P_fourier
                                              xi(1:3,i,j,k))*TWOPIIMG
      err_div_max = max(err_div_max,sum(abs(temp3_Complex)**2.0_pReal))
-     divergence_fourier(i,j,k,1:3) = temp3_Complex                                                 ! need divergence NOT squared
+     divFourier(i,j,k,1:3) = temp3_Complex                                                          ! need divergence NOT squared
    enddo; enddo; enddo
    
-   call fftw_execute_dft_c2r(plan_divergence,divergence_fourier,divergence_real)                   ! already weighted
+   call fftw_execute_dft_c2r(planDiv,divFourier,divReal)                                            ! already weighted
 
-   err_real_div_RMS = sqrt(wgt*sum(divergence_real**2.0_pReal))                                    ! RMS in real space
-   err_real_div_max = sqrt(maxval(sum(divergence_real**2.0_pReal,dim=4)))                          ! max in real space                                       
-   err_div_max      = sqrt(    err_div_max)                                                        ! max in Fourier space
+   err_real_div_RMS = sqrt(wgt*sum(divReal**2.0_pReal))                                             ! RMS in real space
+   err_real_div_max = sqrt(maxval(sum(divReal**2.0_pReal,dim=4)))                                   ! max in real space                                       
+   err_div_max      = sqrt(    err_div_max)                                                         ! max in Fourier space
    
    write(6,'(/,1x,a,es11.4)')      'error divergence  FT  RMS = ',utilities_divergenceRMS
    write(6,'(1x,a,es11.4)')        'error divergence Real RMS = ',err_real_div_RMS
@@ -763,10 +790,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  
  integer(pInt) :: &
    calcMode, &                                                                                      !< CPFEM mode for calculation
-   collectMode                                                                                      !< CPFEM mode for collection
+   collectMode, &                                                                                   !< CPFEM mode for collection
+   j,k
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
- real(pReal)  :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
- integer(pInt) :: i,j,k
+ real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  calcMode    = CPFEM_CALCRESULTS
@@ -939,11 +966,11 @@ subroutine utilities_destroy()
 
  implicit none
 
- if (debugDivergence) call fftw_destroy_plan(plan_divergence)
- if (debugFFTW) call fftw_destroy_plan(plan_scalarField_forth)
- if (debugFFTW) call fftw_destroy_plan(plan_scalarField_back)
- call fftw_destroy_plan(plan_forward)
- call fftw_destroy_plan(plan_backward)
+ if (debugDivergence) call fftw_destroy_plan(planDiv)
+ if (debugFFTW) call fftw_destroy_plan(planDebugForth)
+ if (debugFFTW) call fftw_destroy_plan(planDebugBack)
+ call fftw_destroy_plan(planForth)
+ call fftw_destroy_plan(planBack)
 
 end subroutine utilities_destroy
 

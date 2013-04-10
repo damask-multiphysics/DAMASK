@@ -228,7 +228,7 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal)   :: err_div, err_stress       
- integer(pInt) :: iter, row, column
+ integer(pInt) :: iter
  logical       :: ForwardData
 
 !--------------------------------------------------------------------------------------------------
@@ -375,9 +375,9 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
                            err_stress/err_stress_tol    ]  < 1.0_pReal)
   
  write(6,'(/,a,f10.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
-            err_div/pAvgDivL2/err_div_tol, ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
- write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC =  ', &
-                   err_stress/err_stress_tol, ' (',err_stress, ' Pa  , tol =',err_stress_tol,')'  
+           err_div/pAvgDivL2/err_div_tol,  ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
+ write(6,  '(a,f10.2,a,es11.5,a,es11.4,a)') ' error stress BC =  ', &
+                err_stress/err_stress_tol, ' (',err_stress,       ' Pa,   tol =',err_stress_tol,')'  
  flush(6)
 
 end function basic_Converged
