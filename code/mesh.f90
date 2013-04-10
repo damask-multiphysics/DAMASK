@@ -4045,30 +4045,30 @@ integer(pInt) function FE_mapElemtype(what)
            'cpe8')
       FE_mapElemtype = 4_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral
     case ( '54')
-      FE_mapElemtype = 3_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
+      FE_mapElemtype = 5_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
     case ('134', &
           'c3d4')
-      FE_mapElemtype = 5_pInt            ! Three-dimensional Four-node Tetrahedron
+      FE_mapElemtype = 6_pInt            ! Three-dimensional Four-node Tetrahedron
     case ('157')
-      FE_mapElemtype = 6_pInt            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
+      FE_mapElemtype = 7_pInt            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
     case ('127')
-      FE_mapElemtype = 7_pInt            ! Three-dimensional Ten-node Tetrahedron
+      FE_mapElemtype = 8_pInt            ! Three-dimensional Ten-node Tetrahedron
     case ('136', &
           'c3d6')
-      FE_mapElemtype = 8_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
+      FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
     case ( '117', &
            '123', &
            'c3d8r')
-      FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
+      FE_mapElemtype = 10_pInt           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
     case (  '7', &
             'c3d8')
-      FE_mapElemtype = 10_pInt           ! Three-dimensional Arbitrarily Distorted Brick
+      FE_mapElemtype = 11_pInt           ! Three-dimensional Arbitrarily Distorted Brick
     case ( '57', &
            'c3d20r')
-      FE_mapElemtype = 11_pInt           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
+      FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
     case ( '21', &
            'c3d20')
-      FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
+      FE_mapElemtype = 13_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
     case default 
       call IO_error(error_ID=190_pInt,ext_msg=IO_lc(what))
  end select
@@ -4607,12 +4607,6 @@ subroutine mesh_build_FEdata
  ! indicates which subnodes make up the interfaces enclosing the IP volume.
  ! The sorting convention is such that the outward pointing normal
  ! follows from a right-handed traversal of the face node list.
- ! For two-dimensional elements, which only have lines as "interface"
- ! one nevertheless has to specify each interface by a closed path,
- ! e.g., 1,2, 2,1, assuming the line connects nodes 1 and 2.
- ! This will result in zero ipVolume and interfaceArea, but is not
- ! detrimental at the moment since non-local constitutive laws are
- ! currently not foreseen in 2D cases.
  me = 0_pInt
  
  me = me + 1_pInt
