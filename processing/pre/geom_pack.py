@@ -27,16 +27,16 @@ class extendedOption(Option):
 # ----------------------- MAIN -------------------------------
 
 identifiers = {
-        'resolution': ['a','b','c'],
-        'dimension':  ['x','y','z'],
-        'origin':     ['x','y','z'],
+        'grid':    ['a','b','c'],
+        'size':    ['x','y','z'],
+        'origin':  ['x','y','z'],
           }
 mappings = {
-        'resolution': lambda x: int(x),
-        'dimension':  lambda x: float(x),
-        'origin':     lambda x: float(x),
-        'homogenization': lambda x: int(x),
-        'maxmicrostructure': lambda x: int(x),
+        'grid':            lambda x: int(x),
+        'size':            lambda x: float(x),
+        'origin':          lambda x: float(x),
+        'homogenization':  lambda x: int(x),
+        'microstructures': lambda x: int(x),
           }
 
 
@@ -51,19 +51,26 @@ compress geometry files with ranges "a to b" and/or multiples "n of x".
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN',
+                'input':sys.stdin,
+                'output':sys.stdout,
+                'croak':sys.stderr,
+               })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name,
+                    'input':open(name),
+                    'output':open(name+'_tmp','w'),
+                    'croak':sys.stdout,
+                    })
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
-
+#  get labels by either read the first row, or - if keyword header is present - the last line of the header
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
   if m:
@@ -76,16 +83,18 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-  info = {'resolution': [0,0,0],
-          'dimension':  [0.0,0.0,0.0],
-          'origin':     [0.0,0.0,0.0],
-          'homogenization': 1,
-          'maxmicrostructure': 0,
+  info = {'grid':           [0,0,0],
+          'size':           [0.0,0.0,0.0],
+          'origin':         [0.0,0.0,0.0],
+          'homogenization':  1,
+          'microstructures': 0,
          }
 
   new_header = []
   for header in headers:
     headitems = map(str.lower,header.split())
+    if headitems[0] == 'resolution': headitems[0] = 'grid'
+    if headitems[0] == 'dimension':  headitems[0] = 'size'
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
@@ -94,33 +103,34 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if info['resolution'] == [0,0,0]:
-    sys.stderr.write('no resolution info found.\n')
+  if info['grid'] == [0,0,0]:
+    file['croak'].write('no grid info found.\n')
     continue
-  if info['dimension'] == [0.0,0.0,0.0]:
-    sys.stderr.write('no dimension info found.\n')
+  if info['size'] == [0.0,0.0,0.0]:
+    file['croak'].write('no size info found.\n')
     continue
 
-  if file['name'] != 'STDIN':
-    print 'resolution: %s'%(' x '.join(map(str,info['resolution'])))
-    print 'dimension:  %s'%(' x '.join(map(str,info['dimension'])))
-    print 'origin:     %s'%(' : '.join(map(str,info['origin'])))
-
-  new_header.append("resolution\ta %i\tb %i\tc %i\n"%( 
-    info['resolution'][0],
-    info['resolution'][1],
-    info['resolution'][2],))
-  new_header.append("dimension\tx %f\ty %f\tz %f\n"%(
-    info['dimension'][0],
-    info['dimension'][1],
-    info['dimension'][2]))
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization:  %i\n'%info['homogenization'] + \
+                      'microstructures: %i\n'%info['microstructures'])
+  
+  new_header.append("grid\ta %i\tb %i\tc %i\n"%( 
+    info['grid'][0],
+    info['grid'][1],
+    info['grid'][2],))
+  new_header.append("size\tx %f\ty %f\tz %f\n"%(
+    info['size'][0],
+    info['size'][1],
+    info['size'][2]))
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(
     info['origin'][0],
     info['origin'][1],
     info['origin'][2]))
   new_header.append("homogenization\t%i\n"%info['homogenization'])
-  if info['maxmicrostructure'] > 0:
-    new_header.append("maxMicrostructure\t%i\n"%info['maxmicrostructure'])
+  if info['microstructures'] > 0:
+    new_header.append("microstructures\t%i\n"%info['microstructures'])
 
 # ------------------------------------------ assemble header ---------------------------------------  
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import os,sys,math,string,re,numpy, damask 
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP 
 
@@ -23,17 +24,15 @@ class extendedOption(Option):
       Option.take_action(self, action, dest, opt, value, values, parser)
   
 
-
-
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 identifiers = {
-        'resolution': ['a','b','c'],
+        'grid':  ['a','b','c'],
           }
 mappings = {
-        'resolution': lambda x: int(x),
-        'grains':     lambda x: int(x),
+        'grid':    lambda x: int(x),
+        'grains':  lambda x: int(x),
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
@@ -41,24 +40,24 @@ Generate geometry description and material configuration by standard Voronoi tes
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-r', '--resolution', dest='resolution', type='int', nargs = 3, \
-                                       help='a,b,c resolution of periodic box')
-parser.add_option('-d', '--dimension', dest='dimension', type='float', nargs = 3, \
-                                       help='x,y,z dimension of periodic box')
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
+                  help='a,b,c grid of hexahedral box [from seed file]')
+parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, \
+                  help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
-                                      help='homogenization index to be used')
+                  help='homogenization index to be used [%default]')
 parser.add_option('--phase', dest='phase', type='int', \
-                             help='phase index to be used')
+                  help='phase index to be used [%default]')
 parser.add_option('--crystallite', dest='crystallite', type='int', \
-                             help='crystallite index to be used')
+                  help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
-                                           help='output material configuration')
+                  help='output material configuration [%default]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement')
+                  help='output geom file with two-dimensional data arrangement [%default]')
 
                                    
-parser.set_defaults(resolution = [0,0,0])
-parser.set_defaults(dimension  = [0.0,0.0,0.0])
+parser.set_defaults(grid = [0,0,0])
+parser.set_defaults(size  = [0.0,0.0,0.0])
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = 1)
 parser.set_defaults(crystallite    = 1)
@@ -105,15 +104,16 @@ for file in files:
   file['input'].close()
 
   info = {'grains': 0,
-          'resolution': numpy.array([0,0,0]),
-          'dimension':  numpy.array(options.dimension),
-          'origin':     numpy.array([0.0,0.0,0.0]),
+          'grid':    numpy.array([0,0,0]),
+          'size':    numpy.array(options.size),
+          'origin':  numpy.array([0.0,0.0,0.0]),
           'homogenization': options.homogenization,
          }
 
   new_header = []
   for header in headers:
     headitems = map(str.lower,header.split())
+    if headitems[0] == 'resolution': headitems[0] = 'grid'
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
@@ -129,39 +129,26 @@ for file in files:
     file['croak'].write('grain data not matching grain count...\n')
     info['grains'] = min(info['grains'],len(content))
 
-  if 0 not in options.resolution:                                    # user-specified resolution
-    info['resolution'] = numpy.array(options.resolution)
+  if 0 not in options.grid:                                                                # user-specified grid
+    info['grid'] = numpy.array(options.grid)
 
-  if numpy.all(info['resolution'] == 0):
-    file['croak'].write('no resolution info found.\n')
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('no valid grid info found.\n')
     continue
 
-  twoD = info['resolution'][2] < 2
+  twoD = info['grid'][2] < 2
 
   for i in xrange(3):
-    if info['dimension'][i] <= 0.0:                                 # any invalid dimension?
-      info['dimension'][i] = float(info['resolution'][i])/max(info['resolution'])
-      file['croak'].write('rescaling dimension %i...\n'%i)
+    if info['size'][i] <= 0.0:                                                            # any invalid size?
+      info['size'][i] = float(info['grid'][i])/max(info['grid'])
+      file['croak'].write('rescaling size %i...\n'%i)
 
-  file['croak'].write('grains:         %i\n'%info['grains'] + \
-                      'resolution:     %s\n'%(' x '.join(map(str,info['resolution']))) + \
-                      'dimension:      %s\n'%(' x '.join(map(str,info['dimension']))) + \
-                      'origin:         %s\n'%(' : '.join(map(str,info['origin']))) + \
+  file['croak'].write('grains to map:  %i\n'%info['grains'] + \
+                      'grid     a b c: %s\n'%(' x '.join(map(str,info['grid']))) + \
+                      'size     x y z: %s\n'%(' x '.join(map(str,info['size']))) + \
+                      'origin   x y z: %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization: %i\n'%info['homogenization'])
 
-  new_header.append("resolution\ta %i\tb %i\tc %i\n"%( 
-    info['resolution'][0],
-    info['resolution'][1],
-    info['resolution'][2],))
-  new_header.append("dimension\tx %f\ty %f\tz %f\n"%(
-    info['dimension'][0],
-    info['dimension'][1],
-    info['dimension'][2],))
-  new_header.append("origin\tx %f\ty %f\tz %f\n"%(
-    info['origin'][0],
-    info['origin'][1],
-    info['origin'][2],))
-  new_header.append("homogenization\t%i\n"%info['homogenization'])
 
 # -------------------------------------- prepare data ----------------------------------
 
@@ -170,12 +157,12 @@ for file in files:
   eulers = numpy.zeros((3,info['grains']),'d')
 
   for i in xrange(info['grains']):
-    coords[:,i] = map(float,content[i].split()[:3])*info['dimension']
+    coords[:,i] = map(float,content[i].split()[:3])*info['size']
     eulers[:,i] = map(float,content[i].split()[3:6])
  
 # -------------------------------------- switch according to task ----------------------------------
 
-  if options.config:
+  if options.config:                                                                     # write config file
     file['output'].write('<microstructure>\n')
     for i in xrange(info['grains']):
       file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
@@ -186,41 +173,57 @@ for file in files:
     for i in xrange(info['grains']):
       file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
                            '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,i],eulers[1,i],eulers[2,i]))
-    
-  else:
-    file['output'].write('%i\theader\n'%(len(new_header)) + ''.join(new_header))
-  
-    N = info['resolution'].prod()
-    shift = 0.5*info['dimension']/info['resolution']                            # shift by half of side length to center of element
+
+  else:                                                                                 # write geometry file  
+    N = info['grid'].prod()
+    shift = 0.5*info['size']/info['grid']                                             # shift by half of side length to center of element
     undeformed = numpy.zeros((3,N),'d')
 
     for i in xrange(N):
-      undeformed[0,i] = info['dimension'][0]\
-                       * float(i                                              % info['resolution'][0])\
-                                                                         /float(info['resolution'][0])
-      undeformed[1,i] = info['dimension'][1]\
-                      * float(i//info['resolution'][0]                        % info['resolution'][1])\
-                                                                         /float(info['resolution'][1])
-      undeformed[2,i] = info['dimension'][2]\
-                      * float(i//info['resolution'][0]//info['resolution'][1] % info['resolution'][2])\
-                                                                         /float(info['resolution'][2])
+      undeformed[0,i] = info['size'][0]\
+                       * float(i                                              % info['grid'][0])\
+                                                                         /float(info['grid'][0])
+      undeformed[1,i] = info['size'][1]\
+                      * float(i//info['grid'][0]                        % info['grid'][1])\
+                                                                         /float(info['grid'][1])
+      undeformed[2,i] = info['size'][2]\
+                      * float(i//info['grid'][0]//info['grid'][1] % info['grid'][2])\
+                                                                         /float(info['grid'][2])
       undeformed[:,i] += shift
       
     indices = damask.core.math.periodicNearestNeighbor(\
-              info['dimension'],\
+              info['size'],\
               numpy.eye(3),\
-              undeformed,coords)//3**3 + 1                         # floor division to kill periodic images
-    for n in xrange(info['resolution'][1:3].prod()):                            # loop over 2nd and 3rd dimension
-      file['output'].write({ True: ' ',
-                             False:'\n'}[options.twoD].\
-                             join(map(lambda x: str(x).rjust(formatwidth),\
-                                      indices[n*info['resolution'][0]:(n+1)*info['resolution'][0]]))+'\n')
-  
+              undeformed,coords)//3**3 + 1                                # floor division to kill periodic images
     missing = 0
     for i in xrange(info['grains']):
       if i+1 not in indices: missing += 1
     file['croak'].write({True:'all',False:'only'}[missing == 0] + ' %i grains mapped.\n'%(info['grains']-missing))
+    
+
+    new_header.append("grid\ta %i\tb %i\tc %i\n"%( 
+      info['grid'][0],
+      info['grid'][1],
+      info['grid'][2],))
+    new_header.append("size\tx %f\ty %f\tz %f\n"%(
+      info['size'][0],
+      info['size'][1],
+      info['size'][2],))
+    new_header.append("origin\tx %f\ty %f\tz %f\n"%(
+      info['origin'][0],
+      info['origin'][1],
+      info['origin'][2],))
+    new_header.append("microstructures\t%i\n"%(info['grains']-missing))
+    new_header.append("homogenization\t%i\n"%info['homogenization'])
+    file['output'].write('%i\theader\n'%(len(new_header)) + ''.join(new_header))
+
+    for n in xrange(info['grid'][1:3].prod()):                            # loop over 2nd and 3rd size
+      file['output'].write({ True: ' ',
+                             False:'\n'}[options.twoD].\
+                             join(map(lambda x: str(x).rjust(formatwidth),\
+                                      indices[n*info['grid'][0]:(n+1)*info['grid'][0]]))+'\n')
   
+   
 # ------------------------------------------ output finalization ---------------------------------------  
 
   if file['name'] != 'STDIN':

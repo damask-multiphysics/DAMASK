@@ -27,12 +27,10 @@ class extendedOption(Option):
 # ----------------------- MAIN -------------------------------
 
 identifiers = {
-        'resolution': ['a','b','c'],
-        'dimension':  ['x','y','z'],
+        'grid': ['a','b','c'],
           }
 mappings = {
-        'resolution': lambda x: int(x),
-        'dimension':  lambda x: float(x),
+        'grid': lambda x: int(x),
           }
 
 
@@ -44,18 +42,18 @@ Reports positions with random crystal orientations in seeds file format to STDOU
 
 parser.add_option('-N', dest='N', type='int', \
                   help='number of seed points to distribute [%default]')
-parser.add_option('-r','--resolution', dest='res', type='int', nargs=3, \
-                  help='Min Fourier points in x, y, z %default')
-parser.add_option('-s', '--rnd', dest='randomSeed', type='int', \
+parser.add_option('-g','--grid', dest='grid', type='int', nargs=3, \
+                  help='min a,b,c grid of hexahedral box %default')
+parser.add_option('-r', '--rnd', dest='randomSeed', type='int', \
                   help='seed of random number generator [%default]')
 
 parser.set_defaults(randomSeed = 0)
-parser.set_defaults(res = [16,16,16])
+parser.set_defaults(grid = [16,16,16])
 parser.set_defaults(N = 20)
 
 (options, extras) = parser.parse_args()
 
-Npoints = options.res[0]*options.res[1]*options.res[2]
+Npoints = options.grid[0]*options.grid[1]*options.grid[2]
 if options.N > Npoints: 
   sys.stderr.write('Warning: more seeds than grid points at minimum resolution.\n')
   options.N = Npoints
@@ -69,14 +67,17 @@ grainEuler[1,:] = numpy.arccos(2*grainEuler[1,:]-1)*180.0/math.pi
 grainEuler[2,:] *= 360.0
 
 seedpoint = numpy.random.permutation(Npoints)[:options.N]
-seeds[0,:] = (numpy.mod(seedpoint                                 ,options.res[0])+numpy.random.random())/options.res[0]
-seeds[1,:] = (numpy.mod(seedpoint//                options.res[0] ,options.res[1])+numpy.random.random())/options.res[1]
-seeds[2,:] = (numpy.mod(seedpoint//(options.res[1]*options.res[0]),options.res[2])+numpy.random.random())/options.res[2]
+seeds[0,:]=(numpy.mod(seedpoint                                   ,options.grid[0])\
+                                                            +numpy.random.random())/options.grid[0]
+seeds[1,:]=(numpy.mod(seedpoint//                  options.grid[0],options.grid[1])\
+                                                            +numpy.random.random())/options.grid[1]
+seeds[2,:]=(numpy.mod(seedpoint//(options.grid[1]*options.grid[0]),options.grid[2])\
+                                                            +numpy.random.random())/options.grid[2]
 
 print "4\theader"
-print "resolution\ta %i\tb %i\tc %i"%(options.res[0],options.res[1],options.res[2],)
+print "grid\ta %i\tb %i\tc %i"%(options.grid[0],options.grid[1],options.grid[2],)
 print "grains\t%i"%options.N
-print "randomSeed\t%f"%(options.randomSeed)
+print "randomSeed\t%i"%(options.randomSeed)
 print "x\ty\tz\tphi1\tPhi\tphi2"
 
 numpy.savetxt(sys.stdout,numpy.transpose(numpy.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')
