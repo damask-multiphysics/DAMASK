@@ -81,7 +81,7 @@ for file in files:
   m = re.search('(\d+)\s*head', firstline.lower())
   if m:
     headerlines = int(m.group(1))
-    headers  = [firstline]+[file['input'].readline() for i in range(headerlines)]
+    headers  = [file['input'].readline() for i in range(headerlines)]
   else:
     headerlines = 1
     headers = firstline
@@ -108,6 +108,7 @@ for file in files:
             mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
+    new_header.append(header)
 
   if info['grid'] == [0,0,0]:
     file['croak'].write('no grid info found.\n')
@@ -125,21 +126,7 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
   
-  new_header.append("grid\ta %i\tb %i\tc %i\n"%( 
-    info['grid'][0],
-    info['grid'][1],
-    info['grid'][2],))
-  new_header.append("size\tx %f\ty %f\tz %f\n"%(
-    info['size'][0],
-    info['size'][1],
-    info['size'][2]))
-  new_header.append("origin\tx %f\ty %f\tz %f\n"%(
-    info['origin'][0],
-    info['origin'][1],
-    info['origin'][2]))
-  new_header.append("homogenization\t%i\n"%info['homogenization'])
   if info['microstructures'] > 0:
-    new_header.append("microstructures\t%i\n"%info['microstructures'])
     digits = 1+int(math.log10(int(info['microstructures'])))
   else:
     digits = 1+int(math.log10(int(info['grid'][0]*info['grid'][1]*info['grid'][2])))
