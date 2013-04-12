@@ -28,26 +28,26 @@ class extendableOption(Option):
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration from EBSD data in given square-gridded 'ang' file.
-Dual phases can be discriminated based on threshold value in a given data column.
+Two phases can be discriminated based on threshold value in a given data column.
 """ + string.replace('$Id$','\n','\\n')
 )
 
 
 parser.add_option('--column',          dest='column', type='int', \
-                                       help='data column to discriminate phase 1 from 2 [%default]')
+                  help='data column to discriminate phase 1 from 2 [%default]')
 parser.add_option('-t','--threshold',  dest='threshold', type='float', \
-                                       help='threshold value to discriminate phase 1 from 2 [%default]')
+                  help='threshold value to discriminate phase 1 from 2 [%default]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
-                                      help='homogenization index to be used [%default]')
+                  help='homogenization index to be used [%default]')
 parser.add_option('--phase', dest='phase', type='int', nargs = 2, \
-                             help='two phase indices to be used %default')
+                  help='phase indices to be used %default')
 parser.add_option('--crystallite', dest='crystallite', type='int', \
-                             help='crystallite index to be used [%default]')
+                  help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
-                                           help='output material configuration [%default]')
-
-parser.set_defaults(column = 1)
-parser.set_defaults(threshold = 0.0)
+                  help='output material configuration [%default]')
+                  
+parser.set_defaults(column = 11)
+parser.set_defaults(threshold = 0.5)
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = [1,2])
 parser.set_defaults(crystallite    = 1)
@@ -81,7 +81,7 @@ for file in files:
 
   point          = 0
   step           = [0,0]
-  resolution     = [1,1]
+  grid     = [1,1]
   microstructure = ['<microstructure>']
   texture        = ['<texture>']
 
@@ -89,11 +89,14 @@ for file in files:
     words = line.split()
     if words[0] == '#':                                                 # process initial comments block
       if len(words) > 2:
-        if words[1] == 'HexGrid': file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n'); break
-        if words[1] == 'XSTEP:':     step[0]       = float(words[2])
-        if words[1] == 'YSTEP:':     step[1]       = float(words[2])
-        if words[1] == 'NCOLS_ODD:': resolution[0] =   int(words[2]); formatwidth = 1+int(math.log10(resolution[0]*resolution[1]))
-        if words[1] == 'NROWS:':     resolution[1] =   int(words[2]); formatwidth = 1+int(math.log10(resolution[0]*resolution[1]))
+        if words[1] == 'HexGrid': 
+          file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n'); break
+        if words[1] == 'XSTEP:':     step[0] = float(words[2])
+        if words[1] == 'YSTEP:':     step[1] = float(words[2])
+        if words[1] == 'NCOLS_ODD:': 
+          grid[0] =   int(words[2]); formatwidth = 1+int(math.log10(grid[0]*grid[1]))
+        if words[1] == 'NROWS:':     
+          grid[1] =   int(words[2]); formatwidth = 1+int(math.log10(grid[0]*grid[1]))
     else:                                                               # finished with comments block
       if options.config:                                                # write configuration (line by line)
         point += 1
@@ -106,14 +109,22 @@ for file in files:
                            '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
                           ]
       else:
-        file['output'].write("4 header\n" + \
-                             "resolution\ta %i\tb %i\tc 1\n"%(resolution[0],resolution[1]) + \
-                             "dimension\tx %g\ty %g\tz %g\n"%(step[0]*resolution[0],step[1]*resolution[1],min(step)) + \
+        grid.append(1)
+        file['output'].write("6 header\n" + \
+                             "$Id$ \n"
+                             "grid\ta %i\tb %i\tc 1\n"%(grid[0],grid[1]) + \
+                             "size\tx %g\ty %g\tz %g\n"%(step[0]*grid[0],step[1]*grid[1],min(step)) + \
                              "origin\tx 0\ty 0\tz 0\n" + \
+                             "microstructures\t%i\n"%(grid[0]*grid[1]) + \
                              "homogenization %i\n"%options.homogenization + \
-                             "1 to %i\n"%(resolution[0]*resolution[1]))
+                             "1 to %i\n"%(grid[0]*grid[1]))
         break
-
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,grid))) + \
+                      'size     x y z:  %s\n'%(' x '.join(map(str,[step[0]*grid[0],step[1]*grid[1],min(step)]))) + \
+                      'origin   x y z:  %s\n'%(' : '.join(map(str,[0.0,0.0,0.0]))) + \
+                      'microstructures: %i\n'%(grid[0]*grid[1]) + \
+                      'homogenization:  %i\n'%options.homogenization)
+  
   if options.config:
     file['output'].write('\n'.join(microstructure) + \
                          '\n'.join(texture))

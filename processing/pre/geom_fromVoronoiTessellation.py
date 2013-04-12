@@ -200,21 +200,13 @@ for file in files:
       if i+1 not in indices: missing += 1
     file['croak'].write({True:'all',False:'only'}[missing == 0] + ' %i grains mapped.\n'%(info['grains']-missing))
     
-
-    new_header.append("grid\ta %i\tb %i\tc %i\n"%( 
-      info['grid'][0],
-      info['grid'][1],
-      info['grid'][2],))
-    new_header.append("size\tx %f\ty %f\tz %f\n"%(
-      info['size'][0],
-      info['size'][1],
-      info['size'][2],))
-    new_header.append("origin\tx %f\ty %f\tz %f\n"%(
-      info['origin'][0],
-      info['origin'][1],
-      info['origin'][2],))
+    new_header.append("$Id$ \n")
+    new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
+    new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
+    new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
     new_header.append("microstructures\t%i\n"%(info['grains']-missing))
     new_header.append("homogenization\t%i\n"%info['homogenization'])
+
     file['output'].write('%i\theader\n'%(len(new_header)) + ''.join(new_header))
 
     for n in xrange(info['grid'][1:3].prod()):                            # loop over 2nd and 3rd size
