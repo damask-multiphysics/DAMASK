@@ -26,7 +26,6 @@ class extendedOption(Option):
 
 # ----------------------- MAIN -------------------------------
 
-
 minimal_surfaces = ['primitive','gyroid','diamond',]
 
 surface = {
@@ -42,27 +41,27 @@ Generate a geometry file of a bicontinuous structure of given type.
 )
 
 parser.add_option('-t','--type', dest='type', type='string', \
-                                 help='type of minimal surface (%s)'%(','.join(minimal_surfaces)))
+                  help='type of minimal surface (%s)'%(','.join(minimal_surfaces)))
 parser.add_option('-f','--threshold', dest='threshold', type='float', \
-                                      help='threshold value defining minimal surface')
-parser.add_option('-r', '--resolution', dest='resolution', type='int', nargs=3, \
-                                       help='a,b,c resolution of periodic box')
-parser.add_option('-d', '--dimension', dest='dimension', type='float', nargs=3, \
-                                       help='x,y,z dimension of periodic box')
+                  help='threshold value defining minimal surface [%default]')
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs=3, \
+                  help='a,b,c grid of hexahedral box %default')
+parser.add_option('-s', '--size', dest='size', type='float', nargs=3, \
+                  help='x,y,z size of hexahedral box %default')
 parser.add_option('-p', '--periods', dest='periods', type='int', \
-                                     help='number of repetitions of unit cell')
+                  help='number of repetitions of unit cell [%default]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
-                                      help='homogenization index to be used')
+                  help='homogenization index to be used [%defaults]')
 parser.add_option('--phase', dest='phase', type='int', nargs = 2, \
-                             help='two phase indices to be used %default')
+                  help='two phase indices to be used %default')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement')
+                  help='output geom file with two-dimensional data arrangement [%default]')
 
 parser.set_defaults(type = minimal_surfaces[0])
 parser.set_defaults(threshold = 0.0)
 parser.set_defaults(periods = 1)
-parser.set_defaults(resolution = numpy.array([16,16,16]))
-parser.set_defaults(dimension = numpy.array([1.0,1.0,1.0]))
+parser.set_defaults(grid = numpy.array([16,16,16]))
+parser.set_defaults(size = numpy.array([1.0,1.0,1.0]))
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase = [1,2])
 parser.set_defaults(twoD  = False)
@@ -77,28 +76,30 @@ file = {'name':'STDIN',
           'croak':sys.stderr,
        }
 
-if numpy.any(options.resolution < 1):
-  file['croak'].write('invalid resolution...\n')
+if numpy.any(options.grid < 1):
+  file['croak'].write('invalid grid...\n')
   sys.exit()
 
-if numpy.any(options.dimension < 0.0):
-  file['croak'].write('invalid dimension...\n')
+if numpy.any(options.size < 0.0):
+  file['croak'].write('invalid size...\n')
   sys.exit()
 
 
-file['output'].write("4 header\n" + \
-                     "resolution\ta %i\tb %i\tc %i\n"%(options.resolution[0],options.resolution[1],options.resolution[2],) + \
-                     "dimension\tx %g\ty %g\tz %g\n"%(options.dimension[0],options.dimension[1],options.dimension[2],) + \
+file['output'].write("6 header\n" + \
+                     "$Id$\n" +\
+                     "grid\ta %i\tb %i\tc %i\n"%(options.grid[0],options.grid[1],options.grid[2],) + \
+                     "size\tx %g\ty %g\tz %g\n"%(options.size[0],options.size[1],options.size[2],) + \
                      "origin\tx 0\ty 0\tz 0\n" + \
+                     "microstructures 2\n" +\
                      "homogenization %i\n"%options.homogenization
                      )
 
-for z in xrange(options.resolution[2]):
-  Z = options.periods*2.0*math.pi*(z+0.5)/options.resolution[2]
-  for y in xrange(options.resolution[1]):
-    Y = options.periods*2.0*math.pi*(y+0.5)/options.resolution[1]
-    for x in xrange(options.resolution[0]):
-      X = options.periods*2.0*math.pi*(x+0.5)/options.resolution[0]
+for z in xrange(options.grid[2]):
+  Z = options.periods*2.0*math.pi*(z+0.5)/options.grid[2]
+  for y in xrange(options.grid[1]):
+    Y = options.periods*2.0*math.pi*(y+0.5)/options.grid[1]
+    for x in xrange(options.grid[0]):
+      X = options.periods*2.0*math.pi*(x+0.5)/options.grid[0]
       file['output'].write(\
         str({True:options.phase[0],False:options.phase[1]}[options.threshold > surface[options.type](X,Y,Z)]) + \
         {True:' ',False:'\n'}[options.twoD] )
