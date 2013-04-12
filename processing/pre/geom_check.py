@@ -92,14 +92,16 @@ def vtk_writeASCII_mesh(dim,res,origin,data):
 # ----------------------- MAIN -------------------------------
 
 identifiers = {
-        'resolution': ['a','b','c'],
-        'dimension':  ['x','y','z'],
-        'origin':     ['x','y','z'],
+        'grid':    ['a','b','c'],
+        'size':    ['x','y','z'],
+        'origin':  ['x','y','z'],
           }
 mappings = {
-        'resolution': lambda x: int(x),
-        'dimension':  lambda x: float(x),
-        'origin':     lambda x: float(x),
+        'grid':            lambda x: int(x),
+        'size':            lambda x: float(x),
+        'origin':          lambda x: float(x),
+        'homogenization':  lambda x: int(x),
+        'microstructures': lambda x: int(x),
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog [geomfile[s]]', description = """
@@ -145,39 +147,49 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-  info = {'resolution': [0,0,0],
-          'dimension':  [0.0,0.0,0.0],
-          'origin':     [0.0,0.0,0.0],
+  info = {'grid':           [0,0,0],
+          'size':           [0.0,0.0,0.0],
+          'origin':         [0.0,0.0,0.0],
+          'homogenization':  1,
+          'microstructures': 0,
          }
+
   for header in headers:
     headitems = map(str.lower,header.split())
-    if headitems[0] in identifiers.keys():
-      for i in xrange(len(identifiers[headitems[0]])):
-        info[headitems[0]][i] = mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
+    if headitems[0] == 'resolution': headitems[0] = 'grid'
+    if headitems[0] == 'dimension':  headitems[0] = 'size'
+    if headitems[0] in mappings.keys():
+      if headitems[0] in identifiers.keys():
+        for i in xrange(len(identifiers[headitems[0]])):
+          info[headitems[0]][i] = \
+            mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
+      else:
+        info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if numpy.all(info['resolution'] == 0):
-    file['croak'].write('no resolution info found.\n')
+  if numpy.all(info['grid'] == 0):
+    file['croak'].write('no grid info found.\n')
     continue
 
-  if numpy.all(info['dimension'] == 0.0):
-    file['croak'].write('no dimension info found.\n')
+  if numpy.all(info['size'] == 0.0):
+    file['croak'].write('no size info found.\n')
     continue
 
-  file['croak'].write('resolution:     %s\n'%(' x '.join(map(str,info['resolution']))) + \
-                      'dimension:      %s\n'%(' x '.join(map(str,info['dimension']))) + \
-                      'origin:         %s\n'%(' : '.join(map(str,info['origin'])))
-                     )
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization:  %i\n'%info['homogenization'] + \
+                      'microstructures: %i\n'%info['microstructures'])
   
-  data = {'scalar':{'structure':numpy.zeros(info['resolution'],'i')}}
+  data = {'scalar':{'structure':numpy.zeros(info['grid'],'i')}}
   i = 0
   for line in content:  
     for item in map(int,line.split()):
-      data['scalar']['structure'][i%info['resolution'][0],(i/info['resolution'][0])%info['resolution'][1],i/info['resolution'][0]/info['resolution'][1]] = item
+      data['scalar']['structure'][i%info['grid'][0],(i/info['grid'][0])%info['grid'][1],i/info['grid'][0]/info['grid'][1]] = item
       i += 1
 
 
   out = {}
-  out['mesh'] = vtk_writeASCII_mesh(info['dimension'],info['resolution'],info['origin'],data)
+  out['mesh'] = vtk_writeASCII_mesh(info['size'],info['grid'],info['origin'],data)
   
   for what in out.keys():
     if file['name'] == 'STDIN':

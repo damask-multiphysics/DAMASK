@@ -35,30 +35,30 @@ Its fiber orientation is oscillating by +/- amplitude within one period.
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-r', '--resolution', dest='resolution', type='int', nargs=2, \
-                                    help='resolution (a,b) of grid')
-parser.add_option('-d', '--dimension', dest='dimension', type='float', nargs=2, \
-                                    help='physical dimension (x,y) of periodic patch')
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs=2, \
+                  help='a,b grid of hexahedral box %default')
+parser.add_option('-s', '--size', dest='size', type='float', nargs=2, \
+                  help='x,y size of hexahedral box %default')
 parser.add_option('-c', '--canal',  dest='canal', type='float', \
-                                    help='Haversian canal radius')
+                  help='Haversian canal radius [%default]')
 parser.add_option('-o', '--osteon', dest='osteon', type='float', \
-                                    help='osteon radius (horizontal)')
+                  help='osteon radius (horizontal) [%default]')
 parser.add_option('-l', '--lamella', dest='period', type='float', \
-                                    help='lamella width')
+                  help='lamella width [%default]')
 parser.add_option('-a', '--amplitude', dest='amplitude', type='float', \
-                                    help='amplitude of twisted plywood wiggle in deg')
+                  help='amplitude of twisted plywood wiggle in deg [%default]')
 parser.add_option(      '--aspect', dest='aspect', type='float', \
-                                    help='osteon aspect ratio (vert/horiz)')
+                  help='osteon aspect ratio (vert/horiz) [%default]')
 parser.add_option('-w', '--omega',  dest='omega', type='float', \
-                                    help='rotation angle (around normal) of osteon')
+                  help='rotation angle (around normal) of osteon [%default]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
-                                    help='homogenization index to be used')
+                  help='homogenization index to be used [%default]')
 parser.add_option('--crystallite',  dest='crystallite', type='int', \
-                                    help='crystallite index to be used')
+                  help='crystallite index to be used [%default]')
 parser.add_option('--configuration', dest='config', action='store_true', \
-                                     help='output material configuration')
+                  help='output material configuration [%default]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                                    help='use two-dimensional geom data arrangement')
+                  help='use two-dimensional geom data arrangement [%default]')
 
 parser.set_defaults(canal = 25e-6)
 parser.set_defaults(osteon = 100e-6)
@@ -66,8 +66,8 @@ parser.set_defaults(aspect = 1.0)
 parser.set_defaults(omega = 0.0)
 parser.set_defaults(period = 5e-6)
 parser.set_defaults(amplitude = 60)
-parser.set_defaults(dimension = numpy.array([300e-6,300e-6],'d'))
-parser.set_defaults(resolution = numpy.array([512,512],'i'))
+parser.set_defaults(size = numpy.array([300e-6,300e-6],'d'))
+parser.set_defaults(grid = numpy.array([512,512],'i'))
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(crystallite = 1)
 parser.set_defaults(config = False)
@@ -83,8 +83,8 @@ file = {'name':'STDIN',
         'croak':sys.stderr,
        }
 
-if numpy.any(options.resolution < 2):
-  file['croak'].write('resolution too low...\n')
+if numpy.any(options.grid < 2):
+  file['croak'].write('grid too low...\n')
   sys.exit()
 
 options.omega  *= math.pi/180.0                                           # rescale ro radians
@@ -92,25 +92,26 @@ rotation = numpy.array([[ math.cos(options.omega),math.sin(options.omega),],
                         [-math.sin(options.omega),math.cos(options.omega),]],'d')
 
 box = numpy.dot(numpy.array([[options.canal,0.],[0.,options.aspect*options.canal]]).transpose(),rotation)
-sys.stderr.write("bounding box: %s\n"%(numpy.sqrt(numpy.sum(box*box,0))))
 
-info = {'grains': 0,
-        'resolution': numpy.ones(3,'i'),
-        'dimension':  numpy.ones(3,'d'),
-        'origin':     numpy.zeros(3,'d'),
-        'homogenization': options.homogenization,
+
+info = {
+        'grid':   numpy.ones(3,'i'),
+        'size':   numpy.ones(3,'d'),
+        'origin': numpy.zeros(3,'d'),
+        'microstructures': 0,
+        'homogenization':  options.homogenization,
        }
 
 
-info['resolution'][:2] = options.resolution
-info['dimension'][:2]  = options.dimension
-info['dimension'][2]   = min(info['dimension'][0]/info['resolution'][0],info['dimension'][1]/info['resolution'][1])
-info['origin']         = -info['dimension']/2.0
+info['grid'][:2] = options.grid
+info['size'][:2] = options.size
+info['size'][2]  = min(info['size'][0]/info['grid'][0],info['size'][1]/info['grid'][1])
+info['origin']   = -info['size']/2.0
 
-X0 = info['dimension'][0]/info['resolution'][0]*\
-     (numpy.tile(numpy.arange(info['resolution'][0]),(info['resolution'][1],1))             - info['resolution'][0]/2 + 0.5)
-Y0 = info['dimension'][1]/info['resolution'][1]*\
-     (numpy.tile(numpy.arange(info['resolution'][1]),(info['resolution'][0],1)).transpose() - info['resolution'][1]/2 + 0.5)
+X0 = info['size'][0]/info['grid'][0]*\
+     (numpy.tile(numpy.arange(info['grid'][0]),(info['grid'][1],1))             - info['grid'][0]/2 + 0.5)
+Y0 = info['size'][1]/info['grid'][1]*\
+     (numpy.tile(numpy.arange(info['grid'][1]),(info['grid'][0],1)).transpose() - info['grid'][1]/2 + 0.5)
 
 X = X0*rotation[0,0] + Y0*rotation[0,1]                                   # rotate by omega
 Y = X0*rotation[1,0] + Y0*rotation[1,1]                                   # rotate by omega
@@ -121,22 +122,26 @@ beta = options.amplitude*numpy.sin(2.0*math.pi*(radius-options.canal)/options.pe
 
 microstructure = numpy.where(radius < float(options.canal),1,0) + numpy.where(radius > float(options.osteon),2,0)
 
-info['grains'] = 3
-alphaOfGrain = numpy.zeros(info['resolution'][0]*info['resolution'][1],'d')
-betaOfGrain  = numpy.zeros(info['resolution'][0]*info['resolution'][1],'d')
-for y in xrange(info['resolution'][1]):
-  for x in xrange(info['resolution'][0]):
+info['microstructures'] = 3
+alphaOfGrain = numpy.zeros(info['grid'][0]*info['grid'][1],'d')
+betaOfGrain  = numpy.zeros(info['grid'][0]*info['grid'][1],'d')
+for y in xrange(info['grid'][1]):
+  for x in xrange(info['grid'][0]):
     if microstructure[y,x] == 0:
-      microstructure[y,x] = info['grains']
-      alphaOfGrain[info['grains']] = alpha[y,x]
-      betaOfGrain[ info['grains']] = beta[y,x]
-      info['grains'] += 1
+      microstructure[y,x] = info['microstructures']
+      alphaOfGrain[info['microstructures']] = alpha[y,x]
+      betaOfGrain[ info['microstructures']] = beta[y,x]
+      info['microstructures'] += 1
 
+file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                    'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                    'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                    'microstructures: %i\n'%info['microstructures'] + \
+                    'homogenization:  %i\n'%info['homogenization'])
+file['croak'].write("bounding box:    %s\n"%(numpy.sqrt(numpy.sum(box*box,0))))
 
 # -------------------------------------- switch according to task ----------------------------------
-
-formatwidth = 1+int(math.floor(math.log10(info['grains']-1)))
-
+formatwidth = 1+int(math.floor(math.log10(info['microstructures']-1)))
 if options.config:
   file['output'].write('<microstructure>\n')
   file['output'].write('\n[canal]\n' + \
@@ -161,15 +166,17 @@ if options.config:
   
 else:
 
-  file['output'].write("4 header\n" + \
-                       "resolution\ta %i\tb %i\tc %i\n"%(info['resolution'][0],info['resolution'][1],info['resolution'][2]) + \
-                       "dimension\tx %g\ty %g\tz %g\n"%(info['dimension'][0],info['dimension'][1],info['dimension'][2]) + \
+  file['output'].write("6 header\n" + \
+                       "$Id$\n" + \
+                       "grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2]) + \
+                       "size\tx %g\ty %g\tz %g\n"%(info['size'][0],info['size'][1],info['size'][2]) + \
                        "origin\tx %g\ty %g\tz %g\n"%(info['origin'][0],info['origin'][1],info['origin'][2]) + \
-                       "homogenization 1\n"
+                       "microstructures\t%i\n"%(info['microstructures']) + \
+                       "homogenization\t%i\n"%(info['homogenization'])
                        )
   
-  for y in xrange(info['resolution'][1]):
-    for x in xrange(info['resolution'][0]):
+  for y in xrange(info['grid'][1]):
+    for x in xrange(info['grid'][0]):
       file['output'].write(\
           str(microstructure[y,x]).rjust(formatwidth) + \
           {True:' ',False:'\n'}[options.twoD] )
