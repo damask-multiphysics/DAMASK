@@ -307,10 +307,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
  use mesh, only:           mesh_FEasCP, &
                            mesh_NcpElems, &
                            mesh_maxNips, &
-                           mesh_element, &
-                           FE_Nips, &
-                           FE_Nnodes, &
-                           FE_geomtype
+                           mesh_element
  use material, only:       homogenization_maxNgrains, &
                            microstructure_elemhomo, &
                            material_phase

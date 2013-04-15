@@ -200,10 +200,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    mesh_element, &
    mesh_node0, &
    mesh_node, &
-   mesh_build_subNodeCoords, &
+   mesh_build_cells, &
    mesh_build_ipCoordinates, &
-   FE_Nnodes, &
-   FE_geomtype
+   FE_Nnodes
  use CPFEM, only: &
    CPFEM_general, &
    CPFEM_init_done, &
@@ -345,7 +344,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        call debug_reset()                                                                           ! resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1_pInt
-       call mesh_build_subNodeCoords()                                                              ! update subnodal coordinates
+       call mesh_build_cells()                                                                      ! update cell node coordinates
        call mesh_build_ipCoordinates()                                                              ! update ip coordinates
      endif
      if ( outdatedByNewInc ) then
@@ -362,7 +361,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      else
        computationMode = CPFEM_COLLECT                                                              ! plain collect
      endif
-     do node = 1,FE_Nnodes(FE_geomtype(mesh_element(2,cp_en)))
+     do node = 1,FE_Nnodes(mesh_element(2,cp_en))
        FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
        mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + numerics_unitlength * dispt(1:3,node)
      enddo
