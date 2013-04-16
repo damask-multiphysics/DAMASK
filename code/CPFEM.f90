@@ -39,7 +39,7 @@ module CPFEM
  logical ::                                        CPFEM_init_done       = .false., &                !< remember whether init has been done already
                                                    CPFEM_init_inProgress = .false., &                !< remember whether first IP is currently performing init
                                                    CPFEM_calc_done       = .false.                   !< remember whether first IP has already calced the results
- logical, public, protected ::                     usePingPong           = .false.
+ logical, private ::                               parallelExecution     = .false.
  integer(pInt), parameter, public :: &
    CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
    CPFEM_AGERESULTS      = 2_pInt**1_pInt, &
@@ -144,20 +144,19 @@ subroutine CPFEM_init
    IO_timeStamp, &
    IO_error
  use numerics, only: &
-   DAMASK_NumThreadsInt
+   DAMASK_NumThreadsInt, &
+   usePingPong
  use debug, only: &
    debug_level, &
    debug_CPFEM, &
    debug_levelBasic, &
    debug_levelExtensive
  use FEsolving, only: &
-   parallelExecution, &
    symmetricSolver, &
    restartRead, &
    modelName
  use mesh, only: &
    mesh_NcpElems, &
-   mesh_Nelems, &
    mesh_maxNips
  use material, only: &
    homogenization_maxNgrains, &
@@ -182,10 +181,6 @@ subroutine CPFEM_init
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-
- if (any(.not. crystallite_localPlasticity) .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(600)
- if ((DAMASK_NumThreadsInt > 1_pInt)        .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(601)
- usePingPong = (any(.not. crystallite_localPlasticity) .or. (DAMASK_NumThreadsInt > 1_pInt))
 
  ! initialize stress and jacobian to zero 
  allocate(CPFEM_cs(6,mesh_maxNips,mesh_NcpElems)) ;                CPFEM_cs              = 0.0_pReal
@@ -254,9 +249,9 @@ subroutine CPFEM_init
    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_cs:              ', shape(CPFEM_cs)
    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
-     write(6,*)
-     write(6,*) 'parallelExecution:    ', parallelExecution
-     write(6,*) 'symmetricSolver:      ', symmetricSolver
+   write(6,*)
+   write(6,*) 'parallelExecution:    ', parallelExecution
+   write(6,*) 'symmetricSolver:      ', symmetricSolver
  endif
  flush(6)
 
@@ -269,7 +264,8 @@ end subroutine CPFEM_init
 subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian)
  ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
  use numerics, only:       defgradTolerance, &
-                           iJacoStiffness
+                           iJacoStiffness, &
+                           usePingPong
  use debug, only:          debug_level, &
                            debug_CPFEM, &
                            debug_levelBasic, &
@@ -285,8 +281,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                            debug_stressMin, &
                            debug_jacobianMax, &
                            debug_jacobianMin
- use FEsolving, only:      parallelExecution, &
-                           outdatedFFN1, &
+ use FEsolving, only:      outdatedFFN1, &
                            terminallyIll, &
                            cycleCounter, &
                            theInc, &
@@ -377,12 +372,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
    !$OMP END CRITICAL (write2out)
  endif
 
-     if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
-       crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
-       crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
-       crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
-       crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
-       crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
+ parallelExecution = usePingPong .and. .not. (iand(mode, CPFEM_EXPLICIT) /= 0_pInt)
+
+ if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
+   crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
+   crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
+   crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
+   crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
+   crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
        forall ( i = 1:homogenization_maxNgrains, &
                 j = 1:mesh_maxNips, &
                 k = 1:mesh_NcpElems ) &
@@ -513,6 +510,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
              !$OMP END CRITICAL (write2out)
            endif
            call materialpoint_stressAndItsTangent(updateJaco, dt)                                    ! calculate stress and its tangent
+             !$OMP CRITICAL (write2out)
+               write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for el ip ',cp_en,IP
+               flush(6)
+             !$OMP END CRITICAL (write2out)
+             !$OMP CRITICAL (write2out)
+               write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for el ip ',cp_en,IP
+               flush(6)
+             !$OMP END CRITICAL (write2out)
            call materialpoint_postResults(dt)                                                        ! post results
          endif
          
@@ -559,7 +564,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                          0.5_pReal * (math_I3(i,k) * Kirchhoff(j,l) + math_I3(j,l) * Kirchhoff(i,k) + &
                                     math_I3(i,l) * Kirchhoff(j,k) + math_I3(j,k) * Kirchhoff(i,l))
          enddo; enddo; enddo; enddo; enddo; enddo
-         do i=1,3; do j=1,3; do k=1,3; do l=1,3
+         do i=1,3; do j=1,3; do k=1,3; do l=1,3                                                     !< @ToDo use forall
            H_sym(i,j,k,l) = 0.25_pReal * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
          enddo; enddo; enddo; enddo
          CPFEM_dcsde(1:6,1:6,IP,cp_en) = math_Mandel3333to66(J_inverse * H_sym)
@@ -589,7 +594,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
    Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
  endif
 
- if (mode < 3 .and. iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt &
+ if (mode < 3 .and. iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt &                !< @ToDo mode 3 doesn't exist any more
                     .and. ((debug_e == cp_en .and. debug_i == IP) &
                             .or. .not. iand(debug_level(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
    !$OMP CRITICAL (write2out)

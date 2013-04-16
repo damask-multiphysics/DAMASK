@@ -468,6 +468,7 @@ subroutine mesh_init(ip,el)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
    IO_timeStamp, &
+   IO_error, &
 #ifdef Abaqus
    IO_abaqus_hasNoPart, &
 #endif
@@ -478,9 +479,9 @@ subroutine mesh_init(ip,el)
 #else
    IO_open_InputFile
 #endif
-
+ use numerics, only: &
+   usePingPong
  use FEsolving, only: &
-   parallelExecution, &
    FEsolving_execElem, &
    FEsolving_execIP, &
    calcMode, &
@@ -590,7 +591,7 @@ subroutine mesh_init(ip,el)
  call mesh_build_ipNeighborhood
  call mesh_tell_statistics
 
- parallelExecution = (parallelExecution .and. (mesh_Nelems == mesh_NcpElems))                       ! plus potential killer from non-local constitutive
+if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(600_pInt)                      ! ping-pong must be disabled when havin non-DAMASK-elements
  
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)

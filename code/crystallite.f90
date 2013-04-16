@@ -127,6 +127,8 @@ subroutine crystallite_init(Temperature)
                        debug_level, &
                        debug_crystallite, &
                        debug_levelBasic
+ use numerics, only: &
+   usePingPong
  use math, only:       math_I3, &
                        math_EulerToR, &
                        math_inv33, &
@@ -335,6 +337,9 @@ do e = FEsolving_execElem(1),FEsolving_execElem(2)                              
     crystallite_requested(g,i,e) = .true.
   endforall
 enddo
+
+if(any(.not. crystallite_localPlasticity) .and. .not. usePingPong) call IO_error(601) 
+
 crystallite_partionedTemperature0 = Temperature   ! isothermal assumption
 crystallite_partionedFp0 = crystallite_Fp0
 crystallite_partionedF0 = crystallite_F0
@@ -383,7 +388,7 @@ crystallite_orientation0 = crystallite_orientation             ! Store initial o
 
 call crystallite_stressAndItsTangent(.true.,.false.)                   ! request elastic answers
 crystallite_fallbackdPdF = crystallite_dPdF                    ! use initial elastic stiffness as fallback
- 
+
 !    *** Output  ***
 if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
     write(6,'(a35,1x,7(i8,1x))') 'crystallite_Temperature:           ', shape(crystallite_Temperature)
@@ -1158,7 +1163,7 @@ if(updateJaco) then                                                             
         
         do e = FEsolving_execElem(1),FEsolving_execElem(2)
           myNgrains = homogenization_Ngrains(mesh_element(3,e))
-          select case(perturbation)
+          select case(perturbation)                                                                 !< @ToDo: what's going on here
             case(1_pInt)
               forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains, &
                       crystallite_requested(g,i,e) .and. crystallite_converged(g,i,e)) &            ! converged state warrants stiffness update

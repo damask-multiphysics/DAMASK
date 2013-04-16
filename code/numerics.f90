@@ -78,6 +78,7 @@ module numerics
    volDiscrPow_RGC            =  5.0_pReal                                                          !< powerlaw penalty for volume discrepancy
  logical, protected, public :: &                                                   
    analyticJaco               = .false., &                                                          !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+   usePingPong                = .true., & 
    numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 
 !--------------------------------------------------------------------------------------------------

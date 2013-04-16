@@ -1515,9 +1515,9 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
 !--------------------------------------------------------------------------------------------------
 ! user errors
  case (600_pInt)
-   msg = 'Cannot combine Non-local plasticity and non-DAMASK elements'
+   msg = 'Ping-Pong not possible when using non-DAMASK elements'
  case (601_pInt)
-   msg = 'Cannot combine OpenMP threading and non-DAMASK elements'
+   msg = 'Ping-Pong needed when using non-local plasticity'
 
 !-------------------------------------------------------------------------------------------------
 ! DAMASK_marc errors

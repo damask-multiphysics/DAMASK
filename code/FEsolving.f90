@@ -45,7 +45,6 @@ module FEsolving
    restartWrite      = .false., &                                                                   !< write current state to enable restart
    restartRead       = .false., &                                                                   !< restart information to continue calculation from saved state
    terminallyIll     = .false., &                                                                   !< at least one material point is terminally ill
-   parallelExecution = .true.,  &                                                                   !< OpenMP multicore calculation
    lastMode          = .true.,  &                                                                   !< toDo
    lastIncConverged  = .false., &                                                                   !< toDo
    outdatedByNewInc  = .false.                                                                      !< toDo
