@@ -96,7 +96,7 @@ for file in files:
                                                 's#':'str'}[operand[1]],
                                                table.labels.index(operand[2]))]
       except:
-        parser.error('column %s not found...\n'%operand)
+        parser.error('column %s not found...\n'%operand[2])
 
   evaluator = "'" + options.condition + "'.format(" + ','.join(interpolator) + ")"
   
