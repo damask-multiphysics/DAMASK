@@ -336,7 +336,7 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 ###################################################################################################
-COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o numerics.o debug.o math.o \
+COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
                  constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
                  constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o crystallite.o \
@@ -430,10 +430,14 @@ debug.o:                       debug.f90 \
                                numerics.o
 
 numerics.o:                    numerics.f90 \
-                               IO.o
+                               libs.o
                                
+libs.o:                        libs.f90 \
+                               IO.o
+
 IO.o:                          IO.f90 \
                                DAMASK_spectral_interface.o
+
 ifeq "$(F90)" "gfortran"
 DAMASK_spectral_interface.o:   DAMASK_spectral_interface.f90 \
                                prec.o
