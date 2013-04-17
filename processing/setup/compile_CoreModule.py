@@ -94,6 +94,7 @@ execute = { \
                         ' %s'%'prec.f90'+\
                         ' %s'%'DAMASK_spectral_interface.f90'+\
                         ' %s'%'IO.f90'+\
+                        ' %s'%'libs.f90'+\
                         ' %s'%'numerics.f90'+\
                         ' %s'%'debug.f90'+\
                         ' %s'%'math.f90'+\
