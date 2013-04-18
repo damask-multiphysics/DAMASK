@@ -330,10 +330,10 @@ module mesh
       3, & ! element   6 (2D 3node 1ip)
       7, & ! element 125 (2D 6node 3ip)
       9, & ! element  11 (2D 4node 4ip)
-     13, & ! element  27 (2D 8node 9ip)
+     16, & ! element  27 (2D 8node 9ip)
       4, & ! element 134 (3D 4node 1ip)
      15, & ! element 127 (3D 10node 4ip)
-     20, & ! element 136 (3D 6node 6ip)
+     21, & ! element 136 (3D 6node 6ip)
       8, & ! element 117 (3D 8node 1ip)
      27, & ! element   7 (3D 8node 8ip)
      64  & ! element  21 (3D 20node 27ip)
@@ -689,7 +689,7 @@ subroutine mesh_build_cells
  
    !*** Count cell nodes (including duplicates) and generate cell connectivity list
 
-   allocate(mesh_cell(mesh_maxNcellnodes,mesh_maxNips,mesh_NcpElems)) ; mesh_cell = 0_pInt
+   allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems)) ; mesh_cell = 0_pInt
    allocate(matchingNode2cellnode(mesh_Nnodes)) ; matchingNode2cellnode = 0_pInt
    allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems)) ; cellnodeParent = 0_pInt
 
@@ -740,7 +740,7 @@ subroutine mesh_build_cells
 
  !*** Cell node coordinates can be calculated from a weighted sum of node coordinates
   
-! !$OMP PARALLEL DO PRIVATE(e,localCellnodeID,t,myCoords)
+!$OMP PARALLEL DO PRIVATE(e,localCellnodeID,t,myCoords)
  do n = 1_pInt,mesh_Ncellnodes                                                                      ! loop over cell nodes
    e = mesh_cellnode(n)%elemParent
    localCellnodeID = mesh_cellnode(n)%intraElemID
@@ -752,7 +752,7 @@ subroutine mesh_build_cells
    enddo
    mesh_cellnode(n)%coords = myCoords / sum(FE_cellnodeParentnodeWeights(:,localCellnodeID,t))
  enddo
-! !$OMP END PARALLEL DO
+!$OMP END PARALLEL DO
 
 end subroutine mesh_build_cells
 
@@ -859,7 +859,7 @@ subroutine mesh_build_ipCoordinates
      c = FE_celltype(g)                                                                             ! get cell type
      do i = 1_pInt,FE_Nips(g)                                                                       ! loop over ips=cells in this element
        myCoords = 0.0_pReal
-       do n = 1_pInt,FE_NcellnodesPerCell(c)                                                         ! loop over cell nodes in this cell
+       do n = 1_pInt,FE_NcellnodesPerCell(c)                                                        ! loop over cell nodes in this cell
          myCoords = myCoords + mesh_cellnode(mesh_cell(n,i,e))%coords
        enddo
        mesh_ipCoordinates(1:3,i,e) = myCoords / FE_NcellnodesPerCell(c)
