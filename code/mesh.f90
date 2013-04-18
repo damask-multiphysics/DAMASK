@@ -1,7 +1,7 @@
-! Copyright 2011-13 Max-Planck-Institut für Eisenforschung GmbH
+! Copyright 2011-13 Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !
 ! This file is part of DAMASK,
-! the Düsseldorf Advanced Material Simulation Kit.
+! the DÃ¼sseldorf Advanced Material Simulation Kit.
 !
 ! DAMASK is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
@@ -19,11 +19,11 @@
 !--------------------------------------------------------------------------------------------------
 !* $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!! Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!! Christoph Koords, Max-Planck-Institut für Eisenforschung GmbH
-!! Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!! Krishna Komerla, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!> @author Christoph Koords, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!> @author Martin Diehl, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!> @author Krishna Komerla, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver 
 !--------------------------------------------------------------------------------------------------
 
@@ -41,7 +41,7 @@ module mesh
    mesh_Nmaterials, &
    mesh_Nnodes, &                                                                                   !< total number of nodes in mesh
    mesh_Ncellnodes, &                                                                               !< total number of cell nodes in mesh (including duplicates)
-
+   mesh_Ncells, &                                                                                   !< total number of cells in mesh
    mesh_maxNnodes, &                                                                                !< max number of nodes in any CP element
    mesh_maxNips, &                                                                                  !< max number of IPs in any CP element
    mesh_maxNipNeighbors, &                                                                          !< max number of IP neighbors in any CP element
@@ -81,10 +81,10 @@ module mesh
    initialcondTableStyle                                                                            !< Table style (Marc only)
 #endif
  
- type, private :: tCellnode                                                                          !< set of parameters defining a cellnode
-   real(pReal), dimension(3) :: coords = 0.0_pReal
-   integer(pInt) :: elemParent = 0_pInt
-   integer(pInt) :: intraElemID = 0_pInt
+ type, private :: tCellnode                                                                         !< set of parameters defining a cellnode
+   real(pReal), dimension(3) :: coords = 0.0_pReal                                                  !< coordinates of cell node
+   integer(pInt) :: elemParent = 0_pInt                                                             !< number of parent element
+   integer(pInt) :: intraElemID = 0_pInt                                                            !< internal number of cell node in element
  end type tCellnode
 
  integer(pInt), dimension(2), private :: &
@@ -393,68 +393,72 @@ module mesh
   ],pInt)
 
  
- public  :: mesh_init, &
-            mesh_FEasCP, &
-            mesh_build_cells, &
-            mesh_build_ipVolumes, &
-            mesh_build_ipCoordinates, &
-            mesh_cellCenterCoordinates
+ public :: &
+   mesh_init, &
+   mesh_FEasCP, &
+   mesh_build_cells, &
+   mesh_build_ipVolumes, &
+   mesh_build_ipCoordinates, &
+   mesh_cellCenterCoordinates
 #ifdef Spectral
- public  :: mesh_regrid, &
-            mesh_nodesAroundCentres, &
-            mesh_deformedCoordsFFT, &
-            mesh_deformedCoordsLinear, &
-            mesh_volumeMismatch, &
-            mesh_shapeMismatch
+ public :: &
+   mesh_regrid, &
+   mesh_nodesAroundCentres, &
+   mesh_deformedCoordsFFT, &
+   mesh_deformedCoordsLinear, &
+   mesh_volumeMismatch, &
+   mesh_shapeMismatch
 #endif
 
  private :: &
 #ifdef Spectral
-            mesh_spectral_getGrid, &
-            mesh_spectral_getSize, &
-            mesh_spectral_getHomogenization, &
-            mesh_spectral_count_nodesAndElements, &
-            mesh_spectral_count_cpElements, &
-            mesh_spectral_map_elements, &
-            mesh_spectral_map_nodes, &
-            mesh_spectral_count_cpSizes, &
-            mesh_spectral_build_nodes, &
-            mesh_spectral_build_elements, &
+   mesh_spectral_getGrid, &
+   mesh_spectral_getSize, &
+   mesh_spectral_getHomogenization, &
+   mesh_spectral_count_nodesAndElements, &
+   mesh_spectral_count_cpElements, &
+   mesh_spectral_map_elements, &
+   mesh_spectral_map_nodes, &
+   mesh_spectral_count_cpSizes, &
+   mesh_spectral_build_nodes, &
+   mesh_spectral_build_elements, &
 #endif 
 #ifdef Marc
-            mesh_marc_get_tableStyles, &
-            mesh_marc_count_nodesAndElements, &
-            mesh_marc_count_elementSets, &
-            mesh_marc_map_elementSets, &
-            mesh_marc_count_cpElements, &
-            mesh_marc_map_Elements, &
-            mesh_marc_map_nodes, &    
-            mesh_marc_build_nodes, &
-            mesh_marc_count_cpSizes, &
-            mesh_marc_build_elements, &
+   mesh_marc_get_tableStyles, &
+   mesh_marc_count_nodesAndElements, &
+   mesh_marc_count_elementSets, &
+   mesh_marc_map_elementSets, &
+   mesh_marc_count_cpElements, &
+   mesh_marc_map_Elements, &
+   mesh_marc_map_nodes, &    
+   mesh_marc_build_nodes, &
+   mesh_marc_count_cpSizes, &
+   mesh_marc_build_elements, &
 #endif 
 #ifdef Abaqus
-            mesh_abaqus_count_nodesAndElements, &
-            mesh_abaqus_count_elementSets, &
-            mesh_abaqus_count_materials, &
-            mesh_abaqus_map_elementSets, &
-            mesh_abaqus_map_materials, &
-            mesh_abaqus_count_cpElements, &
-            mesh_abaqus_map_elements, &
-            mesh_abaqus_map_nodes, &
-            mesh_abaqus_build_nodes, &
-            mesh_abaqus_count_cpSizes, &
-            mesh_abaqus_build_elements, &
+   mesh_abaqus_count_nodesAndElements, &
+   mesh_abaqus_count_elementSets, &
+   mesh_abaqus_count_materials, &
+   mesh_abaqus_map_elementSets, &
+   mesh_abaqus_map_materials, &
+   mesh_abaqus_count_cpElements, &
+   mesh_abaqus_map_elements, &
+   mesh_abaqus_map_nodes, &
+   mesh_abaqus_build_nodes, &
+   mesh_abaqus_count_cpSizes, &
+   mesh_abaqus_build_elements, &
 #endif 
-            mesh_get_damaskOptions, &
-            mesh_build_ipAreas, &
-            mesh_build_nodeTwins, &
-            mesh_build_sharedElems, &
-            mesh_build_ipNeighborhood, &
-            mesh_tell_statistics, &
-            FE_mapElemtype, &
-            mesh_faceMatch, &
-            mesh_build_FEdata
+   mesh_get_damaskOptions, &
+   mesh_build_ipAreas, &
+   mesh_build_nodeTwins, &
+   mesh_build_sharedElems, &
+   mesh_build_ipNeighborhood, &
+   mesh_tell_statistics, &
+   FE_mapElemtype, &
+   mesh_faceMatch, &
+   mesh_build_FEdata, &
+   mesh_writeGeom
+
 contains
 
 
@@ -591,7 +595,9 @@ subroutine mesh_init(ip,el)
  call mesh_build_ipNeighborhood
  call mesh_tell_statistics
 
-if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(600_pInt)                      ! ping-pong must be disabled when havin non-DAMASK-elements
+ call mesh_writeGeom
+
+ if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(600_pInt)                      ! ping-pong must be disabled when havin non-DAMASK-elements
  
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
@@ -688,12 +694,14 @@ subroutine mesh_build_cells
    allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems)) ; cellnodeParent = 0_pInt
 
    mesh_Ncellnodes = 0_pInt
+   mesh_Ncells = 0_pInt
    do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
      t = mesh_element(2_pInt,e)                                                                     ! get element type
      g = FE_geomtype(t)                                                                             ! get geometry type
      c = FE_celltype(g)                                                                             ! get cell type
      localCellnode2globalCellnode = 0_pInt
      do i = 1_pInt,FE_Nips(g)                                                                       ! loop over ips=cells in this element
+       mesh_Ncells = mesh_Ncells + FE_Nips(g)
        do n = 1_pInt,FE_NcellnodesPerCell(c)                                                         ! loop over cell nodes in this cell
          localCellnodeID = FE_cell(n,i,g)
          if (localCellnodeID <= FE_NmatchingNodes(g)) then                                          ! this cell node is a matching node
@@ -1211,7 +1219,7 @@ subroutine mesh_spectral_build_nodes()
                                                    / real(res(3),pReal)
  end forall 
 
- mesh_node = mesh_node0                                                                             ! why?
+ mesh_node = mesh_node0
 
 end subroutine mesh_spectral_build_nodes
 
@@ -1326,6 +1334,8 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  use math, only: &
    math_periodicNearestNeighbor, &
    math_mul33x3
+
+ implicit none
  character(len=1024):: formatString, N_Digits
  logical, intent(in)                                    :: adaptive                                  ! if true, choose adaptive grid based on resNewInput, otherwise keep it constant
  integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                               ! f2py cannot handle optional arguments correctly (they are always present)
@@ -1800,10 +1810,10 @@ function mesh_nodesAroundCentres(gDim,Favg,centres) result(nodes)
  do k = 0_pInt,iRes(3)+1_pInt
    do j = 0_pInt,iRes(2)+1_pInt
      do i = 0_pInt,iRes(1)+1_pInt
-       if (k==0_pInt .or. k==iRes(3)+1_pInt .or. &                                                   ! z skin
-           j==0_pInt .or. j==iRes(2)+1_pInt .or. &                                                   ! y skin
-           i==0_pInt .or. i==iRes(1)+1_pInt      ) then                                              ! x skin
-         me = [i,j,k]                                                                                ! me on skin
+       if (k==0_pInt .or. k==iRes(3)+1_pInt .or. &                                                  ! z skin
+           j==0_pInt .or. j==iRes(2)+1_pInt .or. &                                                  ! y skin
+           i==0_pInt .or. i==iRes(1)+1_pInt      ) then                                             ! x skin
+         me = [i,j,k]                                                                               ! me on skin
          shift = sign(abs(iRes+diag-2_pInt*me)/(iRes+diag),iRes+diag-2_pInt*me)
          lookup = me-diag+shift*iRes
          wrappedCentres(1:3,i+1_pInt,        j+1_pInt,        k+1_pInt) = &
@@ -2883,11 +2893,10 @@ subroutine mesh_abaqus_count_nodesAndElements(myUnit)
 end subroutine mesh_abaqus_count_nodesAndElements
 
 
-!********************************************************************
-! count overall number of element sets in mesh
-!
-! mesh_NelemSets, mesh_maxNelemInSet
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief count overall number of element sets in mesh and write 'mesh_NelemSets' and
+!! 'mesh_maxNelemInSet'
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_count_elementSets(myUnit)
 
  use IO,   only: IO_lc, &
@@ -2904,7 +2913,7 @@ subroutine mesh_abaqus_count_elementSets(myUnit)
  logical :: inPart
  
  mesh_NelemSets     = 0_pInt
- mesh_maxNelemInSet = mesh_Nelems               ! have to be conservative, since Abaqus allows for recursive definitons
+ mesh_maxNelemInSet = mesh_Nelems                                                                   ! have to be conservative, since Abaqus allows for recursive definitons
  
 610 FORMAT(A300)
 
@@ -2927,11 +2936,13 @@ subroutine mesh_abaqus_count_elementSets(myUnit)
 end subroutine mesh_abaqus_count_elementSets
 
 
+!--------------------------------------------------------------------------------------------------
 !********************************************************************
 ! count overall number of solid sections sets in mesh (Abaqus only)
 !
 ! mesh_Nmaterials
 !********************************************************************
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_count_materials(myUnit)
 
  use IO,   only: IO_lc, &
@@ -2971,11 +2982,13 @@ subroutine mesh_abaqus_count_materials(myUnit)
 end subroutine mesh_abaqus_count_materials
 
 
+!--------------------------------------------------------------------------------------------------
 !********************************************************************
 ! Build element set mapping 
 !
 ! allocate globals: mesh_nameElemSet, mesh_mapElemSet
 !********************************************************************
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_map_elementSets(myUnit)
 
  use IO,   only: IO_lc, &
@@ -3023,11 +3036,13 @@ subroutine mesh_abaqus_map_elementSets(myUnit)
 end subroutine mesh_abaqus_map_elementSets
 
 
+!--------------------------------------------------------------------------------------------------
 !********************************************************************
 ! map solid section (Abaqus only)
 !
 ! allocate globals: mesh_nameMaterial, mesh_mapMaterial
 !********************************************************************
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_map_materials(myUnit)
 
  use IO,   only: IO_lc, &
@@ -3418,7 +3433,7 @@ subroutine mesh_abaqus_build_elements(myUnit)
  integer(pInt), parameter :: maxNchunks = 65_pInt
  integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
 
- integer(pInt) :: i,j,k,c,e,t,homog,micro
+ integer(pInt) :: i,j,k,c,e,t,homog,micro, nNodesAlreadyRead
  logical inPart,materialFound
  character (len=64) :: materialName,elemSetName
  character(len=300) :: line
@@ -3515,11 +3530,9 @@ subroutine mesh_abaqus_build_elements(myUnit)
 #endif
 
 
-!********************************************************************
-! get any additional damask options from input file
-!
-! mesh_periodicSurface
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief get any additional damask options from input file, sets mesh_periodicSurface
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_get_damaskOptions(myUnit)
 
 use IO, only: &
@@ -3583,12 +3596,9 @@ use IO, only: &
 620 end subroutine mesh_get_damaskOptions
 
 
-!***********************************************************
-! calculation of IP interface areas
-!
-! allocate globals
-! _ipArea, _ipAreaNormal
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
  
  use math, only: &
@@ -3663,12 +3673,9 @@ subroutine mesh_build_ipAreas
  end subroutine mesh_build_ipAreas
  
  
-!***********************************************************
-! assignment of twin nodes for each cp node
-!
-! allocate globals
-! _nodeTwins
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief assignment of twin nodes for each cp node, allocate globals '_nodeTwins'
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_build_nodeTwins
 
 implicit none
@@ -3736,14 +3743,10 @@ enddo
 end subroutine mesh_build_nodeTwins
 
 
-
-!********************************************************************
-! get maximum count of shared elements among cpElements and
-! build list of elements shared by each node in mesh
-!
-! _maxNsharedElems
-! _sharedElem
-!********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief  get maximum count of shared elements among cpElements and build list of elements shared 
+!! by each node in mesh. Allocate globals '_maxNsharedElems' and '_sharedElem'
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_build_sharedElems
 
 implicit none
@@ -3808,12 +3811,9 @@ deallocate(node_seen)
 end subroutine mesh_build_sharedElems
 
 
-!***********************************************************
-! build up of IP neighborhood
-!
-! allocate globals
-! _ipNeighborhood
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief  build up of IP neighborhood, allocate globals '_ipNeighborhood'
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipNeighborhood
 
 use math, only: math_mul3x3
@@ -3982,11 +3982,9 @@ enddo
 end subroutine mesh_build_ipNeighborhood
 
 
-!***********************************************************
-! write statistics regarding input file parsing
-! to the output file
-! 
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief write statistics regarding input file parsing to the output file
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_tell_statistics
 
  use math,  only: math_range
@@ -4133,9 +4131,9 @@ enddo
 end subroutine mesh_tell_statistics
 
 
-!***********************************************************
-! mapping of FE element types to internal representation
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief mapping of FE element types to internal representation
+!--------------------------------------------------------------------------------------------------
 integer(pInt) function FE_mapElemtype(what)
  
  use IO, only: IO_lc, IO_error
@@ -4188,9 +4186,9 @@ integer(pInt) function FE_mapElemtype(what)
 end function FE_mapElemtype
 
 
-!***********************************************************
-! find face-matching element of same type
-!***********************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief find face-matching element of same type
+!--------------------------------------------------------------------------------------------------
 subroutine mesh_faceMatch(elem, face ,matchingElem, matchingFace)
 
 implicit none
@@ -4292,11 +4290,11 @@ subroutine mesh_build_FEdata
 
  implicit none
  integer(pInt) :: me
- allocate(FE_nodesAtIP(FE_maxmaxNnodesAtIP,FE_maxNips,FE_Ngeomtypes)) ; FE_nodesAtIP = 0_pInt
- allocate(FE_ipNeighbor(FE_maxNipNeighbors,FE_maxNips,FE_Ngeomtypes)) ; FE_ipNeighbor = 0_pInt
- allocate(FE_cell(FE_maxNcellnodesPerCell,FE_maxNips,FE_Ngeomtypes)) ; FE_cell = 0_pInt
- allocate(FE_cellnodeParentnodeWeights(FE_maxNnodes,FE_maxNcellnodes,FE_Nelemtypes)) ; FE_cellnodeParentnodeWeights = 0.0_pReal
- allocate(FE_cellface(FE_maxNcellnodesPerCellface,FE_maxNcellfaces,FE_Ncelltypes)) ; FE_cellface = 0.0_pReal
+ allocate(FE_nodesAtIP(FE_maxmaxNnodesAtIP,FE_maxNips,FE_Ngeomtypes)); FE_nodesAtIP = 0_pInt
+ allocate(FE_ipNeighbor(FE_maxNipNeighbors,FE_maxNips,FE_Ngeomtypes)); FE_ipNeighbor = 0_pInt
+ allocate(FE_cell(FE_maxNcellnodesPerCell,FE_maxNips,FE_Ngeomtypes)); FE_cell = 0_pInt
+ allocate(FE_cellnodeParentnodeWeights(FE_maxNnodes,FE_maxNcellnodes,FE_Nelemtypes)); FE_cellnodeParentnodeWeights = 0.0_pReal
+ allocate(FE_cellface(FE_maxNcellnodesPerCellface,FE_maxNcellfaces,FE_Ncelltypes)); FE_cellface = 0_pInt
 
 
  !*** fill FE_nodesAtIP with data ***
@@ -4962,7 +4960,7 @@ subroutine mesh_build_FEdata
  me = 0_pInt
 
  me = me + 1_pInt
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &  ! 2D 3node
+ FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 2D 3node, VTK_TRIANGLE (5)
     reshape(int([&
     2,3,  &
     3,1,  &
@@ -4970,7 +4968,7 @@ subroutine mesh_build_FEdata
     ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
 
  me = me + 1_pInt
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &  ! 2D 4node
+ FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 2D 4node, VTK_QUAD (9)
     reshape(int([&
     2,3,  &
     4,1,  &
@@ -4979,7 +4977,7 @@ subroutine mesh_build_FEdata
     ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
 
  me = me + 1_pInt
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &  ! 3D 4node
+ FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 3D 4node, VTK_TETRA (10)
     reshape(int([&
     1,3,2,  &
     1,2,4,  &
@@ -4988,7 +4986,7 @@ subroutine mesh_build_FEdata
     ],pInt),[FE_NcellnodesPerCellface(me),FE_NipNeighbors(me)])
 
  me = me + 1_pInt
- FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &  ! 3D 8node
+ FE_cellface(1:FE_NcellnodesPerCellface(me),1:FE_NipNeighbors(me),me) = &                           ! 3D 8node, VTK_HEXAHEDRON (12)
     reshape(int([&
     2,3,7,6,  &
     4,1,5,8,  &
@@ -5000,6 +4998,49 @@ subroutine mesh_build_FEdata
 
 
 end subroutine mesh_build_FEdata
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief writes out initial geometry
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_writeGeom
+ use DAMASK_interface, only: &
+   getSolverJobName
+ use Lib_VTK_IO, only: &
+   VTK_INI, &
+   VTK_GEO, &
+   VTK_CON, &
+   VTK_END 
+ 
+ implicit none
+ integer(pInt), dimension(1:mesh_Ncells)                                :: cell_type 
+ integer(pInt), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: connect
+ integer(pInt):: E_IO, g, c, e, CellID, i, NcellnodesSeen
+ integer(pInt), dimension(FE_Ncelltypes), parameter ::  DAMASKTOVTK= [5,9,10,12]
+
+ cellID = 0_pInt
+ NcellnodesSeen = 0_pInt
+ do e = 1_pInt, mesh_NcpElems                                                                      ! loop over cpElems
+   g = FE_geomtype(mesh_element(2_pInt,e))                                                         ! get element type)                                                                             ! get geometry type
+   c = FE_celltype(g)                                                                              ! get cell type
+   do i = 1_pInt,FE_Nips(g)                                                                        ! loop over ips=cells in this element
+     cellID = cellID + 1_pInt
+     cell_type(cellID) = DAMASKTOVTK(c)
+     connect(NcellnodesSeen+1_pInt:NcellnodesSeen+FE_NcellnodesPerCell(c)+1_pInt) &
+       = [FE_NcellnodesPerCell(c),mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt]                 ! number of nodes per element, global element number (counting starts at 0)
+     NcellnodesSeen = NcellnodesSeen + FE_NcellnodesPerCell(c)+1_pInt
+   enddo
+ enddo
+
+ E_IO = VTK_INI(output_format = 'ASCII', title=trim(getSolverJobName()), &
+                filename = trim(getSolverJobName())//'.vtk', mesh_topology = 'UNSTRUCTURED_GRID')
+ E_IO = VTK_GEO(NN = mesh_Ncellnodes,         X = mesh_cellnode%coords(1), &
+                 Y = mesh_cellnode%coords(2), Z = mesh_cellnode%coords(3))
+ E_IO = VTK_CON(NC = mesh_Ncells, connect = connect(1:NcellnodesSeen), cell_type = cell_type)
+ E_IO = VTK_END()
+
+end subroutine mesh_writeGeom
+
 
 end module mesh
 

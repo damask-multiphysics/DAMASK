@@ -484,7 +484,7 @@ subroutine utilities_fourierConvolution(fieldAim)
  flush(6)
  
 !--------------------------------------------------------------------------------------------------
-! to the actual spectral method calculation (mechanical equilibrium)
+! do the actual spectral method calculation (mechanical equilibrium)
  if(memory_efficient) then                                                                          ! memory saving version, on-the-fly calculation of gamma_hat
    do k = 1_pInt, res(3); do j = 1_pInt, res(2) ;do i = 1_pInt, res1_red
      if(any([i,j,k] /= 1_pInt)) then                                                                ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1       
@@ -645,7 +645,7 @@ end function utilities_curlRMS
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates mask compliance tensor
+!> @brief calculates mask compliance tensor used to adjust F to fullfill stress BC
 !--------------------------------------------------------------------------------------------------
 function utilities_maskedCompliance(rot_BC,mask_stress,C)
  use IO, only: &
@@ -684,7 +684,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
 
    if(debugGeneral) then 
      write(6,'(/,a)') ' ... updating masked compliance ............................................'
-     write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C rotated  / GPa =',&
+     write(6,'(/,a,/,9(9(2x,f12.7,1x)/))',advance='no') ' Stiffness C (load) / GPa =',&
                                                   transpose(temp99_Real)/1.e9_pReal
      flush(6)
    endif
@@ -724,8 +724,9 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    if(debugGeneral .or. errmatinv) then                                                             ! report
      write(formatString, '(I16.16)') size_reduced
      formatString = '(/,a,/,'//trim(formatString)//'('//trim(formatString)//'(2x,es9.2,1x)/))'
-     write(6,trim(formatString),advance='no') ' C * S', transpose(matmul(c_reduced,s_reduced))
-     write(6,trim(formatString),advance='no') ' S', transpose(s_reduced)
+     write(6,trim(formatString),advance='no') ' C * S (load) ', &
+                                                            transpose(matmul(c_reduced,s_reduced))
+     write(6,trim(formatString),advance='no') ' S (load) ', transpose(s_reduced)
    endif
    if(errmatinv) call IO_error(error_ID=400_pInt,ext_msg='utilities_maskedCompliance')
    deallocate(c_reduced)
@@ -735,7 +736,7 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    temp99_real = 0.0_pReal
  endif
  if(debugGeneral) &                                                                                 ! report
-   write(6,'(/,a,/,9(9(2x,f12.7,1x)/),/)',advance='no') ' Masked Compliance * GPa =', &
+   write(6,'(/,a,/,9(9(2x,f12.7,1x)/),/)',advance='no') ' Masked Compliance (load) * GPa =', &
                                                     transpose(temp99_Real*1.e9_pReal)
  flush(6)
  utilities_maskedCompliance = math_Plain99to3333(temp99_Real)

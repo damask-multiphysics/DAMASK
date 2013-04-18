@@ -92,6 +92,7 @@ end function getSolverJobName
 end module DAMASK_interface
 
 #include "IO.f90"
+#include "libs.f90"
 #include "numerics.f90"
 #include "debug.f90"
 #include "math.f90"
