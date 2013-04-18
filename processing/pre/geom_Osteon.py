@@ -150,7 +150,7 @@ if options.config:
   file['output'].write('\n[interstitial]\n' + \
                        'crystallite %i\n'%options.crystallite + \
                        '(constituent)\tphase 2\ttexture 2\tfraction 1.0\n')
-  for i in xrange(3,info['grains']):
+  for i in xrange(3,info['microstructures']):
     file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
                          'crystallite %i\n'%options.crystallite + \
                          '(constituent)\tphase 3\ttexture %s\tfraction 1.0\n'%(str(i).rjust(formatwidth)))
@@ -158,7 +158,7 @@ if options.config:
   file['output'].write('\n<texture>\n')
   file['output'].write('\n[canal]\n')
   file['output'].write('\n[interstitial]\n')
-  for i in xrange(3,info['grains']):
+  for i in xrange(3,info['microstructures']):
     file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
                          '(gauss)\tphi1 %g\tPhi %g\tphi2 0\tscatter 0.0\tfraction 1.0\n'%(\
                                   alphaOfGrain[i],\
