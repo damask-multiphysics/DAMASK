@@ -610,6 +610,14 @@ subroutine mesh_init(ip,el)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
  lastMode = .true.                                                                                  ! and its mode is already known...
 
+!--------------------------------------------------------------------------------------------------
+! write description file for constitutive phase output
+ call IO_write_jobFile(fileunit,'mesh') 
+ write(fileunit,'(a,i)')  'maxNCellNodes ',  mesh_maxNcellNodes
+ write(fileunit,'(a,i)')  'maxNips ',        mesh_maxNips
+ write(fileunit,'(a,i)')  'maxNCellNodes ',  mesh_maxNcpElems
+ close(fileunit)
+
 end subroutine mesh_init
 
 !--------------------------------------------------------------------------------------------------
@@ -700,8 +708,8 @@ subroutine mesh_build_cells
      g = FE_geomtype(t)                                                                             ! get geometry type
      c = FE_celltype(g)                                                                             ! get cell type
      localCellnode2globalCellnode = 0_pInt
+     mesh_Ncells = mesh_Ncells + FE_Nips(g)
      do i = 1_pInt,FE_Nips(g)                                                                       ! loop over ips=cells in this element
-       mesh_Ncells = mesh_Ncells + FE_Nips(g)
        do n = 1_pInt,FE_NcellnodesPerCell(c)                                                         ! loop over cell nodes in this cell
          localCellnodeID = FE_cell(n,i,g)
          if (localCellnodeID <= FE_NmatchingNodes(g)) then                                          ! this cell node is a matching node
@@ -3678,68 +3686,68 @@ subroutine mesh_build_ipAreas
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_nodeTwins
 
-implicit none
-integer(pInt) dir, &      ! direction of periodicity
-              node, &
-              minimumNode, &
-              maximumNode, &
-              n1, &
-              n2
-integer(pInt), dimension(mesh_Nnodes+1) :: minimumNodes, maximumNodes ! list of surface nodes (minimum and maximum coordinate value) with first entry giving the number of nodes
-real(pReal)   minCoord, maxCoord, &     ! extreme positions in one dimension
-              tolerance                 ! tolerance below which positions are assumed identical
-real(pReal), dimension(3) ::  distance  ! distance between two nodes in all three coordinates
-logical, dimension(mesh_Nnodes) :: unpaired
-
-allocate(mesh_nodeTwins(3,mesh_Nnodes))
-mesh_nodeTwins = 0_pInt
-
-tolerance = 0.001_pReal * minval(mesh_ipVolume) ** 0.333_pReal
-
-do dir = 1_pInt,3_pInt                                    ! check periodicity in directions of x,y,z
-  if (mesh_periodicSurface(dir)) then                     ! only if periodicity is requested
-
-    
-    !*** find out which nodes sit on the surface 
-    !*** and have a minimum or maximum position in this dimension
-    
-    minimumNodes = 0_pInt
-    maximumNodes = 0_pInt
-    minCoord = minval(mesh_node0(dir,:))
-    maxCoord = maxval(mesh_node0(dir,:))
-    do node = 1_pInt,mesh_Nnodes                     ! loop through all nodes and find surface nodes
-      if (abs(mesh_node0(dir,node) - minCoord) <= tolerance) then
-        minimumNodes(1) = minimumNodes(1) + 1_pInt
-        minimumNodes(minimumNodes(1)+1_pInt) = node
-      elseif (abs(mesh_node0(dir,node) - maxCoord) <= tolerance) then
-        maximumNodes(1) = maximumNodes(1) + 1_pInt
-        maximumNodes(maximumNodes(1)+1_pInt) = node
-      endif
-    enddo
-    
-    
-    !*** find the corresponding node on the other side with the same position in this dimension
-    
-    unpaired = .true.
-    do n1 = 1_pInt,minimumNodes(1)
-      minimumNode = minimumNodes(n1+1_pInt)
-      if (unpaired(minimumNode)) then
-        do n2 = 1_pInt,maximumNodes(1)
-          maximumNode = maximumNodes(n2+1_pInt)
-          distance = abs(mesh_node0(:,minimumNode) - mesh_node0(:,maximumNode))
-          if (sum(distance) - distance(dir) <= tolerance) then        ! minimum possible distance (within tolerance)
-            mesh_nodeTwins(dir,minimumNode) = maximumNode
-            mesh_nodeTwins(dir,maximumNode) = minimumNode
-            unpaired(maximumNode) = .false.                           ! remember this node, we don't have to look for his partner again
-            exit
-          endif
-        enddo
-      endif
-    enddo
-
-  endif
-enddo
-
+ implicit none
+ integer(pInt) dir, &      ! direction of periodicity
+               node, &
+               minimumNode, &
+               maximumNode, &
+               n1, &
+               n2
+ integer(pInt), dimension(mesh_Nnodes+1) :: minimumNodes, maximumNodes ! list of surface nodes (minimum and maximum coordinate value) with first entry giving the number of nodes
+ real(pReal)   minCoord, maxCoord, &     ! extreme positions in one dimension
+               tolerance                 ! tolerance below which positions are assumed identical
+ real(pReal), dimension(3) ::  distance  ! distance between two nodes in all three coordinates
+ logical, dimension(mesh_Nnodes) :: unpaired
+ 
+ allocate(mesh_nodeTwins(3,mesh_Nnodes))
+ mesh_nodeTwins = 0_pInt
+ 
+ tolerance = 0.001_pReal * minval(mesh_ipVolume) ** 0.333_pReal
+ 
+ do dir = 1_pInt,3_pInt                                    ! check periodicity in directions of x,y,z
+   if (mesh_periodicSurface(dir)) then                     ! only if periodicity is requested
+ 
+     
+     !*** find out which nodes sit on the surface 
+     !*** and have a minimum or maximum position in this dimension
+     
+     minimumNodes = 0_pInt
+     maximumNodes = 0_pInt
+     minCoord = minval(mesh_node0(dir,:))
+     maxCoord = maxval(mesh_node0(dir,:))
+     do node = 1_pInt,mesh_Nnodes                     ! loop through all nodes and find surface nodes
+       if (abs(mesh_node0(dir,node) - minCoord) <= tolerance) then
+         minimumNodes(1) = minimumNodes(1) + 1_pInt
+         minimumNodes(minimumNodes(1)+1_pInt) = node
+       elseif (abs(mesh_node0(dir,node) - maxCoord) <= tolerance) then
+         maximumNodes(1) = maximumNodes(1) + 1_pInt
+         maximumNodes(maximumNodes(1)+1_pInt) = node
+       endif
+     enddo
+     
+     
+     !*** find the corresponding node on the other side with the same position in this dimension
+     
+     unpaired = .true.
+     do n1 = 1_pInt,minimumNodes(1)
+       minimumNode = minimumNodes(n1+1_pInt)
+       if (unpaired(minimumNode)) then
+         do n2 = 1_pInt,maximumNodes(1)
+           maximumNode = maximumNodes(n2+1_pInt)
+           distance = abs(mesh_node0(:,minimumNode) - mesh_node0(:,maximumNode))
+           if (sum(distance) - distance(dir) <= tolerance) then        ! minimum possible distance (within tolerance)
+             mesh_nodeTwins(dir,minimumNode) = maximumNode
+             mesh_nodeTwins(dir,maximumNode) = minimumNode
+             unpaired(maximumNode) = .false.                           ! remember this node, we don't have to look for his partner again
+             exit
+           endif
+         enddo
+       endif
+     enddo
+ 
+   endif
+ enddo
+ 
 end subroutine mesh_build_nodeTwins
 
 
@@ -3749,65 +3757,65 @@ end subroutine mesh_build_nodeTwins
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_sharedElems
 
-implicit none
-integer(pint)   e, &                                                                                ! element index
-                g, &                                                                                ! element type
-                node, &                                                                             ! CP node index
-                n, &                                                                                ! node index per element 
-                myDim, &                                                                            ! dimension index 
-                nodeTwin                                                                            ! node twin in the specified dimension
-integer(pInt), dimension (mesh_Nnodes) :: node_count
-integer(pInt), dimension (:), allocatable :: node_seen
-
-allocate(node_seen(maxval(FE_NmatchingNodes)))
-
-
-node_count = 0_pInt
-
-do e = 1_pInt,mesh_NcpElems
-  g = FE_geomtype(mesh_element(2,e))                                                                ! get elemGeomType
-  node_seen = 0_pInt                                                                                ! reset node duplicates
-  do n = 1_pInt,FE_NmatchingNodes(g)                                                                             ! check each node of element
-    node = mesh_FEasCP('node',mesh_element(4+n,e))                                                  ! translate to internal (consecutive) numbering
-    if (all(node_seen /= node)) then
-      node_count(node) = node_count(node) + 1_pInt                                                  ! if FE node not yet encountered -> count it
-      do myDim = 1_pInt,3_pInt                                                                                  ! check in each dimension...
-        nodeTwin = mesh_nodeTwins(myDim,node)
-        if (nodeTwin > 0_pInt) &                                                                    ! if I am a twin of some node...
-          node_count(nodeTwin) = node_count(nodeTwin) + 1_pInt                                      ! -> count me again for the twin node
-      enddo
-    endif
-    node_seen(n) = node                                                                             ! remember this node to be counted already
-  enddo
-enddo
-
-mesh_maxNsharedElems = int(maxval(node_count),pInt)                                                 ! most shared node
-
-allocate(mesh_sharedElem(1+mesh_maxNsharedElems,mesh_Nnodes))
-mesh_sharedElem = 0_pInt
-
-do e = 1_pInt,mesh_NcpElems
-  g = FE_geomtype(mesh_element(2,e))                                                                ! get elemGeomType
-  node_seen = 0_pInt
-  do n = 1_pInt,FE_NmatchingNodes(g)
-    node = mesh_FEasCP('node',mesh_element(4_pInt+n,e))
-    if (all(node_seen /= node)) then
-      mesh_sharedElem(1,node) = mesh_sharedElem(1,node) + 1_pInt                                    ! count for each node the connected elements
-      mesh_sharedElem(mesh_sharedElem(1,node)+1_pInt,node) = e                                      ! store the respective element id
-      do myDim = 1_pInt,3_pInt                                                                      ! check in each dimension...
-        nodeTwin = mesh_nodeTwins(myDim,node)
-        if (nodeTwin > 0_pInt) then                                                                 ! if i am a twin of some node...
-          mesh_sharedElem(1,nodeTwin) = mesh_sharedElem(1,nodeTwin) + 1_pInt                        ! ...count me again for the twin
-          mesh_sharedElem(mesh_sharedElem(1,nodeTwin)+1,nodeTwin) = e                               ! store the respective element id
-        endif
-      enddo
-    endif
-    node_seen(n) = node
-  enddo
-enddo
-
-deallocate(node_seen)
-
+ implicit none
+ integer(pint)   e, &                                                                                ! element index
+                 g, &                                                                                ! element type
+                 node, &                                                                             ! CP node index
+                 n, &                                                                                ! node index per element 
+                 myDim, &                                                                            ! dimension index 
+                 nodeTwin                                                                            ! node twin in the specified dimension
+ integer(pInt), dimension (mesh_Nnodes) :: node_count
+ integer(pInt), dimension (:), allocatable :: node_seen
+ 
+ allocate(node_seen(maxval(FE_NmatchingNodes)))
+ 
+ 
+ node_count = 0_pInt
+ 
+ do e = 1_pInt,mesh_NcpElems
+   g = FE_geomtype(mesh_element(2,e))                                                                ! get elemGeomType
+   node_seen = 0_pInt                                                                                ! reset node duplicates
+   do n = 1_pInt,FE_NmatchingNodes(g)                                                                             ! check each node of element
+     node = mesh_FEasCP('node',mesh_element(4+n,e))                                                  ! translate to internal (consecutive) numbering
+     if (all(node_seen /= node)) then
+       node_count(node) = node_count(node) + 1_pInt                                                  ! if FE node not yet encountered -> count it
+       do myDim = 1_pInt,3_pInt                                                                                  ! check in each dimension...
+         nodeTwin = mesh_nodeTwins(myDim,node)
+         if (nodeTwin > 0_pInt) &                                                                    ! if I am a twin of some node...
+           node_count(nodeTwin) = node_count(nodeTwin) + 1_pInt                                      ! -> count me again for the twin node
+       enddo
+     endif
+     node_seen(n) = node                                                                             ! remember this node to be counted already
+   enddo
+ enddo
+ 
+ mesh_maxNsharedElems = int(maxval(node_count),pInt)                                                 ! most shared node
+ 
+ allocate(mesh_sharedElem(1+mesh_maxNsharedElems,mesh_Nnodes))
+ mesh_sharedElem = 0_pInt
+ 
+ do e = 1_pInt,mesh_NcpElems
+   g = FE_geomtype(mesh_element(2,e))                                                                ! get elemGeomType
+   node_seen = 0_pInt
+   do n = 1_pInt,FE_NmatchingNodes(g)
+     node = mesh_FEasCP('node',mesh_element(4_pInt+n,e))
+     if (all(node_seen /= node)) then
+       mesh_sharedElem(1,node) = mesh_sharedElem(1,node) + 1_pInt                                    ! count for each node the connected elements
+       mesh_sharedElem(mesh_sharedElem(1,node)+1_pInt,node) = e                                      ! store the respective element id
+       do myDim = 1_pInt,3_pInt                                                                      ! check in each dimension...
+         nodeTwin = mesh_nodeTwins(myDim,node)
+         if (nodeTwin > 0_pInt) then                                                                 ! if i am a twin of some node...
+           mesh_sharedElem(1,nodeTwin) = mesh_sharedElem(1,nodeTwin) + 1_pInt                        ! ...count me again for the twin
+           mesh_sharedElem(mesh_sharedElem(1,nodeTwin)+1,nodeTwin) = e                               ! store the respective element id
+         endif
+       enddo
+     endif
+     node_seen(n) = node
+   enddo
+ enddo
+ 
+ deallocate(node_seen)
+ 
 end subroutine mesh_build_sharedElems
 
 
@@ -3815,170 +3823,170 @@ end subroutine mesh_build_sharedElems
 !> @brief  build up of IP neighborhood, allocate globals '_ipNeighborhood'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipNeighborhood
-
-use math, only: math_mul3x3
-
-implicit none
-integer(pInt)                   myElem, &                                                           ! my CP element index
-                                myIP, &
-                                myType, &                                                           ! my element type
-                                myFace, &
-                                neighbor, &                                                         ! neighor index
-                                neighboringIPkey, &                                                 ! positive integer indicating the neighboring IP (for intra-element) and negative integer indicating the face towards neighbor (for neighboring element) 
-                                candidateIP, &
-                                neighboringType, &                                                  ! element type of neighbor
-                                NlinkedNodes, &                                                     ! number of linked nodes
-                                twin_of_linkedNode, &                                               ! node twin of a specific linkedNode
-                                NmatchingNodes, &                                                   ! number of matching nodes
-                                dir, &                                                              ! direction of periodicity
-                                matchingElem, &                                                     ! CP elem number of matching element
-                                matchingFace, &                                                     ! face ID of matching element
-                                a, anchor, &
-                                neighboringIP, &  
-                                neighboringElem, &
-                                pointingToMe
-integer(pInt), dimension(FE_maxmaxNnodesAtIP) :: &
-                                linkedNodes = 0_pInt, &
-                                matchingNodes
-logical checkTwins
-
-allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
-mesh_ipNeighborhood = 0_pInt
-
-
-do myElem = 1_pInt,mesh_NcpElems                                                                    ! loop over cpElems
-  myType = FE_geomtype(mesh_element(2,myElem))                                                      ! get elemGeomType
-  do myIP = 1_pInt,FE_Nips(myType)                                                                  ! loop over IPs of elem
-
-    do neighbor = 1_pInt,FE_NipNeighbors(FE_celltype(myType))                                       ! loop over neighbors of IP
-      neighboringIPkey = FE_ipNeighbor(neighbor,myIP,myType)
-
-      !*** if the key is positive, the neighbor is inside the element
-      !*** that means, we have already found our neighboring IP
-      
-      if (neighboringIPkey > 0_pInt) then
-        mesh_ipNeighborhood(1,neighbor,myIP,myElem) = myElem
-        mesh_ipNeighborhood(2,neighbor,myIP,myElem) = neighboringIPkey
-
-
-      !*** if the key is negative, the neighbor resides in a neighboring element
-      !*** that means, we have to look through the face indicated by the key and see which element is behind that face
-      
-      elseif (neighboringIPkey < 0_pInt) then                                                       ! neighboring element's IP
-        myFace = -neighboringIPkey
-        call mesh_faceMatch(myElem, myFace, matchingElem, matchingFace)                             ! get face and CP elem id of face match
-        if (matchingElem > 0_pInt) then                                                             ! found match?
-          neighboringType = FE_geomtype(mesh_element(2,matchingElem))
-
-          !*** trivial solution if neighbor has only one IP
-          
-          if (FE_Nips(neighboringType) == 1_pInt) then            
-            mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
-            mesh_ipNeighborhood(2,neighbor,myIP,myElem) = 1_pInt
-            cycle
-          endif
-
-          !*** find those nodes which build the link to the neighbor
-          
-          NlinkedNodes = 0_pInt
-          linkedNodes = 0_pInt
-          do a = 1_pInt,FE_maxNnodesAtIP(myType)                                                    ! figure my anchor nodes on connecting face
-            anchor = FE_nodesAtIP(a,myIP,myType)
-            if (anchor /= 0_pInt) then                                                              ! valid anchor node
-              if (any(FE_face(:,myFace,myType) == anchor)) then                                     ! ip anchor sits on face?
-                NlinkedNodes = NlinkedNodes + 1_pInt
-                linkedNodes(NlinkedNodes) = &
-                   mesh_FEasCP('node',mesh_element(4_pInt+anchor,myElem))                           ! CP id of anchor node
-              else                                                                                  ! something went wrong with the linkage, since not all anchors sit on my face
-                NlinkedNodes = 0_pInt
-                linkedNodes = 0_pInt
-                exit
-              endif
-            endif
-          enddo
-
-          !*** loop through the ips of my neighbor
-          !*** and try to find an ip with matching nodes
-          !*** also try to match with node twins
-
-checkCandidateIP: do candidateIP = 1_pInt,FE_Nips(neighboringType)
-            NmatchingNodes = 0_pInt
-            matchingNodes = 0_pInt
-            do a = 1_pInt,FE_maxNnodesAtIP(neighboringType)                                         ! check each anchor node of that ip
-              anchor = FE_nodesAtIP(a,candidateIP,neighboringType)
-              if (anchor /= 0_pInt) then                                                            ! valid anchor node
-                if (any(FE_face(:,matchingFace,neighboringType) == anchor)) then                    ! sits on matching face?
-                  NmatchingNodes = NmatchingNodes + 1_pInt
-                  matchingNodes(NmatchingNodes) = &
-                     mesh_FEasCP('node',mesh_element(4+anchor,matchingElem))                        ! CP id of neighbor's anchor node
-                else                                                                                ! no matching, because not all nodes sit on the matching face
-                  NmatchingNodes = 0_pInt
-                  matchingNodes = 0_pInt
-                  exit
-                endif
-              endif
-            enddo
-
-            if (NmatchingNodes /= NlinkedNodes) &                                                   ! this ip has wrong count of anchors on face
-              cycle checkCandidateIP
-            
-            !*** check "normal" nodes whether they match or not
-            
-            checkTwins = .false.
-            do a = 1_pInt,NlinkedNodes
-              if (all(matchingNodes /= linkedNodes(a))) then                                        ! this linkedNode does not match any matchingNode
-                checkTwins = .true.
-                exit                                                                                ! no need to search further
-              endif
-            enddo
-            
-            !*** if no match found, then also check node twins
-            
-            if(checkTwins) then
-              dir = int(maxloc(abs(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem)),1),pInt)            ! check for twins only in direction of the surface normal
-              do a = 1_pInt,NlinkedNodes
-                twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
-                if (twin_of_linkedNode == 0_pInt .or. &                                             ! twin of linkedNode does not exist...
-                    all(matchingNodes /= twin_of_linkedNode)) then                                  ! ... or it does not match any matchingNode
-                  cycle checkCandidateIP                                                            ! ... then check next candidateIP
-                endif
-              enddo
-            endif
-
-            !*** we found a match !!!
-
-            mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
-            mesh_ipNeighborhood(2,neighbor,myIP,myElem) = candidateIP
-            exit checkCandidateIP            
-          enddo checkCandidateIP
-        endif                                                                                       ! end of valid external matching
-      endif                                                                                         ! end of internal/external matching
-    enddo
-  enddo
-enddo
-do myElem = 1_pInt,mesh_NcpElems                                                                    ! loop over cpElems
-  myType = FE_geomtype(mesh_element(2,myElem))                                                      ! get elemGeomType
-  do myIP = 1_pInt,FE_Nips(myType)                                                                  ! loop over IPs of elem
-    do neighbor = 1_pInt,FE_NipNeighbors(FE_celltype(myType))                                       ! loop over neighbors of IP
-      neighboringElem = mesh_ipNeighborhood(1,neighbor,myIP,myElem)
-      neighboringIP   = mesh_ipNeighborhood(2,neighbor,myIP,myElem)
-      if (neighboringElem > 0_pInt .and. neighboringIP > 0_pInt) then                               ! if neighbor exists ...
-        neighboringType = FE_geomtype(mesh_element(2,neighboringElem))
-        do pointingToMe = 1_pInt,FE_NipNeighbors(FE_celltype(neighboringType))                      ! find neighboring index that points from my neighbor to myself
-          if (    myElem == mesh_ipNeighborhood(1,pointingToMe,neighboringIP,neighboringElem) &
-              .and. myIP == mesh_ipNeighborhood(2,pointingToMe,neighboringIP,neighboringElem)) then ! possible candidate
-            if (math_mul3x3(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem),&
-                            mesh_ipAreaNormal(1:3,pointingToMe,neighboringIP,neighboringElem)) < 0.0_pReal) then ! area normals have opposite orientation (we have to check that because of special case for single element with two ips and periodicity. In this case the neighbor is identical in two different directions.)
-              mesh_ipNeighborhood(3,neighbor,myIP,myElem) = pointingToMe                            ! found match
-              exit                                                                                  ! so no need to search further
-            endif
-          endif
-        enddo
-      endif
-    enddo
-  enddo
-enddo
-
+ use math, only: &
+   math_mul3x3
+ 
+ implicit none
+ integer(pInt)      ::           myElem, &                                                           ! my CP element index
+                                 myIP, &
+                                 myType, &                                                           ! my element type
+                                 myFace, &
+                                 neighbor, &                                                         ! neighor index
+                                 neighboringIPkey, &                                                 ! positive integer indicating the neighboring IP (for intra-element) and negative integer indicating the face towards neighbor (for neighboring element) 
+                                 candidateIP, &
+                                 neighboringType, &                                                  ! element type of neighbor
+                                 NlinkedNodes, &                                                     ! number of linked nodes
+                                 twin_of_linkedNode, &                                               ! node twin of a specific linkedNode
+                                 NmatchingNodes, &                                                   ! number of matching nodes
+                                 dir, &                                                              ! direction of periodicity
+                                 matchingElem, &                                                     ! CP elem number of matching element
+                                 matchingFace, &                                                     ! face ID of matching element
+                                 a, anchor, &
+                                 neighboringIP, &  
+                                 neighboringElem, &
+                                 pointingToMe
+ integer(pInt), dimension(FE_maxmaxNnodesAtIP) :: &
+                                 linkedNodes = 0_pInt, &
+                                 matchingNodes
+ logical checkTwins
+ 
+ allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
+ mesh_ipNeighborhood = 0_pInt
+ 
+ 
+ do myElem = 1_pInt,mesh_NcpElems                                                                    ! loop over cpElems
+   myType = FE_geomtype(mesh_element(2,myElem))                                                      ! get elemGeomType
+   do myIP = 1_pInt,FE_Nips(myType)                                                                  ! loop over IPs of elem
+ 
+     do neighbor = 1_pInt,FE_NipNeighbors(FE_celltype(myType))                                       ! loop over neighbors of IP
+       neighboringIPkey = FE_ipNeighbor(neighbor,myIP,myType)
+ 
+       !*** if the key is positive, the neighbor is inside the element
+       !*** that means, we have already found our neighboring IP
+       
+       if (neighboringIPkey > 0_pInt) then
+         mesh_ipNeighborhood(1,neighbor,myIP,myElem) = myElem
+         mesh_ipNeighborhood(2,neighbor,myIP,myElem) = neighboringIPkey
+ 
+ 
+       !*** if the key is negative, the neighbor resides in a neighboring element
+       !*** that means, we have to look through the face indicated by the key and see which element is behind that face
+       
+       elseif (neighboringIPkey < 0_pInt) then                                                       ! neighboring element's IP
+         myFace = -neighboringIPkey
+         call mesh_faceMatch(myElem, myFace, matchingElem, matchingFace)                             ! get face and CP elem id of face match
+         if (matchingElem > 0_pInt) then                                                             ! found match?
+           neighboringType = FE_geomtype(mesh_element(2,matchingElem))
+ 
+           !*** trivial solution if neighbor has only one IP
+           
+           if (FE_Nips(neighboringType) == 1_pInt) then            
+             mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
+             mesh_ipNeighborhood(2,neighbor,myIP,myElem) = 1_pInt
+             cycle
+           endif
+ 
+           !*** find those nodes which build the link to the neighbor
+           
+           NlinkedNodes = 0_pInt
+           linkedNodes = 0_pInt
+           do a = 1_pInt,FE_maxNnodesAtIP(myType)                                                    ! figure my anchor nodes on connecting face
+             anchor = FE_nodesAtIP(a,myIP,myType)
+             if (anchor /= 0_pInt) then                                                              ! valid anchor node
+               if (any(FE_face(:,myFace,myType) == anchor)) then                                     ! ip anchor sits on face?
+                 NlinkedNodes = NlinkedNodes + 1_pInt
+                 linkedNodes(NlinkedNodes) = &
+                    mesh_FEasCP('node',mesh_element(4_pInt+anchor,myElem))                           ! CP id of anchor node
+               else                                                                                  ! something went wrong with the linkage, since not all anchors sit on my face
+                 NlinkedNodes = 0_pInt
+                 linkedNodes = 0_pInt
+                 exit
+               endif
+             endif
+           enddo
+ 
+           !*** loop through the ips of my neighbor
+           !*** and try to find an ip with matching nodes
+           !*** also try to match with node twins
+ 
+ checkCandidateIP: do candidateIP = 1_pInt,FE_Nips(neighboringType)
+             NmatchingNodes = 0_pInt
+             matchingNodes = 0_pInt
+             do a = 1_pInt,FE_maxNnodesAtIP(neighboringType)                                         ! check each anchor node of that ip
+               anchor = FE_nodesAtIP(a,candidateIP,neighboringType)
+               if (anchor /= 0_pInt) then                                                            ! valid anchor node
+                 if (any(FE_face(:,matchingFace,neighboringType) == anchor)) then                    ! sits on matching face?
+                   NmatchingNodes = NmatchingNodes + 1_pInt
+                   matchingNodes(NmatchingNodes) = &
+                      mesh_FEasCP('node',mesh_element(4+anchor,matchingElem))                        ! CP id of neighbor's anchor node
+                 else                                                                                ! no matching, because not all nodes sit on the matching face
+                   NmatchingNodes = 0_pInt
+                   matchingNodes = 0_pInt
+                   exit
+                 endif
+               endif
+             enddo
+ 
+             if (NmatchingNodes /= NlinkedNodes) &                                                   ! this ip has wrong count of anchors on face
+               cycle checkCandidateIP
+             
+             !*** check "normal" nodes whether they match or not
+             
+             checkTwins = .false.
+             do a = 1_pInt,NlinkedNodes
+               if (all(matchingNodes /= linkedNodes(a))) then                                        ! this linkedNode does not match any matchingNode
+                 checkTwins = .true.
+                 exit                                                                                ! no need to search further
+               endif
+             enddo
+             
+             !*** if no match found, then also check node twins
+             
+             if(checkTwins) then
+               dir = int(maxloc(abs(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem)),1),pInt)            ! check for twins only in direction of the surface normal
+               do a = 1_pInt,NlinkedNodes
+                 twin_of_linkedNode = mesh_nodeTwins(dir,linkedNodes(a))
+                 if (twin_of_linkedNode == 0_pInt .or. &                                             ! twin of linkedNode does not exist...
+                     all(matchingNodes /= twin_of_linkedNode)) then                                  ! ... or it does not match any matchingNode
+                   cycle checkCandidateIP                                                            ! ... then check next candidateIP
+                 endif
+               enddo
+             endif
+ 
+             !*** we found a match !!!
+ 
+             mesh_ipNeighborhood(1,neighbor,myIP,myElem) = matchingElem
+             mesh_ipNeighborhood(2,neighbor,myIP,myElem) = candidateIP
+             exit checkCandidateIP            
+           enddo checkCandidateIP
+         endif                                                                                       ! end of valid external matching
+       endif                                                                                         ! end of internal/external matching
+     enddo
+   enddo
+ enddo
+ do myElem = 1_pInt,mesh_NcpElems                                                                    ! loop over cpElems
+   myType = FE_geomtype(mesh_element(2,myElem))                                                      ! get elemGeomType
+   do myIP = 1_pInt,FE_Nips(myType)                                                                  ! loop over IPs of elem
+     do neighbor = 1_pInt,FE_NipNeighbors(FE_celltype(myType))                                       ! loop over neighbors of IP
+       neighboringElem = mesh_ipNeighborhood(1,neighbor,myIP,myElem)
+       neighboringIP   = mesh_ipNeighborhood(2,neighbor,myIP,myElem)
+       if (neighboringElem > 0_pInt .and. neighboringIP > 0_pInt) then                               ! if neighbor exists ...
+         neighboringType = FE_geomtype(mesh_element(2,neighboringElem))
+         do pointingToMe = 1_pInt,FE_NipNeighbors(FE_celltype(neighboringType))                      ! find neighboring index that points from my neighbor to myself
+           if (    myElem == mesh_ipNeighborhood(1,pointingToMe,neighboringIP,neighboringElem) &
+               .and. myIP == mesh_ipNeighborhood(2,pointingToMe,neighboringIP,neighboringElem)) then ! possible candidate
+             if (math_mul3x3(mesh_ipAreaNormal(1:3,neighbor,myIP,myElem),&
+                             mesh_ipAreaNormal(1:3,pointingToMe,neighboringIP,neighboringElem)) < 0.0_pReal) then ! area normals have opposite orientation (we have to check that because of special case for single element with two ips and periodicity. In this case the neighbor is identical in two different directions.)
+               mesh_ipNeighborhood(3,neighbor,myIP,myElem) = pointingToMe                            ! found match
+               exit                                                                                  ! so no need to search further
+             endif
+           endif
+         enddo
+       endif
+     enddo
+   enddo
+ enddo
+ 
 end subroutine mesh_build_ipNeighborhood
 
 
@@ -3986,16 +3994,18 @@ end subroutine mesh_build_ipNeighborhood
 !> @brief write statistics regarding input file parsing to the output file
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_tell_statistics
-
- use math,  only: math_range
- use IO,    only: IO_error
- use debug, only: debug_level, &
-                  debug_mesh, &
-                  debug_levelBasic, &
-                  debug_levelExtensive, &
-                  debug_levelSelective, &
-                  debug_e, &
-                  debug_i
+ use math, only: &
+   math_range
+ use IO, only: &
+   IO_error
+ use debug, only: &
+   debug_level, &
+   debug_MESH, &
+   debug_LEVELBASIC, &
+   debug_LEVELEXTENSIVE, &
+   debug_LEVELSELECTIVE, &
+   debug_e, &
+   debug_i
 
  implicit none
  integer(pInt), dimension (:,:), allocatable :: mesh_HomogMicro
