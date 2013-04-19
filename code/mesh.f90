@@ -473,6 +473,7 @@ subroutine mesh_init(ip,el)
  use IO, only: &
    IO_timeStamp, &
    IO_error, &
+   IO_write_jobFile, &
 #ifdef Abaqus
    IO_abaqus_hasNoPart, &
 #endif
