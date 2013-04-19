@@ -547,6 +547,7 @@ subroutine mesh_init(ip,el)
  write(6,'(a,3(i12  ))') ' grid     a b c: ', res
  write(6,'(a,3(f12.5))') ' size     x y z: ', geomdim
  write(6,'(a,i5,/)')     ' homogenization: ', homog
+
  call mesh_spectral_count_nodesAndElements
  call mesh_spectral_count_cpElements
  call mesh_spectral_map_elements
@@ -554,6 +555,13 @@ subroutine mesh_init(ip,el)
  call mesh_spectral_count_cpSizes
  call mesh_spectral_build_nodes
  call mesh_spectral_build_elements(fileUnit)
+ call mesh_get_damaskOptions(fileUnit)
+ close (fileUnit)
+ call mesh_build_cells
+ call mesh_build_ipCoordinates
+ call mesh_build_ipVolumes
+ call mesh_build_ipAreas
+ call mesh_spectral_build_ipNeighborhood
 #endif
 #ifdef Marc
  call IO_open_inputFile(fileUnit,modelName)                                                         ! parse info from input file...
@@ -567,6 +575,15 @@ subroutine mesh_init(ip,el)
  call mesh_marc_build_nodes(fileUnit)
  call mesh_marc_count_cpSizes(fileunit)
  call mesh_marc_build_elements(fileUnit)
+ call mesh_get_damaskOptions(fileUnit)
+ close (fileUnit)
+ call mesh_build_cells
+ call mesh_build_ipCoordinates
+ call mesh_build_ipVolumes
+ call mesh_build_ipAreas
+ call mesh_build_nodeTwins
+ call mesh_build_sharedElems
+ call mesh_build_ipNeighborhood
 #endif
 #ifdef Abaqus
  call IO_open_inputFile(fileUnit,modelName)                                                         ! parse info from input file...
@@ -582,11 +599,8 @@ subroutine mesh_init(ip,el)
  call mesh_abaqus_build_nodes(fileUnit)
  call mesh_abaqus_count_cpSizes(fileunit)
  call mesh_abaqus_build_elements(fileUnit)
-#endif
-
  call mesh_get_damaskOptions(fileUnit)
  close (fileUnit)
- 
  call mesh_build_cells
  call mesh_build_ipCoordinates
  call mesh_build_ipVolumes
@@ -594,8 +608,9 @@ subroutine mesh_init(ip,el)
  call mesh_build_nodeTwins
  call mesh_build_sharedElems
  call mesh_build_ipNeighborhood
- call mesh_tell_statistics
+#endif
 
+ call mesh_tell_statistics
  call mesh_writeGeom
 
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(600_pInt)                      ! ping-pong must be disabled when havin non-DAMASK-elements
@@ -614,9 +629,9 @@ subroutine mesh_init(ip,el)
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
  call IO_write_jobFile(fileUnit,'mesh') 
- write(fileUnit,'(a,1x,i)')  'maxNcellnodes ', mesh_maxNcellnodes
- write(fileUnit,'(a,1x,i)')  'maxNips ', mesh_maxNips
- write(fileUnit,'(a,1x,i)')  'maxNcpElems', mesh_NcpElems
+ write(fileUnit,'(a,1x,i12)')  'maxNcellnodes ', mesh_maxNcellnodes
+ write(fileUnit,'(a,1x,i12)')  'maxNips ', mesh_maxNips
+ write(fileUnit,'(a,1x,i12)')  'maxNcpElems', mesh_NcpElems
  close(fileUnit)
 
 end subroutine mesh_init
@@ -3989,6 +4004,64 @@ subroutine mesh_build_ipNeighborhood
  enddo
  
 end subroutine mesh_build_ipNeighborhood
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief build neighborhood relations for spectral
+!> @details assign globals: mesh_ipNeighborhood
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_build_ipNeighborhood
+
+implicit none
+integer(pInt)                   x,y,z, &
+                                e
+
+allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
+mesh_ipNeighborhood = 0_pInt
+
+
+e = 0_pInt
+do x = 0_pInt,res(1)-1_pInt
+  do y = 0_pInt,res(2)-1_pInt
+    do z = 0_pInt,res(3)-1_pInt
+      e = e + 1_pInt
+        mesh_ipNeighborhood(1,1,1,e) = z * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + modulo(x+1_pInt,res(1)) &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,2,1,e) = z * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + modulo(x-1_pInt,res(1)) &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,3,1,e) = z * res(1) * res(2) &
+                                     + modulo(y+1_pInt,res(2)) * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,4,1,e) = z * res(1) * res(2) &
+                                     + modulo(y-1_pInt,res(2)) * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,res(3)) * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,res(3)) * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
+        mesh_ipNeighborhood(3,1,1,e) = 2_pInt
+        mesh_ipNeighborhood(3,2,1,e) = 1_pInt
+        mesh_ipNeighborhood(3,3,1,e) = 4_pInt
+        mesh_ipNeighborhood(3,4,1,e) = 3_pInt
+        mesh_ipNeighborhood(3,5,1,e) = 6_pInt
+        mesh_ipNeighborhood(3,6,1,e) = 5_pInt
+    enddo
+  enddo
+enddo
+
+
+end subroutine mesh_spectral_build_ipNeighborhood
 
 
 !--------------------------------------------------------------------------------------------------
