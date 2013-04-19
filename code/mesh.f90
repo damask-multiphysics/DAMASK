@@ -612,11 +612,11 @@ subroutine mesh_init(ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
- call IO_write_jobFile(fileunit,'mesh') 
- write(fileunit,'(a,i)')  'maxNCellNodes ',  mesh_maxNcellNodes
- write(fileunit,'(a,i)')  'maxNips ',        mesh_maxNips
- write(fileunit,'(a,i)')  'maxNCellNodes ',  mesh_maxNcpElems
- close(fileunit)
+ call IO_write_jobFile(fileUnit,'mesh') 
+ write(fileUnit,'(a,1x,i)')  'maxNcellnodes ', mesh_maxNcellnodes
+ write(fileUnit,'(a,1x,i)')  'maxNips ', mesh_maxNips
+ write(fileUnit,'(a,1x,i)')  'maxNcpElems', mesh_NcpElems
+ close(fileUnit)
 
 end subroutine mesh_init
 
