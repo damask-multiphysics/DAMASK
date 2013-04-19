@@ -170,7 +170,7 @@ python module core ! in
             real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
             real*8,  dimension(3),                             intent(in)                  :: gDim
             real*8,  dimension(3,3),                           intent(in), optional        :: FavgIn = -1.0
-            real*8,  dimension(3),                             intent(in), optional,       :: scalingIn = -1.0
+            real*8,  dimension(3),                             intent(in), optional        :: scalingIn = -1.0
             real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),           depend(F)       :: mesh_deformedCoordsFFT  
         end function mesh_deformedCoordsFFT
         
