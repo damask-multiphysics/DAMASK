@@ -201,7 +201,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    mesh_element, &
    mesh_node0, &
    mesh_node, &
-   mesh_build_cells, &
+   mesh_cellnode, &
+   mesh_build_cellnodes, &
    mesh_build_ipCoordinates, &
    FE_Nnodes
  use CPFEM, only: &
@@ -271,7 +272,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  logical :: cutBack
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
- integer(pInt) :: computationMode, i, cp_en, node, FEnodeID
+ integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
  !$ integer(pInt) :: defaultNumThreadsInt                                                           !< default value set by Marc
 
  !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
@@ -345,7 +346,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        call debug_reset()                                                                           ! resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1_pInt
-       call mesh_build_cells()                                                                      ! update cell node coordinates
+       mesh_cellnode = mesh_build_cellnodes(mesh_node)                                              ! update cell node coordinates
        call mesh_build_ipCoordinates()                                                              ! update ip coordinates
      endif
      if ( outdatedByNewInc ) then
@@ -363,8 +364,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        computationMode = CPFEM_COLLECT                                                              ! plain collect
      endif
      do node = 1,FE_Nnodes(mesh_element(2,cp_en))
-       FEnodeID = mesh_FEasCP('node',mesh_element(4+node,cp_en))
-       mesh_node(1:3,FEnodeID) = mesh_node0(1:3,FEnodeID) + numerics_unitlength * dispt(1:3,node)
+       CPnodeID = mesh_element(4_pInt+node,cp_en)
+       mesh_node(1:3,CPnodeID) = mesh_node0(1:3,CPnodeID) + numerics_unitlength * dispt(1:3,node)
      enddo
    endif
 

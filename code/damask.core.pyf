@@ -189,6 +189,16 @@ python module core ! in
             real*8,  dimension(size(F,3),size(F,4),size(F,5)), depend(F)                   :: mesh_shapeMismatch
         end function mesh_shapeMismatch
         
+        function mesh_init_postprocessing(filepath) ! in :mesh:mesh.f90
+            character(len=*), intent(in) :: filepath
+        end function mesh_init_postprocessing
+        
+        function mesh_build_cellnodes(nodes) ! in :mesh:mesh.f90
+            integer
+            real*8, dimension(3,:), intent(in) :: nodes
+            real*8, dimension(3,:)             :: mesh_build_cellnodes
+        end function mesh_build_cellnodes
+        
      end module mesh
    end interface 
 end python module core
