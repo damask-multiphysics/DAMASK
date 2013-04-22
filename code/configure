@@ -23,6 +23,6 @@ for line in content:
       substitution = ''
     line = '%sROOT ?= %s\n'%(m.group(1),substitution)
   if c:
-    line = 'F90? = %s\n'%compiler
+    line = 'F90 ?= %s\n'%compiler
   makefile.write(line)
 makefile.close()
