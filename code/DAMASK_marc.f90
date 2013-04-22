@@ -44,6 +44,8 @@
 !> @details   - concom: lovl, inc
 !> @details   - creeps: timinc
 !--------------------------------------------------------------------------------------------------
+#define QUOTE(x) #x                                                                                 
+#define PASTE(x,y) x ## y  
 
 #ifndef INT
 #define INT 4
@@ -266,8 +268,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 !--------------------------------------------------------------------------------------------------
 ! Marc common blocks are in fixed format so they have to be reformated to free format (f90)
 ! Beware of changes in newer Marc versions
- include "include/concom%%MARCVERSION%%"                                                            ! concom is needed for inc, lovl
- include "include/creeps%%MARCVERSION%%"                                                            ! creeps is needed for timinc (time increment)
+
+#include QUOTE(PASTE(../lib/MarcInclude/concom,Marc4DAMASK))                                        ! concom is needed for inc, lovl
+#include QUOTE(PASTE(../lib/MarcInclude/creeps,Marc4DAMASK))                                        ! creeps is needed for timinc (time increment)
 
  logical :: cutBack
  real(pReal), dimension(6) ::   stress

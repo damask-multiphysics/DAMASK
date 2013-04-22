@@ -187,9 +187,7 @@ subroutine constitutive_init
      case default
        knownPlasticity = .false.
    end select   
-   write(fileunit,*)
-   write(fileunit,'(a)') '['//trim(phase_name(p))//']'
-   write(fileunit,*)
+   write(fileunit,'(\,a,\)') '['//trim(phase_name(p))//']'
    if (knownPlasticity) then
      write(fileunit,'(a)') '(plasticity)'//char(9)//trim(phase_plasticity(p))
      do e = 1_pInt,phase_Noutput(p)

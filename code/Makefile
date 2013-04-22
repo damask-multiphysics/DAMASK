@@ -467,3 +467,7 @@ clean:
 	@rm -rf *.o
 	@rm -rf *.mod
 	@rm -rf *.exe
+
+install:
+	@./setup/symlink_Code.py
+
