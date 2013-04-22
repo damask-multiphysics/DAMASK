@@ -486,7 +486,8 @@ use mesh, only:          mesh_element, &
                          mesh_maxNips, &
                          mesh_ipNeighborhood, &
                          FE_NipNeighbors, &
-                         FE_geomtype
+                         FE_geomtype, &
+                         FE_celltype
 use material, only:      homogenization_Ngrains, &
                          homogenization_maxNgrains
 use constitutive, only:  constitutive_sizeState, &
@@ -731,7 +732,7 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
             do e = FEsolving_execElem(1),FEsolving_execElem(2) 
               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
                 if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_converged(1,i,e)) then
-                  do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))
+                  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
                     neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                     neighboring_i = mesh_ipNeighborhood(2,n,i,e)
                     if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
@@ -767,7 +768,7 @@ do while (any(crystallite_todo(:,:,FEsolving_execELem(1):FEsolving_execElem(2)))
             do e = FEsolving_execElem(1),FEsolving_execElem(2) 
               do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
                 if (.not. crystallite_localPlasticity(1,i,e) .and. crystallite_subFrac(1,i,e) == 0.0_pReal) then
-                  do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))
+                  do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
                     neighboring_e = mesh_ipNeighborhood(1,n,i,e)
                     neighboring_i = mesh_ipNeighborhood(2,n,i,e)
                     if (neighboring_e > 0_pInt .and. neighboring_i > 0_pInt) then
@@ -3391,7 +3392,8 @@ subroutine crystallite_orientations
  use mesh, only:                       mesh_element, &
                                        mesh_ipNeighborhood, &
                                        FE_NipNeighbors, &
-                                       FE_geomtype
+                                       FE_geomtype, &
+                                       FE_celltype
  use constitutive_nonlocal, only:      constitutive_nonlocal_structure, &
                                        constitutive_nonlocal_updateCompatibility
  
@@ -3453,7 +3455,7 @@ subroutine crystallite_orientations
          
          ! --- calculate disorientation between me and my neighbor ---
          
-         do n = 1_pInt,FE_NipNeighbors(FE_geomtype(mesh_element(2,e)))                                     ! loop through my neighbors
+         do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                        ! loop through my neighbors
            neighboring_e = mesh_ipNeighborhood(1,n,i,e)
            neighboring_i = mesh_ipNeighborhood(2,n,i,e)
            if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                         ! if neighbor exists
@@ -3463,9 +3465,9 @@ subroutine crystallite_orientations
                neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure
                if (myStructure == neighboringStructure) then                                               ! if my neighbor has same crystal structure like me
                  crystallite_disorientation(:,n,1,i,e) = &
-                   math_qDisorientation( crystallite_orientation(1:4,1,i,e), &
-                                                  crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
-                                                  crystallite_symmetryID(1,i,e))                           ! calculate disorientation
+                   math_qDisorientation(crystallite_orientation(1:4,1,i,e), &
+                                        crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
+                                        crystallite_symmetryID(1,i,e))                                     ! calculate disorientation
                else                                                                                        ! for neighbor with different phase
                  crystallite_disorientation(:,n,1,i,e) = (/0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal/)    ! 180 degree rotation about 100 axis
                endif
