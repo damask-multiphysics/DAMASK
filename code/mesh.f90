@@ -442,6 +442,7 @@ module mesh
    mesh_spectral_count_cpSizes, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
+   mesh_spectral_build_ipNeighborhood, &
 #endif 
 #ifdef Marc
    mesh_marc_get_tableStyles, &
@@ -1375,6 +1376,64 @@ end subroutine mesh_spectral_build_elements
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief build neighborhood relations for spectral
+!> @details assign globals: mesh_ipNeighborhood
+!--------------------------------------------------------------------------------------------------
+subroutine mesh_spectral_build_ipNeighborhood
+
+implicit none
+integer(pInt)                   x,y,z, &
+                                e
+
+allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
+mesh_ipNeighborhood = 0_pInt
+
+
+e = 0_pInt
+do x = 0_pInt,res(1)-1_pInt
+  do y = 0_pInt,res(2)-1_pInt
+    do z = 0_pInt,res(3)-1_pInt
+      e = e + 1_pInt
+        mesh_ipNeighborhood(1,1,1,e) = z * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + modulo(x+1_pInt,res(1)) &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,2,1,e) = z * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + modulo(x-1_pInt,res(1)) &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,3,1,e) = z * res(1) * res(2) &
+                                     + modulo(y+1_pInt,res(2)) * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,4,1,e) = z * res(1) * res(2) &
+                                     + modulo(y-1_pInt,res(2)) * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,res(3)) * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,res(3)) * res(1) * res(2) &
+                                     + y * res(1) &
+                                     + x &
+                                     + 1_pInt
+        mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
+        mesh_ipNeighborhood(3,1,1,e) = 2_pInt
+        mesh_ipNeighborhood(3,2,1,e) = 1_pInt
+        mesh_ipNeighborhood(3,3,1,e) = 4_pInt
+        mesh_ipNeighborhood(3,4,1,e) = 3_pInt
+        mesh_ipNeighborhood(3,5,1,e) = 6_pInt
+        mesh_ipNeighborhood(3,6,1,e) = 5_pInt
+    enddo
+  enddo
+enddo
+
+
+end subroutine mesh_spectral_build_ipNeighborhood
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Performes a regridding from saved restart information
 !--------------------------------------------------------------------------------------------------
 function mesh_regrid(adaptive,resNewInput,minRes)
@@ -1948,15 +2007,15 @@ function mesh_deformedCoordsLinear(gDim,F,FavgIn) result(coords)
    i, j, k, s, o
  integer(pInt), parameter, dimension(3,0:7) :: &
    corner = reshape([ &
-                                              0_pInt, 0_pInt, 0_pInt,&
-                                              1_pInt, 0_pInt, 0_pInt,&
-                                              1_pInt, 1_pInt, 0_pInt,&
-                                              0_pInt, 1_pInt, 0_pInt,&
-                                              1_pInt, 1_pInt, 1_pInt,&
-                                              0_pInt, 1_pInt, 1_pInt,&
-                                              0_pInt, 0_pInt, 1_pInt,&
-                                              1_pInt, 0_pInt, 1_pInt &
-                                                  ],[3,8]), &
+                                            0_pInt, 0_pInt, 0_pInt,&
+                                            1_pInt, 0_pInt, 0_pInt,&
+                                            1_pInt, 1_pInt, 0_pInt,&
+                                            0_pInt, 1_pInt, 0_pInt,&
+                                            1_pInt, 1_pInt, 1_pInt,&
+                                            0_pInt, 1_pInt, 1_pInt,&
+                                            0_pInt, 0_pInt, 1_pInt,&
+                                            1_pInt, 0_pInt, 1_pInt &
+                                                ],[3,8]), &
    step = reshape([&
                                             1_pInt, 1_pInt, 1_pInt,&
                                            -1_pInt, 1_pInt, 1_pInt,&
@@ -4033,64 +4092,6 @@ subroutine mesh_build_ipNeighborhood
  enddo
  
 end subroutine mesh_build_ipNeighborhood
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief build neighborhood relations for spectral
-!> @details assign globals: mesh_ipNeighborhood
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_ipNeighborhood
-
-implicit none
-integer(pInt)                   x,y,z, &
-                                e
-
-allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
-mesh_ipNeighborhood = 0_pInt
-
-
-e = 0_pInt
-do x = 0_pInt,res(1)-1_pInt
-  do y = 0_pInt,res(2)-1_pInt
-    do z = 0_pInt,res(3)-1_pInt
-      e = e + 1_pInt
-        mesh_ipNeighborhood(1,1,1,e) = z * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + modulo(x+1_pInt,res(1)) &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,2,1,e) = z * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + modulo(x-1_pInt,res(1)) &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,3,1,e) = z * res(1) * res(2) &
-                                     + modulo(y+1_pInt,res(2)) * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,4,1,e) = z * res(1) * res(2) &
-                                     + modulo(y-1_pInt,res(2)) * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,res(3)) * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,res(3)) * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
-        mesh_ipNeighborhood(3,1,1,e) = 2_pInt
-        mesh_ipNeighborhood(3,2,1,e) = 1_pInt
-        mesh_ipNeighborhood(3,3,1,e) = 4_pInt
-        mesh_ipNeighborhood(3,4,1,e) = 3_pInt
-        mesh_ipNeighborhood(3,5,1,e) = 6_pInt
-        mesh_ipNeighborhood(3,6,1,e) = 5_pInt
-    enddo
-  enddo
-enddo
-
-
-end subroutine mesh_spectral_build_ipNeighborhood
 
 
 !--------------------------------------------------------------------------------------------------
