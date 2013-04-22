@@ -626,11 +626,15 @@ do i = 1_pInt,maxNinstance
        constitutive_dislotwin_v0PerSlipSystem(index_myFamily+j,i)          = constitutive_dislotwin_v0PerSlipFamily(f,i)
        constitutive_dislotwin_CLambdaSlipPerSlipSystem(index_myFamily+j,i) = constitutive_dislotwin_CLambdaSlipPerSlipFamily(f,i)
 
+     !* Calculation of forest projections for edge dislocations
      !* Interaction matrices
 
        do o = 1_pInt,lattice_maxNslipFamily
          index_otherFamily = sum(constitutive_dislotwin_Nslip(1:o-1_pInt,i))
          do k = 1_pInt,constitutive_dislotwin_Nslip(o,i)                                           ! loop over (active) systems in other family (slip)
+           constitutive_dislotwin_forestProjectionEdge(index_myFamily+j,index_otherFamily+k,i) = &
+             abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,myStructure))+j,myStructure), &
+                             lattice_st(:,sum(lattice_NslipSystem(1:o-1,myStructure))+k,myStructure)))
            constitutive_dislotwin_interactionMatrix_SlipSlip(index_myFamily+j,index_otherFamily+k,i) = &
                  constitutive_dislotwin_interaction_SlipSlip(lattice_interactionSlipSlip( &
                                                                sum(lattice_NslipSystem(1:f-1,myStructure))+j, &
