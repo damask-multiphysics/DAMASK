@@ -419,7 +419,8 @@ module mesh
    mesh_build_ipVolumes, &
    mesh_build_ipCoordinates, &
    mesh_cellCenterCoordinates, &
-   mesh_init_postprocessing
+   mesh_init_postprocessing, &
+   mesh_get_Ncellnodes
 #ifdef Spectral
  public :: &
    mesh_regrid, &
@@ -584,7 +585,7 @@ subroutine mesh_init(ip,el)
  call mesh_get_damaskOptions(fileUnit)
  close (fileUnit)
  call mesh_build_cellconnectivity
- mesh_cellnode = mesh_build_cellnodes(mesh_node)
+ mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
  call mesh_build_ipCoordinates
  call mesh_build_ipVolumes
  call mesh_build_ipAreas
@@ -605,7 +606,7 @@ subroutine mesh_init(ip,el)
  call mesh_get_damaskOptions(fileUnit)
  close (fileUnit)
  call mesh_build_cellconnectivity
- mesh_cellnode = mesh_build_cellnodes(mesh_node)
+ mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
  call mesh_build_ipCoordinates
  call mesh_build_ipVolumes
  call mesh_build_ipAreas
@@ -630,7 +631,7 @@ subroutine mesh_init(ip,el)
  call mesh_get_damaskOptions(fileUnit)
  close (fileUnit)
  call mesh_build_cellconnectivity
- mesh_cellnode = mesh_build_cellnodes(mesh_node)
+ mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
  call mesh_build_ipCoordinates
  call mesh_build_ipVolumes
  call mesh_build_ipAreas
@@ -790,12 +791,13 @@ end subroutine mesh_build_cellconnectivity
 !> Build list of cellnodes' coordinates. 
 !> Cellnode coordinates are calculated from a weighted sum of node coordinates.
 !--------------------------------------------------------------------------------------------------
-function mesh_build_cellnodes(nodes)
+function mesh_build_cellnodes(nodes,Ncellnodes)
  
  implicit none
 
+ integer(pInt), intent(in) :: Ncellnodes                                                            !< requested number of cellnodes
  real(pReal), dimension(3,mesh_Nnodes), intent(in) :: nodes
- real(pReal), dimension(3,mesh_Ncellnodes) :: mesh_build_cellnodes
+ real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
 
  integer(pInt) &
    e,t,n,m, & 
@@ -805,7 +807,7 @@ function mesh_build_cellnodes(nodes)
  
  mesh_build_cellnodes = 0.0_pReal
 !$OMP PARALLEL DO PRIVATE(e,localCellnodeID,t,myCoords)
- do n = 1_pInt,mesh_Ncellnodes                                                                      ! loop over cell nodes
+ do n = 1_pInt,Ncellnodes                                                                           ! loop over cell nodes
    e = mesh_cellnodeParent(1,n)
    localCellnodeID = mesh_cellnodeParent(2,n)
    t = mesh_element(2,e)                                                                            ! get element type
@@ -5299,6 +5301,19 @@ integer function mesh_init_postprocessing(filepath)
  mesh_init_postprocessing = mesh_read_meshfile(filepath)
 
 end function mesh_init_postprocessing
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief just returns global variable mesh_Ncellnodes
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function mesh_get_Ncellnodes()
+
+ implicit none
+ 
+ mesh_get_Ncellnodes = mesh_Ncellnodes
+
+end function mesh_get_Ncellnodes
+
 
 end module mesh
 

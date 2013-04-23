@@ -203,6 +203,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    mesh_element, &
    mesh_node0, &
    mesh_node, &
+   mesh_Ncellnodes, &
    mesh_cellnode, &
    mesh_build_cellnodes, &
    mesh_build_ipCoordinates, &
@@ -352,7 +353,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        call debug_reset()                                                                           ! resets debugging
        outdatedFFN1  = .false.
        cycleCounter  = cycleCounter + 1_pInt
-       mesh_cellnode = mesh_build_cellnodes(mesh_node)                                              ! update cell node coordinates
+       mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)                              ! update cell node coordinates
        call mesh_build_ipCoordinates()                                                              ! update ip coordinates
      endif
      if ( outdatedByNewInc ) then

@@ -55,6 +55,7 @@ bin_link = { \
                 'deleteColumn.py',
                 'deleteInfo.py',
                 'filterTable.py',
+                'marc_deformedGeometry.py',
                 'mentat_colorMap.py',
                 'nodesFromCentroids.py',
                 'perceptualUniformColorMap.py',
