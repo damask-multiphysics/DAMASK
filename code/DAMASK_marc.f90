@@ -278,7 +278,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
  !$ integer(pInt) :: defaultNumThreadsInt                                                           !< default value set by Marc
 
- !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
  if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0_pInt) then
    write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
    write(6,'(a,2(1i))'), ' Jacobian:                      ', ngens,ngens 
@@ -293,10 +292,14 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' Deformation gradient at t=n+1:', &
                                  math_transpose33(ffn1)
  endif
+
+ !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
+
  if (.not. CPFEM_init_done) call CPFEM_initAll(t(1),m(1),nn)
 
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
+ computationMode = 0_pInt                                                                           ! save initialization value, since does not result in any calculation
  if (lovl == 4 ) then
    if(timinc < theDelta .and. theInc == inc ) computationMode = CPFEM_RESTOREJACOBIAN               ! first after cutback
  else                                                                                               ! stress requested (lovl == 6)
