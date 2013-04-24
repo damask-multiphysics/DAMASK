@@ -75,7 +75,7 @@ seeds[2,:]=(numpy.mod(seedpoint//(options.grid[1]*options.grid[0]),options.grid[
                                                             +numpy.random.random())/options.grid[2]
 
 print "5\theader"
-print "$Id$ \n"
+print "$Id$"
 print "grid\ta %i\tb %i\tc %i"%(options.grid[0],options.grid[1],options.grid[2],)
 print "grains\t%i"%options.N
 print "randomSeed\t%i"%(options.randomSeed)
