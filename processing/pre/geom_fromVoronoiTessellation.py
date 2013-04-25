@@ -95,7 +95,7 @@ for file in files:
   m = re.search('(\d+)\s*head', firstline.lower())
   if m:
     headerlines = int(m.group(1))
-    headers  = [firstline]+[file['input'].readline() for i in range(headerlines)]
+    headers  = [file['input'].readline() for i in range(headerlines)]
   else:
     headerlines = 1
     headers = firstline

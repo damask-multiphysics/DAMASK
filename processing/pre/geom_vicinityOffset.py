@@ -27,15 +27,16 @@ class extendedOption(Option):
 # ----------------------- MAIN -------------------------------
 
 identifiers = {
-        'resolution': ['a','b','c'],
-        'dimension':  ['x','y','z'],
-        'origin':     ['x','y','z'],
+        'grid':   ['a','b','c'],
+        'size':   ['x','y','z'],
+        'origin': ['x','y','z'],
           }
 mappings = {
-        'resolution': lambda x: int(x),
-        'dimension':  lambda x: float(x),
-        'origin':     lambda x: float(x),
-        'homogenization': lambda x: int(x),
+        'grid':            lambda x: int(x),
+        'size':            lambda x: float(x),
+        'origin':          lambda x: float(x),
+        'homogenization':  lambda x: int(x),
+        'microstructures': lambda x: int(x),
           }
 
 
@@ -47,8 +48,8 @@ i.e. within the region close to a grain/phase boundary.
 
 parser.add_option('-v', '--vicinity', dest='vicinity', type='int', \
                   help='voxel distance checked for presence of other microstructure [%default]')
-parser.add_option('-o', '--offset', dest='offset', type='int', \
-                  help='integer offset for tagged microstructure [%default]')
+parser.add_option('-m', '--microstructureoffset', dest='offset', type='int', \
+                  help='integer offset for tagged microstructure [autodetect]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement')
 
@@ -88,7 +89,7 @@ for file in files:
   m = re.search('(\d+)\s*head', firstline.lower())
   if m:
     headerlines = int(m.group(1))
-    headers  = [firstline]+[file['input'].readline() for i in range(headerlines)]
+    headers  = [file['input'].readline() for i in range(headerlines)]
   else:
     headerlines = 1
     headers = firstline
@@ -96,15 +97,20 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-  info = {'resolution': numpy.array([0,0,0]),
-          'dimension':  numpy.array([0.0,0.0,0.0]),
-          'origin':     numpy.array([0.0,0.0,0.0]),
-          'homogenization': 1,
-         }
+  info = {
+        'grid':   numpy.zeros(3,'i'),
+        'size':   numpy.zeros(3,'d'),
+        'origin': numpy.zeros(3,'d'),
+        'microstructures': 0,
+        'homogenization':  0
+       }
 
   new_header = []
+  new_header.append('$Id$\n')
   for header in headers:
     headitems = map(str.lower,header.split())
+    if headitems[0] == 'resolution': headitems[0] = 'grid'
+    if headitems[0] == 'dimension':  headitems[0] = 'size'
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
@@ -112,36 +118,40 @@ for file in files:
             mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
+    else:
+      new_header.append(header)
 
-  if numpy.all(info['resolution'] == 0):
-    file['croak'].write('no resolution info found.\n')
+  if numpy.all(info['grid'] == 0):
+    file['croak'].write('no grid info found.\n')
     continue
-  if numpy.all(info['dimension'] == 0.0):
+  if numpy.all(info['size'] == 0.0):
     file['croak'].write('no dimension info found.\n')
     continue
 
-  file['croak'].write('resolution:     %s\n'%(' x '.join(map(str,info['resolution']))) + \
-                      'dimension:      %s\n'%(' x '.join(map(str,info['dimension']))) + \
-                      'origin:         %s\n'%(' : '.join(map(str,info['origin']))) + \
-                      'homogenization: %i\n'%info['homogenization'])
+  file['croak'].write('-- input --\n' +\
+                      'grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization:  %i\n'%info['homogenization'] + \
+                      'microstructures: %i\n'%info['microstructures'])
     
-  microstructure = numpy.zeros(info['resolution'],'i')
+  microstructure = numpy.zeros(info['grid'],'i')
   i = 0
   for line in content:  
     for item in map(int,line.split()):
-      microstructure[i%info['resolution'][0],
-                    (i/info['resolution'][0])%info['resolution'][1],
-                     i/info['resolution'][0] /info['resolution'][1]] = item
+      microstructure[i%info['grid'][0],
+                    (i/info['grid'][0])%info['grid'][1],
+                     i/info['grid'][0] /info['grid'][1]] = item
       i += 1
 
-  formatwidth = 1+int(math.floor(math.log10(abs(microstructure.max()+options.offset))))
+
   if options.offset == 0:
     options.offset = microstructure.max()
-  file['croak'].write('offset:         %i\n'%options.offset)
-  
-  for x in xrange(info['resolution'][0]):
-    for y in xrange(info['resolution'][1]):
-      for z in xrange(info['resolution'][2]):
+  formatwidth = 1+int(math.floor(math.log10(abs(microstructure.max()+options.offset))))
+
+  for x in xrange(info['grid'][0]):
+    for y in xrange(info['grid'][1]):
+      for z in xrange(info['grid'][2]):
 
         me = microstructure[x,y,z]
         breaker = False
@@ -150,7 +160,7 @@ for file in files:
           for dy in xrange(-options.vicinity,options.vicinity+1):
             for dz in xrange(-options.vicinity,options.vicinity+1):
 
-              they = microstructure[(x+dx)%info['resolution'][0],(y+dy)%info['resolution'][1],(z+dz)%info['resolution'][2]]
+              they = microstructure[(x+dx)%info['grid'][0],(y+dy)%info['grid'][1],(z+dz)%info['grid'][2]]
               if they != me and they != me+options.offset:                    # located alien microstructure in vicinity
                 microstructure[x,y,z] += options.offset                       # tag myself as close to aliens!
                 breaker = True
@@ -160,15 +170,25 @@ for file in files:
 
           if breaker: break
 
-            
-# ------------------------------------------ assemble header ---------------------------------------  
+  info['microstructures'] = microstructure.max()
+  file['croak'].write('-- output --\n' +\
+                      'microstructures: %i\n'%info['microstructures'])
 
-  output = ''.join(headers)
+# ------------------------------------------ assemble header ---------------------------------------          
+  new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2]))
+  new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][0]))
+  new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2]))
+  new_header.append("microstructures\t%i\n"%info['microstructures'])
+  new_header.append("homogenization\t%i\n"%info['homogenization'])
+
+  output  = '%i\theader\n'%(len(new_header))
+  output += ''.join(new_header)
+
 
 # ------------------------------------- regenerate texture information ----------------------------------  
 
-  for z in xrange(info['resolution'][2]):
-    for y in xrange(info['resolution'][1]):
+  for z in xrange(info['grid'][2]):
+    for y in xrange(info['grid'][1]):
       output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: str(x).rjust(formatwidth), microstructure[:,y,z])) + '\n'
     
     output += '\n'

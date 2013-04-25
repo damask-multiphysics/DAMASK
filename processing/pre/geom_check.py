@@ -150,7 +150,7 @@ for file in files:
   info = {'grid':           [0,0,0],
           'size':           [0.0,0.0,0.0],
           'origin':         [0.0,0.0,0.0],
-          'homogenization':  1,
+          'homogenization':  0,
           'microstructures': 0,
          }
 
