@@ -2170,21 +2170,21 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
  integer(pInt), dimension(2:3,2) :: Nyquist                                                         ! highest frequencies to be removed (1 if even, 2 if odd)
 
  if (present(scalingIn)) then
-   where (scalingIn < 0.0_pReal)                                                                    ! the f2py way to tell it is not present
+  where (scalingIn < 0.0_pReal)                                                                     ! invalid values. in case of f2py -1 if not present
      scaling = [1.0_pReal,1.0_pReal,1.0_pReal]
    elsewhere
      scaling = scalingIn
-   endwhere
+   end where
  else
    scaling = 1.0_pReal
  endif
  
  iRes =  [size(F,3),size(F,4),size(F,5)]
  integrator = gDim / 2.0_pReal / PI                                                                 ! see notes where it is used
- res1Red = iRes(1)/2_pInt + 1_pInt                                                                 ! size of complex array in first dimension (c2r, r2c)
+ res1Red = iRes(1)/2_pInt + 1_pInt                                                                  ! size of complex array in first dimension (c2r, r2c)
  step = gDim/real(iRes, pReal)
- Nyquist(2,1:2) = [res(2)/2_pInt + 1_pInt, res(2)/2_pInt + 1_pInt + mod(res(2),2_pInt)]
- Nyquist(3,1:2) = [res(3)/2_pInt + 1_pInt, res(3)/2_pInt + 1_pInt + mod(res(3),2_pInt)]
+ Nyquist(2,1:2) = [iRes(2)/2_pInt + 1_pInt, iRes(2)/2_pInt + 1_pInt + mod(iRes(2),2_pInt)]
+ Nyquist(3,1:2) = [iRes(3)/2_pInt + 1_pInt, iRes(3)/2_pInt + 1_pInt + mod(iRes(3),2_pInt)]
 
 !--------------------------------------------------------------------------------------------------
 ! report
@@ -2226,7 +2226,7 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
                                    1_pInt,  iRes(3)*iRes(2)*(iRes(1)+2_pInt-mod(iRes(1),2_pInt)),&
                                                                       fftw_planner_flag)
  F_real(1:iRes(1),1:iRes(2),1:iRes(3),1:3,1:3) = & 
-                                         reshape(F,[res(1),res(2),res(3),3,3], order = [4,5,1,2,3]) ! F_real is overwritten during plan creatio, is larger (padding) and has different order
+                                      reshape(F,[iRes(1),iRes(2),iRes(3),3,3], order = [4,5,1,2,3]) ! F_real is overwritten during plan creatio, is larger (padding) and has different order
 
 !--------------------------------------------------------------------------------------------------
 ! FFT
@@ -2236,7 +2236,7 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
 ! if no average F is given, compute it in Fourier space
  if (present(FavgIn)) then
    if (all(FavgIn < 0.0_pReal)) then
-     Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)/real(product(iRes),pReal)                          !the f2py way to tell it is not present
+     Favg = real(F_fourier(1,1,1,1:3,1:3),pReal)/real(product(iRes),pReal)                           !the f2py way to tell it is not present
    else
      Favg = FavgIn
    endif
