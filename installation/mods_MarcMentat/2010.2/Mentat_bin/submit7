@@ -3,10 +3,12 @@
 # The exit status of this script is read by Mentat.
 # Normal exit status is 0.
 #
-# This is an example of remote execution of MARC using NFS
-#
 
-DIR=/home/f.roters/msc/marc2011
+DIR=%INSTALLDIR%/marc%VERSION%
+if test $MARCDIR1
+then
+ DIR=$MARCDIR1
+fi
 
 SRCEXT=.f
 RSTEXT=.t08
@@ -14,16 +16,13 @@ PSTEXT=.t19
 PSTEXTB=.t16
 VWFCEXT=.vfs
 
-# Customize the following two lines:
-rhost=zippy
-job=/mounts/linus$PWD/$6
-
 slv=$1
 version=$2
 ndom_fea_solver=$3
 ndom_preprocessor=$4
 hostfile=$5
 compat=$6
+job=$7
 srcfile=$8
 srcmeth=$9
 shift 9       # cannot use $10, $11, ...
@@ -58,7 +57,7 @@ else
 fi
 
 if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
-  srcfile=`echo $srcfile | sed "s/$SRCEXT$//"`
+#  srcfile=`echo $srcfile | sed "s/$SRCEXT$//"`
   case "$srcmeth" in
     -)
       srcfile="-u $srcfile"
@@ -67,6 +66,7 @@ if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
       srcfile="-u $srcfile -save y"
       ;;
     runsaved)
+      srcfile=${srcfile%.*}".marc"
       srcfile="-prog $srcfile"
       ;;
   esac
@@ -139,6 +139,9 @@ case "$mode" in
 esac
 
 rm -f $job.cnt
+rm -f $job.sts
+rm -f $job.out
+rm -f $job.log
 
 # To prevent a mismatch with the python version used by the solver
 #  do *not* prepend $MENTAT_INSTALL_DIR/python/bin to environment variable PATH
@@ -146,9 +149,9 @@ rm -f $job.cnt
 unset PYTHONHOME
 unset PYTHONPATH
 
-rsh $rhost marc $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
-                     $srcfile $restart $postfile $viewfactorsfile $hostfile \
-                     $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
-                     $nthread $nsolver $mode > /dev/null 2>&1
+"${DIR}/tools/run_hmp_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
+                        $srcfile $restart $postfile $viewfactorsfile $hostfile \
+                        $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
+                        $nthread $nsolver $mode > /dev/null 2>&1
 sleep 1
 exit 0

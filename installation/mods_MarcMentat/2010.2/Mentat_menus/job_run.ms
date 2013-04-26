@@ -172,9 +172,16 @@ popmenu job_run_popmenu {
 
   button {
    position +16 =
-   size 32 6
-   text "ADVANCED JOB SUBMISSION"
+   size 16 6
+   text "ADV. JOB SUBMISSION"
    popmenu job_submit_adv_pm
+  }
+
+  button {
+   position +16 =
+   size 16 6
+   text "DAMASK"
+   popmenu damask
   }
 
   button {
@@ -967,6 +974,217 @@ popmenu job_submit_adv_pm {
    text "OK"
   }
  }
+
+ window {
+  parent mentat
+  origin 38 8
+#ifdef DCOM
+  size 50 100
+#else
+  size 50 94
+#endif
+  background_color body
+  border_width 1
+  border_color border
+  buffering single
+ }
+ mode dialog
+}
+
+popmenu damask {
+
+#ifdef QT_MENTAT
+ text "DAMASK.MPIE.DE"
+#endif
+
+ group {
+#ifndef QT_MENTAT
+  label {
+   position 0 0
+   size 50 4
+   text "DAMASK.MPIE.DE"
+  }
+#endif
+
+  label {
+   position 2 6
+   size 11   6
+   text "Optimzation"
+   border_width 1
+   border_color black
+  }
+
+  label {
+   position +16 =
+   size 20 6
+   text "write Input"
+   border_width 1
+   border_color black
+  }
+
+  label {
+   position +18 =
+   size 20 6
+   text "do not write Input"
+   border_width 1
+   border_color black
+  }
+
+  label {
+   position -32 +6
+   size 9 6
+   text "O2"
+   border_width 1
+   border_color black
+  }
+
+  popdown {
+   position +9 =
+   size 20 6
+   text "Submit"
+   command "*submit_job 4 *monitor_job"
+  }
+
+  popdown {
+   position +20 =
+   size 20 6
+   text "Execute"
+   command "*execute_job 4 *monitor_job"
+  }
+
+  label {
+   position -29 +6
+   size 9 6
+   text "O1"
+   border_width 1
+   border_color black
+  }
+
+  popdown {
+   position +9 =
+   size 20 6
+   text "Submit"
+   command "*submit_job 5 *monitor_job"
+  }
+
+  popdown {
+   position +20 =
+   size 20 6
+   text "Execute"
+   command "*execute_job 5 *monitor_job"
+  }
+
+  label {
+   position -29 +6
+   size 9 6
+   text "O0"
+   border_width 1
+   border_color black
+  }
+
+  popdown {
+   position +9 =
+   size 20 6
+   text "Submit"
+   command "*submit_job 6 *monitor_job"
+  }
+
+  popdown {
+   position +20 =
+   size 20 6
+   text "Execute"
+   command "*execute_job 6 *monitor_job"
+  }
+
+  label {
+   position -32 +6
+   size 12 6
+   text ""
+   border_width 1
+   border_color black
+  }
+
+  label {
+   position = +6
+   size 12 6
+   text "O2 / OpenMP"
+   border_width 1
+   border_color black
+  }
+
+  popdown {
+   position +12 =
+   size 20 6
+   text "Submit"
+   command "*submit_job 7 *monitor_job"
+  }
+
+  popdown {
+   position +20 =
+   size 20 6
+   text "Execute"
+   command "*execute_job 7 *monitor_job"
+  }
+
+  label {
+   position -32 +6
+   size 12 6
+   text "O1 / OpenMP"
+   border_width 1
+   border_color black
+  }
+
+  popdown {
+   position +12 =
+   size 20 6
+   text "Submit"
+   command "*submit_job 8 *monitor_job"
+  }
+
+  popdown {
+   position +20 =
+   size 20 6
+   text "Execute"
+   command "*execute_job 8 *monitor_job"
+  }
+
+  label {
+   position -32 +6
+   size 12 6
+   text "O0 / OpenMP"
+   border_width 1
+   border_color black
+  }
+
+  popdown {
+   position +12 =
+   size 20 6
+   text "Submit"
+   command "*submit_job 9 *monitor_job"
+  }
+
+  popdown {
+   position +20 =
+   size 20 6
+   text "Execute"
+   command "*execute_job 9 *monitor_job"
+  }
+
+  label {
+   position -32 +6
+   size 12 6
+   text ""
+   border_width 1
+   border_color black
+  }
+
+  popdown {
+   position 19 +8
+   size 12 8
+   text "CANCEL"
+  }
+}
+
 
  window {
   parent mentat

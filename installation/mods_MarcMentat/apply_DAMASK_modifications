@@ -89,11 +89,17 @@ echo ''
 echo 'copying Marc tools...'
 theDIR=$INSTALLDIR/marc$VERSION/tools
 for filename in 'comp_user' \
+                'comp_user_l' \
                 'comp_user_h' \
                 'comp_user_mp' \
+                'comp_user_lmp' \
+                'comp_user_hmp' \
                 'run_marc' \
+                'run_l_marc' \
                 'run_h_marc' \
                 'run_mp_marc' \
+                'run_lmp_marc' \
+                'run_hmp_marc' \
                 'include_linux64'; do
   cp $WORKINGDIR/$VERSION/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
@@ -107,9 +113,18 @@ echo ''
 echo 'copying Mentat scripts...'
 theDIR=$INSTALLDIR/mentat$VERSION/bin
 for filename in 'edit_window' \
-                'submit1' \
-                'submit2' \
-                'submit3'; do
+                'submit4' \
+                'submit5' \
+                'submit6' \
+                'submit7' \
+                'submit8' \
+                'submit9' \
+                'kill4' \
+                'kill5' \
+                'kill6' \
+                'kill7' \
+                'kill8' \
+                'kill9'; do
   cp $WORKINGDIR/$VERSION/Mentat_bin/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
@@ -138,6 +153,8 @@ echo ''
 echo 'setting file access rights...'
 chmod 555 $INSTALLDIR/marc$VERSION/tools/run_*_marc
 chmod 555 $INSTALLDIR/marc$VERSION/tools/comp_user?*
+chmod 555 $INSTALLDIR/mentat$VERSION/bin/submit{4..9}
+chmod 555 $INSTALLDIR/mentat$VERSION/bin/kill{4..9}
 
 echo ''
 echo 'done.'

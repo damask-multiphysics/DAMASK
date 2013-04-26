@@ -4,10 +4,10 @@
 # Normal exit status is 0.
 #
 
-DIR=/msc/marc2012
-if test $MARCDIR2
+DIR=%INSTALLDIR%/marc%VERSION%
+if test $MARCDIR1
 then
- DIR=$MARCDIR2
+ DIR=$MARCDIR1
 fi
 
 SRCEXT=.f
@@ -58,7 +58,7 @@ else
 fi
 
 if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
-  srcfile=`echo $srcfile | sed "s/$SRCEXT$//"`
+#  srcfile=`echo $srcfile | sed "s/$SRCEXT$//"`
   case "$srcmeth" in
     -)
       srcfile="-u $srcfile"
@@ -67,6 +67,7 @@ if [ "$srcfile" != "" -a "$srcfile" != "-" ]; then
       srcfile="-u $srcfile -save y"
       ;;
     runsaved)
+      srcfile=${srcfile%.*}".marc"
       srcfile="-prog $srcfile"
       ;;
   esac
@@ -155,7 +156,7 @@ rm -f $job.log
 unset PYTHONHOME
 unset PYTHONPATH
 
-"${DIR}/tools/run_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
+"${DIR}/tools/run_hmp_marc" $slv -j $job -v n -b y $nprocds $nprocd -autorst $autorst \
                         $srcfile $restart $postfile $viewfactorsfile $hostfile \
                         $compat $copy_datfile $copy_postfile $scr_dir $dcoup \
                         $nthread $nsolver $mode $gpu > /dev/null 2>&1

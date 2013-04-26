@@ -30,21 +30,34 @@ The structure of this directory should be (VERSION = 2010 or 2010.2 or 2011):
 ./apply_MPIE_modifications                  script file to apply modifications to the installation
 ./VERSION/Marc_tools/comp_user.org          original file from installation
 ./VERSION/Marc_tools/comp_user              modified version using -O1 optimization
+./VERSION/Marc_tools/comp_user_l            modified version using -O0 optimization
 ./VERSION/Marc_tools/comp_user_h            modified version using -O2 optimization
 ./VERSION/Marc_tools/comp_user_mp           modified version using -O1 optimization and OpenMP
+./VERSION/Marc_tools/comp_user_lmp          modified version using -O0 optimization and OpenMP
+./VERSION/Marc_tools/comp_user_hmp          modified version using -O2 optimization and OpenMP
 ./VERSION/Marc_tools/run_marc.org           original file from installation
 ./VERSION/Marc_tools/run_marc               modified version using -O1 optimization
+./VERSION/Marc_tools/run_l_marc             modified version using -O0 optimization
 ./VERSION/Marc_tools/run_h_marc             modified version using -O2 optimization
 ./VERSION/Marc_tools/run_mp_marc            modified version using -O1 optimization and OpenMP
+./VERSION/Marc_tools/run_lmp_marc           modified version using -O0 optimization and OpenMP
+./VERSION/Marc_tools/run_hmp_marc           modified version using -O2 optimization and OpenMP
 ./VERSION/Marc_tools/include_linux64.org    original file from installation
 ./VERSION/Marc_tools/include_linux64        modified version
 ./VERSION/Mentat_bin/edit_window.org        original file from installation
 ./VERSION/Mentat_bin/edit_window            modified version
 ./VERSION/Mentat_bin/submit1.org            original file from installation
-./VERSION/Mentat_bin/submit1                modified version of original calling run_h_marc
-./VERSION/Mentat_bin/submit2.org            original file from installation
-./VERSION/Mentat_bin/submit2                modified version of original calling run_marc
-./VERSION/Mentat_bin/submit3.org            original file from installation
-./VERSION/Mentat_bin/submit3                modified version of original calling run_mp_marc
+./VERSION/Mentat_bin/submit4                modified version of original calling run_h_marc
+./VERSION/Mentat_bin/submit5                modified version of original calling run_marc
+./VERSION/Mentat_bin/submit6                modified version of original calling run_l_marc
+./VERSION/Mentat_bin/submit7                modified version of original calling run_hmp_marc
+./VERSION/Mentat_bin/submit8                modified version of original calling run_mp_marc
+./VERSION/Mentat_bin/submit9                modified version of original calling run_lmp_marc
+./VERSION/Mentat_bin/kill4                  kill file for submit4, identical to original kill1
+./VERSION/Mentat_bin/kill5                  kill file for submit5, identical to original kill1
+./VERSION/Mentat_bin/kill6                  kill file for submit6, identical to original kill1
+./VERSION/Mentat_bin/kill7                  kill file for submit7, identical to original kill1
+./VERSION/Mentat_bin/kill8                  kill file for submit8, identical to original kill1
+./VERSION/Mentat_bin/kill9                  kill file for submit9, identical to original kill1
 ./VERSION/Mentat_menus/job_run.ms.org       original file from installation
 ./VERSION/Mentat_menus/job_run.ms           modified version
