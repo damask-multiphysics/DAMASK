@@ -463,7 +463,9 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! check solution 
-         cutBack = .False.
+         cutBack = .False.                                                                   
+         write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
+                           solres%converged, solres%iterationsNeeded                                ! write statistics about accepted solution
          if(solres%termIll .or. .not. solres%converged) then                                        ! no solution found
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
              write(6,'(/,a)') ' cut back detected'
@@ -483,9 +485,6 @@ program DAMASK_spectral_Driver
          else
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
          endif
-       if(guess) &                                                                                  ! write statistics about accepted solution
-         write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
-                           solres%converged, solres%iterationsNeeded
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
        if(solres%converged) then                                                                    ! report converged inc
