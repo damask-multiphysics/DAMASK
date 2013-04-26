@@ -611,7 +611,7 @@ subroutine materialpoint_postResults(dt)
 
  implicit none
  real(pReal), intent(in) :: dt
-  integer(pInt) :: &
+ integer(pInt) :: &
    thePos, &
    theSize, &
    myNgrains, &

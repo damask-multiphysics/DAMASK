@@ -1302,7 +1302,7 @@ end subroutine crystallite_stressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state and Temperature with 4th order explicit Runge Kutta method 
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateRK4(gg,ii,ee)
+subroutine crystallite_integrateStateRK4()
  use prec, only:         pInt, &
                          pReal
  use numerics, only:     numerics_integrationMode
@@ -1337,15 +1337,7 @@ subroutine crystallite_integrateStateRK4(gg,ii,ee)
  
  real(pReal), dimension(4), parameter ::       timeStepFraction = [0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal] ! factor giving the fraction of the original timestep used for Runge Kutta Integration
  real(pReal), dimension(4), parameter ::       weight = [1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal]           ! weight of slope used for Runge Kutta integration
- 
- !*** input variables ***!
- integer(pInt), optional, intent(in)::         ee, &                                                 ! element index
-                                               ii, &                                                 ! integration point index
-                                               gg                                                    ! grain index
- 
- !*** output variables ***!
- 
- !*** local variables ***!
+
  integer(pInt)                                 e, &                                                  ! element index in element loop
                                                i, &                                                  ! integration point index in ip loop
                                                g, &                                                  ! grain index in grain loop
@@ -1356,23 +1348,15 @@ subroutine crystallite_integrateStateRK4(gg,ii,ee)
                                                gIter                                                 ! bounds for grain iteration
  real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                RK4dotTemperature                                     ! evolution of Temperature of each grain for Runge Kutta integration
- logical                                       singleRun                                             ! flag indicating computation for single (g,i,e) triple
+ logical   ::                                  singleRun                                              ! flag indicating computation for single (g,i,e) triple
  
+ eIter = FEsolving_execElem(1:2)
+ do e = eIter(1),eIter(2)
+   iIter(1:2,e) = FEsolving_execIP(1:2,e)
+   gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
+ enddo
  
- if (present(ee) .and. present(ii) .and. present(gg)) then
-   eIter = ee
-   iIter(1:2,ee) = ii
-   gIter(1:2,ee) = gg
-   singleRun = .true.
- else
-   eIter = FEsolving_execElem(1:2)
-   do e = eIter(1),eIter(2)
-     iIter(1:2,e) = FEsolving_execIP(1:2,e)
-     gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
-   enddo
-   singleRun = .false.
- endif
- 
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
  
  ! --- FIRST RUNGE KUTTA STEP ---
  
@@ -1574,7 +1558,7 @@ end subroutine crystallite_integrateStateRK4
 !> @brief integrate stress, state and Temperature with 5th order Runge-Kutta Cash-Karp method with 
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateRKCK45(gg,ii,ee)
+subroutine crystallite_integrateStateRKCK45()
  use debug, only:        debug_level, &
                          debug_crystallite, &
                          debug_levelBasic, &
@@ -1608,10 +1592,6 @@ subroutine crystallite_integrateStateRKCK45(gg,ii,ee)
                          constitutive_microstructure
  
  implicit none
- !*** input variables ***!
- integer(pInt), optional, intent(in)::         ee, &                     ! element index
-                                               ii, &                     ! integration point index
-                                               gg                        ! grain index
  !*** local variables ***!
  integer(pInt)                                 e, &                      ! element index in element loop
                                                i, &                      ! integration point index in ip loop
@@ -1678,20 +1658,13 @@ subroutine crystallite_integrateStateRKCK45(gg,ii,ee)
  
  
  ! --- LOOP ITERATOR FOR ELEMENT, GRAIN, IP ---
+ eIter = FEsolving_execElem(1:2)
+ do e = eIter(1),eIter(2)
+   iIter(1:2,e) = FEsolving_execIP(1:2,e)
+   gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
+ enddo
  
- if (present(ee) .and. present(ii) .and. present(gg)) then
-   eIter = ee
-   iIter(1:2,ee) = ii
-   gIter(1:2,ee) = gg
-   singleRun = .true.
- else
-   eIter = FEsolving_execElem(1:2)
-   do e = eIter(1),eIter(2)
-     iIter(1:2,e) = FEsolving_execIP(1:2,e)
-     gIter(1:2,e) = [1_pInt,homogenization_Ngrains(mesh_element(3,e))]
-   enddo
-   singleRun = .false.
- endif
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
  
  
  
@@ -2092,7 +2065,7 @@ end subroutine crystallite_integrateStateRKCK45
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state and Temperature with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateAdaptiveEuler(gg,ii,ee)
+subroutine crystallite_integrateStateAdaptiveEuler()
  use debug, only:        debug_level, &
                          debug_crystallite, &
                          debug_levelBasic, &
@@ -2123,11 +2096,6 @@ subroutine crystallite_integrateStateAdaptiveEuler(gg,ii,ee)
                          constitutive_microstructure
  
  implicit none
- 
- !*** input variables ***!
- integer(pInt), optional, intent(in)::         ee, &                     ! element index
-                                               ii, &                     ! integration point index
-                                               gg                        ! grain index
  !*** local variables ***!
  integer(pInt)                                 e, &                      ! element index in element loop
                                                i, &                      ! integration point index in ip loop
@@ -2147,20 +2115,13 @@ subroutine crystallite_integrateStateAdaptiveEuler(gg,ii,ee)
  
  
  ! --- LOOP ITERATOR FOR ELEMENT, GRAIN, IP ---
+ eIter = FEsolving_execElem(1:2)
+ do e = eIter(1),eIter(2)
+   iIter(1:2,e) = FEsolving_execIP(1:2,e)
+   gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
+ enddo
  
- if (present(ee) .and. present(ii) .and. present(gg)) then
-   eIter = ee
-   iIter(1:2,ee) = ii
-   gIter(1:2,ee) = gg
-   singleRun = .true.
- else
-   eIter = FEsolving_execElem(1:2)
-   do e = eIter(1),eIter(2)
-     iIter(1:2,e) = FEsolving_execIP(1:2,e)
-     gIter(1:2,e) = [1_pInt,homogenization_Ngrains(mesh_element(3,e))]
-   enddo
-   singleRun = .false.
- endif
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
  
  
  stateResiduum = 0.0_pReal
@@ -2407,7 +2368,7 @@ end subroutine crystallite_integrateStateAdaptiveEuler
 !--------------------------------------------------------------------------------------------------
 !> @brief integrate stress, state and Temperature with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateEuler(gg,ii,ee)
+subroutine crystallite_integrateStateEuler()
  use numerics, only:     numerics_integrationMode, &
                          numerics_timeSyncing
  use debug, only:        debug_level, &
@@ -2433,10 +2394,6 @@ subroutine crystallite_integrateStateEuler(gg,ii,ee)
                          constitutive_microstructure
  
  implicit none
- !*** input variables ***!
- integer(pInt), optional, intent(in)::         ee, &                     ! element index
-                                               ii, &                     ! integration point index
-                                               gg                        ! grain index
  !*** local variables ***!
  integer(pInt)                                 e, &                      ! element index in element loop
                                                i, &                      ! integration point index in ip loop
@@ -2447,20 +2404,13 @@ subroutine crystallite_integrateStateEuler(gg,ii,ee)
                                                gIter                     ! bounds for grain iteration
  logical                                       singleRun                 ! flag indicating computation for single (g,i,e) triple
  
+eIter = FEsolving_execElem(1:2)
+ do e = eIter(1),eIter(2)
+   iIter(1:2,e) = FEsolving_execIP(1:2,e)
+   gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
+ enddo
  
- if (present(ee) .and. present(ii) .and. present(gg)) then
-   eIter = ee
-   iIter(1:2,ee) = ii
-   gIter(1:2,ee) = gg
-   singleRun = .true.
- else
-   eIter = FEsolving_execElem(1:2)
-   do e = eIter(1),eIter(2)
-     iIter(1:2,e) = FEsolving_execIP(1:2,e)
-     gIter(1:2,e) = [1_pInt,homogenization_Ngrains(mesh_element(3,e))]
-   enddo
-   singleRun = .false.
- endif
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
  
  
  !$OMP PARALLEL
@@ -2612,7 +2562,7 @@ end subroutine crystallite_integrateStateEuler
 !> @brief integrate stress, state and Temperature with adaptive 1st order explicit Euler method  
 !> using Fixed Point Iteration to adapt the stepsize  
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_integrateStateFPI(gg,ii,ee)
+subroutine crystallite_integrateStateFPI()
  use debug, only:        debug_e, &
                          debug_i, &
                          debug_g, &
@@ -2643,11 +2593,7 @@ subroutine crystallite_integrateStateFPI(gg,ii,ee)
                          constitutive_previousDotState2, &
                          constitutive_aTolState
  
- implicit none
- integer(pInt), optional, intent(in)::         ee, &                     ! element index
-                                               ii, &                     ! integration point index
-                                               gg                        ! grain index
- 
+ implicit none 
  !*** local variables ***!
  integer(pInt)                                 NiterationState, &        ! number of iterations in state loop
                                                e, &                      ! element index in element loop
@@ -2666,18 +2612,13 @@ subroutine crystallite_integrateStateFPI(gg,ii,ee)
                                                tempState
  logical                                       singleRun                 ! flag indicating computation for single (g,i,e) triple
  
- singleRun = present(ee) .and. present(ii) .and. present(gg)
- if (singleRun) then
-   eIter = ee
-   iIter(1:2,ee) = ii
-   gIter(1:2,ee) = gg
- else
-   eIter = FEsolving_execElem(1:2)
-   do e = eIter(1),eIter(2)
-     iIter(1:2,e) = FEsolving_execIP(1:2,e)
-     gIter(1:2,e) = [1_pInt,homogenization_Ngrains(mesh_element(3,e))]
-   enddo
- endif
+ eIter = FEsolving_execElem(1:2)
+ do e = eIter(1),eIter(2)
+   iIter(1:2,e) = FEsolving_execIP(1:2,e)
+   gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
+ enddo
+ 
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
  
  
  ! --+>> PREGUESS FOR STATE <<+--
