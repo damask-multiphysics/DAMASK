@@ -420,7 +420,8 @@ module mesh
    mesh_build_ipCoordinates, &
    mesh_cellCenterCoordinates, &
    mesh_init_postprocessing, &
-   mesh_get_Ncellnodes
+   mesh_get_Ncellnodes, &
+   mesh_get_nodeAtIP
 #ifdef Spectral
  public :: &
    mesh_regrid, &
@@ -5304,7 +5305,7 @@ end function mesh_init_postprocessing
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief just returns global variable mesh_Ncellnodes
+!> @brief returns global variable mesh_Ncellnodes
 !--------------------------------------------------------------------------------------------------
 integer(pInt) function mesh_get_Ncellnodes()
 
@@ -5313,6 +5314,28 @@ integer(pInt) function mesh_get_Ncellnodes()
  mesh_get_Ncellnodes = mesh_Ncellnodes
 
 end function mesh_get_Ncellnodes
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns node that is located at an ip
+!> @details return zero if requested ip does not exist or not available (more ips than nodes)
+!--------------------------------------------------------------------------------------------------
+integer(pInt) function mesh_get_nodeAtIP(elemtypeFE,ip)
+
+ implicit none
+ character(len=*), intent(in) :: elemtypeFE
+ integer(pInt),    intent(in) :: ip
+ integer(pInt)                :: elemtype
+ integer(pInt)                :: geomtype
+
+ mesh_get_nodeAtIP = 0_pInt
+
+ elemtype = FE_mapElemtype(elemtypeFE)
+ geomtype = FE_geomtype(elemtype)
+ if (FE_Nips(geomtype) >= ip .and. FE_Nips(geomtype) <= FE_Nnodes(elemtype)) &
+   mesh_get_nodeAtIP = FE_nodesAtIP(1,ip,geomtype)
+
+end function mesh_get_nodeAtIP
 
 
 end module mesh

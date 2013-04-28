@@ -203,6 +203,12 @@ python module core ! in
             integer :: mesh_get_Ncellnodes
         end function mesh_get_Ncellnodes
         
+        function mesh_get_nodeAtIP(elemtypeFE,ip) ! in :mesh:mesh.f90
+            character(len=*), intent(in) :: elemtypeFE
+            integer,          intent(in) :: ip
+            integer                      :: mesh_get_nodeAtIP
+        end function mesh_get_nodeAtIP
+        
      end module mesh
    end interface 
 end python module core
