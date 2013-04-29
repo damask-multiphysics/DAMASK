@@ -49,5 +49,6 @@ except (ImportError,AttributeError) as e:
   if os.path.split(sys.argv[0])[1] not in ('symLink_Processing.py',
                                            'compile_CoreModule.py',
                                           ):
-    sys.stderr.write('\nWARNING: Core module (Fortran code) not available, '\
-                     'try to run setup_processing.py\nError Message when importing core.so: %s\n\n'%e)
+    sys.stderr.write('\nWARNING: Core module (Fortran code) not available, \n'\
+                     'try to run setup_processing.sh or compile_CoreModule.py\n'\
+                     'Error Message when importing core.so: %s\n\n'%e)
