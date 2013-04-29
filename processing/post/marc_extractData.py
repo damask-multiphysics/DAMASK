@@ -260,7 +260,7 @@ def writeHeader(myfile,stat,geomtype):
 # -----------------------------
     
   myfile.write('2\theader\n')
-  myfile.write(string.replace('$Id: $','\n','\\n')+
+  myfile.write(string.replace('$Id$','\n','\\n')+
            '\t' + ' '.join(sys.argv[1:]) + '\n')
   if geomtype == 'nodebased':
     myfile.write('node')
@@ -286,7 +286,7 @@ def writeHeader(myfile,stat,geomtype):
 
 parser = OptionParser(option_class=MyOption, usage='%prog [options] resultfile', description = """
 Extract data from a .t16 (MSC.Marc) results file. 
-""" + string.replace('$Id: marc_extractData.py $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-i','--info', action='store_true', dest='info', \

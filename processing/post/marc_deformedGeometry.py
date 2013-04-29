@@ -33,7 +33,7 @@ class MyOption(Option):
 
 parser = OptionParser(option_class=MyOption, usage='%prog [options] resultfile', description = """
 Extract data from a .t16 (MSC.Marc) results file. 
-""" + string.replace('$Id: postResults.py 2107 2013-01-28 16:25:43Z MPIE\p.eisenlohr $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-d','--dir', dest='dir', \
