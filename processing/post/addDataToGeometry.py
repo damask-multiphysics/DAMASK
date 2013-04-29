@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 
-import os, sys, string, glob
+import os, sys, string, glob, re
 import damask
 from optparse import OptionParser
 
@@ -11,7 +11,7 @@ def writeHeader(myfile,stat,geomtype):
 # -----------------------------
     
   myfile.write('2\theader\n')
-  myfile.write(string.replace('$Id: $','\n','\\n')+
+  myfile.write(string.replace('$Id$','\n','\\n')+
            '\t' + ' '.join(sys.argv[1:]) + '\n')
   if geomtype == 'nodebased':
     myfile.write('node')
@@ -30,6 +30,18 @@ def writeHeader(myfile,stat,geomtype):
 
 
 # -----------------------------
+def findTag(filename,tag):
+# -----------------------------
+  
+  with open(filename,'r') as myfile: 
+    mypattern = re.compile(str(tag))
+    for line in myfile:
+      if mypattern.search(line): return True
+  return False
+
+
+
+# -----------------------------
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
@@ -37,7 +49,7 @@ def writeHeader(myfile,stat,geomtype):
 
 parser = OptionParser(usage='%prog [options] directory', description = """
 Add data from an ASCII table to a VTK geometry file. 
-""" + string.replace('$Id:  $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-s','--sub', action='store_true', dest='subdir', \
@@ -63,27 +75,33 @@ if not os.path.isdir(dirname):
 # --- loop over "nodebased" and "ipbased" data files and 
 #     copy data to corresponding geometry files
 
+dataSetTag = {'nodebased':'POINT_DATA', 'ipbased':'CELL_DATA'}
 for geomtype in ['nodebased','ipbased']:
   for vtkfilename in glob.iglob(dirname+os.sep+'*'+geomtype+'*.vtk'):
-    
-    if not os.path.dirname(vtkfilename) == dirname and not options.subdir: continue  # include files in subdir?
-    datafilename = os.path.splitext(vtkfilename)[0] + '.txt'
-    if not os.path.exists(datafilename): continue                                    # no corresponding datafile found 
-    
-    with open(vtkfilename,'a') as vtkfile:
-      print vtkfilename
-      with open(datafilename,'r') as datafile:
 
-        table = damask.ASCIItable(fileIn=datafile)                                   # use ASCIItable class to read data file
-        table.head_read()                                                            # read ASCII header info
-        myData = []
-        while table.data_read():                                                     # read line in datafile
-          myData.append(table.data)
-        myData = zip(*myData)                                                        # reorder data: first index now label, not node
-        vtkfile.write('CELL_DATA %i'%len(myData[0]))
-        for idx,label in enumerate(table.labels):
-          vtkfile.write('\nSCALARS '+label+' float 1\nLOOKUP_TABLE default\n')       # all scalar data
-          vtkfile.write('\n'.join(map(str,myData[idx])))
+    if not os.path.dirname(vtkfilename) == dirname and not options.subdir: continue    # include files in subdir?
+    datafilename = os.path.splitext(vtkfilename)[0] + '.txt'
+    if not os.path.exists(datafilename): continue                                      # no corresponding datafile found 
+    
+    # --- read data from datafile
+
+    with open(datafilename,'r') as datafile:                                           # open datafile in read mode
+      table = damask.ASCIItable(fileIn=datafile)                                       # use ASCIItable class to read data file
+      table.head_read()                                                                # read ASCII header info
+      myData = []
+      while table.data_read():                                                         # read line in datafile
+        myData.append(table.data)
+      myData = zip(*myData)                                                            # reorder data: first index now label, not node
+    
+    # --- append data to vtkfile 
+
+    with open(vtkfilename,'a') as vtkfile:                                             # open vtkfile in append mode
+      print vtkfilename
+      if not findTag(vtkfilename,dataSetTag[geomtype]):                                # check if data set is already present...
+        vtkfile.write(dataSetTag[geomtype] + ' %i'%len(myData[0]))                     # ... if not, write keyword
+      for idx,label in enumerate(table.labels):                                        # write data
+        vtkfile.write('\nSCALARS '+label+' float 1\nLOOKUP_TABLE default\n')           # all scalar data
+        vtkfile.write('\n'.join(map(str,myData[idx])))
 
 
 # ---------------------------       DONE     --------------------------------
