@@ -173,7 +173,7 @@ popmenu job_run_popmenu {
   button {
    position +16 =
    size 16 6
-   text "ADV. JOB SUBMISSION"
+   text "ADV. JOB SUBM."
    popmenu job_submit_adv_pm
   }
 
@@ -1007,15 +1007,15 @@ popmenu damask {
 #endif
 
   label {
-   position 2 6
-   size 11   6
+   position 1 6
+   size 13   6
    text "Optimzation"
    border_width 1
    border_color black
   }
 
   label {
-   position +16 =
+   position +13 =
    size 20 6
    text "write Input"
    border_width 1
@@ -1024,14 +1024,14 @@ popmenu damask {
 
   label {
    position +18 =
-   size 20 6
-   text "do not write Input"
+   size 30 6
+   text "do not write Inp."
    border_width 1
    border_color black
   }
 
   label {
-   position -32 +6
+   position -29 +6
    size 9 6
    text "O2"
    border_width 1
