@@ -39,7 +39,8 @@ module homogenization_isostrain
    homogenization_isostrain_sizePostResult
  character(len=64), dimension(:,:), allocatable, target, public  :: &
   homogenization_isostrain_output                                                                   !< name of each post result output
- 
+ character(len=64), dimension(:),   allocatable,         private :: &
+   homogenization_isostrain_mapping
  integer(pInt), dimension(:),       allocatable,         private :: &
    homogenization_isostrain_Ngrains
 
@@ -86,6 +87,7 @@ subroutine homogenization_isostrain_init(myFile)
  allocate(homogenization_isostrain_sizePostResult(maxval(homogenization_Noutput), &
                                                   maxNinstance)); homogenization_isostrain_sizePostResult = 0_pInt
  allocate(homogenization_isostrain_Ngrains(maxNinstance));         homogenization_isostrain_Ngrains = 0_pInt
+ allocate(homogenization_isostrain_mapping(maxNinstance));         homogenization_isostrain_mapping = 'avg'
  allocate(homogenization_isostrain_output(maxval(homogenization_Noutput), &
                                           maxNinstance)) ;         homogenization_isostrain_output = ''
  
@@ -114,6 +116,8 @@ subroutine homogenization_isostrain_init(myFile)
          homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('ngrains')
               homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
+       case ('mapping')
+              homogenization_isostrain_mapping(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
      end select
    endif
  enddo
@@ -212,7 +216,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
    pReal
  use mesh, only: &
    mesh_element
- use material, only: homogenization_maxNgrains, homogenization_Ngrains
+ use material, only: homogenization_maxNgrains, homogenization_Ngrains, homogenization_typeInstance
  
  implicit none
  real(pReal), dimension (3,3), intent(out) :: avgP                                                  !< average stress at material point
@@ -222,11 +226,22 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
  integer(pInt), intent(in) :: &
    i, &                                                                                             !< integration point number
    e                                                                                                !< element number
- integer(pInt) :: Ngrains
+ integer(pInt) :: homID,Ngrains
 
+ homID = homogenization_typeInstance(mesh_element(3,e))
  Ngrains = homogenization_Ngrains(mesh_element(3,e))
- avgP = sum(P,3)/real(Ngrains,pReal)
- dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
+
+ select case (homogenization_isostrain_mapping(homID))
+   case ('parallel','sum')
+     avgP       = sum(P,3)
+     dAvgPdAvgF = sum(dPdF,5)
+   case ('average','mean','avg')
+     avgP       = sum(P,3)   /real(Ngrains,pReal)
+     dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
+   case default
+     avgP       = sum(P,3)   /real(Ngrains,pReal)
+     dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
+ end select
 
 end subroutine homogenization_isostrain_averageStressAndItsTangent
 
