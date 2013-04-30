@@ -781,7 +781,7 @@ constitutive_dislotwin_stateInit(5_pInt*ns+2_pInt*nt+1_pInt:5_pInt*ns+3_pInt*nt)
 
 forall (j = 1_pInt:nt) &
   TwinVolume0(j) = &
-    (pi/6.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(j,myInstance)*MeanFreePathTwin0(j)**(2.0_pReal)
+    (pi/4.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(j,myInstance)*MeanFreePathTwin0(j)**(2.0_pReal)
 constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1_pInt:6_pInt*ns+5_pInt*nt) = TwinVolume0
 
 !write(6,*) '#STATEINIT#'
