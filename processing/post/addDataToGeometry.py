@@ -100,7 +100,7 @@ for geomtype in ['nodebased','ipbased']:
       if not findTag(vtkfilename,dataSetTag[geomtype]):                                # check if data set is already present...
         vtkfile.write(dataSetTag[geomtype] + ' %i'%len(myData[0]))                     # ... if not, write keyword
       for idx,label in enumerate(table.labels):                                        # write data
-        vtkfile.write('\nSCALARS '+label+' float 1\nLOOKUP_TABLE default\n')           # all scalar data
+        vtkfile.write('\nSCALARS '+label+' double 1\nLOOKUP_TABLE default\n')           # all scalar data
         vtkfile.write('\n'.join(map(str,myData[idx])))
 
 

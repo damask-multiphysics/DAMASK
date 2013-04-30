@@ -145,7 +145,7 @@ for incCount,position in enumerate(locations):     # walk through locations
   
     with open(outFilename,'a') as myfile:
       myfile.write("POINT_DATA %i\n"%{'nodebased':Nnodes,'ipbased':Ncellnodes}[geomtype])
-      myfile.write("VECTORS displacement float\n")
+      myfile.write("VECTORS displacement double\n")
       coordinates = {'nodebased':node_displacement,'ipbased':cellnode_displacement}[geomtype]
       for n in range({'nodebased':Nnodes,'ipbased':Ncellnodes}[geomtype]):
         myfile.write("%.8e %.8e %.8e\n"%(coordinates[n][0],coordinates[n][1],coordinates[n][2]))
