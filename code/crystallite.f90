@@ -1379,7 +1379,7 @@ subroutine crystallite_integrateStateRK4()
                                                gIter                                                 ! bounds for grain iteration
  real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                RK4dotTemperature                                     ! evolution of Temperature of each grain for Runge Kutta integration
- logical   ::                                  singleRun                                              ! flag indicating computation for single (g,i,e) triple
+ logical   ::                                  singleRun                                             ! flag indicating computation for single (g,i,e) triple
  
  eIter = FEsolving_execElem(1:2)
  do e = eIter(1),eIter(2)
@@ -1387,7 +1387,7 @@ subroutine crystallite_integrateStateRK4()
    gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
  enddo
  
- singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
  
  ! --- FIRST RUNGE KUTTA STEP ---
  
@@ -1668,7 +1668,7 @@ subroutine crystallite_integrateStateRKCK45()
    gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
  enddo
  
- singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
  
  
  
@@ -2125,7 +2125,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
  enddo
  
- singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
  
  
  stateResiduum = 0.0_pReal
@@ -2413,7 +2413,7 @@ eIter = FEsolving_execElem(1:2)
    gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
  enddo
  
- singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
  
  
  !$OMP PARALLEL
@@ -2621,7 +2621,7 @@ subroutine crystallite_integrateStateFPI()
    gIter(1:2,e) = [ 1_pInt,homogenization_Ngrains(mesh_element(3,e))]
  enddo
  
- singleRun = (eIter(1) == eIter(2) .and. iIter(1,e) == iIter(2,e))
+ singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
  
  
  ! --+>> PREGUESS FOR STATE <<+--
