@@ -146,7 +146,7 @@ subroutine FE_init
  100 close(fileunit)
 
  if (restartRead) then
-#ifdef Marc
+#ifdef Marc4DAMASK
    call IO_open_logFile(fileunit)
    rewind(fileunit)
    do

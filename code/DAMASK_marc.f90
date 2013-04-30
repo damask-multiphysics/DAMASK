@@ -55,8 +55,6 @@
 #define FLOAT 8
 #endif
 
-#define Marc
-
 #include "prec.f90"
 
 module DAMASK_interface

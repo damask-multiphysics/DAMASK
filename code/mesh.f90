@@ -76,7 +76,7 @@ module mesh
     
  logical, dimension(3), public, protected :: mesh_periodicSurface                                   !< flag indicating periodic outer surfaces (used for fluxes)
 
-#ifdef Marc
+#ifdef Marc4DAMASK
  integer(pInt), private :: &  
    hypoelasticTableStyle, &                                                                         !< Table style (Marc only)
    initialcondTableStyle                                                                            !< Table style (Marc only)
@@ -446,7 +446,7 @@ module mesh
    mesh_spectral_build_elements, &
    mesh_spectral_build_ipNeighborhood, &
 #endif 
-#ifdef Marc
+#ifdef Marc4DAMASK
    mesh_marc_get_tableStyles, &
    mesh_marc_count_nodesAndElements, &
    mesh_marc_count_elementSets, &
@@ -592,7 +592,7 @@ subroutine mesh_init(ip,el)
  call mesh_build_ipAreas
  call mesh_spectral_build_ipNeighborhood
 #endif
-#ifdef Marc
+#ifdef Marc4DAMASK
  call IO_open_inputFile(fileUnit,modelName)                                                         ! parse info from input file...
  call mesh_marc_get_tableStyles(fileUnit)
  call mesh_marc_count_nodesAndElements(fileUnit)
@@ -2456,7 +2456,7 @@ end function mesh_shapeMismatch
 #endif
 
 
-#ifdef Marc
+#ifdef Marc4DAMASK
 !--------------------------------------------------------------------------------------------------
 !> @brief Figures out table styles (Marc only) and stores to 'initialcondTableStyle' and 
 !! 'hypoelasticTableStyle'
@@ -3063,11 +3063,9 @@ end subroutine mesh_abaqus_count_elementSets
 
 
 !--------------------------------------------------------------------------------------------------
-!********************************************************************
 ! count overall number of solid sections sets in mesh (Abaqus only)
 !
 ! mesh_Nmaterials
-!********************************************************************
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_count_materials(myUnit)
 
@@ -3109,11 +3107,9 @@ end subroutine mesh_abaqus_count_materials
 
 
 !--------------------------------------------------------------------------------------------------
-!********************************************************************
 ! Build element set mapping 
 !
 ! allocate globals: mesh_nameElemSet, mesh_mapElemSet
-!********************************************************************
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_map_elementSets(myUnit)
 
@@ -3163,11 +3159,9 @@ end subroutine mesh_abaqus_map_elementSets
 
 
 !--------------------------------------------------------------------------------------------------
-!********************************************************************
 ! map solid section (Abaqus only)
 !
 ! allocate globals: mesh_nameMaterial, mesh_mapMaterial
-!********************************************************************
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_map_materials(myUnit)
 
@@ -3682,7 +3676,7 @@ use IO, only: &
  mesh_periodicSurface = .true.
 #else
  mesh_periodicSurface = .false.
-#ifdef Marc 
+#ifdef Marc4DAMASK 
  keyword = '$damask'
 #endif
 #ifdef Abaqus

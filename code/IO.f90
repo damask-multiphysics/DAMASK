@@ -248,7 +248,7 @@ subroutine IO_open_inputFile(myUnit,model)
     if (.not.abaqus_assembleInputFile(myUnit,myUnit+1_pInt)) call IO_error(103_pInt)                ! strip comments and concatenate any "include"s
  close(myUnit+1_pInt) 
 #endif
-#ifdef Marc
+#ifdef Marc4DAMASK
    path = trim(getSolverWorkingDirectoryName())//trim(model)//inputFileExtension
    open(myUnit,status='old',iostat=myStat,file=path)
    if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
