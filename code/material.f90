@@ -115,7 +115,8 @@ module material
  real(pReal), dimension(:,:,:), allocatable, private :: &
    material_volume, &                                                                               !< volume of each grain,IP,element
    texture_Gauss, &                                                                                 !< data of each Gauss component
-   texture_Fiber                                                                                    !< data of each Fiber component
+   texture_Fiber, &                                                                                 !< data of each Fiber component
+   texture_Rotation                                                                                 !< rotation of each texture
  
  logical, dimension(:), allocatable, private :: &
    homogenization_active
@@ -567,7 +568,9 @@ subroutine material_parseTexture(myFile,myPart)
    IO_stringPos
  use math, only: &
    inRad, &
-   math_sampleRandomOri
+   math_sampleRandomOri, &
+   math_I3, &
+   math_inv33
  
  implicit none
  character(len=*), intent(in) :: myPart
@@ -600,6 +603,10 @@ subroutine material_parseTexture(myFile,myPart)
  texture_maxNfiber = maxval(texture_Nfiber)
  allocate(texture_Gauss   (5,texture_maxNgauss,Nsections)); texture_Gauss    = 0.0_pReal
  allocate(texture_Fiber   (6,texture_maxNfiber,Nsections)); texture_Fiber    = 0.0_pReal
+ allocate(texture_Rotation(3,3,Nsections));                 
+ do j =1_pInt, Nsections
+   texture_Rotation(1:3,1:3,j) = math_I3
+ enddo
  
  rewind(myFile)
  line    = ''                                                                                       ! to have in initialized
@@ -628,6 +635,27 @@ subroutine material_parseTexture(myFile,myPart)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      textureType: select case(tag)
 
+       case ('rotation') textureType
+         do j = 1_pInt, 3_pInt
+           tag = IO_lc(IO_stringValue(line,positions,j+1_pInt))
+           select case (tag)
+             case('x', '+x')
+               texture_Rotation(1_pInt:3_pInt,j,section) = (/1.0_pReal, 0.0_pReal, 0.0_pReal/)  ! original axis is now +x-axis
+             case('-x')
+               texture_Rotation(1_pInt:3_pInt,j,section) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal/) ! original axis is now -x-axis
+             case('y', '+y')
+               texture_Rotation(1_pInt:3_pInt,j,section) = (/0.0_pReal, 1.0_pReal, 0.0_pReal/)  ! original axis is now +y-axis
+             case('-y')
+               texture_Rotation(1_pInt:3_pInt,j,section) = (/0.0_pReal, -1.0_pReal, 0.0_pReal/) ! original axis is now -y-axis
+             case('z', '+z')
+               texture_Rotation(1_pInt:3_pInt,j,section) = (/0.0_pReal, 0.0_pReal, 1.0_pReal/)  ! original axis is now +z-axis
+             case('-z')
+               texture_Rotation(1_pInt:3_pInt,j,section) = (/0.0_pReal, 0.0_pReal, -1.0_pReal/) ! original axis is now -z-axis
+             case default
+               call IO_error(156_pInt)
+           end select
+         enddo
+       
        case ('hybridia') textureType
          texture_ODFfile(section) = IO_stringValue(line,positions,2_pInt)
 
