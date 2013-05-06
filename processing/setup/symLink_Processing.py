@@ -63,9 +63,9 @@ bin_link = { \
                 'perceptualUniformColorMap.py',
                 'postResults.py',
                 'showTable.py',
-                'table2ang',
+                'table2ang.py',
                 'tagLabel.py',
-                'vtk2ang',
+                'vtk2ang.py',
                 ],
             }
             
