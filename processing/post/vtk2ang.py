@@ -2,9 +2,19 @@
 # -*- coding: utf-8 -*-
 #
  
-from optparse import OptionParser, Option
-from vtk import *
 import os,numpy,string,math
+from optparse import OptionParser, Option
+from vtk import vtkUnstructuredGridReader, \
+                vtkWarpVector, \
+                vtkCellCenters, \
+                vtkDataSetSurfaceFilter, \
+                vtkPoints, \
+                vtkCellArray, \
+                vtkVertex, \
+                vtkPolyData, \
+                vtkSelectEnclosedPoints, \
+                vtkKdTree, \
+                vtkIdList
  
 
 # -----------------------------
@@ -294,7 +304,7 @@ for filename in filenames:
     vertex.GetPointIds().SetId(0,i)  # each vertex consists of exactly one (index 0) point with ID "i"
     vertices.InsertNextCell(vertex)
 
-  pointgrid = vtk.vtkPolyData()
+  pointgrid = vtkPolyData()
   pointgrid.SetPoints(points)
   pointgrid.SetVerts(vertices)
   pointgrid.Update()
