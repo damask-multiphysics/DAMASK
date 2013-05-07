@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 #
  
-import os,numpy,string,math
+import os,numpy,string,math,sys
 from optparse import OptionParser, Option
 from vtk import vtkUnstructuredGridReader, \
                 vtkWarpVector, \
@@ -21,7 +21,7 @@ from vtk import vtkUnstructuredGridReader, \
 def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
 # -----------------------------
 # returns header for ang file
-# 
+# step size in micrometer
   
   return '\n'.join([ \
     '# TEM_PIXperUM          1.000000', \
@@ -41,8 +41,8 @@ def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
     '# Categories            0 0 0 0 0 ', \
     '#', \
     '# GRID: SqrGrid', \
-    '# XSTEP: ' + str(stepsize), \
-    '# YSTEP: ' + str(stepsize), \
+    '# XSTEP: ' + str(stepsize*1e6), \
+    '# YSTEP: ' + str(stepsize*1e6), \
     '# NCOLS_ODD: ' + str(sizeFastIndex), \
     '# NCOLS_EVEN: ' + str(sizeFastIndex), \
     '# NROWS: ' + str(sizeSlowIndex), \
@@ -70,14 +70,15 @@ def positiveRadians(angle):
 
 
 # -----------------------------
-def getDataLine(angles,position,validData=True):
+def getDataLine(angles,x,y,validData=True):
 # -----------------------------
 # returns string of one line in ang file
 # convention in ang file: y coordinate comes first and is fastest index
+# positions in micrometer
   
   info = {True:  (9999.9, 1.0, 0,99999,0.0),
           False: (  -1.0,-1.0,-1,   -1,1.0)}
-  return '%9.5f %9.5f %9.5f %12.5f %12.5f %6.1f %6.3f %2i %6i %6.3f \n'%(tuple(map(positiveRadians,angles))+tuple(position[1::-1])+info[validData])
+  return '%9.5f %9.5f %9.5f %12.5f %12.5f %6.1f %6.3f %2i %6i %6.3f \n'%(tuple(map(positiveRadians,angles))+(y*1e6,x*1e6)+info[validData])
 
 
 
@@ -104,14 +105,12 @@ parser.add_option('-i','--slices',          dest='Nslices', type='int', \
                                             help='number of slices [%default]')
 parser.add_option('-d','--distance',        dest='distance', type='float', \
                                             help='slice distance [%default]')
-parser.add_option('-s','--size',            dest='size', type='float', nargs=3, \
-                                            help='physical size of ang file [%default]')
+parser.add_option('-s','--scale',           dest='scale', type='float', \
+                                            help='scale length from vtk file [%default]')
 parser.add_option('-r','--resolution',      dest='resolution', type='float',
                                             help='scaling factor for resolution [%default]')
 parser.add_option('--hex','--hexagonal',    dest='hexagonal', action='store_true',
                                             help='use in plane hexagonal grid [%default]')
-parser.add_option('--ds','--dispscaling',   dest='dispScaling', type='float', \
-                                            help='scaling of displacements [%default]')
 parser.add_option('--interpolation',        dest='interpolation', type='int', \
                                             help='number of points for linear interpolation [%default]')
 parser.add_option('--verbose',              dest='verbose', action='store_true',
@@ -120,11 +119,11 @@ parser.add_option('--verbose',              dest='verbose', action='store_true',
 parser.set_defaults(dispLabel = 'displacement')
 parser.set_defaults(eulerLabel = ['1_eulerangles','2_eulerangles','3_eulerangles'])
 parser.set_defaults(hexagonal = False)
-parser.set_defaults(normal = [0.0,0.0,1.0])
+parser.set_defaults(normal = [0.0,0.0,-1.0])
 parser.set_defaults(up = [0.0,1.0,0.0])
 parser.set_defaults(Nslices = 1)
 parser.set_defaults(distance = 0.0)
-parser.set_defaults(size = [1.0,1.0,0.0])
+parser.set_defaults(scale = 1.0)
 parser.set_defaults(resolution = 1.0)
 parser.set_defaults(dispScaling = 1.0)
 parser.set_defaults(verbose = False)
@@ -164,22 +163,24 @@ for filename in filenames:
   
   # Read the source file
   
+  if options.verbose: sys.stdout.write("\nREADING VTK FILE\n")
   reader = vtkUnstructuredGridReader()
   reader.SetFileName(filename)
   reader.ReadAllScalarsOn()
   reader.ReadAllVectorsOn()
   reader.Update() 
   undeformedMesh = reader.GetOutput()
-  
+
   
   # Get euler angles from cell data
   
+  if options.verbose: sys.stdout.write("\nGETTING EULER ANGLES\n")
   angles = {}
-  Nscalars = reader.GetNumberOfScalarsInFile()
-  for i in range(Nscalars):
+  for i in range(reader.GetNumberOfScalarsInFile()):
     scalarName = reader.GetScalarsNameInFile(i)
     if scalarName in options.eulerLabel:
       angles[scalarName] = undeformedMesh.GetCellData().GetScalars(scalarName)
+      if options.verbose: sys.stdout.write("  found scalar with name %s\n"%scalarName)
   if len(angles) < 3:    # found data for all three euler angles?
     for label in options.eulerLabel:
       if not label in angles.keys():
@@ -188,23 +189,22 @@ for filename in filenames:
   
   # Get deformed mesh
   
+  if options.verbose: sys.stdout.write("\nDEFORM MESH\n")
   warpVector = vtkWarpVector()
-  warpVector.SetScaleFactor(options.dispScaling)
   warpVector.SetInput(undeformedMesh)
   warpVector.Update()
   deformedMesh = warpVector.GetOutput()       # todo: not clear how to choose other vector data than the first entry
   box = deformedMesh.GetBounds()              # bounding box in mesh system
   if options.verbose:
-    print ''
-    print 'MESH SYSTEM'
-    print '  bounding box'
-    print '    x ',[box[0],box[1]]
-    print '    y ',[box[2],box[3]]
-    print '    z ',[box[4],box[5]]
+    sys.stdout.write("  bounding box in lab system\n")
+    sys.stdout.write("    x (% .8f % .8f)\n"%(box[0],box[1]))
+    sys.stdout.write("    y (% .8f % .8f)\n"%(box[2],box[3]))
+    sys.stdout.write("    z (% .8f % .8f)\n"%(box[4],box[5]))
 
 
   # Get cell centers of deformed mesh (position of ips)
   
+  if options.verbose: sys.stdout.write("\nGETTING CELL CENTERS OF DEFORMED MESH\n")
   cellCenter = vtkCellCenters()
   cellCenter.SetVertexCells(0)   # do not generate vertex cells, just points
   cellCenter.SetInput(deformedMesh)
@@ -214,6 +214,7 @@ for filename in filenames:
 
   # Get outer surface of deformed mesh
   
+  if options.verbose: sys.stdout.write("\nGETTING OUTER SURFACE OF DEFORMED MESH\n")
   surfaceFilter = vtkDataSetSurfaceFilter()
   surfaceFilter.SetInput(deformedMesh)
   surfaceFilter.Update()
@@ -225,16 +226,23 @@ for filename in filenames:
   # x-vector corresponds to the up-direction
   # "R" rotates coordinates from the mesh system into the TSL system
 
+  if options.verbose: sys.stdout.write("\nGETTING COORDINATE SYSTEM FOR ANG FILES\n")
   z = numpy.array(options.normal,dtype='float')
   z = z / numpy.linalg.norm(z)
   x = numpy.array(options.up,dtype='float')
   x = x / numpy.linalg.norm(x)
   y = numpy.cross(z,x)
   R = numpy.array([x,y,z])
+  if options.verbose:
+    sys.stdout.write("  axis (x: up direction, z: slice normal)\n")
+    sys.stdout.write("    x (% .8f % .8f % .8f)\n"%tuple(x))
+    sys.stdout.write("    y (% .8f % .8f % .8f)\n"%tuple(y))
+    sys.stdout.write("    z (% .8f % .8f % .8f)\n"%tuple(z))
 
 
   # Get bounding box in rotated system (x,y,z)
 
+  if options.verbose: sys.stdout.write("\nGETTING BOUNDING BOX IN ROTATED SYSTEM\n")
   rotatedbox = [[numpy.inf,-numpy.inf] for i in range(3)]     # bounding box in rotated TSL system
   for n in range(8):                                          # loop over eight vertices of mesh bounding box 
     vert = numpy.array([box[0+(n/1)%2], 
@@ -244,11 +252,17 @@ for filename in filenames:
     for i in range(3):
       rotatedbox[i][0] = min(rotatedbox[i][0],rotatedvert[i])
       rotatedbox[i][1] = max(rotatedbox[i][1],rotatedvert[i])
+  if options.verbose:
+    sys.stdout.write("  bounding box in rotated system\n")
+    sys.stdout.write("    x (% .8f % .8f)\n"%tuple(rotatedbox[0]))
+    sys.stdout.write("    y (% .8f % .8f)\n"%tuple(rotatedbox[1]))
+    sys.stdout.write("    z (% .8f % .8f)\n"%tuple(rotatedbox[2]))
 
 
   # Correct bounding box so that a multiplicity of the resolution fits into it
   # and get number of points and extent in each (rotated) axis direction
 
+  if options.verbose: sys.stdout.write("\nCORRECTING EXTENT OF BOUNDING BOX IN ROTATED SYSTEM\n")
   correction = []
   Npoints = []
   extent = [rotatedbox[i][1] - rotatedbox[i][0] for i in range(3)]
@@ -266,28 +280,20 @@ for filename in filenames:
     rotatedbox[i][0] = rotatedbox[i][0] - 0.5 * correction[i]
     rotatedbox[i][1] = rotatedbox[i][1] + 0.5 * correction[i]
     extent[i] = rotatedbox[i][1] - rotatedbox[i][0]
+  NpointsPerSlice = Npoints[0] * Npoints[1]
+  totalNpoints = NpointsPerSlice * Npoints[2]
   if options.verbose:
-    print ''
-    print 'ROTATED SYSTEM'
-    print '  axis (x: up direction, z: slice normal)'
-    print '    x ',list(x)
-    print '    y ',list(y)
-    print '    z ',list(z)
-    print '  bounding box'
-    print '    x ',rotatedbox[0]
-    print '    y ',rotatedbox[1]
-    print '    z ',rotatedbox[2]
-    print '  number of points per slice'
-    print '    x ',Npoints[0]
-    print '    y ',Npoints[1]
-    print '  number of slices'
-    print '    z ',Npoints[2]
+    sys.stdout.write("  corrected bounding box in rotated system\n")
+    sys.stdout.write("    x (% .8f % .8f)\n"%tuple(rotatedbox[0]))
+    sys.stdout.write("    y (% .8f % .8f)\n"%tuple(rotatedbox[1]))
+    sys.stdout.write("    z (% .8f % .8f)\n"%tuple(rotatedbox[2]))
 
 
   # Generate new regular point grid for ang files
   # Use "polydata" object with points as single vertices
   # beware of TSL convention: y direction is fastest index
 
+  if options.verbose: sys.stdout.write("\nGENERATING POINTS FOR POINT GRID")
   points = vtkPoints()
   for k in xrange(Npoints[2]):
     for j in xrange(Npoints[0]):  
@@ -297,13 +303,26 @@ for filename in filenames:
                                     rotatedbox[2][0] + (float(k) + 0.5) * options.distance ])  # point in rotated system
         point = numpy.dot(R.T,rotatedpoint)                                                    # point in mesh system
         points.InsertNextPoint(list(point))
+        if options.verbose: 
+          sys.stdout.write("\rGENERATING POINTS FOR POINT GRID %d%%" %(100*(Npoints[1]*(k*Npoints[0]+j)+i+1)/totalNpoints))
+          sys.stdout.flush()
+  if options.verbose: 
+    sys.stdout.write("\n  number of slices: %i\n"%Npoints[2])
+    sys.stdout.write("  slice spacing: %.8f\n"%options.distance)
+    sys.stdout.write("  number of points per slice: %i = %i rows * %i points in row\n"%(NpointsPerSlice,Npoints[0],Npoints[1]))
+    sys.stdout.write("  grid resolution: %.8f\n"%options.resolution)
 
+  if options.verbose: sys.stdout.write("\nGENERATING VERTICES FOR POINT GRID")
   vertices = vtkCellArray()
-  for i in xrange(Npoints[0]*Npoints[1]*Npoints[2]):
+  for i in xrange(totalNpoints):
     vertex = vtkVertex()
     vertex.GetPointIds().SetId(0,i)  # each vertex consists of exactly one (index 0) point with ID "i"
     vertices.InsertNextCell(vertex)
+    if options.verbose: 
+      sys.stdout.write("\rGENERATING VERTICES FOR POINT GRID %d%%" %(100*(i+1)/totalNpoints))
+      sys.stdout.flush()
 
+  if options.verbose: sys.stdout.write("\n\nGENERATING POINT GRID\n")
   pointgrid = vtkPolyData()
   pointgrid.SetPoints(points)
   pointgrid.SetVerts(vertices)
@@ -312,6 +331,7 @@ for filename in filenames:
 
   # Find out which points reside inside mesh geometry
 
+  if options.verbose: sys.stdout.write("\nIDENTIFYING POINTS INSIDE MESH GEOMETRY\n")
   enclosedPoints = vtkSelectEnclosedPoints()
   enclosedPoints.SetSurface(surface)
   enclosedPoints.SetInput(pointgrid)
@@ -321,29 +341,41 @@ for filename in filenames:
   # Build kdtree from mesh IPs and match mesh IPs to point grid
   # could also be done with nearest neighbor search from damask.core, would possibly be faster ?
 
+  if options.verbose: sys.stdout.write("\nBUILDING MAPPING OF GRID POINTS")
   kdTree = vtkKdTree()
   kdTree.BuildLocatorFromPoints(meshIPs.GetPoints())
   gridToMesh = []
   ids = vtkIdList()
+  NenclosedPoints = 0
   for i in range(pointgrid.GetNumberOfPoints()):
     gridToMesh.append([])
     if enclosedPoints.IsInside(i):
+      NenclosedPoints += 1
       kdTree.FindClosestNPoints(options.interpolation,pointgrid.GetPoint(i),ids) # here one could use faster(?) "FindClosestPoint" if only first nearest neighbor required
       for j in range(ids.GetNumberOfIds()): 
         gridToMesh[-1].extend([ids.GetId(j)])
+    if options.verbose: 
+      sys.stdout.write("\rBUILDING MAPPING OF GRID POINTS %d%%" %(100*(i+1)/totalNpoints))
+      sys.stdout.flush()
+  if options.verbose:
+    sys.stdout.write("\n  Number of points inside mesh geometry %i\n"%NenclosedPoints)
+    sys.stdout.write("  Number of points outside mesh geometry %i\n"%(totalNpoints - NenclosedPoints))
   
 
 
   # ITERATE OVER SLICES AND CREATE ANG FILE
   
-  NpointsPerSlice = Npoints[0] * Npoints[1]
+  if options.verbose: 
+    sys.stdout.write("\nWRITING OUT ANG FILES\n")
+    sys.stdout.write("  scaling all length with %f\n"%options.scale)
   for sliceN in range(Npoints[2]):
     
     # Open file and write header
     
-    angfilename = eval('"'+eval("'%%s_slice%%0%ii.ang'%(math.log10(Npoints[2])+1)")+'"%(os.path.splitext(filename)[0],sliceN)')
+    angfilename = eval('"'+eval("'%%s_slice%%0%ii.ang'%(math.log10(Npoints[2])+1)")+'"%(os.path.splitext(filename)[0],sliceN+1)')
     with open(angfilename,'w') as angfile:
-      angfile.write(getHeader(filename,Npoints[1],Npoints[0],options.resolution))
+      if options.verbose: sys.stdout.write("  %s\n"%angfilename)
+      angfile.write(getHeader(filename,Npoints[1],Npoints[0],options.resolution*options.scale))
       for i in xrange(sliceN*NpointsPerSlice,(sliceN+1)*NpointsPerSlice):   # Iterate over points on slice
         
 
@@ -368,5 +400,8 @@ for filename in filenames:
         
         # write data to ang file
 
-        angfile.write(getDataLine(interpolatedPhi,pointgrid.GetPoint(i),enclosedPoints.IsInside(i)))
+        x,y,z = numpy.dot(R,pointgrid.GetPoint(i))                  # point in rotated TSL system
+        x *= options.scale
+        y *= options.scale
+        angfile.write(getDataLine(interpolatedPhi,x,y,enclosedPoints.IsInside(i)))
       
