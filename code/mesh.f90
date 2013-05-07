@@ -1399,41 +1399,41 @@ mesh_ipNeighborhood = 0_pInt
 
 
 e = 0_pInt
-do x = 0_pInt,res(1)-1_pInt
+do z = 0_pInt,res(3)-1_pInt
   do y = 0_pInt,res(2)-1_pInt
-    do z = 0_pInt,res(3)-1_pInt
+    do x = 0_pInt,res(1)-1_pInt
       e = e + 1_pInt
-        mesh_ipNeighborhood(1,1,1,e) = z * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + modulo(x+1_pInt,res(1)) &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,2,1,e) = z * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + modulo(x-1_pInt,res(1)) &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,3,1,e) = z * res(1) * res(2) &
-                                     + modulo(y+1_pInt,res(2)) * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,4,1,e) = z * res(1) * res(2) &
-                                     + modulo(y-1_pInt,res(2)) * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,res(3)) * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,res(3)) * res(1) * res(2) &
-                                     + y * res(1) &
-                                     + x &
-                                     + 1_pInt
-        mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
-        mesh_ipNeighborhood(3,1,1,e) = 2_pInt
-        mesh_ipNeighborhood(3,2,1,e) = 1_pInt
-        mesh_ipNeighborhood(3,3,1,e) = 4_pInt
-        mesh_ipNeighborhood(3,4,1,e) = 3_pInt
-        mesh_ipNeighborhood(3,5,1,e) = 6_pInt
-        mesh_ipNeighborhood(3,6,1,e) = 5_pInt
+      mesh_ipNeighborhood(1,1,1,e) = z * res(1) * res(2) &
+                                   + y * res(1) &
+                                   + modulo(x+1_pInt,res(1)) &
+                                   + 1_pInt
+      mesh_ipNeighborhood(1,2,1,e) = z * res(1) * res(2) &
+                                   + y * res(1) &
+                                   + modulo(x-1_pInt,res(1)) &
+                                   + 1_pInt
+      mesh_ipNeighborhood(1,3,1,e) = z * res(1) * res(2) &
+                                   + modulo(y+1_pInt,res(2)) * res(1) &
+                                   + x &
+                                   + 1_pInt
+      mesh_ipNeighborhood(1,4,1,e) = z * res(1) * res(2) &
+                                   + modulo(y-1_pInt,res(2)) * res(1) &
+                                   + x &
+                                   + 1_pInt
+      mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,res(3)) * res(1) * res(2) &
+                                   + y * res(1) &
+                                   + x &
+                                   + 1_pInt
+      mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,res(3)) * res(1) * res(2) &
+                                   + y * res(1) &
+                                   + x &
+                                   + 1_pInt
+      mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
+      mesh_ipNeighborhood(3,1,1,e) = 2_pInt
+      mesh_ipNeighborhood(3,2,1,e) = 1_pInt
+      mesh_ipNeighborhood(3,3,1,e) = 4_pInt
+      mesh_ipNeighborhood(3,4,1,e) = 3_pInt
+      mesh_ipNeighborhood(3,5,1,e) = 6_pInt
+      mesh_ipNeighborhood(3,6,1,e) = 5_pInt
     enddo
   enddo
 enddo
@@ -4215,6 +4215,7 @@ enddo
       enddo
     enddo 
     write(6,*)
+#ifndef Spectral
     write(6,*) 'Input Parser: NODE TWINS'
     write(6,*)
     write(6,'(a6,3(3x,a6))') '  node','twin_x','twin_y','twin_z'
@@ -4223,6 +4224,7 @@ enddo
       write(6,'(i6,3(3x,i6))') n, mesh_nodeTwins(1:3,n)
     enddo
     write(6,*)
+#endif
     write(6,*) 'Input Parser: IP NEIGHBORHOOD'
     write(6,*)
     write(6,'(a8,1x,a10,1x,a10,1x,a3,1x,a13,1x,a13)') 'elem','IP','neighbor','','elemNeighbor','ipNeighbor'
