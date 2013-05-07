@@ -2122,13 +2122,13 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
                                             rhoSgl, &                     !< current single dislocation densities (positive/negative screw and edge without dipoles)
                                             rhoSglOriginal, &
                                             rhoSgl0, &                    !< single dislocation densities at start of cryst inc (positive/negative screw and edge without dipoles)
-                                            rhoSglMe, &                   !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
-                                            neighboring_rhoSgl            !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
+                                            rhoSglMe                      !< single dislocation densities of central ip (positive/negative screw and edge without dipoles)
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             v, &                          !< current dislocation glide velocity
                                             v0, &                         !< dislocation glide velocity at start of cryst inc
                                             vMe, &                        !< dislocation glide velocity of central ip
                                             neighboring_v, &              !< dislocation glide velocity of enighboring ip
+                                            neighboring_rhoSgl, &         !< current single dislocation densities of neighboring ip (positive/negative screw and edge without dipoles)
                                             gdot                          !< shear rates
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             rhoForest, &                  !< forest dislocation density
@@ -2386,15 +2386,11 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
           neighboring_v(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
           neighboring_rhoSgl(1_pInt:ns,t) = max(state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
         endforall
-        forall (t = 5_pInt:8_pInt) &
-          neighboring_rhoSgl(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
       else
         forall (t = 1_pInt:4_pInt)
           neighboring_v(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
           neighboring_rhoSgl(1_pInt:ns,t) = max(state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
         endforall
-        forall (t = 5_pInt:8_pInt) &
-          neighboring_rhoSgl(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
       endif
       where (abs(neighboring_rhoSgl) * mesh_ipVolume(neighboring_ip,neighboring_el) ** 0.667_pReal &
              < constitutive_nonlocal_significantN(myInstance) &
@@ -2411,17 +2407,13 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
           topp = t + mod(t,2_pInt) - mod(t+1_pInt,2_pInt)
           if (neighboring_v(s,t) * math_mul3x3(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &                                        ! flux from my neighbor to me == entering flux for me
               .and. v(s,t) * neighboring_v(s,t) >= 0.0_pReal ) then                                                                 ! ... only if no sign change in flux density  
-            do deads = 0_pInt,4_pInt,4_pInt
-              if (deads == 4_pInt .and. neighboring_rhoSgl(s,t+4_pInt) * neighboring_v(s,t) < 0.0_pReal) exit                       ! make sure that formerly blocked density due to stress sign change is first remobilized, otherwise we directly enter here without having produced any strain at neighbor
-              lineLength = abs(neighboring_rhoSgl(s,t+deads)) * neighboring_v(s,t) &
-                         * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                                                       ! positive line length that wants to enter through this interface
-              where (constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) > 0.0_pReal) &                                      ! positive compatibility...
-                rhoDotFlux(1_pInt:ns,t) = rhoDotFlux(1_pInt:ns,t) + lineLength / mesh_ipVolume(ip,el) &                             ! ... transferring to equally signed mobile dislocation type
-                                        * constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
-              where (constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) < 0.0_pReal) &                                      ! ..negative compatibility...
-                rhoDotFlux(1_pInt:ns,topp) = rhoDotFlux(1_pInt:ns,topp) + lineLength / mesh_ipVolume(ip,el) &                       ! ... transferring to opposite signed mobile dislocation type
-                                           * constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
-            enddo
+            lineLength = neighboring_rhoSgl(s,t) * neighboring_v(s,t) * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area          ! positive line length that wants to enter through this interface
+            where (constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) > 0.0_pReal) &                                      ! positive compatibility...
+              rhoDotFlux(1_pInt:ns,t) = rhoDotFlux(1_pInt:ns,t) + lineLength / mesh_ipVolume(ip,el) &                             ! ... transferring to equally signed mobile dislocation type
+                                      * constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
+            where (constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) < 0.0_pReal) &                                      ! ..negative compatibility...
+              rhoDotFlux(1_pInt:ns,topp) = rhoDotFlux(1_pInt:ns,topp) + lineLength / mesh_ipVolume(ip,el) &                       ! ... transferring to opposite signed mobile dislocation type
+                                         * constitutive_nonlocal_compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
           endif
         enddo
       enddo
@@ -2480,10 +2472,6 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
             rhoDotFlux(s,t) = rhoDotFlux(s,t) - lineLength / mesh_ipVolume(ip,el)                                                   ! subtract dislocation flux from current type
             rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
                                                              * sign(1.0_pReal, vMe(s,t))                                            ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
-            if (rhoSglMe(s,t+4_pInt) * vMe(s,t) > 0.0_pReal) then                                                                   ! make sure that formerly blocked density due to stress sign change is first remobilized, otherwise we directly jump to neighbor without having produced any strain here
-              lineLength = rhoSglMe(s,t+4_pInt) * vMe(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                     ! positive line length of deads that wants to leave through this interface
-              rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) - lineLength / mesh_ipVolume(ip,el) * transmissivity                  ! dead dislocations leaving through this interface
-            endif
           endif
         enddo
       enddo
