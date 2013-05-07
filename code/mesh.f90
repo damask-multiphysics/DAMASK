@@ -57,6 +57,9 @@ module mesh
  integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: &
    mesh_ipNeighborhood                                                                              !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
 
+ real(pReal), public, protected :: &
+   mesh_unitlength                                                                                  !< physical length of one unit in mesh
+
  real(pReal), dimension(:,:), allocatable, public :: &
    mesh_node, &                                                                                     !< node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
    mesh_cellnode                                                                                    !< cell node x,y,z coordinates (after deformation! ONLY FOR MARC!!!)
@@ -421,6 +424,7 @@ module mesh
    mesh_cellCenterCoordinates, &
    mesh_init_postprocessing, &
    mesh_get_Ncellnodes, &
+   mesh_get_unitlength, &
    mesh_get_nodeAtIP
 #ifdef Spectral
  public :: &
@@ -512,7 +516,8 @@ subroutine mesh_init(ip,el)
    IO_open_InputFile
 #endif
  use numerics, only: &
-   usePingPong
+   usePingPong, &
+   numerics_unitlength
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP, &
@@ -549,7 +554,10 @@ subroutine mesh_init(ip,el)
  if (allocated(FE_ipNeighbor))                deallocate(FE_ipNeighbor)
  if (allocated(FE_cellnodeParentnodeWeights)) deallocate(FE_cellnodeParentnodeWeights)
  if (allocated(FE_subNodeOnIPFace))           deallocate(FE_subNodeOnIPFace)
+
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
+ mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
+
 #ifdef Spectral
  call IO_open_file(fileUnit,geometryFile)                                                           ! parse info from geometry file...
  res = mesh_spectral_getGrid(fileUnit)
@@ -1265,8 +1273,6 @@ end subroutine mesh_spectral_count_cpSizes
 !! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_nodes()
- use numerics, &
-   only: numerics_unitlength
 
  implicit none
  integer(pInt) :: n
@@ -1275,13 +1281,13 @@ subroutine mesh_spectral_build_nodes()
  allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
  
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = numerics_unitlength * &
+   mesh_node0(1,n+1_pInt) = mesh_unitlength * &
            geomdim(1) * real(mod(n,(res(1)+1_pInt) ),pReal) &
                                                    / real(res(1),pReal)
-   mesh_node0(2,n+1_pInt) = numerics_unitlength * &
+   mesh_node0(2,n+1_pInt) = mesh_unitlength * &
            geomdim(2) * real(mod(n/(res(1)+1_pInt),(res(2)+1_pInt)),pReal) &
                                                    / real(res(2),pReal)
-   mesh_node0(3,n+1_pInt) = numerics_unitlength * &
+   mesh_node0(3,n+1_pInt) = mesh_unitlength * &
            geomdim(3) * real(mod(n/(res(1)+1_pInt)/(res(2)+1_pInt),(res(3)+1_pInt)),pReal) &
                                                    / real(res(3),pReal)
  end forall 
@@ -2762,7 +2768,6 @@ subroutine mesh_marc_build_nodes(myUnit)
                  IO_stringPos, &
                  IO_fixedIntValue, &
                  IO_fixedNoEFloatValue
-use numerics, only: numerics_unitlength
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -2788,7 +2793,7 @@ use numerics, only: numerics_unitlength
        read (myUnit,610,END=670) line
        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1_pInt))
        do j = 1_pInt,3_pInt
-         mesh_node0(j,m) = numerics_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
+         mesh_node0(j,m) = mesh_unitlength * IO_fixedNoEFloatValue(line,node_ends,j+1_pInt)
        enddo
      enddo
      exit
@@ -3419,7 +3424,6 @@ subroutine mesh_abaqus_build_nodes(myUnit)
                  IO_error, &
                  IO_countDataLines, &
                  IO_intValue
-use numerics, only: numerics_unitlength
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -3460,7 +3464,7 @@ use numerics, only: numerics_unitlength
        myPos = IO_stringPos(line,maxNchunks)
        m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
        do j=1_pInt, 3_pInt
-         mesh_node0(j,m) = numerics_unitlength * IO_floatValue(line,myPos,j+1_pInt)
+         mesh_node0(j,m) = mesh_unitlength * IO_floatValue(line,myPos,j+1_pInt)
        enddo  
      enddo
    endif
@@ -5212,6 +5216,7 @@ subroutine mesh_write_meshfile
  integer(pInt) :: e,i,t,g,c,n
 
  call IO_write_jobFile(fileUnit,'mesh') 
+ write(fileUnit,'(A16,E10)') 'unitlength', mesh_unitlength
  write(fileUnit,'(A16,I10)') 'maxNcellnodes', mesh_maxNcellnodes
  write(fileUnit,'(A16,I10)') 'maxNips', mesh_maxNips
  write(fileUnit,'(A16,I10)') 'maxNnodes', mesh_maxNnodes
@@ -5251,6 +5256,7 @@ integer function mesh_read_meshfile(filepath)
  integer(pInt) :: e,i,t,g,n
 
  open(fileUnit,status='old',err=100,iostat=mesh_read_meshfile,action='read',file=filepath)
+ read(fileUnit,'(TR16,E10)',err=100,iostat=mesh_read_meshfile) mesh_unitlength
  read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNcellnodes
  read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNips
  read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNnodes
@@ -5308,6 +5314,18 @@ integer(pInt) function mesh_get_Ncellnodes()
  mesh_get_Ncellnodes = mesh_Ncellnodes
 
 end function mesh_get_Ncellnodes
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns global variable mesh_unitlength
+!--------------------------------------------------------------------------------------------------
+real(pReal) function mesh_get_unitlength()
+
+ implicit none
+ 
+ mesh_get_unitlength = mesh_unitlength
+
+end function mesh_get_unitlength
 
 
 !--------------------------------------------------------------------------------------------------

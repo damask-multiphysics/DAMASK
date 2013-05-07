@@ -42,13 +42,10 @@ parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
                   help='range of positions (or increments) to output (start, end, step) [all]')
 parser.add_option('--increments', action='store_true', dest='getIncrements', \
                   help='switch to increment range [%default]')
-parser.add_option('--scale', dest='scale', type='float', \
-                  help='scaling factor for the nodal displacements [%default]')
 
 
 parser.set_defaults(dir = 'vtk')
 parser.set_defaults(getIncrements= False)
-parser.set_defaults(scale = 1)
 
 (options, files) = parser.parse_args()
 
@@ -84,6 +81,7 @@ if damask.core.mesh.mesh_init_postprocessing(filename+'.mesh') > 0:
   print('error: init not successful')
   sys.exit(-1)
 Ncellnodes = damask.core.mesh.mesh_get_Ncellnodes()
+unitlength = damask.core.mesh.mesh_get_unitlength()
 
 
 # ---------------------------   create output dir   --------------------------------
@@ -131,7 +129,7 @@ for incCount,position in enumerate(locations):     # walk through locations
   node_displacement = [[0,0,0] for i in range(Nnodes)]
   for n in range(Nnodes):
     if p.node_displacements():
-      node_displacement[n] = map(lambda x:x*options.scale,list(p.node_displacement(n)))
+      node_displacement[n] = map(lambda x:x*unitlength,list(p.node_displacement(n)))
   c = damask.core.mesh.mesh_build_cellnodes(numpy.array(node_displacement).T,Ncellnodes)
   cellnode_displacement = [[c[i][n] for i in range(3)] for n in range(Ncellnodes)]
 

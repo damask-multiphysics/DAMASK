@@ -203,6 +203,10 @@ python module core ! in
             integer :: mesh_get_Ncellnodes
         end function mesh_get_Ncellnodes
         
+        function mesh_get_unitlength() ! in :mesh:mesh.f90
+            real*8 :: mesh_get_unitlength
+        end function mesh_get_unitlength
+        
         function mesh_get_nodeAtIP(elemtypeFE,ip) ! in :mesh:mesh.f90
             character(len=*), intent(in) :: elemtypeFE
             integer,          intent(in) :: ip
