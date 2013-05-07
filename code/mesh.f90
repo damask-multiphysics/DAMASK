@@ -5216,7 +5216,7 @@ subroutine mesh_write_meshfile
  integer(pInt) :: e,i,t,g,c,n
 
  call IO_write_jobFile(fileUnit,'mesh') 
- write(fileUnit,'(A16,E10)') 'unitlength', mesh_unitlength
+ write(fileUnit,'(A16,E10.3)') 'unitlength', mesh_unitlength
  write(fileUnit,'(A16,I10)') 'maxNcellnodes', mesh_maxNcellnodes
  write(fileUnit,'(A16,I10)') 'maxNips', mesh_maxNips
  write(fileUnit,'(A16,I10)') 'maxNnodes', mesh_maxNnodes
@@ -5256,7 +5256,7 @@ integer function mesh_read_meshfile(filepath)
  integer(pInt) :: e,i,t,g,n
 
  open(fileUnit,status='old',err=100,iostat=mesh_read_meshfile,action='read',file=filepath)
- read(fileUnit,'(TR16,E10)',err=100,iostat=mesh_read_meshfile) mesh_unitlength
+ read(fileUnit,'(TR16,E10.3)',err=100,iostat=mesh_read_meshfile) mesh_unitlength
  read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNcellnodes
  read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNips
  read(fileUnit,'(TR16,I10)',err=100,iostat=mesh_read_meshfile) mesh_maxNnodes
