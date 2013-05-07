@@ -1,6 +1,6 @@
 #!/usr/bin/env python 
 
-import os, sys, math, string, re
+import os, sys, math, string, re, time
 import damask
 from optparse import OptionParser, OptionGroup, Option
 
@@ -393,8 +393,12 @@ if not os.path.isdir(dirname):
 
 # --- loop over positions
 
+time_start = time.time()
 for incCount,position in enumerate(locations):     # walk through locations
   p.moveto(position+1)                             # wind to correct position
+  time_delta = (float(stat['NumberOfIncrements']) / float(incCount+1) - 1.0) * (time.time() - time_start)
+  sys.stdout.write("\r(%02i:%02i:%02i) processing increment %i of %i..."%(time_delta//3600,time_delta%3600//60,time_delta%60,incCount+1,len(locations)))
+  sys.stdout.flush()
   
   # --- write header 
   
@@ -433,5 +437,6 @@ for incCount,position in enumerate(locations):     # walk through locations
           myfile.write('\t'.join(map(str,[e,i]+ipData[i]))+'\n')
             
 p.close()
+sys.stdout.write("\n")
 
 # ---------------------------       DONE     --------------------------------
