@@ -5121,9 +5121,9 @@ subroutine mesh_write_cellGeom
        filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &
        mesh_topology = 'UNSTRUCTURED_GRID')
  err = VTK_geo(NN = mesh_Ncellnodes, &
-       X = mesh_cellnode(1,:), &
-       Y = mesh_cellnode(2,:), &
-       Z = mesh_cellnode(3,:))
+       X = mesh_cellnode(1,1:mesh_Ncellnodes), &
+       Y = mesh_cellnode(2,1:mesh_Ncellnodes), &
+       Z = mesh_cellnode(3,1:mesh_Ncellnodes))
  err = VTK_con(NC = mesh_Ncells, &
        connect = cellconnection(1:j), &
        cell_type = celltype)
@@ -5161,18 +5161,18 @@ subroutine mesh_write_elemGeom
    i = i + 1_pInt + FE_Nnodes(t)
  enddo
 
- err = VTK_ini(output_format = 'ASCII', &
-       title=trim(getSolverJobName())//' element mesh', &
-       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName()//'_nodebased.vtk', &
-       mesh_topology = 'UNSTRUCTURED_GRID')
- err = VTK_geo(NN = mesh_Nnodes, &
-       X = mesh_node0(1,1:mesh_Nnodes), &
-       Y = mesh_node0(2,1:mesh_Nnodes), &
-       Z = mesh_node0(3,1:mesh_Nnodes))
- err = VTK_con(NC = mesh_Nelems, &
-       connect = elementconnection(1:i), &
-       cell_type = elemtype)
- err = VTK_end()
+ err =VTK_ini(output_format = 'ASCII', &
+      title=trim(getSolverJobName())//' element mesh', &
+      filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_nodebased.vtk', &
+      mesh_topology = 'UNSTRUCTURED_GRID')
+ err =VTK_geo(NN = mesh_Nnodes, &
+      X = mesh_node0(1,1:mesh_Nnodes), &
+      Y = mesh_node0(2,1:mesh_Nnodes), &
+      Z = mesh_node0(3,1:mesh_Nnodes))
+ err =VTK_con(NC = mesh_Nelems, &
+      connect = elementconnection(1:i), &
+      cell_type = elemtype)
+ err =VTK_end()
 
 end subroutine mesh_write_elemGeom
 
