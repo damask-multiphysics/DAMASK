@@ -121,16 +121,6 @@ module mesh
 
 #ifdef Spectral
  include 'fftw3.f03'
- real(pReal),   dimension(3), public, protected :: &
-   geomdim, &                                                                                       !< physical dimension of volume element per direction
-   scaledDim                                                                                        !< scaled dimension of volume element, depending on selected divergence calculation
- integer(pInt), dimension(3), public, protected :: &
-   res                                                                                              !< resolution, e.g. number of Fourier points in each direction
- real(pReal),   public, protected  :: &
-   wgt
- integer(pInt), public, protected  :: &
-   res1_red, &
-   homog
 #endif
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
@@ -428,6 +418,8 @@ module mesh
    mesh_get_nodeAtIP
 #ifdef Spectral
  public :: &
+   mesh_spectral_getGrid, &
+   mesh_spectral_getSize, &
    mesh_regrid, &
    mesh_nodesAroundCentres, &
    mesh_deformedCoordsFFT, &
@@ -438,13 +430,9 @@ module mesh
 
  private :: &
 #ifdef Spectral
-   mesh_spectral_getGrid, &
-   mesh_spectral_getSize, &
    mesh_spectral_getHomogenization, &
-   mesh_spectral_count_nodesAndElements, &
-   mesh_spectral_count_cpElements, &
-   mesh_spectral_map_elements, &
-   mesh_spectral_map_nodes, &
+   mesh_spectral_count, &
+   mesh_spectral_mapNodesAndElems, &
    mesh_spectral_count_cpSizes, &
    mesh_spectral_build_nodes, &
    mesh_spectral_build_elements, &
@@ -554,51 +542,23 @@ subroutine mesh_init(ip,el)
  if (allocated(FE_ipNeighbor))                deallocate(FE_ipNeighbor)
  if (allocated(FE_cellnodeParentnodeWeights)) deallocate(FE_cellnodeParentnodeWeights)
  if (allocated(FE_subNodeOnIPFace))           deallocate(FE_subNodeOnIPFace)
-
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
 
 #ifdef Spectral
  call IO_open_file(fileUnit,geometryFile)                                                           ! parse info from geometry file...
- res = mesh_spectral_getGrid(fileUnit)
- res1_red = res(1)/2_pInt + 1_pInt
- wgt = 1.0/real(product(res),pReal)
- geomdim = mesh_spectral_getSize(fileUnit)
- homog = mesh_spectral_getHomogenization(fileUnit)
- 
-!--------------------------------------------------------------------------------------------------
-! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and reso-
-! lution-independent divergence
- if (divergence_correction == 1_pInt) then
-   do j = 1_pInt, 3_pInt
-    if (j /= minloc(geomdim,1) .and. j /= maxloc(geomdim,1)) scaledDim = geomdim/geomdim(j)
-   enddo
- elseif (divergence_correction == 2_pInt) then
-   do j = 1_pInt, 3_pInt
-    if (j /= minloc(geomdim/res,1) .and. j /= maxloc(geomdim/res,1)) scaledDim = geomdim/geomdim(j)*res(j)
-   enddo
- else
-   scaledDim = geomdim
- endif
- write(6,'(a,3(i12  ))') ' grid     a b c: ', res
- write(6,'(a,3(f12.5))') ' size     x y z: ', geomdim
- write(6,'(a,i5,/)')     ' homogenization: ', homog
-
- call mesh_spectral_count_nodesAndElements
- call mesh_spectral_count_cpElements
- call mesh_spectral_map_elements
- call mesh_spectral_map_nodes
+ call mesh_spectral_count(fileUnit)
+ call mesh_spectral_mapNodesAndElems
  call mesh_spectral_count_cpSizes
- call mesh_spectral_build_nodes
+ call mesh_spectral_build_nodes(fileUnit)
  call mesh_spectral_build_elements(fileUnit)
  call mesh_get_damaskOptions(fileUnit)
- close (fileUnit)
  call mesh_build_cellconnectivity
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
  call mesh_build_ipCoordinates
  call mesh_build_ipVolumes
  call mesh_build_ipAreas
- call mesh_spectral_build_ipNeighborhood
+ call mesh_spectral_build_ipNeighborhood(fileUnit)
 #endif
 #ifdef Marc4DAMASK
  call IO_open_inputFile(fileUnit,modelName)                                                         ! parse info from input file...
@@ -613,7 +573,6 @@ subroutine mesh_init(ip,el)
  call mesh_marc_count_cpSizes(fileunit)
  call mesh_marc_build_elements(fileUnit)
  call mesh_get_damaskOptions(fileUnit)
- close (fileUnit)
  call mesh_build_cellconnectivity
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
  call mesh_build_ipCoordinates
@@ -638,7 +597,6 @@ subroutine mesh_init(ip,el)
  call mesh_abaqus_count_cpSizes(fileunit)
  call mesh_abaqus_build_elements(fileUnit)
  call mesh_get_damaskOptions(fileUnit)
- close (fileUnit)
  call mesh_build_cellconnectivity
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
  call mesh_build_ipCoordinates
@@ -649,6 +607,7 @@ subroutine mesh_init(ip,el)
  call mesh_build_ipNeighborhood
 #endif
 
+ close (fileUnit)
  call mesh_tell_statistics
  call mesh_write_meshfile
  call mesh_write_cellGeom
@@ -950,25 +909,24 @@ end subroutine mesh_build_ipCoordinates
 !--------------------------------------------------------------------------------------------------
 pure function mesh_cellCenterCoordinates(ip,el)
  
-implicit none
+ implicit none
+ integer(pInt), intent(in) :: el, &                                                                  !< element number
+                              ip                                                                     !< integration point number
+ real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
 
-integer(pInt), intent(in) :: el, &                                                                  !< element number
-                             ip                                                                     !< integration point number
-real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
-
-integer(pInt) :: t,g,c,n
+ integer(pInt) :: t,g,c,n
  
 
-t = mesh_element(2_pInt,el)                                                                         ! get element type
-g = FE_geomtype(t)                                                                                  ! get geometry type
-c = FE_celltype(g)                                                                                  ! get cell type
-mesh_cellCenterCoordinates = 0.0_pReal
-do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
-  mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
-enddo
-mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / FE_NcellnodesPerCell(c)
+ t = mesh_element(2_pInt,el)                                                                         ! get element type
+ g = FE_geomtype(t)                                                                                  ! get geometry type
+ c = FE_celltype(g)                                                                                  ! get cell type
+ mesh_cellCenterCoordinates = 0.0_pReal
+ do n = 1_pInt,FE_NcellnodesPerCell(c)                                                               ! loop over cell nodes in this cell
+   mesh_cellCenterCoordinates = mesh_cellCenterCoordinates + mesh_cellnode(1:3,mesh_cell(n,ip,el))
+ enddo
+ mesh_cellCenterCoordinates = mesh_cellCenterCoordinates / FE_NcellnodesPerCell(c)
 
-endfunction mesh_cellCenterCoordinates
+ end function mesh_cellCenterCoordinates
 
 
 #ifdef Spectral
@@ -1189,61 +1147,39 @@ end function mesh_spectral_getHomogenization
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Count overall number of nodes and elements in mesh and stores them in
-!! 'mesh_Nelems' and 'mesh_Nnodes'
+!! 'mesh_Nelems', 'mesh_Nnodes' and 'mesh_NcpElems'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_nodesAndElements()
+subroutine mesh_spectral_count(myUnit)
  
  implicit none
- mesh_Nelems = product(res)
- mesh_Nnodes = product(res+1_pInt)
+ integer(pInt),              intent(in) :: myUnit
+ integer(pInt), dimension(3)            :: grid
 
-end subroutine mesh_spectral_count_nodesAndElements
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Count overall number of CP elements in mesh and stores them in 'mesh_NcpElems'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count_cpElements
-
- implicit none
-
+ grid     = mesh_spectral_getGrid(myUnit)
+ mesh_Nelems = product(grid)
  mesh_NcpElems = mesh_Nelems
- 
-end subroutine mesh_spectral_count_cpElements
+ mesh_Nnodes = product(grid+1_pInt)
+
+end subroutine mesh_spectral_count
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Maps elements from FE ID to internal (consecutive) representation.
-!! Allocates global array 'mesh_mapFEtoCPelem'
+!> @brief fake map node from FE ID to internal (consecutive) representation for node and element
+!! Allocates global array 'mesh_mapFEtoCPnode' and 'mesh_mapFEtoCPelem'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_map_elements
+subroutine mesh_spectral_mapNodesAndElems
+ use math, only: &
+   math_range
 
  implicit none
- integer(pInt) :: i
 
- allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems)) ; mesh_mapFEtoCPelem = 0_pInt
+ allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes), source = 0_pInt)
+ allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems), source = 0_pInt)
 
- forall (i = 1_pInt:mesh_NcpElems) &
-   mesh_mapFEtoCPelem(1:2,i) = i
+ mesh_mapFEtoCPnode = spread(math_range(mesh_Nnodes),1,2)
+ mesh_mapFEtoCPelem = spread(math_range(mesh_NcpElems),1,2)
 
-end subroutine mesh_spectral_map_elements
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Maps node from FE ID to internal (consecutive) representation.
-!! Allocates global array 'mesh_mapFEtoCPnode'
-!--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_map_nodes
-
- implicit none
- integer(pInt) :: i
-
- allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes)) ; mesh_mapFEtoCPnode = 0_pInt
-
- forall (i = 1_pInt:mesh_Nnodes) &
-   mesh_mapFEtoCPnode(1:2,i) = i
- 
-end subroutine mesh_spectral_map_nodes
+end subroutine mesh_spectral_mapNodesAndElems
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1272,24 +1208,30 @@ end subroutine mesh_spectral_count_cpSizes
 !> @brief Store x,y,z coordinates of all nodes in mesh.
 !! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_nodes()
+subroutine mesh_spectral_build_nodes(myUnit)
 
  implicit none
- integer(pInt) :: n
+ integer(pInt),              intent(in) :: myUnit
+ integer(pInt)                          :: n
+ integer(pInt), dimension(3)            :: grid
+ real(pReal),   dimension(3)            :: geomSize
 
- allocate ( mesh_node0 (3,mesh_Nnodes) ); mesh_node0 = 0.0_pReal
- allocate ( mesh_node  (3,mesh_Nnodes) ); mesh_node  = 0.0_pReal
+ allocate (mesh_node0 (3,mesh_Nnodes), source = 0.0_pReal)
+ allocate (mesh_node  (3,mesh_Nnodes), source = 0.0_pReal)
  
+ grid     = mesh_spectral_getGrid(myUnit)
+ geomSize = mesh_spectral_getSize(myUnit)
+
  forall (n = 0_pInt:mesh_Nnodes-1_pInt)
    mesh_node0(1,n+1_pInt) = mesh_unitlength * &
-           geomdim(1) * real(mod(n,(res(1)+1_pInt) ),pReal) &
-                                                   / real(res(1),pReal)
+           geomSize(1)*real(mod(n,(grid(1)+1_pInt) ),pReal) &
+                                                  / real(grid(1),pReal)
    mesh_node0(2,n+1_pInt) = mesh_unitlength * &
-           geomdim(2) * real(mod(n/(res(1)+1_pInt),(res(2)+1_pInt)),pReal) &
-                                                   / real(res(2),pReal)
+           geomSize(2)*real(mod(n/(grid(1)+1_pInt),(grid(2)+1_pInt)),pReal) &
+                                                  / real(grid(2),pReal)
    mesh_node0(3,n+1_pInt) = mesh_unitlength * &
-           geomdim(3) * real(mod(n/(res(1)+1_pInt)/(res(2)+1_pInt),(res(3)+1_pInt)),pReal) &
-                                                   / real(res(3),pReal)
+           geomSize(3)*real(mod(n/(grid(1)+1_pInt)/(grid(2)+1_pInt),(grid(3)+1_pInt)),pReal) &
+                                                  / real(grid(3),pReal)
  end forall 
 
  mesh_node = mesh_node0
@@ -1314,15 +1256,29 @@ subroutine mesh_spectral_build_elements(myUnit)
    IO_countContinuousIntValues
 
  implicit none
- integer(pInt), intent(in) :: myUnit
+ integer(pInt), intent(in) :: &
+   myUnit
+ integer(pInt),     dimension(1_pInt+7_pInt*2_pInt) :: &
+   myPos
+ integer(pInt) :: &
+   e, i, &
+   headerLength = 0_pInt, &
+   maxIntCount, &
+   homog
+ integer(pInt),     dimension(:), allocatable :: &
+   microstructures
+ integer(pInt),     dimension(3) :: &
+   grid
+ integer(pInt),     dimension(1,1) :: &
+   dummySet = 0_pInt
+ character(len=65536) :: &
+   line, &
+   keyword
+ character(len=64), dimension(1) :: &
+   dummyName = ''
 
- integer(pInt), dimension (1_pInt+7_pInt*2_pInt) :: myPos
- integer(pInt) :: e, i, headerLength = 0_pInt, maxIntCount
- integer(pInt), dimension(:), allocatable :: microstructures
- integer(pInt), dimension(1,1) :: dummySet = 0_pInt
- character(len=65536) :: line,keyword
- character(len=64), dimension(1) :: dummyName = ''
-
+ grid  = mesh_spectral_getGrid(myUnit)
+ homog = mesh_spectral_getHomogenization(myUnit)
  call IO_checkAndRewind(myUnit)
 
  read(myUnit,'(a65536)') line
@@ -1364,15 +1320,15 @@ subroutine mesh_spectral_build_elements(myUnit)
      mesh_element( 2,e) = FE_mapElemtype('C3D8R')                                                   ! elem type
      mesh_element( 3,e) = homog                                                                     ! homogenization
      mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
-     mesh_element( 5,e) = e + (e-1_pInt)/res(1) + &
-                                       ((e-1_pInt)/(res(1)*res(2)))*(res(1)+1_pInt)                 ! base node
+     mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
+                                       ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)               ! base node
      mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-     mesh_element( 7,e) = mesh_element(5,e) + res(1) + 2_pInt
-     mesh_element( 8,e) = mesh_element(5,e) + res(1) + 1_pInt
-     mesh_element( 9,e) = mesh_element(5,e) +(res(1) + 1_pInt) * (res(2) + 1_pInt)                  ! second floor base node
+     mesh_element( 7,e) = mesh_element(5,e) + grid(1) + 2_pInt
+     mesh_element( 8,e) = mesh_element(5,e) + grid(1) + 1_pInt
+     mesh_element( 9,e) = mesh_element(5,e) +(grid(1) + 1_pInt) * (grid(2) + 1_pInt)                ! second floor base node
      mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-     mesh_element(11,e) = mesh_element(9,e) + res(1) + 2_pInt
-     mesh_element(12,e) = mesh_element(9,e) + res(1) + 1_pInt
+     mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
+     mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
      mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         !needed for statistics
      mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
    enddo
@@ -1388,56 +1344,59 @@ end subroutine mesh_spectral_build_elements
 !> @brief build neighborhood relations for spectral
 !> @details assign globals: mesh_ipNeighborhood
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_ipNeighborhood
+subroutine mesh_spectral_build_ipNeighborhood(myUnit)
 
-implicit none
-integer(pInt)                   x,y,z, &
-                                e
+ implicit none
+ integer(pInt), intent(in) :: &
+  myUnit
+ integer(pInt) :: &
+  x,y,z, &
+  e
+ integer(pInt),     dimension(3) :: &
+  grid
+ allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+ 
+ grid = mesh_spectral_getGrid(myUnit)
 
-allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems))
-mesh_ipNeighborhood = 0_pInt
-
-
-e = 0_pInt
-do z = 0_pInt,res(3)-1_pInt
-  do y = 0_pInt,res(2)-1_pInt
-    do x = 0_pInt,res(1)-1_pInt
-      e = e + 1_pInt
-      mesh_ipNeighborhood(1,1,1,e) = z * res(1) * res(2) &
-                                   + y * res(1) &
-                                   + modulo(x+1_pInt,res(1)) &
-                                   + 1_pInt
-      mesh_ipNeighborhood(1,2,1,e) = z * res(1) * res(2) &
-                                   + y * res(1) &
-                                   + modulo(x-1_pInt,res(1)) &
-                                   + 1_pInt
-      mesh_ipNeighborhood(1,3,1,e) = z * res(1) * res(2) &
-                                   + modulo(y+1_pInt,res(2)) * res(1) &
-                                   + x &
-                                   + 1_pInt
-      mesh_ipNeighborhood(1,4,1,e) = z * res(1) * res(2) &
-                                   + modulo(y-1_pInt,res(2)) * res(1) &
-                                   + x &
-                                   + 1_pInt
-      mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,res(3)) * res(1) * res(2) &
-                                   + y * res(1) &
-                                   + x &
-                                   + 1_pInt
-      mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,res(3)) * res(1) * res(2) &
-                                   + y * res(1) &
-                                   + x &
-                                   + 1_pInt
-      mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
-      mesh_ipNeighborhood(3,1,1,e) = 2_pInt
-      mesh_ipNeighborhood(3,2,1,e) = 1_pInt
-      mesh_ipNeighborhood(3,3,1,e) = 4_pInt
-      mesh_ipNeighborhood(3,4,1,e) = 3_pInt
-      mesh_ipNeighborhood(3,5,1,e) = 6_pInt
-      mesh_ipNeighborhood(3,6,1,e) = 5_pInt
-    enddo
-  enddo
-enddo
-
+ e = 0_pInt
+ do z = 0_pInt,grid(1)-1_pInt
+   do y = 0_pInt,grid(2)-1_pInt
+     do x = 0_pInt,grid(3)-1_pInt
+       e = e + 1_pInt
+         mesh_ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + modulo(x+1_pInt,grid(1)) &
+                                      + 1_pInt
+         mesh_ipNeighborhood(1,2,1,e) = z * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + modulo(x-1_pInt,grid(1)) &
+                                      + 1_pInt
+         mesh_ipNeighborhood(1,3,1,e) = z * grid(1) * grid(2) &
+                                      + modulo(y+1_pInt,grid(2)) * grid(1) &
+                                      + x &
+                                      + 1_pInt
+         mesh_ipNeighborhood(1,4,1,e) = z * grid(1) * grid(2) &
+                                      + modulo(y-1_pInt,grid(2)) * grid(1) &
+                                      + x &
+                                      + 1_pInt
+         mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,grid(3)) * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + x &
+                                      + 1_pInt
+         mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,grid(3)) * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + x &
+                                      + 1_pInt
+         mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
+         mesh_ipNeighborhood(3,1,1,e) = 2_pInt
+         mesh_ipNeighborhood(3,2,1,e) = 1_pInt
+         mesh_ipNeighborhood(3,3,1,e) = 4_pInt
+         mesh_ipNeighborhood(3,4,1,e) = 3_pInt
+         mesh_ipNeighborhood(3,5,1,e) = 6_pInt
+         mesh_ipNeighborhood(3,6,1,e) = 5_pInt
+     enddo
+   enddo
+ enddo
 
 end subroutine mesh_spectral_build_ipNeighborhood
 
@@ -1454,6 +1413,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    getSolverJobName, &
    GeometryFile
  use IO, only: &
+   IO_open_file, &
    IO_read_jobBinaryFile ,&
    IO_read_jobBinaryIntFile ,&
    IO_write_jobBinaryFile, &
@@ -1467,16 +1427,17 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    math_mul33x3
 
  implicit none
- character(len=1024):: formatString, N_Digits
  logical, intent(in)                                    :: adaptive                                  ! if true, choose adaptive grid based on resNewInput, otherwise keep it constant
  integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                               ! f2py cannot handle optional arguments correctly (they are always present)
  integer(pInt), dimension(3), optional, intent(in)      :: minRes
- integer(pInt), dimension(3)                            :: mesh_regrid, ratio
+ integer(pInt), dimension(3)                            :: mesh_regrid, ratio, grid
+ integer(pInt),                         parameter       :: myUnit = 777_pInt
  integer(pInt), dimension(3,2)                          :: possibleResNew
- integer(pInt):: maxsize, i, j, k, ielem, NpointsNew, spatialDim
+ integer(pInt):: maxsize, i, j, k, ielem, NpointsNew, spatialDim, Nelems
  integer(pInt), dimension(3)                            :: resNew
  integer(pInt), dimension(:),            allocatable    :: indices
- real(pReal),   dimension(3)                            :: geomdimNew                                              
+ real(pReal)                                            :: wgt
+ real(pReal),   dimension(3)                            :: geomSizeNew, geomSize
  real(pReal),   dimension(3,3)                          :: Favg, Favg_LastInc,       &
                                                            FavgNew, Favg_LastIncNew, &
                                                            deltaF, deltaF_lastInc
@@ -1497,13 +1458,21 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    F_lastIncNew
  real(pReal),   dimension (:,:,:,:,:,:,:), allocatable :: &
    dPdF,            dPdFNew
-
+ character(len=1024):: formatString, N_Digits
  integer(pInt), dimension(:,:), allocatable :: &
    sizeStateHomog
  integer(pInt), dimension(:,:,:), allocatable :: &
    material_phase, material_phaseNew, &
    sizeStateConst
- 
+
+ call IO_open_file(myUnit,trim(geometryFile))
+ grid     = mesh_spectral_getGrid(myUnit)
+ geomSize = mesh_spectral_getsize(myUnit)
+ close(myUnit)
+
+ Nelems = product(grid)
+ wgt = 1.0_pReal/real(Nelems,pReal)
+
  write(6,'(a)') 'Regridding geometry'
  if (adaptive) then
    write(6,'(a)') 'adaptive resolution determination'
@@ -1519,53 +1488,54 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    endif
  endif
  
- allocate(coordinates(3,mesh_NcpElems))
+ allocate(coordinates(3,Nelems))
+ 
  
 !--------------------------------------------------------------------------------------------------
 ! read in deformation gradient to calculate coordinates, shape depend of selected solver
  select case(myspectralsolver)
    case('basic')
-     allocate(spectralF33(3,3,res(1),res(2),res(3)))
+     allocate(spectralF33(3,3,grid(1),grid(2),grid(3)))
      call IO_read_jobBinaryFile(777,'F',trim(getSolverJobName()),size(spectralF33))
      read (777,rec=1) spectralF33
      close (777)
      Favg = sum(sum(sum(spectralF33,dim=5),dim=4),dim=3) * wgt
-     coordinates = reshape(mesh_deformedCoordsFFT(geomdim,spectralF33),[3,mesh_NcpElems])
+     coordinates = reshape(mesh_deformedCoordsFFT(geomSize,spectralF33),[3,mesh_NcpElems])
    case('basicpetsc','al')
-     allocate(spectralF9(9,res(1),res(2),res(3)))
+     allocate(spectralF9(9,grid(1),grid(2),grid(3)))
      call IO_read_jobBinaryFile(777,'F',trim(getSolverJobName()),size(spectralF9))
      read (777,rec=1) spectralF9
      close (777)
      Favg = reshape(sum(sum(sum(spectralF9,dim=4),dim=3),dim=2) * wgt, [3,3])
-     coordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(spectralF9, &
-                                      [3,3,res(1),res(2),res(3)])),[3,mesh_NcpElems])
+     coordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(spectralF9, &
+                                      [3,3,grid(1),grid(2),grid(3)])),[3,mesh_NcpElems])
   end select
   
 !--------------------------------------------------------------------------------------------------
 !  sanity check 2D/3D case
- if (res(3)== 1_pInt) then
+ if (grid(3)== 1_pInt) then
    spatialDim = 2_pInt
    if (present (minRes)) then
      if (minRes(1) > 0_pInt .or. minRes(2) > 0_pInt) then
         if (minRes(3) /= 1_pInt .or. &
            mod(minRes(1),2_pInt) /= 0_pInt .or. &
-           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')                       ! as f2py has problems with present, use pyf file for initialization to -1
+           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')        ! as f2py has problems with present, use pyf file for initialization to -1
    endif; endif
  else
    spatialDim = 3_pInt
    if (present (minRes)) then
      if (any(minRes > 0_pInt)) then
-        if (mod(minRes(1),2_pInt) /= 0_pInt.or. &
+        if (mod(minRes(1),2_pInt) /= 0_pInt .or. &
             mod(minRes(2),2_pInt) /= 0_pInt .or. &
-            mod(minRes(3),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '3D minRes')                      ! as f2py has problems with present, use pyf file for initialization to -1
+            mod(minRes(3),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '3D minRes')       ! as f2py has problems with present, use pyf file for initialization to -1
    endif; endif
  endif
  
 !--------------------------------------------------------------------------------------------------
 !  Automatic detection based on current geom
- geomdimNew =  math_mul33x3(Favg,geomdim)
+ geomSizeNew =  math_mul33x3(Favg,geomSize)
  if (adaptive) then
-   ratio = floor(real(resNewInput,pReal) * (geomdimNew/geomdim), pInt)
+   ratio = floor(real(resNewInput,pReal) * (geomSizeNew/geomSize), pInt)
    
    possibleResNew = 1_pInt
    do i = 1_pInt, spatialDim
@@ -1574,15 +1544,14 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      else
        possibleResNew(i,1:2) = [ratio(i)-1_pInt, ratio(i) + 1_pInt]
      endif
-     if (.not.present(minRes)) then                              ! calling from fortran, optional argument not given
+     if (.not.present(minRes)) then                                                                ! calling from fortran, optional argument not given
        possibleResNew = possibleResNew
-     else                                                        ! optional argument is there
+     else                                                                                          ! optional argument is there
        if (any(minRes<1_pInt)) then
-         possibleResNew = possibleResNew                     ! f2py calling, but without specification (or choosing invalid values), standard from pyf = -1
-       else                                                        ! given useful values
-         do k = 1_pInt,3_pInt; do j = 1_pInt,3_pInt
-            possibleResNew(j,k) = max(possibleResNew(j,k), minRes(j))
-         enddo; enddo
+         possibleResNew = possibleResNew                                                           ! f2py calling, but without specification (or choosing invalid values), standard from pyf = -1
+       else                                                                                        ! given useful values
+         forall(k = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
+           possibleResNew(j,k) = max(possibleResNew(j,k), minRes(j))
        endif
      endif
    enddo
@@ -1602,11 +1571,11 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      endif
    enddo 
  else 
-  resNew = res
+   resNew = grid
  endif
 
  mesh_regrid = resNew
- NpointsNew = resNew(1)*resNew(2)*resNew(3)
+ NpointsNew = product(resNew)
 
 !--------------------------------------------------------------------------------------------------
 !  Calculate regular new coordinates
@@ -1614,14 +1583,14 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  ielem = 0_pInt
  do k=1_pInt,resNew(3); do j=1_pInt, resNew(2); do i=1_pInt, resNew(1)
    ielem = ielem + 1_pInt
-   coordinatesNew(1:3,ielem) = math_mul33x3(Favg,  geomdim/real(resNew,pReal)*real([i,j,k],pReal) &
-                                                 - geomdim/real(2_pInt*resNew,pReal))
+   coordinatesNew(1:3,ielem) = math_mul33x3(Favg,  geomSize/real(resNew,pReal)*real([i,j,k],pReal) &
+                                                 - geomSize/real(2_pInt*resNew,pReal))
  enddo; enddo; enddo
 
 !--------------------------------------------------------------------------------------------------
 !  Nearest neighbour search
  allocate(indices(NpointsNew))
- indices =  math_periodicNearestNeighbor(geomdim, Favg, coordinatesNew, coordinates)
+ indices =  math_periodicNearestNeighbor(geomSize, Favg, coordinatesNew, coordinates)
  deallocate(coordinates)
 
 !--------------------------------------------------------------------------------------------------
@@ -1665,8 +1634,8 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
  open(777,file=trim(getSolverWorkingDirectoryName())//trim(GeometryFile),status='REPLACE')
  write(777, '(A)') '3 header'
- write(777, '(3(A, I8))') 'resolution  a ', resNew(1), '  b ', resNew(2), '  c ', resNew(3)
- write(777, '(3(A, g17.10))') 'dimension   x ', geomdim(1), '  y ', geomdim(2), '  z ', geomdim(3)
+ write(777, '(3(A, I8))') 'grid  a ', resNew(1), '  b ', resNew(2), '  c ', resNew(3)
+ write(777, '(3(A, g17.10))') 'size   x ', geomSize(1), '  y ', geomSize(2), '  z ', geomSize(3)
  write(777, '(A)') 'homogenization  1'
  do i = 1_pInt, NpointsNew
    write(777,trim(formatString),advance='no') mesh_element(4,indices(i)), ' '
@@ -2763,11 +2732,12 @@ end subroutine mesh_marc_map_nodes
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_build_nodes(myUnit)
 
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_fixedIntValue, &
-                 IO_fixedNoEFloatValue
+ use IO, only: &
+   IO_lc, &
+   IO_stringValue, &
+   IO_stringPos, &
+   IO_fixedIntValue, &
+   IO_fixedNoEFloatValue
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -3464,7 +3434,7 @@ subroutine mesh_abaqus_build_nodes(myUnit)
        myPos = IO_stringPos(line,maxNchunks)
        m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
        do j=1_pInt, 3_pInt
-         mesh_node0(j,m) = mesh_unitlength * IO_floatValue(line,myPos,j+1_pInt)
+         mesh_node0(j,m) = numerics_unitlength * IO_floatValue(line,myPos,j+1_pInt)
        enddo  
      enddo
    endif
@@ -3705,9 +3675,10 @@ use IO, only: &
      endselect
    endif
  enddo
-#endif
 
 610 FORMAT(A300)
+#endif
+
 620 end subroutine mesh_get_damaskOptions
 
 
@@ -3715,19 +3686,17 @@ use IO, only: &
 !> @brief calculation of IP interface areas, allocate globals '_ipArea', and '_ipAreaNormal'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipAreas
- 
  use math, only: &
    math_norm3, &
    math_vectorproduct
                  
- 
  implicit none
  integer(pInt) :: e,t,g,c,i,f,n,m
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
- allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ;              mesh_ipArea       = 0.0_pReal
- allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)) ; mesh_ipAreaNormal = 0.0_pReal
+ allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems));              mesh_ipArea       = 0.0_pReal
+ allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)); mesh_ipAreaNormal = 0.0_pReal
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,nodePos,normal,normals)
    do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems

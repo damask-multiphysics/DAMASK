@@ -727,14 +727,14 @@ pure function math_exp33(A,n)
  order = 5
  if (present(n)) order = n
 
- B = math_identity2nd(3)                                                       ! init
- invfac = 1.0_pReal                                                            ! 0!
- math_exp33 = B                                                                ! A^0 = eye2
+ B = math_identity2nd(3)                                                                            ! init
+ invfac = 1.0_pReal                                                                                 ! 0!
+ math_exp33 = B                                                                                     ! A^0 = eye2
 
  do i = 1_pInt,n
-   invfac = invfac/real(i)                                                     ! invfac = 1/i!
+   invfac = invfac/real(i)                                                                          ! invfac = 1/i!
    B = math_mul33x33(B,A)
-   math_exp33 = math_exp33 + invfac*B                                          ! exp = SUM (A^i)/i!
+   math_exp33 = math_exp33 + invfac*B                                                               ! exp = SUM (A^i)/i!
  enddo
 
 end function math_exp33

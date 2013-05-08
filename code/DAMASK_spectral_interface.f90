@@ -250,7 +250,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
       /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
- !here check if exists and use chdir!
+ !> @ToDO here check if exists and use chdir!
  else                                                                                               ! using path to geometry file as working dir
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
@@ -383,8 +383,8 @@ function rectifyPath(path)
  l = len_trim(path)
  rectifyPath = path
  do i = l,3,-1
-    if ( rectifyPath(i-1:i) == '.'//pathSep .and. rectifyPath(i-2:i-2) /= '.' ) &
-      rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
+   if ( rectifyPath(i-1:i) == '.'//pathSep .and. rectifyPath(i-2:i-2) /= '.' ) &
+     rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
  enddo
 
  !remove ../ and corresponding directory from rectifyPath

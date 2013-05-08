@@ -51,12 +51,13 @@ program DAMASK_spectral_Driver
    IO_read_jobBinaryFile, &
    IO_write_jobBinaryFile, &
    IO_intOut, &
-   IO_warning
+   IO_warning, &
+   IO_timeStamp
+ use debug, only: &
+   debug_level, &
+   debug_spectral, &
+   debug_levelBasic
  use math                                                                                           ! need to include the whole module for FFTW
- use mesh,  only : &
-   res, &
-   geomdim, &
-   mesh_NcpElems
  use CPFEM, only: &
    CPFEM_initAll
  use FEsolving, only: &
@@ -71,10 +72,10 @@ program DAMASK_spectral_Driver
    materialpoint_sizeResults, &
    materialpoint_results
  use DAMASK_spectral_Utilities, only: &
+   grid, &
+   geomSize, &
    tBoundaryCondition, &
    tSolutionState, &
-   debugGeneral, &
-   debugDivergence, &
    cutBack
  use DAMASK_spectral_SolverBasic
 #ifdef PETSc
@@ -150,8 +151,9 @@ program DAMASK_spectral_Driver
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_driver init  -+>>>'
- write(6,'(a)')   ' $Id$'
+ write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_driver init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
 !--------------------------------------------------------------------------------------------------
@@ -327,7 +329,8 @@ program DAMASK_spectral_Driver
    case (DAMASK_spectral_SolverBasicPETSc_label)
      call basicPETSc_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverAL_label)
-     if(debugDivergence) call IO_warning(42_pInt, ext_msg='debug Divergence')
+     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+       call IO_warning(42_pInt, ext_msg='debug Divergence')
      call AL_init(loadCases(1)%temperature)
 #endif
    case default
@@ -349,10 +352,10 @@ program DAMASK_spectral_Driver
    write(resUnit) 'load',       trim(loadCaseFile)                                                  ! ... and write header
    write(resUnit) 'workingdir', trim(getSolverWorkingDirectoryName())
    write(resUnit) 'geometry',   trim(geometryFile)
-   !write(resUnit) 'grid', res
-   !write(resUnit) 'size',  geomdim
-   write(resUnit) 'resolution', res
-   write(resUnit) 'dimension',  geomdim
+   !write(resUnit) 'grid', grid
+   !write(resUnit) 'size',  geomSize
+   write(resUnit) 'resolution', grid
+   write(resUnit) 'dimension',  geomSize
    write(resUnit) 'materialpoint_sizeResults', materialpoint_sizeResults
    write(resUnit) 'loadcases',  size(loadCases)
    write(resUnit) 'frequencies', loadCases%outputfrequency                                          ! one entry per currentLoadCase
@@ -361,11 +364,12 @@ program DAMASK_spectral_Driver
    write(resUnit) 'increments', loadCases%incs                                                      ! one entry per currentLoadCase
    write(resUnit) 'startingIncrement', restartInc - 1_pInt                                          ! start with writing out the previous inc
    write(resUnit) 'eoh'                                                                             ! end of header
-   write(resUnit) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:mesh_NcpElems)    ! initial (non-deformed or read-in) results
+   write(resUnit) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:product(grid))    ! initial (non-deformed or read-in) results
    open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                '.sta',form='FORMATTED',status='REPLACE')
    write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                   ! statistics file
-   if (debugGeneral) write(6,'(/,a)') ' header of result file written out'
+   if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
+     write(6,'(/,a)') ' header of result file written out'
    flush(6)
  endif
 

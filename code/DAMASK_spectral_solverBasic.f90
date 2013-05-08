@@ -73,6 +73,10 @@ subroutine basic_init(temperature)
    IO_write_JobBinaryFile, &
    IO_intOut, &
    IO_timeStamp
+ use debug, only: &
+   debug_level, &
+   debug_spectral, &
+   debug_spectralRestart
  use FEsolving, only: &
    restartInc
  use DAMASK_interface, only: &
@@ -81,20 +85,17 @@ subroutine basic_init(temperature)
    Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
-   debugRestart
- use mesh, only: &
-   res, &
+   grid, &
    wgt, &
-   geomdim, &
-   scaledDim, &
+   geomSize
+ use mesh, only: &
    mesh_ipCoordinates, &
-   mesh_NcpElems, &
    mesh_deformedCoordsFFT
 
  implicit none
  real(pReal), intent(inout) :: &
    temperature
- real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
+ real(pReal), dimension(:,:,:,:,:), allocatable :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
  real(pReal), dimension(3,3,3,3) :: &
@@ -105,22 +106,23 @@ subroutine basic_init(temperature)
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- write(6,'(a,3(f12.5)/)') ' scaledDim  x y z:',      scaledDim
 
+ allocate (P         (3,3,grid(1),  grid(2),grid(3)),  source = 0.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
- allocate (F         (3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (F_lastInc (3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (Fdot      (3,3,res(1),  res(2),res(3)),  source = 0.0_pReal)
+ allocate (F         (3,3,grid(1),  grid(2),grid(3)),  source = 0.0_pReal)
+ allocate (F_lastInc (3,3,grid(1),  grid(2),grid(3)),  source = 0.0_pReal)
+ allocate (Fdot      (3,3,grid(1),  grid(2),grid(3)),  source = 0.0_pReal)
    
 !--------------------------------------------------------------------------------------------------
 ! init fields and average quantities
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                           ! initialize to identity
+   F         = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                        ! initialize to identity
    F_lastInc = F
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
-   if (debugRestart) write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-                             'reading values of increment', restartInc - 1_pInt, 'from file'
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+     write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+     'reading values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
    call IO_read_jobBinaryFile(777,'F',&
                                                   trim(getSolverJobName()),size(F))
@@ -147,8 +149,9 @@ subroutine basic_init(temperature)
    read (777,rec=1) temp3333_Real
    close (777)
  endif
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,F),[3,1,mesh_NcpElems])
- call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,C_minmaxAvg,temp33_Real,.false.,math_I3)     ! constitutive response with no deformation in no time to get reference stiffness
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,F),[3,1,product(grid)])
+ call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,C_minmaxAvg,&
+                                     temp33_Real,.false.,math_I3)                                   ! constitutive response with no deformation in no time to get reference stiffness
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
    temp3333_Real = C_minmaxAvg
  endif 
@@ -173,15 +176,15 @@ type(tSolutionState) function &
    math_transpose33, &
    math_mul3333xx33
  use mesh, only: &
-   res,&
-   geomdim, &
-   wgt, &
    mesh_ipCoordinates,&
-   mesh_NcpElems, &
    mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobBinaryFile, &
    IO_intOut
+ use debug, only: &
+   debug_level, &
+   debug_spectral, &
+   debug_spectralRotation
  use DAMASK_spectral_Utilities, only: &
    tBoundaryCondition, &
    field_real, &
@@ -194,7 +197,9 @@ type(tSolutionState) function &
    Utilities_updateGamma, &
    Utilities_constitutiveResponse, &
    Utilities_calculateRate, &
-   debugRotation
+   grid,&
+   geomSize, &
+   wgt
  use FEsolving, only: &
    restartWrite, &
    restartRead, &
@@ -224,7 +229,7 @@ type(tSolutionState) function &
  real(pReal), dimension(3,3)            :: &                            
    F_aim_lastIter, &                                                                                !< aim of last iteration
    P_av
- real(pReal), dimension(3,3,res(1),res(2),res(3)) :: P
+ real(pReal), dimension(3,3,grid(1),grid(2),grid(3)) :: P
 !--------------------------------------------------------------------------------------------------
 ! loop variables, convergence etc.
  real(pReal)   :: err_div, err_stress       
@@ -261,7 +266,7 @@ type(tSolutionState) function &
    C = C_lastInc
  else
    C_lastInc = C
-   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,F),[3,1,mesh_NcpElems])
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,F),[3,1,product(grid)])
 
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
@@ -298,7 +303,7 @@ type(tSolutionState) function &
 ! report begin of new iteration
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',iter, '≤', itmax
-   if (debugRotation) &
+   if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab)=', &
                                         math_transpose33(math_rotate_backward33(F_aim,rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
@@ -322,13 +327,13 @@ type(tSolutionState) function &
 !--------------------------------------------------------------------------------------------------
 ! updated deformation gradient using fix point algorithm of basic scheme
    field_real = 0.0_pReal
-   field_real(1:res(1),1:res(2),1:res(3),1:3,1:3) = reshape(P,[res(1),res(2),res(3),3,3],&
-                                                               order=[4,5,1,2,3]) ! field real has a different order
+   field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3) = reshape(P,[grid(1),grid(2),grid(3),3,3],&
+                                                               order=[4,5,1,2,3])                   ! field real has a different order
    call Utilities_FFTforward()
    err_div = Utilities_divergenceRMS()
    call Utilities_fourierConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,rotation_BC))
    call Utilities_FFTbackward()
-   F = F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),shape(F),order=[3,4,5,1,2])                       ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
+   F = F - reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),shape(F),order=[3,4,5,1,2])    ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
    basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
    write(6,'(/,a)') ' =========================================================================='
    flush(6)
@@ -368,7 +373,7 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
    err_stress_tol, &
    pAvgDivL2
   
- pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(pAvgDiv,math_transpose33(pAvgDiv)))))                    ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
+ pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(pAvgDiv,math_transpose33(pAvgDiv)))))     ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
  err_stress_tol = max(maxval(abs(pAvgStress))*err_stress_tolrel,err_stress_tolabs)
  
  basic_Converged = all([ err_div/pAvgDivL2/err_div_tol,&

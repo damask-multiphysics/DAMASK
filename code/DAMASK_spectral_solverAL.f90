@@ -94,22 +94,22 @@ module DAMASK_spectral_solverAL
    AL_solution, &
    AL_destroy
  external :: &
-  VecDestroy, &
-  DMDestroy, &
-  DMDACreate3D, &
-  DMCreateGlobalVector, &
-  DMDASetLocalFunction, &
-  PETScFinalize, &
-  SNESDestroy, &
-  SNESGetNumberFunctionEvals, &
-  SNESGetIterationNumber, &
-  SNESSolve, &
-  SNESSetDM, &
-  SNESGetConvergedReason, &
-  SNESSetConvergenceTest, &
-  SNESSetFromOptions, &
-  SNESCreate, &
-  MPI_Abort
+   VecDestroy, &
+   DMDestroy, &
+   DMDACreate3D, &
+   DMCreateGlobalVector, &
+   DMDASetLocalFunction, &
+   PETScFinalize, &
+   SNESDestroy, &
+   SNESGetNumberFunctionEvals, &
+   SNESGetIterationNumber, &
+   SNESSolve, &
+   SNESSetDM, &
+   SNESGetConvergedReason, &
+   SNESSetConvergenceTest, &
+   SNESSetFromOptions, &
+   SNESCreate, &
+   MPI_Abort
 
 contains
 
@@ -119,9 +119,14 @@ contains
 subroutine AL_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
+   IO_intOut, &
    IO_read_JobBinaryFile, &
    IO_write_JobBinaryFile, &
    IO_timeStamp
+ use debug, only : &
+  debug_level, &
+  debug_spectral, &
+  debug_spectralRestart
  use FEsolving, only: &
    restartInc
  use DAMASK_interface, only: &
@@ -130,14 +135,12 @@ subroutine AL_init(temperature)
    Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
-   debugRestart
+   grid, &
+   geomSize, &
+   wgt
  use numerics, only: &
    petsc_options  
  use mesh, only: &
-   res, &
-   geomdim, &
-   wgt, &
-   mesh_NcpElems, &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
  use math, only: &
@@ -148,7 +151,7 @@ subroutine AL_init(temperature)
    temperature
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
- real(pReal), dimension(3,3,  res(1),  res(2),res(3)) ::  P
+ real(pReal), dimension(:,:,:,:,:), allocatable :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
  real(pReal), dimension(3,3,3,3) :: &
@@ -164,18 +167,21 @@ subroutine AL_init(temperature)
  write(6,'(a)') ' $Id: DAMASK_spectral_SolverAL.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
  write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
- 
- allocate (F_lastInc  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (Fdot  (3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)                               !< @Todo  sourced allocation allocate(Fdot,source = F_lastInc)
- allocate (F_tau_lastInc(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
- allocate (F_tauDot(3,3,  res(1),  res(2),res(3)),  source = 0.0_pReal)
+
+ allocate (P            (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+!--------------------------------------------------------------------------------------------------
+! allocate global fields
+ allocate (F_lastInc    (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)                           !< @Todo  sourced allocation allocate(Fdot,source = F_lastInc)
+ allocate (Fdot         (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (F_tau_lastInc(3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (F_tauDot     (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call DMDACreate3d(PETSC_COMM_WORLD,                               &
            DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
-           DMDA_STENCIL_BOX,res(1),res(2),res(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
+           DMDA_STENCIL_BOX,grid(1),grid(2),grid(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
            18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
  CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
@@ -191,13 +197,14 @@ subroutine AL_init(temperature)
  F => xx_psc(0:8,:,:,:)
  F_tau => xx_psc(9:17,:,:,:)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc         = spread(spread(spread(math_I3,3,res(1)),4,res(2)),5,res(3))                   ! initialize to identity
+   F_lastInc     = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                    ! initialize to identity
    F_tau_lastInc = F_lastInc
-   F = reshape(F_lastInc,[9,res(1),res(2),res(3)])
+   F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_tau = F
- elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
-   if (debugRestart) write(6,'(/,a,i6,a)') ' reading values of increment ',&
-                                             restartInc - 1_pInt,' from file' 
+ elseif (restartInc > 1_pInt) then 
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+     write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+     'reading values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
    call IO_read_jobBinaryFile(777,'F',&
                                                 trim(getSolverJobName()),size(F))
@@ -230,8 +237,8 @@ subroutine AL_init(temperature)
    read (777,rec=1) C_minmaxAvg
    close (777)
  endif
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
-                                              F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
  call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,temp3333_Real,temp3333_Real2,&
                                 temp33_Real,.false.,math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
@@ -263,14 +270,13 @@ type(tSolutionState) function &
    math_rotate_backward33, &
    math_invSym3333
 use mesh, only: &
-   res, &
-   geomdim, &
-   mesh_NcpElems, &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobBinaryFile
  use DAMASK_spectral_Utilities, only: &
+   grid, &
+   geomSize, &
    tBoundaryCondition, &
    Utilities_forwardField, &
    Utilities_calculateRate, &
@@ -342,8 +348,8 @@ use mesh, only: &
 
  if ( cutBack) then 
    F_aim = F_aim_lastInc
-   F_tau= reshape(F_tau_lastInc,[9,res(1),res(2),res(3)]) 
-   F = reshape(F_lastInc,[9,res(1),res(2),res(3)]) 
+   F_tau= reshape(F_tau_lastInc,[9,grid(1),grid(2),grid(3)]) 
+   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
    C = C_lastInc
  else
    C_lastInc = C
@@ -359,23 +365,23 @@ use mesh, only: &
 
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
-   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomdim,reshape(&
-                                                F,[3,3,res(1),res(2),res(3)])),[3,1,mesh_NcpElems])
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,res(1),res(2),res(3)]))
+                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
    F_tauDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_tau_lastInc,reshape(F_tau,[3,3,res(1),res(2),res(3)]))  
+                  timeinc_old,guess,F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid(3)]))  
                 
-   F_lastInc     = reshape(F,       [3,3,res(1),res(2),res(3)])
-   F_tau_lastInc = reshape(F_tau,[3,3,res(1),res(2),res(3)])
+   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
+   F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid(3)])
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
 !--------------------------------------------------------------------------------------------------
 ! update local deformation gradient
  F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
-                               math_rotate_backward33(F_aim,rotation_BC)),[9,res(1),res(2),res(3)])
- F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot),  [9,res(1),res(2),res(3)]) ! does not have any average value as boundary condition
+                               math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid(3)])
+ F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot),  [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
  CHKERRQ(ierr)
 
@@ -422,22 +428,25 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    itmin, &
    polarAlpha, &
    polarBeta
+ use IO, only: &
+   IO_intOut
  use math, only: &
    math_rotate_backward33, &
    math_transpose33, &
    math_mul3333xx33, &
    math_invSym3333
- use mesh, only: &
-   res, &
-   wgt
  use DAMASK_spectral_Utilities, only: &
+   grid, &
+   wgt, &
    field_real, &
    Utilities_FFTforward, &
    Utilities_fourierConvolution, &
    Utilities_FFTbackward, &
-   Utilities_constitutiveResponse, &
-   debugRotation
- use IO, only: IO_intOut
+   Utilities_constitutiveResponse
+ use debug, only: &
+   debug_level, &
+   debug_spectral, &
+   debug_spectralRotation
  use homogenization, only: &
    materialpoint_P, &
    materialpoint_dPdF
@@ -490,7 +499,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  if (callNo == 0 .or. mod(callNo,2) == 1_pInt) then
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',reportIter, '≤', itmax
-   if (debugRotation) &
+   if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
                                  math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
@@ -503,7 +512,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! 
  field_real = 0.0_pReal
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+ do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
    field_real(i,j,k,1:3,1:3) = math_mul3333xx33(C_scale,(polarAlpha + polarBeta)*F(1:3,1:3,i,j,k) - &
                                                                (polarAlpha)*F_tau(1:3,1:3,i,j,k))
  enddo; enddo; enddo
@@ -516,8 +525,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
- residual_F_tau = polarBeta*F - reshape(field_real(1:res(1),1:res(2),1:res(3),1:3,1:3),&
-                                      [3,3,res(1),res(2),res(3)],order=[3,4,5,1,2])
+ residual_F_tau = polarBeta*F - reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),&
+                                      [3,3,grid(1),grid(2),grid(3)],order=[3,4,5,1,2])
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
@@ -534,7 +543,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! constructing residual
  n_ele = 0_pInt
  err_p = 0.0_pReal
- do k = 1_pInt, res(3); do j = 1_pInt, res(2); do i = 1_pInt, res(1)
+ do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
    n_ele = n_ele + 1_pInt
    err_p = err_p + sum((math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
                         (F_tau(1:3,1:3,i,j,k) - &

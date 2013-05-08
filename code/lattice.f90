@@ -1018,7 +1018,8 @@ pure function lattice_symmetrizeC66(structName,C66)
 ! TwinTwinInteraction
 !--------------------------------------------------------------------------------------------------
 function lattice_configNchunks(struct)
- use prec, only: pReal,pInt
+ use prec, only: &
+   pInt
 
  implicit none
  integer(pInt), dimension(6)  :: lattice_configNchunks
