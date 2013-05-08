@@ -98,10 +98,7 @@ subroutine constitutive_init
    mesh_maxNips, &
    mesh_NcpElems, &
    mesh_element, &
-   mesh_ipNeighborhood, &
-   mesh_maxNipNeighbors, &
    FE_Nips, &
-   FE_NipNeighbors, &
    FE_geomtype
  use material, only: &
    material_phase, &
@@ -153,10 +150,9 @@ subroutine constitutive_init
  call constitutive_nonlocal_init(fileunit)  
  close(fileunit)
  
- write(6,*)
- write(6,*) '<<<+-  constitutive init  -+>>>'
- write(6,*) '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   '<<<+-  constitutive init  -+>>>'
+ write(6,'(a)')     '$Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
 !--------------------------------------------------------------------------------------------------
@@ -765,8 +761,7 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, sub
    debug_levelBasic
  use mesh, only: &
    mesh_NcpElems, &
-   mesh_maxNips, &
-   mesh_maxNipNeighbors
+   mesh_maxNips
  use material, only: &
    phase_plasticity, &
    material_phase, &
@@ -862,13 +857,9 @@ subroutine constitutive_collectDeltaState(Tstar_v, Temperature, g, i, e)
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
    phase_plasticity, &
-   material_phase, &
-   homogenization_maxNgrains
+   material_phase
  use constitutive_none, only: &
    constitutive_none_deltaState, &
    constitutive_none_label

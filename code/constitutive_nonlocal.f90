@@ -1438,7 +1438,7 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
     rhoExcessGradient_over_rho = 0.0_pReal
     forall (c = 1_pInt:2_pInt) &
       rhoTotal(c) = (sum(abs(rhoSgl(s,[2*c-1,2*c,2*c+3,2*c+4]))) + rhoDip(s,c) + sum(neighboring_rhoTotal(c,s,:))) &
-                  / (1_pInt + nRealNeighbors)
+                  / real(1_pInt + nRealNeighbors,pReal)
     forall (c = 1_pInt:2_pInt, rhoTotal(c) > 0.0_pReal) &
       rhoExcessGradient_over_rho(c) = rhoExcessGradient(c) / rhoTotal(c)
     
