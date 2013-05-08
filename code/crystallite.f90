@@ -309,6 +309,8 @@ use math, only: &
          mySize = 9_pInt
        case('elasmatrix')
          mySize = 36_pInt     
+       case('neighboringip','neighboringelement')
+         mySize = mesh_maxNipNeighbors
        case default
          mySize = 0_pInt     
      end select
@@ -3426,49 +3428,53 @@ end subroutine crystallite_orientations
 !--------------------------------------------------------------------------------------------------
 !> @brief return results of particular grain
 !--------------------------------------------------------------------------------------------------
-function crystallite_postResults(&
-   dt,&             ! time increment
-   g,&              ! grain number
-   i,&              ! integration point number
-   e &              ! element number
- )
- use math, only:                      math_qToEuler, &
-                                      math_qToAxisAngle, &
-                                      math_mul33x33, &
-                                      math_transpose33, &
-                                      math_det33, &
-                                      math_I3, &
-                                      inDeg, &
-                                      math_Mandel6to33, &
-                                      math_qMul, &
-                                      math_qConj
- use mesh, only:                      mesh_element, &
-                                      mesh_ipVolume, &
-                                      mesh_ipCoordinates
- use material, only:                  microstructure_crystallite, &
-                                      crystallite_Noutput, &
-                                      material_phase, &
-                                      material_texture, &
-                                      homogenization_Ngrains
- use constitutive, only:              constitutive_sizePostResults, &
-                                      constitutive_postResults, &
-                                      constitutive_homogenizedC
+function crystallite_postResults(dt, gr, ip, el)
+ use math, only: &
+   math_qToEuler, &
+   math_qToAxisAngle, &
+   math_mul33x33, &
+   math_transpose33, &
+   math_det33, &
+   math_I3, &
+   inDeg, &
+   math_Mandel6to33, &
+   math_qMul, &
+   math_qConj
+ use mesh, only: &
+   mesh_element, &
+   mesh_ipVolume, &
+   mesh_ipCoordinates, &
+   mesh_maxNipNeighbors, &
+   mesh_ipNeighborhood, &
+   FE_NipNeighbors, &
+   FE_geomtype, &
+   FE_celltype
+ use material, only: &
+   microstructure_crystallite, &
+   crystallite_Noutput, &
+   material_phase, &
+   material_texture, &
+   homogenization_Ngrains
+ use constitutive, only: &
+   constitutive_sizePostResults, &
+   constitutive_postResults, &
+   constitutive_homogenizedC
  
  implicit none
- integer(pInt), intent(in)::          e, &                          ! element index
-                                      i, &                          ! integration point index
-                                      g                             ! grain index
- real(pReal), intent(in)::            dt                            ! time increment
+ integer(pInt), intent(in)::          el, &                         !< element index
+                                      ip, &                         !< integration point index
+                                      gr                            !< grain index
+ real(pReal), intent(in)::            dt                            !< time increment
 
- real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,e)))+ &
-                        1+constitutive_sizePostResults(g,i,e)) :: crystallite_postResults
+ real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &
+                        1+constitutive_sizePostResults(gr,ip,el)) :: crystallite_postResults
  
  real(pReal), dimension(3,3) ::       Ee
  real(pReal), dimension(4) ::         rotation
  real(pReal)                          detF
- integer(pInt)                        o,c,crystID,mySize
+ integer(pInt)                        o,c,crystID,mySize,n
 
- crystID = microstructure_crystallite(mesh_element(4,e))
+ crystID = microstructure_crystallite(mesh_element(4,el))
 
  crystallite_postResults = 0.0_pReal
  c = 0_pInt
@@ -3480,91 +3486,101 @@ function crystallite_postResults(&
    select case(crystallite_output(o,crystID))
      case ('phase')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = real(material_phase(g,i,e),pReal)                                           ! phaseID of grain
+       crystallite_postResults(c+1) = real(material_phase(gr,ip,el),pReal)                                           ! phaseID of grain
      case ('texture')
        mySize = 1_pInt
-       crystallite_postResults(c+1) = real(material_texture(g,i,e),pReal)                                         ! textureID of grain
+       crystallite_postResults(c+1) = real(material_texture(gr,ip,el),pReal)                                         ! textureID of grain
      case ('volume')
        mySize = 1_pInt
-       detF = math_det33(crystallite_partionedF(1:3,1:3,g,i,e))                                                   ! V_current = det(F) * V_reference
-       crystallite_postResults(c+1) = detF * mesh_ipVolume(i,e) / homogenization_Ngrains(mesh_element(3,e))       ! grain volume (not fraction but absolute)
+       detF = math_det33(crystallite_partionedF(1:3,1:3,gr,ip,el))                                                   ! V_current = det(F) * V_reference
+       crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) / homogenization_Ngrains(mesh_element(3,el))       ! grain volume (not fraction but absolute)
      case ('orientation')
        mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,g,i,e)                                 ! grain orientation as quaternion
+       crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,gr,ip,el)                                 ! grain orientation as quaternion
      case ('eulerangles')
        mySize = 3_pInt
-       crystallite_postResults(c+1:c+mySize) = inDeg * math_qToEuler(crystallite_orientation(1:4,g,i,e)) ! grain orientation as Euler angles in degree
+       crystallite_postResults(c+1:c+mySize) = inDeg * math_qToEuler(crystallite_orientation(1:4,gr,ip,el)) ! grain orientation as Euler angles in degree
      case ('grainrotation')
        mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = math_qToAxisAngle(crystallite_rotation(1:4,g,i,e))        ! grain rotation away from initial orientation as axis-angle in crystal reference coordinates
+       crystallite_postResults(c+1:c+mySize) = math_qToAxisAngle(crystallite_rotation(1:4,gr,ip,el))        ! grain rotation away from initial orientation as axis-angle in crystal reference coordinates
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                                        ! angle in degree
      case ('grainrotationx')
        mySize = 1_pInt
-       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
-                                                                 crystallite_rotation(1:4,g,i,e)), &
-                                                                 math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,gr,ip,el), &
+                                                                 crystallite_rotation(1:4,gr,ip,el)), &
+                                                                 math_qConj(crystallite_orientation(1:4,gr,ip,el)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(1) * rotation(4)                                           ! angle in degree
      case ('grainrotationy')
        mySize = 1_pInt
-       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
-                                                                 crystallite_rotation(1:4,g,i,e)), &
-                                                                 math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,gr,ip,el), &
+                                                                 crystallite_rotation(1:4,gr,ip,el)), &
+                                                                 math_qConj(crystallite_orientation(1:4,gr,ip,el)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(2) * rotation(4)                                           ! angle in degree
      case ('grainrotationz')
        mySize = 1_pInt
-       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,g,i,e), &
-                                                                 crystallite_rotation(1:4,g,i,e)), &
-                                                                 math_qConj(crystallite_orientation(1:4,g,i,e)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,gr,ip,el), &
+                                                                 crystallite_rotation(1:4,gr,ip,el)), &
+                                                                 math_qConj(crystallite_orientation(1:4,gr,ip,el)))) ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(3) * rotation(4)                                           ! angle in degree
      case ('ipcoords')
        mySize = 3_pInt
-       crystallite_postResults(c+1:c+mySize) = mesh_ipCoordinates(1:3,i,e)                                        ! current ip coordinates
+       crystallite_postResults(c+1:c+mySize) = mesh_ipCoordinates(1:3,ip,el)                                        ! current ip coordinates
 
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
   
      case ('defgrad','f')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_partionedF(1:3,1:3,g,i,e)),[mySize])
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_partionedF(1:3,1:3,gr,ip,el)),[mySize])
      case ('e')
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = 0.5_pReal * reshape((math_mul33x33( &
-                                               math_transpose33(crystallite_partionedF(1:3,1:3,g,i,e)), &
-                                               crystallite_partionedF(1:3,1:3,g,i,e)) - math_I3),[mySize])
+                                               math_transpose33(crystallite_partionedF(1:3,1:3,gr,ip,el)), &
+                                               crystallite_partionedF(1:3,1:3,gr,ip,el)) - math_I3),[mySize])
      case ('fe')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)),[mySize])
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fe(1:3,1:3,gr,ip,el)),[mySize])
      case ('ee')
-       Ee = 0.5_pReal * (math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)), crystallite_Fe(1:3,1:3,g,i,e)) - math_I3)
+       Ee = 0.5_pReal * (math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,gr,ip,el)), crystallite_Fe(1:3,1:3,gr,ip,el)) - math_I3)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(Ee,[mySize])
      case ('fp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fp(1:3,1:3,g,i,e)),[mySize])
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Fp(1:3,1:3,gr,ip,el)),[mySize])
      case ('lp')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Lp(1:3,1:3,g,i,e)),[mySize])
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_Lp(1:3,1:3,gr,ip,el)),[mySize])
      case ('p','firstpiola','1stpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_P(1:3,1:3,g,i,e)),[mySize])
+       crystallite_postResults(c+1:c+mySize) = reshape(math_transpose33(crystallite_P(1:3,1:3,gr,ip,el)),[mySize])
      case ('s','tstar','secondpiola','2ndpiola')
        mySize = 9_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)),[mySize])
+       crystallite_postResults(c+1:c+mySize) = reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,gr,ip,el)),[mySize])
      case ('elasmatrix')
        mySize = 36_pInt
-       crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(g,i,e),(/mySize/))
+       crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(gr,ip,el),[mySize])
+     case('neighboringelement')
+       mySize = mesh_maxNipNeighbors
+       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
+       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
+         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(1,n,ip,el),pReal)
+     case('neighboringip')
+       mySize = mesh_maxNipNeighbors
+       crystallite_postResults(c+1:c+mySize) = 0.0_pReal
+       forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
+         crystallite_postResults(c+n) = real(mesh_ipNeighborhood(2,n,ip,el),pReal)
    end select
    c = c + mySize
  enddo
 
- crystallite_postResults(c+1) = real(constitutive_sizePostResults(g,i,e),pReal)             ! size of constitutive results
+ crystallite_postResults(c+1) = real(constitutive_sizePostResults(gr,ip,el),pReal)             ! size of constitutive results
  c = c + 1_pInt
- if (constitutive_sizePostResults(g,i,e) > 0_pInt) &
-   crystallite_postResults(c+1:c+constitutive_sizePostResults(g,i,e)) = constitutive_postResults(crystallite_Tstar_v(1:6,g,i,e), &
+ if (constitutive_sizePostResults(gr,ip,el) > 0_pInt) &
+   crystallite_postResults(c+1:c+constitutive_sizePostResults(gr,ip,el)) = constitutive_postResults(crystallite_Tstar_v(1:6,gr,ip,el), &
                                                                                                  crystallite_Fe, &
-                                                                                                 crystallite_Temperature(g,i,e), &
-                                                                                                 dt, g, i, e)
- c = c + constitutive_sizePostResults(g,i,e)
+                                                                                                 crystallite_Temperature(gr,ip,el), &
+                                                                                                 dt, gr, ip, el)
+ c = c + constitutive_sizePostResults(gr,ip,el)
 
 end function crystallite_postResults
 
