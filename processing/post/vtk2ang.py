@@ -4,17 +4,7 @@
  
 import os,numpy,string,math,sys
 from optparse import OptionParser, Option
-from vtk import vtkUnstructuredGridReader, \
-                vtkWarpVector, \
-                vtkCellCenters, \
-                vtkDataSetSurfaceFilter, \
-                vtkPoints, \
-                vtkCellArray, \
-                vtkVertex, \
-                vtkPolyData, \
-                vtkSelectEnclosedPoints, \
-                vtkKdTree, \
-                vtkIdList
+from vtk import *
  
 
 # -----------------------------
@@ -115,6 +105,8 @@ parser.add_option('--interpolation',        dest='interpolation', type='int', \
                                             help='number of points for linear interpolation [%default]')
 parser.add_option('--verbose',              dest='verbose', action='store_true',
                                             help='verbose mode [%default]')
+parser.add_option('--visualize',            dest='visualize', action='store_true',
+                                            help='visualize geometry [%default]')
 
 parser.set_defaults(dispLabel = 'displacement')
 parser.set_defaults(eulerLabel = ['1_eulerangles','2_eulerangles','3_eulerangles'])
@@ -126,8 +118,9 @@ parser.set_defaults(distance = 0.0)
 parser.set_defaults(scale = 1.0)
 parser.set_defaults(resolution = 1.0)
 parser.set_defaults(dispScaling = 1.0)
-parser.set_defaults(verbose = False)
 parser.set_defaults(interpolation = 1)
+parser.set_defaults(verbose = False)
+parser.set_defaults(visualize = False)
 (options,filenames) = parser.parse_args()
 
 
@@ -368,6 +361,7 @@ for filename in filenames:
   if options.verbose: 
     sys.stdout.write("\nWRITING OUT ANG FILES\n")
     sys.stdout.write("  scaling all length with %f\n"%options.scale)
+  x0,y0,z0 = numpy.dot(R,pointgrid.GetPoint(0))                    # first point on slice defines origin
   for sliceN in range(Npoints[2]):
     
     # Open file and write header
@@ -401,7 +395,68 @@ for filename in filenames:
         # write data to ang file
 
         x,y,z = numpy.dot(R,pointgrid.GetPoint(i))                  # point in rotated TSL system
+        x -= x0                                                     # first point on slice defines origin 
+        y -= y0                                                     # first point on slice defines origin 
         x *= options.scale
         y *= options.scale
         angfile.write(getDataLine(interpolatedPhi,x,y,enclosedPoints.IsInside(i)))
       
+
+  # Visualize slices
+  
+  if options.visualize:
+    meshMapper = vtkDataSetMapper()
+    meshMapper.SetInput(surface)
+    meshMapper.ScalarVisibilityOff()          # do not use scalar data for coloring
+    meshActor = vtkActor()
+    meshActor.SetMapper(meshMapper)
+    meshActor.GetProperty().SetOpacity(0.5)
+    meshActor.GetProperty().SetColor(1,1,0)
+    meshActor.GetProperty().EdgeVisibilityOn()
+    
+    boxpoints = vtkPoints()
+    for n in range(8):
+      P = [rotatedbox[0][(n/1)%2],
+           rotatedbox[1][(n/2)%2], 
+           rotatedbox[2][(n/4)%2]]
+      boxpoints.InsertNextPoint(list(numpy.dot(R.T,numpy.array(P))))
+    box = vtkHexahedron()
+    for n,i in enumerate([0,1,3,2,4,5,7,6]):
+      box.GetPointIds().SetId(n,i)
+    boxgrid = vtkUnstructuredGrid()
+    boxgrid.SetPoints(boxpoints)
+    boxgrid.InsertNextCell(box.GetCellType(), box.GetPointIds())
+    boxsurfaceFilter = vtkDataSetSurfaceFilter()
+    boxsurfaceFilter.SetInput(boxgrid)
+    boxsurfaceFilter.Update()
+    boxsurface = boxsurfaceFilter.GetOutput()
+
+    boxMapper = vtkDataSetMapper()
+    boxMapper.SetInput(boxsurface)
+    boxActor = vtkActor()
+    boxActor.SetMapper(boxMapper)
+    boxActor.GetProperty().SetOpacity(0.1)
+    boxActor.GetProperty().SetLineWidth(2.0)
+    boxActor.GetProperty().EdgeVisibilityOn()
+
+    gridMapper = vtkDataSetMapper()
+    gridMapper.SetInput(pointgrid)
+    gridActor = vtkActor()
+    gridActor.SetMapper(gridMapper)
+    gridActor.GetProperty().SetColor(0,0,0)
+    gridActor.GetProperty().SetPointSize(3)
+
+
+    renderer = vtkRenderer()
+    renderWindow = vtkRenderWindow()
+    renderWindow.AddRenderer(renderer)
+    renderWindowInteractor = vtkRenderWindowInteractor()
+    renderWindowInteractor.SetRenderWindow(renderWindow)
+    renderer.AddActor(meshActor)
+    renderer.AddActor(boxActor)
+    renderer.AddActor(gridActor)
+    renderer.SetBackground(1,1,1)
+     
+    renderWindow.Render()
+    renderWindowInteractor.Start()
+
