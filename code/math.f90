@@ -1232,10 +1232,14 @@ pure function math_Voigt66to3333(m66)
  integer(pInt) :: i,j
 
  forall (i=1_pInt:6_pInt,j=1_pInt:6_pInt)
-   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
-   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
-   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
-   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
+   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(1,j),mapVoigt(2,j)) =  &
+                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
+   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(1,j),mapVoigt(2,j)) = &
+                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
+   math_Voigt66to3333(mapVoigt(1,i),mapVoigt(2,i),mapVoigt(2,j),mapVoigt(1,j)) = &
+                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
+   math_Voigt66to3333(mapVoigt(2,i),mapVoigt(1,i),mapVoigt(2,j),mapVoigt(1,j)) = & 
+                                                            invnrmVoigt(i)*invnrmVoigt(j)*m66(i,j)
  end forall
 
 end function math_Voigt66to3333
@@ -1251,10 +1255,10 @@ function math_qRand()
  real(pReal), dimension(3) :: rnd
 
  call halton(3_pInt,rnd)
- math_qRand(1) = cos(2.0_pReal*pi*rnd(1))*sqrt(rnd(3))
- math_qRand(2) = sin(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
- math_qRand(3) = cos(2.0_pReal*pi*rnd(2))*sqrt(1.0_pReal-rnd(3))
- math_qRand(4) = sin(2.0_pReal*pi*rnd(1))*sqrt(rnd(3))
+ math_qRand(1) = cos(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))
+ math_qRand(2) = sin(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3))
+ math_qRand(3) = cos(2.0_pReal*PI*rnd(2))*sqrt(1.0_pReal-rnd(3))
+ math_qRand(4) = sin(2.0_pReal*PI*rnd(1))*sqrt(rnd(3))
 
 end function math_qRand
 

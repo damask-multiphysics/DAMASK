@@ -5089,7 +5089,8 @@ end subroutine mesh_build_FEdata
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_write_cellGeom
  use DAMASK_interface, only: &
-   getSolverJobName
+   getSolverJobName, &
+   getSolverWorkingDirectoryName
  use Lib_VTK_IO, only: &
    VTK_ini, &
    VTK_geo, &
@@ -5116,16 +5117,16 @@ subroutine mesh_write_cellGeom
  enddo
 
  err = VTK_ini(output_format = 'ASCII', &
-               title=trim(getSolverJobName())//' cell mesh', &
-               filename = trim(getSolverJobName())//'_ipbased.vtk', &
-               mesh_topology = 'UNSTRUCTURED_GRID')
+       title=trim(getSolverJobName())//' cell mesh', &
+       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &
+       mesh_topology = 'UNSTRUCTURED_GRID')
  err = VTK_geo(NN = mesh_Ncellnodes, &
-               X = mesh_cellnode(1,:), &
-               Y = mesh_cellnode(2,:), &
-               Z = mesh_cellnode(3,:))
+       X = mesh_cellnode(1,:), &
+       Y = mesh_cellnode(2,:), &
+       Z = mesh_cellnode(3,:))
  err = VTK_con(NC = mesh_Ncells, &
-               connect = cellconnection(1:j), &
-               cell_type = celltype)
+       connect = cellconnection(1:j), &
+       cell_type = celltype)
  err = VTK_end()
 
 end subroutine mesh_write_cellGeom
@@ -5136,7 +5137,8 @@ end subroutine mesh_write_cellGeom
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_write_elemGeom
  use DAMASK_interface, only: &
-   getSolverJobName
+   getSolverJobName, &
+   getSolverWorkingDirectoryName
  use Lib_VTK_IO, only: &
    VTK_ini, &
    VTK_geo, &
@@ -5160,16 +5162,16 @@ subroutine mesh_write_elemGeom
  enddo
 
  err = VTK_ini(output_format = 'ASCII', &
-               title=trim(getSolverJobName())//' element mesh', &
-               filename = trim(getSolverJobName())//'_nodebased.vtk', &
-               mesh_topology = 'UNSTRUCTURED_GRID')
+       title=trim(getSolverJobName())//' element mesh', &
+       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName()//'_nodebased.vtk', &
+       mesh_topology = 'UNSTRUCTURED_GRID')
  err = VTK_geo(NN = mesh_Nnodes, &
-               X = mesh_node0(1,1:mesh_Nnodes), &
-               Y = mesh_node0(2,1:mesh_Nnodes), &
-               Z = mesh_node0(3,1:mesh_Nnodes))
+       X = mesh_node0(1,1:mesh_Nnodes), &
+       Y = mesh_node0(2,1:mesh_Nnodes), &
+       Z = mesh_node0(3,1:mesh_Nnodes))
  err = VTK_con(NC = mesh_Nelems, &
-               connect = elementconnection(1:i), &
-               cell_type = elemtype)
+       connect = elementconnection(1:i), &
+       cell_type = elemtype)
  err = VTK_end()
 
 end subroutine mesh_write_elemGeom
