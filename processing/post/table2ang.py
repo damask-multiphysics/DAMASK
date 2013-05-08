@@ -144,41 +144,6 @@ for file in files:
   table = damask.ASCIItable(file['input'])                                  # open ASCII_table for reading
   table.head_read()                                                         # read ASCII header info
 
-
-
-
-# read in original data as vectors:
-# 1)     deformed coordinates in x,y,z -> originalPoints
-# 2) PER undeformed coordinates in x,y,z -> geomSize
-# 3) PER deformation gradient -> defgrad
-# 4) PER calc average deformation gradient -> avgDefgrad
-# 5)     corresponding data columns -> data
-
-# generate target coordinates 
-# 1)     bounding box from original coordinates
-# 2)     equally fill bounding box with points
-#        needs slicing direction, number of slices, point distance, and grid type (either hex or cube) -> targetPoints
-# 3) NON find points that lie outside the original geometry and store in logical map -> phantomPointFlag
-
-# get nearest neighbor mapping
-# 1) PER map from math_nearestNeighbors(geomSize,avgDefgrad,targetPoints,originalPoints) 
-#    NON map from math_nearestNeighbors(targetPoints,originalPoints)
-
-# write out ang file
-# 1)     write header
-# 2)     loop over targetPoints
-#        a) if not phantomPointFlag then write orientation
-#        b) else then write fake orientation
-# alternatively:
-# 2)     loop over targetPoints and write orientation
-# 3)     convert phantomPintFlag to image quality data 
-
-
-
-
-
-
-
 # --------------- figure out dimension and resolution 
 
   try:
