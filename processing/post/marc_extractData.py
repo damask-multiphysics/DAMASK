@@ -396,7 +396,7 @@ if not os.path.isdir(dirname):
 time_start = time.time()
 for incCount,position in enumerate(locations):     # walk through locations
   p.moveto(position+1)                             # wind to correct position
-  time_delta = (float(stat['NumberOfIncrements']) / float(incCount+1) - 1.0) * (time.time() - time_start)
+  time_delta = (float(len(locations)) / float(incCount+1) - 1.0) * (time.time() - time_start)
   sys.stdout.write("\r(%02i:%02i:%02i) processing increment %i of %i..."%(time_delta//3600,time_delta%3600//60,time_delta%60,incCount+1,len(locations)))
   sys.stdout.flush()
   
