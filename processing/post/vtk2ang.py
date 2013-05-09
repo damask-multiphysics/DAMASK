@@ -109,7 +109,7 @@ parser.add_option('--visualize',            dest='visualize', action='store_true
                                             help='visualize geometry [%default]')
 
 parser.set_defaults(dispLabel = 'displacement')
-parser.set_defaults(eulerLabel = ['1_eulerangles','2_eulerangles','3_eulerangles'])
+parser.set_defaults(eulerLabel = ['1_1_eulerangles','1_2_eulerangles','1_3_eulerangles'])
 parser.set_defaults(hexagonal = False)
 parser.set_defaults(normal = [0.0,0.0,-1.0])
 parser.set_defaults(up = [0.0,1.0,0.0])
@@ -302,7 +302,8 @@ for filename in filenames:
   if options.verbose: 
     sys.stdout.write("\n  number of slices: %i\n"%Npoints[2])
     sys.stdout.write("  slice spacing: %.8f\n"%options.distance)
-    sys.stdout.write("  number of points per slice: %i = %i rows * %i points in row\n"%(NpointsPerSlice,Npoints[0],Npoints[1]))
+    if Npoints[2] > 1: 
+      sys.stdout.write("  number of points per slice: %i = %i rows * %i points in row\n"%(NpointsPerSlice,Npoints[0],Npoints[1]))
     sys.stdout.write("  grid resolution: %.8f\n"%options.resolution)
 
   if options.verbose: sys.stdout.write("\nGENERATING VERTICES FOR POINT GRID")
