@@ -26,16 +26,15 @@
 !> @brief   This is a library of functions for Input and Output pure Fortran data in VTK format.
 !> @details It is useful for Paraview visualization tool. Even though there are many wrappers/porting of the VTK source
 !>          code (C++ code), there is not a Fortran one. This library is not a porting or a wrapper of the VTK code,
-!>          but it only an exporter/importer of the VTK data format written in pure Fortran language (standard Fortran 2003)
-!>          that can be used by Fortran coders (yes, there are still a lot of these brave coders...) without mixing Fortran with
-!>          C++ language. Fortran is still the best language for high performance computing for scientific purpose, like CFD
+!>          but it only an exporter/importer of the VTK data format written in pure Fortran language (standard Fortran 2003 or
+!>          higher) that can be used by Fortran coders (yes, there are still a lot of these brave coders...) without mixing Fortran
+!>          with C++ language. Fortran is still the best language for high performance computing for scientific purpose, like CFD
 !>          computing. It is necessary a tool to deal with VTK standard directly by Fortran code. The library was made to fill
 !>          this empty: it is a simple Fortran module able to export native Fortran data into VTK data format and to import VTK
 !>          data into a Fortran code, both in ascii and binary file format.
 !>
 !>          The library provides an automatic way to deal with VTK data format: all the formatting processes is nested into the
-!>          library and users communicate with it by a simple API passing only native Fortran data (native Fortran scalar, vector
-!>          and matrix).
+!>          library and users communicate with it by a simple API passing only native Fortran data (Fortran scalars and arrays).
 !>
 !>          The library is still in developing and testing, this is first usable release, but there are not all the features of
 !>          the stable release (the importer is totally absent and the exporter is not complete). Surely there are a lot of bugs
@@ -106,14 +105,20 @@
 !> variables and <em>dynamic dispatching</em>. Using <em>dynamic dispatching</em> @libvtk has a simple API. The user calls
 !> a generic procedure (VTK_INI, VTK_GEO,...) and the library, depending on the type and number of the inputs passed, calls the
 !> correct internal function (i.e. VTK_GEO for R8P real type if the input passed is R8P real type). By this interface only few
-!> functions are used without the necessity of calling a different function for every different inputs type.
-!> Dynamic dispatching is based on the internal kind-precision selecting convention: Fortran 90/95 standard has introduced some
+!> functions are used without the necessity of calling a different function for each different input type.
+!> Dynamic dispatching is based on the internal kind-precision/rank selecting convention: Fortran 90/95 standard has introduced some
 !> useful functions to achieve the portability of reals and integers precision and @libvtk uses these functions to define portable
 !> kind-precision; to this aim @libvtk uses IR_Precision module.
 !> @author    Stefano Zaghi
 !> @version   1.1
 !> @date      2013-04-26
 !> @par News
+!>      - Added base64 encoding format: the output format specifier of VTK_INI_XML has been changed:
+!>           - output_format = 'ascii' means \b ascii data, the same as the previous version;
+!>           - output_format = 'binary' means \b base64 encoded data, different from the previous version where it meant appended
+!>             raw-binary data; base64 encoding was missing in the previous version;
+!>           - output_format = 'raw' means \b appended \b raw-binary data, as 'binary' of the previous version;
+!>      - Added support for OpenMP multi-threads framework;
 !>      - Correct bug affecting binary output;
 !>      - implement concurrent multiple files IO capability;
 !>      - implement FieldData tag for XML files, useful for tagging dataset with global auxiliary data, e.g. time, time step, ecc;
@@ -138,15 +143,16 @@
 !>                            could be: \n \n
 !>                            E_IO = VTK_VAR_XML(NC_NN=nn,varname='u',var=\b reshape(u(ni1:ni2,nj1:nj2,nk1:nk2),(/nn/))) \n \n
 !>                            where built in function \em reshape has explicitly being used in the calling to VTK_VAR_XML.
-!> @bug <b>XML-Efficiency</b>: \n This is not properly a bug. There is an inefficiency when saving XML binary file. To write XML
-!>                             binary @libvtk uses a temporary scratch file to save binary data while saving all formatting data to
-!>                             the final XML file. Only when all XML formatting data have been written the scratch file is rewind
-!>                             and the binary data is saved in the final tag of XML file as \b raw data. This approach is not
-!>                             efficient.
+!> @bug <b>XML-Efficiency</b>: \n This is not properly a bug. There is an inefficiency when saving XML raw (binary) file. To write
+!>                             raw data into XML file @libvtk uses a temporary scratch file to save binary data while saving all
+!>                             formatting data to the final XML file. Only when all XML formatting data have been written the
+!>                             scratch file is rewind and the binary data is saved in the final tag of XML file as \b raw
+!>                             \b appended data. This approach is not efficient.
 !> @ingroup Lib_VTK_IOLibrary
 module Lib_VTK_IO
 !-----------------------------------------------------------------------------------------------------------------------------------
 USE IR_Precision                                                                ! Integers and reals precision definition.
+USE Lib_Base64                                                                  ! Base64 encoding/decoding procedures.
 USE, intrinsic:: ISO_FORTRAN_ENV, only: stdout=>OUTPUT_UNIT, stderr=>ERROR_UNIT ! Standard output/error logical units.
 !-----------------------------------------------------------------------------------------------------------------------------------
 
@@ -384,7 +390,8 @@ endinterface
 integer(I4P), parameter:: maxlen  = 500      !< Max number of characters of static string.
 character(1), parameter:: end_rec = char(10) !< End-character for binary-record finalize.
 integer(I4P), parameter:: ascii   = 0        !< Ascii-output-format parameter identifier.
-integer(I4P), parameter:: binary  = 1        !< Binary-output-format parameter identifier.
+integer(I4P), parameter:: binary  = 1        !< Base64-output-format parameter identifier.
+integer(I4P), parameter:: raw     = 2        !< Raw-appended-binary-output-format parameter identifier.
 ! VTK file data:
 type:: Type_VTK_File
   integer(I4P)::          f        = ascii !< Current output-format (initialized to ascii format).
@@ -526,7 +533,7 @@ contains
       allocate(vtk(1:Nvtk))
       cf = Nvtk
     endif
-  case('REMOVE')
+  case default
     if (Nvtk>1_I4P) then
       allocate(vtk_tmp(1:Nvtk-1))
       if (cf==Nvtk) then
@@ -567,9 +574,12 @@ contains
   !> Note that the file extension is necessary in the file name. The XML standard has different extensions for each
   !> different topologies (e.g. \em vtr for rectilinear topology). See the VTK-standard file for more information.
   !> @return E_IO: integer(I4P) error flag
-  function VTK_INI_XML(cf,nx1,nx2,ny1,ny2,nz1,nz2,output_format,filename,mesh_topology) result(E_IO)
+  function VTK_INI_XML(output_format,filename,mesh_topology,cf,nx1,nx2,ny1,ny2,nz1,nz2) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
+  character(*), intent(IN)::            output_format !< Output format: ASCII or RAW, or BINARY.
+  character(*), intent(IN)::            filename      !< File name.
+  character(*), intent(IN)::            mesh_topology !< Mesh topology.
   integer(I4P), intent(OUT), optional:: cf            !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN),  optional:: nx1           !< Initial node of x axis.
   integer(I4P), intent(IN),  optional:: nx2           !< Final node of x axis.
@@ -577,15 +587,13 @@ contains
   integer(I4P), intent(IN),  optional:: ny2           !< Final node of y axis.
   integer(I4P), intent(IN),  optional:: nz1           !< Initial node of z axis.
   integer(I4P), intent(IN),  optional:: nz2           !< Final node of z axis.
-  character(*), intent(IN)::            output_format !< Output format: ASCII or BINARY.
-  character(*), intent(IN)::            filename      !< File name.
-  character(*), intent(IN)::            mesh_topology !< Mesh topology.
   integer(I4P)::                        E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::               s_buffer      !< Buffer string.
   integer(I4P)::                        rf            !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   if (.not.ir_initialized) call IR_Init
   call vtk_update(act='add',cf=rf,Nvtk=Nvtk,vtk=vtk)
   f = rf
@@ -614,8 +622,8 @@ contains
       s_buffer = repeat(' ',vtk(rf)%indent)//'<'//trim(vtk(rf)%topology)//'>'
     endselect
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer) ; vtk(rf)%indent = vtk(rf)%indent + 2
-  case('BINARY')
-    vtk(rf)%f = binary
+  case('RAW')
+    vtk(rf)%f = raw
     open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),&
          form='UNFORMATTED',access='STREAM',action='WRITE',status='REPLACE',iostat=E_IO)
     ! writing header of file
@@ -639,6 +647,28 @@ contains
     ! opening the SCRATCH file used for appending raw binary data
     open(unit=Get_Unit(vtk(rf)%ua), form='UNFORMATTED', access='STREAM', action='READWRITE', status='SCRATCH', iostat=E_IO)
     vtk(rf)%ioffset = 0 ! initializing offset pointer
+  case('BINARY')
+    vtk(rf)%f = binary
+    open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),&
+         form='UNFORMATTED',access='STREAM',action='WRITE',status='REPLACE',iostat=E_IO)
+    ! writing header of file
+    write(unit=vtk(rf)%u,iostat=E_IO)'<?xml version="1.0"?>'//end_rec
+    if (endian==endianL) then
+      s_buffer = '<VTKFile type="'//trim(vtk(rf)%topology)//'" version="0.1" byte_order="LittleEndian">'
+    else
+      s_buffer = '<VTKFile type="'//trim(vtk(rf)%topology)//'" version="0.1" byte_order="BigEndian">'
+    endif
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = 2
+    select case(trim(vtk(rf)%topology))
+    case('RectilinearGrid','StructuredGrid')
+      s_buffer = repeat(' ',vtk(rf)%indent)//'<'//trim(vtk(rf)%topology)//' WholeExtent="'//&
+                 trim(str(n=nx1))//' '//trim(str(n=nx2))//' '//                             &
+                 trim(str(n=ny1))//' '//trim(str(n=ny2))//' '//                             &
+                 trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+    case('UnstructuredGrid')
+      s_buffer = repeat(' ',vtk(rf)%indent)//'<'//trim(vtk(rf)%topology)//'>'
+    endselect
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -648,16 +678,17 @@ contains
   !> @{
   !> Function for open/close field data tag.
   !> @return E_IO: integer(I4P) error flag
-  function VTK_FLD_XML_OC(cf,fld_action) result(E_IO)
+  function VTK_FLD_XML_OC(fld_action,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   character(*), intent(IN)::           fld_action !< Field data tag action: OPEN or CLOSE tag.
+  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf         !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -667,14 +698,14 @@ contains
     select case(vtk(rf)%f)
     case(ascii)
       write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<FieldData>' ; vtk(rf)%indent = vtk(rf)%indent + 2
-    case(binary)
+    case(raw,binary)
       write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<FieldData>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     endselect
   case('CLOSE')
     select case(vtk(rf)%f)
     case(ascii)
       vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</FieldData>'
-    case(binary)
+    case(raw,binary)
       vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</FieldData>'//end_rec
     endselect
   endselect
@@ -684,18 +715,21 @@ contains
 
   !> Function for saving field data (global auxiliary data, e.g. time, step number, data set name...) (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_FLD_XML_R8(cf,fld,fname) result(E_IO)
+  function VTK_FLD_XML_R8(fld,fname,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   real(R8P),    intent(IN)::           fld      !< Field data value.
   character(*), intent(IN)::           fname    !< Field data name.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  integer(I1P), allocatable::          fldp(:)  !< Packed field data.
+  character(((8+4+2)/3)*4)::           fld64    !< Field data encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -705,13 +739,21 @@ contains
     s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" NumberOfTuples="1" Name="'//trim(fname)//'" format="ascii">'//&
              trim(str(n=fld))//'</DataArray>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-  case(binary)
+  case(raw)
     s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" NumberOfTuples="1" Name="'//trim(fname)// &
              '" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(BYR8P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R8',1_I4P
     write(unit=vtk(rf)%ua,iostat=E_IO)fld
+  case(binary)
+    call pack_data(a1=[int(BYR8P,I4P)],a2=[fld],packed=fldp)
+    call b64_encode(nB=int(BYI1P,I4P),n=fldp,code=fld64)
+    deallocate(fldp)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" NumberOfTuples="1" Name="'//trim(fname)//'" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//fld64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -719,18 +761,21 @@ contains
 
   !> Function for saving field data (global auxiliary data, e.g. time, step number, data set name...) (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_FLD_XML_R4(cf,fld,fname) result(E_IO)
+  function VTK_FLD_XML_R4(fld,fname,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   real(R4P),    intent(IN)::           fld      !< Field data value.
   character(*), intent(IN)::           fname    !< Field data name.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  integer(I1P), allocatable::          fldp(:)  !< Packed field data.
+  character(((4+4+2)/3)*4)::           fld64    !< Field data encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -740,13 +785,21 @@ contains
     s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" NumberOfTuples="1" Name="'//trim(fname)//'" format="ascii">'//&
              trim(str(n=fld))//'</DataArray>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-  case(binary)
+  case(raw)
     s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" NumberOfTuples="1" Name="'//trim(fname)// &
              '" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(BYR4P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R4',1_I4P
     write(unit=vtk(rf)%ua,iostat=E_IO)fld
+  case(binary)
+    call pack_data(a1=[int(BYR4P,I4P)],a2=[fld],packed=fldp)
+    call b64_encode(nB=int(BYI1P,I4P),n=fldp,code=fld64)
+    deallocate(fldp)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" NumberOfTuples="1" Name="'//trim(fname)//'" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//fld64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -754,18 +807,21 @@ contains
 
   !> Function for saving field data (global auxiliary data, e.g. time, step number, data set name...) (I8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_FLD_XML_I8(cf,fld,fname) result(E_IO)
+  function VTK_FLD_XML_I8(fld,fname,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I8P), intent(IN)::           fld      !< Field data value.
   character(*), intent(IN)::           fname    !< Field data name.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  integer(I1P), allocatable::          fldp(:)  !< Packed field data.
+  character(((8+4+2)/3)*4)::           fld64    !< Field data encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -775,13 +831,21 @@ contains
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" NumberOfTuples="1" Name="'//trim(fname)//'" format="ascii">'// &
                trim(str(n=fld))//'</DataArray>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" NumberOfTuples="1" Name="'//trim(fname)// &
                '" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(BYI8P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I8',1_I4P
     write(unit=vtk(rf)%ua,iostat=E_IO)fld
+  case(binary)
+    call pack_data(a1=[int(BYI8P,I4P)],a2=[fld],packed=fldp)
+    call b64_encode(nB=int(BYI1P,I4P),n=fldp,code=fld64)
+    deallocate(fldp)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" NumberOfTuples="1" Name="'//trim(fname)//'" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//fld64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -789,18 +853,21 @@ contains
 
   !> Function for saving field data (global auxiliary data, e.g. time, step number, data set name...) (I4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_FLD_XML_I4(cf,fld,fname) result(E_IO)
+  function VTK_FLD_XML_I4(fld,fname,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           fld      !< Field data value.
   character(*), intent(IN)::           fname    !< Field data name.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  integer(I1P), allocatable::          fldp(:)  !< Packed field data.
+  character(((4+4+2)/3)*4)::           fld64    !< Field data encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -810,13 +877,21 @@ contains
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" NumberOfTuples="1" Name="'//trim(fname)//'" format="ascii">'// &
                trim(str(n=fld))//'</DataArray>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" NumberOfTuples="1" Name="'//trim(fname)// &
                '" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(BYI4P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I4',1_I4P
     write(unit=vtk(rf)%ua,iostat=E_IO)fld
+  case(binary)
+    fldp = transfer([int(BYI4P,I4P),fld],fldp)
+    call b64_encode(nB=int(BYI1P,I4P),n=fldp,code=fld64)
+    deallocate(fldp)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" NumberOfTuples="1" Name="'//trim(fname)//'" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//fld64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -824,18 +899,21 @@ contains
 
   !> Function for saving field data (global auxiliary data, e.g. time, step number, data set name...) (I2P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_FLD_XML_I2(cf,fld,fname) result(E_IO)
+  function VTK_FLD_XML_I2(fld,fname,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I2P), intent(IN)::           fld      !< Field data value.
   character(*), intent(IN)::           fname    !< Field data name.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  integer(I1P), allocatable::          fldp(:)  !< Packed field data.
+  character(((2+4+2)/3)*4)::           fld64    !< Field data encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -845,13 +923,21 @@ contains
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" NumberOfTuples="1" Name="'//trim(fname)//'" format="ascii">'// &
                trim(str(n=fld))//'</DataArray>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" NumberOfTuples="1" Name="'//trim(fname)// &
                '" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(BYI2P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I2',1_I4P
     write(unit=vtk(rf)%ua,iostat=E_IO)fld
+  case(binary)
+    call pack_data(a1=[int(BYI2P,I4P)],a2=[fld],packed=fldp)
+    call b64_encode(nB=int(BYI1P,I4P),n=fldp,code=fld64)
+    deallocate(fldp)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" NumberOfTuples="1" Name="'//trim(fname)//'" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//fld64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -859,18 +945,21 @@ contains
 
   !> Function for saving field data (global auxiliary data, e.g. time, step number, data set name...) (I1P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_FLD_XML_I1(cf,fld,fname) result(E_IO)
+  function VTK_FLD_XML_I1(fld,fname,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I1P), intent(IN)::           fld      !< Field data value.
   character(*), intent(IN)::           fname    !< Field data name.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  integer(I1P), allocatable::          fldp(:)  !< Packed field data.
+  character(((1+4+2)/3)*4)::           fld64    !< Field data encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -880,13 +969,21 @@ contains
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" NumberOfTuples="1" Name="'//trim(fname)//'" format="ascii">'// &
                trim(str(n=fld))//'</DataArray>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" NumberOfTuples="1" Name="'//trim(fname)// &
                '" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(BYI1P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I1',1_I4P
     write(unit=vtk(rf)%ua,iostat=E_IO)fld
+  case(binary)
+    call pack_data(a1=[int(BYI1P,I4P)],a2=[fld],packed=fldp)
+    call b64_encode(nB=int(BYI1P,I4P),n=fldp,code=fld64)
+    deallocate(fldp)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" NumberOfTuples="1" Name="'//trim(fname)//'" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//fld64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -894,10 +991,9 @@ contains
 
   !> Function for saving mesh with \b StructuredGrid topology (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_XML_STRG_R8(cf,nx1,nx2,ny1,ny2,nz1,nz2,NN,X,Y,Z) result(E_IO)
+  function VTK_GEO_XML_STRG_R8(nx1,nx2,ny1,ny2,nz1,nz2,NN,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           nx1      !< Initial node of x axis.
   integer(I4P), intent(IN)::           nx2      !< Final node of x axis.
   integer(I4P), intent(IN)::           ny1      !< Initial node of y axis.
@@ -908,13 +1004,18 @@ contains
   real(R8P),    intent(IN)::           X(1:NN)  !< X coordinates.
   real(R8P),    intent(IN)::           Y(1:NN)  !< Y coordinates.
   real(R8P),    intent(IN)::           Z(1:NN)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  real(R8P), allocatable::             XYZ(:)   !< X, Y, Z coordinates.
+  integer(I1P), allocatable::          XYZp(:)  !< Packed coordinates data.
+  character(((3*NN*8+4+2)/3)*4)::      XYZ64    !< X, Y, Z coordinates encoded in base64.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
   integer(I4P)::                       n1       !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -922,19 +1023,21 @@ contains
   select case(vtk(rf)%f)
   case(ascii)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
-                                                      trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
-                                                      trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer) ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>' ; vtk(rf)%indent = vtk(rf)%indent + 2
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" NumberOfComponents="3" Name="Points" format="ascii">'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-    write(unit=vtk(rf)%u,fmt='(3('//FR8P//',1X))',iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
+    do n1=1,NN
+      write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//str(n=X(n1))//' '//str(n=Y(n1))//' '//str(n=Z(n1))
+    enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>' ; vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
-                                                      trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
-                                                      trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     s_buffer = repeat(' ',vtk(rf)%indent)//                                                                  &
@@ -945,6 +1048,25 @@ contains
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R8',3*NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
     vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" NumberOfComponents="3" Name="Points" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    allocate(XYZ(1:3*NN))
+    do n1 = 1,NN
+      XYZ(1+(n1-1)*3:1+(n1-1)*3+2)=[X(n1),Y(n1),Z(n1)]
+    enddo
+    call pack_data(a1=[int(3*NN*BYR8P,I4P)],a2=XYZ,packed=XYZp)
+    deallocate(XYZ)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=XYZ64)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//XYZ64//end_rec
+    deallocate(XYZp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -952,10 +1074,9 @@ contains
 
   !> Function for saving mesh with \b StructuredGrid topology (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_XML_STRG_R4(cf,nx1,nx2,ny1,ny2,nz1,nz2,NN,X,Y,Z) result(E_IO)
+  function VTK_GEO_XML_STRG_R4(nx1,nx2,ny1,ny2,nz1,nz2,NN,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           nx1      !< Initial node of x axis.
   integer(I4P), intent(IN)::           nx2      !< Final node of x axis.
   integer(I4P), intent(IN)::           ny1      !< Initial node of y axis.
@@ -966,13 +1087,18 @@ contains
   real(R4P),    intent(IN)::           X(1:NN)  !< X coordinates.
   real(R4P),    intent(IN)::           Y(1:NN)  !< Y coordinates.
   real(R4P),    intent(IN)::           Z(1:NN)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  real(R4P), allocatable::             XYZ(:)   !< X, Y, Z coordinates.
+  integer(I1P), allocatable::          XYZp(:)  !< Packed data.
+  character(((3*NN*4+4+2)/3)*4)::      XYZ64    !< X, Y, Z coordinates encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   integer(I4P)::                       n1       !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -980,19 +1106,21 @@ contains
   select case(vtk(rf)%f)
   case(ascii)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
-                                                      trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
-                                                      trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer) ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>' ; vtk(rf)%indent = vtk(rf)%indent + 2
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" NumberOfComponents="3" Name="Points" format="ascii">'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
-    write(unit=vtk(rf)%u,fmt='(3('//FR4P//',1X))',iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
+    do n1=1,NN
+      write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//str(n=X(n1))//' '//str(n=Y(n1))//' '//str(n=Z(n1))
+    enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>' ; vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
-                                                      trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
-                                                      trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     s_buffer = repeat(' ',vtk(rf)%indent)//                                                                  &
@@ -1003,6 +1131,25 @@ contains
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R4',3*NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
     vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" NumberOfComponents="3" Name="Points" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    allocate(XYZ(1:3*NN))
+    do n1 = 1,NN
+      XYZ(1+(n1-1)*3:1+(n1-1)*3+2)=[X(n1),Y(n1),Z(n1)]
+    enddo
+    call pack_data(a1=[int(3*NN*BYR4P,I4P)],a2=XYZ,packed=XYZp)
+    deallocate(XYZ)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=XYZ64)
+    deallocate(XYZp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//XYZ64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1010,26 +1157,31 @@ contains
 
   !> Function for saving mesh with \b RectilinearGrid topology (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_XML_RECT_R8(cf,nx1,nx2,ny1,ny2,nz1,nz2,X,Y,Z) result(E_IO)
+  function VTK_GEO_XML_RECT_R8(nx1,nx2,ny1,ny2,nz1,nz2,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           nx1        !< Initial node of x axis.
-  integer(I4P), intent(IN)::           nx2        !< Final node of x axis.
-  integer(I4P), intent(IN)::           ny1        !< Initial node of y axis.
-  integer(I4P), intent(IN)::           ny2        !< Final node of y axis.
-  integer(I4P), intent(IN)::           nz1        !< Initial node of z axis.
-  integer(I4P), intent(IN)::           nz2        !< Final node of z axis.
-  real(R8P),    intent(IN)::           X(nx1:nx2) !< X coordinates.
-  real(R8P),    intent(IN)::           Y(ny1:ny2) !< Y coordinates.
-  real(R8P),    intent(IN)::           Z(nz1:nz2) !< Z coordinates.
-  integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer   !< Buffer string.
-  integer(I4P)::                       rf         !< Real file index.
-  integer(I4P)::                       n1         !< Counter.
+  integer(I4P), intent(IN)::             nx1        !< Initial node of x axis.
+  integer(I4P), intent(IN)::             nx2        !< Final node of x axis.
+  integer(I4P), intent(IN)::             ny1        !< Initial node of y axis.
+  integer(I4P), intent(IN)::             ny2        !< Final node of y axis.
+  integer(I4P), intent(IN)::             nz1        !< Initial node of z axis.
+  integer(I4P), intent(IN)::             nz2        !< Final node of z axis.
+  real(R8P),    intent(IN)::             X(nx1:nx2) !< X coordinates.
+  real(R8P),    intent(IN)::             Y(ny1:ny2) !< Y coordinates.
+  real(R8P),    intent(IN)::             Z(nz1:nz2) !< Z coordinates.
+  integer(I4P), intent(IN), optional::   cf         !< Current file index (for concurrent files IO).
+  integer(I4P)::                         E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::                s_buffer   !< Buffer string.
+  integer(I1P), allocatable::            XYZp(:)    !< Packed data.
+  character((((nx2-nx1+1)*8+4+2)/3)*4):: X64        !< X coordinates encoded in base64.
+  character((((ny2-ny1+1)*8+4+2)/3)*4):: Y64        !< Y coordinates encoded in base64.
+  character((((nz2-nz1+1)*8+4+2)/3)*4):: Z64        !< Z coordinates encoded in base64.
+  integer(I4P)::                         rf         !< Real file index.
+  integer(I4P)::                         n1         !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1037,8 +1189,8 @@ contains
   select case(vtk(rf)%f)
   case(ascii)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
-                                                      trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
-                                                      trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer) ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Coordinates>' ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="X" format="ascii">'
@@ -1051,10 +1203,10 @@ contains
     write(unit=vtk(rf)%u,fmt=FR8P, iostat=E_IO)(Z(n1),n1=nz1,nz2)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>' ; vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Coordinates>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
-                                                      trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
-                                                      trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Coordinates>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="X" format="appended" offset="'//&
@@ -1076,6 +1228,34 @@ contains
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R8',(nz2-nz1+1)
     write(unit=vtk(rf)%ua,iostat=E_IO)(Z(n1),n1=nz1,nz2)
     vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Coordinates>'//end_rec
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Coordinates>'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="X" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int((nx2-nx1+1)*BYR8P,I4P)],a2=X,packed=XYZp)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=X64)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//X64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="Y" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int((ny2-ny1+1)*BYR8P,I4P)],a2=Y,packed=XYZp)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=Y64)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//Y64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="Z" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int((nz2-nz1+1)*BYR8P,I4P)],a2=Z,packed=XYZp)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=Z64)
+    deallocate(XYZp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//Z64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    vtk(rf)%indent = vtk(rf)%indent - 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Coordinates>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1083,26 +1263,31 @@ contains
 
   !> Function for saving mesh with \b RectilinearGrid topology (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_XML_RECT_R4(cf,nx1,nx2,ny1,ny2,nz1,nz2,X,Y,Z) result(E_IO)
+  function VTK_GEO_XML_RECT_R4(nx1,nx2,ny1,ny2,nz1,nz2,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           nx1        !< Initial node of x axis.
-  integer(I4P), intent(IN)::           nx2        !< Final node of x axis.
-  integer(I4P), intent(IN)::           ny1        !< Initial node of y axis.
-  integer(I4P), intent(IN)::           ny2        !< Final node of y axis.
-  integer(I4P), intent(IN)::           nz1        !< Initial node of z axis.
-  integer(I4P), intent(IN)::           nz2        !< Final node of z axis.
-  real(R4P),    intent(IN)::           X(nx1:nx2) !< X coordinates.
-  real(R4P),    intent(IN)::           Y(ny1:ny2) !< Y coordinates.
-  real(R4P),    intent(IN)::           Z(nz1:nz2) !< Z coordinates.
-  integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer   !< Buffer string.
-  integer(I4P)::                       rf         !< Real file index.
-  integer(I4P)::                       n1         !< Counter.
+  integer(I4P), intent(IN)::             nx1        !< Initial node of x axis.
+  integer(I4P), intent(IN)::             nx2        !< Final node of x axis.
+  integer(I4P), intent(IN)::             ny1        !< Initial node of y axis.
+  integer(I4P), intent(IN)::             ny2        !< Final node of y axis.
+  integer(I4P), intent(IN)::             nz1        !< Initial node of z axis.
+  integer(I4P), intent(IN)::             nz2        !< Final node of z axis.
+  real(R4P),    intent(IN)::             X(nx1:nx2) !< X coordinates.
+  real(R4P),    intent(IN)::             Y(ny1:ny2) !< Y coordinates.
+  real(R4P),    intent(IN)::             Z(nz1:nz2) !< Z coordinates.
+  integer(I4P), intent(IN), optional::   cf         !< Current file index (for concurrent files IO).
+  integer(I4P)::                         E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::                s_buffer   !< Buffer string.
+  integer(I1P), allocatable::            XYZp(:)    !< Packed data.
+  character((((nx2-nx1+1)*4+4+2)/3)*4):: X64        !< X coordinates encoded in base64.
+  character((((ny2-ny1+1)*4+4+2)/3)*4):: Y64        !< Y coordinates encoded in base64.
+  character((((nz2-nz1+1)*4+4+2)/3)*4):: Z64        !< Z coordinates encoded in base64.
+  integer(I4P)::                         rf         !< Real file index.
+  integer(I4P)::                         n1         !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1124,7 +1309,7 @@ contains
     write(unit=vtk(rf)%u,fmt=FR4P, iostat=E_IO)(Z(n1),n1=nz1,nz2)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>' ; vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Coordinates>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
                                                       trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
                                                       trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
@@ -1149,6 +1334,34 @@ contains
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R4',(nz2-nz1+1)
     write(unit=vtk(rf)%ua,iostat=E_IO)(Z(n1),n1=nz1,nz2)
     vtk(rf)%indent = vtk(rf)%indent - 2  ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Coordinates>'//end_rec
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece Extent="'//trim(str(n=nx1))//' '//trim(str(n=nx2))//' '// &
+                                                              trim(str(n=ny1))//' '//trim(str(n=ny2))//' '// &
+                                                              trim(str(n=nz1))//' '//trim(str(n=nz2))//'">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Coordinates>'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="X" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int((nx2-nx1+1)*BYR4P,I4P)],a2=X,packed=XYZp)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=X64)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//X64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="Y" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int((ny2-ny1+1)*BYR4P,I4P)],a2=Y,packed=XYZp)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=Y64)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//Y64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="Z" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int((nz2-nz1+1)*BYR4P,I4P)],a2=Z,packed=XYZp)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=Z64)
+    deallocate(XYZp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//Z64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    vtk(rf)%indent = vtk(rf)%indent - 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Coordinates>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1156,22 +1369,26 @@ contains
 
   !> Function for saving mesh with \b UnstructuredGrid topology (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_XML_UNST_R8(cf,NN,NC,X,Y,Z) result(E_IO)
+  function VTK_GEO_XML_UNST_R8(NN,NC,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NN       !< Number of nodes.
   integer(I4P), intent(IN)::           NC       !< Number of cells.
   real(R8P),    intent(IN)::           X(1:NN)  !< X coordinates.
   real(R8P),    intent(IN)::           Y(1:NN)  !< Y coordinates.
   real(R8P),    intent(IN)::           Z(1:NN)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  real(R8P), allocatable::             XYZ(:)   !< X, Y, Z coordinates.
+  integer(I1P), allocatable::          XYZp(:)  !< Packed data.
+  character(((3*NN*8+4+2)/3)*4)::      XYZ64    !< X, Y, Z coordinates encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   integer(I4P)::                       n1       !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1186,7 +1403,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(3('//FR8P//',1X))',iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>' ; vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece NumberOfPoints="'//trim(str(n=NN))//'" NumberOfCells="'//trim(str(n=NC))//'">'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
@@ -1198,6 +1415,23 @@ contains
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R8',3*NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
     vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece NumberOfPoints="'//trim(str(n=NN))//'" NumberOfCells="'//trim(str(n=NC))//'">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" NumberOfComponents="3" Name="Points" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    allocate(XYZ(1:3*NN))
+    do n1 = 1,NN
+      XYZ(1+(n1-1)*3:1+(n1-1)*3+2)=[X(n1),Y(n1),Z(n1)]
+    enddo
+    call pack_data(a1=[int(3*NN*BYR8P,I4P)],a2=XYZ,packed=XYZp)
+    deallocate(XYZ)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=XYZ64)
+    deallocate(XYZp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//XYZ64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1205,22 +1439,26 @@ contains
 
   !> Function for saving mesh with \b UnstructuredGrid topology (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_XML_UNST_R4(cf,NN,NC,X,Y,Z) result(E_IO)
+  function VTK_GEO_XML_UNST_R4(NN,NC,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NN       !< Number of nodes.
   integer(I4P), intent(IN)::           NC       !< Number of cells.
   real(R4P),    intent(IN)::           X(1:NN)  !< X coordinates.
   real(R4P),    intent(IN)::           Y(1:NN)  !< Y coordinates.
   real(R4P),    intent(IN)::           Z(1:NN)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
+  real(R4P), allocatable::             XYZ(:)   !< X, Y, Z coordinates.
+  integer(I1P), allocatable::          XYZp(:)  !< Packed data.
+  character(((3*NN*4+4+2)/3)*4)::      XYZ64    !< X, Y, Z coordinates encoded in base64.
   integer(I4P)::                       rf       !< Real file index.
   integer(I4P)::                       n1       !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1235,7 +1473,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(3('//FR4P//',1X))',iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>' ; vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece NumberOfPoints="'//trim(str(n=NN))//'" NumberOfCells="'//trim(str(n=NC))//'">'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
@@ -1246,6 +1484,23 @@ contains
     call vtk(rf)%byte_update(N_Byte = 3*NN*BYR4P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R4',3*NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
+    vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<Piece NumberOfPoints="'//trim(str(n=NN))//'" NumberOfCells="'//trim(str(n=NC))//'">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Points>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" NumberOfComponents="3" Name="Points" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    allocate(XYZ(1:3*NN))
+    do n1 = 1,NN
+      XYZ(1+(n1-1)*3:1+(n1-1)*3+2)=[X(n1),Y(n1),Z(n1)]
+    enddo
+    call pack_data(a1=[int(3*NN*BYR4P,I4P)],a2=XYZ,packed=XYZp)
+    deallocate(XYZ)
+    call b64_encode(nB=int(BYI1P,I4P),n=XYZp,code=XYZ64)
+    deallocate(XYZp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//XYZ64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
     vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Points>'//end_rec
   endselect
   return
@@ -1263,6 +1518,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1271,7 +1527,7 @@ contains
   select case(vtk(rf)%f)
   case(ascii)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Piece>'
-  case(binary)
+  case(raw,binary)
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Piece>'//end_rec
   endselect
   return
@@ -1321,21 +1577,26 @@ contains
   !> second cell \n
   !> cell_type(2) = 14 pyramid type of \f$2^\circ\f$ cell \n
   !> @return E_IO: integer(I4P) error flag
-  function VTK_CON_XML(cf,NC,connect,offset,cell_type) result(E_IO)
+  function VTK_CON_XML(NC,connect,offset,cell_type,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf              !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           NC              !< Number of cells.
-  integer(I4P), intent(IN)::           connect(:)      !< Mesh connectivity.
-  integer(I4P), intent(IN)::           offset(1:NC)    !< Cell offset.
-  integer(I1P), intent(IN)::           cell_type(1:NC) !< VTK cell type.
-  integer(I4P)::                       E_IO            !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer        !< Buffer string.
-  integer(I4P)::                       rf              !< Real file index.
-  integer(I4P)::                       n1              !< Counter.
+  integer(I4P), intent(IN)::                     NC              !< Number of cells.
+  integer(I4P), intent(IN)::                     connect(:)      !< Mesh connectivity.
+  integer(I4P), intent(IN)::                     offset(1:NC)    !< Cell offset.
+  integer(I1P), intent(IN)::                     cell_type(1:NC) !< VTK cell type.
+  integer(I4P), intent(IN), optional::           cf              !< Current file index (for concurrent files IO).
+  integer(I4P)::                                 E_IO   !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::                        s_buffer        !< Buffer string.
+  integer(I1P), allocatable::                    cocp(:)         !< Packed data.
+  character(((size(connect,dim=1)*4+4+2)/3)*4):: con64           !< Connectivity encoded in base64.
+  character(((Nc*4+4+2)/3)*4)::                  off64           !< Offset encoded in base64.
+  character(((NC*1+4+2)/3)*4)::                  cel64           !< Cell type encoded in base64.
+  integer(I4P)::                                 rf              !< Real file index.
+  integer(I4P)::                                 n1              !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1344,7 +1605,7 @@ contains
   case(ascii)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Cells>' ; vtk(rf)%indent = vtk(rf)%indent + 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//&
-                                              '<DataArray type="Int32" Name="connectivity" format="ascii">'
+                                               '<DataArray type="Int32" Name="connectivity" format="ascii">'
     write(unit=vtk(rf)%u,fmt=FI4P, iostat=E_IO)(connect(n1),n1=1,size(connect))
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="offsets" format="ascii">'
@@ -1354,7 +1615,7 @@ contains
     write(unit=vtk(rf)%u,fmt=FI1P, iostat=E_IO)(cell_type(n1),n1=1,NC)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>' ; vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Cells>'
-  case(binary)
+  case(raw)
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Cells>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="connectivity" format="appended" offset="'// &
                trim(str(.true.,vtk(rf)%ioffset))//'"/>'
@@ -1375,6 +1636,26 @@ contains
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I1',NC
     write(unit=vtk(rf)%ua,iostat=E_IO)(cell_type(n1),n1=1,NC)
     vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Cells>'//end_rec
+  case(binary)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<Cells>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent + 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//&
+                                     '<DataArray type="Int32" Name="connectivity" format="binary">'//end_rec
+    cocp = transfer([int(size(connect,dim=1)*BYI4P,I4P),connect],cocp)
+    call b64_encode(nB=int(BYI1P,I4P),n=cocp,code=con64)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//con64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="offsets" format="binary">'//end_rec
+    cocp = transfer([int(NC*BYI4P,I4P),offset],cocp)
+    call b64_encode(nB=int(BYI1P,I4P),n=cocp,code=off64)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//off64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="types" format="binary">'//end_rec
+    call pack_data(a1=[int(NC*BYI1P,I4P)],a2=cell_type,packed=cocp)
+    call b64_encode(nB=int(BYI1P,I4P),n=cocp,code=cel64)
+    deallocate(cocp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//cel64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec ; vtk(rf)%indent = vtk(rf)%indent - 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</Cells>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1395,17 +1676,18 @@ contains
   !> ... @endcode
   !> @return E_IO: integer(I4P) error flag
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function VTK_DAT_XML(cf,var_location,var_block_action) result(E_IO)
+  function VTK_DAT_XML(var_location,var_block_action,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf               !< Current file index (for concurrent files IO).
   character(*), intent(IN)::           var_location     !< Location of saving variables: CELL or NODE centered.
   character(*), intent(IN)::           var_block_action !< Variables block action: OPEN or CLOSE block.
+  integer(I4P), intent(IN), optional:: cf               !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO             !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf               !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1428,7 +1710,7 @@ contains
         vtk(rf)%indent = vtk(rf)%indent - 2 ; write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</PointData>'
       endselect
     endselect
-  case(binary)
+  case(raw,binary)
     select case(trim(Upper_Case(var_location)))
     case('CELL')
       select case(trim(Upper_Case(var_block_action)))
@@ -1455,20 +1737,23 @@ contains
 
   !> Function for saving field of scalar variable (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_SCAL_R8(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_XML_SCAL_R8(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of cells or nodes.
   character(*), intent(IN)::           varname      !< Variable name.
   real(R8P),    intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer     !< Buffer string.
+  integer(I1P), allocatable::          varp(:)      !< Packed data.
+  character(((NC_NN*8+4+2)/3)*4)::     var64        !< Variable encoded in base64.
   integer(I4P)::                       rf           !< Real file index.
   integer(I4P)::                       n1           !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1480,13 +1765,22 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt=FR8P,iostat=E_IO)(var(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="'//trim(varname)//&
                '" NumberOfComponents="1" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = NC_NN*BYR8P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R8',NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(var(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="'//trim(varname)//&
+             '" NumberOfComponents="1" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int(NC_NN*BYR8P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1494,20 +1788,23 @@ contains
 
   !> Function for saving field of scalar variable (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_SCAL_R4(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_XML_SCAL_R4(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of cells or nodes.
   character(*), intent(IN)::           varname      !< Variable name.
   real(R4P),    intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer     !< Buffer string.
+  integer(I1P), allocatable::          varp(:)      !< Packed data.
+  character(((NC_NN*4+4+2)/3)*4)::     var64        !< Variable encoded in base64.
   integer(I4P)::                       rf           !< Real file index.
   integer(I4P)::                       n1           !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1519,13 +1816,22 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt=FR4P,iostat=E_IO)(var(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="'//trim(varname)//&
                '" NumberOfComponents="1" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = NC_NN*BYR4P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R4',NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(var(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="'//trim(varname)//&
+             '" NumberOfComponents="1" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int(NC_NN*BYR4P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1533,20 +1839,23 @@ contains
 
   !> Function for saving field of scalar variable (I8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_SCAL_I8(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_XML_SCAL_I8(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of cells or nodes.
   character(*), intent(IN)::           varname      !< Variable name.
   integer(I8P), intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer     !< Buffer string.
+  integer(I1P), allocatable::          varp(:)      !< Packed data.
+  character(((NC_NN*8+4+2)/3)*4)::     var64        !< Variable encoded in base64.
   integer(I4P)::                       rf           !< Real file index.
   integer(I4P)::                       n1           !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1558,13 +1867,22 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt=FI8P,iostat=E_IO)(var(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" Name="'//trim(varname)//&
                '" NumberOfComponents="1" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(NC_NN*BYI8P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I8',NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(var(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" Name="'//trim(varname)//&
+             '" NumberOfComponents="1" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int(NC_NN*BYI8P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1572,20 +1890,23 @@ contains
 
   !> Function for saving field of scalar variable (I4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_SCAL_I4(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_XML_SCAL_I4(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of cells or nodes.
   character(*), intent(IN)::           varname      !< Variable name.
   integer(I4P), intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer     !< Buffer string.
+  integer(I1P), allocatable::          varp(:)      !< Packed data.
+  character(((NC_NN*4+4+2)/3)*4)::     var64        !< Variable encoded in base64.
   integer(I4P)::                       rf           !< Real file index.
   integer(I4P)::                       n1           !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1597,13 +1918,22 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt=FI4P,iostat=E_IO)(var(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="'//trim(varname)// &
                '" NumberOfComponents="1" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = NC_NN*BYI4P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I4',NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(var(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="'//trim(varname)// &
+             '" NumberOfComponents="1" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    varp = transfer([int(NC_NN*BYI4P,I4P),var],varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1611,20 +1941,23 @@ contains
 
   !> Function for saving field of scalar variable (I2P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_SCAL_I2(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_XML_SCAL_I2(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of cells or nodes.
   character(*), intent(IN)::           varname      !< Variable name.
   integer(I2P), intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer     !< Buffer string.
+  integer(I1P), allocatable::          varp(:)      !< Packed data.
+  character(((NC_NN*2+4+2)/3)*4)::     var64        !< Variable encoded in base64.
   integer(I4P)::                       rf           !< Real file index.
   integer(I4P)::                       n1           !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1636,13 +1969,22 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt=FI2P, iostat=E_IO)(var(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" Name="'//trim(varname)//&
                '" NumberOfComponents="1" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = NC_NN*BYI2P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I2',NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(var(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" Name="'//trim(varname)//&
+             '" NumberOfComponents="1" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int(NC_NN*BYI2P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1650,20 +1992,23 @@ contains
 
   !> Function for saving field of scalar variable (I1P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_SCAL_I1(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_XML_SCAL_I1(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of cells or nodes.
   character(*), intent(IN)::           varname      !< Variable name.
   integer(I1P), intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer     !< Buffer string.
+  integer(I1P), allocatable::          varp(:)      !< Packed data.
+  character(((NC_NN*1+4+2)/3)*4)::     var64        !< Variable encoded in base64.
   integer(I4P)::                       rf           !< Real file index.
   integer(I4P)::                       n1           !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1674,13 +2019,22 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt=FI1P, iostat=E_IO)(var(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="'//trim(varname)//&
              '" NumberOfComponents="1" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = NC_NN*BYI1P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I1',NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(var(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="'//trim(varname)//&
+             '" NumberOfComponents="1" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    call pack_data(a1=[int(NC_NN*BYI1P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1688,22 +2042,26 @@ contains
 
   !> Function for saving field of vectorial variable (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_VECT_R8(cf,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_XML_VECT_R8(NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           NC_NN         !< Number of cells or nodes.
-  character(*), intent(IN)::           varname       !< Variable name.
-  real(R8P),    intent(IN)::           varX(1:NC_NN) !< X component.
-  real(R8P),    intent(IN)::           varY(1:NC_NN) !< Y component.
-  real(R8P),    intent(IN)::           varZ(1:NC_NN) !< Z component.
-  integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer      !< Buffer string.
-  integer(I4P)::                       rf            !< Real file index.
-  integer(I4P)::                       n1            !< Counter.
+  integer(I4P), intent(IN)::           NC_NN          !< Number of cells or nodes.
+  character(*), intent(IN)::           varname        !< Variable name.
+  real(R8P),    intent(IN)::           varX(1:NC_NN)  !< X component.
+  real(R8P),    intent(IN)::           varY(1:NC_NN)  !< Y component.
+  real(R8P),    intent(IN)::           varZ(1:NC_NN)  !< Z component.
+  integer(I4P), intent(IN), optional:: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)::                       E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::              s_buffer       !< Buffer string.
+  real(R8P)::                          var(1:3*NC_NN) !< X, Y, Z component.
+  integer(I1P), allocatable::          varp(:)        !< Packed data.
+  character(((3*NC_NN*8+4+2)/3)*4)::   var64          !< Variable encoded in base64.
+  integer(I4P)::                       rf             !< Real file index.
+  integer(I4P)::                       n1             !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1715,13 +2073,25 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt='(3('//FR8P//',1X))',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="'//trim(varname)//&
                '" NumberOfComponents="3" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = 3*NC_NN*BYR8P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R8',3*NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="'//trim(varname)//&
+               '" NumberOfComponents="3" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    do n1=1,NC_NN
+      var(1+(n1-1)*3:1+(n1-1)*3+2)=[varX(n1),varY(n1),varZ(n1)]
+    enddo
+    call pack_data(a1=[int(3*NC_NN*BYR8P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1729,22 +2099,26 @@ contains
 
   !> Function for saving field of vectorial variable (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_VECT_R4(cf,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_XML_VECT_R4(NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           NC_NN         !< Number of cells or nodes.
-  character(*), intent(IN)::           varname       !< Variable name.
-  real(R4P),    intent(IN)::           varX(1:NC_NN) !< X component.
-  real(R4P),    intent(IN)::           varY(1:NC_NN) !< Y component.
-  real(R4P),    intent(IN)::           varZ(1:NC_NN) !< Z component.
-  integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer      !< Buffer string.
-  integer(I4P)::                       rf            !< Real file index.
-  integer(I4P)::                       n1            !< Counter.
+  integer(I4P), intent(IN)::           NC_NN          !< Number of cells or nodes.
+  character(*), intent(IN)::           varname        !< Variable name.
+  real(R4P),    intent(IN)::           varX(1:NC_NN)  !< X component.
+  real(R4P),    intent(IN)::           varY(1:NC_NN)  !< Y component.
+  real(R4P),    intent(IN)::           varZ(1:NC_NN)  !< Z component.
+  integer(I4P), intent(IN), optional:: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)::                       E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::              s_buffer       !< Buffer string.
+  real(R4P)::                          var(1:3*NC_NN) !< X, Y, Z component.
+  integer(I1P), allocatable::          varp(:)        !< Packed data.
+  character(((3*NC_NN*4+4+2)/3)*4)::   var64          !< Variable encoded in base64.
+  integer(I4P)::                       rf             !< Real file index.
+  integer(I4P)::                       n1             !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1756,13 +2130,25 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt='(3('//FR4P//',1X))',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="'//trim(varname)//&
                '" NumberOfComponents="3" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = 3*NC_NN*BYR4P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'R4',3*NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="'//trim(varname)//&
+               '" NumberOfComponents="3" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    do n1=1,NC_NN
+      var(1+(n1-1)*3:1+(n1-1)*3+2)=[varX(n1),varY(n1),varZ(n1)]
+    enddo
+    call pack_data(a1=[int(3*NC_NN*BYR4P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1770,22 +2156,26 @@ contains
 
   !> Function for saving field of vectorial variable (I8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_VECT_I8(cf,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_XML_VECT_I8(NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           NC_NN         !< Number of cells or nodes.
-  character(*), intent(IN)::           varname       !< Variable name.
-  integer(I8P), intent(IN)::           varX(1:NC_NN) !< X component.
-  integer(I8P), intent(IN)::           varY(1:NC_NN) !< Y component.
-  integer(I8P), intent(IN)::           varZ(1:NC_NN) !< Z component.
-  integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer      !< Buffer string.
-  integer(I4P)::                       rf            !< Real file index.
-  integer(I4P)::                       n1            !< Counter.
+  integer(I4P), intent(IN)::           NC_NN          !< Number of cells or nodes.
+  character(*), intent(IN)::           varname        !< Variable name.
+  integer(I8P), intent(IN)::           varX(1:NC_NN)  !< X component.
+  integer(I8P), intent(IN)::           varY(1:NC_NN)  !< Y component.
+  integer(I8P), intent(IN)::           varZ(1:NC_NN)  !< Z component.
+  integer(I4P), intent(IN), optional:: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)::                       E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::              s_buffer       !< Buffer string.
+  integer(I8P)::                       var(1:3*NC_NN) !< X, Y, Z component.
+  integer(I1P), allocatable::          varp(:)        !< Packed data.
+  character(((3*NC_NN*8+4+2)/3)*4)::   var64          !< Variable encoded in base64.
+  integer(I4P)::                       rf             !< Real file index.
+  integer(I4P)::                       n1             !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1797,13 +2187,25 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt='(3('//FI8P//',1X))',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" Name="'//trim(varname)//&
                '" NumberOfComponents="3" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = int(3*NC_NN*BYI8P,I4P))
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I8',3*NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" Name="'//trim(varname)//&
+               '" NumberOfComponents="3" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    do n1=1,NC_NN
+      var(1+(n1-1)*3:1+(n1-1)*3+2)=[varX(n1),varY(n1),varZ(n1)]
+    enddo
+    call pack_data(a1=[int(3*NC_NN*BYI8P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1811,22 +2213,26 @@ contains
 
   !> Function for saving field of vectorial variable (I4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_VECT_I4(cf,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_XML_VECT_I4(NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           NC_NN         !< Number of cells or nodes.
-  character(*), intent(IN)::           varname       !< Variable name.
-  integer(I4P), intent(IN)::           varX(1:NC_NN) !< X component.
-  integer(I4P), intent(IN)::           varY(1:NC_NN) !< Y component.
-  integer(I4P), intent(IN)::           varZ(1:NC_NN) !< Z component.
-  integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer      !< Buffer string.
-  integer(I4P)::                       rf            !< Real file index.
-  integer(I4P)::                       n1            !< Counter.
+  integer(I4P), intent(IN)::           NC_NN          !< Number of cells or nodes.
+  character(*), intent(IN)::           varname        !< Variable name.
+  integer(I4P), intent(IN)::           varX(1:NC_NN)  !< X component.
+  integer(I4P), intent(IN)::           varY(1:NC_NN)  !< Y component.
+  integer(I4P), intent(IN)::           varZ(1:NC_NN)  !< Z component.
+  integer(I4P), intent(IN), optional:: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)::                       E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::              s_buffer       !< Buffer string.
+  integer(I4P)::                       var(1:3*NC_NN) !< X, Y, Z component.
+  integer(I1P), allocatable::          varp(:)        !< Packed data.
+  character(((3*NC_NN*4+4+2)/3)*4)::   var64          !< Variable encoded in base64.
+  integer(I4P)::                       rf             !< Real file index.
+  integer(I4P)::                       n1             !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1838,13 +2244,25 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt='(3('//FI4P//',1X))',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="'//trim(varname)//&
                '" NumberOfComponents="3" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = 3*NC_NN*BYI4P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I4',3*NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="'//trim(varname)//&
+               '" NumberOfComponents="3" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    do n1=1,NC_NN
+      var(1+(n1-1)*3:1+(n1-1)*3+2)=[varX(n1),varY(n1),varZ(n1)]
+    enddo
+    varp = transfer([int(3*NC_NN*BYI4P,I4P),var],varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1852,22 +2270,26 @@ contains
 
   !> Function for saving field of vectorial variable (I2P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_VECT_I2(cf,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_XML_VECT_I2(NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           NC_NN         !< Number of cells or nodes.
-  character(*), intent(IN)::           varname       !< Variable name.
-  integer(I2P), intent(IN)::           varX(1:NC_NN) !< X component.
-  integer(I2P), intent(IN)::           varY(1:NC_NN) !< Y component.
-  integer(I2P), intent(IN)::           varZ(1:NC_NN) !< Z component.
-  integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer      !< Buffer string.
-  integer(I4P)::                       rf            !< Real file index.
-  integer(I4P)::                       n1            !< Counter.
+  integer(I4P), intent(IN)::           NC_NN          !< Number of cells or nodes.
+  character(*), intent(IN)::           varname        !< Variable name.
+  integer(I2P), intent(IN)::           varX(1:NC_NN)  !< X component.
+  integer(I2P), intent(IN)::           varY(1:NC_NN)  !< Y component.
+  integer(I2P), intent(IN)::           varZ(1:NC_NN)  !< Z component.
+  integer(I4P), intent(IN), optional:: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)::                       E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::              s_buffer       !< Buffer string.
+  integer(I2P)::                       var(1:3*NC_NN) !< X, Y, Z component.
+  integer(I1P), allocatable::          varp(:)        !< Packed data.
+  character(((3*NC_NN*2+4+2)/3)*4)::   var64          !< Variable encoded in base64.
+  integer(I4P)::                       rf             !< Real file index.
+  integer(I4P)::                       n1             !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1879,13 +2301,25 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt='(3('//FI2P//',1X))',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" Name="'//trim(varname)//&
                '" NumberOfComponents="3" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     call vtk(rf)%byte_update(N_Byte = 3*NC_NN*BYI2P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I2',3*NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" Name="'//trim(varname)//&
+               '" NumberOfComponents="3" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    do n1=1,NC_NN
+      var(1+(n1-1)*3:1+(n1-1)*3+2)=[varX(n1),varY(n1),varZ(n1)]
+    enddo
+    call pack_data(a1=[int(3*NC_NN*BYI2P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1893,22 +2327,26 @@ contains
 
   !> Function for saving field of vectorial variable (I1P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_VECT_I1(cf,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_XML_VECT_I1(NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN)::           NC_NN         !< Number of cells or nodes.
-  character(*), intent(IN)::           varname       !< Variable name.
-  integer(I1P), intent(IN)::           varX(1:NC_NN) !< X component.
-  integer(I1P), intent(IN)::           varY(1:NC_NN) !< Y component.
-  integer(I1P), intent(IN)::           varZ(1:NC_NN) !< Z component.
-  integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
-  character(len=maxlen)::              s_buffer      !< Buffer string.
-  integer(I4P)::                       rf            !< Real file index.
-  integer(I4P)::                       n1            !< Counter.
+  integer(I4P), intent(IN)::           NC_NN          !< Number of cells or nodes.
+  character(*), intent(IN)::           varname        !< Variable name.
+  integer(I1P), intent(IN)::           varX(1:NC_NN)  !< X component.
+  integer(I1P), intent(IN)::           varY(1:NC_NN)  !< Y component.
+  integer(I1P), intent(IN)::           varZ(1:NC_NN)  !< Z component.
+  integer(I4P), intent(IN), optional:: cf             !< Current file index (for concurrent files IO).
+  integer(I4P)::                       E_IO           !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
+  character(len=maxlen)::              s_buffer       !< Buffer string.
+  integer(I1P)::                       var(1:3*NC_NN) !< X, Y, Z component.
+  integer(I1P), allocatable::          varp(:)        !< Packed data.
+  character(((3*NC_NN*1+4+2)/3)*4)::   var64          !< Variable encoded in base64.
+  integer(I4P)::                       rf             !< Real file index.
+  integer(I4P)::                       n1             !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1919,14 +2357,26 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(s_buffer)
     write(unit=vtk(rf)%u,fmt='(3('//FI1P//',1X))',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
-    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="'//trim(varname)// &
+  case(raw)
+    s_buffer=repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="'//trim(varname)//&
              '" NumberOfComponents="3" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     vtk(rf)%N_Byte = 3*NC_NN*BYI1P
     call vtk(rf)%byte_update(N_Byte = 3*NC_NN*BYI1P)
     write(unit=vtk(rf)%ua,iostat=E_IO)vtk(rf)%N_Byte,'I1',3*NC_NN
     write(unit=vtk(rf)%ua,iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
+  case(binary)
+    s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="'//trim(varname)//&
+               '" NumberOfComponents="3" format="binary">'
+    write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
+    do n1=1,NC_NN
+      var(1+(n1-1)*3:1+(n1-1)*3+2)=[varX(n1),varY(n1),varZ(n1)]
+    enddo
+    call pack_data(a1=[int(3*NC_NN*BYI1P,I4P)],a2=var,packed=varp)
+    call b64_encode(nB=int(BYI1P,I4P),n=varp,code=var64)
+    deallocate(varp)
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent+2)//var64//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'//end_rec
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1934,14 +2384,14 @@ contains
 
   !> Function for saving field of list variable (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_LIST_R8(cf,NC_NN,N_COL,varname,var) result(E_IO)
+  function VTK_VAR_XML_LIST_R8(NC_NN,N_COL,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN      !< Number of cells or nodes.
   integer(I4P), intent(IN)::           N_COL      !< Number of columns.
   character(*), intent(IN)::           varname    !< Variable name.
   real(R8P),    intent(IN)::           var(1:,1:) !< Components.
+  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer   !< Buffer string.
   integer(I4P)::                       rf         !< Real file index.
@@ -1949,6 +2399,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -1962,7 +2413,7 @@ contains
       write(unit=vtk(rf)%u,fmt=FR8P,iostat=E_IO)(var(n1,n2),n2=1,N_COL)
     enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float64" Name="'//trim(varname)//'" NumberOfComponents="'// &
                trim(str(.true.,N_COL))//'" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
@@ -1971,6 +2422,7 @@ contains
     do n1=1,NC_NN
       write(unit=vtk(rf)%ua,iostat=E_IO)var(n1,:)
     enddo
+  case(binary)
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -1978,14 +2430,14 @@ contains
 
   !> Function for saving field of list variable (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_LIST_R4(cf,NC_NN,N_COL,varname,var) result(E_IO)
+  function VTK_VAR_XML_LIST_R4(NC_NN,N_COL,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN      !< Number of cells or nodes.
   integer(I4P), intent(IN)::           N_COL      !< Number of columns.
   character(*), intent(IN)::           varname    !< Variable name.
   real(R4P),    intent(IN)::           var(1:,1:) !< Components.
+  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer   !< Buffer string.
   integer(I4P)::                       rf         !< Real file index.
@@ -1993,6 +2445,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2006,7 +2459,7 @@ contains
       write(unit=vtk(rf)%u,fmt=FR4P,iostat=E_IO)(var(n1,n2),n2=1,N_COL)
     enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Float32" Name="'//trim(varname)//'" NumberOfComponents="'// &
                trim(str(.true.,N_COL))//'" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
@@ -2015,6 +2468,7 @@ contains
     do n1=1,NC_NN
       write(unit=vtk(rf)%ua,iostat=E_IO)var(n1,:)
     enddo
+  case(binary)
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -2022,14 +2476,14 @@ contains
 
   !> Function for saving field of list variable (I8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_LIST_I8(cf,NC_NN,N_COL,varname,var) result(E_IO)
+  function VTK_VAR_XML_LIST_I8(NC_NN,N_COL,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN      !< Number of cells or nodes.
   integer(I4P), intent(IN)::           N_COL      !< Number of columns.
   character(*), intent(IN)::           varname    !< Variable name.
   integer(I8P), intent(IN)::           var(1:,1:) !< Components.
+  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer   !< Buffer string.
   integer(I4P)::                       rf         !< Real file index.
@@ -2037,6 +2491,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2050,7 +2505,7 @@ contains
       write(unit=vtk(rf)%u,fmt=FI8P,iostat=E_IO)(var(n1,n2),n2=1,N_COL)
     enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int64" Name="'//trim(varname)//'" NumberOfComponents="'// &
                trim(str(.true.,N_COL))//'" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
@@ -2059,6 +2514,7 @@ contains
     do n1=1,NC_NN
       write(unit=vtk(rf)%ua,iostat=E_IO)var(n1,:)
     enddo
+  case(binary)
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -2066,14 +2522,14 @@ contains
 
   !> Function for saving field of list variable (I4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_LIST_I4(cf,NC_NN,N_COL,varname,var) result(E_IO)
+  function VTK_VAR_XML_LIST_I4(NC_NN,N_COL,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN      !< Number of cells or nodes.
   integer(I4P), intent(IN)::           N_COL      !< Number of columns.
   character(*), intent(IN)::           varname    !< Variable name.
   integer(I4P), intent(IN)::           var(1:,1:) !< Components.
+  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer   !< Buffer string.
   integer(I4P)::                       rf         !< Real file index.
@@ -2081,6 +2537,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2094,7 +2551,7 @@ contains
       write(unit=vtk(rf)%u,fmt=FI4P,iostat=E_IO)(var(n1,n2),n2=1,N_COL)
     enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int32" Name="'//trim(varname)//'" NumberOfComponents="'// &
                trim(str(.true.,N_COL))//'" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
@@ -2103,6 +2560,7 @@ contains
     do n1=1,NC_NN
       write(unit=vtk(rf)%ua,iostat=E_IO)var(n1,:)
     enddo
+  case(binary)
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -2110,14 +2568,14 @@ contains
 
   !> Function for saving field of list variable (I2P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_LIST_I2(cf,NC_NN,N_COL,varname,var) result(E_IO)
+  function VTK_VAR_XML_LIST_I2(NC_NN,N_COL,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN      !< Number of cells or nodes.
   integer(I4P), intent(IN)::           N_COL      !< Number of columns.
   character(*), intent(IN)::           varname    !< Variable name.
   integer(I2P), intent(IN)::           var(1:,1:) !< Components.
+  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer   !< Buffer string.
   integer(I4P)::                       rf         !< Real file index.
@@ -2125,6 +2583,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2138,7 +2597,7 @@ contains
       write(unit=vtk(rf)%u,fmt=FI2P,iostat=E_IO)(var(n1,n2),n2=1,N_COL)
     enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int16" Name="'//trim(varname)//'" NumberOfComponents="'// &
                trim(str(.true.,N_COL))//'" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
@@ -2147,6 +2606,7 @@ contains
     do n1=1,NC_NN
       write(unit=vtk(rf)%ua,iostat=E_IO)var(n1,:)
     enddo
+  case(binary)
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -2154,14 +2614,14 @@ contains
 
   !> Function for saving field of list variable (I1P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_XML_LIST_I1(cf,NC_NN,N_COL,varname,var) result(E_IO)
+  function VTK_VAR_XML_LIST_I1(NC_NN,N_COL,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN      !< Number of cells or nodes.
   integer(I4P), intent(IN)::           N_COL      !< Number of columns.
   character(*), intent(IN)::           varname    !< Variable name.
   integer(I1P), intent(IN)::           var(1:,1:) !< Components.
+  integer(I4P), intent(IN), optional:: cf         !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO       !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer   !< Buffer string.
   integer(I4P)::                       rf         !< Real file index.
@@ -2169,6 +2629,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2182,7 +2643,7 @@ contains
       write(unit=vtk(rf)%u,fmt=FI1P,iostat=E_IO)(var(n1,n2),n2=1,N_COL)
     enddo
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</DataArray>'
-  case(binary)
+  case(raw)
     s_buffer = repeat(' ',vtk(rf)%indent)//'<DataArray type="Int8" Name="'//trim(varname)//'" NumberOfComponents="'// &
                trim(str(.true.,N_COL))//'" format="appended" offset="'//trim(str(.true.,vtk(rf)%ioffset))//'"/>'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
@@ -2191,6 +2652,7 @@ contains
     do n1=1,NC_NN
       write(unit=vtk(rf)%ua,iostat=E_IO)var(n1,:)
     enddo
+  case(binary)
   endselect
   return
   !---------------------------------------------------------------------------------------------------------------------------------
@@ -2227,6 +2689,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2236,7 +2699,7 @@ contains
     vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</'//trim(vtk(rf)%topology)//'>'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'</VTKFile>'
-  case(binary)
+  case(raw)
     vtk(rf)%indent = vtk(rf)%indent - 2
     write(unit  =vtk(rf)%u, iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</'//trim(vtk(rf)%topology)//'>'//end_rec
     write(unit  =vtk(rf)%u, iostat=E_IO)repeat(' ',vtk(rf)%indent)//'<AppendedData encoding="raw">'//end_rec
@@ -2288,6 +2751,10 @@ contains
     write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</AppendedData>'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)'</VTKFile>'//end_rec
     close(unit=vtk(rf)%ua,iostat=E_IO)
+  case(binary)
+    vtk(rf)%indent = vtk(rf)%indent - 2
+    write(unit=vtk(rf)%u,iostat=E_IO)repeat(' ',vtk(rf)%indent)//'</'//trim(vtk(rf)%topology)//'>'//end_rec
+    write(unit=vtk(rf)%u,iostat=E_IO)'</VTKFile>'//end_rec
   endselect
   close(unit=vtk(rf)%u,iostat=E_IO)
   call vtk_update(act='remove',cf=rf,Nvtk=Nvtk,vtk=vtk)
@@ -2309,6 +2776,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   if (.not.ir_initialized) call IR_Init
   if (endian==endianL) then
     s_buffer='<VTKFile type="vtkMultiBlockDataSet" version="1.0" byte_order="LittleEndian">'
@@ -2335,6 +2803,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   select case(trim(Upper_Case(block_action)))
   case('OPEN')
     vtm%blk = vtm%blk + 1
@@ -2359,6 +2828,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   do f=1,size(flist)
     write(unit=vtm%u,fmt='(A)',iostat=E_IO)repeat(' ',vtm%indent)//'<DataSet index="'//trim(str(.true.,f-1))//'" file="'// &
                                            adjustl(trim(flist(f)))//'"/>'
@@ -2378,6 +2848,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   vtm%indent = vtm%indent - 2
   write(unit=vtm%u,fmt='(A)',iostat=E_IO)repeat(' ',vtm%indent)//'</vtkMultiBlockDataSet>'
   write(unit=vtm%u,fmt='(A)',iostat=E_IO)'</VTKFile>'
@@ -2389,9 +2860,12 @@ contains
   !> @brief Function for initializing parallel (partitioned) VTK-XML file.
   !> @return E_IO: integer(I4P) error flag
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function PVTK_INI_XML(cf,nx1,nx2,ny1,ny2,nz1,nz2,filename,mesh_topology,tp) result(E_IO)
+  function PVTK_INI_XML(filename,mesh_topology,tp,cf,nx1,nx2,ny1,ny2,nz1,nz2) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
+  character(*), intent(IN)::            filename      !< File name.
+  character(*), intent(IN)::            mesh_topology !< Mesh topology.
+  character(*), intent(IN)::            tp            !< Type of geometry representation (Float32, Float64, ecc).
   integer(I4P), intent(OUT), optional:: cf            !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN),  optional:: nx1           !< Initial node of x axis.
   integer(I4P), intent(IN),  optional:: nx2           !< Final node of x axis.
@@ -2399,15 +2873,13 @@ contains
   integer(I4P), intent(IN),  optional:: ny2           !< Final node of y axis.
   integer(I4P), intent(IN),  optional:: nz1           !< Initial node of z axis.
   integer(I4P), intent(IN),  optional:: nz2           !< Final node of z axis.
-  character(*), intent(IN)::            filename      !< File name.
-  character(*), intent(IN)::            mesh_topology !< Mesh topology.
-  character(*), intent(IN)::            tp            !< Type of geometry representation (Float32, Float64, ecc).
   integer(I4P)::                        E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::               s_buffer      !< Buffer string.
   integer(I4P)::                        rf            !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   if (.not.ir_initialized) call IR_Init
   call vtk_update(act='add',cf=rf,Nvtk=Nvtk,vtk=vtk)
   f = rf
@@ -2459,9 +2931,10 @@ contains
   !> Function for saving piece geometry source for parallel (partitioned) VTK-XML file.
   !> @return E_IO: integer(I4P) error flag
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function PVTK_GEO_XML(cf,nx1,nx2,ny1,ny2,nz1,nz2,source) result(E_IO)
+  function PVTK_GEO_XML(source,cf,nx1,nx2,ny1,ny2,nz1,nz2) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
+  character(*), intent(IN)::           source   !< Source file name containing the piece data.
   integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN), optional:: nx1      !< Initial node of x axis.
   integer(I4P), intent(IN), optional:: nx2      !< Final node of x axis.
@@ -2469,13 +2942,13 @@ contains
   integer(I4P), intent(IN), optional:: ny2      !< Final node of y axis.
   integer(I4P), intent(IN), optional:: nz1      !< Initial node of z axis.
   integer(I4P), intent(IN), optional:: nz2      !< Final node of z axis.
-  character(*), intent(IN)::           source   !< Source file name containing the piece data.
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2497,17 +2970,18 @@ contains
   !> Function that \b must be called before saving the data related to geometric mesh, this function initializes the
   !> saving of data variables indicating the \em type (node or cell centered) of variables that will be saved.
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function PVTK_DAT_XML(cf,var_location,var_block_action) result(E_IO)
+  function PVTK_DAT_XML(var_location,var_block_action,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf               !< Current file index (for concurrent files IO).
   character(*), intent(IN)::           var_location     !< Location of saving variables: CELL or NODE centered.
   character(*), intent(IN)::           var_block_action !< Variables block action: OPEN or CLOSE block.
+  integer(I4P), intent(IN), optional:: cf               !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO             !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf               !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2535,19 +3009,20 @@ contains
   !> Function for saving variable associated to nodes or cells geometry.
   !> @return E_IO: integer(I4P) error flag
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function PVTK_VAR_XML(cf,Nc,varname,tp) result(E_IO)
+  function PVTK_VAR_XML(varname,tp,cf,Nc) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
-  integer(I4P), intent(IN), optional:: Nc       !< Number of components of variable.
   character(*), intent(IN)::           varname  !< Variable name.
   character(*), intent(IN)::           tp       !< Type of data representation (Float32, Float64, ecc).
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
+  integer(I4P), intent(IN), optional:: Nc       !< Number of components of variable.
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2575,6 +3050,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2598,19 +3074,20 @@ contains
   !> ... @endcode
   !> @return E_IO: integer(I4P) error flag
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function VTK_INI(cf,output_format,filename,title,mesh_topology) result(E_IO)
+  function VTK_INI(output_format,filename,title,mesh_topology,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(OUT), optional:: cf            !< Current file index (for concurrent files IO).
-  character(*), intent(IN)::            output_format !< Output format: ASCII or BINARY.
+  character(*), intent(IN)::            output_format !< Output format: ASCII or RAW.
   character(*), intent(IN)::            filename      !< Name of file.
   character(*), intent(IN)::            title         !< Title.
   character(*), intent(IN)::            mesh_topology !< Mesh topology.
+  integer(I4P), intent(OUT), optional:: cf            !< Current file index (for concurrent files IO).
   integer(I4P)::                        E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                        rf            !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   if (.not.ir_initialized) call IR_Init
   call vtk_update(act='add',cf=rf,Nvtk=Nvtk,vtk=vtk)
   f = rf
@@ -2626,8 +3103,8 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(title)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)trim(Upper_Case(output_format))
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'DATASET '//trim(vtk(rf)%topology)
-  case('BINARY')
-    vtk(rf)%f = binary
+  case('RAW')
+    vtk(rf)%f = raw
     open(unit=Get_Unit(vtk(rf)%u),file=trim(filename),&
          form='UNFORMATTED',access='STREAM',action='WRITE',status='REPLACE',iostat=E_IO)
     ! writing header of file
@@ -2644,10 +3121,9 @@ contains
   !> @{
   !> Function for saving mesh with \b STRUCTURED_POINTS topology (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_STRP_R8(cf,Nx,Ny,Nz,X0,Y0,Z0,Dx,Dy,Dz) result(E_IO)
+  function VTK_GEO_STRP_R8(Nx,Ny,Nz,X0,Y0,Z0,Dx,Dy,Dz,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           Nx       !< Number of nodes in x direction.
   integer(I4P), intent(IN)::           Ny       !< Number of nodes in y direction.
   integer(I4P), intent(IN)::           Nz       !< Number of nodes in z direction.
@@ -2657,12 +3133,14 @@ contains
   real(R8P),    intent(IN)::           Dx       !< Space step in x direction.
   real(R8P),    intent(IN)::           Dy       !< Space step in y direction.
   real(R8P),    intent(IN)::           Dz       !< Space step in z direction.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2672,7 +3150,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(A,3'//FI4P//')',iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,fmt='(A,3'//FR8P//')',iostat=E_IO)'ORIGIN ',X0,Y0,Z0
     write(unit=vtk(rf)%u,fmt='(A,3'//FR8P//')',iostat=E_IO)'SPACING ',Dx,Dy,Dz
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,3'//FI4P//')',iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,                      iostat=E_IO)trim(s_buffer)//end_rec
     write(s_buffer,      fmt='(A,3'//FR8P//')',iostat=E_IO)'ORIGIN ',X0,Y0,Z0
@@ -2686,10 +3164,9 @@ contains
 
   !> Function for saving mesh with \b STRUCTURED_POINTS topology (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_STRP_R4(cf,Nx,Ny,Nz,X0,Y0,Z0,Dx,Dy,Dz) result(E_IO)
+  function VTK_GEO_STRP_R4(Nx,Ny,Nz,X0,Y0,Z0,Dx,Dy,Dz,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           Nx       !< Number of nodes in x direction.
   integer(I4P), intent(IN)::           Ny       !< Number of nodes in y direction.
   integer(I4P), intent(IN)::           Nz       !< Number of nodes in z direction.
@@ -2699,12 +3176,14 @@ contains
   real(R4P),    intent(IN)::           Dx       !< Space step in x direction.
   real(R4P),    intent(IN)::           Dy       !< Space step in y direction.
   real(R4P),    intent(IN)::           Dz       !< Space step in z direction.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2714,7 +3193,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(A,3'//FI4P//')',iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,fmt='(A,3'//FR4P//')',iostat=E_IO)'ORIGIN ',X0,Y0,Z0
     write(unit=vtk(rf)%u,fmt='(A,3'//FR4P//')',iostat=E_IO)'SPACING ',Dx,Dy,Dz
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,3'//FI4P//')',iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,                      iostat=E_IO)trim(s_buffer)//end_rec
     write(s_buffer,      fmt='(A,3'//FR4P//')',iostat=E_IO)'ORIGIN ',X0,Y0,Z0
@@ -2728,10 +3207,9 @@ contains
 
   !> Function for saving mesh with \b STRUCTURED_GRID topology (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_STRG_R8(cf,Nx,Ny,Nz,NN,X,Y,Z) result(E_IO)
+  function VTK_GEO_STRG_R8(Nx,Ny,Nz,NN,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           Nx       !< Number of nodes in x direction.
   integer(I4P), intent(IN)::           Ny       !< Number of nodes in y direction.
   integer(I4P), intent(IN)::           Nz       !< Number of nodes in z direction.
@@ -2739,6 +3217,7 @@ contains
   real(R8P),    intent(IN)::           X(1:NN)  !< X coordinates.
   real(R8P),    intent(IN)::           Y(1:NN)  !< Y coordinates.
   real(R8P),    intent(IN)::           Z(1:NN)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
@@ -2746,6 +3225,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2755,7 +3235,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(A,3'//FI4P//')', iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' double'
     write(unit=vtk(rf)%u,fmt='(3'//FR8P//')',   iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,3'//FI4P//')', iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,                       iostat=E_IO)trim(s_buffer)//end_rec
     write(s_buffer,      fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' double'
@@ -2769,10 +3249,9 @@ contains
 
   !> Function for saving mesh with \b STRUCTURED_GRID topology (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_STRG_R4(cf,Nx,Ny,Nz,NN,X,Y,Z) result(E_IO)
+  function VTK_GEO_STRG_R4(Nx,Ny,Nz,NN,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           Nx       !< Number of nodes in x direction.
   integer(I4P), intent(IN)::           Ny       !< Number of nodes in y direction.
   integer(I4P), intent(IN)::           Nz       !< Number of nodes in z direction.
@@ -2780,6 +3259,7 @@ contains
   real(R4P),    intent(IN)::           X(1:NN)  !< X coordinates.
   real(R4P),    intent(IN)::           Y(1:NN)  !< Y coordinates.
   real(R4P),    intent(IN)::           Z(1:NN)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
@@ -2787,6 +3267,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2796,7 +3277,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(A,3'//FI4P//')', iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' float'
     write(unit=vtk(rf)%u,fmt='(3'//FR4P//')',   iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,3'//FI4P//')', iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,                       iostat=E_IO)trim(s_buffer)//end_rec
     write(s_buffer,      fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' float'
@@ -2810,16 +3291,16 @@ contains
 
   !> Function for saving mesh with \b RECTILINEAR_GRID topology (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_RECT_R8(cf,Nx,Ny,Nz,X,Y,Z) result(E_IO)
+  function VTK_GEO_RECT_R8(Nx,Ny,Nz,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           Nx       !< Number of nodes in x direction.
   integer(I4P), intent(IN)::           Ny       !< Number of nodes in y direction.
   integer(I4P), intent(IN)::           Nz       !< Number of nodes in z direction.
   real(R8P),    intent(IN)::           X(1:Nx)  !< X coordinates.
   real(R8P),    intent(IN)::           Y(1:Ny)  !< Y coordinates.
   real(R8P),    intent(IN)::           Z(1:Nz)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
@@ -2827,6 +3308,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2840,7 +3322,7 @@ contains
     write(unit=vtk(rf)%u,fmt=FR8P,              iostat=E_IO)(Y(n1),n1=1,Ny)
     write(unit=vtk(rf)%u,fmt='(A,'//FI4P//',A)',iostat=E_IO)'Z_COORDINATES ',Nz,' double'
     write(unit=vtk(rf)%u,fmt=FR8P,              iostat=E_IO)(Z(n1),n1=1,Nz)
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,3'//FI4P//')', iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,                       iostat=E_IO)trim(s_buffer)//end_rec
     write(s_buffer,      fmt='(A,'//FI4P//',A)',iostat=E_IO)'X_COORDINATES ',Nx,' double'
@@ -2862,16 +3344,16 @@ contains
 
   !> Function for saving mesh with \b RECTILINEAR_GRID topology (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_RECT_R4(cf,Nx,Ny,Nz,X,Y,Z) result(E_IO)
+  function VTK_GEO_RECT_R4(Nx,Ny,Nz,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           Nx       !< Number of nodes in x direction.
   integer(I4P), intent(IN)::           Ny       !< Number of nodes in y direction.
   integer(I4P), intent(IN)::           Nz       !< Number of nodes in z direction.
   real(R4P),    intent(IN)::           X(1:Nx)  !< X coordinates.
   real(R4P),    intent(IN)::           Y(1:Ny)  !< Y coordinates.
   real(R4P),    intent(IN)::           Z(1:Nz)  !< Z coordinates.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
@@ -2879,6 +3361,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2892,7 +3375,7 @@ contains
     write(unit=vtk(rf)%u,fmt=FR4P,              iostat=E_IO)(Y(n1),n1=1,Ny)
     write(unit=vtk(rf)%u,fmt='(A,'//FI4P//',A)',iostat=E_IO)'Z_COORDINATES ',Nz,' float'
     write(unit=vtk(rf)%u,fmt=FR4P,              iostat=E_IO)(Z(n1),n1=1,Nz)
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,3'//FI4P//')', iostat=E_IO)'DIMENSIONS ',Nx,Ny,Nz
     write(unit=vtk(rf)%u,                       iostat=E_IO)trim(s_buffer)//end_rec
     write(s_buffer,      fmt='(A,'//FI4P//',A)',iostat=E_IO)'X_COORDINATES ',Nx,' float'
@@ -2914,14 +3397,14 @@ contains
 
   !> Function for saving mesh with \b UNSTRUCTURED_GRID topology (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_UNST_R8(cf,NN,X,Y,Z) result(E_IO)
+  function VTK_GEO_UNST_R8(NN,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NN       !< Number of nodes.
   real(R8P),    intent(IN)::           X(1:NN)  !< X coordinates of all nodes.
   real(R8P),    intent(IN)::           Y(1:NN)  !< Y coordinates of all nodes.
   real(R8P),    intent(IN)::           Z(1:NN)  !< Z coordinates of all nodes.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< Buffer string.
   integer(I4P)::                       rf       !< Real file index.
@@ -2929,6 +3412,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2937,7 +3421,7 @@ contains
   case(ascii)
     write(unit=vtk(rf)%u,fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' double'
     write(unit=vtk(rf)%u,fmt='(3'//FR8P//')',   iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' double'
     write(unit=vtk(rf)%u,                       iostat=E_IO)trim(s_buffer)//end_rec
     write(unit=vtk(rf)%u,                       iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
@@ -2949,14 +3433,14 @@ contains
 
   !> Function for saving mesh with \b UNSTRUCTURED_GRID topology (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_GEO_UNST_R4(cf,NN,X,Y,Z) result(E_IO)
+  function VTK_GEO_UNST_R4(NN,X,Y,Z,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NN       !< number of nodes.
   real(R4P),    intent(IN)::           X(1:NN)  !< x coordinates of all nodes.
   real(R4P),    intent(IN)::           Y(1:NN)  !< y coordinates of all nodes.
   real(R4P),    intent(IN)::           Z(1:NN)  !< z coordinates of all nodes.
+  integer(I4P), intent(IN), optional:: cf       !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO     !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer !< buffer string.
   integer(I4P)::                       rf       !< Real file index.
@@ -2964,6 +3448,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -2972,7 +3457,7 @@ contains
   case(ascii)
     write(unit=vtk(rf)%u,fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' float'
     write(unit=vtk(rf)%u,fmt='(3'//FR4P//')',   iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,'//FI4P//',A)',iostat=E_IO)'POINTS ',NN,' float'
     write(unit=vtk(rf)%u,                       iostat=E_IO)trim(s_buffer)//end_rec
     write(unit=vtk(rf)%u,                       iostat=E_IO)(X(n1),Y(n1),Z(n1),n1=1,NN)
@@ -3022,13 +3507,13 @@ contains
   !> cell_type(2) = 14 pyramid type of \f$2^\circ\f$ cell \n
   !> @return E_IO: integer(I4P) error flag
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function VTK_CON(cf,NC,connect,cell_type) result(E_IO)
+  function VTK_CON(NC,connect,cell_type,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf              !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC              !< Number of cells.
   integer(I4P), intent(IN)::           connect(:)      !< Mesh connectivity.
   integer(I4P), intent(IN)::           cell_type(1:NC) !< VTK cell type.
+  integer(I4P), intent(IN), optional:: cf              !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO            !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer        !< Buffer string.
   integer(I4P)::                       ncon            !< Dimension of connectivity vector.
@@ -3036,6 +3521,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3047,7 +3533,7 @@ contains
     write(unit=vtk(rf)%u,fmt=FI4P,             iostat=E_IO)connect
     write(unit=vtk(rf)%u,fmt='(A,'//FI4P//')', iostat=E_IO)'CELL_TYPES ',NC
     write(unit=vtk(rf)%u,fmt=FI4P,             iostat=E_IO)cell_type
-  case(binary)
+  case(raw)
     write(s_buffer,      fmt='(A,2'//FI4P//')',iostat=E_IO)'CELLS ',NC,ncon
     write(unit=vtk(rf)%u,                      iostat=E_IO)trim(s_buffer)//end_rec
     write(unit=vtk(rf)%u,                      iostat=E_IO)connect
@@ -3076,18 +3562,19 @@ contains
   !> ... @endcode
   !> @return E_IO: integer(I4P) error flag
   !> @ingroup Lib_VTK_IOPublicProcedure
-  function VTK_DAT(cf,NC_NN,var_location) result(E_IO)
+  function VTK_DAT(NC_NN,var_location,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of cells or nodes of field.
   character(*), intent(IN)::           var_location !< Location of saving variables: cell for cell-centered, node for node-centered.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer     !< Buffer string.
   integer(I4P)::                       rf           !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3100,7 +3587,7 @@ contains
     case('NODE')
       write(unit=vtk(rf)%u,fmt='(A,'//FI4P//')',iostat=E_IO)'POINT_DATA ',NC_NN
     endselect
-  case(binary)
+  case(raw)
     select case(trim(Upper_Case(var_location)))
     case('CELL')
       write(s_buffer,fmt='(A,'//FI4P//')',iostat=E_IO)'CELL_DATA ',NC_NN
@@ -3118,18 +3605,19 @@ contains
   !> @{
   !> Function for saving field of scalar variable (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_SCAL_R8(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_SCAL_R8(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of nodes or cells.
   character(*), intent(IN)::           varname      !< Variable name.
   real(R8P),    intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf           !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3139,7 +3627,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'SCALARS '//trim(varname)//' double 1'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'LOOKUP_TABLE default'
     write(unit=vtk(rf)%u,fmt=FR8P, iostat=E_IO)var
-  case(binary)
+  case(raw)
     write(unit=vtk(rf)%u,iostat=E_IO)'SCALARS '//trim(varname)//' double 1'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)'LOOKUP_TABLE default'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)var
@@ -3151,18 +3639,19 @@ contains
 
   !> Function for saving field of scalar variable (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_SCAL_R4(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_SCAL_R4(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of nodes or cells.
   character(*), intent(IN)::           varname      !< Variable name.
   real(R4P),    intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf           !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3172,7 +3661,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'SCALARS '//trim(varname)//' float 1'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'LOOKUP_TABLE default'
     write(unit=vtk(rf)%u,fmt=FR4P, iostat=E_IO)var
-  case(binary)
+  case(raw)
     write(unit=vtk(rf)%u,iostat=E_IO)'SCALARS '//trim(varname)//' float 1'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)'LOOKUP_TABLE default'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)var
@@ -3184,18 +3673,19 @@ contains
 
   !> Function for saving field of scalar variable (I4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_SCAL_I4(cf,NC_NN,varname,var) result(E_IO)
+  function VTK_VAR_SCAL_I4(NC_NN,varname,var,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN        !< Number of nodes or cells.
   character(*), intent(IN)::           varname      !< Variable name.
   integer(I4P), intent(IN)::           var(1:NC_NN) !< Variable to be saved.
+  integer(I4P), intent(IN), optional:: cf           !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO         !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf           !< Real file index.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3205,7 +3695,7 @@ contains
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'SCALARS '//trim(varname)//' int 1'
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'LOOKUP_TABLE default'
     write(unit=vtk(rf)%u,fmt=FI4P, iostat=E_IO)var
-  case(binary)
+  case(raw)
     write(unit=vtk(rf)%u,iostat=E_IO)'SCALARS '//trim(varname)//' int 1'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)'LOOKUP_TABLE default'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)var
@@ -3217,22 +3707,23 @@ contains
 
   !> Function for saving field of vectorial variable (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_VECT_R8(cf,vec_type,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_VECT_R8(vec_type,NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
   character(*), intent(IN)::           vec_type      !< Vector type: vect = generic vector , norm = normal vector.
   integer(I4P), intent(IN)::           NC_NN         !< Number of nodes or cells.
   character(*), intent(IN)::           varname       !< Variable name.
   real(R8P),    intent(IN)::           varX(1:NC_NN) !< X component of vector.
   real(R8P),    intent(IN)::           varY(1:NC_NN) !< Y component of vector.
   real(R8P),    intent(IN)::           varZ(1:NC_NN) !< Z component of vector.
+  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf            !< Real file index.
   integer(I8P)::                       n1            !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3246,7 +3737,7 @@ contains
       write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'NORMALS '//trim(varname)//' double'
     endselect
     write(unit=vtk(rf)%u,fmt='(3'//FR8P//')',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
-  case(binary)
+  case(raw)
     select case(Upper_Case(trim(vec_type)))
     case('VECT')
       write(unit=vtk(rf)%u,iostat=E_IO)'VECTORS '//trim(varname)//' double'//end_rec
@@ -3262,22 +3753,23 @@ contains
 
   !> Function for saving field of vectorial variable (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_VECT_R4(cf,vec_type,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_VECT_R4(vec_type,NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
   character(*), intent(IN)::           vec_type      !< Vector type: vect = generic vector , norm = normal vector.
   integer(I4P), intent(IN)::           NC_NN         !< Number of nodes or cells.
   character(*), intent(IN)::           varname       !< Variable name.
   real(R4P),    intent(IN)::           varX(1:NC_NN) !< X component of vector.
   real(R4P),    intent(IN)::           varY(1:NC_NN) !< Y component of vector.
   real(R4P),    intent(IN)::           varZ(1:NC_NN) !< Z component of vector.
+  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf            !< Real file index.
   integer(I8P)::                       n1            !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3291,7 +3783,7 @@ contains
       write(unit=vtk(rf)%u,fmt='(A)',          iostat=E_IO)'NORMALS '//trim(varname)//' float'
     endselect
     write(unit=vtk(rf)%u,fmt='(3'//FR4P//')',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
-  case(binary)
+  case(raw)
     select case(Upper_Case(trim(vec_type)))
     case('vect')
       write(unit=vtk(rf)%u,iostat=E_IO)'VECTORS '//trim(varname)//' float'//end_rec
@@ -3307,21 +3799,22 @@ contains
 
   !> Function for saving field of vectorial variable (I4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_VECT_I4(cf,NC_NN,varname,varX,varY,varZ) result(E_IO)
+  function VTK_VAR_VECT_I4(NC_NN,varname,varX,varY,varZ,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN         !< Number of nodes or cells.
   character(*), intent(IN)::           varname       !< Variable name.
   integer(I4P), intent(IN)::           varX(1:NC_NN) !< X component of vector.
   integer(I4P), intent(IN)::           varY(1:NC_NN) !< Y component of vector.
   integer(I4P), intent(IN)::           varZ(1:NC_NN) !< Z component of vector.
+  integer(I4P), intent(IN), optional:: cf            !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO          !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   integer(I4P)::                       rf            !< Real file index.
   integer(I8P)::                       n1            !< Counter.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3330,7 +3823,7 @@ contains
   case(ascii)
     write(unit=vtk(rf)%u,fmt='(A)',iostat=E_IO)'VECTORS '//trim(varname)//' int'
     write(unit=vtk(rf)%u,fmt='(3'//FI4P//')',iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
-  case(binary)
+  case(raw)
     write(unit=vtk(rf)%u,iostat=E_IO)'VECTORS '//trim(varname)//' int'//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)(varX(n1),varY(n1),varZ(n1),n1=1,NC_NN)
     write(unit=vtk(rf)%u,iostat=E_IO)end_rec
@@ -3341,14 +3834,14 @@ contains
 
   !> Function for saving texture variable (R8P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_TEXT_R8(cf,NC_NN,dimm,varname,textCoo) result(E_IO)
+  function VTK_VAR_TEXT_R8(NC_NN,dimm,varname,textCoo,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf                      !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN                   !< Number of nodes or cells.
   integer(I4P), intent(IN)::           dimm                    !< Texture dimensions.
   character(*), intent(IN)::           varname                 !< Variable name.
   real(R8P),    intent(IN)::           textCoo(1:NC_NN,1:dimm) !< Texture.
+  integer(I4P), intent(IN), optional:: cf                      !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO              !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer                !< Buffer string.
   integer(I4P)::                       rf                      !< Real file index.
@@ -3356,6 +3849,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3366,7 +3860,7 @@ contains
     write(s_buffer,fmt='(I1)',iostat=E_IO)dimm
     s_buffer='('//trim(s_buffer)//FR4P//')'
     write(unit=vtk(rf)%u,fmt=trim(s_buffer),iostat=E_IO)((textCoo(n1,n2),n2=1,dimm),n1=1,NC_NN)
-  case(binary)
+  case(raw)
     write(s_buffer,fmt='(A,1X,'//FI4P//',1X,A)',iostat=E_IO)'TEXTURE_COORDINATES '//trim(varname),dimm,' double'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)((textCoo(n1,n2),n2=1,dimm),n1=1,NC_NN)
@@ -3378,18 +3872,18 @@ contains
 
   !> Function for saving texture variable (R4P).
   !> @return E_IO: integer(I4P) error flag
-  function VTK_VAR_TEXT_R4(cf,NC_NN,dimm,varname,textCoo) result(E_IO)
+  function VTK_VAR_TEXT_R4(NC_NN,dimm,varname,textCoo,cf) result(E_IO)
   !---------------------------------------------------------------------------------------------------------------------------------
   !! Function for saving texture variable (R4P).
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer(I4P), intent(IN), optional:: cf                      !< Current file index (for concurrent files IO).
   integer(I4P), intent(IN)::           NC_NN                   !< Number of nodes or cells.
   integer(I4P), intent(IN)::           dimm                    !< Texture dimensions.
   character(*), intent(IN)::           varname                 !< Variable name.
   real(R4P),    intent(IN)::           textCoo(1:NC_NN,1:dimm) !< Texture.
+  integer(I4P), intent(IN), optional:: cf                      !< Current file index (for concurrent files IO).
   integer(I4P)::                       E_IO              !< Input/Output inquiring flag: $0$ if IO is done, $> 0$ if IO is not done.
   character(len=maxlen)::              s_buffer                !< Buffer string.
   integer(I4P)::                       rf                      !< Real file index.
@@ -3397,6 +3891,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
+  E_IO = -1_I4P
   rf = f
   if (present(cf)) then
     rf = cf ; f = cf
@@ -3407,7 +3902,7 @@ contains
     write(s_buffer,fmt='(I1)',iostat=E_IO)dimm
     s_buffer='('//trim(s_buffer)//FR4P//')'
     write(unit=vtk(rf)%u,fmt=trim(s_buffer),iostat=E_IO)((textCoo(n1,n2),n2=1,dimm),n1=1,NC_NN)
-  case(binary)
+  case(raw)
     write(s_buffer,fmt='(A,1X,'//FI4P//',1X,A)',iostat=E_IO)'TEXTURE_COORDINATES '//trim(varname),dimm,' float'
     write(unit=vtk(rf)%u,iostat=E_IO)trim(s_buffer)//end_rec
     write(unit=vtk(rf)%u,iostat=E_IO)((textCoo(n1,n2),n2=1,dimm),n1=1,NC_NN)
@@ -3435,8 +3930,11 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
-  rf = 1
-  if (present(cf)) rf = cf
+  E_IO = -1_I4P
+  rf = f
+  if (present(cf)) then
+    rf = cf ; f = cf
+  endif
   close(unit=vtk(rf)%u,iostat=E_IO)
   call vtk_update(act='remove',cf=rf,Nvtk=Nvtk,vtk=vtk)
   f = rf
