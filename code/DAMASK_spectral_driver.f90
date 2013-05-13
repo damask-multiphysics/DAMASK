@@ -108,10 +108,9 @@ program DAMASK_spectral_Driver
  integer(pInt), dimension(1_pInt + maxNchunks*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
  
  integer(pInt) :: &
-   N_l    = 0_pInt, &                                                                               !< # of L specifiers found in load case file
    N_t    = 0_pInt, &                                                                               !< # of time indicators found in load case file 
    N_n    = 0_pInt, &                                                                               !< # of increment specifiers found in load case file
-   N_Fdot = 0_pInt                                                                                  !< # of rate of F specifiers found in load case file
+   N_def = 0_pInt                                                                                   !< # of rate of deformation specifiers found in load case file
  character(len=1024) :: &
    line
 
@@ -126,7 +125,8 @@ program DAMASK_spectral_Driver
    time = 0.0_pReal, &                                                                              !< elapsed time
    time0 = 0.0_pReal, &                                                                             !< begin of interval
    timeinc = 1.0_pReal, &                                                                           !< current time interval
-   timeinc_old = 0.0_pReal   !                                                                      !< previous time interval
+   timeIncOld = 0.0_pReal, &                                                                        !< previous time interval
+   remainingLoadCaseTime = 0.0_pReal                                                                !< remaining time of current load case
  logical :: &
    guess                                                                                            !< guess along former trajectory
  integer(pInt) :: &
@@ -166,10 +166,8 @@ program DAMASK_spectral_Driver
    positions = IO_stringPos(line,maxNchunks)
    do i = 1_pInt, positions(1)                                                                        ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,positions,i)))
-       case('l','velocitygrad','velgrad','velocitygradient')
-         N_l = N_l + 1_pInt
-       case('fdot','dotf')
-         N_Fdot = N_Fdot + 1_pInt
+       case('l','velocitygrad','velgrad','velocitygradient','fdot','dotf','f')
+         N_def = N_def + 1_pInt
        case('t','time','delta')
          N_t = N_t + 1_pInt
        case('n','incs','increments','steps','logincs','logincrements','logsteps')
@@ -178,7 +176,7 @@ program DAMASK_spectral_Driver
    enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
  enddo
 
-100 if ((N_l + N_Fdot /= N_n) .or. (N_n /= N_t)) &                                                  ! sanity check
+100 if ((N_def /= N_n) .or. (N_n /= N_t)) &                                                         ! sanity check
        call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                ! error message for incomplete loadcase
  allocate (loadCases(N_n))                                                                          ! array of load cases
  loadCases%P%myType='p'
@@ -193,11 +191,13 @@ program DAMASK_spectral_Driver
    positions = IO_stringPos(line,maxNchunks)
    do i = 1_pInt, positions(1)
      select case (IO_lc(IO_stringValue(line,positions,i)))
-       case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient')                          ! assign values for the deformation BC matrix
+       case('fdot','dotf','l','velocitygrad','velgrad','velocitygradient','f')                      ! assign values for the deformation BC matrix
          temp_valueVector = 0.0_pReal
          if (IO_lc(IO_stringValue(line,positions,i)) == 'fdot'.or. &                                ! in case of Fdot, set type to fdot
              IO_lc(IO_stringValue(line,positions,i)) == 'dotf') then
            loadCases(currentLoadCase)%deformation%myType = 'fdot'
+         else if (IO_lc(IO_stringValue(line,positions,i)) == 'f') then
+           loadCases(currentLoadCase)%deformation%myType = 'f'
          else
            loadCases(currentLoadCase)%deformation%myType = 'l'
          endif
@@ -215,7 +215,7 @@ program DAMASK_spectral_Driver
        case('p','pk1','piolakirchhoff','stress', 's')
          temp_valueVector = 0.0_pReal
          do j = 1_pInt, 9_pInt
-           temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'  ! true if not a *
+           temp_maskVector(j) = IO_stringValue(line,positions,i+j) /= '*'                           ! true if not an asterisk
          enddo
          do j = 1_pInt,9_pInt
            if (temp_maskVector(j)) temp_valueVector(j) = IO_floatValue(line,positions,i+j)          ! read value where applicable
@@ -282,6 +282,8 @@ program DAMASK_spectral_Driver
                                                                   errorID = 832_pInt                ! each row should be either fully or not at all defined
      enddo
      write(6,'(2x,a)') 'velocity gradient:'
+   else if (loadCases(currentLoadCase)%deformation%myType=='f') then
+     write(6,'(2x,a)') 'deformation gradient at end of load case:'
    else
      write(6,'(2x,a)') 'deformation gradient rate:'
    endif
@@ -390,7 +392,7 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
-     timeinc_old = timeinc
+     timeIncOld = timeinc
      if (loadCases(currentLoadCase)%logscale == 0_pInt) then                                        ! linear scale
        timeinc = loadCases(currentLoadCase)%time/loadCases(currentLoadCase)%incs                    ! only valid for given linear time scale. will be overwritten later in case loglinear scale is used
      else
@@ -418,7 +420,7 @@ program DAMASK_spectral_Driver
        subIncLooping: do while (stepFraction/subStepFactor**cutBackLevel <1_pInt)
          time = time + timeinc                                                                      ! forward time
          stepFraction = stepFraction + 1_pInt 
-
+         remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
          write(6,'(/,a)') ' ###########################################################################'
@@ -441,7 +443,7 @@ program DAMASK_spectral_Driver
 ! calculate solution 
            case (DAMASK_spectral_SolverBasic_label)
              solres = basic_solution (&
-                 incInfo, guess,timeinc,timeinc_old, &
+                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
@@ -449,7 +451,7 @@ program DAMASK_spectral_Driver
 #ifdef PETSc
            case (DAMASK_spectral_SolverBasicPETSC_label)
              solres = BasicPETSC_solution (&
-                 incInfo, guess,timeinc,timeinc_old, &
+                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
@@ -457,7 +459,7 @@ program DAMASK_spectral_Driver
             
            case (DAMASK_spectral_SolverAL_label)
              solres = AL_solution (&
-                 incInfo, guess,timeinc,timeinc_old, &
+                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
@@ -475,7 +477,7 @@ program DAMASK_spectral_Driver
              stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
              time    = time - timeinc                                                               ! rewind time
-             timeinc_old = timeinc
+             timeIncOld = timeinc
              timeinc = timeinc/2.0_pReal
            elseif (solres%termIll) then                                                             ! material point model cannot find a solution
              if(regridMode > 0_pInt) call quit(-1_pInt*(lastRestartWritten+1_pInt))                 ! regrid requested (mode 1 or 2)

@@ -231,8 +231,8 @@ end subroutine basicPETSc_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function &
-  basicPETSc_solution(incInfoIn,guess,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
+type(tSolutionState) function basicPETSc_solution( &
+             incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC)
  use numerics, only: &
    update_gamma, &
    itmax
@@ -262,7 +262,11 @@ type(tSolutionState) function &
 #include <finclude/petscsnes.h90>
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
- real(pReal), intent(in) :: timeinc, timeinc_old, temperature_bc
+  real(pReal), intent(in) :: &
+   timeinc, &                                                                                       !< increment in time for current solution
+   timeinc_old, &                                                                                   !< increment in time of last increment
+   loadCaseTime, &                                                                                  !< remaining time of current load case
+   temperature_bc
  logical, intent(in):: guess
  type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
@@ -314,7 +318,9 @@ type(tSolutionState) function &
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
    elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
      f_aimDot = F_BC%maskFloat * F_BC%values
-   endif
+   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
+     f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
+  endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
   

@@ -43,8 +43,8 @@ module DAMASK_spectral_solverAL
    DAMASK_spectral_SolverAL_label = 'al'
    
 !--------------------------------------------------------------------------------------------------
-! derived types ToDo: use here the type definition for a full loadcase including mask
- type tSolutionParams 
+! derived types 
+ type tSolutionParams                                                                               !< @ToDo: use here the type definition for a full loadcase including mask
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
    real(pReal) :: temperature
@@ -261,7 +261,7 @@ end subroutine AL_init
 !> @brief solution for the AL scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
-  AL_solution(incInfoIn,guess,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
+  AL_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC)
  use numerics, only: &
    update_gamma, &
    itmax
@@ -290,11 +290,13 @@ use mesh, only: &
  implicit none
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
+
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
- real(pReal), intent(in) :: &
-   timeinc, &
-   timeinc_old, &
+  real(pReal), intent(in) :: &
+   timeinc, &                                                                                       !< increment in time for current solution
+   timeinc_old, &                                                                                   !< increment in time of last increment
+   loadCaseTime, &                                                                                  !< remaining time of current load case
    temperature_bc
  logical, intent(in) :: &
    guess
@@ -346,7 +348,7 @@ use mesh, only: &
  endif 
  AL_solution%converged =.false.
 
- if ( cutBack) then 
+ if (cutBack) then 
    F_aim = F_aim_lastInc
    F_tau= reshape(F_tau_lastInc,[9,grid(1),grid(2),grid(3)]) 
    F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
@@ -357,8 +359,10 @@ use mesh, only: &
 ! calculate rate for aim
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
-   elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
+   elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
      f_aimDot = F_BC%maskFloat * F_BC%values
+   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
+     f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
    endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim

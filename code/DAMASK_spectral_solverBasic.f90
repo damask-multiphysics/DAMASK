@@ -164,8 +164,8 @@ end subroutine basic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief solution for the basic scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
-type(tSolutionState) function & 
-  basic_solution(incInfo,guess,timeinc,timeinc_old,P_BC,F_BC,temperature_bc,rotation_BC)
+type(tSolutionState) function basic_solution(&
+             incInfo,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC)
  use numerics, only: &
    itmax, &
    itmin, &
@@ -212,7 +212,8 @@ type(tSolutionState) function &
 ! input data for solution
  real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
-   timeinc_old                                                                                      !< increment in time of last increment
+   timeinc_old, &                                                                                   !< increment in time of last increment
+   loadCaseTime                                                                                     !< remaining time of current load case
  logical, intent(in) :: &
    guess                                                                                            !< if .false., assume homogeneous addon
  type(tBoundaryCondition),      intent(in) :: &
@@ -274,6 +275,8 @@ type(tSolutionState) function &
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
    elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
      f_aimDot = F_BC%maskFloat * F_BC%values
+   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
+     f_aimDot = F_BC%maskFloat * (F_BC%values - F_aim)/loadCaseTime
    endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
