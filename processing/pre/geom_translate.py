@@ -110,7 +110,6 @@ for file in files:
           'microstructures': 0,
          }
   new_header = []
-  new_header.append('$Id$\n')
   for header in headers:
     headitems = map(str.lower,header.split())
     if headitems[0] == 'resolution': headitems[0] = 'grid'
@@ -165,6 +164,7 @@ for file in files:
   if (newInfo['microstructures'] != info['microstructures']):
     file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
  
+  new_header.append('$Id$\n')
   new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
   new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(

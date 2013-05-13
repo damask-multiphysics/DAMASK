@@ -5,9 +5,9 @@ import os,sys,string,re,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
     
@@ -24,8 +24,9 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-# ----------------------- MAIN -------------------------------
-
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 identifiers = {
         'grid':      ['a','b','c'],
         'size':      ['x','y','z'],
@@ -53,7 +54,7 @@ parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+#--- setup file handles ---------------------------------------------------------------------------   
 files = []
 if filenames == []:
   files.append({'name':'STDIN',
@@ -70,12 +71,9 @@ else:
                     'croak':sys.stdout,
                     })
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------  
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
-
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
@@ -89,6 +87,7 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
+#--- interpretate header --------------------------------------------------------------------------
   info = {'grid':           [0,0,0],
           'size':           [0.0,0.0,0.0],
           'origin':         [0.0,0.0,0.0],
@@ -131,25 +130,21 @@ for file in files:
   else:
     digits = 1+int(math.log10(int(info['grid'][0]*info['grid'][1]*info['grid'][2])))
 
-# ------------------------------------------ assemble header ---------------------------------------  
-
   file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
 
-# ------------------------------------------ unpack input ---------------------------------------  
-
+#--- unpack input ---------------------------------------------------------------------------------
   wordsWritten = 0
   for line in content:
     words = map(str.lower,line.split())
-    if len(words) > 1:        # any packing keywords?
+    if len(words) > 1:                                                                              # any packing keywords?
       if (words[1] == 'to'): words = map(str,range(int(words[0]),int(words[2])+1))
       if (words[1] == 'of'): words = [words[2]]*int(words[0])
 
     for word in words:
       wordsWritten += 1
-      file['output'].write(word.zfill(digits)+{True:'\n',False:' '}[wordsWritten%format == 0])    # newline every format words
+      file['output'].write(word.zfill(digits)+{True:'\n',False:' '}[wordsWritten%format == 0])      # newline every format words
 
-# ------------------------------------------ output finalization ---------------------------------------  
-
+#--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
     file['output'].close()
     os.rename(file['name']+'_tmp',file['name'])

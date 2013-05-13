@@ -4,10 +4,9 @@
 import os,sys,string,re,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
     
@@ -24,8 +23,9 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-# ----------------------- MAIN -------------------------------
-
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -50,7 +50,7 @@ parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
 parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, \
                   help='x,y,z size of hexahedral box [unchanged]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement')
+                  help='output geom file with two-dimensional data arrangement [%default]')
 
 parser.set_defaults(grid = [0,0,0])
 parser.set_defaults(size  = [0.0,0.0,0.0])
@@ -58,8 +58,7 @@ parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+#--- setup file handles ---------------------------------------------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN',
@@ -76,12 +75,9 @@ else:
                     'croak':sys.stdout,
                     })
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
-
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
@@ -95,16 +91,22 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
+#--- interpretate header --------------------------------------------------------------------------
   info = {
-        'grid':   numpy.array(options.grid),
-        'size':   numpy.array(options.size),
-        'origin': numpy.zeros(3,'d'),
-        'microstructures': 0,
-        'homogenization':  0
-       }
+          'grid':   numpy.array(options.grid),
+          'size':   numpy.array(options.size),
+          'origin': numpy.zeros(3,'d'),
+          'microstructures': 0,
+          'homogenization':  0
+         }
+
+  newInfo = {
+          'grid':   numpy.array(options.grid),
+          'size':   numpy.array(options.size),
+          'microstructures': 0,
+         }
 
   new_header = []
-  new_header.append('$Id$\n')
   for header in headers:
     headitems = map(str.lower,header.split())
     if headitems[0] == 'resolution': headitems[0] = 'grid'
@@ -126,17 +128,16 @@ for file in files:
     file['croak'].write('no size info found.\n')
     continue
 
-  file['croak'].write('-- input --\n' +\
-                      'grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n'%info['microstructures'])
+                      'microstructures: %i\n\n'%info['microstructures'])
                       
   if options.grid == [0,0,0]:
-    options.grid = info['grid']
+    newInfo['grid'] = info['grid']
   if options.size == [0.0,0.0,0.0]:
-    options.size = info['size']
+    newInfo['size'] = info['size']
     
   microstructure = numpy.zeros(info['grid'],'i')
   i = 0
@@ -146,18 +147,21 @@ for file in files:
                     (i/info['grid'][0])%info['grid'][1],
                      i/info['grid'][0] /info['grid'][1]] = item
       i += 1
-  info['microstructures'] = microstructure.max()
+  newInfo['microstructures'] = microstructure.max()
   formatwidth = 1+int(math.floor(math.log10(microstructure.max())))
   
-  file['croak'].write('-- output --\n' +\
-                      'grid     a b c:  %s\n'%(' x '.join(map(str,options.grid))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,options.size)))  + \
-                      'microstructures: %i\n'%info['microstructures'])
+  if (any(newInfo['grid'] != info['grid'])):
+    file['croak'].write('--> grid     a b c:  %s\n'%(' x '.join(map(str,newInfo['grid']))))
+  if (any(newInfo['size'] != info['size'])):
+    file['croak'].write('--> size     x y z:  %s\n'%(' x '.join(map(str,newInfo['size']))))
+  if (newInfo['microstructures'] != info['microstructures']):
+    file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
 
-  new_header.append("grid\ta %i\tb %i\tc %i\n"%(options.grid[0],options.grid[1],options.grid[2],))
-  new_header.append("size\tx %f\ty %f\tz %f\n"%(options.size[0],options.size[1],options.size[2],))
-  new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
-  new_header.append("microstructures\t%i\n"%info['microstructures'])
+  new_header.append('$Id$\n')
+  new_header.append("grid\ta %i\tb %i\tc %i\n"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2]))
+  new_header.append("size\tx %f\ty %f\tz %f\n"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2]))
+  new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2]))
+  new_header.append("microstructures\t%i\n"%newInfo['microstructures'])
   new_header.append("homogenization\t%i\n"%info['homogenization'])
   
 # ------------------------------------------ assemble header ---------------------------------------  

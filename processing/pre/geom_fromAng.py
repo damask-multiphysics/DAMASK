@@ -1,11 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,string,numpy
 from optparse import OptionParser, Option
 
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendableOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
   
@@ -22,10 +23,9 @@ class extendableOption(Option):
       Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-# --------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
 #                                MAIN
-# --------------------------------------------------------------------
-
+#--------------------------------------------------------------------------------------------------
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration from EBSD data in given square-gridded 'ang' file.
 Two phases can be discriminated based on threshold value in a given data column.
@@ -55,8 +55,7 @@ parser.set_defaults(config = False)
 
 (options,filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+#--- setup file handles ---------------------------------------------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN',
@@ -74,31 +73,37 @@ else:
                     })
 
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
-  point          = 0
-  step           = [0,0]
-  grid     = [1,1]
+  info = {
+          'grid':   numpy.array([0,0,1]),
+          'size':   numpy.array([0.0,0.0,0.0]),
+          'origin': numpy.zeros(3,'d'),
+          'microstructures': 0,
+          'homogenization':  options.homogenization
+         }
+
   microstructure = ['<microstructure>']
   texture        = ['<texture>']
+  point          = 0
+  step           = [0,0]
 
   for line in file['input']:
     words = line.split()
-    if words[0] == '#':                                                 # process initial comments block
+    if words[0] == '#':                                                                             # process initial comments block
       if len(words) > 2:
         if words[1] == 'HexGrid': 
           file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n'); break
         if words[1] == 'XSTEP:':     step[0] = float(words[2])
         if words[1] == 'YSTEP:':     step[1] = float(words[2])
         if words[1] == 'NCOLS_ODD:': 
-          grid[0] =   int(words[2]); formatwidth = 1+int(math.log10(grid[0]*grid[1]))
+          info['grid'][0] =   int(words[2]); formatwidth = 1+int(math.log10(info['grid'][0]*info['grid'][1]))
         if words[1] == 'NROWS:':     
-          grid[1] =   int(words[2]); formatwidth = 1+int(math.log10(grid[0]*grid[1]))
-    else:                                                               # finished with comments block
-      if options.config:                                                # write configuration (line by line)
+          info['grid'][1] =   int(words[2]); formatwidth = 1+int(math.log10(info['grid'][0]*info['grid'][1]))
+    else:                                                                                           # finished with comments block
+      if options.config:                                                                            # write configuration (line by line)
         point += 1
         me = str(point).zfill(formatwidth)
         microstructure += ['[Grain%s]\n'%me + \
@@ -108,29 +113,34 @@ for file in files:
         texture +=        ['[Grain%s]\n'%me + \
                            '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
                           ]
-      else:
-        grid.append(1)
-        file['output'].write("6 header\n" + \
-                             "$Id$ \n"
-                             "grid\ta %i\tb %i\tc 1\n"%(grid[0],grid[1]) + \
-                             "size\tx %g\ty %g\tz %g\n"%(step[0]*grid[0],step[1]*grid[1],min(step)) + \
-                             "origin\tx 0\ty 0\tz 0\n" + \
-                             "microstructures\t%i\n"%(grid[0]*grid[1]) + \
-                             "homogenization %i\n"%options.homogenization + \
-                             "1 to %i\n"%(grid[0]*grid[1]))
+      else:                                                                                         # only info from header needed
         break
-  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,grid))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,[step[0]*grid[0],step[1]*grid[1],min(step)]))) + \
-                      'origin   x y z:  %s\n'%(' : '.join(map(str,[0.0,0.0,0.0]))) + \
-                      'microstructures: %i\n'%(grid[0]*grid[1]) + \
-                      'homogenization:  %i\n'%options.homogenization)
-  
+
+  info['microstructures'] = info['grid'][0]*info['grid'][1]
+  info['size'] = step[0]*info['grid'][0],step[1]*info['grid'][1],min(step)
+
+#--- report ---------------------------------------------------------------------------------------
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization:  %i\n'%info['homogenization'] + \
+                      'microstructures: %i\n\n'%info['microstructures'])
+
+#--- write data -----------------------------------------------------------------------------------
   if options.config:
     file['output'].write('\n'.join(microstructure) + \
                          '\n'.join(texture))
+  else:
+    header = ['$Id$\n']
+    header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
+    header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
+    header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
+    header.append("microstructures\t%i\n"%info['microstructures'])
+    header.append("homogenization\t%i\n"%info['homogenization'])
+    file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
+    file['output'].write("1 to %i\n"%(info['microstructures']))
   
-  # ------------------------------------------ output finalization ---------------------------------------  
-
+#--- output finalization -------------------------------------------------------------------------- 
   if file['name'] != 'STDIN':
     file['output'].close()
     os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \

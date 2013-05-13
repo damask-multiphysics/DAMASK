@@ -5,9 +5,9 @@ import os,sys,string,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
     
@@ -24,8 +24,9 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-# ----------------------- MAIN -------------------------------
-
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 minimal_surfaces = ['primitive','gyroid','diamond',]
 
 surface = {
@@ -52,8 +53,8 @@ parser.add_option('-p', '--periods', dest='periods', type='int', \
                   help='number of repetitions of unit cell [%default]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
                   help='homogenization index to be used [%defaults]')
-parser.add_option('--phase', dest='phase', type='int', nargs = 2, \
-                  help='two phase indices to be used %default')
+parser.add_option('--m', dest='microstructure', type='int', nargs = 2, \
+                  help='two microstructure indices to be used %default')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
 
@@ -63,17 +64,16 @@ parser.set_defaults(periods = 1)
 parser.set_defaults(grid = numpy.array([16,16,16]))
 parser.set_defaults(size = numpy.array([1.0,1.0,1.0]))
 parser.set_defaults(homogenization = 1)
-parser.set_defaults(phase = [1,2])
+parser.set_defaults(microstructure = [1,2])
 parser.set_defaults(twoD  = False)
 
 (options, args) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+#--- setup file handles ---------------------------------------------------------------------------
 file = {'name':'STDIN',
-          'input':sys.stdin,
-          'output':sys.stdout,
-          'croak':sys.stderr,
+        'input':sys.stdin,
+        'output':sys.stdout,
+        'croak':sys.stderr,
        }
 
 if numpy.any(options.grid < 1):
@@ -83,17 +83,31 @@ if numpy.any(options.grid < 1):
 if numpy.any(options.size < 0.0):
   file['croak'].write('invalid size...\n')
   sys.exit()
+  info = {
+          'grid':   options.grid,
+          'size':   options.size,
+          'origin': numpy.zeros(3,'d'),
+          'microstructures': max(options.microstructure),
+          'homogenization':  options.homogenization
+         }
 
+#--- report ---------------------------------------------------------------------------------------
+file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                    'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                    'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                    'homogenization:  %i\n'%info['homogenization'] + \
+                    'microstructures: %i\n\n'%info['microstructures'])
 
-file['output'].write("6 header\n" + \
-                     "$Id$\n" +\
-                     "grid\ta %i\tb %i\tc %i\n"%(options.grid[0],options.grid[1],options.grid[2],) + \
-                     "size\tx %g\ty %g\tz %g\n"%(options.size[0],options.size[1],options.size[2],) + \
-                     "origin\tx 0\ty 0\tz 0\n" + \
-                     "microstructures 2\n" +\
-                     "homogenization %i\n"%options.homogenization
-                     )
+#--- write header ---------------------------------------------------------------------------------
+header = ['$Id$\n']
+header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
+header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
+header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
+header.append("microstructures\t%i\n"%info['microstructures'])
+header.append("homogenization\t%i\n"%info['homogenization'])
+file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
 
+#--- write data -----------------------------------------------------------------------------------
 for z in xrange(options.grid[2]):
   Z = options.periods*2.0*math.pi*(z+0.5)/options.grid[2]
   for y in xrange(options.grid[1]):
@@ -101,6 +115,6 @@ for z in xrange(options.grid[2]):
     for x in xrange(options.grid[0]):
       X = options.periods*2.0*math.pi*(x+0.5)/options.grid[0]
       file['output'].write(\
-        str({True:options.phase[0],False:options.phase[1]}[options.threshold > surface[options.type](X,Y,Z)]) + \
-        {True:' ',False:'\n'}[options.twoD] )
+        str({True:options.microstructure[0],False:options.microstructure[1]}[options.threshold > \
+            surface[options.type](X,Y,Z)]) + {True:' ',False:'\n'}[options.twoD] )
     file['output'].write({True:'\n',False:''}[options.twoD])
