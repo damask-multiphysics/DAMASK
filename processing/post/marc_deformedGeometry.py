@@ -2,36 +2,17 @@
 
 import os, sys, math, string, numpy, shutil
 import damask
-from optparse import OptionParser, Option
+from optparse import OptionParser
 
 
 
-# -----------------------------
-class MyOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-      
 # -----------------------------
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
 # --- input parsing
 
-parser = OptionParser(option_class=MyOption, usage='%prog [options] resultfile', description = """
+parser = OptionParser(usage='%prog [options] resultfile', description = """
 Extract data from a .t16 (MSC.Marc) results file. 
 """ + string.replace('$Id$','\n','\\n')
 )
@@ -42,7 +23,8 @@ parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
                   help='range of positions (or increments) to output (start, end, step) [all]')
 parser.add_option('--increments', action='store_true', dest='getIncrements', \
                   help='switch to increment range [%default]')
-
+parser.add_option('-t','--type', dest='type', type='choice', choices=['ipbased','nodebased'], \
+                  help='processed geometry type [ipbased and nodebased]')
 
 parser.set_defaults(dir = 'vtk')
 parser.set_defaults(getIncrements= False)
@@ -59,6 +41,11 @@ filename = os.path.splitext(files[0])[0]
 if not os.path.exists(filename+'.t16'):
   parser.print_help()
   parser.error('invalid file "%s" specified...'%filename+'.t16')
+
+if not options.type :
+  options.type = ['nodebased', 'ipbased']
+else: 
+  options.type = [options.type]
 
 
 # --- more sanity checks
@@ -136,7 +123,7 @@ for incCount,position in enumerate(locations):     # walk through locations
 
   # --- append displacements to corresponding files
   
-  for geomtype in ['nodebased', 'ipbased']:
+  for geomtype in options.type:
     outFilename = eval('"'+eval("'%%s_%%s_inc%%0%ii.vtk'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],geomtype,increments[incCount])')
     print outFilename
     shutil.copyfile('%s_%s.vtk'%(filename,geomtype),outFilename)

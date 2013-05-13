@@ -299,6 +299,8 @@ parser.add_option('-r','--range', dest='range', type='int', nargs=3, \
                   help='range of positions (or increments) to output (start, end, step) [all]')
 parser.add_option('--increments', action='store_true', dest='getIncrements', \
                   help='switch to increment range [%default]')
+parser.add_option('-t','--type', dest='type', type='choice', choices=['ipbased','nodebased'], \
+                  help='processed geometry type [ipbased and nodebased]')
 
 group_material = OptionGroup(parser,'Material identifier')
 
@@ -339,6 +341,11 @@ try:
 except:
   print('error: no valid Mentat release found')
   sys.exit(-1)
+
+if not options.type :
+  options.type = ['nodebased', 'ipbased']
+else: 
+  options.type = [options.type]
 
 
 # --- initialize mesh data 
@@ -403,38 +410,38 @@ for incCount,position in enumerate(locations):     # walk through locations
   # --- write header 
   
   outFilename = {}
-  for geomtype in ['nodebased','ipbased']:
+  for geomtype in options.type:
     outFilename[geomtype] = eval('"'+eval("'%%s_%%s_inc%%0%ii.txt'%(math.log10(max(increments+[1]))+1)")+'"%(dirname + os.sep + os.path.split(filename)[1],geomtype,increments[incCount])')
     with open(outFilename[geomtype],'w') as myfile:
       writeHeader(myfile,stat,geomtype)
-  
-  # --- write node based data
+      
+      # --- write node based data
+      
+      if geomtype == 'nodebased':
+        for n in range(stat['NumberOfNodes']):
+          myfile.write(str(n))
+          for l in range(stat['NumberOfNodalScalars']):
+            myfile.write('\t'+str(p.node_scalar(n,l)))
+          myfile.write('\n')
     
-  with open(outFilename['nodebased'],'a') as myfile:
-    for n in range(stat['NumberOfNodes']):
-      myfile.write(str(n))
-      for l in range(stat['NumberOfNodalScalars']):
-        myfile.write('\t'+str(p.node_scalar(n,l)))
-      myfile.write('\n')
-  
-  # --- write ip based data
-  
-  with open(outFilename['ipbased'],'a') as myfile:
-    for e in range(stat['NumberOfElements']):
-      if asciiFile:
-        print 'ascii postfile not yet supported'
-        sys.exit(-1)
-      else:
-        ipData = [[]]
-        for l in range(stat['NumberOfElementalScalars']):
-          data = p.element_scalar(e,l)
-          for i in range(len(data)):                                               # at least as many nodes as ips
-            node = damask.core.mesh.mesh_get_nodeAtIP(str(p.element(e).type),i+1)  # fortran indexing starts at 1
-            if not node: break                                                     # no more ips
-            while i >= len(ipData): ipData.append([])
-            ipData[i].extend([data[node-1].value])                                 # python indexing starts at 0
-        for i in range(len(ipData)):
-          myfile.write('\t'.join(map(str,[e,i]+ipData[i]))+'\n')
+      # --- write ip based data
+    
+      elif geomtype == 'ipbased':
+        for e in range(stat['NumberOfElements']):
+          if asciiFile:
+            print 'ascii postfile not yet supported'
+            sys.exit(-1)
+          else:
+            ipData = [[]]
+            for l in range(stat['NumberOfElementalScalars']):
+              data = p.element_scalar(e,l)
+              for i in range(len(data)):                                               # at least as many nodes as ips
+                node = damask.core.mesh.mesh_get_nodeAtIP(str(p.element(e).type),i+1)  # fortran indexing starts at 1
+                if not node: break                                                     # no more ips
+                while i >= len(ipData): ipData.append([])
+                ipData[i].extend([data[node-1].value])                                 # python indexing starts at 0
+            for i in range(len(ipData)):
+              myfile.write('\t'.join(map(str,[e,i]+ipData[i]))+'\n')
             
 p.close()
 sys.stdout.write("\n")
