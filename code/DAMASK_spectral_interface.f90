@@ -239,6 +239,8 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
  character(len=*),  intent(in) :: geometryArg
  character(len=1024)           :: cwd
  character                     :: pathSep
+ logical                       :: dirExists
+ external                      :: quit
 
  pathSep = getPathSep()
  if (len(workingDirectoryArg)>0) then                                                               ! got working directory as input
@@ -250,7 +252,11 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
       /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
- !> @ToDO here check if exists and use chdir!
+   inquire(file = storeWorkingDirectory, exist=dirExists)                                           
+   if(.not. dirExists) then
+     write(6,'(a)') ' given working directory does not exist' 
+     call quit(1_pInt)                                                                              ! check if the directory exists
+   endif
  else                                                                                               ! using path to geometry file as working dir
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
@@ -261,6 +267,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    endif
  endif
  storeWorkingDirectory = rectifyPath(storeWorkingDirectory)
+ !@ToDo change working directory with? call chdir(storeWorkingDirectory)
  
 end function storeWorkingDirectory
 
@@ -367,7 +374,7 @@ end function getLoadCaseFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief remove ../ and ./ from path
+!> @brief remove ../ and /./ from path
 !--------------------------------------------------------------------------------------------------
 function rectifyPath(path)
 
@@ -375,19 +382,21 @@ function rectifyPath(path)
  character(len=*) :: path
  character(len=len_trim(path)) :: rectifyPath
  character :: pathSep
- integer :: i,j,k,l !no pInt
+ integer :: i,j,k,l                                                                                 ! no pInt
 
  pathSep = getPathSep()
 
- !remove ./ from path
+!--------------------------------------------------------------------------------------------------
+! remove /./ from path
  l = len_trim(path)
  rectifyPath = path
  do i = l,3,-1
-   if ( rectifyPath(i-1:i) == '.'//pathSep .and. rectifyPath(i-2:i-2) /= '.' ) &
+   if (rectifyPath(i-2:i) == pathSep//'.'//pathSep) &
      rectifyPath(i-1:l) = rectifyPath(i+1:l)//'  '
  enddo
 
- !remove ../ and corresponding directory from rectifyPath
+!--------------------------------------------------------------------------------------------------
+! remove ../ and corresponding directory from rectifyPath
  l = len_trim(rectifyPath)
  i = index(rectifyPath(i:l),'..'//pathSep)
  j = 0
@@ -534,7 +543,7 @@ pure function IIO_stringPos(line,N)
  
  character(len=*), parameter  :: sep=achar(44)//achar(32)//achar(9)//achar(10)//achar(13)           ! comma and whitespaces
 
- integer                      :: left, right                                                        !no pInt (verify and scan return default integer)
+ integer                      :: left, right                                                        ! no pInt (verify and scan return default integer)
 
 
  IIO_stringPos = -1_pInt
