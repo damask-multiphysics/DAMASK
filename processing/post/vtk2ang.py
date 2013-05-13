@@ -411,9 +411,11 @@ for filename in filenames:
     meshMapper.ScalarVisibilityOff()          # do not use scalar data for coloring
     meshActor = vtkActor()
     meshActor.SetMapper(meshMapper)
-    meshActor.GetProperty().SetOpacity(0.5)
-    meshActor.GetProperty().SetColor(1,1,0)
-    meshActor.GetProperty().EdgeVisibilityOn()
+    meshActor.GetProperty().SetOpacity(0.2)
+    meshActor.GetProperty().SetColor(1.0,1.0,0)
+    meshActor.GetProperty().BackfaceCullingOn()
+    # meshActor.GetProperty().SetEdgeColor(1,1,0.5)
+    # meshActor.GetProperty().EdgeVisibilityOn()
     
     boxpoints = vtkPoints()
     for n in range(8):
@@ -436,9 +438,8 @@ for filename in filenames:
     boxMapper.SetInput(boxsurface)
     boxActor = vtkActor()
     boxActor.SetMapper(boxMapper)
-    boxActor.GetProperty().SetOpacity(0.1)
     boxActor.GetProperty().SetLineWidth(2.0)
-    boxActor.GetProperty().EdgeVisibilityOn()
+    boxActor.GetProperty().SetRepresentationToWireframe()
 
     gridMapper = vtkDataSetMapper()
     gridMapper.SetInput(pointgrid)
@@ -450,6 +451,7 @@ for filename in filenames:
 
     renderer = vtkRenderer()
     renderWindow = vtkRenderWindow()
+    renderWindow.FullScreenOn()
     renderWindow.AddRenderer(renderer)
     renderWindowInteractor = vtkRenderWindowInteractor()
     renderWindowInteractor.SetRenderWindow(renderWindow)
@@ -459,5 +461,6 @@ for filename in filenames:
     renderer.SetBackground(1,1,1)
      
     renderWindow.Render()
+    renderWindowInteractor.SetInteractorStyle(vtkInteractorStyleTrackballCamera())
     renderWindowInteractor.Start()
 
