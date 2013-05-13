@@ -4,9 +4,9 @@
 import string,os,sys
 from optparse import OptionParser, Option
 
-# -----------------------------
+#-------------------------------------------------------------------------------------------------
 class extendableOption(Option):
-# -----------------------------
+#-------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
   
@@ -23,10 +23,9 @@ class extendableOption(Option):
       Option.take_action(self, action, dest, opt, value, values, parser)
 
  
-# --------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
 #                                MAIN
-# --------------------------------------------------------------------
-
+#--------------------------------------------------------------------------------------------------
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Converts ang files (EBSD Data) from hexagonal grid to a pixel grid
 
@@ -42,10 +41,9 @@ parser.set_defaults(columnX = 3)
 
 counterX  = 0
 counterY  = 0
-addPoints = -1      # No of doubled points (must be the same for each odd/even line, initializing with -1 make countin easy!)
+addPoints = -1                                                                                      # No of doubled points (must be the same for each odd/even line, initializing with -1 make countin easy!)
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+#--- setup file handles ---------------------------------------------------------------------------   
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
@@ -55,8 +53,7 @@ else:
       files.append(   {'name':name, 'input':open(name),'output':open(os.path.splitext(name)[0]\
                                                              +'_cub'+os.path.splitext(name)[1], 'w')})
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   print file['name']
   x = 0

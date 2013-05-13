@@ -1,12 +1,12 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
 
 import os, sys, math, re, threading, time, string, damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-
-# ----------------------- FUNCTIONS ----------------------------
-
+#-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
+#-------------------------------------------------------------------------------------------------
   if cmd[0:3] == '(!)':
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
@@ -16,7 +16,9 @@ def outMentat(cmd,locals):
     py_send(cmd)
   return
 
+#-------------------------------------------------------------------------------------------------
 def outStdout(cmd,locals):
+#-------------------------------------------------------------------------------------------------
   if cmd[0:3] == '(!)':
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
@@ -26,8 +28,9 @@ def outStdout(cmd,locals):
     print cmd
   return
 
-
+#-------------------------------------------------------------------------------------------------
 def output(cmds,locals,dest):
+#-------------------------------------------------------------------------------------------------
   for cmd in cmds:
     if isinstance(cmd,list):
       output(cmd,locals,dest)
@@ -40,9 +43,9 @@ def output(cmds,locals,dest):
 
 
   
-#--------------------
+#-------------------------------------------------------------------------------------------------
 def init():
-#--------------------
+#-------------------------------------------------------------------------------------------------
     return ["*new_model yes",
       "*reset",
       "*select_clear",
@@ -56,9 +59,9 @@ def init():
       ]
 
 
-#--------------------
+#-------------------------------------------------------------------------------------------------
 def mesh(r,d):
-#--------------------
+#-------------------------------------------------------------------------------------------------
     return [
   "*add_nodes",
   "%f %f %f"%(0.0,0.0,0.0),
@@ -88,9 +91,9 @@ def mesh(r,d):
     ]
 
 
-#--------------------
+#-------------------------------------------------------------------------------------------------
 def material():
-#--------------------
+#-------------------------------------------------------------------------------------------------
   cmds = [\
   "*new_mater standard",
   "*mater_option general:state:solid",
@@ -100,7 +103,7 @@ def material():
   "*add_mater_elements",
   "all_existing",
   "*geometry_type mech_three_solid",
-#  "*geometry_option red_integ_capacity:on",         # see below: reduced integration with one IP gave trouble being always OUTDATED...
+#  "*geometry_option red_integ_capacity:on",                                                        # see below: reduced integration with one IP gave trouble being always OUTDATED...
   "*add_geometry_elements",
   "all_existing",
   ]
@@ -108,27 +111,27 @@ def material():
   return cmds
   
 
-#--------------------
+#-------------------------------------------------------------------------------------------------
 def geometry():
-#--------------------
+#-------------------------------------------------------------------------------------------------
   cmds = [\
   "*geometry_type mech_three_solid",
 #  "*geometry_option red_integ_capacity:on",
   "*add_geometry_elements",
   "all_existing",
-  "*element_type 7",         # we are NOT using reduced integration (type 117) but opt for /elementhomogeneous/ in the respective phase description (material.config)
+  "*element_type 7",                                                                                # we are NOT using reduced integration (type 117) but opt for /elementhomogeneous/ in the respective phase description (material.config)
   "all_existing",
   ]
   
   return cmds
   
 
-#--------------------
-def initial_conditions(homogenization,grains):
-#--------------------
+#-------------------------------------------------------------------------------------------------
+def initial_conditions(homogenization,microstructures):
+#-------------------------------------------------------------------------------------------------
   elements = []
   element = 0
-  for id in grains:
+  for id in microstructures:
     element += 1 
     if len(elements) < id:
       for i in range(id-len(elements)):
@@ -166,61 +169,62 @@ def initial_conditions(homogenization,grains):
   return cmds
 
 
-#--------------------
+#-------------------------------------------------------------------------------------------------
 def parse_geomFile(content,homog):
-#--------------------
+#-------------------------------------------------------------------------------------------------
   (skip,key) = content[0].split()[:2]
   if key[:4].lower() == 'head':
     skip = int(skip)+1
   else:
     skip = 0
   
-  res = [0,0,0]
-  dim = [0.0,0.0,0.0]
+  grid = [0,0,0]
+  size = [0.0,0.0,0.0]
   homog = 0
   
   for line in content[:skip]:
     data = line.split()
-    if data[0].lower() == 'resolution':
-      res = map(int,data[2:8:2])
-    if data[0].lower() == 'dimension':
-      dim = map(float,data[2:8:2])
+    if data[0].lower() == 'grid' or data[0].lower() == 'resolution':
+      grid = map(int,data[2:8:2])
+    if data[0].lower() == 'size' or data[0].lower() == 'dimension':
+      size = map(float,data[2:8:2])
     if data[0].lower() == 'homogenization':
       homog = int(data[1])
 
-  grains = []
+  microstructures = []
   for line in content[skip:]:
-    grains.append(int(line.split()[0]))
+    microstructures.append(int(line.split()[0]))
 
-  return (res,dim,homog,grains)
+  return (grid,size,homog,microstructures)
 
-#--------------------
+#-------------------------------------------------------------------------------------------------
 def parse_spectralFile(content,homog):
-#--------------------
+#-------------------------------------------------------------------------------------------------
 
   coords = [{},{},{}]
   maxBox = [-1.0e20,-1.0e20,-1.0e20]
   minBox = [ 1.0e20, 1.0e20, 1.0e20]
-  dim = [0.0,0.0,0.0]
-  res = [0,0,0]
-  grains = []
+  grid = [0.0,0.0,0.0]
+  size = [0,0,0]
+  microstructures = []
   
   for line in content:
     data = line.split()[3:7]
-    grains.append(int(data[3]))
+    microstructures.append(int(data[3]))
     for i in range(3):
       maxBox[i] = max(maxBox[i],float(data[i]))
       minBox[i] = min(minBox[i],float(data[i]))
       coords[i][data[i]] = True
       
   for i in range(3):
-    res[i] = len(coords[i])
-    dim[i] = (maxBox[i]-minBox[i])*res[i]/(res[i]-1.0)
+    grid[i] = len(coords[i])
+    size[i] = (maxBox[i]-minBox[i])*grid[i]/(grid[i]-1.0)
 
-  return (res,dim,homog,grains)
+  return (grid,size,homog,microstructures)
 
-# ----------------------- MAIN -------------------------------
-
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 parser = OptionParser(usage='%prog [options] spectral.datafile', description = """
 Generate FE hexahedral mesh from spectral description file.
 
@@ -231,18 +235,18 @@ spectral: phi1,Phi,phi2,x,y,z,id,phase.
 """ + string.replace('$Id$','\n','\\n')
 )
 parser.add_option("-p", "--port", type="int",\
-                                  dest="port",\
-                                  help="Mentat connection port")
+                  dest="port",\
+                  help="Mentat connection port")
 parser.add_option("-g", "--geom", action="store_const", const="geom",\
-                                  dest="filetype",\
-                                  help="file has 'geom' format")
+                  dest="filetype",\
+                  help="file has 'geom' format")
 parser.add_option("-s", "--spectral", action="store_const", const="spectral",\
-                                      dest="filetype",\
-                                      help="file has 'spectral' format")
+                  dest="filetype",\
+                  help="file has 'spectral' format (VPSC Lebensohn)")
 
 parser.add_option("--homogenization", type="int",\
-                                      dest="homogenization",\
-                                      help="homogenization index from material.config (only required for spectral file type)")
+                  dest="homogenization",\
+                  help="homogenization index from material.config (only required for spectral file type)")
 
 
 parser.set_defaults(filetype = 'geom')
@@ -272,20 +276,20 @@ if options.filetype not in ['spectral','geom']:
 print '\nparsing %s...'%options.filetype,
 sys.stdout.flush()
 
-(res,dim,homog,grains) = {\
+(grid,size,homog,microstructures) = {\
   'geom':     parse_geomFile,
   'spectral': parse_spectralFile,
   }[options.filetype](content,options.homogenization)
 
-print '%i grains in %s with resolution %s and homogenization %i\n'%(len(list(set(grains))),str(dim),str(res),homog)
+print '%i microstructures in %s with grid %s and homogenization %i\n'%(len(list(set(microstructures))),str(size),str(grid),homog)
 
 
 cmds = [\
   init(),
-  mesh(res,dim),
+  mesh(grid,size),
   material(),
   geometry(),
-  initial_conditions(homog,grains),
+  initial_conditions(homog,microstructures),
   '*identify_sets',
   '*redraw',
 ]

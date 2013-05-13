@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*
 
 import sys,os,pwd,math,re,string,numpy, damask
 from optparse import OptionParser
@@ -149,10 +150,9 @@ def servoLink():
   
   return cmds
 
-  
-
-# ----------------------- MAIN -------------------------------
-  
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#-------------------------------------------------------------------------------------------------- 
 parser = OptionParser(usage='%prog [options]', description = """
 Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh presently opened in MSC.Mentat
 

@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
+
 '''
 Writes meaningful labels to the marc input file (*.dat) 
 based on the files 
