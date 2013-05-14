@@ -81,7 +81,11 @@ file = {'name':'STDIN',
        }
 
 if numpy.any(options.grid < 2):
-  file['croak'].write('grid too low...\n')
+  file['croak'].write('grid too small...\n')
+  sys.exit()
+
+if numpy.any(options.size <= 0.0):
+  file['croak'].write('size too small...\n')
   sys.exit()
 
 options.omega  *= math.pi/180.0                                                                     # rescale ro radians
@@ -134,6 +138,13 @@ file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) 
                     'microstructures: %i\n'%info['microstructures'] + \
                     'homogenization:  %i\n'%info['homogenization'])
 file['croak'].write("bounding box:    %s\n"%(numpy.sqrt(numpy.sum(box*box,0))))
+
+if numpy.any(info['grid'] < 1):
+  file['croak'].write('no valid grid info found.\n')
+  sys.exit()
+if numpy.any(info['size'] <= 0.0):
+  file['croak'].write('no valid size info found.\n')
+  sys.exit()
 
 # -------------------------------------- switch according to task ----------------------------------
 formatwidth = 1+int(math.floor(math.log10(info['microstructures']-1)))

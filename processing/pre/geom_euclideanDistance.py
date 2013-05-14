@@ -202,18 +202,18 @@ for file in files:
     else:
       new_header.append(header)
 
-  if numpy.all(info['grid'] == 0):
-    file['croak'].write('no grid info found.\n')
-    continue
-  if numpy.all(info['size'] == 0.0):
-    file['croak'].write('no size info found.\n')
-    continue
-
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
+  
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('no valid grid info found.\n')
+    sys.exit()
+  if numpy.any(info['size'] <= 0.0):
+    file['croak'].write('no valid size info found.\n')
+    sys.exit()
 
   new_header.append('$Id$\n')
   new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))

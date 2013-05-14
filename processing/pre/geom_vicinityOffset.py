@@ -119,18 +119,18 @@ for file in files:
     else:
       new_header.append(header)
 
-  if numpy.all(info['grid'] == 0):
-    file['croak'].write('no grid info found.\n')
-    continue
-  if numpy.all(info['size'] == 0.0):
-    file['croak'].write('no dimension info found.\n')
-    continue
-
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
+
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('no valid grid info found.\n')
+    sys.exit()
+  if numpy.any(info['size'] <= 0.0):
+    file['croak'].write('no valid size info found.\n')
+    sys.exit()
 
 #--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'],'i')

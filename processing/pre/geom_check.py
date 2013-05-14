@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,numpy
+import os,sys,string,re,numpy,vtk
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
     
@@ -22,75 +22,10 @@ class extendedOption(Option):
         else:
             Option.take_action(self, action, dest, opt, value, values, parser)
 
-
-
-def outStdout(cmd,locals):
-  if cmd[0:3] == '(!)':
-    exec(cmd[3:])
-  elif cmd[0:3] == '(?)':
-    cmd = eval(cmd[3:])
-    print cmd
-  else:
-    print cmd
-  return
-
-def outFile(cmd,locals):
-  if cmd[0:3] == '(!)':
-    exec(cmd[3:])
-  elif cmd[0:3] == '(?)':
-    cmd = eval(cmd[3:])
-    locals['filepointer'].write(cmd+'\n')
-  else:
-    locals['filepointer'].write(cmd+'\n')
-  return
-
-
-def output(cmds,locals,dest):
-  for cmd in cmds:
-    if isinstance(cmd,list):
-      output(cmd,locals,dest)
-    else:
-      {\
-      'File': outFile,\
-      'Stdout': outStdout,\
-      }[dest](str(cmd),locals)
-  return
-
-
-# +++++++++++++++++++++++++++++++++++++++++++++++++++
-def vtk_writeASCII_mesh(dim,res,origin,data):
-# +++++++++++++++++++++++++++++++++++++++++++++++++++
-  """ function writes data array defined on a rectilinear grid """
-  N  = res[0]*res[1]*res[2]
-  
-  cmds = [\
-          '# vtk DataFile Version 3.1',
-          string.replace('powered by $Id$','\n','\\n'),
-          'ASCII',
-          'DATASET RECTILINEAR_GRID',
-          'DIMENSIONS %i %i %i'%(res[0]+1,res[1]+1,res[2]+1),
-          'X_COORDINATES %i float'%(res[0]+1),
-          ' '.join(map(str,[i*dim[0]/res[0]+origin[0] for i in range(res[0]+1)])),
-          'Y_COORDINATES %i float'%(res[1]+1),
-          ' '.join(map(str,[i*dim[1]/res[1]+origin[1] for i in range(res[1]+1)])),
-          'Z_COORDINATES %i float'%(res[2]+1),
-          ' '.join(map(str,[i*dim[2]/res[2]+origin[2] for i in range(res[2]+1)])),
-          'CELL_DATA %i'%N,
-         ]
-  
-  for datatype in data:
-    for item in data[datatype]:
-      cmds += [\
-               '%s %s float'%(datatype.upper()+{True:'',False:'S'}[datatype.lower().endswith('s')],item),
-               'LOOKUP_TABLE default',
-               [[['\t'.join(map(str,data[datatype][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])]
-              ]
-
-  return cmds
-
-
-# ----------------------- MAIN -------------------------------
-
+     
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 identifiers = {
         'grid':    ['a','b','c'],
         'size':    ['x','y','z'],
@@ -112,8 +47,7 @@ Produce VTK rectilinear mesh of structure data from geom description
 
 (options, filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+#--- setup file handles --------------------------------------------------------------------------  
 files = []
 if filenames == []:
   files.append({'name':'STDIN',
@@ -128,12 +62,9 @@ else:
                     'croak':sys.stdout,
                     })
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
-
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
@@ -147,11 +78,13 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-  info = {'grid':           [0,0,0],
-          'size':           [0.0,0.0,0.0],
-          'origin':         [0.0,0.0,0.0],
-          'homogenization':  0,
+#--- interprete header ----------------------------------------------------------------------------
+  info = {
+          'grid':   numpy.zeros(3,'i'),
+          'size':   numpy.zeros(3,'d'),
+          'origin': numpy.zeros(3,'d'),
           'microstructures': 0,
+          'homogenization':  0
          }
 
   for header in headers:
@@ -166,36 +99,56 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if numpy.all(info['grid'] == 0):
-    file['croak'].write('no grid info found.\n')
-    continue
-
-  if numpy.all(info['size'] == 0.0):
-    file['croak'].write('no size info found.\n')
-    continue
-
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
-  
-  data = {'scalar':{'structure':numpy.zeros(info['grid'],'i')}}
-  i = 0
+
+  if numpy.all(any['grid'] < 1):
+    file['croak'].write('no valid grid info found.\n')
+    sys.exit()
+  if numpy.any(info['size'] <= 0.0):
+    file['croak'].write('no valid size info found.\n')
+    sys.exit()
+
+
+#--- generate grid --------------------------------------------------------------------------------
+  grid = vtk.vtkRectilinearGrid()
+  grid.SetDimensions([x+1 for x in info['grid']])
+  temp = vtk.vtkDoubleArray()
+  for i in xrange(3):
+    temp.SetNumberOfTuples(info['grid'][i]+1)
+    for j in range(info['grid'][i]+1):
+      temp.InsertTuple1(j,j*info['size'][i]/info['grid'][i]+info['origin'][i])
+      if i == 0: grid.SetXCoordinates(temp)
+      if i == 1: grid.SetYCoordinates(temp)
+      if i == 2: grid.SetZCoordinates(temp)
+
+#--- read microstructure information --------------------------------------------------------------
+  structure = vtk.vtkIntArray()
+  structure.SetName('Microstructures')
   for line in content:  
     for item in map(int,line.split()):
-      data['scalar']['structure'][i%info['grid'][0],(i/info['grid'][0])%info['grid'][1],i/info['grid'][0]/info['grid'][1]] = item
-      i += 1
+      structure.InsertNextValue(item)
 
+  grid.GetCellData().AddArray(structure)
 
-  out = {}
-  out['mesh'] = vtk_writeASCII_mesh(info['size'],info['grid'],info['origin'],data)
-  
-  for what in out.keys():
-    if file['name'] == 'STDIN':
-      output(out[what],{},'Stdout')
-    else:
-      (head,tail) = os.path.split(file['name'])
-      vtk = open(os.path.join(head,what+'_'+os.path.splitext(tail)[0]+'.vtk'), 'w')
-      output(out[what],{'filepointer':vtk},'File')
-      vtk.close()
+#--- write data -----------------------------------------------------------------------------------
+  if file['name'] == 'STDIN':
+    outWriter = vtk.vtkRectilinearGridWriter()
+    outWriter.WriteToOutputStringOn()
+    outWriter.SetFileTypeToASCII()
+    outWriter.SetHeader('# powered by $Id$')
+    outWriter.SetInput(grid)
+    outWriter.Write()
+    sys.stdout.write(outWriter.GetOutputString()[0:outWriter.GetOutputStringLength()])
+  else:
+    (head,tail) = os.path.split(file['name'])
+    outWriter = vtk.vtkXMLRectilinearGridWriter()
+    outWriter.SetDataModeToBinary()
+    outWriter.SetCompressorTypeToZLib()
+    outWriter.SetFileName(os.path.join(head,'mesh_'+os.path.splitext(tail)[0]
+                                                   +'.'+outWriter.GetDefaultFileExtension()))
+    outWriter.SetInput(grid)
+    outWriter.Write()

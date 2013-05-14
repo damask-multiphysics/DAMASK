@@ -77,8 +77,8 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
   info = {
-          'grid':   numpy.array([0,0,0]),
-          'size':   numpy.array([0.0,0.0,0.0]),
+          'grid':   numpy.zeros(3,'i'),
+          'size':   numpy.zeros(3,'d'),
           'origin': numpy.zeros(3,'d'),
           'microstructures': 0,
           'homogenization':  options.homogenization
@@ -115,6 +115,13 @@ for file in files:
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n\n'%info['microstructures'])
+
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('no valid grid info found.\n')
+    sys.exit()
+  if numpy.any(info['size'] <= 0.0):
+    file['croak'].write('no valid size info found.\n')
+    sys.exit()
 
 #--- write data -----------------------------------------------------------------------------------
   if options.config:

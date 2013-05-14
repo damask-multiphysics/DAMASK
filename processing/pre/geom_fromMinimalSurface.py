@@ -74,21 +74,13 @@ file = {'name':'STDIN',
         'output':sys.stdout,
         'croak':sys.stderr,
        }
-
-if numpy.any(options.grid < 1):
-  file['croak'].write('invalid grid...\n')
-  sys.exit()
-
-if numpy.any(options.size < 0.0):
-  file['croak'].write('invalid size...\n')
-  sys.exit()
-  info = {
-          'grid':   numpy.array(options.grid),
-          'size':   numpy.array(options.size),
-          'origin': numpy.zeros(3,'d'),
-          'microstructures': max(options.microstructure),
-          'homogenization':  options.homogenization
-         }
+info = {
+        'grid':   numpy.array(options.grid),
+        'size':   numpy.array(options.size),
+        'origin': numpy.zeros(3,'d'),
+        'microstructures': max(options.microstructure),
+        'homogenization':  options.homogenization
+       }
 
 #--- report ---------------------------------------------------------------------------------------
 file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
@@ -96,6 +88,13 @@ file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) 
                     'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                     'homogenization:  %i\n'%info['homogenization'] + \
                     'microstructures: %i\n\n'%info['microstructures'])
+
+if numpy.any(info['grid'] < 1):
+  file['croak'].write('no valid grid info found.\n')
+  sys.exit()
+if numpy.any(info['size'] <= 0.0):
+  file['croak'].write('no valid size info found.\n')
+  sys.exit()
 
 #--- write header ---------------------------------------------------------------------------------
 header = ['$Id$\n']
