@@ -4,10 +4,9 @@
 import os,sys,string,re,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
     
@@ -24,8 +23,9 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-# ----------------------- MAIN -------------------------------
-
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -38,7 +38,6 @@ mappings = {
         'homogenization':  lambda x: int(x),
         'microstructures': lambda x: int(x),
           }
-
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Offset microstructure index for points which see a microstructure different from themselves within a given (cubic) vicinity,
@@ -59,8 +58,7 @@ parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+#--- setup file handles --------------------------------------------------------------------------   
 files = []
 if filenames == []:
   files.append({'name':'STDIN',
@@ -77,13 +75,9 @@ else:
                     'croak':sys.stdout,
                     })
 
-
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
-
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
@@ -97,12 +91,16 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
+#--- interprete header ----------------------------------------------------------------------------
   info = {
         'grid':   numpy.zeros(3,'i'),
         'size':   numpy.zeros(3,'d'),
         'origin': numpy.zeros(3,'d'),
         'microstructures': 0,
         'homogenization':  0
+       }
+  newInfo = {
+        'microstructures': 0,
        }
 
   new_header = []
@@ -128,13 +126,13 @@ for file in files:
     file['croak'].write('no dimension info found.\n')
     continue
 
-  file['croak'].write('-- input --\n' +\
-                      'grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
-    
+
+#--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'],'i')
   i = 0
   for line in content:  
@@ -149,6 +147,7 @@ for file in files:
     options.offset = microstructure.max()
   formatwidth = 1+int(math.floor(math.log10(abs(microstructure.max()+options.offset))))
 
+#--- search ---------------------------------------------------------------------------------------
   for x in xrange(info['grid'][0]):
     for y in xrange(info['grid'][1]):
       for z in xrange(info['grid'][2]):
@@ -161,8 +160,8 @@ for file in files:
             for dz in xrange(-options.vicinity,options.vicinity+1):
 
               they = microstructure[(x+dx)%info['grid'][0],(y+dy)%info['grid'][1],(z+dz)%info['grid'][2]]
-              if they != me and they != me+options.offset:                    # located alien microstructure in vicinity
-                microstructure[x,y,z] += options.offset                       # tag myself as close to aliens!
+              if they != me and they != me+options.offset:                                          # located alien microstructure in vicinity
+                microstructure[x,y,z] += options.offset                                             # tag myself as close to aliens!
                 breaker = True
                 break
 
@@ -170,33 +169,27 @@ for file in files:
 
           if breaker: break
 
-  info['microstructures'] = microstructure.max()
-  file['croak'].write('-- output --\n' +\
-                      'microstructures: %i\n'%info['microstructures'])
+  newInfo['microstructures'] = microstructure.max()
+  if (newInfo['microstructures'] != info['microstructures']):
+    file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
 
-# ------------------------------------------ assemble header ---------------------------------------          
+# --- assemble header -----------------------------------------------------------------------------         
   new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2]))
   new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][0]))
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2]))
-  new_header.append("microstructures\t%i\n"%info['microstructures'])
+  new_header.append("microstructures\t%i\n"%newInfo['microstructures'])
   new_header.append("homogenization\t%i\n"%info['homogenization'])
+  file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
 
-  output  = '%i\theader\n'%(len(new_header))
-  output += ''.join(new_header)
-
-
-# ------------------------------------- regenerate texture information ----------------------------------  
-
+# --- write microstructure information ------------------------------------------------------------
   for z in xrange(info['grid'][2]):
     for y in xrange(info['grid'][1]):
       output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: str(x).rjust(formatwidth), microstructure[:,y,z])) + '\n'
     
     output += '\n'
-    
-# ------------------------------------------ output result ---------------------------------------  
-
   file['output'].write(output)
 
+#--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    file['output'].close
+    file['output'].close()
     os.rename(file['name']+'_tmp',file['name'])

@@ -87,9 +87,9 @@ for file in files:
 
   microstructure = ['<microstructure>']
   texture        = ['<texture>']
-  point          = 0
   step           = [0,0]
 
+  point          = 0
   for line in file['input']:
     words = line.split()
     if words[0] == '#':                                                                             # process initial comments block
@@ -137,7 +137,7 @@ for file in files:
     header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
     header.append("microstructures\t%i\n"%info['microstructures'])
     header.append("homogenization\t%i\n"%info['homogenization'])
-    file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
+    file['output'].write('%i\theader\n'%(len(header))+''.join(header))
     file['output'].write("1 to %i\n"%(info['microstructures']))
   
 #--- output finalization -------------------------------------------------------------------------- 

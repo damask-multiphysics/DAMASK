@@ -154,7 +154,8 @@ else:
     if os.path.exists(name):
       files.append({'name':name,
                     'input':open(name),
-                    'output':[open(features[feature]['names'][0]+'_'+name,'w') for feature in feature_list],
+                    'output':[open(features[feature]['names'][0]+'_'+name,'w') 
+                                          for string.split(feature,sep=',')[0] in feature_list],
                     'croak':sys.stdout,
                     })
 
@@ -174,15 +175,14 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-#--- interpretate header --------------------------------------------------------------------------
+#--- interprete header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.array([0,0,0]),
-          'size':   numpy.array([0.0,0.0,0.0]),
-          'origin': numpy.array([0.0,0.0,0.0]),
-          'microstructures': 0,
-          'homogenization':  0
+        'grid':   numpy.zeros(3,'i'),
+        'size':   numpy.zeros(3,'d'),
+        'origin': numpy.zeros(3,'d'),
+        'microstructures': 0,
+        'homogenization':  0
          }
-
   newInfo = {
         	'microstructures': 0,
             }
@@ -264,8 +264,7 @@ for file in files:
     formatwidth = int(math.floor(math.log10(distance[i,:,:,:].max())+1))
 
 #--- assemble header and report changes -----------------------------------------------------------
-    output  = '%i\theader\n'%(len(new_header)+1)
-    output += ''.join(new_header)
+    output  = '%i\theader\n'%(len(new_header)+1)+''.join(new_header)
     output += "microstructures\t%i\n"%newInfo['microstructures']
     file['croak'].write('\n'+features[i]['names'][0]+'\n')
     if (newInfo['microstructures'] != info['microstructures']):
