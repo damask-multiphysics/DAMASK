@@ -39,7 +39,6 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 compress geometry files with ranges "a to b" and/or multiples "n of x".
 """ + string.replace('$Id$','\n','\\n')
@@ -80,12 +79,13 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-#--- interpretate header --------------------------------------------------------------------------
-  info = {'grid':           [0,0,0],
-          'size':           [0.0,0.0,0.0],
-          'origin':         [0.0,0.0,0.0],
-          'homogenization':  1,
-          'microstructures': 0,
+#--- interprete header ----------------------------------------------------------------------------
+  info = {
+          'grid':    numpy.zeros(3,'i'),
+          'size':    numpy.zeros(3,'d'),
+          'origin':  numpy.zeros(3,'d'),
+          'microstructures': 0,          
+          'homogenization':  0,
          }
 
   new_header = []
@@ -102,10 +102,10 @@ for file in files:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
     new_header.append(header)
 
-  if info['grid'] == [0,0,0]:
+  if numpy.all(info['grid'] == 0):
     file['croak'].write('no grid info found.\n')
     continue
-  if info['size'] == [0.0,0.0,0.0]:
+  if numpy.all(info['size'] == 0.0):
     file['croak'].write('no size info found.\n')
     continue
 

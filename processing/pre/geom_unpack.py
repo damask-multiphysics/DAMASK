@@ -4,7 +4,6 @@
 import os,sys,string,re,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -32,7 +31,6 @@ identifiers = {
         'size':      ['x','y','z'],
         'origin':    ['x','y','z'],
           }
-
 mappings = {
         'grid':            lambda x: int(x),
         'size':            lambda x: float(x),
@@ -40,7 +38,6 @@ mappings = {
         'homogenization':  lambda x: int(x),
         'microstructures': lambda x: int(x),
           }
-
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
@@ -87,12 +84,13 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-#--- interpretate header --------------------------------------------------------------------------
-  info = {'grid':           [0,0,0],
-          'size':           [0.0,0.0,0.0],
-          'origin':         [0.0,0.0,0.0],
-          'homogenization':  1,
-          'microstructures': 0,
+#--- interprete header ----------------------------------------------------------------------------
+  info = {
+          'grid':    numpy.zeros(3,'i'),
+          'size':    numpy.zeros(3,'d'),
+          'origin':  numpy.zeros(3,'d'),
+          'microstructures': 0,          
+          'homogenization':  0,
          }
 
   new_header = []
@@ -109,10 +107,10 @@ for file in files:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
     new_header.append(header)
 
-  if info['grid'] == [0,0,0]:
+  if numpy.all(info['grid'] == 0):
     file['croak'].write('no grid info found.\n')
     continue
-  if info['size'] == [0.0,0.0,0.0]:
+  if numpy.all(info['size'] == 0.0):
     file['croak'].write('no size info found.\n')
     continue
 
@@ -124,13 +122,13 @@ for file in files:
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
+  file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
   
   if info['microstructures'] > 0:
     digits = 1+int(math.log10(int(info['microstructures'])))
   else:
     digits = 1+int(math.log10(int(info['grid'][0]*info['grid'][1]*info['grid'][2])))
 
-  file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
 
 #--- unpack input ---------------------------------------------------------------------------------
   wordsWritten = 0
