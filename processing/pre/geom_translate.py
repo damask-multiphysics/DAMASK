@@ -37,7 +37,6 @@ mappings = {
         'homogenization': lambda x: int(x),
           }
 
-
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 translate microstructure indices (shift or substitute) and/or geometry origin.
 """ + string.replace('$Id$','\n','\\n')
@@ -96,15 +95,14 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-#--- interpretate header --------------------------------------------------------------------------
+#--- interprete header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.array([0,0,0]),
-          'size':   numpy.array([0.0,0.0,0.0]),
-          'origin': numpy.zeros(3,'d'),
+          'grid':    numpy.zeros(3,'i'),
+          'size':    numpy.zeros(3,'d'),
+          'origin':  numpy.zeros(3,'d'),
           'microstructures': 0,
           'homogenization':  0
          }
-
   newInfo = {
           'origin': numpy.zeros(3,'d'),
           'microstructures': 0,

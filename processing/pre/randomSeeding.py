@@ -4,10 +4,9 @@
 import os,sys,string,re,math,numpy,random
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-
-# -----------------------------
+#------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
     
@@ -24,8 +23,9 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-# ----------------------- MAIN -------------------------------
-
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 identifiers = {
         'grid': ['a','b','c'],
           }

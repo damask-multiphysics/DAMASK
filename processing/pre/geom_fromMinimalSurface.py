@@ -4,7 +4,6 @@
 import os,sys,string,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -84,8 +83,8 @@ if numpy.any(options.size < 0.0):
   file['croak'].write('invalid size...\n')
   sys.exit()
   info = {
-          'grid':   options.grid,
-          'size':   options.size,
+          'grid':   numpy.array(options.grid),
+          'size':   numpy.array(options.size),
           'origin': numpy.zeros(3,'d'),
           'microstructures': max(options.microstructure),
           'homogenization':  options.homogenization
@@ -105,7 +104,7 @@ header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['
 header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
 header.append("microstructures\t%i\n"%info['microstructures'])
 header.append("homogenization\t%i\n"%info['homogenization'])
-file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
+file['output'].write('%i\theader\n'%(len(header))+''.join(header))
 
 #--- write data -----------------------------------------------------------------------------------
 for z in xrange(options.grid[2]):

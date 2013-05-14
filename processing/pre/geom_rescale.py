@@ -39,7 +39,6 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Scales a geometry description independently in x, y, and z direction in terms of grid and/or size.
 """ + string.replace('$Id$','\n','\\n')
@@ -91,15 +90,14 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-#--- interpretate header --------------------------------------------------------------------------
+#--- interprete header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.array(options.grid),
-          'size':   numpy.array(options.size),
-          'origin': numpy.zeros(3,'d'),
+          'grid':    numpy.zeros(3,'i'),
+          'size':    numpy.zeros(3,'d'),
+          'origin':  numpy.zeros(3,'d'),
           'microstructures': 0,
           'homogenization':  0
          }
-
   newInfo = {
           'grid':   numpy.array(options.grid),
           'size':   numpy.array(options.size),
@@ -134,11 +132,12 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n\n'%info['microstructures'])
                       
-  if options.grid == [0,0,0]:
+  if numpy.all(info['grid'] == 0):
     newInfo['grid'] = info['grid']
-  if options.size == [0.0,0.0,0.0]:
+  if numpy.all(info['size'] == 0.0)::
     newInfo['size'] = info['size']
-    
+
+#--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'],'i')
   i = 0
   for line in content:  
@@ -157,20 +156,17 @@ for file in files:
   if (newInfo['microstructures'] != info['microstructures']):
     file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
 
+#--- assemble header ------------------------------------------------------------------------------
   new_header.append('$Id$\n')
   new_header.append("grid\ta %i\tb %i\tc %i\n"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2]))
   new_header.append("size\tx %f\ty %f\tz %f\n"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2]))
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2]))
   new_header.append("microstructures\t%i\n"%newInfo['microstructures'])
   new_header.append("homogenization\t%i\n"%info['homogenization'])
-  
-# ------------------------------------------ assemble header ---------------------------------------  
-
   output  = '%i\theader\n'%(len(new_header))
   output += ''.join(new_header)
-
-# ------------------------------------- regenerate texture information ----------------------------------  
-
+  
+#--- scale microstructure -------------------------------------------------------------------------
   for c in xrange(options.grid[2]):
     z = int(info['grid'][2]*(c+0.5)/options.grid[2])%info['grid'][2]
     for b in xrange(options.grid[1]):
@@ -179,13 +175,10 @@ for file in files:
         x = int(info['grid'][0]*(a+0.5)/options.grid[0])%info['grid'][0]
         output += str(microstructure[x,y,z]).rjust(formatwidth) + {True:' ',False:'\n'}[options.twoD]
       output += {True:'\n',False:''}[options.twoD]
-    
-# ------------------------------------------ output result ---------------------------------------  
-
   file['output'].write(output)
 
+#--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    file['input'].close()
     file['output'].close()
     os.rename(file['name']+'_tmp',file['name'])
     

@@ -246,7 +246,7 @@ parser.add_option("-s", "--spectral", action="store_const", const="spectral",\
 
 parser.add_option("--homogenization", type="int",\
                   dest="homogenization",\
-                  help="homogenization index from material.config (only required for spectral file type)")
+                  help="homogenization index from material.config (only required for geom file type)")
 
 
 parser.set_defaults(filetype = 'geom')
