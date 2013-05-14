@@ -1359,9 +1359,9 @@ subroutine mesh_spectral_build_ipNeighborhood(myUnit)
  grid = mesh_spectral_getGrid(myUnit)
 
  e = 0_pInt
- do z = 0_pInt,grid(1)-1_pInt
+ do z = 0_pInt,grid(3)-1_pInt
    do y = 0_pInt,grid(2)-1_pInt
-     do x = 0_pInt,grid(3)-1_pInt
+     do x = 0_pInt,grid(1)-1_pInt
        e = e + 1_pInt
          mesh_ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
                                       + y * grid(1) &
