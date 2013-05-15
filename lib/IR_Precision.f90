@@ -71,7 +71,7 @@ public:: I1P,  FI1P,  DI1P,  MinI1P,  MaxI1P,  BII1P,  BYI1P
 public:: I_P,  FI_P,  DI_P,  MinI_P,  MaxI_P,  BII_P,  BYI_P
 public:: check_endian
 public:: bit_size
-public:: str, strz, cton, bstr, bcton
+public:: str, strz, cton
 public:: ir_initialized,IR_Init
 public:: IR_Print
 !-----------------------------------------------------------------------------------------------------------------------------------
@@ -143,7 +143,7 @@ real(R4P),  parameter:: MinR4P  = -huge(1._R4P ), MaxR4P  = huge(1._R4P ) !< Min
 real(R_P),  parameter:: MinR_P  = MinR8P,         MaxR_P  = MaxR8P        !< Min and max values of kind=R_P variable.
 ! Real number of bits/bytes
 #ifdef r16p
-integer(I2P):: BIR16P, BYR16P !< Number of bits/bytes of kind=R16P variable.
+integer(I1P):: BIR16P, BYR16P !< Number of bits/bytes of kind=R16P variable.
 #endif
 integer(I1P):: BIR8P,  BYR8P  !< Number of bits/bytes of kind=R8P variable.
 integer(I1P):: BIR4P,  BYR4P  !< Number of bits/bytes of kind=R4P variable.
@@ -156,11 +156,11 @@ real(R8P),  parameter:: smallR8P  = tiny(1._R8P ) !< Smallest representable valu
 real(R4P),  parameter:: smallR4P  = tiny(1._R4P ) !< Smallest representable value of kind=R4P variable.
 real(R_P),  parameter:: smallR_P  = smallR8P      !< Smallest representable value of kind=R_P variable.
 ! Integer min and max values:
-integer(I8P), parameter:: MinI8P = -huge(1_I8P), MaxI8P = huge(1_I8P) !< Min and max values of kind=I8P variable.
-integer(I4P), parameter:: MinI4P = -huge(1_I4P), MaxI4P = huge(1_I4P) !< Min and max values of kind=I4P variable.
-integer(I2P), parameter:: MinI2P = -huge(1_I2P), MaxI2P = huge(1_I2P) !< Min and max values of kind=I2P variable.
-integer(I1P), parameter:: MinI1P = -huge(1_I1P), MaxI1P = huge(1_I1P) !< Min and max values of kind=I1P variable.
-integer(I_P), parameter:: MinI_P = MinI4P,       MaxI_P = MaxI4P      !< Min and max values of kind=I_P variable.
+integer(I8P), parameter:: MinI8P = -huge(1_I8P)-1_I8P, MaxI8P = huge(1_I8P) !< Min and max values of kind=I8P variable.
+integer(I4P), parameter:: MinI4P = -huge(1_I4P)-1_I4P, MaxI4P = huge(1_I4P) !< Min and max values of kind=I4P variable.
+integer(I2P), parameter:: MinI2P = -huge(1_I2P)-1_I2P, MaxI2P = huge(1_I2P) !< Min and max values of kind=I2P variable.
+integer(I1P), parameter:: MinI1P = -huge(1_I1P)-1_I1P, MaxI1P = huge(1_I1P) !< Min and max values of kind=I1P variable.
+integer(I_P), parameter:: MinI_P = MinI4P,             MaxI_P = MaxI4P      !< Min and max values of kind=I_P variable.
 ! Integer number of bits/bytes:
 integer(I8P), parameter:: BII8P = bit_size(MaxI8P), BYI8P = bit_size(MaxI8P)/8_I8P !< Number of bits/bytes of kind=I8P variable.
 integer(I4P), parameter:: BII4P = bit_size(MaxI4P), BYI4P = bit_size(MaxI4P)/8_I4P !< Number of bits/bytes of kind=I4P variable.
@@ -206,14 +206,14 @@ endinterface
 interface str
   module procedure                    &
 #ifdef r16p
-                   strf_R16P,str_R16P,&
+                   str_R16P,strf_R16P,&
 #endif
-                   strf_R8P ,str_R8P, &
-                   strf_R4P ,str_R4P, &
-                   strf_I8P ,str_I8P, &
-                   strf_I4P ,str_I4P, &
-                   strf_I2P ,str_I2P, &
-                   strf_I1P ,str_I1P
+                   str_R8P,strf_R8P,  &
+                   str_R4P,strf_R4P,  &
+                   str_I8P,strf_I8P,  &
+                   str_I4P,strf_I4P,  &
+                   str_I2P,strf_I2P,  &
+                   str_I1P,strf_I1P
 endinterface
 !> @brief Function for converting number, integer, to string, prefixing with the right number of zeros (number to string type
 !>        casting with zero padding);
@@ -242,38 +242,6 @@ interface cton
                    ctoi_I4P,  &
                    ctoi_I2P,  &
                    ctoi_I1P
-endinterface
-!> @brief Function for converting number, real and integer, to bit-string (number to bit-string type casting);
-!> number,  intent(\b IN)::  <b>\em n</b> input number;
-!> string,  intent(\b OUT):: <b>\em bstr</b> output bit-string.
-!> @ingroup IR_PrecisionInterface
-interface bstr
-  module procedure           &
-#ifdef r16p
-                   bstr_R16P,&
-#endif
-                   bstr_R8P, &
-                   bstr_R4P, &
-                   bstr_I8P, &
-                   bstr_I4P, &
-                   bstr_I2P, &
-                   bstr_I1P
-endinterface
-!> @brief Function for converting bit-string to number, real or initeger, (bit-string to number type casting);
-!> string,  intent(\b IN)::  <b>\em bstr</b> input bit-string;
-!> number,  intent(\b OUT):: <b>\em n</b> output number.
-!> @ingroup IR_PrecisionInterface
-interface bcton
-  module procedure            &
-#ifdef r16p
-                   bctor_R16P, &
-#endif
-                   bctor_R8P,  &
-                   bctor_R4P,  &
-                   bctoi_I8P,  &
-                   bctoi_I4P,  &
-                   bctoi_I2P,  &
-                   bctoi_I1P
 endinterface
 !-----------------------------------------------------------------------------------------------------------------------------------
 contains
@@ -321,12 +289,12 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
   real(R16P), intent(IN):: i       !< Real variable of which number of bits must be computed.
-  integer(I2P)::           bits    !< Number of bits of i.
+  integer(I1P)::           bits    !< Number of bits of i.
   integer(I1P)::           mold(1) !< "Molding" dummy variable for bits counting.
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
-  bits = size(transfer(i,mold))*8_I2P
+  bits = size(transfer(i,mold))*8_I1P
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   endfunction bit_size_R16P
@@ -814,203 +782,6 @@ contains
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   endfunction ctoi_I1P
-
-#ifdef r16p
-  !> @brief Function for converting real to string of bits. This function achieves casting of real to bit-string.
-  !> @note It is assumed that R16P is represented by means of 128 bits, but this is not ensured in all architectures.
-  elemental function bstr_R16P(n) result(bstr)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  real(R8P), intent(IN):: n    !< Real to be converted.
-  character(128)::        bstr !< Returned bit-string containing input number.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  write(bstr,'(B128.128)')n ! Casting of n to bit-string.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bstr_R16P
-#endif
-
-  !> @brief Function for converting real to string of bits. This function achieves casting of real to bit-string.
-  !> @note It is assumed that R8P is represented by means of 64 bits, but this is not ensured in all architectures.
-  elemental function bstr_R8P(n) result(bstr)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  real(R8P), intent(IN):: n    !< Real to be converted.
-  character(64)::         bstr !< Returned bit-string containing input number.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  write(bstr,'(B64.64)')n ! Casting of n to bit-string.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bstr_R8P
-
-  !> @brief Function for converting real to string of bits. This function achieves casting of real to bit-string.
-  !> @note It is assumed that R4P is represented by means of 32 bits, but this is not ensured in all architectures.
-  elemental function bstr_R4P(n) result(bstr)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  real(R4P), intent(IN):: n    !< Real to be converted.
-  character(32)::         bstr !< Returned bit-string containing input number.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  write(bstr,'(B32.32)')n ! Casting of n to bit-string.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bstr_R4P
-
-  !> @brief Function for converting integer to string of bits. This function achieves casting of integer to bit-string.
-  !> @note It is assumed that I8P is represented by means of 64 bits, but this is not ensured in all architectures.
-  elemental function bstr_I8P(n) result(bstr)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  integer(I8P), intent(IN):: n    !< Real to be converted.
-  character(64)::            bstr !< Returned bit-string containing input number.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  write(bstr,'(B64.64)')n ! Casting of n to bit-string.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bstr_I8P
-
-  !> @brief Function for converting integer to string of bits. This function achieves casting of integer to bit-string.
-  !> @note It is assumed that I4P is represented by means of 32 bits, but this is not ensured in all architectures.
-  elemental function bstr_I4P(n) result(bstr)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  integer(I4P), intent(IN):: n    !< Real to be converted.
-  character(32)::            bstr !< Returned bit-string containing input number.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  write(bstr,'(B32.32)')n ! Casting of n to bit-string.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bstr_I4P
-
-  !> @brief Function for converting integer to string of bits. This function achieves casting of integer to bit-string.
-  !> @note It is assumed that I2P is represented by means of 16 bits, but this is not ensured in all architectures.
-  elemental function bstr_I2P(n) result(bstr)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  integer(I2P), intent(IN):: n    !< Real to be converted.
-  character(16)::            bstr !< Returned bit-string containing input number.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  write(bstr,'(B16.16)')n ! Casting of n to bit-string.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bstr_I2P
-
-  !> @brief Function for converting integer to string of bits. This function achieves casting of integer to bit-string.
-  !> @note It is assumed that I1P is represented by means of 8 bits, but this is not ensured in all architectures.
-  elemental function bstr_I1P(n) result(bstr)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  integer(I1P), intent(IN):: n    !< Real to be converted.
-  character(8)::             bstr !< Returned bit-string containing input number.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  write(bstr,'(B8.8)')n ! Casting of n to bit-string.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bstr_I1P
-
-  !> @brief Function for converting bit-string to real. This function achieves casting of bit-string to real.
-  elemental function bctor_R8P(bstr,knd) result(n)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  character(*), intent(IN):: bstr !< String containing input number.
-  real(R8P),    intent(IN):: knd  !< Number kind.
-  real(R8P)::                n    !< Number returned.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  read(bstr,'(B'//trim(str(.true.,bit_size(knd)))//'.'//trim(str(.true.,bit_size(knd)))//')')n ! Casting of bstr to n.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bctor_R8P
-
-  !> @brief Function for converting bit-string to real. This function achieves casting of bit-string to real.
-  elemental function bctor_R4P(bstr,knd) result(n)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  character(*), intent(IN):: bstr !< String containing input number.
-  real(R4P),    intent(IN):: knd  !< Number kind.
-  real(R4P)::                n    !< Number returned.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  read(bstr,'(B'//trim(str(.true.,bit_size(knd)))//'.'//trim(str(.true.,bit_size(knd)))//')')n ! Casting of bstr to n.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bctor_R4P
-
-  !> @brief Function for converting bit-string to integer. This function achieves casting of bit-string to integer.
-  elemental function bctoi_I8P(bstr,knd) result(n)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  character(*), intent(IN):: bstr !< String containing input number.
-  integer(I8P), intent(IN):: knd  !< Number kind.
-  integer(I8P)::             n    !< Number returned.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  read(bstr,'(B'//trim(str(.true.,bit_size(knd)))//'.'//trim(str(.true.,bit_size(knd)))//')')n ! Casting of bstr to n.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bctoi_I8P
-
-  !> @brief Function for converting bit-string to integer. This function achieves casting of bit-string to integer.
-  elemental function bctoi_I4P(bstr,knd) result(n)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  character(*), intent(IN):: bstr !< String containing input number.
-  integer(I4P), intent(IN):: knd  !< Number kind.
-  integer(I4P)::             n    !< Number returned.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  read(bstr,'(B'//trim(str(.true.,bit_size(knd)))//'.'//trim(str(.true.,bit_size(knd)))//')')n ! Casting of bstr to n.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bctoi_I4P
-
-  !> @brief Function for converting bit-string to integer. This function achieves casting of bit-string to integer.
-  elemental function bctoi_I2P(bstr,knd) result(n)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  character(*), intent(IN):: bstr !< String containing input number.
-  integer(I2P), intent(IN):: knd  !< Number kind.
-  integer(I2P)::             n    !< Number returned.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  read(bstr,'(B'//trim(str(.true.,bit_size(knd)))//'.'//trim(str(.true.,bit_size(knd)))//')')n ! Casting of bstr to n.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bctoi_I2P
-
-  !> @brief Function for converting bit-string to integer. This function achieves casting of bit-string to integer.
-  elemental function bctoi_I1P(bstr,knd) result(n)
-  !---------------------------------------------------------------------------------------------------------------------------------
-  implicit none
-  character(*), intent(IN):: bstr !< String containing input number.
-  integer(I1P), intent(IN):: knd  !< Number kind.
-  integer(I1P)::             n    !< Number returned.
-  !---------------------------------------------------------------------------------------------------------------------------------
-
-  !---------------------------------------------------------------------------------------------------------------------------------
-  read(bstr,'(B'//trim(str(.true.,bit_size(knd)))//'.'//trim(str(.true.,bit_size(knd)))//')')n ! Casting of bstr to n.
-  return
-  !---------------------------------------------------------------------------------------------------------------------------------
-  endfunction bctoi_I1P
   !> @}
 
   !> Subroutine for initilizing module's variables that are not initialized into the definition specification.
