@@ -130,14 +130,14 @@ for file in files:
                       'microstructures: %i\n\n'%info['microstructures'])
 
   if numpy.any(info['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
+    file['croak'].write('invalid grid a b c.\n')
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
-    file['croak'].write('no valid size info found.\n')
+    file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
 #--- process input --------------------------------------------------------------------------------  
-  N = info['grid'][0]*info['grid'][1]*info['grid'][2]
+  N = info['grid'].prod()
   microstructure = numpy.zeros(N,'i')
 
   i = 0

@@ -126,15 +126,15 @@ for file in files:
                       'microstructures: %i\n\n'%info['microstructures'])
   
   if numpy.any(info['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
+    file['croak'].write('invalid grid a b c.\n')
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
-    file['croak'].write('no valid size info found.\n')
+    file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
   if numpy.all(info['grid'] == 0):
     newInfo['grid'] = info['grid']
-  if numpy.all(info['size'] == 0.0)::
+  if numpy.all(info['size'] == 0.0):
     newInfo['size'] = info['size']
 
 #--- read data ------------------------------------------------------------------------------------
@@ -157,10 +157,10 @@ for file in files:
     file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
   
   if numpy.any(newInfo['grid'] < 1):
-    file['croak'].write('no valid new grid info found.\n')
+    file['croak'].write('invalid new grid a b c.\n')
     sys.exit()
   if numpy.any(newInfo['size'] <= 0.0):
-    file['croak'].write('no valid new size info found.\n')
+    file['croak'].write('invalid new size x y z.\n')
     sys.exit()
 
 #--- assemble header ------------------------------------------------------------------------------
@@ -170,8 +170,7 @@ for file in files:
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2]))
   new_header.append("microstructures\t%i\n"%newInfo['microstructures'])
   new_header.append("homogenization\t%i\n"%info['homogenization'])
-  output  = '%i\theader\n'%(len(new_header))
-  output += ''.join(new_header)
+  file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
   
 #--- scale microstructure -------------------------------------------------------------------------
   for c in xrange(newInfo['grid'][2]):
@@ -180,9 +179,9 @@ for file in files:
       y = int(info['grid'][1]*(b+0.5)/newInfo['grid'][1])%info['grid'][1]
       for a in xrange(newInfo['grid'][0]):
         x = int(info['grid'][0]*(a+0.5)/newInfo['grid'][0])%info['grid'][0]
-        output += str(microstructure[x,y,z]).rjust(formatwidth) + {True:' ',False:'\n'}[options.twoD]
-      output += {True:'\n',False:''}[options.twoD]
-  file['output'].write(output)
+        file['output'].write(str(microstructure[x,y,z]).rjust(formatwidth) + {True:' ',False:'\n'}
+                                                                                   [options.twoD])
+      file['output'].write({True:'\n',False:''}[options.twoD])
 
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':

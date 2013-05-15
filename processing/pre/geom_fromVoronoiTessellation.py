@@ -211,7 +211,6 @@ for file in files:
                              False:'\n'}[options.twoD].\
                              join(map(lambda x: str(x).rjust(formatwidth),\
                                       indices[n*info['grid'][0]:(n+1)*info['grid'][0]]))+'\n')
-  
    
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':

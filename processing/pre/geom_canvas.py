@@ -4,10 +4,9 @@
 import os,sys,string,re,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
     
@@ -24,8 +23,9 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-# ----------------------- MAIN -------------------------------
-
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -37,7 +37,6 @@ mappings = {
         'origin':         lambda x: float(x),
         'homogenization': lambda x: int(x),
           }
-
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Changes the (three-dimensional) canvas of a spectral geometry description.
@@ -60,7 +59,7 @@ parser.set_defaults(fill = 0)
 
 (options, filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+#--- setup file handles --------------------------------------------------------------------------   
 files = []
 if filenames == []:
   files.append({'name':'STDIN',
@@ -77,12 +76,9 @@ else:
                     'croak':sys.stdout,
                     })
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------ 
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
-
-  #  get labels by either read the first row, or - if keyword header is present - the last line of the header
 
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
@@ -96,12 +92,19 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
+#--- interprete header ----------------------------------------------------------------------------
   info = {
-          'grid':    numpy.array(options.grid),
-          'size':    numpy.array([0.0,0.0,0.0]),
-          'origin':  numpy.array([0.0,0.0,0.0]),
+          'grid':    numpy.zeros(3,'i'),
+          'size':    numpy.zeros(3,'d'),
+          'origin':  numpy.zeros(3,'d'),
           'microstructures': 0,          
           'homogenization':  0,
+         }
+  newInfo = {
+          'grid':    numpy.array(options.grid),
+          'size':    numpy.zeros(3,'d'),
+          'origin':  numpy.zeros(3,'d'),
+          'microstructures': 0,
          }
 
   new_header = []
@@ -117,15 +120,20 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if numpy.all(options.grid == 0):
-    options.grid = info['grid']
-  if numpy.all(info['grid'] == 0):
-    file['croak'].write('no grid info found.\n')
-    continue
-  if numpy.all(info['size'] == 0.0):
-    file['croak'].write('no size info found.\n')
-    continue
-    
+  file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                      'homogenization:  %i\n'%info['homogenization'] + \
+                      'microstructures: %i\n'%info['microstructures'])
+
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('invalid grid a b c.\n')
+    sys.exit()
+  if numpy.any(info['size'] <= 0.0):
+    file['croak'].write('invalid size x y z.\n')
+    sys.exit()
+
+#--- read data ------------------------------------------------------------------------------------  
   microstructure = numpy.zeros(info['grid'],'i')
   i = 0
   for line in content:  
@@ -134,26 +142,9 @@ for file in files:
                     (i/info['grid'][0])%info['grid'][1],
                      i/info['grid'][0] /info['grid'][1]] = item
       i += 1
-
-  file['croak'].write('-- input --\n' + \
-                      'grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
-                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
-                      'homogenization:  %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n'%info['microstructures'])
-  
-  info['microstructures'] = microstructure.max()
-  
-  newSize = info['size']/info['grid']*options.grid
-  newOrigin = info['origin']+info['size']/info['grid']*options.offset
-  new_header.append("grid\ta %i\tb %i\tc %i\n"%(options.grid[0],options.grid[1],options.grid[2]))
-  new_header.append("size\tx %f\ty %f\tz %f\n"%(newSize[0],newSize[1],newSize[2]))
-  new_header.append("origin\tx %f\ty %f\tz %f\n"%(newOrigin[0],newOrigin[1],newOrigin[2]))
-  new_header.append("homogenization\t%i\n"%info['homogenization'])
-  new_header.append("microstructures\t%i\n"%info['microstructures'])
-
+ 
   microstructure_cropped = numpy.zeros(options.grid,'i')
-  microstructure_cropped.fill({True:options.fill,False:info['microstructures']+1}[options.fill>0])
+  microstructure_cropped.fill({True:options.fill,False:microstructure.max()+1}[options.fill>0])
   xindex = list(set(xrange(options.offset[0],options.offset[0]+options.grid[0])) & \
                                                                set(xrange(info['grid'][0])))
   yindex = list(set(xrange(options.offset[1],options.offset[1]+options.grid[1])) & \
@@ -171,28 +162,49 @@ for file in files:
                          min(zindex):(max(zindex)+1)]
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
   
-  file['croak'].write('-- output --\n' +\
-                      'grid     a b c:  %s\n'%(' x '.join(map(str,options.grid))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,newSize)))  + \
-                      'origin   x y z:  %s\n'%(' x '.join(map(str,newOrigin)))  + \
-                      'microstructures: %i\n'%microstructure.max())
-            
-# ------------------------------------------ assemble header --------------------------------------- 
+  if numpy.all(options.grid == 0):
+    newInfo['grid'] = info['grid']
+  newInfo['microstructures'] = microstructure_cropped.max()
+  newInfo['size']   = info['size']/info['grid']*options.grid
+  newInfo['origin'] = info['origin']+info['size']/info['grid']*options.offset
 
-  output  = '%i\theader\n'%(len(new_header))
-  output += ''.join(new_header)
 
-# ------------------------------------- regenerate texture information ----------------------------
+#--- report ---------------------------------------------------------------------------------------
+  if (any(newInfo['grid'] != info['grid'])):
+    file['croak'].write('--> grid     a b c:  %s\n'%(' x '.join(map(str,newInfo['grid']))))
+  if (any(newInfo['size'] != info['size'])):
+    file['croak'].write('--> size     x y z:  %s\n'%(' x '.join(map(str,newInfo['size']))))
+  if (any(newInfo['origin'] != info['origin'])):
+    file['croak'].write('--> origin     x y z:  %s\n'%(' : '.join(map(str,newInfo['size']))))
+  if (newInfo['microstructures'] != info['microstructures']):
+    file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
 
+  if numpy.any(newInfo['grid'] < 1):
+    file['croak'].write('invalid new grid a b c.\n')
+    sys.exit()
+  if numpy.any(newInfo['size'] <= 0.0):
+    file['croak'].write('invalid new size x y z.\n')
+    sys.exit()
+
+# --- assemble header -----------------------------------------------------------------------------
+  new_header.append('$Id$\n')
+  new_header.append("grid\ta %i\tb %i\tc %i\n"%(
+                     newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2]))
+  new_header.append("size\tx %f\ty %f\tz %f\n"%(
+                     newInfo['size'][0],newInfo['size'][1],newInfo['size'][2]))
+  new_header.append("origin\tx %f\ty %f\tz %f\n"%(
+                     newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2]))
+  new_header.append("homogenization\t%i\n"%info['homogenization'])
+  new_header.append("microstructures\t%i\n"%newInfo['microstructures'])
+  file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
+
+# --- write microstructure information ------------------------------------------------------------
   for z in xrange(options.grid[2]):
     for y in xrange(options.grid[1]):
-      output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: \
-                                    ('%%%ii'%formatwidth)%x, microstructure_cropped[:,y,z])) + '\n'
-    
-# ------------------------------------------ output result ---------------------------------------  
+      file['output'].write({True:' ',False:'\n'}[options.twoD].join(map(lambda x: \
+                                    ('%%%ii'%formatwidth)%x, microstructure_cropped[:,y,z])) + '\n')
 
-  file['output'].write(output)
-
+#--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
     file['output'].close()
     os.rename(file['name']+'_tmp',file['name'])
