@@ -4,10 +4,9 @@
 import os,sys,math,string,re,numpy, damask 
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP 
 
-
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
-# -----------------------------
+#--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
   
@@ -24,9 +23,9 @@ class extendedOption(Option):
       Option.take_action(self, action, dest, opt, value, values, parser)
   
 
-# --------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
 #                                MAIN
-# --------------------------------------------------------------------
+#--------------------------------------------------------------------------------------------------
 identifiers = {
         'grid':  ['a','b','c'],
           }
@@ -66,9 +65,7 @@ parser.set_defaults(twoD   = False)
                                    
 (options,filenames) = parser.parse_args()
 
-
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+#--- setup file handles ---------------------------------------------------------------------------  
 files = []
 if filenames == []:
   files.append({'name':'STDIN',
@@ -86,8 +83,7 @@ else:
                     })
 
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
@@ -103,11 +99,13 @@ for file in files:
   content = file['input'].readlines()
   file['input'].close()
 
-  info = {'grains': 0,
-          'grid':    numpy.array([0,0,0]),
+#--- interprete header ----------------------------------------------------------------------------
+  info = {
+          'grid':    numpy.zeros(3,'i'),
           'size':    numpy.array(options.size),
-          'origin':  numpy.array([0.0,0.0,0.0]),
-          'homogenization': options.homogenization,
+          'origin':  numpy.zeros(3,'d'),
+          'grains':  0,          
+          'homogenization':  0,
          }
 
   new_header = []
@@ -122,24 +120,15 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if info['grains'] == 0:
-    file['croak'].write('no grains found.\n')
-    continue
   if info['grains'] != len(content):
     file['croak'].write('grain data not matching grain count...\n')
     info['grains'] = min(info['grains'],len(content))
-
-  if 0 not in options.grid:                                                                # user-specified grid
+  
+  if 0 not in options.grid:                                                                         # user-specified grid
     info['grid'] = numpy.array(options.grid)
 
-  if numpy.any(info['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
-    continue
-
-  twoD = info['grid'][2] < 2
-
   for i in xrange(3):
-    if info['size'][i] <= 0.0:                                                            # any invalid size?
+    if info['size'][i] <= 0.0:                                                                      # any invalid size?
       info['size'][i] = float(info['grid'][i])/max(info['grid'])
       file['croak'].write('rescaling size %i...\n'%i)
 
@@ -148,10 +137,18 @@ for file in files:
                       'size     x y z: %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z: %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization: %i\n'%info['homogenization'])
+  
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('invalid grid a b c.\n')
+    sys.exit()
+  if numpy.any(info['size'] <= 0.0):
+    file['croak'].write('invalid size x y z.\n')
+    sys.exit()
+  if info['grains'] == 0:
+    file['croak'].write('no grain info found.\n')
+    sys.exit()
 
-
-# -------------------------------------- prepare data ----------------------------------
-
+#--- prepare data ---------------------------------------------------------------------------------
   formatwidth = 1+int(math.log10(info['grains']))
   coords = numpy.zeros((3,info['grains']),'d')
   eulers = numpy.zeros((3,info['grains']),'d')
@@ -159,10 +156,9 @@ for file in files:
   for i in xrange(info['grains']):
     coords[:,i] = map(float,content[i].split()[:3])*info['size']
     eulers[:,i] = map(float,content[i].split()[3:6])
- 
-# -------------------------------------- switch according to task ----------------------------------
 
-  if options.config:                                                                     # write config file
+#--- switch according to task ---------------------------------------------------------------------
+  if options.config:                                                                                # write config file
     file['output'].write('<microstructure>\n')
     for i in xrange(info['grains']):
       file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
@@ -174,9 +170,10 @@ for file in files:
       file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
                            '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,i],eulers[1,i],eulers[2,i]))
 
-  else:                                                                                 # write geometry file  
+  else:                                                                                             # write geometry file  
+    twoD = info['grid'][2] < 2
     N = info['grid'].prod()
-    shift = 0.5*info['size']/info['grid']                                             # shift by half of side length to center of element
+    shift = 0.5*info['size']/info['grid']                                                           # shift by half of side length to center of element
     undeformed = numpy.zeros((3,N),'d')
 
     for i in xrange(N):
@@ -194,33 +191,31 @@ for file in files:
     indices = damask.core.math.periodicNearestNeighbor(\
               info['size'],\
               numpy.eye(3),\
-              undeformed,coords)//3**3 + 1                                # floor division to kill periodic images
+              undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
     missing = 0
     for i in xrange(info['grains']):
       if i+1 not in indices: missing += 1
     file['croak'].write({True:'all',False:'only'}[missing == 0] + ' %i grains mapped.\n'%(info['grains']-missing))
-    
+
+#--- write header ---------------------------------------------------------------------------------
     new_header.append("$Id$ \n")
     new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
     new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
     new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
     new_header.append("microstructures\t%i\n"%(info['grains']-missing))
     new_header.append("homogenization\t%i\n"%info['homogenization'])
-
     file['output'].write('%i\theader\n'%(len(new_header)) + ''.join(new_header))
 
-    for n in xrange(info['grid'][1:3].prod()):                            # loop over 2nd and 3rd size
+    for n in xrange(info['grid'][1:3].prod()):                                                        # loop over 2nd and 3rd size
       file['output'].write({ True: ' ',
                              False:'\n'}[options.twoD].\
                              join(map(lambda x: str(x).rjust(formatwidth),\
                                       indices[n*info['grid'][0]:(n+1)*info['grid'][0]]))+'\n')
   
    
-# ------------------------------------------ output finalization ---------------------------------------  
-
+#--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
     file['output'].close()
     os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \
                                   {True: '_material.config',
                                    False:'.geom'}[options.config])
-

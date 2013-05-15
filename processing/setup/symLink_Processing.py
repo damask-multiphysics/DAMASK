@@ -21,7 +21,7 @@ bin_link = { \
                 'geom_fromVPSC.py',
                 'geom_fromMinimalSurface.py',
                 'geom_fromVoronoiTessellation.py',
-                'geom_Osteon.py',
+                'geom_fromOsteonGeometry.py',
                 'geom_canvas.py',
                 'geom_check.py',
                 'geom_rescale.py',
@@ -29,7 +29,7 @@ bin_link = { \
                 'geom_unpack.py',
                 'geom_translate.py',
                 'geom_vicinityOffset.py',
-                'geom_euclideanDistance.py'
+                'geom_fromEuclideanDistance.py'
                 ],
         'post' : [
                 '3Dvisualize.py',
@@ -63,7 +63,6 @@ bin_link = { \
                 'perceptualUniformColorMap.py',
                 'postResults.py',
                 'showTable.py',
-                'table2ang.py',
                 'tagLabel.py',
                 'vtk2ang.py',
                 ],

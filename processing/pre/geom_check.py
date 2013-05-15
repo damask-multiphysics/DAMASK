@@ -105,25 +105,26 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.all(any['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('invalid grid a b c.\n')
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
-    file['croak'].write('no valid size info found.\n')
+    file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
 
 #--- generate grid --------------------------------------------------------------------------------
   grid = vtk.vtkRectilinearGrid()
   grid.SetDimensions([x+1 for x in info['grid']])
-  temp = vtk.vtkDoubleArray()
+  temp = [] 
   for i in xrange(3):
-    temp.SetNumberOfTuples(info['grid'][i]+1)
+    temp.append(vtk.vtkDoubleArray())
+    temp[i].SetNumberOfTuples(info['grid'][i]+1)
     for j in range(info['grid'][i]+1):
-      temp.InsertTuple1(j,j*info['size'][i]/info['grid'][i]+info['origin'][i])
-      if i == 0: grid.SetXCoordinates(temp)
-      if i == 1: grid.SetYCoordinates(temp)
-      if i == 2: grid.SetZCoordinates(temp)
+      temp[i].InsertTuple1(j,j*info['size'][i]/info['grid'][i]+info['origin'][i])
+      if i == 0: grid.SetXCoordinates(temp[0])
+      if i == 1: grid.SetYCoordinates(temp[1])
+      if i == 2: grid.SetZCoordinates(temp[2])
 
 #--- read microstructure information --------------------------------------------------------------
   structure = vtk.vtkIntArray()

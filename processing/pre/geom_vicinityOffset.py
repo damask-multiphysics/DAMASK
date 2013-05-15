@@ -126,10 +126,10 @@ for file in files:
                       'microstructures: %i\n'%info['microstructures'])
 
   if numpy.any(info['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
+    file['croak'].write('invalid grid a b c.\n')
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
-    file['croak'].write('no valid size info found.\n')
+    file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
 #--- read data ------------------------------------------------------------------------------------
@@ -184,10 +184,10 @@ for file in files:
 # --- write microstructure information ------------------------------------------------------------
   for z in xrange(info['grid'][2]):
     for y in xrange(info['grid'][1]):
-      output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: str(x).rjust(formatwidth), microstructure[:,y,z])) + '\n'
+      file['output'].write({True:' ',False:'\n'}[options.twoD].
+                       join(map(lambda x: str(x).rjust(formatwidth), microstructure[:,y,z])) + '\n')
     
-    output += '\n'
-  file['output'].write(output)
+    file['output'].write('\n')
 
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':

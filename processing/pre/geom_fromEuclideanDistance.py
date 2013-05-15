@@ -63,9 +63,9 @@ mappings = {
           }
 
 features = [
-            {'aliens': 1, 'names': ['boundary, biplane'],},
-            {'aliens': 2, 'names': ['tripleline',],},
-            {'aliens': 3, 'names': ['quadruplepoint',],}
+            {'aliens': 1, 'names': ['boundary(biplane)'],},
+            {'aliens': 2, 'names': ['tripleline'],},
+            {'aliens': 3, 'names': ['quadruplepoint'],}
            ]
 
 neighborhoods = {
@@ -140,7 +140,7 @@ for i,feature in enumerate(features):
         feature_list.append(i)                                                                      # remember valid features
         break
 
-
+print feature_list
 #--- setup file handles ---------------------------------------------------------------------------  
 files = []
 if filenames == []:
@@ -150,12 +150,13 @@ if filenames == []:
                 'croak':sys.stderr,
                })
 else:
+  print [string.split(''.join((features[feature]['names'])),sep='(')[0] for feature in feature_list]
   for name in filenames:
     if os.path.exists(name):
       files.append({'name':name,
                     'input':open(name),
-                    'output':[open(features[feature]['names'][0]+'_'+name,'w') 
-                                          for string.split(feature,sep=',')[0] in feature_list],
+                    'output':[open(string.split(''.join((features[feature]['names'])),sep='(')[0]+'_'+name,'w')
+                    for feature in feature_list],
                     'croak':sys.stdout,
                     })
 
@@ -209,10 +210,10 @@ for file in files:
                       'microstructures: %i\n'%info['microstructures'])
   
   if numpy.any(info['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
+    file['croak'].write('invalid grid a b c.\n')
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
-    file['croak'].write('no valid size info found.\n')
+    file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
   new_header.append('$Id$\n')
@@ -255,7 +256,6 @@ for file in files:
     check = convoluted[i,1:-1,1:-1,1:-1]
   for i,feature_id in enumerate(feature_list):
     distance[i,:,:,:] = numpy.where(uniques > features[feature_id]['aliens'],0.0,1.0)
-  
   for i in xrange(len(feature_list)):
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*\
                                                 [max(info['size']/info['grid'])]*3
@@ -276,7 +276,6 @@ for file in files:
         output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: \
                                        ('%%%ii'%formatwidth)%(round(x)), distance[i,:,y,z])) + '\n'
     file['output'][i].write(output)
-	
     if file['name'] != 'STDIN':
       file['output'][i].close()
 

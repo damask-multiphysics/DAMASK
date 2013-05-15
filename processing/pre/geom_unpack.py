@@ -107,13 +107,6 @@ for file in files:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
     new_header.append(header)
 
-  if numpy.all(info['grid'] == 0):
-    file['croak'].write('no grid info found.\n')
-    continue
-  if numpy.all(info['size'] == 0.0):
-    file['croak'].write('no size info found.\n')
-    continue
-
   format = {True:  info['grid'][0],
             False: 1}[options.twoD]
 
@@ -122,8 +115,16 @@ for file in files:
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
+
+  if numpy.any(info['grid'] < 1):
+    file['croak'].write('invalid grid a b c.\n')
+    sys.exit()
+  if numpy.any(info['size'] <= 0.0):
+    file['croak'].write('invalid size x y z.\n')
+    sys.exit()
+
   file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
-  
+
   if info['microstructures'] > 0:
     digits = 1+int(math.log10(int(info['microstructures'])))
   else:

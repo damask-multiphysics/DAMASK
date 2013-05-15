@@ -140,10 +140,10 @@ file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) 
 file['croak'].write("bounding box:    %s\n"%(numpy.sqrt(numpy.sum(box*box,0))))
 
 if numpy.any(info['grid'] < 1):
-  file['croak'].write('no valid grid info found.\n')
+  file['croak'].write('invalid grid a b c.\n')
   sys.exit()
 if numpy.any(info['size'] <= 0.0):
-  file['croak'].write('no valid size info found.\n')
+  file['croak'].write('invalid size x y z.\n')
   sys.exit()
 
 # -------------------------------------- switch according to task ----------------------------------

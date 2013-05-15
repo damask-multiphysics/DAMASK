@@ -53,7 +53,10 @@ parser.set_defaults(N = 20)
 
 (options, extras) = parser.parse_args()
 
-Npoints = options.grid[0]*options.grid[1]*options.grid[2]
+Npoints = reduce(lambda x, y: x * y, options.grid)
+if 0 in options.grid: 
+    file['croak'].write('invalid grid a b c.\n')
+  sys.exit()
 if options.N > Npoints: 
   sys.stderr.write('Warning: more seeds than grid points at minimum resolution.\n')
   options.N = Npoints

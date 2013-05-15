@@ -90,10 +90,10 @@ file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) 
                     'microstructures: %i\n\n'%info['microstructures'])
 
 if numpy.any(info['grid'] < 1):
-  file['croak'].write('no valid grid info found.\n')
+  file['croak'].write('invalid grid a b c.\n')
   sys.exit()
-if numpy.any(info['size'] <= 0.0):
-  file['croak'].write('no valid size info found.\n')
+if numpy.any(info['size'] <= 0.0):	
+  file['croak'].write('invalid size x y z.\n')
   sys.exit()
 
 #--- write header ---------------------------------------------------------------------------------
