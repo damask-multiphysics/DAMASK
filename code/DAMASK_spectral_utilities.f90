@@ -140,16 +140,15 @@ subroutine utilities_init()
    divergence_correction
  use debug, only: &
    debug_level, &
-   debug_spectral, &
-   debug_levelBasic, &
-   debug_spectralDivergence, &
-   debug_spectralFFTW, &
-   debug_spectralPETSc, &
-   debug_spectralRotation
+   debug_SPECTRAL, &
+   debug_LEVELBASIC, &
+   debug_SPECTRALDIVERGENCE, &
+   debug_SPECTRALFFTW, &
+   debug_SPECTRALPETSC, &
+   debug_SPECTRALROTATION
 #ifdef PETSc
  use debug, only: &
-   debug_spectralPETSc, &
-   PETScDebug
+   PETSCDEBUG
 #endif
  use math                                                                                           ! must use the whole module for use of FFTW
  use mesh, only: &
@@ -179,20 +178,20 @@ subroutine utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! set debugging parameters
- debugGeneral    = iand(debug_level(debug_spectral),debug_levelBasic)         /= 0
- debugDivergence = iand(debug_level(debug_spectral),debug_spectralDivergence) /= 0
- debugFFTW       = iand(debug_level(debug_spectral),debug_spectralFFTW)       /= 0
- debugRotation   = iand(debug_level(debug_spectral),debug_spectralRotation)   /= 0
- debugPETSc      = iand(debug_level(debug_spectral),debug_spectralPETSc)      /= 0
+ debugGeneral    = iand(debug_level(debug_SPECTRAL),debug_LEVELBASIC)         /= 0
+ debugDivergence = iand(debug_level(debug_SPECTRAL),debug_SPECTRALDIVERGENCE) /= 0
+ debugFFTW       = iand(debug_level(debug_SPECTRAL),debug_SPECTRALFFTW)       /= 0
+ debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
+ debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
 #ifdef PETSc
  if(debugPETSc) write(6,'(/,a)') ' Initializing PETSc with debug options: ', trim(PETScDebug), &
                                  ' add more using the PETSc_Options keyword in numerics.config '
  flush(6)
  call PetscOptionsClear(ierr); CHKERRQ(ierr)
- if(debugPETSc) call PetscOptionsInsertString(trim(PETScDebug),ierr); CHKERRQ(ierr)
+ if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr); CHKERRQ(ierr)
  call PetscOptionsInsertString(trim(petsc_options),ierr); CHKERRQ(ierr)
 #else
- call IO_warning(41_pInt, ext_msg='debug PETSc')
+ if(debugPETSc) call IO_warning(41_pInt, ext_msg='debug PETSc')
 #endif
 
  call IO_open_file(fileUnit,geometryFile)                                                           ! parse info from geometry file...
