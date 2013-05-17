@@ -226,6 +226,8 @@ subroutine numerics_init
          numerics_integrator(2) = IO_intValue(line,positions,2_pInt)
        case ('analyticjaco')
          analyticJaco = IO_intValue(line,positions,2_pInt) > 0_pInt
+       case ('usepingpong')
+         usepingpong = IO_intValue(line,positions,2_pInt) > 0_pInt
        case ('timesyncing')
          numerics_timeSyncing = IO_intValue(line,positions,2_pInt) > 0_pInt
        case ('unitlength')
@@ -372,6 +374,7 @@ subroutine numerics_init
  write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
  write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
  write(6,'(a24,1x,L8)')     ' analytic Jacobian:      ',analyticJaco
+ write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
  write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
  write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog

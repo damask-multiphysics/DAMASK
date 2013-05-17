@@ -372,7 +372,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
    !$OMP END CRITICAL (write2out)
  endif
 
- parallelExecution = usePingPong !.and. .not. (iand(mode, CPFEM_EXPLICIT) /= 0_pInt)
+ parallelExecution = usePingPong .and. .not. (iand(mode, CPFEM_EXPLICIT) /= 0_pInt)
 
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
    crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
