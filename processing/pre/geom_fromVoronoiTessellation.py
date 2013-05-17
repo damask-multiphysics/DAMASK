@@ -206,6 +206,7 @@ for file in files:
     new_header.append("homogenization\t%i\n"%info['homogenization'])
     file['output'].write('%i\theader\n'%(len(new_header)) + ''.join(new_header))
 
+# --- write microstructure information ------------------------------------------------------------
     for n in xrange(info['grid'][1:3].prod()):                                                        # loop over 2nd and 3rd size
       file['output'].write({ True: ' ',
                              False:'\n'}[options.twoD].\

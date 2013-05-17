@@ -34,7 +34,7 @@ Generate geometry description and material configuration from input files used b
 
 parser.add_option('--column',          dest='column', type='int', \
                   help='data column to discriminate phase 1 from 2 [%default]')
-parser.add_option('-t','--treshold',   dest='threshold', type='float', \
+parser.add_option('-t','--treshold',  dest='threshold', type='float', \
                   help='threshold value to discriminate phase 1 from 2 [%default]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
                   help='homogenization index to be used [%default]')
@@ -117,10 +117,10 @@ for file in files:
                       'microstructures: %i\n\n'%info['microstructures'])
 
   if numpy.any(info['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
+    file['croak'].write('invalid grid a b c.\n')
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
-    file['croak'].write('no valid size info found.\n')
+    file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
 #--- write data -----------------------------------------------------------------------------------

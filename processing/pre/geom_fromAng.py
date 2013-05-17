@@ -40,7 +40,7 @@ parser.add_option('-t','--threshold',  dest='threshold', type='float', \
 parser.add_option('--homogenization', dest='homogenization', type='int', \
                   help='homogenization index to be used [%default]')
 parser.add_option('--phase', dest='phase', type='int', nargs = 2, \
-                  help='phase indices to be used %default')
+                  help='two phase indices to be used %default')
 parser.add_option('--crystallite', dest='crystallite', type='int', \
                   help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
@@ -78,7 +78,7 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
   info = {
-          'grid':   numpy.array([0,0,1]),
+          'grid':   numpy.ones (3,'i'),
           'size':   numpy.zeros(3,'d'),
           'origin': numpy.zeros(3,'d'),
           'microstructures': 0,
@@ -98,10 +98,10 @@ for file in files:
           file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n'); break
         if words[1] == 'XSTEP:':     step[0] = float(words[2])
         if words[1] == 'YSTEP:':     step[1] = float(words[2])
-        if words[1] == 'NCOLS_ODD:': 
-          info['grid'][0] =   int(words[2]); formatwidth = 1+int(math.log10(info['grid'][0]*info['grid'][1]))
-        if words[1] == 'NROWS:':     
-          info['grid'][1] =   int(words[2]); formatwidth = 1+int(math.log10(info['grid'][0]*info['grid'][1]))
+        if words[1] == 'NCOLS_ODD:':
+          info['grid'][0] = int(words[2]); formatwidth = 1+int(math.log10(info['grid'][0]*info['grid'][1]))
+        if words[1] == 'NROWS:':         
+          info['grid'][1] = int(words[2]); formatwidth = 1+int(math.log10(info['grid'][0]*info['grid'][1]))
     else:                                                                                           # finished with comments block
       if options.config:                                                                            # write configuration (line by line)
         point += 1
@@ -127,10 +127,10 @@ for file in files:
                       'microstructures: %i\n\n'%info['microstructures'])
 
   if numpy.any(info['grid'] < 1):
-    file['croak'].write('no valid grid info found.\n')
+    file['croak'].write('invalid grid a b c.\n')
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
-    file['croak'].write('no valid size info found.\n')
+    file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
 #--- write data -----------------------------------------------------------------------------------
