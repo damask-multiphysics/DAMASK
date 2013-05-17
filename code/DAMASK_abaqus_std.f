@@ -122,8 +122,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  use prec, only: &
    pReal, &
    pInt
- use numerics, only:  &
-   numerics_unitlength
  use FEsolving, only: &
    cycleCounter, &
    theInc, &
@@ -145,6 +143,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    debug_level, &
    debug_abaqus
  use mesh, only:  &
+   mesh_unitlength, &
    mesh_FEasCP, &
    mesh_ipCoordinates
  use CPFEM, only: &
@@ -298,7 +297,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
         cutBack = .false.
      computationMode = ior(computationMode,CPFEM_RESTOREJACOBIAN)                                   ! restore Jacobian after cutback
    endif
-   mesh_ipCoordinates(1:3,npt,cp_en) = numerics_unitlength * COORDS
+   mesh_ipCoordinates(1:3,npt,cp_en) = mesh_unitlength * COORDS
  endif
 
  theTime  = time(2)                                                                                 ! record current starting time

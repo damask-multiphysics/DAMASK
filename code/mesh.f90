@@ -3386,14 +3386,14 @@ end subroutine mesh_abaqus_map_nodes
 !! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_build_nodes(myUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_floatValue, &
-                 IO_stringPos, &
-                 IO_error, &
-                 IO_countDataLines, &
-                 IO_intValue
+ use IO, only: &
+   IO_lc, &
+   IO_stringValue, &
+   IO_floatValue, &
+   IO_stringPos, &
+   IO_error, &
+   IO_countDataLines, &
+   IO_intValue
 
  implicit none
  integer(pInt), intent(in) :: myUnit
@@ -3434,7 +3434,7 @@ subroutine mesh_abaqus_build_nodes(myUnit)
        myPos = IO_stringPos(line,maxNchunks)
        m = mesh_FEasCP('node',IO_intValue(line,myPos,1_pInt))
        do j=1_pInt, 3_pInt
-         mesh_node0(j,m) = numerics_unitlength * IO_floatValue(line,myPos,j+1_pInt)
+         mesh_node0(j,m) = mesh_unitlength * IO_floatValue(line,myPos,j+1_pInt)
        enddo  
      enddo
    endif

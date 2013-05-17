@@ -123,8 +123,6 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  use prec, only: &
    pReal, &
    pInt
- use numerics, only:  &
-   numerics_unitlength
  use FEsolving, only: &
    cycleCounter, &
    theTime, &
@@ -141,6 +139,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    debug_level, &
    debug_abaqus
  use mesh, only: &
+   mesh_unitlength, &
    mesh_FEasCP, &
    mesh_ipCoordinates
  use CPFEM, only: &
@@ -283,7 +282,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
 
    endif
    cp_en = mesh_FEasCP('elem',nBlock(4_pInt+n))
-   mesh_ipCoordinates(1:3,n,cp_en) = numerics_unitlength * coordMp(n,1:3)
+   mesh_ipCoordinates(1:3,n,cp_en) = mesh_unitlength * coordMp(n,1:3)
 
    call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde)
   
