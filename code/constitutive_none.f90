@@ -16,28 +16,17 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!*****************************************************
-!*      Module: CONSTITUTIVE_J2                      *
-!*****************************************************
-!* contains:                                         *
-!* - constitutive equations                          *
-!* - parameters definition                           *
-!*****************************************************
-
-! [pure elasticity]
-! elsticity hooke
-! plasticity              none
-! lattice_structure       hex
-! covera_ratio            1.587
-! c11                     106.75e9
-! c12                     60.41e9
-! c44                     28.34e9
-
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief material subroutine for purely elastic material
+!--------------------------------------------------------------------------------------------------
 module constitutive_none
-
- use prec, only: pReal,pInt
+ use prec, only: &
+   pReal, &
+   pInt
  
  implicit none
  private
@@ -52,29 +41,31 @@ module constitutive_none
    constitutive_none_structureName
 
  integer(pInt), dimension(:,:), allocatable, target, public :: &
-   constitutive_none_sizePostResult     ! size of each post result output
+   constitutive_none_sizePostResult                                                                 ! size of each post result output
 
  real(pReal), dimension(:,:,:), allocatable, private :: &
    constitutive_none_Cslip_66
 
- public  :: constitutive_none_init, &
-            constitutive_none_stateInit, &
-            constitutive_none_aTolState, &
-            constitutive_none_homogenizedC, &
-            constitutive_none_microstructure, &
-            constitutive_none_LpAndItsTangent, &
-            constitutive_none_dotState, &
-            constitutive_none_deltaState, &
-            constitutive_none_dotTemperature, &
-            constitutive_none_postResults
+ public :: &
+   constitutive_none_init, &
+   constitutive_none_stateInit, &
+   constitutive_none_aTolState, &
+   constitutive_none_homogenizedC, &
+   constitutive_none_microstructure, &
+   constitutive_none_LpAndItsTangent, &
+   constitutive_none_dotState, &
+   constitutive_none_deltaState, &
+   constitutive_none_dotTemperature, &
+   constitutive_none_postResults
 
-contains
+ contains
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief reads in material parameters and allocates arrays
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_none_init(myFile)
-!**************************************
-!*      Module initialization         *
-!**************************************
- use, intrinsic :: iso_fortran_env                                ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_Mandel3333to66, &
    math_Voigt66to3333
@@ -99,23 +90,20 @@ subroutine constitutive_none_init(myFile)
  
  integer(pInt), parameter :: maxNchunks = 7_pInt
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
- integer(pInt) :: section = 0_pInt, maxNinstance, i,j,k, mySize, myStructure
+ integer(pInt) :: section = 0_pInt, maxNinstance, i
  character(len=64)   :: tag
  character(len=1024) :: line = ''                                                                   ! to start initialized
  
- write(6,*)
- write(6,*) '<<<+-  constitutive_',trim(constitutive_none_label),' init  -+>>>'
- write(6,*) '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   '<<<+-  constitutive_',trim(constitutive_none_label),' init  -+>>>'
+ write(6,'(a)')     '$Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
  maxNinstance = int(count(phase_plasticity == constitutive_none_label),pInt)
  if (maxNinstance == 0_pInt) return
 
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a16,1x,i5)') '# instances:',maxNinstance
-   write(6,*)
- endif
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
  allocate(constitutive_none_sizeDotState(maxNinstance))
           constitutive_none_sizeDotState = 0_pInt
@@ -130,22 +118,22 @@ subroutine constitutive_none_init(myFile)
  
  rewind(myFile)
  
- do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                              ! wind forward to <phase>
+ do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                               ! wind forward to <phase>
    read(myFile,'(a1024)',END=100) line
  enddo
  
- do                                                                                                                                ! read thru sections of phase part
+ do                                                                                                 ! read thru sections of phase part
    read(myFile,'(a1024)',END=100) line
-   if (IO_isBlank(line)) cycle                                                                                                     ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                                                         ! stop at next part
-   if (IO_getTag(line,'[',']') /= '') then                                                                                         ! next section
-     section = section + 1_pInt                                                                                                    ! advance section counter
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
+     section = section + 1_pInt                                                                     ! advance section counter
      cycle
    endif
-   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_none_label) then                                             ! one of my sections
-     i = phase_plasticityInstance(section)                                                                                         ! which instance of my plasticity is present phase
+   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_none_label) then            ! one of my sections
+     i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                            ! extract key
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('plasticity','elasticity')
          cycle
@@ -193,13 +181,14 @@ subroutine constitutive_none_init(myFile)
 end subroutine constitutive_none_init
 
 
-!*********************************************************************
-!* initial microstructural state                                     *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief sets the initial microstructural state
+!--------------------------------------------------------------------------------------------------
 pure function constitutive_none_stateInit(myInstance)
   
  implicit none
  integer(pInt), intent(in) :: myInstance
+
  real(pReal), dimension(1) :: constitutive_none_stateInit
   
  constitutive_none_stateInit = 0.0_pReal
@@ -207,235 +196,236 @@ pure function constitutive_none_stateInit(myInstance)
 end function constitutive_none_stateInit
 
 
-!*********************************************************************
-!* relevant microstructural state                                    *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief relevant microstructural state (ensures convergence as state is always 0.0)
+!--------------------------------------------------------------------------------------------------
 pure function constitutive_none_aTolState(myInstance)
 
  implicit none
- !*** input variables
- integer(pInt), intent(in) ::  myInstance                      ! number specifying the current instance of the plasticity
+ integer(pInt), intent(in) ::  myInstance                                                           !< number specifying the current instance of the plasticity
 
- !*** output variables
  real(pReal), dimension(constitutive_none_sizeState(myInstance)) :: &
-                              constitutive_none_aTolState       ! relevant state values for the current instance of this plasticity
-
- constitutive_none_aTolState = 1.0_preal                        ! ensure convergence as state is always 0.0_pReal
+                                                              constitutive_none_aTolState           !< relevant state values for the current instance of this plasticity                                                           
+ constitutive_none_aTolState = 1.0_pReal
 
 end function constitutive_none_aTolState
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief homogenized elacticity matrix
+!--------------------------------------------------------------------------------------------------
 pure function constitutive_none_homogenizedC(state,ipc,ip,el)
-!*********************************************************************
-!* homogenized elacticity matrix                                     *
-!* INPUT:                                                            *
-!*  - state           : state variables                              *
-!*  - ipc             : component-ID of current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!*********************************************************************
- use prec, only: p_vec
- use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
+ use prec, only: &
+   p_vec
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+  homogenization_maxNgrains, &
+  material_phase, &
+  phase_plasticityInstance
  
  implicit none
- integer(pInt), intent(in) :: ipc,ip,el
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
- integer(pInt) :: matID
  real(pReal), dimension(6,6) :: constitutive_none_homogenizedC
- 
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< component-ID of current integration point
+   ip, &                                                                                            !< current integration point
+   el                                                                                               !< current element
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
+ integer(pInt)               :: matID
+
  matID = phase_plasticityInstance(material_phase(ipc,ip,el))
  constitutive_none_homogenizedC = constitutive_none_Cslip_66(1:6,1:6,matID)
 
 end function constitutive_none_homogenizedC
 
 
-subroutine constitutive_none_microstructure(Temperature,state,ipc,ip,el)
-!*********************************************************************
-!* calculate derived quantities from state (not used here)           *
-!* INPUT:                                                            *
-!*  - Tp              : temperature                                  *
-!*  - ipc             : component-ID of current integration point    *
-!*  - ip              : current integration point                    *
-!*  - el              : current element                              *
-!*********************************************************************
- use prec, only: p_vec
- use mesh, only: mesh_NcpElems,mesh_maxNips
- use material, only: homogenization_maxNgrains,material_phase, phase_plasticityInstance
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates derived quantities from state (not used here)
+!--------------------------------------------------------------------------------------------------
+pure subroutine constitutive_none_microstructure(Temperature,state,ipc,ip,el)
+ use prec, only: &
+   p_vec
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains, &
+   material_phase, &
+   phase_plasticityInstance
  
  implicit none
-!* Definition of variables
- integer(pInt) ipc,ip,el, matID
- real(pReal) Temperature
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: state
-
- matID = phase_plasticityInstance(material_phase(ipc,ip,el))
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< component-ID of current integration point
+   ip, &                                                                                            !< current integration point
+   el                                                                                               !< current element
+ real(pReal), intent(in) :: &
+   Temperature                                                                                      !< temperature
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state
 
 end subroutine constitutive_none_microstructure
 
 
-!****************************************************************
-!* calculates plastic velocity gradient and its tangent         *
-!****************************************************************
-pure subroutine constitutive_none_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, Temperature, state, g, ip, el)
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates plastic velocity gradient and its tangent
+!--------------------------------------------------------------------------------------------------
+pure subroutine constitutive_none_LpAndItsTangent(Lp, dLp_dTstar_99, Tstar_dev_v, Temperature, &
+                                                                            state, gr, ip, el)
+ use prec, only: &
+   p_vec
+ use math, only: &
+   math_identity2nd
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains, &
+   material_phase, &
+   phase_plasticityInstance
 
-  !*** variables and functions from other modules ***!
-  use prec,     only: p_vec
-  use math,     only: math_identity2nd
-  use mesh,     only: mesh_NcpElems, &
-                      mesh_maxNips
-  use material, only: homogenization_maxNgrains, &
-                      material_phase, &
-                      phase_plasticityInstance
+ implicit none
+ real(pReal), dimension(6), intent(in) :: Tstar_dev_v                                               !< deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),               intent(in) :: Temperature
+ integer(pInt),             intent(in) :: &
+   gr, &                                                                                            !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state  !< state of the current microstructure
 
-  implicit none
-  !*** input variables ***!
-  real(pReal), dimension(6), intent(in)::       Tstar_dev_v               ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
-  real(pReal), intent(in)::                     Temperature
-  integer(pInt), intent(in)::                   g, &                      ! grain number
-                                                ip, &                     ! integration point number
-                                                el                        ! element number
-  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in):: state ! state of the current microstructure
+ real(pReal), dimension(3,3), intent(out) ::   Lp                                                   !< plastic velocity gradient
+ real(pReal), dimension(9,9), intent(out) ::   dLp_dTstar_99                                        !< derivative of Lp with respect to Tstar (9x9 matrix)
 
-  !*** output variables ***!
-  real(pReal), dimension(3,3), intent(out) ::   Lp                        ! plastic velocity gradient
-  real(pReal), dimension(9,9), intent(out) ::   dLp_dTstar_99             ! derivative of Lp with respect to Tstar (9x9 matrix)
-
-  ! Set Lp to zero and dLp_dTstar to Identity
-  Lp = 0.0_pReal
-  dLp_dTstar_99 = math_identity2nd(9)
+ Lp = 0.0_pReal                                                                                     !< set Lp to zero 
+ dLp_dTstar_99 = math_identity2nd(9)                                                                !< set dLp_dTstar to Identity
 
 end subroutine constitutive_none_LpAndItsTangent
 
 
-!****************************************************************
-!* calculates the rate of change of microstructure              *
-!****************************************************************
-pure function constitutive_none_dotState(Tstar_v, Temperature, state, g, ip, el)
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
+pure function constitutive_none_dotState(Tstar_v, Temperature, state, gr, ip, el)
+ use prec, only: &
+   p_vec
+ use math, only: &
+   math_identity2nd
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains, &
+   material_phase, &
+   phase_plasticityInstance
 
-  use prec, only: &
-    p_vec
-  use mesh, only: &
-    mesh_NcpElems, &
-    mesh_maxNips
-  use material, only: &
-    homogenization_maxNgrains, &
-    material_phase, &
-    phase_plasticityInstance
-  
-  implicit none
-  !*** input variables ***!
-  real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
-  real(pReal), intent(in) ::                Temperature
-  integer(pInt), intent(in)::               g, &                      ! grain number
-                                            ip, &                     ! integration point number
-                                            el                        ! element number
-  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
-  
-  !*** output variables ***!
-  real(pReal), dimension(1) ::              constitutive_none_dotState  ! evolution of state variable
-  
-  constitutive_none_dotState =  0.0_pReal
+ implicit none
+ real(pReal), dimension(1)             :: constitutive_none_dotState
+ 
+ real(pReal), dimension(6), intent(in) :: Tstar_v                                                   !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),               intent(in) :: Temperature
+ integer(pInt),             intent(in) :: &
+   gr, &                                                                                            !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state  !< state of the current microstructure
+
+ constitutive_none_dotState =  0.0_pReal
 
 end function constitutive_none_dotState
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief (instantaneous) incremental change of microstructure
+!--------------------------------------------------------------------------------------------------
+function constitutive_none_deltaState(Tstar_v, Temperature, state, gr, ip, el)
+ use prec, only: &
+   p_vec
+ use math, only: &
+   math_identity2nd
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains, &
+   material_phase, &
+   phase_plasticityInstance
 
-!*********************************************************************
-!* (instantaneous) incremental change of microstructure              *
-!*********************************************************************
-function constitutive_none_deltaState(Tstar_v, Temperature, state, g,ip,el)
+ implicit none
+ real(pReal), dimension(6), intent(in) :: Tstar_v                                                   !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),               intent(in) :: Temperature
+ integer(pInt),             intent(in) :: &
+   gr, &                                                                                            !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state  !< state of the current microstructure
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips
-use material, only: homogenization_maxNgrains, &
-                    material_phase, &
-                    phase_plasticityInstance
+ real(pReal), dimension(constitutive_none_sizeDotState(phase_plasticityInstance(&
+                                       material_phase(gr,ip,el)))) :: constitutive_none_deltaState 
 
-implicit none
-
-!*** input variables
-integer(pInt), intent(in) ::                g, &                      ! current grain number
-                                            ip, &                     ! current integration point
-                                            el                        ! current element number
-real(pReal), intent(in) ::                  Temperature               ! temperature
-real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
-type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-                                            state                     ! current microstructural state
-
-!*** output variables
-real(pReal), dimension(constitutive_none_sizeDotState(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            constitutive_none_deltaState ! change of state variables / microstructure
- 
-!*** local variables
+ constitutive_none_deltaState = 0.0_pReal
 
 
-constitutive_none_deltaState = 0.0_pReal
-
-endfunction
+end function constitutive_none_deltaState
 
 
-!****************************************************************
-!* calculates the rate of change of temperature                 *
-!****************************************************************
-pure function constitutive_none_dotTemperature(Tstar_v, Temperature, state, g, ip, el)
-
-  !*** variables and functions from other modules ***!
-  use prec,     only: p_vec
-  use mesh,     only: mesh_NcpElems,mesh_maxNips
-  use material, only: homogenization_maxNgrains
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates the rate of change of temperature
+!--------------------------------------------------------------------------------------------------
+pure real(pReal) function constitutive_none_dotTemperature(Tstar_v, Temperature, state, gr, ip, el)
+ use prec, only: &
+   p_vec
+ use math, only: &
+   math_identity2nd
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains
   
-  implicit none
-  !*** input variables ***!
-  real(pReal), dimension(6), intent(in) ::  Tstar_v                   ! 2nd Piola Kirchhoff stress tensor in Mandel notation
-  real(pReal), intent(in) ::                Temperature
-  integer(pInt), intent(in)::               g, &                      ! grain number
-                                            ip, &                     ! integration point number
-                                            el                        ! element number
-  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
-  
-  !*** output variables ***!
-  real(pReal) constitutive_none_dotTemperature                          ! rate of change of temperature
-  
-  ! calculate dotTemperature
-  constitutive_none_dotTemperature = 0.0_pReal
+ implicit none
+ real(pReal), dimension(6), intent(in) :: Tstar_v                                                   !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),               intent(in) :: Temperature
+ integer(pInt),             intent(in) :: &
+   gr, &                                                                                            !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state  !< state of the current microstructure
+
+ constitutive_none_dotTemperature = 0.0_pReal
 
 end function constitutive_none_dotTemperature
 
 
-!*********************************************************************
-!* return array of constitutive results                              *
-!*********************************************************************
-pure function constitutive_none_postResults(Tstar_v, Temperature, dt, state, g, ip, el)
+!--------------------------------------------------------------------------------------------------
+!> @brief return array of constitutive results
+!--------------------------------------------------------------------------------------------------
+pure function constitutive_none_postResults(Tstar_v, Temperature, dt, state, gr, ip, el)
+ use prec, only: &
+   p_vec
+ use math, only: &
+   math_mul6x6
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains, &
+   material_phase, &
+   phase_plasticityInstance, &
+   phase_Noutput
 
-!*** variables and functions from other modules ***!
-  use prec,     only: p_vec
-  use math,     only: math_mul6x6
-  use mesh,     only: mesh_NcpElems, &
-                      mesh_maxNips
-  use material, only: homogenization_maxNgrains, &
-                      material_phase, &
-                      phase_plasticityInstance, &
-                      phase_Noutput
+ implicit none
+ real(pReal), dimension(6), intent(in) :: Tstar_v                                                   !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),               intent(in) :: &
+   Temperature, &
+   dt                                                                                               !< current time increment
+ integer(pInt),             intent(in) :: &
+   gr, &                                                                                            !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state  !< state of the current microstructure
 
-  implicit none
-  !*** input variables ***!
-  real(pReal), dimension(6), intent(in)::   Tstar_v                    ! 2nd Piola Kirchhoff stress tensor in Mandel notation
-  real(pReal), intent(in)::                 Temperature, &
-                                            dt                         ! current time increment
-  integer(pInt), intent(in)::               g, &                       ! grain number
-                                            ip, &                      ! integration point number
-                                            el                         ! element number
-  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: state ! state of the current microstructure
-  
-  !*** output variables ***!
-  real(pReal), dimension(constitutive_none_sizePostResults(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            constitutive_none_postResults
-  
-
+ real(pReal), dimension(constitutive_none_sizePostResults(phase_plasticityInstance(&
+                                      material_phase(gr,ip,el)))) :: constitutive_none_postResults
+ 
  constitutive_none_postResults = 0.0_pReal
 
 end function constitutive_none_postResults
