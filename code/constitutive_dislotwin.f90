@@ -1455,7 +1455,7 @@ use math,     only: pi,math_Mandel6to33, math_spectralDecompositionSym33
 use mesh,     only: mesh_NcpElems,mesh_maxNips
 use material, only: homogenization_maxNgrains,material_phase,phase_plasticityInstance,phase_Noutput
 use lattice,  only: lattice_Sslip_v,lattice_Stwin_v,lattice_maxNslipFamily,lattice_maxNtwinFamily, &
-                    lattice_NslipSystem,lattice_NtwinSystem
+                    lattice_NslipSystem,lattice_NtwinSystem,lattice_shearTwin
 implicit none
 
 !* Definition of variables
@@ -1593,10 +1593,10 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
              !* Stress ratios
              StressRatio_r = (state(g,ip,el)%p(6_pInt*ns+3_pInt*nt+j)/tau)**constitutive_dislotwin_r(myInstance)
 
-             !* Shear rates and their derivatives due to twin
+             !* Shear rates due to twin
              if ( tau > 0.0_pReal ) then
                constitutive_dislotwin_postResults(c+j) = &
-                 (constitutive_dislotwin_MaxTwinFraction(myInstance)-sumf)*&
+                 (constitutive_dislotwin_MaxTwinFraction(myInstance)-sumf)*lattice_shearTwin(index_myFamily+i,myStructure)*&
                  state(g,ip,el)%p(6_pInt*ns+4_pInt*nt+j)*constitutive_dislotwin_Ndot0PerTwinSystem(j,myInstance)*exp(-StressRatio_r)
              endif
 
