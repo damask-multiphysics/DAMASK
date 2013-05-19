@@ -2394,11 +2394,15 @@ if (.not. phase_localPlasticity(material_phase(g,ip,el))) then                  
           neighboring_v(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
           neighboring_rhoSgl(1_pInt:ns,t) = max(state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
         endforall
+        forall (t = 5_pInt:8_pInt) &
+          neighboring_rhoSgl(1_pInt:ns,t) = state0(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
       else
         forall (t = 1_pInt:4_pInt)
           neighboring_v(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
           neighboring_rhoSgl(1_pInt:ns,t) = max(state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns), 0.0_pReal)
         endforall
+        forall (t = 5_pInt:8_pInt) &
+          neighboring_rhoSgl(1_pInt:ns,t) = state(g,neighboring_ip,neighboring_el)%p((t-1_pInt)*ns+1_pInt:t*ns)
       endif
       where (abs(neighboring_rhoSgl) * mesh_ipVolume(neighboring_ip,neighboring_el) ** 0.667_pReal &
              < constitutive_nonlocal_significantN(myInstance) &
