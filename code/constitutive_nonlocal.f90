@@ -159,7 +159,8 @@ constitutive_nonlocal_interactionMatrixSlipSlip                      ! interacti
 real(pReal), dimension(:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_lattice2slip, &                                ! orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
 constitutive_nonlocal_rhoDotEdgeJogs, &
-constitutive_nonlocal_sourceProbability
+constitutive_nonlocal_sourceProbability, &
+constitutive_nonlocal_shearrate
 
 real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
 constitutive_nonlocal_Cslip_3333, &                                  ! elasticity matrix for each instance
@@ -717,6 +718,9 @@ constitutive_nonlocal_lattice2slip = 0.0_pReal
 
 allocate(constitutive_nonlocal_sourceProbability(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_sourceProbability = 2.0_pReal
+
+allocate(constitutive_nonlocal_shearrate(maxTotalNslip,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
+constitutive_nonlocal_shearrate = 0.0_pReal
 
 allocate(constitutive_nonlocal_rhoDotFlux(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 allocate(constitutive_nonlocal_rhoDotMultiplication(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
@@ -1279,7 +1283,6 @@ latticeStruct = constitutive_nonlocal_structure(instance)
 ns = constitutive_nonlocal_totalNslip(instance)
 
 
-
 !*** get basic states
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
@@ -1806,6 +1809,7 @@ do t = 1_pInt,4_pInt
   dgdot_dtau(:,t) = rhoSgl(1:ns,t) * dv_dtau(1:ns,t) * constitutive_nonlocal_burgers(1:ns,myInstance) & 
                   * (1.0_pReal - deadZoneSize)
 enddo
+constitutive_nonlocal_shearrate(1:ns,g,ip,el) = gdotTotal
 
 
 !*** Calculation of Lp and its tangent
@@ -2611,7 +2615,7 @@ if (    any(rhoSglOriginal(1:ns,1:4) + rhoDot(1:ns,1:4) * timestep < -constituti
   return
 else
   constitutive_nonlocal_dotState(1:10_pInt*ns) = reshape(rhoDot,(/10_pInt*ns/))
-  constitutive_nonlocal_dotState(10_pInt*ns+1:11_pInt*ns) = sum(gdot,2)
+  constitutive_nonlocal_dotState(10_pInt*ns+1:11_pInt*ns) = constitutive_nonlocal_shearrate(1:ns,g,ip,el)
 endif
 
 endfunction
