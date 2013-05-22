@@ -184,9 +184,10 @@ for filename in filenames:
   
   if options.verbose: sys.stdout.write("\nDEFORM MESH\n")
   warpVector = vtkWarpVector()
+  undeformedMesh.GetPointData().SetActiveVectors(options.dispLabel)
   warpVector.SetInput(undeformedMesh)
   warpVector.Update()
-  deformedMesh = warpVector.GetOutput()       # todo: not clear how to choose other vector data than the first entry
+  deformedMesh = warpVector.GetOutput()
   box = deformedMesh.GetBounds()              # bounding box in mesh system
   if options.verbose:
     sys.stdout.write("  bounding box in lab system\n")
