@@ -30,8 +30,8 @@ implicit none
 
 !* Lists of states and physical parameters
 character(len=*), parameter, public :: constitutive_dislotwin_label = 'dislotwin'
-character(len=18), dimension(3), parameter:: constitutive_dislotwin_listBasicSlipStates = (/'rhoEdge   ', &
-                                                                                            'rhoEdgeDip', &
+character(len=18), dimension(3), parameter:: constitutive_dislotwin_listBasicSlipStates = (/'rhoEdge     ', &
+                                                                                            'rhoEdgeDip  ', &
                                                                                             'accshearslip'/)
 character(len=18), dimension(2), parameter:: constitutive_dislotwin_listBasicTwinStates = (/'twinFraction', &
                                                                                             'accsheartwin'/)
