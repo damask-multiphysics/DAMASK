@@ -3313,9 +3313,10 @@ dUpper = max(dUpper,dLower)
 m(1:3,1:ns,1) = lattice_sd(1:3,constitutive_nonlocal_slipSystemLattice(1:ns,myInstance),myStructure)
 m(1:3,1:ns,2) = -lattice_st(1:3,constitutive_nonlocal_slipSystemLattice(1:ns,myInstance),myStructure)
 forall (c = 1_pInt:2_pInt, s = 1_pInt:ns) &
-  m_currentconf(1:3,s,c) = math_mul33x3(Fe, m(1:3,s,c))
+  m_currentconf(1:3,s,c) = math_mul33x3(Fe(1:3,1:3,g,ip,el), m(1:3,s,c))
 forall (s = 1_pInt:ns) &
-  n_currentconf(1:3,s) = math_mul33x3(Fe, lattice_sn(1:3,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
+  n_currentconf(1:3,s) = math_mul33x3(Fe(1:3,1:3,g,ip,el), &
+                                      lattice_sn(1:3,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
 
 
 do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
