@@ -1657,7 +1657,7 @@ real(pReal)                                 tauRel_P, &
 instance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = totalNslip(instance)
 
-tauThreshold = state%p(12_pInt*ns+1:13_pInt*ns)
+tauThreshold = state%p(iTauF(1:ns,instance))
 tauEff = abs(tau) - tauThreshold
 
 v = 0.0_pReal
@@ -1843,14 +1843,22 @@ ns = totalNslip(myInstance)
 
 !*** shortcut to state variables 
 
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
-  rhoSgl(s,t) = max(state%p((t-1_pInt)*ns+s), 0.0_pReal)
-forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
-  rhoSgl(s,t) = state%p((t-1_pInt)*ns+s)
-tauBack = state%p(13_pInt*ns+1:14_pInt*ns)
+
+forall (s = 1_pInt:ns)
+  rhoSgl(s,1) = max(state%p(iRhoEPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,2) = max(state%p(iRhoENU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,3) = max(state%p(iRhoSPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,4) = max(state%p(iRhoSNU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+endforall
+rhoSgl(1:ns,5) = state%p(iRhoEPB(1:ns,myInstance))
+rhoSgl(1:ns,6) = state%p(iRhoENB(1:ns,myInstance))
+rhoSgl(1:ns,7) = state%p(iRhoSPB(1:ns,myInstance))
+rhoSgl(1:ns,8) = state%p(iRhoSNB(1:ns,myInstance))
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstance) &
-       .or. abs(rhoSgl) < significantRho(myInstance)) &
+  .or. abs(rhoSgl) < significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
+
+tauBack = state%p(iTauB(1:ns,myInstance))
 
 
 !*** get effective resolved shear stress
@@ -1884,15 +1892,21 @@ if (myStructure == 1_pInt .and. NnonSchmid(myStructure) == 0_pInt) then         
   do t = 1_pInt,4_pInt
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
-    state%p((13_pInt+t)*ns+1:(14_pInt+t)*ns) = v(1:ns,1)
   enddo
+  state%p(iVEP(1:ns,myInstance)) = v(1:ns,1)
+  state%p(iVEN(1:ns,myInstance)) = v(1:ns,1)
+  state%p(iVSP(1:ns,myInstance)) = v(1:ns,1)
+  state%p(iVSN(1:ns,myInstance)) = v(1:ns,1)
 else                                                                                               ! for all other lattice structures the velocities may vary with character and sign
   do t = 1_pInt,4_pInt
     c = (t-1_pInt)/2_pInt+1_pInt
     call constitutive_nonlocal_kinetics(v(1:ns,t), tau(1:ns,t), c, Temperature, state, &
                                         g, ip, el, dv_dtau(1:ns,t))
-    state%p((13+t)*ns+1:(14+t)*ns) = v(1:ns,t)
   enddo
+  state%p(iVEP(1:ns,myInstance)) = v(1:ns,1)
+  state%p(iVEN(1:ns,myInstance)) = v(1:ns,2)
+  state%p(iVSP(1:ns,myInstance)) = v(1:ns,3)
+  state%p(iVSN(1:ns,myInstance)) = v(1:ns,4)
 endif
 
 
