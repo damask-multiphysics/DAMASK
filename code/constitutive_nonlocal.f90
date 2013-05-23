@@ -227,7 +227,7 @@ use debug,    only: debug_level, &
                     debug_levelBasic
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
-                    FE_maxNipNeighbors
+                    mesh_maxNipNeighbors
 use material, only: homogenization_maxNgrains, &
                     phase_plasticity, &
                     phase_plasticityInstance, &
@@ -737,7 +737,7 @@ constitutive_nonlocal_rhoDotAthermalAnnihilation = 0.0_pReal
 constitutive_nonlocal_rhoDotThermalAnnihilation = 0.0_pReal
 constitutive_nonlocal_rhoDotEdgeJogs = 0.0_pReal
 
-allocate(constitutive_nonlocal_compatibility(2,maxTotalNslip, maxTotalNslip, FE_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
+allocate(constitutive_nonlocal_compatibility(2,maxTotalNslip, maxTotalNslip, mesh_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
 constitutive_nonlocal_compatibility = 0.0_pReal
 
 allocate(constitutive_nonlocal_peierlsStress(maxTotalNslip,2,maxNinstance))
@@ -1186,7 +1186,7 @@ use mesh, only: &
   mesh_ipAreaNormal, &
   mesh_ipArea, &
   FE_NipNeighbors, &
-  FE_maxNipNeighbors, &
+  mesh_maxNipNeighbors, &
   FE_geomtype, &
   FE_celltype
 use material, only: &
@@ -1258,7 +1258,7 @@ real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elast
                                 invFp, &                      ! inverse of plastic deformation gradient
                                 connections, &
                                 invConnections
-real(pReal), dimension(3,FE_maxNipNeighbors) :: &
+real(pReal), dimension(3,mesh_maxNipNeighbors) :: &
                                 connection_latticeConf
 real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el)))) :: &
                                 rhoExcess
@@ -1269,7 +1269,7 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el))), &
                        constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
-real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip),FE_maxNipNeighbors) :: &
+real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip),mesh_maxNipNeighbors) :: &
                                 neighboring_rhoExcess, &      ! excess density at neighboring material point
                                 neighboring_rhoTotal          ! total density at neighboring material point
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el))),2) :: &
@@ -2059,7 +2059,6 @@ use math,     only: math_norm3, &
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_element, &
-                    mesh_maxNipNeighbors, &
                     mesh_ipNeighborhood, &
                     mesh_ipVolume, &
                     mesh_ipArea, &
