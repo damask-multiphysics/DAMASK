@@ -2044,23 +2044,35 @@ ns = totalNslip(myInstance)
 
 !*** shortcut to state variables 
 
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
-  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1_pInt)*ns+s), 0.0_pReal)
-forall (s = 1_pInt:ns, t = 5_pInt:8_pInt) &
-  rhoSgl(s,t) = state(g,ip,el)%p((t-1_pInt)*ns+s)
-forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-  rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)
-tauBack = state(g,ip,el)%p(13_pInt*ns+1:14_pInt*ns)
-forall (t = 1_pInt:4_pInt) &
-  v(1_pInt:ns,t) = state(g,ip,el)%p((13_pInt+t)*ns+1_pInt:(14_pInt+t)*ns)
-forall (c = 1_pInt:2_pInt) &
-  dUpperOld(1_pInt:ns,c) = state(g,ip,el)%p((17_pInt+c)*ns+1_pInt:(18_pInt+c)*ns)
+
+forall (s = 1_pInt:ns)
+  rhoSgl(s,1) = max(state(g,ip,el)%p(iRhoEPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,2) = max(state(g,ip,el)%p(iRhoENU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,3) = max(state(g,ip,el)%p(iRhoSPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,4) = max(state(g,ip,el)%p(iRhoSNU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+endforall
+rhoSgl(1:ns,5) = state(g,ip,el)%p(iRhoEPB(1:ns,myInstance))
+rhoSgl(1:ns,6) = state(g,ip,el)%p(iRhoENB(1:ns,myInstance))
+rhoSgl(1:ns,7) = state(g,ip,el)%p(iRhoSPB(1:ns,myInstance))
+rhoSgl(1:ns,8) = state(g,ip,el)%p(iRhoSNB(1:ns,myInstance))
+forall (s = 1_pInt:ns)
+  rhoDip(s,1) = max(state(g,ip,el)%p(iRhoED(s,myInstance)), 0.0_pReal)                               ! ensure positive dipole densities
+  rhoDip(s,2) = max(state(g,ip,el)%p(iRhoSD(s,myInstance)), 0.0_pReal)                               ! ensure positive dipole densities
+endforall
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstance) &
-       .or. abs(rhoSgl) < significantRho(myInstance)) &
+  .or. abs(rhoSgl) < significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
 where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstance) &
-       .or. abs(rhoDip) < significantRho(myInstance)) &
+  .or. abs(rhoDip) < significantRho(myInstance)) &
   rhoDip = 0.0_pReal
+
+tauBack = state(g,ip,el)%p(iTauB(1:ns,myInstance))
+v(1:ns,1) = state(g,ip,el)%p(iVEP(1:ns,myInstance))
+v(1:ns,2) = state(g,ip,el)%p(iVEN(1:ns,myInstance))
+v(1:ns,3) = state(g,ip,el)%p(iVSP(1:ns,myInstance))
+v(1:ns,4) = state(g,ip,el)%p(iVSN(1:ns,myInstance))
+dUpperOld(1:ns,1) = state(g,ip,el)%p(iDE(1:ns,myInstance))
+dUpperOld(1:ns,2) = state(g,ip,el)%p(iDS(1:ns,myInstance))
 
 
 
@@ -2116,8 +2128,8 @@ forall (t=1_pInt:4_pInt) &
 
 !*** store new maximum dipole height in state
 
-forall (c = 1_pInt:2_pInt) &
-  state(g,ip,el)%p((17_pInt+c)*ns+1_pInt:(18_pInt+c)*ns) = dUpper(1_pInt:ns,c) 
+state(g,ip,el)%p(iDE(1:ns,myInstance)) = dUpper(1:ns,1) 
+state(g,ip,el)%p(iDS(1:ns,myInstance)) = dUpper(1:ns,2) 
 
 
 
