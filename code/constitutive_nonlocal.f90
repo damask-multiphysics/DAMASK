@@ -834,18 +834,24 @@ do i = 1,maxNinstance
             'velocity_edge_neg', &
             'velocity_screw_pos', &
             'velocity_screw_neg', &
-            'fluxdensity_edge_pos_x', &
-            'fluxdensity_edge_pos_y', &
-            'fluxdensity_edge_pos_z', &
-            'fluxdensity_edge_neg_x', &
-            'fluxdensity_edge_neg_y', &
-            'fluxdensity_edge_neg_z', &
-            'fluxdensity_screw_pos_x', &
-            'fluxdensity_screw_pos_y', &
-            'fluxdensity_screw_pos_z', &
-            'fluxdensity_screw_neg_x', &
-            'fluxdensity_screw_neg_y', &
-            'fluxdensity_screw_neg_z', &
+            'slipdirection.x', &
+            'slipdirection.y', &
+            'slipdirection.z', &
+            'slipnormal.x', &
+            'slipnormal.y', &
+            'slipnormal.z', &
+            'fluxdensity_edge_pos.x', &
+            'fluxdensity_edge_pos.y', &
+            'fluxdensity_edge_pos.z', &
+            'fluxdensity_edge_neg.x', &
+            'fluxdensity_edge_neg.y', &
+            'fluxdensity_edge_neg.z', &
+            'fluxdensity_screw_pos.x', &
+            'fluxdensity_screw_pos.y', &
+            'fluxdensity_screw_pos.z', &
+            'fluxdensity_screw_neg.x', &
+            'fluxdensity_screw_neg.y', &
+            'fluxdensity_screw_neg.z', &
             'maximumdipoleheight_edge', &
             'maximumdipoleheight_screw', &
             'accumulatedshear', &
@@ -3212,7 +3218,8 @@ use material, only: homogenization_maxNgrains, &
                     phase_Noutput
 use lattice,  only: lattice_Sslip_v, &
                     lattice_sd, &
-                    lattice_st
+                    lattice_st, &
+                    lattice_sn
 
 implicit none
 
@@ -3262,6 +3269,8 @@ real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance
 real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
                                             m, &                      ! direction of dislocation motion for edge and screw (unit vector)
                                             m_currentconf             ! direction of dislocation motion for edge and screw (unit vector) in current configuration
+real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            n_currentconf             ! slip system normal (unit vector) in current configuration
 real(pReal), dimension(3,3) ::              sigma
 
 myInstance = phase_plasticityInstance(material_phase(g,ip,el))
@@ -3327,6 +3336,8 @@ m(1:3,1:ns,1) = lattice_sd(1:3,constitutive_nonlocal_slipSystemLattice(1:ns,myIn
 m(1:3,1:ns,2) = -lattice_st(1:3,constitutive_nonlocal_slipSystemLattice(1:ns,myInstance),myStructure)
 forall (c = 1_pInt:2_pInt, s = 1_pInt:ns) &
   m_currentconf(1:3,s,c) = math_mul33x3(Fe, m(1:3,s,c))
+forall (s = 1_pInt:ns) &
+  n_currentconf(1:3,s) = math_mul33x3(Fe, lattice_sn(1:3,constitutive_nonlocal_slipSystemLattice(s,myInstance),myStructure))
 
 
 do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
@@ -3587,51 +3598,75 @@ do o = 1_pInt,phase_Noutput(material_phase(g,ip,el))
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = v(1:ns,4)
       cs = cs + ns
     
-    case ('fluxdensity_edge_pos_x')
+    case ('slipdirection.x')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(1,1:ns,1)
+      cs = cs + ns
+    
+    case ('slipdirection.y')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(2,1:ns,1)
+      cs = cs + ns
+    
+    case ('slipdirection.z')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(3,1:ns,1)
+      cs = cs + ns
+    
+    case ('slipnormal.x')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(1,1:ns)
+      cs = cs + ns
+    
+    case ('slipnormal.y')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(2,1:ns)
+      cs = cs + ns
+    
+    case ('slipnormal.z')
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(3,1:ns)
+      cs = cs + ns
+    
+    case ('fluxdensity_edge_pos.x')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(1,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_pos_y')
+    case ('fluxdensity_edge_pos.y')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(2,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_pos_z')
+    case ('fluxdensity_edge_pos.z')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(3,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_neg_x')
+    case ('fluxdensity_edge_neg.x')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(1,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_neg_y')
+    case ('fluxdensity_edge_neg.y')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(2,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_neg_z')
+    case ('fluxdensity_edge_neg.z')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(3,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_screw_pos_x')
+    case ('fluxdensity_screw_pos.x')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(1,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_pos_y')
+    case ('fluxdensity_screw_pos.y')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(2,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_pos_z')
+    case ('fluxdensity_screw_pos.z')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(3,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_neg_x')
+    case ('fluxdensity_screw_neg.x')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(1,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_neg_y')
+    case ('fluxdensity_screw_neg.y')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(2,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_neg_z')
+    case ('fluxdensity_screw_neg.z')
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(3,1:ns,2)
       cs = cs + ns
     
