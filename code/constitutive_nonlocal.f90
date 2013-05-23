@@ -30,7 +30,10 @@
 MODULE constitutive_nonlocal
 
 !* Include other modules
-use prec, only: pReal,pInt
+use prec, only: &
+  pReal, &
+  pInt, &
+  p_vec
 
 implicit none
 private
@@ -206,7 +209,6 @@ CONTAINS
 subroutine constitutive_nonlocal_init(myFile)
 
 use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-use prec,     only: pInt, pReal
 use math,     only: math_Mandel3333to66, & 
                     math_Voigt66to3333, & 
                     math_mul3x3, &
@@ -942,9 +944,6 @@ endsubroutine
 !*********************************************************************
 subroutine constitutive_nonlocal_stateInit(state)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use lattice,  only: lattice_maxNslipFamily
 use math,     only: math_sampleGaussVar
 use mesh,     only: mesh_ipVolume, &
@@ -1101,8 +1100,6 @@ endsubroutine
 !*********************************************************************
 pure function constitutive_nonlocal_aTolState(myInstance)
 
-use prec,     only: pReal, &
-                    pInt
 implicit none
 
 !*** input variables
@@ -1129,9 +1126,6 @@ endfunction
 !*********************************************************************
 pure function constitutive_nonlocal_homogenizedC(state,g,ip,el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains, &
@@ -1162,52 +1156,53 @@ endfunction
 !*********************************************************************
 !* calculates quantities characterizing the microstructure           *
 !*********************************************************************
-subroutine constitutive_nonlocal_microstructure(state, Temperature, Fe, Fp, g, ip, el)
+subroutine constitutive_nonlocal_microstructure(state, Temperature, Fe, Fp, gr, ip, el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
-use IO,       only: IO_error
-use math,     only: math_Mandel33to6, &
-                    math_mul33x33, &
-                    math_mul33x3, &
-                    math_mul3x3, &
-                    math_norm3, &
-                    math_inv33, &
-                    math_invert33, &
-                    math_transpose33, &
-                    pi
-use debug,    only: debug_level, &
-                    debug_constitutive, &
-                    debug_levelBasic, &
-                    debug_levelExtensive, &
-                    debug_levelSelective, &
-                    debug_g, &
-                    debug_i, &
-                    debug_e
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_element, &
-                    mesh_ipNeighborhood, &
-                    mesh_ipCoordinates, &
-                    mesh_ipVolume, &
-                    mesh_ipAreaNormal, &
-                    FE_NipNeighbors, &
-                    FE_maxNipNeighbors, &
-                    FE_geomtype, &
-                    FE_celltype
-use material, only: homogenization_maxNgrains, &
-                    material_phase, &
-                    phase_localPlasticity, &
-                    phase_plasticityInstance
-use lattice,  only: lattice_sd, &
-                    lattice_st, &
-                    lattice_interactionSlipSlip
+use IO, only: &
+  IO_error
+use math, only: &
+  pi, &
+  math_mul33x3, &
+  math_mul3x3, &
+  math_norm3, &
+  math_invert33, &
+  math_transpose33
+use debug, only: &
+  debug_level, &
+  debug_constitutive, &
+  debug_levelBasic, &
+  debug_levelExtensive, &
+  debug_levelSelective, &
+  debug_g, &
+  debug_i, &
+  debug_e
+use mesh, only: &
+  mesh_NcpElems, &
+  mesh_maxNips, &
+  mesh_element, &
+  mesh_ipNeighborhood, &
+  mesh_ipCoordinates, &
+  mesh_ipVolume, &
+  mesh_ipAreaNormal, &
+  mesh_ipArea, &
+  FE_NipNeighbors, &
+  FE_maxNipNeighbors, &
+  FE_geomtype, &
+  FE_celltype
+use material, only: &
+  homogenization_maxNgrains, &
+  material_phase, &
+  phase_localPlasticity, &
+  phase_plasticityInstance
+use lattice, only: &
+  lattice_sd, &
+  lattice_st, &
+  lattice_interactionSlipSlip
 
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::    g, &                          ! current grain ID
+integer(pInt), intent(in) ::    gr, &                          ! current grain ID
                                 ip, &                         ! current integration point
                                 el                            ! current element
 real(pReal), intent(in) ::      Temperature                   ! temperature
@@ -1256,7 +1251,7 @@ real(pReal), dimension(2) ::    rhoExcessGradient, &
 real(pReal), dimension(3) ::    ipCoords, &
                                 neighboring_ipCoords, &
                                 rhoExcessDifferences
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el)))) :: &
                                 rhoForest, &                  ! forest dislocation density
                                 tauBack, &                    ! back stress from pileup on same slip system
                                 tauThreshold                  ! threshold shear stress
@@ -1266,24 +1261,24 @@ real(pReal), dimension(3,3) ::  invFe, &                      ! inverse of elast
                                 invConnections
 real(pReal), dimension(3,FE_maxNipNeighbors) :: &
                                 connection_latticeConf
-real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(2,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el)))) :: &
                                 rhoExcess
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el))),2) :: &
                                 rhoDip                        ! dipole dislocation density (edge, screw)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el))),8) :: &
                                 rhoSgl                        ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
-real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))), &
-                       constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el))), &
+                       constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
 real(pReal), dimension(2,maxval(constitutive_nonlocal_totalNslip),FE_maxNipNeighbors) :: &
                                 neighboring_rhoExcess, &      ! excess density at neighboring material point
                                 neighboring_rhoTotal          ! total density at neighboring material point
-real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),2) :: &
+real(pReal), dimension(3,constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el))),2) :: &
                                 m                             ! direction of dislocation motion
 logical                         inversionError
 
 
-phase = material_phase(g,ip,el)
+phase = material_phase(gr,ip,el)
 instance = phase_plasticityInstance(phase)
 latticeStruct = constitutive_nonlocal_structure(instance)
 ns = constitutive_nonlocal_totalNslip(instance)
@@ -1292,16 +1287,18 @@ ns = constitutive_nonlocal_totalNslip(instance)
 !*** get basic states
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
-  rhoSgl(s,t) = max(state(g,ip,el)%p((t-1_pInt)*ns+s), 0.0_pReal)                                                        ! ensure positive single mobile densities
+  rhoSgl(s,t) = max(state(gr,ip,el)%p((t-1_pInt)*ns+s), 0.0_pReal)                                  ! ensure positive single mobile densities
 forall (t = 5_pInt:8_pInt) & 
-  rhoSgl(1:ns,t) = state(g,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
+  rhoSgl(1:ns,t) = state(gr,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-  rhoDip(s,c) = max(state(g,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)                                                        ! ensure positive dipole densities
-where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(instance) &
-       .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(instance)) &
+  rhoDip(s,c) = max(state(gr,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)                                  ! ensure positive dipole densities
+where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal &
+                   < constitutive_nonlocal_significantN(instance) &
+  .or. abs(rhoSgl) < constitutive_nonlocal_significantRho(instance)) &
   rhoSgl = 0.0_pReal
-where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < constitutive_nonlocal_significantN(instance) &
-       .or. abs(rhoDip) < constitutive_nonlocal_significantRho(instance)) &
+where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal &
+                   < constitutive_nonlocal_significantN(instance) &
+  .or. abs(rhoDip) < constitutive_nonlocal_significantRho(instance)) &
   rhoDip = 0.0_pReal
 
 
@@ -1320,7 +1317,7 @@ forall (s = 1_pInt:ns) &
 
 myInteractionMatrix = 0.0_pReal
 myInteractionMatrix(1:ns,1:ns) = constitutive_nonlocal_interactionMatrixSlipSlip(1:ns,1:ns,instance)
-if (latticeStruct == 1_pInt) then ! in case of fcc: coefficients are corrected for the line tension effect (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
+if (latticeStruct == 1_pInt) then                                                                   ! in case of fcc: coefficients are corrected for the line tension effect (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
   do s = 1_pInt,ns 
     myRhoForest = max(rhoForest(s),constitutive_nonlocal_significantRho(instance))
     correction = (  1.0_pReal - constitutive_nonlocal_linetensionEffect(instance) &
@@ -1328,11 +1325,12 @@ if (latticeStruct == 1_pInt) then ! in case of fcc: coefficients are corrected f
                   * log(0.35_pReal * constitutive_nonlocal_burgers(s,instance) * sqrt(myRhoForest)) &
                   / log(0.35_pReal * constitutive_nonlocal_burgers(s,instance) * 1e6_pReal)) ** 2.0_pReal
     do s2 = 1_pInt,ns
-      interactionCoefficient = lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s,instance), &
-                                                           constitutive_nonlocal_slipSystemLattice(s2,instance), &
-                                                           latticeStruct)
+      interactionCoefficient = &
+        lattice_interactionSlipSlip(constitutive_nonlocal_slipSystemLattice(s,instance), &
+                                    constitutive_nonlocal_slipSystemLattice(s2,instance), &
+                                    latticeStruct)
       select case(interactionCoefficient)
-        case(4_pInt,5_pInt,6_pInt) ! only correct junction forming interactions (4,5,6)
+        case(4_pInt,5_pInt,6_pInt)                                                                  ! only correct junction forming interactions (4,5,6)
           myInteractionMatrix(s,s2) = correction * myInteractionMatrix(s,s2) 
       endselect
     enddo
@@ -1367,7 +1365,7 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
     neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
     neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
     if (neighboring_el > 0 .and. neighboring_ip > 0) then
-      neighboring_phase = material_phase(g,neighboring_ip,neighboring_el)
+      neighboring_phase = material_phase(gr,neighboring_ip,neighboring_el)
       neighboring_instance = phase_plasticityInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
@@ -1380,13 +1378,15 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
             nRealNeighbors = nRealNeighbors + 1_pInt
             connection_latticeConf(1:3,n) = math_mul33x3(invFe, neighboring_ipCoords - ipCoords)
             forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-              neighboring_rhoExcess(c,s,n) = max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &     ! positive mobiles
-                                           - max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal)       ! negative mobiles
-              neighboring_rhoTotal(c,s,n) = max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &      ! positive mobiles
-                                          + max(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal) &      ! negative mobiles
-                                          + abs(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c+2_pInt)*ns+s)) &                 ! positive deads
-                                          + abs(state(g,neighboring_ip,neighboring_el)%p((2_pInt*c+3_pInt)*ns+s)) &                 ! negative deads
-                                          + max(state(g,neighboring_ip,neighboring_el)%p((c+7_pInt)*ns+s), 0.0_pReal)               ! dipoles
+              neighboring_rhoExcess(c,s,n) = &
+                  max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
+                - max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal)  ! negative mobiles
+              neighboring_rhoTotal(c,s,n) = &
+                  max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
+                + max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal) &! negative mobiles
+                + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+2_pInt)*ns+s)) &           ! positive deads
+                + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+3_pInt)*ns+s)) &           ! negative deads
+                + max(state(gr,neighboring_ip,neighboring_el)%p((c+7_pInt)*ns+s), 0.0_pReal)         ! dipoles
             endforall
           else
             ! thats myself! probably using periodic images -> assume constant excess density
@@ -1414,8 +1414,8 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
   !* 1. interpolation of the excess density in the neighorhood
   !* 2. interpolation of the dead dislocation density in the central volume
   
-  m(1:3,1:ns,1) =  lattice_sd(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,instance), latticeStruct)
-  m(1:3,1:ns,2) = -lattice_st(1:3, constitutive_nonlocal_slipSystemLattice(1:ns,instance), latticeStruct)
+  m(1:3,1:ns,1) =  lattice_sd(1:3,constitutive_nonlocal_slipSystemLattice(1:ns,instance),latticeStruct)
+  m(1:3,1:ns,2) = -lattice_st(1:3,constitutive_nonlocal_slipSystemLattice(1:ns,instance),latticeStruct)
 
   do s = 1_pInt,ns
     
@@ -1432,7 +1432,8 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
       if (inversionError) then
         call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
       endif
-      rhoExcessGradient(c) = math_mul3x3(math_mul33x3(invConnections, rhoExcessDifferences), m(1:3,s,c))
+      rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), &
+                                         math_mul33x3(invConnections,rhoExcessDifferences))
     enddo
       
     !* plus gradient from deads
@@ -1462,17 +1463,17 @@ endif
 
 !*** set dependent states
 
-state(g,ip,el)%p(11_pInt*ns+1:12_pInt*ns) = rhoForest
-state(g,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauThreshold
-state(g,ip,el)%p(13_pInt*ns+1:14_pInt*ns) = tauBack
+state(gr,ip,el)%p(11_pInt*ns+1:12_pInt*ns) = rhoForest
+state(gr,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauThreshold
+state(gr,ip,el)%p(13_pInt*ns+1:14_pInt*ns) = tauBack
 
 
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
-      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == gr)&
              .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
     write(6,*)
-    write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,g
+    write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_microstructure at el ip g',el,ip,gr
     write(6,*)
     write(6,'(a,/,12x,12(e10.3,1x))') '<< CONST >> rhoForest', rhoForest
     write(6,'(a,/,12x,12(f10.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold/1e6
@@ -1490,9 +1491,6 @@ endsubroutine
 !*********************************************************************
 subroutine constitutive_nonlocal_kinetics(v, tau, c, Temperature, state, g, ip, el, dv_dtau)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
@@ -1664,9 +1662,6 @@ endsubroutine
 !*********************************************************************
 subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, state, g, ip, el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
                     math_Mandel6to33
@@ -1854,9 +1849,6 @@ endsubroutine
 !*********************************************************************
 subroutine constitutive_nonlocal_deltaState(deltaState, state, Tstar_v, Temperature, g,ip,el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic, &
@@ -2043,10 +2035,7 @@ endsubroutine
 !*********************************************************************
 function constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, state, state0, timestep, subfrac, g,ip,el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec, &
-                    DAMASK_NaN
+use prec,     only: DAMASK_NaN
 use numerics, only: numerics_integrationMode, &
                     numerics_timeSyncing
 use IO,       only: IO_error
@@ -2638,8 +2627,6 @@ endfunction
 !*********************************************************************
 subroutine constitutive_nonlocal_updateCompatibility(orientation,i,e)
 
-use prec,     only:   pReal, &
-                      pInt
 use math, only:       math_qDisorientation, &
                       math_mul3x3, &
                       math_qRot
@@ -2811,9 +2798,6 @@ endsubroutine
 !*********************************************************************
 pure function constitutive_nonlocal_dotTemperature(Tstar_v,Temperature,state,g,ip,el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips
 use material, only: homogenization_maxNgrains
@@ -2845,9 +2829,6 @@ endfunction
 !*********************************************************************
 function constitutive_nonlocal_dislocationstress(state, Fe, g, ip, el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use math,     only: math_mul33x33, &
                     math_mul33x3, &
                     math_invert33, &
@@ -3202,9 +3183,6 @@ endfunction
 !*********************************************************************
 function constitutive_nonlocal_postResults(Tstar_v, Fe, Temperature, dt, state, dotState, g,ip,el)
 
-use prec,     only: pReal, &
-                    pInt, &
-                    p_vec
 use math,     only: math_mul6x6, &
                     math_mul33x3, &
                     math_mul33x33, &
