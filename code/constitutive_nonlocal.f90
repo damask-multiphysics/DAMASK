@@ -91,6 +91,29 @@ constitutive_nonlocal_output                                         !< name of 
 integer(pInt), dimension(:), allocatable, private :: &
 Noutput                                                              !< number of outputs per instance of this plasticity 
 
+integer(pInt), dimension(:,:), allocatable, private :: &
+iRhoEPU, &                                                           !< state indices for density of Unblocked Positive Edges
+iRhoENU, &                                                           !< state indices for density of Unblocked Negative Edges
+iRhoSPU, &                                                           !< state indices for density of Unblocked Positive Screws
+iRhoSNU, &                                                           !< state indices for density of Unblocked Negative Screws
+iRhoEPB, &                                                           !< state indices for density of Blocked Positive Edges
+iRhoENB, &                                                           !< state indices for density of Blocked Negative Edges
+iRhoSPB, &                                                           !< state indices for density of Blocked Positive Screws
+iRhoSNB, &                                                           !< state indices for density of Blocked Negative Screws
+iRhoED, &                                                            !< state indices for density of Edge Dipoles
+iRhoSD, &                                                            !< state indices for density of Screw Dipoles
+iGamma, &                                                            !< state indices for accumulated shear
+iRhoF, &                                                             !< state indices for forest density
+iTau, &                                                              !< state indices for resolved stress
+iTauB, &                                                             !< state indices for backstress
+iVEP, &                                                              !< state indices for velocity of Positive Edges
+iVEN, &                                                              !< state indices for velocity of Negative Edges
+iVSP, &                                                              !< state indices for velocity of Positive Screws 
+iVSN, &                                                              !< state indices for velocity of Negative Screws 
+iDE, &                                                               !< state indices for stable edge dipole height
+iDS                                                                  !< state indices for stable screw dipole height
+
+
 character(len=32), dimension(:), allocatable, public :: &
 constitutive_nonlocal_structureName                                  !< name of the lattice structure
 
@@ -690,6 +713,47 @@ enddo
 
 maxTotalNslip = maxval(totalNslip)
 
+allocate(iRhoEPU(maxTotalNslip, maxNinstance))
+allocate(iRhoENU(maxTotalNslip, maxNinstance))
+allocate(iRhoSPU(maxTotalNslip, maxNinstance))
+allocate(iRhoSNU(maxTotalNslip, maxNinstance))
+allocate(iRhoEPB(maxTotalNslip, maxNinstance))
+allocate(iRhoENB(maxTotalNslip, maxNinstance))
+allocate(iRhoSPB(maxTotalNslip, maxNinstance))
+allocate(iRhoSNB(maxTotalNslip, maxNinstance))
+allocate(iRhoED(maxTotalNslip, maxNinstance))
+allocate(iRhoSD(maxTotalNslip, maxNinstance))
+allocate(iGamma(maxTotalNslip, maxNinstance))
+allocate(iRhoF(maxTotalNslip, maxNinstance))
+allocate(iTau(maxTotalNslip, maxNinstance))
+allocate(iTauB(maxTotalNslip, maxNinstance))
+allocate(iVEP(maxTotalNslip, maxNinstance))
+allocate(iVEN(maxTotalNslip, maxNinstance))
+allocate(iVSP(maxTotalNslip, maxNinstance))
+allocate(iVSN(maxTotalNslip, maxNinstance))
+allocate(iDE(maxTotalNslip, maxNinstance))
+allocate(iDS(maxTotalNslip, maxNinstance))
+iRhoEPU = 0_pInt
+iRhoENU = 0_pInt
+iRhoSPU = 0_pInt
+iRhoSNU = 0_pInt
+iRhoEPB = 0_pInt
+iRhoENB = 0_pInt
+iRhoSPB = 0_pInt
+iRhoSNB = 0_pInt
+iRhoED = 0_pInt
+iRhoSD = 0_pInt
+iGamma = 0_pInt
+iRhoF = 0_pInt
+iTau = 0_pInt
+iTauB = 0_pInt
+iVEP = 0_pInt
+iVEN = 0_pInt
+iVSP = 0_pInt
+iVSN = 0_pInt
+iDE = 0_pInt
+iDS = 0_pInt
+
 allocate(burgers(maxTotalNslip, maxNinstance))
 burgers = 0.0_pReal
 
@@ -764,7 +828,50 @@ do i = 1,maxNinstance
                                      + constitutive_nonlocal_sizeDependentState(i) &
                                      + int(size(OTHERSTATES),pInt) * ns
 
+  !*** determine indices to state array
+
+  forall (s = 1:ns) &
+    iRhoEPU(1:ns,i) = s
+  forall (s = 1:ns) &
+    iRhoENU(1:ns,i) = iRhoEPU(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoSPU(1:ns,i) = iRhoENU(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoSNU(1:ns,i) = iRhoSPU(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoEPB(1:ns,i) = iRhoSNU(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoENB(1:ns,i) = iRhoEPB(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoSPB(1:ns,i) = iRhoENB(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoSNB(1:ns,i) = iRhoSPB(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoED(1:ns,i) = iRhoSNB(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoSD(1:ns,i) = iRhoED(ns,i) + s
+  forall (s = 1:ns) &
+    iGamma(1:ns,i) = iRhoSD(ns,i) + s
+  forall (s = 1:ns) &
+    iRhoF(1:ns,i) = iGamma(ns,i) + s
+  forall (s = 1:ns) &
+    iTau(1:ns,i) = iRhoF(ns,i) + s
+  forall (s = 1:ns) &
+    iTauB(1:ns,i) = iTau(ns,i) + s
+  forall (s = 1:ns) &
+    iVEP(1:ns,i) = iTauB(ns,i) + s
+  forall (s = 1:ns) &
+    iVEN(1:ns,i) = iVEP(ns,i) + s
+  forall (s = 1:ns) &
+    iVSP(1:ns,i) = iVEN(ns,i) + s
+  forall (s = 1:ns) &
+    iVSN(1:ns,i) = iVSP(ns,i) + s
+  forall (s = 1:ns) &
+    iDE(1:ns,i) = iVSN(ns,i) + s
+  forall (s = 1:ns) &
+    iDS(1:ns,i) = iDE(ns,i) + s
   
+
   !*** determine size of postResults array
   
   do o = 1_pInt,Noutput(i)
