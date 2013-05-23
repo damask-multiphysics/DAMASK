@@ -1248,9 +1248,8 @@ real(pReal)                     nu, &                         ! poisson's ratio
 real(pReal), dimension(2) ::    rhoExcessGradient, &
                                 rhoExcessGradient_over_rho, &
                                 rhoTotal
-real(pReal), dimension(3) ::    ipCoords, &
-                                neighboring_ipCoords, &
-                                rhoExcessDifferences
+real(pReal), dimension(3) ::    rhoExcessDifferences, &
+                                normal_latticeConf
 real(pReal), dimension(constitutive_nonlocal_totalNslip(phase_plasticityInstance(material_phase(gr,ip,el)))) :: &
                                 rhoForest, &                  ! forest dislocation density
                                 tauBack, &                    ! back stress from pileup on same slip system
@@ -1350,7 +1349,6 @@ tauBack = 0.0_pReal
 if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStressCorrection(instance)) then
   call math_invert33(Fe, invFe, detFe, inversionError)
   call math_invert33(Fp, invFp, detFp, inversionError)
-  ipCoords = mesh_ipCoordinates(1:3,ip,el)
   rhoExcess(1,1:ns) = rhoSgl(1:ns,1) - rhoSgl(1:ns,2)
   rhoExcess(2,1:ns) = rhoSgl(1:ns,3) - rhoSgl(1:ns,4)
   FVsize = mesh_ipVolume(ip,el) ** (1.0_pReal/3.0_pReal)
@@ -1369,29 +1367,29 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
       neighboring_instance = phase_plasticityInstance(neighboring_phase)
       neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
       neighboring_ns = constitutive_nonlocal_totalNslip(neighboring_instance)
-      neighboring_ipCoords = mesh_ipCoordinates(1:3,neighboring_ip,neighboring_el)
       if (.not. phase_localPlasticity(neighboring_phase) &
           .and. neighboring_latticeStruct == latticeStruct & 
           .and. neighboring_instance == instance) then
         if (neighboring_ns == ns) then
-          if (neighboring_el /= el .or. neighboring_ip /= ip) then
-            nRealNeighbors = nRealNeighbors + 1_pInt
-            connection_latticeConf(1:3,n) = math_mul33x3(invFe, neighboring_ipCoords - ipCoords)
-            forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-              neighboring_rhoExcess(c,s,n) = &
-                  max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
-                - max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal)  ! negative mobiles
-              neighboring_rhoTotal(c,s,n) = &
-                  max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
-                + max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal) &! negative mobiles
-                + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+2_pInt)*ns+s)) &           ! positive deads
-                + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+3_pInt)*ns+s)) &           ! negative deads
-                + max(state(gr,neighboring_ip,neighboring_el)%p((c+7_pInt)*ns+s), 0.0_pReal)         ! dipoles
-            endforall
-          else
-            ! thats myself! probably using periodic images -> assume constant excess density
-            connection_latticeConf(1:3,n) = math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))                   ! direction of area normal
-            neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
+          nRealNeighbors = nRealNeighbors + 1_pInt
+          forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
+            neighboring_rhoExcess(c,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
+              - max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal)  ! negative mobiles
+            neighboring_rhoTotal(c,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
+              + max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal) &! negative mobiles
+              + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+2_pInt)*ns+s)) &           ! positive deads
+              + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+3_pInt)*ns+s)) &           ! negative deads
+              + max(state(gr,neighboring_ip,neighboring_el)%p((c+7_pInt)*ns+s), 0.0_pReal)         ! dipoles
+          endforall
+          connection_latticeConf(1:3,n) = &
+            math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighboring_ip,neighboring_el) &
+                                - mesh_ipCoordinates(1:3,ip,el))
+          normal_latticeConf = math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
+          if (math_mul3x3(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) then       ! neighbor connection points in opposite direction to face normal: must be periodic image
+            connection_latticeConf(1:3,n) = normal_latticeConf * mesh_ipVolume(ip,el) &
+                                                               / mesh_ipArea(n,ip,el)               ! instead take the surface normal scaled with the diameter of the cell
           endif
         else
           ! different number of active slip systems
@@ -1425,8 +1423,10 @@ if (.not. phase_localPlasticity(phase) .and. constitutive_nonlocal_shortRangeStr
       do dir = 1_pInt,3_pInt
         neighbor(1) = 2_pInt * dir - 1_pInt
         neighbor(2) = 2_pInt * dir
-        connections(dir,1:3) = connection_latticeConf(1:3,neighbor(1)) - connection_latticeConf(1:3,neighbor(2))
-        rhoExcessDifferences(dir) = neighboring_rhoExcess(c,s,neighbor(1)) - neighboring_rhoExcess(c,s,neighbor(2))
+        connections(dir,1:3) = connection_latticeConf(1:3,neighbor(1)) &
+                             - connection_latticeConf(1:3,neighbor(2))
+        rhoExcessDifferences(dir) = neighboring_rhoExcess(c,s,neighbor(1)) &
+                                  - neighboring_rhoExcess(c,s,neighbor(2))
       enddo
       call math_invert33(connections,invConnections,temp,inversionError)
       if (inversionError) then
