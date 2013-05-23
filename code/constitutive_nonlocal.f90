@@ -870,6 +870,8 @@ do i = 1,maxNinstance
     iDE(s,i) = iVSN(ns,i) + s
   forall (s = 1:ns) &
     iDS(s,i) = iDE(ns,i) + s
+  if (iDS(ns,i) /= constitutive_nonlocal_sizeState(i)) &  ! check if last index is equal to size of state
+    call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
   
 
   !*** determine size of postResults array
@@ -1040,6 +1042,7 @@ endsubroutine
 !*********************************************************************
 subroutine constitutive_nonlocal_stateInit(state)
 
+use IO,       only: IO_error
 use lattice,  only: lattice_maxNslipFamily
 use math,     only: math_sampleGaussVar
 use mesh,     only: mesh_ipVolume, &
@@ -1050,7 +1053,8 @@ use mesh,     only: mesh_ipVolume, &
                     FE_geomtype
 use material, only: material_phase, &
                     phase_plasticityInstance, &
-                    phase_plasticity
+                    phase_plasticity, &
+                    homogenization_Ngrains
 
 implicit none
 
@@ -1059,22 +1063,19 @@ type(p_vec), dimension(1,mesh_maxNips,mesh_NcpElems), intent(inout) :: &
                               state                           ! microstructural state
 
 !*** local variables
-real(pReal), dimension(:), allocatable :: &              
-                              rhoSglEdgePos, &                ! positive edge dislocation density
-                              rhoSglEdgeNeg, &                ! negative edge dislocation density
-                              rhoSglScrewPos, &               ! positive screw dislocation density
-                              rhoSglScrewNeg, &               ! negative screw dislocation density
-                              rhoDipEdge, &                   ! edge dipole dislocation density
-                              rhoDipScrew                     ! screw dipole dislocation density
 integer(pInt)                 el, &
                               ip, &
+                              e, &
+                              i, &
+                              g, &
+                              idx, &
                               ns, &                           ! short notation for total number of active slip systems 
                               f, &                            ! index of lattice family
                               from, &
                               upto, &
                               s, &                            ! index of slip system
                               t, &
-                              i, &
+                              j, &
                               myInstance, &
                               maxNinstance
 real(pReal), dimension(2) ::  noise
@@ -1087,31 +1088,34 @@ real(pReal)                   meanDensity, &
 
 maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
 
-if (maxNinstance > 0_pInt) then
-  allocate(rhoSglEdgePos(maxval(totalNslip)))
-  allocate(rhoSglEdgeNeg(maxval(totalNslip)))
-  allocate(rhoSglScrewPos(maxval(totalNslip)))
-  allocate(rhoSglScrewNeg(maxval(totalNslip)))
-  allocate(rhoDipEdge(maxval(totalNslip)))
-  allocate(rhoDipScrew(maxval(totalNslip)))
-endif
+
+! ititalize all states to zero
+
+do e = 1_pInt,mesh_NcpElems
+  do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+    do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
+      state(g,i,e)%p = 0.0_pReal
+    enddo
+  enddo
+enddo
+
+
 do myInstance = 1_pInt,maxNinstance
   ns = totalNslip(myInstance)
 
   ! randomly distribute dislocation segments on random slip system and of random type in the volume 
   if (rhoSglRandom(myInstance) > 0.0_pReal) then
 
-    ! ititalize all states to zero and get the total volume of the instance
+    ! get the total volume of the instance
 
     minimumIpVolume = 1e99_pReal
     totalVolume = 0.0_pReal
-    do el = 1_pInt,mesh_NcpElems
-      do ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,el)))
-        if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,ip,el)) &
-            .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
-          totalVolume = totalVolume + mesh_ipVolume(ip,el)
-          minimumIpVolume = min(minimumIpVolume, mesh_ipVolume(ip,el))
-          state(1,ip,el)%p = 0.0_pReal
+    do e = 1_pInt,mesh_NcpElems
+      do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+        if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,i,e)) &
+            .and. myInstance == phase_plasticityInstance(material_phase(1,i,e))) then
+          totalVolume = totalVolume + mesh_ipVolume(i,e)
+          minimumIpVolume = min(minimumIpVolume, mesh_ipVolume(i,e))
         endif
       enddo
     enddo
@@ -1129,63 +1133,47 @@ do myInstance = 1_pInt,maxNinstance
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
         t = nint(rnd(4)*4.0_pReal+0.5_pReal,pInt)
         meanDensity = meanDensity + densityBinning * mesh_ipVolume(ip,el) / totalVolume
-        state(1,ip,el)%p((t-1)*ns+s) = state(1,ip,el)%p((t-1)*ns+s) + densityBinning
+        if (t==1_pInt) then
+          idx = iRhoEPU(s,myInstance)
+        elseif (t==2_pInt) then
+          idx = iRhoENU(s,myInstance)
+        elseif (t==3_pInt) then
+          idx = iRhoSPU(s,myInstance)
+        elseif (t==4_pInt) then
+          idx = iRhoSNU(s,myInstance)
+        else
+          call IO_error(-1,ext_msg='state init failed ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        endif
+        state(1,ip,el)%p(idx) = state(1,ip,el)%p(idx) + densityBinning
       endif
     enddo
 
   ! homogeneous distribution of density with some noise
   else
-    do el = 1_pInt,mesh_NcpElems
-      do ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,el)))
-        if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,ip,el)) &
-            .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
+    do e = 1_pInt,mesh_NcpElems
+      do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+        if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,i,e)) &
+            .and. myInstance == phase_plasticityInstance(material_phase(1,i,e))) then
           do f = 1_pInt,lattice_maxNslipFamily
             from = 1_pInt + sum(Nslip(1:f-1_pInt,myInstance))
             upto = sum(Nslip(1:f,myInstance))
             do s = from,upto
-              do i = 1_pInt,2_pInt
-                noise(i) = math_sampleGaussVar(0.0_pReal, rhoSglScatter(myInstance))
+              do j = 1_pInt,2_pInt
+                noise(j) = math_sampleGaussVar(0.0_pReal, rhoSglScatter(myInstance))
               enddo
-              rhoSglEdgePos(s) = rhoSglEdgePos0(f, myInstance) + noise(1)
-              rhoSglEdgeNeg(s) = rhoSglEdgeNeg0(f, myInstance) + noise(1)
-              rhoSglScrewPos(s) = rhoSglScrewPos0(f, myInstance) + noise(2)
-              rhoSglScrewNeg(s) = rhoSglScrewNeg0(f, myInstance) + noise(2)
+              state(1,i,e)%p(iRhoEPU(s,myInstance)) = rhoSglEdgePos0(f, myInstance) + noise(1)
+              state(1,i,e)%p(iRhoENU(s,myInstance)) = rhoSglEdgeNeg0(f, myInstance) + noise(1)
+              state(1,i,e)%p(iRhoSPU(s,myInstance)) = rhoSglScrewPos0(f, myInstance) + noise(2)
+              state(1,i,e)%p(iRhoSNU(s,myInstance)) = rhoSglScrewNeg0(f, myInstance) + noise(2)
             enddo 
-            rhoDipEdge(from:upto)  = rhoDipEdge0(f, myInstance)
-            rhoDipScrew(from:upto) = rhoDipScrew0(f, myInstance)
+            state(1,i,e)%p(iRhoED(from:upto,myInstance)) = rhoDipEdge0(f, myInstance)
+            state(1,i,e)%p(iRhoSD(from:upto,myInstance)) = rhoDipScrew0(f, myInstance)
           enddo
-          state(1,ip,el)%p(      1:   ns) = rhoSglEdgePos(1:ns)
-          state(1,ip,el)%p(   ns+1: 2*ns) = rhoSglEdgeNeg(1:ns)
-          state(1,ip,el)%p( 2*ns+1: 3*ns) = rhoSglScrewPos(1:ns)
-          state(1,ip,el)%p( 3*ns+1: 4*ns) = rhoSglScrewNeg(1:ns)
-          state(1,ip,el)%p( 4*ns+1: 5*ns) = 0.0_pReal
-          state(1,ip,el)%p( 5*ns+1: 6*ns) = 0.0_pReal
-          state(1,ip,el)%p( 6*ns+1: 7*ns) = 0.0_pReal
-          state(1,ip,el)%p( 7*ns+1: 8*ns) = 0.0_pReal
-          state(1,ip,el)%p( 8*ns+1: 9*ns) = rhoDipEdge(1:ns)
-          state(1,ip,el)%p( 9*ns+1:10*ns) = rhoDipScrew(1:ns)
         endif
       enddo
     enddo
   endif
-  do el = 1_pInt,mesh_NcpElems
-    do ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,el)))
-      if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,ip,el)) &
-          .and. myInstance == phase_plasticityInstance(material_phase(1,ip,el))) then
-        state(1,ip,el)%p(10*ns+1:11*ns) = 0.0_pReal
-      endif
-    enddo
-  enddo
 enddo
-
-if (maxNinstance > 0_pInt) then
-  deallocate(rhoSglEdgePos)
-  deallocate(rhoSglEdgeNeg)
-  deallocate(rhoSglScrewPos)
-  deallocate(rhoSglScrewNeg)
-  deallocate(rhoDipEdge)
-  deallocate(rhoDipScrew)
-endif
 
 endsubroutine
 
