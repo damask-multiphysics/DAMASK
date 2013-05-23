@@ -1375,12 +1375,20 @@ ns = totalNslip(instance)
 
 !*** get basic states
 
-forall (s = 1_pInt:ns, t = 1_pInt:4_pInt) &
-  rhoSgl(s,t) = max(state(gr,ip,el)%p((t-1_pInt)*ns+s), 0.0_pReal)                                  ! ensure positive single mobile densities
-forall (t = 5_pInt:8_pInt) & 
-  rhoSgl(1:ns,t) = state(gr,ip,el)%p((t-1_pInt)*ns+1_pInt:t*ns)
-forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-  rhoDip(s,c) = max(state(gr,ip,el)%p((7_pInt+c)*ns+s), 0.0_pReal)                                  ! ensure positive dipole densities
+forall (s = 1_pInt:ns)
+  rhoSgl(s,1) = max(state(gr,ip,el)%p(iRhoEPU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,2) = max(state(gr,ip,el)%p(iRhoENU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,3) = max(state(gr,ip,el)%p(iRhoSPU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,4) = max(state(gr,ip,el)%p(iRhoSNU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
+endforall
+rhoSgl(1:ns,5) = state(gr,ip,el)%p(iRhoEPB(1:ns,instance))
+rhoSgl(1:ns,6) = state(gr,ip,el)%p(iRhoENB(1:ns,instance))
+rhoSgl(1:ns,7) = state(gr,ip,el)%p(iRhoSPB(1:ns,instance))
+rhoSgl(1:ns,8) = state(gr,ip,el)%p(iRhoSNB(1:ns,instance))
+forall (s = 1_pInt:ns)
+  rhoDip(s,1) = max(state(gr,ip,el)%p(iRhoED(s,instance)), 0.0_pReal)                               ! ensure positive dipole densities
+  rhoDip(s,2) = max(state(gr,ip,el)%p(iRhoSD(s,instance)), 0.0_pReal)                               ! ensure positive dipole densities
+endforall
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance) &
   .or. abs(rhoSgl) < significantRho(instance)) &
   rhoSgl = 0.0_pReal
@@ -1458,16 +1466,25 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
           .and. neighboring_instance == instance) then
         if (neighboring_ns == ns) then
           nRealNeighbors = nRealNeighbors + 1_pInt
-          forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-            neighboring_rhoExcess(c,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
-              - max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal)  ! negative mobiles
-            neighboring_rhoTotal(c,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-2_pInt)*ns+s), 0.0_pReal) &! positive mobiles
-              + max(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c-1_pInt)*ns+s), 0.0_pReal) &! negative mobiles
-              + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+2_pInt)*ns+s)) &           ! positive deads
-              + abs(state(gr,neighboring_ip,neighboring_el)%p((2_pInt*c+3_pInt)*ns+s)) &           ! negative deads
-              + max(state(gr,neighboring_ip,neighboring_el)%p((c+7_pInt)*ns+s), 0.0_pReal)         ! dipoles
+          forall (s = 1_pInt:ns)
+            neighboring_rhoExcess(1,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoEPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
+              - max(state(gr,neighboring_ip,neighboring_el)%p(iRhoENU(s,neighboring_instance)), 0.0_pReal)  ! negative mobiles
+            neighboring_rhoExcess(2,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
+              - max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSNU(s,neighboring_instance)), 0.0_pReal)  ! negative mobiles
+            neighboring_rhoTotal(1,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoEPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
+              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoENU(s,neighboring_instance)), 0.0_pReal) &! negative mobiles
+              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoEPB(s,neighboring_instance))) &           ! positive deads
+              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoENB(s,neighboring_instance))) &           ! negative deads
+              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoED(s,neighboring_instance)), 0.0_pReal)   ! dipoles
+            neighboring_rhoTotal(2,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
+              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSNU(s,neighboring_instance)), 0.0_pReal) &! negative mobiles
+              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoSPB(s,neighboring_instance))) &           ! positive deads
+              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoSNB(s,neighboring_instance))) &           ! negative deads
+              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSD(s,neighboring_instance)), 0.0_pReal)   ! dipoles
           endforall
           connection_latticeConf(1:3,n) = &
             math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighboring_ip,neighboring_el) &
@@ -1549,9 +1566,9 @@ endif
 
 !*** set dependent states
 
-state(gr,ip,el)%p(11_pInt*ns+1:12_pInt*ns) = rhoForest
-state(gr,ip,el)%p(12_pInt*ns+1:13_pInt*ns) = tauThreshold
-state(gr,ip,el)%p(13_pInt*ns+1:14_pInt*ns) = tauBack
+state(gr,ip,el)%p(iRhoF(1:ns,instance)) = rhoForest
+state(gr,ip,el)%p(iTau(1:ns,instance)) = tauThreshold
+state(gr,ip,el)%p(iTauB(1:ns,instance)) = tauBack
 
 
 #ifndef _OPENMP
