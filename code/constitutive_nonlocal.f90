@@ -1198,8 +1198,17 @@ integer(pInt)             :: ns
 
 ns = totalNslip(myInstance)
 constitutive_nonlocal_aTolState = 0.0_pReal
-constitutive_nonlocal_aTolState(1:10*ns) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(10*ns+1:11*ns) = aTolShear(myInstance)
+constitutive_nonlocal_aTolState(iRhoEPU(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoENU(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoSPU(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoSNU(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoEPB(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoENB(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoSPB(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoSNB(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoED(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iRhoSD(1:ns,myInstance)) = aTolRho(myInstance)
+constitutive_nonlocal_aTolState(iGamma(1:ns,myInstance)) = aTolShear(myInstance)
 
 endfunction
 
