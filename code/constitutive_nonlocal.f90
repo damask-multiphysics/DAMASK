@@ -104,7 +104,7 @@ iRhoED, &                                                            !< state in
 iRhoSD, &                                                            !< state indices for density of Screw Dipoles
 iGamma, &                                                            !< state indices for accumulated shear
 iRhoF, &                                                             !< state indices for forest density
-iTau, &                                                              !< state indices for resolved stress
+iTauF, &                                                              !< state indices for critical resolved shear stress
 iTauB, &                                                             !< state indices for backstress
 iVEP, &                                                              !< state indices for velocity of Positive Edges
 iVEN, &                                                              !< state indices for velocity of Negative Edges
@@ -725,7 +725,7 @@ allocate(iRhoED(maxTotalNslip, maxNinstance))
 allocate(iRhoSD(maxTotalNslip, maxNinstance))
 allocate(iGamma(maxTotalNslip, maxNinstance))
 allocate(iRhoF(maxTotalNslip, maxNinstance))
-allocate(iTau(maxTotalNslip, maxNinstance))
+allocate(iTauF(maxTotalNslip, maxNinstance))
 allocate(iTauB(maxTotalNslip, maxNinstance))
 allocate(iVEP(maxTotalNslip, maxNinstance))
 allocate(iVEN(maxTotalNslip, maxNinstance))
@@ -745,7 +745,7 @@ iRhoED = 0_pInt
 iRhoSD = 0_pInt
 iGamma = 0_pInt
 iRhoF = 0_pInt
-iTau = 0_pInt
+iTauF = 0_pInt
 iTauB = 0_pInt
 iVEP = 0_pInt
 iVEN = 0_pInt
@@ -855,9 +855,9 @@ do i = 1,maxNinstance
   forall (s = 1:ns) &
     iRhoF(s,i) = iGamma(ns,i) + s
   forall (s = 1:ns) &
-    iTau(s,i) = iRhoF(ns,i) + s
+    iTauF(s,i) = iRhoF(ns,i) + s
   forall (s = 1:ns) &
-    iTauB(s,i) = iTau(ns,i) + s
+    iTauB(s,i) = iTauF(ns,i) + s
   forall (s = 1:ns) &
     iVEP(s,i) = iTauB(ns,i) + s
   forall (s = 1:ns) &
@@ -1567,7 +1567,7 @@ endif
 !*** set dependent states
 
 state(gr,ip,el)%p(iRhoF(1:ns,instance)) = rhoForest
-state(gr,ip,el)%p(iTau(1:ns,instance)) = tauThreshold
+state(gr,ip,el)%p(iTauF(1:ns,instance)) = tauThreshold
 state(gr,ip,el)%p(iTauB(1:ns,instance)) = tauBack
 
 
