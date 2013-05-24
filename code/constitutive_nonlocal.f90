@@ -92,26 +92,16 @@ integer(pInt), dimension(:), allocatable, private :: &
 Noutput                                                              !< number of outputs per instance of this plasticity 
 
 integer(pInt), dimension(:,:), allocatable, private :: &
-iRhoEPU, &                                                           !< state indices for density of Unblocked Positive Edges
-iRhoENU, &                                                           !< state indices for density of Unblocked Negative Edges
-iRhoSPU, &                                                           !< state indices for density of Unblocked Positive Screws
-iRhoSNU, &                                                           !< state indices for density of Unblocked Negative Screws
-iRhoEPB, &                                                           !< state indices for density of Blocked Positive Edges
-iRhoENB, &                                                           !< state indices for density of Blocked Negative Edges
-iRhoSPB, &                                                           !< state indices for density of Blocked Positive Screws
-iRhoSNB, &                                                           !< state indices for density of Blocked Negative Screws
-iRhoED, &                                                            !< state indices for density of Edge Dipoles
-iRhoSD, &                                                            !< state indices for density of Screw Dipoles
 iGamma, &                                                            !< state indices for accumulated shear
 iRhoF, &                                                             !< state indices for forest density
-iTauF, &                                                              !< state indices for critical resolved shear stress
-iTauB, &                                                             !< state indices for backstress
-iVEP, &                                                              !< state indices for velocity of Positive Edges
-iVEN, &                                                              !< state indices for velocity of Negative Edges
-iVSP, &                                                              !< state indices for velocity of Positive Screws 
-iVSN, &                                                              !< state indices for velocity of Negative Screws 
-iDE, &                                                               !< state indices for stable edge dipole height
-iDS                                                                  !< state indices for stable screw dipole height
+iTauF, &                                                             !< state indices for critical resolved shear stress
+iTauB                                                                !< state indices for backstress
+integer(pInt), dimension(:,:,:), allocatable, private :: &
+iRhoU, &                                                             !< state indices for unblocked density
+iRhoB, &                                                             !< state indices for blocked density
+iRhoD, &                                                             !< state indices for dipole density
+iV, &                                                                !< state indices for dislcation velocities
+iD                                                                   !< state indices for stable dipole height
 
 
 character(len=32), dimension(:), allocatable, public :: &
@@ -281,6 +271,8 @@ integer(pInt)          ::                   section, &
                                             s1, &               ! index of my slip system
                                             s2, &               ! index of my slip system
                                             it, &               ! index of my interaction type
+                                            t, &                ! index of dislocation type
+                                            c, &                ! index of dislocation character
                                             Nchunks_SlipSlip = 0_pInt, &
                                             Nchunks_SlipFamilies = 0_pInt, &
                                             mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
@@ -713,46 +705,24 @@ enddo
 
 maxTotalNslip = maxval(totalNslip)
 
-allocate(iRhoEPU(maxTotalNslip, maxNinstance))
-allocate(iRhoENU(maxTotalNslip, maxNinstance))
-allocate(iRhoSPU(maxTotalNslip, maxNinstance))
-allocate(iRhoSNU(maxTotalNslip, maxNinstance))
-allocate(iRhoEPB(maxTotalNslip, maxNinstance))
-allocate(iRhoENB(maxTotalNslip, maxNinstance))
-allocate(iRhoSPB(maxTotalNslip, maxNinstance))
-allocate(iRhoSNB(maxTotalNslip, maxNinstance))
-allocate(iRhoED(maxTotalNslip, maxNinstance))
-allocate(iRhoSD(maxTotalNslip, maxNinstance))
-allocate(iGamma(maxTotalNslip, maxNinstance))
-allocate(iRhoF(maxTotalNslip, maxNinstance))
-allocate(iTauF(maxTotalNslip, maxNinstance))
-allocate(iTauB(maxTotalNslip, maxNinstance))
-allocate(iVEP(maxTotalNslip, maxNinstance))
-allocate(iVEN(maxTotalNslip, maxNinstance))
-allocate(iVSP(maxTotalNslip, maxNinstance))
-allocate(iVSN(maxTotalNslip, maxNinstance))
-allocate(iDE(maxTotalNslip, maxNinstance))
-allocate(iDS(maxTotalNslip, maxNinstance))
-iRhoEPU = 0_pInt
-iRhoENU = 0_pInt
-iRhoSPU = 0_pInt
-iRhoSNU = 0_pInt
-iRhoEPB = 0_pInt
-iRhoENB = 0_pInt
-iRhoSPB = 0_pInt
-iRhoSNB = 0_pInt
-iRhoED = 0_pInt
-iRhoSD = 0_pInt
+allocate(iRhoU(maxTotalNslip,4,maxNinstance))
+allocate(iRhoB(maxTotalNslip,4,maxNinstance))
+allocate(iRhoD(maxTotalNslip,2,maxNinstance))
+allocate(iV(maxTotalNslip,4,maxNinstance))
+allocate(iD(maxTotalNslip,2,maxNinstance))
+allocate(iGamma(maxTotalNslip,maxNinstance))
+allocate(iRhoF(maxTotalNslip,maxNinstance))
+allocate(iTauF(maxTotalNslip,maxNinstance))
+allocate(iTauB(maxTotalNslip,maxNinstance))
+iRhoU = 0_pInt
+iRhoB = 0_pInt
+iRhoD = 0_pInt
+iV = 0_pInt
+iD = 0_pInt
 iGamma = 0_pInt
 iRhoF = 0_pInt
 iTauF = 0_pInt
 iTauB = 0_pInt
-iVEP = 0_pInt
-iVEN = 0_pInt
-iVSP = 0_pInt
-iVSN = 0_pInt
-iDE = 0_pInt
-iDS = 0_pInt
 
 allocate(burgers(maxTotalNslip, maxNinstance))
 burgers = 0.0_pReal
@@ -830,47 +800,54 @@ do i = 1,maxNinstance
 
   !*** determine indices to state array
 
-  forall (s = 1:ns) &
-    iRhoEPU(s,i) = s
-  forall (s = 1:ns) &
-    iRhoENU(s,i) = iRhoEPU(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoSPU(s,i) = iRhoENU(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoSNU(s,i) = iRhoSPU(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoEPB(s,i) = iRhoSNU(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoENB(s,i) = iRhoEPB(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoSPB(s,i) = iRhoENB(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoSNB(s,i) = iRhoSPB(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoED(s,i) = iRhoSNB(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoSD(s,i) = iRhoED(ns,i) + s
-  forall (s = 1:ns) &
-    iGamma(s,i) = iRhoSD(ns,i) + s
-  forall (s = 1:ns) &
-    iRhoF(s,i) = iGamma(ns,i) + s
-  forall (s = 1:ns) &
-    iTauF(s,i) = iRhoF(ns,i) + s
-  forall (s = 1:ns) &
-    iTauB(s,i) = iTauF(ns,i) + s
-  forall (s = 1:ns) &
-    iVEP(s,i) = iTauB(ns,i) + s
-  forall (s = 1:ns) &
-    iVEN(s,i) = iVEP(ns,i) + s
-  forall (s = 1:ns) &
-    iVSP(s,i) = iVEN(ns,i) + s
-  forall (s = 1:ns) &
-    iVSN(s,i) = iVSP(ns,i) + s
-  forall (s = 1:ns) &
-    iDE(s,i) = iVSN(ns,i) + s
-  forall (s = 1:ns) &
-    iDS(s,i) = iDE(ns,i) + s
-  if (iDS(ns,i) /= constitutive_nonlocal_sizeState(i)) &  ! check if last index is equal to size of state
+  l = 0_pInt
+  do t = 1_pInt,4_pInt
+    do s = 1_pInt,ns
+      l = l + 1_pInt
+      iRhoU(s,t,i) = l
+    enddo
+  enddo
+  do t = 1_pInt,4_pInt
+    do s = 1_pInt,ns
+      l = l + 1_pInt
+      iRhoB(s,t,i) = l
+    enddo
+  enddo
+  do c = 1_pInt,2_pInt
+    do s = 1_pInt,ns
+      l = l + 1_pInt
+      iRhoD(s,c,i) = l
+    enddo
+  enddo
+  do s = 1_pInt,ns
+    l = l + 1_pInt
+    iGamma(s,i) = l
+  enddo
+  do s = 1_pInt,ns
+    l = l + 1_pInt
+    iRhoF(s,i) = l
+  enddo
+  do s = 1_pInt,ns
+    l = l + 1_pInt
+    iTauF(s,i) = l
+  enddo
+  do s = 1_pInt,ns
+    l = l + 1_pInt
+    iTauB(s,i) = l
+  enddo
+  do t = 1_pInt,4_pInt
+    do s = 1_pInt,ns
+      l = l + 1_pInt
+      iV(s,t,i) = l
+    enddo
+  enddo
+  do c = 1_pInt,2_pInt
+    do s = 1_pInt,ns
+      l = l + 1_pInt
+      iD(s,c,i) = l
+    enddo
+  enddo
+  if (iD(ns,2,i) /= constitutive_nonlocal_sizeState(i)) &  ! check if last index is equal to size of state
     call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
   
 
@@ -1133,18 +1110,7 @@ do myInstance = 1_pInt,maxNinstance
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
         t = nint(rnd(4)*4.0_pReal+0.5_pReal,pInt)
         meanDensity = meanDensity + densityBinning * mesh_ipVolume(ip,el) / totalVolume
-        if (t==1_pInt) then
-          idx = iRhoEPU(s,myInstance)
-        elseif (t==2_pInt) then
-          idx = iRhoENU(s,myInstance)
-        elseif (t==3_pInt) then
-          idx = iRhoSPU(s,myInstance)
-        elseif (t==4_pInt) then
-          idx = iRhoSNU(s,myInstance)
-        else
-          call IO_error(-1,ext_msg='state init failed ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
-        endif
-        state(1,ip,el)%p(idx) = state(1,ip,el)%p(idx) + densityBinning
+        state(1,ip,el)%p(iRhoU(s,t,myInstance)) = state(1,ip,el)%p(iRhoU(s,t,myInstance)) + densityBinning
       endif
     enddo
 
@@ -1161,13 +1127,13 @@ do myInstance = 1_pInt,maxNinstance
               do j = 1_pInt,2_pInt
                 noise(j) = math_sampleGaussVar(0.0_pReal, rhoSglScatter(myInstance))
               enddo
-              state(1,i,e)%p(iRhoEPU(s,myInstance)) = rhoSglEdgePos0(f, myInstance) + noise(1)
-              state(1,i,e)%p(iRhoENU(s,myInstance)) = rhoSglEdgeNeg0(f, myInstance) + noise(1)
-              state(1,i,e)%p(iRhoSPU(s,myInstance)) = rhoSglScrewPos0(f, myInstance) + noise(2)
-              state(1,i,e)%p(iRhoSNU(s,myInstance)) = rhoSglScrewNeg0(f, myInstance) + noise(2)
+              state(1,i,e)%p(iRhoU(s,1,myInstance)) = rhoSglEdgePos0(f, myInstance) + noise(1)
+              state(1,i,e)%p(iRhoU(s,2,myInstance)) = rhoSglEdgeNeg0(f, myInstance) + noise(1)
+              state(1,i,e)%p(iRhoU(s,3,myInstance)) = rhoSglScrewPos0(f, myInstance) + noise(2)
+              state(1,i,e)%p(iRhoU(s,4,myInstance)) = rhoSglScrewNeg0(f, myInstance) + noise(2)
             enddo 
-            state(1,i,e)%p(iRhoED(from:upto,myInstance)) = rhoDipEdge0(f, myInstance)
-            state(1,i,e)%p(iRhoSD(from:upto,myInstance)) = rhoDipScrew0(f, myInstance)
+            state(1,i,e)%p(iRhoD(from:upto,1,myInstance)) = rhoDipEdge0(f, myInstance)
+            state(1,i,e)%p(iRhoD(from:upto,2,myInstance)) = rhoDipScrew0(f, myInstance)
           enddo
         endif
       enddo
@@ -1194,20 +1160,16 @@ real(pReal), dimension(constitutive_nonlocal_sizeState(myInstance)) :: &
                               constitutive_nonlocal_aTolState ! absolute state tolerance for the current instance of this plasticity
 
 !*** local variables
-integer(pInt)             :: ns
+integer(pInt)             :: ns, t, c
 
 ns = totalNslip(myInstance)
 constitutive_nonlocal_aTolState = 0.0_pReal
-constitutive_nonlocal_aTolState(iRhoEPU(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoENU(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoSPU(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoSNU(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoEPB(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoENB(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoSPB(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoSNB(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoED(1:ns,myInstance)) = aTolRho(myInstance)
-constitutive_nonlocal_aTolState(iRhoSD(1:ns,myInstance)) = aTolRho(myInstance)
+forall (t = 1_pInt:4_pInt)
+  constitutive_nonlocal_aTolState(iRhoU(1:ns,t,myInstance)) = aTolRho(myInstance)
+  constitutive_nonlocal_aTolState(iRhoB(1:ns,t,myInstance)) = aTolRho(myInstance)
+endforall
+forall (c = 1_pInt:2_pInt) &
+  constitutive_nonlocal_aTolState(iRhoD(1:ns,c,myInstance)) = aTolRho(myInstance)
 constitutive_nonlocal_aTolState(iGamma(1:ns,myInstance)) = aTolShear(myInstance)
 
 endfunction
@@ -1375,20 +1337,12 @@ ns = totalNslip(instance)
 
 !*** get basic states
 
-forall (s = 1_pInt:ns)
-  rhoSgl(s,1) = max(state(gr,ip,el)%p(iRhoEPU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,2) = max(state(gr,ip,el)%p(iRhoENU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,3) = max(state(gr,ip,el)%p(iRhoSPU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,4) = max(state(gr,ip,el)%p(iRhoSNU(s,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
+  rhoSgl(s,t) = max(state(gr,ip,el)%p(iRhoU(s,t,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,t+4_pInt) = state(gr,ip,el)%p(iRhoB(s,t,instance))
 endforall
-rhoSgl(1:ns,5) = state(gr,ip,el)%p(iRhoEPB(1:ns,instance))
-rhoSgl(1:ns,6) = state(gr,ip,el)%p(iRhoENB(1:ns,instance))
-rhoSgl(1:ns,7) = state(gr,ip,el)%p(iRhoSPB(1:ns,instance))
-rhoSgl(1:ns,8) = state(gr,ip,el)%p(iRhoSNB(1:ns,instance))
-forall (s = 1_pInt:ns)
-  rhoDip(s,1) = max(state(gr,ip,el)%p(iRhoED(s,instance)), 0.0_pReal)                               ! ensure positive dipole densities
-  rhoDip(s,2) = max(state(gr,ip,el)%p(iRhoSD(s,instance)), 0.0_pReal)                               ! ensure positive dipole densities
-endforall
+forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
+  rhoDip(s,c) = max(state(gr,ip,el)%p(iRhoD(s,c,instance)), 0.0_pReal)                              ! ensure positive dipole densities
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance) &
   .or. abs(rhoSgl) < significantRho(instance)) &
   rhoSgl = 0.0_pReal
@@ -1466,25 +1420,16 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
           .and. neighboring_instance == instance) then
         if (neighboring_ns == ns) then
           nRealNeighbors = nRealNeighbors + 1_pInt
-          forall (s = 1_pInt:ns)
-            neighboring_rhoExcess(1,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoEPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
-              - max(state(gr,neighboring_ip,neighboring_el)%p(iRhoENU(s,neighboring_instance)), 0.0_pReal)  ! negative mobiles
-            neighboring_rhoExcess(2,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
-              - max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSNU(s,neighboring_instance)), 0.0_pReal)  ! negative mobiles
-            neighboring_rhoTotal(1,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoEPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
-              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoENU(s,neighboring_instance)), 0.0_pReal) &! negative mobiles
-              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoEPB(s,neighboring_instance))) &           ! positive deads
-              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoENB(s,neighboring_instance))) &           ! negative deads
-              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoED(s,neighboring_instance)), 0.0_pReal)   ! dipoles
-            neighboring_rhoTotal(2,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSPU(s,neighboring_instance)), 0.0_pReal) &! positive mobiles
-              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSNU(s,neighboring_instance)), 0.0_pReal) &! negative mobiles
-              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoSPB(s,neighboring_instance))) &           ! positive deads
-              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoSNB(s,neighboring_instance))) &           ! negative deads
-              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoSD(s,neighboring_instance)), 0.0_pReal)   ! dipoles
+          forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
+            neighboring_rhoExcess(c,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,c,neighboring_instance)), 0.0_pReal) &! positive mobiles
+              - max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,c,neighboring_instance)), 0.0_pReal)  ! negative mobiles
+            neighboring_rhoTotal(c,s,n) = &
+                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,c,neighboring_instance)), 0.0_pReal) &! positive mobiles
+              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,c,neighboring_instance)), 0.0_pReal) &! negative mobiles
+              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoB(s,c,neighboring_instance))) &           ! positive deads
+              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoB(s,c,neighboring_instance))) &           ! negative deads
+              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoD(s,c,neighboring_instance)), 0.0_pReal)   ! dipoles
           endforall
           connection_latticeConf(1:3,n) = &
             math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighboring_ip,neighboring_el) &
@@ -1844,16 +1789,10 @@ ns = totalNslip(myInstance)
 !*** shortcut to state variables 
 
 
-forall (s = 1_pInt:ns)
-  rhoSgl(s,1) = max(state%p(iRhoEPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,2) = max(state%p(iRhoENU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,3) = max(state%p(iRhoSPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,4) = max(state%p(iRhoSNU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
+  rhoSgl(s,t) = max(state%p(iRhoU(s,t,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,t+4_pInt) = state%p(iRhoB(s,t,myInstance))
 endforall
-rhoSgl(1:ns,5) = state%p(iRhoEPB(1:ns,myInstance))
-rhoSgl(1:ns,6) = state%p(iRhoENB(1:ns,myInstance))
-rhoSgl(1:ns,7) = state%p(iRhoSPB(1:ns,myInstance))
-rhoSgl(1:ns,8) = state%p(iRhoSNB(1:ns,myInstance))
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstance) &
   .or. abs(rhoSgl) < significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
@@ -1892,21 +1831,15 @@ if (myStructure == 1_pInt .and. NnonSchmid(myStructure) == 0_pInt) then         
   do t = 1_pInt,4_pInt
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
+    state%p(iV(1:ns,t,myInstance)) = v(1:ns,1)
   enddo
-  state%p(iVEP(1:ns,myInstance)) = v(1:ns,1)
-  state%p(iVEN(1:ns,myInstance)) = v(1:ns,1)
-  state%p(iVSP(1:ns,myInstance)) = v(1:ns,1)
-  state%p(iVSN(1:ns,myInstance)) = v(1:ns,1)
 else                                                                                               ! for all other lattice structures the velocities may vary with character and sign
   do t = 1_pInt,4_pInt
     c = (t-1_pInt)/2_pInt+1_pInt
     call constitutive_nonlocal_kinetics(v(1:ns,t), tau(1:ns,t), c, Temperature, state, &
                                         g, ip, el, dv_dtau(1:ns,t))
+    state%p(iV(1:ns,t,myInstance)) = v(1:ns,t)
   enddo
-  state%p(iVEP(1:ns,myInstance)) = v(1:ns,1)
-  state%p(iVEN(1:ns,myInstance)) = v(1:ns,2)
-  state%p(iVSP(1:ns,myInstance)) = v(1:ns,3)
-  state%p(iVSN(1:ns,myInstance)) = v(1:ns,4)
 endif
 
 
@@ -2045,20 +1978,17 @@ ns = totalNslip(myInstance)
 !*** shortcut to state variables 
 
 
-forall (s = 1_pInt:ns)
-  rhoSgl(s,1) = max(state(g,ip,el)%p(iRhoEPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,2) = max(state(g,ip,el)%p(iRhoENU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,3) = max(state(g,ip,el)%p(iRhoSPU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,4) = max(state(g,ip,el)%p(iRhoSNU(s,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
+  rhoSgl(s,t) = max(state(g,ip,el)%p(iRhoU(s,t,myInstance)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,t+4_pInt) = state(g,ip,el)%p(iRhoB(s,t,myInstance))
+  v(s,t) = state(g,ip,el)%p(iV(s,t,myInstance))
 endforall
-rhoSgl(1:ns,5) = state(g,ip,el)%p(iRhoEPB(1:ns,myInstance))
-rhoSgl(1:ns,6) = state(g,ip,el)%p(iRhoENB(1:ns,myInstance))
-rhoSgl(1:ns,7) = state(g,ip,el)%p(iRhoSPB(1:ns,myInstance))
-rhoSgl(1:ns,8) = state(g,ip,el)%p(iRhoSNB(1:ns,myInstance))
-forall (s = 1_pInt:ns)
-  rhoDip(s,1) = max(state(g,ip,el)%p(iRhoED(s,myInstance)), 0.0_pReal)                               ! ensure positive dipole densities
-  rhoDip(s,2) = max(state(g,ip,el)%p(iRhoSD(s,myInstance)), 0.0_pReal)                               ! ensure positive dipole densities
+forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
+  rhoDip(s,c) = max(state(g,ip,el)%p(iRhoD(s,c,myInstance)), 0.0_pReal)                               ! ensure positive dipole densities
+  dUpperOld(s,c) = state(g,ip,el)%p(iD(s,c,myInstance))
 endforall
+tauBack = state(g,ip,el)%p(iTauB(1:ns,myInstance))
+
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstance) &
   .or. abs(rhoSgl) < significantRho(myInstance)) &
   rhoSgl = 0.0_pReal
@@ -2066,13 +1996,6 @@ where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstan
   .or. abs(rhoDip) < significantRho(myInstance)) &
   rhoDip = 0.0_pReal
 
-tauBack = state(g,ip,el)%p(iTauB(1:ns,myInstance))
-v(1:ns,1) = state(g,ip,el)%p(iVEP(1:ns,myInstance))
-v(1:ns,2) = state(g,ip,el)%p(iVEN(1:ns,myInstance))
-v(1:ns,3) = state(g,ip,el)%p(iVSP(1:ns,myInstance))
-v(1:ns,4) = state(g,ip,el)%p(iVSN(1:ns,myInstance))
-dUpperOld(1:ns,1) = state(g,ip,el)%p(iDE(1:ns,myInstance))
-dUpperOld(1:ns,2) = state(g,ip,el)%p(iDS(1:ns,myInstance))
 
 
 
@@ -2128,8 +2051,8 @@ forall (t=1_pInt:4_pInt) &
 
 !*** store new maximum dipole height in state
 
-state(g,ip,el)%p(iDE(1:ns,myInstance)) = dUpper(1:ns,1) 
-state(g,ip,el)%p(iDS(1:ns,myInstance)) = dUpper(1:ns,2) 
+forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
+  state(g,ip,el)%p(iD(s,c,myInstance)) = dUpper(s,c) 
 
 
 
