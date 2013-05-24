@@ -1044,7 +1044,6 @@ integer(pInt)                 el, &
                               ip, &
                               e, &
                               i, &
-                              g, &
                               idx, &
                               ns, &                           ! short notation for total number of active slip systems 
                               f, &                            ! index of lattice family
@@ -1070,9 +1069,8 @@ maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
 
 do e = 1_pInt,mesh_NcpElems
   do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-    do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))
-      state(g,i,e)%p = 0.0_pReal
-    enddo
+    if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,i,e))) &
+      state(1,i,e)%p = 0.0_pReal
   enddo
 enddo
 

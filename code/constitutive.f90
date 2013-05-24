@@ -134,7 +134,8 @@ subroutine constitutive_init
   myNgrains
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
- logical :: knownPlasticity
+ logical :: knownPlasticity, nonlocalConstitutionPresent
+ nonlocalConstitutionPresent = .false.
  
  
 !--------------------------------------------------------------------------------------------------
@@ -378,6 +379,7 @@ subroutine constitutive_init
            constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(myInstance)
            
          case (constitutive_nonlocal_label)
+           nonlocalConstitutionPresent = .true.
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(myInstance)))
@@ -412,7 +414,8 @@ subroutine constitutive_init
      enddo
    enddo
  enddo
- call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
+ if (nonlocalConstitutionPresent) &
+   call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
