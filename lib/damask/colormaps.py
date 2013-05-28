@@ -317,8 +317,8 @@ class Colormap():
     if right.__class__.__name__ != 'Color':
       right = Color()
     
-    self.left  = left.expressAs('MSH')
-    self.right = right.expressAs('MSH')
+    self.left  = left
+    self.right = right
   
   
   # ------------------------------------------------------------------
@@ -333,8 +333,8 @@ class Colormap():
   def usePredefined(self,name='bluered'):
     if name.lower() not in self.__predefined__:
       raise KeyError('colormap "%s" is not defined, use one of "%s"'%(name,'" "'.join(self.__predefined__.keys())))
-    self.left = self.__predefined__[name.lower()][0].expressAs('MSH')
-    self.right= self.__predefined__[name.lower()][1].expressAs('MSH')
+    self.left = self.__predefined__[name.lower()][0]
+    self.right= self.__predefined__[name.lower()][1]
     return self
 
   
@@ -343,7 +343,8 @@ class Colormap():
                   format = 'paraview',\
                   steps = 10,\
                   crop = [-1.0,1.0],
-                  model = 'RGB'):
+                  model = 'RGB', 
+                  interpolate = 'perceptualuniform'):
     ''' 
     [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
     arguments: name, format, steps, crop.
@@ -385,6 +386,12 @@ class Colormap():
       Msh = (1.0-frac)*Msh1 + frac*Msh2
       return Color('MSH',Msh).convertTo(model)
 
+    def linearInterpolate(lo,hi,frac,model='RGB'):
+      color1 = numpy.array(lo.color[:])
+      color2 = numpy.array(hi.expressAs(lo.model).color[:])
+      color = (1.0 - frac) * color1 + frac * color2
+      return Color(lo.model,color).convertTo(model)
+
     def write_paraview(RGB_vector):
       colormap ='<ColorMap name="'+str(name)+'" space="RGB">\n'
       for i in range(len(RGB_vector)):
@@ -410,7 +417,12 @@ class Colormap():
     totalSteps = int(2.0*steps/(crop[1] - crop[0]))
 
     for i in range(totalSteps):
-      color = interpolate_Msh(self.left.color,self.right.color,float(i)/(totalSteps-1),model)
+      if interpolate == 'perceptualuniform':
+        color = interpolate_Msh(self.left.expressAs('MSH').color,self.right.expressAs('MSH').color,float(i)/(totalSteps-1),model)
+      elif interpolate == 'linear':
+        color = linearInterpolate(self.left,self.right,float(i)/(totalSteps-1),model)
+      else:
+        raise NameError('unknown interpolation method')
       colors.append(color.color)
 
     leftIndex  = int(round((crop[0]-(-1.0))/(2.0/(totalSteps-1))))
