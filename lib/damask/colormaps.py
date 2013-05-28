@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+
+### --- COLOR CLASS --------------------------------------------------
+
 class Color():
   '''
     Conversion of colors between different color-spaces. Colors should be given in the form 
@@ -12,7 +15,9 @@ class Color():
                'model',
                'color',
               ]
-# ------------------------------------------------------------------
+
+  
+  # ------------------------------------------------------------------
   def __init__(self,
                model = 'RGB',
                color = numpy.zeros(3,'d')):
@@ -39,13 +44,19 @@ class Color():
 
     self.model = model
     self.color = numpy.array(color,'d')
-# ------------------------------------------------------------------
+  
+  
+  # ------------------------------------------------------------------
   def __repr__(self):
     return 'Model: %s Color: %s'%(self.model,str(self.color))    
-# ------------------------------------------------------------------
+  
+  
+  # ------------------------------------------------------------------
   def __str__(self):
     return self.__repr__()
-# ------------------------------------------------------------------
+  
+  
+  # ------------------------------------------------------------------
   def to(self,toModel = 'RGB'):
     toModel = toModel.upper()
     if toModel not in self.__transforms__.keys(): return 
@@ -61,10 +72,14 @@ class Color():
       self.__transforms__[self.model]['prev']()
       sourcePos -= 1
     return self
-# ------------------------------------------------------------------
+  
+  
+  # ------------------------------------------------------------------
   def asModel(self,toModel = 'RGB'):
     return self.__class__(self.model,self.color).to(toModel)    
-# ------------------------------------------------------------------   
+  
+  
+  # ------------------------------------------------------------------   
   # convert H(ue) S(aturation) L(uminance) to R(red) G(reen) B(lue) 
   # with S,L,H,R,G,B running from 0 to 1
   # from http://en.wikipedia.org/wiki/HSL_and_HSV
@@ -87,7 +102,9 @@ class Color():
                                    ][int(sextant)],'d'))
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------
+  
+  
+  # ------------------------------------------------------------------
   # convert R(ed) G(reen) B(lue) to H(ue) S(aturation) L(uminance)
   # with S,L,H,R,G,B running from 0 to 1
   # from http://130.113.54.154/~monger/hsl-rgb.html  
@@ -123,7 +140,9 @@ class Color():
     converted = Color('HSL', HSL) 
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------
+  
+  
+  # ------------------------------------------------------------------
   # convert R(ed) G(reen) B(lue) to CIE XYZ
   # with all values in the range of 0 to 1
   # from http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -148,7 +167,9 @@ class Color():
     converted = Color('XYZ', XYZ) 
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------
+
+  
+  # ------------------------------------------------------------------
   # convert  CIE XYZ to R(ed) G(reen) B(lue)
   # with all values in the range of 0 to 1
   # from http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -175,7 +196,9 @@ class Color():
     converted = Color('RGB', RGB) 
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------
+
+  
+  # ------------------------------------------------------------------
   # convert  CIE Lab to CIE XYZ
   # with XYZ in the range of 0 to 1
   # from http://www.easyrgb.com/index.php?X=MATH&H=07#text7
@@ -197,7 +220,9 @@ class Color():
     converted = Color('XYZ', XYZ*ref_white) 
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------    
+
+  
+  # ------------------------------------------------------------------    
   # convert CIE XYZ to CIE Lab 
   # with XYZ in the range of 0 to 1
   # from http://en.wikipedia.org/wiki/Lab_color_space, http://www.cs.rit.edu/~ncs/color/t_convert.html
@@ -217,7 +242,9 @@ class Color():
                                               200.0 * (XYZ[1] - XYZ[2]) ]))
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------                                     
+
+  
+  # ------------------------------------------------------------------                                     
   # convert CIE Lab to Msh colorspace  
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
   def _CIELAB2MSH(self):
@@ -234,7 +261,9 @@ class Color():
     converted = Color('MSH', Msh)
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------
+
+  
+  # ------------------------------------------------------------------
   # convert Msh colorspace to CIE Lab 
   # s,h in radians
   # from http://www.cs.unm.edu/~kmorel/documents/ColorMaps/DivergingColorMapWorkshop.xls
@@ -250,7 +279,10 @@ class Color():
     converted = Color('CIELAB', Lab)
     self.model = converted.model
     self.color = converted.color
-# ------------------------------------------------------------------
+
+
+
+### --- COLORMAP CLASS -----------------------------------------------
 
 class Colormap():
   '''
@@ -261,7 +293,9 @@ class Colormap():
                'left',
                'right',
               ]  
-# ------------------------------------------------------------------
+ 
+  
+  # ------------------------------------------------------------------
   def __init__(self,
                left  = Color('RGB',[1,1,1]),
                right = Color('RGB',[0,0,0]),
@@ -274,7 +308,9 @@ class Colormap():
     
     self.left  = left.asModel('MSH')
     self.right = right.asModel('MSH')
-# ------------------------------------------------------------------  
+
+  
+  # ------------------------------------------------------------------  
   def export(self,name = 'uniformPerceptualColorMap',\
                   format = 'paraview',\
                   steps = 10,\
@@ -289,7 +325,7 @@ class Colormap():
       sequential map if one limiting color is either white or black,
       diverging map otherwise.
     '''
- # ------------------------------------------------------------------  
+    
     import copy,numpy,math
     
     def interpolate_Msh(lo,hi,frac,model='RGB'):
