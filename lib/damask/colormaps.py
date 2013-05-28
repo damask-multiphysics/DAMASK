@@ -292,17 +292,19 @@ class Colormap():
   __slots__ = [
                'left',
                'right',
+               'interpolate',
               ]  
   __predefined__ = {
-                     'gray':      [Color('HSL',[0,1,1]),          Color('HSL',[0,0,0.15])],
-                     'grey':      [Color('HSL',[0,1,1]),          Color('HSL',[0,0,0.15])],
-                     'red':       [Color('HSL',[0,1,0.14]),       Color('HSL',[0,0.35,0.91])],
-                     'green':     [Color('HSL',[0.33333,1,0.14]), Color('HSL',[0.33333,0.35,0.91])],
-                     'blue':      [Color('HSL',[0.66,1,0.14]),    Color('HSL',[0.66,0.35,0.91])],
-                     'seaweed':   [Color('HSL',[0.78,1.0,0.1]),   Color('HSL',[0.40000,0.1,0.9])],
-                     'bluebrown': [Color('HSL',[0.65,0.53,0.49]), Color('HSL',[0.11,0.75,0.38])],
-                     'redgreen':  [Color('HSL',[0.97,0.96,0.36]), Color('HSL',[0.33333,1.0,0.14])],
-                     'bluered':   [Color('HSL',[0.65,0.53,0.49]), Color('HSL',[0.97,0.96,0.36])],
+                     'gray':          {'left': Color('HSL',[0,1,1]),          'right': Color('HSL',[0,0,0.15]),          'interpolate': 'perceptualuniform'},
+                     'grey':          {'left': Color('HSL',[0,1,1]),          'right': Color('HSL',[0,0,0.15]),          'interpolate': 'perceptualuniform'},
+                     'red':           {'left': Color('HSL',[0,1,0.14]),       'right': Color('HSL',[0,0.35,0.91]),       'interpolate': 'perceptualuniform'},
+                     'green':         {'left': Color('HSL',[0.33333,1,0.14]), 'right': Color('HSL',[0.33333,0.35,0.91]), 'interpolate': 'perceptualuniform'},
+                     'blue':          {'left': Color('HSL',[0.66,1,0.14]),    'right': Color('HSL',[0.66,0.35,0.91]),    'interpolate': 'perceptualuniform'},
+                     'seaweed':       {'left': Color('HSL',[0.78,1.0,0.1]),   'right': Color('HSL',[0.40000,0.1,0.9]),   'interpolate': 'perceptualuniform'},
+                     'bluebrown':     {'left': Color('HSL',[0.65,0.53,0.49]), 'right': Color('HSL',[0.11,0.75,0.38]),    'interpolate': 'perceptualuniform'},
+                     'redgreen':      {'left': Color('HSL',[0.97,0.96,0.36]), 'right': Color('HSL',[0.33333,1.0,0.14]),  'interpolate': 'perceptualuniform'},
+                     'bluered':       {'left': Color('HSL',[0.65,0.53,0.49]), 'right': Color('HSL',[0.97,0.96,0.36]),    'interpolate': 'perceptualuniform'},
+                     'blueredrainbow':{'left': Color('HSL',[2.0/3.0,1,0.5]),  'right': Color('HSL',[0,1,0.5]),           'interpolate': 'linear'           },
                     }
  
   
@@ -310,6 +312,7 @@ class Colormap():
   def __init__(self,
                left  = Color('RGB',[1,1,1]),
                right = Color('RGB',[0,0,0]),
+               interpolate = 'perceptualuniform',
                ):
     
     if left.__class__.__name__ != 'Color':
@@ -319,6 +322,7 @@ class Colormap():
     
     self.left  = left
     self.right = right
+    self.interpolate = interpolate
   
   
   # ------------------------------------------------------------------
@@ -333,8 +337,9 @@ class Colormap():
   def usePredefined(self,name='bluered'):
     if name.lower() not in self.__predefined__:
       raise KeyError('colormap "%s" is not defined, use one of "%s"'%(name,'" "'.join(self.__predefined__.keys())))
-    self.left = self.__predefined__[name.lower()][0]
-    self.right= self.__predefined__[name.lower()][1]
+    self.left = self.__predefined__[name.lower()]['left']
+    self.right= self.__predefined__[name.lower()]['right']
+    self.interpolate = self.__predefined__[name.lower()]['interpolate']
     return self
 
   
@@ -343,8 +348,7 @@ class Colormap():
                   format = 'paraview',\
                   steps = 10,\
                   crop = [-1.0,1.0],
-                  model = 'RGB', 
-                  interpolate = 'perceptualuniform'):
+                  model = 'RGB'):
     ''' 
     [RGB] colormap for use in paraview or gmsh, or as raw string, or array.
     arguments: name, format, steps, crop.
@@ -417,9 +421,9 @@ class Colormap():
     totalSteps = int(2.0*steps/(crop[1] - crop[0]))
 
     for i in range(totalSteps):
-      if interpolate == 'perceptualuniform':
+      if self.interpolate == 'perceptualuniform':
         color = interpolate_Msh(self.left.expressAs('MSH').color,self.right.expressAs('MSH').color,float(i)/(totalSteps-1),model)
-      elif interpolate == 'linear':
+      elif self.interpolate == 'linear':
         color = linearInterpolate(self.left,self.right,float(i)/(totalSteps-1),model)
       else:
         raise NameError('unknown interpolation method')
