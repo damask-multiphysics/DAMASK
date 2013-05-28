@@ -1,28 +1,8 @@
 #!/usr/bin/env python 
 
-import sys, os, string
+import sys, string
 import damask
 from optparse import OptionParser
-
-
-# -----------------------------
-def readConfig(configFile,ownPath):
-  config = {}
-  configDir = os.path.split(os.path.realpath(ownPath))[0]
-  filename = os.path.join(configDir,configFile)
-  if os.path.isfile(filename):
-    file = open(filename)
-    for line in file.readlines():
-      if not line.startswith('#'):
-        item = line.split()
-        for name in item[0].split('|'):
-          config[name] = {}
-          config[name]['left']  = map(float,item[1].split(','))
-          config[name]['right'] = map(float,item[2].split(','))
-    file.close()
-
-  return config
-
 
 
 # -----------------------------
@@ -130,12 +110,12 @@ else:
   theMap = damask.Colormap(damask.Color('HSL',left),damask.Color('HSL',right))
 if options.inverse:
   theMap = theMap.invert()
-theColors = theMap.export(format='list',steps=options.colorcount)
 
-if options.palette or options.palettef:
-  for theColor in theColors:
-    print '\t'.join(map(lambda x: {True: str(        x),
-                                   False:str(int(255*x))}[options.palettef],theColor))
+if options.palettef:
+  print theMap.export(format='raw',steps=options.colorcount)
+elif options.palette:
+  for theColor in theMap.export(format='list',steps=options.colorcount):
+    print '\t'.join(map(lambda x: str(int(255*x)),theColor))
 else:  
 ### connect to mentat and change colorMap
   sys.path.append(damask.solver.Marc().libraryPath('../../'))
@@ -150,7 +130,7 @@ else:
     mentat = False
 
   outputLocals = {}
-  cmds = colorMap(theColors,options.baseIdx)
+  cmds = colorMap(theMap.export(format='list',steps=options.colorcount),options.baseIdx)
   if mentat:
     output(['*show_table']+cmds+['*show_model *redraw'],outputLocals,'Mentat')
     py_disconnect()
