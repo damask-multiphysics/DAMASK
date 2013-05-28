@@ -293,6 +293,17 @@ class Colormap():
                'left',
                'right',
               ]  
+  __predefined__ = {
+                     'gray':      [Color('HSL',[0,1,1]),          Color('HSL',[0,0,0.15])],
+                     'grey':      [Color('HSL',[0,1,1]),          Color('HSL',[0,0,0.15])],
+                     'red':       [Color('HSL',[0,1,0.14]),       Color('HSL',[0,0.35,0.91])],
+                     'green':     [Color('HSL',[0.33333,1,0.14]), Color('HSL',[0.33333,0.35,0.91])],
+                     'blue':      [Color('HSL',[0.66,1,0.14]),    Color('HSL',[0.66,0.35,0.91])],
+                     'seaweed':   [Color('HSL',[0.78,1.0,0.1]),   Color('HSL',[0.40000,0.1,0.9])],
+                     'bluebrown': [Color('HSL',[0.65,0.53,0.49]), Color('HSL',[0.11,0.75,0.38])],
+                     'redgreen':  [Color('HSL',[0.97,0.96,0.36]), Color('HSL',[0.33333,1.0,0.14])],
+                     'bluered':   [Color('HSL',[0.65,0.53,0.49]), Color('HSL',[0.97,0.96,0.36])],
+                    }
  
   
   # ------------------------------------------------------------------
@@ -320,21 +331,10 @@ class Colormap():
 
   # ------------------------------------------------------------------
   def usePredefined(self,name='bluered'):
-    mycolormaps = {
-                   'gray':      [Color('HSL',[0,1,1]),          Color('HSL',[0,0,0.15])],
-                   'grey':      [Color('HSL',[0,1,1]),          Color('HSL',[0,0,0.15])],
-                   'red':       [Color('HSL',[0,1,0.14]),       Color('HSL',[0,0.35,0.91])],
-                   'green':     [Color('HSL',[0.33333,1,0.14]), Color('HSL',[0.33333,0.35,0.91])],
-                   'blue':      [Color('HSL',[0.66,1,0.14]),    Color('HSL',[0.66,0.35,0.91])],
-                   'seaweed':   [Color('HSL',[0.78,1.0,0.1]),   Color('HSL',[0.40000,0.1,0.9])],
-                   'bluebrown': [Color('HSL',[0.65,0.53,0.49]), Color('HSL',[0.11,0.75,0.38])],
-                   'redgreen':  [Color('HSL',[0.97,0.96,0.36]), Color('HSL',[0.33333,1.0,0.14])],
-                   'bluered':   [Color('HSL',[0.65,0.53,0.49]), Color('HSL',[0.97,0.96,0.36])],
-                  }
-    if name.lower() not in mycolormaps:
-      raise KeyError('colormap "%s" is not defined, use one of "%s"'%(name,'" "'.join(mycolormaps.keys())))
-    self.left = mycolormaps[name.lower()][0].expressAs('MSH')
-    self.right= mycolormaps[name.lower()][1].expressAs('MSH')
+    if name.lower() not in self.__predefined__:
+      raise KeyError('colormap "%s" is not defined, use one of "%s"'%(name,'" "'.join(self.__predefined__.keys())))
+    self.left = self.__predefined__[name.lower()][0].expressAs('MSH')
+    self.right= self.__predefined__[name.lower()][1].expressAs('MSH')
     return self
 
   
