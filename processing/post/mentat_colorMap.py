@@ -102,9 +102,6 @@ parser.add_option("-b", "--baseindex", type = "int",\
 parser.add_option("-n", "--colorcount", type = "int",\
                   dest = "colorcount",\
                   help = "number of colors [%default]")
-parser.add_option("-c", "--config", type='string', \
-                  dest = "config",\
-                  help = "configuration file [%default]")
 parser.add_option("-v", "--verbose", action="store_true",\
                   dest = "verbose",\
                   help = "write Mentat command stream also to stdout [%default]")
@@ -112,28 +109,27 @@ parser.add_option("-v", "--verbose", action="store_true",\
 parser.set_defaults(port = 40007)
 parser.set_defaults(baseIdx = 32)
 parser.set_defaults(colorcount = 32)
-parser.set_defaults(config = 'colorMap.config')
 parser.set_defaults(inverse   = False)
 parser.set_defaults(palette   = False)
+parser.set_defaults(palettef  = False)
 parser.set_defaults(verbose   = False)
 
 msg = []
 
 (options, colors) = parser.parse_args()
 
-config = readConfig(options.config,sys.argv[0])
-
-if len(colors) > 0 and colors[0] in config:
-  left  = config[colors[0]][{True:'right',False:'left' }[options.inverse]]
-  right = config[colors[0]][{True:'left' ,False:'right'}[options.inverse]]
-elif len(colors) == 2:
-  left  = map(float, colors[{True:1,False:0}[options.inverse]].split(','))
-  right = map(float, colors[{True:0,False:1}[options.inverse]].split(','))
+if len(colors) > 0 and colors[0] in damask.Colormap.__predefined__:
+  theMap = damask.Colormap().usePredefined(colors[0])
 else:
-  left   = {True:[0.0,0.0,0.0],False:[0.0,0.0,1.0]}[options.inverse]
-  right  = {True:[0.0,0.0,1.0],False:[0.0,0.0,0.0]}[options.inverse]
-
-theMap = damask.Colormap(damask.Color('HSL',left),damask.Color('HSL',right))
+  if len(colors) == 2:
+    left  = map(float, colors[0].split(','))
+    right = map(float, colors[1].split(','))
+  else:
+    left   = [0.0,0.0,1.0]
+    right  = [0.0,0.0,0.0]
+  theMap = damask.Colormap(damask.Color('HSL',left),damask.Color('HSL',right))
+if options.inverse:
+  theMap = theMap.invert()
 theColors = theMap.export(format='list',steps=options.colorcount)
 
 if options.palette or options.palettef:
