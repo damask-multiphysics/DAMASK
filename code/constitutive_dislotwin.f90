@@ -29,7 +29,7 @@ use prec, only: pReal,pInt
 implicit none
 
 !* Lists of states and physical parameters
-character(len=*), parameter, public :: constitutive_dislotwin_label = 'dislotwin'
+character(len=*), parameter, public :: constitutive_dislotwin_LABEL = 'dislotwin'
 character(len=18), dimension(3), parameter:: constitutive_dislotwin_listBasicSlipStates = (/'rhoEdge     ', &
                                                                                             'rhoEdgeDip  ', &
                                                                                             'accshearslip'/)
@@ -164,10 +164,9 @@ integer(pInt) :: section, maxNinstance,mySize=0_pInt,myStructure,maxTotalNslip,m
 character(len=64) tag
 character(len=1024) :: line = ''                                                                   ! to start initialized
  
-write(6,*)
-write(6,*) '<<<+-  constitutive_',trim(constitutive_dislotwin_label),' init  -+>>>'
-write(6,*) '$Id$'
-write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_dislotwin_LABEL)//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
 maxNinstance = int(count(phase_plasticity == constitutive_dislotwin_label),pInt)

@@ -30,7 +30,7 @@ module constitutive_none
  
  implicit none
  private
- character (len=*), parameter, public :: constitutive_none_label = 'none'
+ character (len=*), parameter, public :: constitutive_none_LABEL = 'none'
  
  integer(pInt),   dimension(:), allocatable, public :: &
    constitutive_none_sizeDotState, &
@@ -88,14 +88,14 @@ subroutine constitutive_none_init(myFile)
  implicit none
  integer(pInt), intent(in) :: myFile
  
- integer(pInt), parameter :: maxNchunks = 7_pInt
- integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+ integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
+ integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) :: section = 0_pInt, maxNinstance, i
  character(len=64)   :: tag
  character(len=1024) :: line = ''                                                                   ! to start initialized
  
- write(6,'(/,a)')   '<<<+-  constitutive_',trim(constitutive_none_label),' init  -+>>>'
- write(6,'(a)')     '$Id$'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_none_LABEL)//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
@@ -132,7 +132,7 @@ subroutine constitutive_none_init(myFile)
    endif
    if (section > 0_pInt .and. phase_plasticity(section) == constitutive_none_label) then            ! one of my sections
      i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('plasticity','elasticity')

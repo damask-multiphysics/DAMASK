@@ -140,7 +140,6 @@ for i,feature in enumerate(features):
         feature_list.append(i)                                                                      # remember valid features
         break
 
-print feature_list
 #--- setup file handles ---------------------------------------------------------------------------  
 files = []
 if filenames == []:
@@ -150,7 +149,6 @@ if filenames == []:
                 'croak':sys.stderr,
                })
 else:
-  print [string.split(''.join((features[feature]['names'])),sep='(')[0] for feature in feature_list]
   for name in filenames:
     if os.path.exists(name):
       files.append({'name':name,

@@ -46,7 +46,7 @@ module constitutive_j2
  
  implicit none
  private
- character (len=*), parameter, public :: constitutive_j2_label = 'j2'
+ character (len=*), parameter, public :: constitutive_j2_LABEL = 'j2'
  
  integer(pInt),   dimension(:), allocatable, public :: &
    constitutive_j2_sizeDotState, &
@@ -134,10 +134,9 @@ subroutine constitutive_j2_init(myFile)
  character(len=64)   :: tag
  character(len=1024) :: line = ''                                                                   ! to start initialized
 
- write(6,*)
- write(6,*) '<<<+-  constitutive_',trim(constitutive_j2_label),' init  -+>>>'
- write(6,*) '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_j2_LABEL)//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
  maxNinstance = int(count(phase_plasticity == constitutive_j2_label),pInt)

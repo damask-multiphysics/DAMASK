@@ -52,7 +52,7 @@ module constitutive_titanmod
 implicit none
 !* Lists of states and physical parameters
 character(len=*), parameter, public :: &
-  constitutive_titanmod_label = 'titanmod'
+  constitutive_titanmod_LABEL = 'titanmod'
 character(len=18), dimension(3), parameter :: &
   constitutive_titanmod_listBasicSlipStates = ['rho_edge    ', &
                                                 'rho_screw   ', &
@@ -255,10 +255,9 @@ integer :: maxNinstance !no pInt
 character(len=64)   :: tag
 character(len=1024) :: line = ''                                                                   ! to start initialized
  
-write(6,*)
-write(6,*) '<<<+-  constitutive_',trim(constitutive_titanmod_label),' init  -+>>>'
-write(6,*) '$Id$'
-write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_titanmod_LABEL)//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
 maxNinstance = count(phase_plasticity == constitutive_titanmod_label)

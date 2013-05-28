@@ -30,7 +30,7 @@ module constitutive_phenopowerlaw
  implicit none
  private
  character (len=*), parameter, public :: &
-   constitutive_phenopowerlaw_label = 'phenopowerlaw'
+   constitutive_phenopowerlaw_LABEL = 'phenopowerlaw'
     
  integer(pInt), dimension(:), allocatable, public :: &
    constitutive_phenopowerlaw_sizeDotState, &
@@ -129,8 +129,8 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
  implicit none
  integer(pInt), intent(in) :: myFile
- integer(pInt), parameter :: maxNchunks = lattice_maxNinteraction + 1_pInt
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), parameter :: MAXNCHUNKS = lattice_maxNinteraction + 1_pInt
+ integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt), dimension(6) :: configNchunks
  integer(pInt) :: section, maxNinstance, i,j,k, f,o, &
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
@@ -139,10 +139,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  character(len=64)   :: tag
  character(len=1024) :: line = ''                                                                   ! to start initialized
  
- write(6,*)
- write(6,*) '<<<+-  constitutive_',trim(constitutive_phenopowerlaw_label),' init  -+>>>'
- write(6,*) '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_phenopowerlaw_LABEL)//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
  maxNinstance = int(count(phase_plasticity == constitutive_phenopowerlaw_label),pInt)
@@ -256,7 +255,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    endif
    if (section > 0_pInt .and. phase_plasticity(section) == constitutive_phenopowerlaw_label) then   ! one of my sections
      i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('plasticity','elasticity')
