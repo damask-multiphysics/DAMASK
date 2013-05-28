@@ -7,7 +7,7 @@ class Color():
   '''
     Conversion of colors between different color-spaces. Colors should be given in the form 
     Color('model',[vector]).To convert and copy color from one space to other, use the methods 
-    to('model') and asModel('model')spectively
+    convertTo('model') and expressAs('model')spectively
   '''
   import numpy
   
@@ -57,7 +57,7 @@ class Color():
   
   
   # ------------------------------------------------------------------
-  def to(self,toModel = 'RGB'):
+  def convertTo(self,toModel = 'RGB'):
     toModel = toModel.upper()
     if toModel not in self.__transforms__.keys(): return 
 
@@ -75,8 +75,8 @@ class Color():
   
   
   # ------------------------------------------------------------------
-  def asModel(self,toModel = 'RGB'):
-    return self.__class__(self.model,self.color).to(toModel)    
+  def expressAs(self,asModel = 'RGB'):
+    return self.__class__(self.model,self.color).convertTo(asModel)    
   
   
   # ------------------------------------------------------------------   
@@ -306,8 +306,8 @@ class Colormap():
     if right.__class__.__name__ != 'Color':
       right = Color()
     
-    self.left  = left.asModel('MSH')
-    self.right = right.asModel('MSH')
+    self.left  = left.expressAs('MSH')
+    self.right = right.expressAs('MSH')
 
   
   # ------------------------------------------------------------------  
@@ -355,7 +355,7 @@ class Colormap():
       if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
       elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
       Msh = (1.0-frac)*Msh1 + frac*Msh2
-      return Color('MSH',Msh).to(model)
+      return Color('MSH',Msh).convertTo(model)
 
     def write_paraview(RGB_vector):
       colormap ='<ColorMap name="'+str(name)+'" space="RGB">\n'
