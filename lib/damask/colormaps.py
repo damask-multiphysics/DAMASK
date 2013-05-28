@@ -308,7 +308,15 @@ class Colormap():
     
     self.left  = left.expressAs('MSH')
     self.right = right.expressAs('MSH')
-
+  
+  
+  # ------------------------------------------------------------------
+  def invert(self):
+    temp = self.left
+    self.left = self.right
+    self.right = temp
+    return self
+    
   
   # ------------------------------------------------------------------  
   def export(self,name = 'uniformPerceptualColorMap',\
