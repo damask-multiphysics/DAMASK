@@ -398,8 +398,7 @@ class Colormap():
             + '\n}'
     
     def write_raw(RGB_vector):
-      return 'ColorMap name = '+str(name)+'\n' \
-           + '\n'.join(['%s'%('\t'.join(map(lambda x:str(x),v))) for v in RGB_vector])
+      return '\n'.join(['%s'%('\t'.join(map(lambda x:str(x),v))) for v in RGB_vector])
     
     def write_GOM(RGB_vector):
       return '1 1 '+str(name)+' 9 '+str(name)+' 0 1 0 3 0 0 -1 9 \ 0 0 0 255 255 255 0 0 255 '\
