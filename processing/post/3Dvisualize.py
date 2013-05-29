@@ -5,7 +5,8 @@
 # As it reads in the data coming from "materialpoint_results", it can be adopted to the data
 # computed using the FEM solvers. Its capable to handle elements with one IP in a regular order
 
-import os,sys,threading,re,numpy,time,string,damask
+import os,sys,threading,re,numpy,time,string,fnmatch
+import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 # -----------------------------
@@ -131,7 +132,7 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
           string.replace('powered by $Id$','\n','\\n'),
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
-          'POINTS %i float'%N1,
+          'POINTS %i double'%N1,
           [[['\t'.join(map(str,mesh[:,i,j,k])) for i in range(res[0]+1)] for j in range(res[1]+1)] for k in range(res[2]+1)],
           'CELLS %i %i'%(N,N*9),
           ]
@@ -159,9 +160,9 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
   
   for type in data:
     plural = {True:'',False:'S'}[type.lower().endswith('s')]
-    for item in data[type]:
+    for item in data[type]['_order_']:
       cmds += [\
-               '%s %s float %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
+               '%s %s double %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
                {True:'LOOKUP_TABLE default',False:''}[info[type]['name'][:3]=='sca'],
                [[[sep.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
@@ -228,7 +229,7 @@ def gmsh_writeASCII_mesh(mesh,data,res,sep):
   
   for type in data:
     plural = {True:'',False:'S'}[type.lower().endswith('s')]
-    for item in data[type]:
+    for item in data[type]['_order_']:
       cmds += [\
                '%s %s float %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
                'LOOKUP_TABLE default',
@@ -395,6 +396,7 @@ for filename in args:
   headrow = int(m.group(1))
   headings = content[headrow].split()
   column = {}
+  matches = {}
   maxcol = 0
   
   for col,head in enumerate(headings):
@@ -406,14 +408,16 @@ for filename in args:
   if locol < 0:
     print 'missing coordinates..!'
     continue
-    
+
   column['tensor'] = {}
+  matches['tensor'] = {}
   for label in [options.defgrad] + options.tensor:
     column['tensor'][label] = -1
     for col,head in enumerate(headings):
       if head == label or head == '1_'+label:
         column['tensor'][label] = col
         maxcol = max(maxcol,col+9)
+        matches['tensor'][label]  = [label]
         break
       
   if not options.undeformed and column['tensor'][options.defgrad] < 0:
@@ -421,23 +425,29 @@ for filename in args:
     continue
 
   column['vector'] = {}
+  matches['tensor'] = {}
   for label in options.vector:
     column['vector'][label] = -1
     for col,head in enumerate(headings):
       if head == label or head == '1_'+label:
         column['vector'][label] = col
         maxcol = max(maxcol,col+3)
+        matches['vector'][label]  = [label]
         break
 
   for length,what in enumerate(['scalar','double','triple','quadruple']):
     column[what] = {}
-    for label in eval('options.'+what):
-      column[what][label] = -1
-      for col,head in enumerate(headings):
-        if head == label or head == '1_'+label:
-          column[what][label] = col
+    labels = eval("options.%s"%what)
+    matches[what] = {}
+    for col,head in enumerate(headings):
+      for needle in labels:
+        if fnmatch.fnmatch(head,needle):
+          column[what][head] = col
           maxcol = max(maxcol,col+1+length)
-          break
+          if needle not in matches[what]:
+            matches[what][needle]  = [head]
+          else:
+            matches[what][needle] += [head]
 
 
   values = numpy.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
@@ -530,11 +540,14 @@ for filename in args:
 
   for datatype in fields.keys():
     print '\n%s:'%datatype,
+    fields[datatype]['_order_'] = []
     for what in eval('options.'+datatype):
-      col = column[datatype][what]
-      if col != -1:
-        print what,
-        fields[datatype][what] = numpy.reshape(values[:,col:col+length[datatype]],[res[0],res[1],res[2]]+reshape[datatype])
+      for label in matches[datatype][what]:
+        col = column[datatype][label]
+        if col != -1:
+          print label,
+          fields[datatype][label] = numpy.reshape(values[:,col:col+length[datatype]],[res[0],res[1],res[2]]+reshape[datatype])
+          fields[datatype]['_order_'] += [label]
   print '\n'
 
   out = {}
