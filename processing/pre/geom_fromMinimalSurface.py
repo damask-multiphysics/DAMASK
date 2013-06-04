@@ -40,8 +40,8 @@ Generate a geometry file of a bicontinuous structure of given type.
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-t','--type', dest='type', type='string', \
-                  help='type of minimal surface (%s)'%(','.join(minimal_surfaces)))
+parser.add_option('-t','--type', dest='type', choices=minimal_surfaces, \
+                  help='type of minimal surface (%s) [primitive]' %(','.join(minimal_surfaces)))
 parser.add_option('-f','--threshold', dest='threshold', type='float', \
                   help='threshold value defining minimal surface [%default]')
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs=3, \
@@ -51,7 +51,7 @@ parser.add_option('-s', '--size', dest='size', type='float', nargs=3, \
 parser.add_option('-p', '--periods', dest='periods', type='int', \
                   help='number of repetitions of unit cell [%default]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \
-                  help='homogenization index to be used [%defaults]')
+                  help='homogenization index to be used [%default]')
 parser.add_option('--m', dest='microstructure', type='int', nargs = 2, \
                   help='two microstructure indices to be used %default')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \

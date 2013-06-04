@@ -47,6 +47,7 @@ bin_link = { \
                 'addMises.py',
                 'addNorm.py',
                 'addPK2.py',
+                'addSchmidfactors.py',
                 'addSpectralDecomposition.py',
                 'addStrainTensors.py',
                 'averageDown.py',

@@ -48,7 +48,8 @@ i.e. within the region close to a grain/phase boundary.
 parser.add_option('-v', '--vicinity', dest='vicinity', type='int', \
                   help='voxel distance checked for presence of other microstructure [%default]')
 parser.add_option('-m', '--microstructureoffset', dest='offset', type='int', \
-                  help='integer offset for tagged microstructure [autodetect]')
+                  help='offset (positive or negative) for tagged microstructure. '+
+                       '"0" selects maximum microstructure index [%default]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement')
 

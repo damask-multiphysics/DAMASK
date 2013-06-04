@@ -35,7 +35,7 @@ mappings = {
 
 
 parser = OptionParser(option_class=extendedOption, usage='%prog [options]', description = """
-Distribute given number of points randomly within the three-dimensional cube [0,0,0]--[1,1,1].
+Distribute given number of points randomly within the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
 Reports positions with random crystal orientations in seeds file format to STDOUT.
 """ + string.replace('$Id$','\n','\\n')
 )
@@ -55,7 +55,7 @@ parser.set_defaults(N = 20)
 
 Npoints = reduce(lambda x, y: x * y, options.grid)
 if 0 in options.grid: 
-    file['croak'].write('invalid grid a b c.\n')
+  file['croak'].write('invalid grid a b c.\n')
   sys.exit()
 if options.N > Npoints: 
   sys.stderr.write('Warning: more seeds than grid points at minimum resolution.\n')

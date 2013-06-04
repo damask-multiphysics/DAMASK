@@ -789,10 +789,10 @@ reconstructed boundary file
 )
 
 parser.add_option("-o", "--output", action='extend', dest='output', type='string', \
-        help="types of output [image,mentat,procedure,spectral]")
+        help="types of output [image, mentat, procedure, spectral]")
 parser.add_option("-p", "--port", type="int",\
         dest="port",\
-        help="Mentat connection port")
+        help="Mentat connection port [%default]")
 parser.add_option("-2", "--twodimensional", action="store_true",\
         dest="twoD",\
         help="twodimensional model [%default]")
@@ -804,16 +804,16 @@ parser.add_option("-e", "--strain", type="float",\
         help="final strain to reach in simulation [%default]")
 parser.add_option("--rate", type="float",\
         dest="strainrate",\
-        help="(engineering) strain rate to simulate")
+        help="(engineering) strain rate to simulate [%default]")
 parser.add_option("-N", "--increments", type="int",\
         dest="increments",\
-        help="number of increments to take")
+        help="number of increments to take [%default]")
 parser.add_option("-t", "--tolerance", type="float",\
         dest="tolerance",\
-        help="relative tolerance of pixel positions to be swept")
+        help="relative tolerance of pixel positions to be swept [%default]")
 parser.add_option("-m", "--mesh", choices=['dt_planar_trimesh','af_planar_trimesh','af_planar_quadmesh'],\
         dest="mesh",\
-        help="algorithm and element type for automeshing [%default]")
+        help="algorithm and element type for automeshing (dt_planar_trimesh, af_planar_trimesh, af_planar_quadmesh) [%default]")
 parser.add_option("-x", "--xmargin", type="float",\
         dest="xmargin",\
         help="margin in x in units of patch size [%default]")
@@ -828,22 +828,23 @@ parser.add_option("-z", "--extrusion", type="int",\
         help="number of repetitions in z-direction [%default]")
 parser.add_option("-i", "--imagesize", type="int",\
         dest="imgsize",\
-        help="size of PNG image")
+        help="size of PNG image [%default]")
 parser.add_option("-M", "--coordtransformation", type="float", nargs=4, \
         dest="M",\
-        help="2x2 transformation from rcb to Euler coords ( = M . [x_rcb,y_rcb])")
+        help="2x2 transformation from rcb to Euler coords [%default]")
 parser.add_option("--scatter", type="float",\
         dest="scatter",\
-        help="orientation scatter [%default]")
+        help="orientation scatter %default")
 
 parser.set_defaults(output = [])
 parser.set_defaults(size = 1.0)
+parser.set_defaults(port = 40007)
 parser.set_defaults(xmargin = 0.0)
 parser.set_defaults(ymargin = 0.0)
 parser.set_defaults(resolution = 64)
 parser.set_defaults(extrusion = 2)
 parser.set_defaults(imgsize = 512)
-parser.set_defaults(M = [0.0,1.0,1.0,0])  # M_11, M_12, M_21, M_22.  x,y in RCB is y,x of Eulers!!
+parser.set_defaults(M = [0.0,1.0,1.0,0.0])  # M_11, M_12, M_21, M_22.  x,y in RCB is y,x of Eulers!!
 parser.set_defaults(tolerance = 1.0e-3)
 parser.set_defaults(scatter = 0.0)
 parser.set_defaults(strain = 0.2)

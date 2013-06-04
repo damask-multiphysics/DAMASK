@@ -46,9 +46,9 @@ Changes the (three-dimensional) canvas of a spectral geometry description.
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
                   help='a,b,c grid of hexahedral box [unchanged]')
 parser.add_option('-o', '--offset', dest='offset', type='int', nargs = 3, \
-                  help='x,y,z offset from old to new origin of grid %default')
+                  help='a,b,c offset from old to new origin of grid %default')
 parser.add_option('-f', '--fill', dest='fill', type='int', \
-                  help='(background) canvas grain index [autodetect]')
+                  help='(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
 

@@ -40,7 +40,7 @@ Generate geometry description and material configuration by standard Voronoi tes
 )
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
-                  help='a,b,c grid of hexahedral box [from seed file]')
+                  help='a,b,c grid of hexahedral box [from seeds file]')
 parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, \
                   help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
 parser.add_option('--homogenization', dest='homogenization', type='int', \

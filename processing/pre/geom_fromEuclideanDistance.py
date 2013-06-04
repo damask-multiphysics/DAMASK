@@ -117,7 +117,7 @@ boundaries, triple lines, and quadruple points.
 
 parser.add_option('-t','--type',        dest='type', action='extend', type='string', \
                   help='feature type (%s)'%(', '.join(map(lambda x:', '.join(x['names']),features))))
-parser.add_option('-n','--neighborhood',  dest='neigborhood', action='store', type='string', \
+parser.add_option('-n','--neighborhood',  dest='neigborhood', choices=neighborhoods.keys(), \
                   help='type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
@@ -128,9 +128,6 @@ parser.set_defaults(twoD = False)
 
 (options,filenames) = parser.parse_args()
 
-options.neighborhood = options.neighborhood.lower()
-if options.neighborhood not in neighborhoods:
-  parser.error('unknown neighborhood %s!'%options.neighborhood)
   
 feature_list = []
 for i,feature in enumerate(features):
