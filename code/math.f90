@@ -31,7 +31,7 @@ module math
    pInt
 
  implicit none
- public                                                                                             ! because FFTW is included in math.f90
+ private                                                                                            ! because FFTW is included in math.f90
  real(pReal),    parameter, public :: PI = 3.14159265358979323846264338327950288419716939937510_pReal !< ratio of a circle's circumference to its diameter
  real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI                                        !< conversion from radian into degree
  real(pReal),    parameter, public :: INRAD = PI/180.0_pReal                                        !< conversion from degree into radian
@@ -196,10 +196,13 @@ real(pReal), dimension(4,36), parameter, private :: &
    math_RtoQ, &
    math_EulerToR, &
    math_EulerToQ, &
-   math_AxisAngleToR, &
-   math_AxisAngleToQ, &
+   math_EulerAxisAngleToR, &
+   math_axisAngleToR, &
+   math_EulerAxisAngleToQ, &
+   math_axisAngleToQ, &
    math_qToRodrig, &
    math_qToEuler, &
+   math_qToEulerAxisAngle, &
    math_qToAxisAngle, &
    math_qToR, &
    math_EulerMisorientation, &
@@ -261,7 +264,7 @@ subroutine math_init
  implicit none
  integer(pInt) :: i
  real(pReal), dimension(3,3) :: R,R2
- real(pReal), dimension(3) ::   Eulers
+ real(pReal), dimension(3) ::   Eulers,v
  real(pReal), dimension(4) ::   q,q2,axisangle,randTest
 ! the following variables are system dependend and shound NOT be pInt
  integer :: randSize                                                                                ! gfortran requires a variable length to compile
@@ -305,10 +308,11 @@ subroutine math_init
 
  ! --- check rotation dictionary ---
 
+ q = math_qRand()          ! random quaternion
+ 
  ! +++ q -> a -> q  +++
- q = math_qRand();
- axisangle = math_qToAxisAngle(q);
- q2 = math_AxisAngleToQ(axisangle(1:3),axisangle(4))
+ axisangle = math_qToAxisAngle(q)
+ q2 = math_axisAngleToQ(axisangle(1:3),axisangle(4))
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
@@ -316,8 +320,8 @@ subroutine math_init
  endif
 
  ! +++ q -> R -> q  +++
- R = math_qToR(q);
- q2 = math_RToQ(R)
+ R = math_qToR(q)
+ q2 = math_RtoQ(R)
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) 'maximum deviation ',min(maxval(abs( q-q2)),maxval(abs(-q-q2)))
@@ -325,7 +329,7 @@ subroutine math_init
  endif
 
  ! +++ q -> euler -> q  +++
- Eulers = math_qToEuler(q);
+ Eulers = math_qToEuler(q)
  q2 = math_EulerToQ(Eulers)
  if ( any(abs( q-q2) > tol_math_check) .and. &
       any(abs(-q-q2) > tol_math_check) ) then
@@ -334,11 +338,21 @@ subroutine math_init
  endif
 
  ! +++ R -> euler -> R  +++
- Eulers = math_RToEuler(R);
+ Eulers = math_RtoEuler(R)
  R2 = math_EulerToR(Eulers)
  if ( any(abs( R-R2) > tol_math_check) ) then
    write (error_msg, '(a,e14.6)' ) 'maximum deviation ',maxval(abs( R-R2))
    call IO_error(404_pInt,ext_msg=error_msg)
+ endif
+
+ ! +++ check rotation sense of q and R +++
+
+ q = math_qRand()          ! random quaternion
+ call halton(3_pInt,v)     ! random vector
+ R = math_qToR(q)
+ if (any(abs(math_mul33x3(R,v) - math_qRot(q,v)) > tol_math_check)) then
+   write(6,'(a,4(f8.3,x))') 'q',q
+   call IO_error(409_pInt)
  endif
 
 end subroutine math_init
@@ -1365,8 +1379,14 @@ pure function math_qRot(Q,v)
  math_qRot = 2.0_pReal * math_qRot + v
 
 end function math_qRot
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Euler angles (in radians) from rotation matrix
+!> @details rotation matrix is meant to represent a PASSIVE rotation, 
+!> composed of INTRINSIC rotations around the axes of the 
+!> rotating reference frame 
+!> (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
 !--------------------------------------------------------------------------------------------------
 pure function math_RtoEuler(R)
 
@@ -1418,56 +1438,55 @@ end function math_RtoEuler
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief quaternion (w+ix+jy+kz) from orientation matrix
-!> @details math adopted from 
-!> @details http://code.google.com/p/mtex/source/browse/trunk/geometry/geometry_tools/mat2quat.m
+!> @brief converts a rotation matrix into a quaternion (w+ix+jy+kz)
+!> @details math adopted from http://arxiv.org/pdf/math/0701759v1.pdf
 !--------------------------------------------------------------------------------------------------
 pure function math_RtoQ(R)
 
  implicit none
 
- real(pReal), dimension (3,3), intent(in) :: R
+ real(pReal), dimension(3,3), intent(in) :: R
  real(pReal), dimension(4)   :: absQ, math_RtoQ
  real(pReal) :: max_absQ
  integer, dimension(1) :: largest !no pInt, maxloc returns integer default
 
- absQ(1) = 1.0_pReal+R(1,1)+R(2,2)+R(3,3)
- absQ(2) = 1.0_pReal+R(1,1)-R(2,2)-R(3,3)
- absQ(3) = 1.0_pReal-R(1,1)+R(2,2)-R(3,3)
- absQ(4) = 1.0_pReal-R(1,1)-R(2,2)+R(3,3)
  math_RtoQ = 0.0_pReal
+
+ absQ(1) = 1.0_pReal + R(1,1) + R(2,2) + R(3,3)
+ absQ(2) = 1.0_pReal + R(1,1) - R(2,2) - R(3,3)
+ absQ(3) = 1.0_pReal - R(1,1) + R(2,2) - R(3,3)
+ absQ(4) = 1.0_pReal - R(1,1) - R(2,2) + R(3,3)
 
  largest = maxloc(absQ)
 
- max_absQ=0.5_pReal * sqrt(absQ(largest(1)))
-
  select case(largest(1))
-   case (1_pInt)
+   case (1)
       !1----------------------------------
-      math_RtoQ(2) = R(2,3)-R(3,2)
-      math_RtoQ(3) = R(3,1)-R(1,3)
-      math_RtoQ(4) = R(1,2)-R(2,1)
-
-   case (2_pInt)
-      math_RtoQ(1) = R(2,3)-R(3,2)
+      math_RtoQ(2) = R(3,2) - R(2,3)
+      math_RtoQ(3) = R(1,3) - R(3,1)
+      math_RtoQ(4) = R(2,1) - R(1,2)
+                                 
+   case (2)                 
+      math_RtoQ(1) = R(3,2) - R(2,3)
       !2----------------------------------
-      math_RtoQ(3) = R(1,2)+R(2,1)
-      math_RtoQ(4) = R(3,1)+R(1,3)
-
-   case (3_pInt)
-      math_RtoQ(1) = R(3,1)-R(1,3)
-      math_RtoQ(2) = R(1,2)+R(2,1)
+      math_RtoQ(3) = R(2,1) + R(1,2)
+      math_RtoQ(4) = R(1,3) + R(3,1)
+                                 
+   case (3)                 
+      math_RtoQ(1) = R(1,3) - R(3,1)
+      math_RtoQ(2) = R(2,1) + R(1,2)
       !3----------------------------------
-      math_RtoQ(4) = R(2,3)+R(3,2)
-
-   case (4_pInt)
-      math_RtoQ (1) = R(1,2)-R(2,1)
-      math_RtoQ (2) = R(3,1)+R(1,3)
-      math_RtoQ (3) = R(3,2)+R(2,3)
+      math_RtoQ(4) = R(3,2) + R(2,3)
+                                 
+   case (4)                 
+      math_RtoQ(1) = R(2,1) - R(1,2)
+      math_RtoQ(2) = R(1,3) + R(3,1)
+      math_RtoQ(3) = R(2,3) + R(3,2)
       !4----------------------------------
  end select
 
- math_RtoQ = math_RtoQ*0.25_pReal/max_absQ
+ max_absQ = 0.5_pReal * sqrt(absQ(largest(1)))
+ math_RtoQ = math_RtoQ * 0.25_pReal / max_absQ
  math_RtoQ(largest(1)) = max_absQ
 
 end function math_RtoQ
@@ -1475,6 +1494,10 @@ end function math_RtoQ
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from Euler angles (in radians)
+!> @details rotation matrix is meant to represent a PASSIVE rotation, 
+!> @details composed of INTRINSIC rotations around the axes of the 
+!> @details rotating reference frame 
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
 !--------------------------------------------------------------------------------------------------
 pure function math_EulerToR(Euler)
 
@@ -1492,20 +1515,26 @@ pure function math_EulerToR(Euler)
  S2 = sin(Euler(3))
 
  math_EulerToR(1,1)=C1*C2-S1*S2*C
- math_EulerToR(1,2)=S1*C2+C1*S2*C
- math_EulerToR(1,3)=S2*S
- math_EulerToR(2,1)=-C1*S2-S1*C2*C
+ math_EulerToR(1,2)=-C1*S2-S1*C2*C
+ math_EulerToR(1,3)=S1*S
+ math_EulerToR(2,1)=S1*C2+C1*S2*C
  math_EulerToR(2,2)=-S1*S2+C1*C2*C
- math_EulerToR(2,3)=C2*S
- math_EulerToR(3,1)=S1*S
- math_EulerToR(3,2)=-C1*S
+ math_EulerToR(2,3)=-C1*S
+ math_EulerToR(3,1)=S2*S
+ math_EulerToR(3,2)=C2*S
  math_EulerToR(3,3)=C
+ 
+ math_EulerToR = transpose(math_EulerToR)  ! convert to passive rotation
 
 end function math_EulerToR
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief quaternion (w+ix+jy+kz) from 3-1-3 Euler angles (in radians)
+!> @details quaternion is meant to represent a PASSIVE rotation, 
+!> @details composed of INTRINSIC rotations around the axes of the 
+!> @details rotating reference frame 
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
 !--------------------------------------------------------------------------------------------------
 pure function math_EulerToQ(eulerangles)
 
@@ -1525,17 +1554,21 @@ pure function math_EulerToQ(eulerangles)
  math_EulerToQ(2) = cos(halfangles(1)-halfangles(3)) * s
  math_EulerToQ(3) = sin(halfangles(1)-halfangles(3)) * s
  math_EulerToQ(4) = sin(halfangles(1)+halfangles(3)) * c
+ math_EulerToQ = math_qConj(math_EulerToQ)                 ! convert to passive rotation
 
 end function math_EulerToQ
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief rotation matrix from axis and angle (in radians)
+!> @details rotation matrix is meant to represent a ACTIVE rotation
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!> @details formula for active rotation taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
 !--------------------------------------------------------------------------------------------------
-pure function math_AxisAngleToR(axis,omega)
+pure function math_axisAngleToR(axis,omega)
 
  implicit none
- real(pReal), dimension(3,3) :: math_AxisAngleToR
+ real(pReal), dimension(3,3) :: math_axisAngleToR
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
  real(pReal), dimension(3) :: axisNrm
@@ -1549,35 +1582,71 @@ pure function math_AxisAngleToR(axis,omega)
    c = cos(omega)
    c1 = 1.0_pReal - c
 
-   ! formula for active rotation taken from http://mathworld.wolfram.com/RodriguesRotationFormula.html
-   ! below is transposed form to get passive rotation
-
-   math_AxisAngleToR(1,1) =  c + c1*axisNrm(1)**2.0_pReal
-   math_AxisAngleToR(2,1) = -s*axisNrm(3) + c1*axisNrm(1)*axisNrm(2)
-   math_AxisAngleToR(3,1) =  s*axisNrm(2) + c1*axisNrm(1)*axisNrm(3)
-
-   math_AxisAngleToR(1,2) =  s*axisNrm(3) + c1*axisNrm(2)*axisNrm(1)
-   math_AxisAngleToR(2,2) =  c + c1*axisNrm(2)**2.0_pReal
-   math_AxisAngleToR(3,2) = -s*axisNrm(1) + c1*axisNrm(2)*axisNrm(3)
-
-   math_AxisAngleToR(1,3) = -s*axisNrm(2) + c1*axisNrm(3)*axisNrm(1)
-   math_AxisAngleToR(2,3) =  s*axisNrm(1) + c1*axisNrm(3)*axisNrm(2)
-   math_AxisAngleToR(3,3) =  c + c1*axisNrm(3)**2.0_pReal
+   math_axisAngleToR(1,1) =  c + c1*axisNrm(1)**2.0_pReal
+   math_axisAngleToR(1,2) = -s*axisNrm(3) + c1*axisNrm(1)*axisNrm(2)
+   math_axisAngleToR(1,3) =  s*axisNrm(2) + c1*axisNrm(1)*axisNrm(3)
+                             
+   math_axisAngleToR(2,1) =  s*axisNrm(3) + c1*axisNrm(2)*axisNrm(1)
+   math_axisAngleToR(2,2) =  c + c1*axisNrm(2)**2.0_pReal
+   math_axisAngleToR(2,3) = -s*axisNrm(1) + c1*axisNrm(2)*axisNrm(3)
+                             
+   math_axisAngleToR(3,1) = -s*axisNrm(2) + c1*axisNrm(3)*axisNrm(1)
+   math_axisAngleToR(3,2) =  s*axisNrm(1) + c1*axisNrm(3)*axisNrm(2)
+   math_axisAngleToR(3,3) =  c + c1*axisNrm(3)**2.0_pReal
  else
-   math_AxisAngleToR = math_I3
+   math_axisAngleToR = math_I3
  endif
  
+end function math_axisAngleToR
 
-end function math_AxisAngleToR
+
+!--------------------------------------------------------------------------------------------------
+!> @brief rotation matrix from axis and angle (in radians)
+!> @details rotation matrix is meant to represent a PASSIVE rotation
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!--------------------------------------------------------------------------------------------------
+pure function math_EulerAxisAngleToR(axis,omega)
+
+ implicit none
+ real(pReal), dimension(3,3) :: math_EulerAxisAngleToR
+ real(pReal), dimension(3), intent(in) :: axis
+ real(pReal), intent(in) :: omega
+
+ math_EulerAxisAngleToR = transpose(math_axisAngleToR(axis,omega))  ! convert to passive rotation
+
+end function math_EulerAxisAngleToR
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief quaternion (w+ix+jy+kz) from Euler axis and angle (in radians)
+!> @details quaternion is meant to represent a PASSIVE rotation
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!> @details formula for active rotation taken from 
+!> @details http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
+!--------------------------------------------------------------------------------------------------
+pure function math_EulerAxisAngleToQ(axis,omega)
+
+ implicit none
+ real(pReal), dimension(4) :: math_EulerAxisAngleToQ
+ real(pReal), dimension(3), intent(in) :: axis
+ real(pReal), intent(in) :: omega
+
+ math_EulerAxisAngleToQ = math_qConj(math_axisAngleToQ(axis,omega))            ! convert to passive rotation
+
+end function math_EulerAxisAngleToQ
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief quaternion (w+ix+jy+kz) from axis and angle (in radians)
+!> @details quaternion is meant to represent an ACTIVE rotation
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!> @details formula for active rotation taken from 
+!> @details http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
 !--------------------------------------------------------------------------------------------------
-pure function math_AxisAngleToQ(axis,omega)
+pure function math_axisAngleToQ(axis,omega)
 
  implicit none
- real(pReal), dimension(4) :: math_AxisAngleToQ
+ real(pReal), dimension(4) :: math_axisAngleToQ
  real(pReal), dimension(3), intent(in) :: axis
  real(pReal), intent(in) :: omega
  real(pReal), dimension(3) :: axisNrm
@@ -1586,79 +1655,89 @@ pure function math_AxisAngleToQ(axis,omega)
  norm = sqrt(math_mul3x3(axis,axis))
  if (norm > 1.0e-8_pReal) then                       ! non-zero rotation
    axisNrm = axis/norm                               ! normalize axis to be sure
-   ! formula taken from http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
    s = sin(0.5_pReal*omega)
    c = cos(0.5_pReal*omega)
-   math_AxisAngleToQ(1) =   c
-   math_AxisAngleToQ(2:4) = s * axisNrm(1:3)
+   math_axisAngleToQ(1) = c
+   math_axisAngleToQ(2:4) = s * axisNrm(1:3)
  else
-   math_AxisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]   ! no rotation
+   math_axisAngleToQ = [1.0_pReal,0.0_pReal,0.0_pReal,0.0_pReal]   ! no rotation
  endif
 
-end function math_AxisAngleToQ
+end function math_axisAngleToQ
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief orientation matrix from quaternion (w+ix+jy+kz)
+!> @details taken from http://arxiv.org/pdf/math/0701759v1.pdf
+!> @dteails see also http://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions
 !--------------------------------------------------------------------------------------------------
-pure function math_qToR(Q)
+pure function math_qToR(q)
 
  implicit none
 
- real(pReal), dimension(4), intent(in) :: Q
+ real(pReal), dimension(4), intent(in) :: q
  real(pReal), dimension(3,3) :: math_qToR, T,S
  integer(pInt) :: i, j
 
  forall (i = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
-   T(i,j) = Q(i+1_pInt) * Q(j+1_pInt)
- S = reshape( (/0.0_pReal,     Q(4),    -Q(3), &
-                    -Q(4),0.0_pReal,    +Q(2), &
-                     Q(3),    -Q(2),0.0_pReal/),(/3,3/))  ! notation is transposed!
+   T(i,j) = q(i+1_pInt) * q(j+1_pInt)
+ S = reshape( [0.0_pReal,     -q(4),      q(3), &
+                    q(4), 0.0_pReal,     -q(2), &
+                   -q(3),      q(2), 0.0_pReal],[3,3])  ! notation is transposed!
 
- math_qToR = (2.0_pReal * Q(1)*Q(1) - 1.0_pReal) * math_I3 + &
-                      2.0_pReal * T - &
-                      2.0_pReal * Q(1) * S
+ math_qToR = (2.0_pReal * q(1)*q(1) - 1.0_pReal) * math_I3 &
+           + 2.0_pReal * T - 2.0_pReal * q(1) * S
 
 end function math_qToR
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief 3-1-3 Euler angles (in radians) from quaternion (w+ix+jy+kz)
+!> @details quaternion is meant to represent a PASSIVE rotation, 
+!> @details composed of INTRINSIC rotations around the axes of the 
+!> @details rotating reference frame 
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
 !--------------------------------------------------------------------------------------------------
-pure function math_qToEuler(Q)
+pure function math_qToEuler(qPassive)
 
  implicit none
 
- real(pReal), dimension(4), intent(in) :: Q
+ real(pReal), dimension(4), intent(in) :: qPassive
+ real(pReal), dimension(4) :: q
  real(pReal), dimension(3) :: math_qToEuler
  real(pReal) :: acos_arg
 
- math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(Q(2)*Q(2)+Q(3)*Q(3)))
+ q = math_qConj(qPassive)    ! convert to active rotation, since formulas are defined for active rotations
 
- if (abs(math_qToEuler(2)) < 1.0e-3_pReal) then
-   acos_arg=Q(1)
-   if(acos_arg > 1.0_pReal)acos_arg = 1.0_pReal
-   if(acos_arg < -1.0_pReal)acos_arg = -1.0_pReal
-   math_qToEuler(1) = 2.0_pReal*acos(acos_arg)
+ math_qToEuler(2) = acos(1.0_pReal-2.0_pReal*(q(2)*q(2)+q(3)*q(3)))
+
+ if (abs(math_qToEuler(2)) < 1.0e-6_pReal) then
+   acos_arg = q(1)
+   if(acos_arg > 1.0_pReal) acos_arg = 1.0_pReal
+   if(acos_arg < -1.0_pReal) acos_arg = -1.0_pReal
+   math_qToEuler(1) = sign(2.0_pReal * acos(acos_arg),q(4))
    math_qToEuler(3) = 0.0_pReal
  else
-   math_qToEuler(1) = atan2(Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)-Q(3)*Q(4))
-   if (math_qToEuler(1) < 0.0_pReal) &
-     math_qToEuler(1) = math_qToEuler(1) + 2.0_pReal * pi
-
-   math_qToEuler(3) = atan2(-Q(1)*Q(3)+Q(2)*Q(4), Q(1)*Q(2)+Q(3)*Q(4))
-   if (math_qToEuler(3) < 0.0_pReal) &
-     math_qToEuler(3) = math_qToEuler(3) + 2.0_pReal * pi
+   math_qToEuler(1) = atan2(q(1)*q(3)+q(2)*q(4), q(1)*q(2)-q(3)*q(4))
+   math_qToEuler(3) = atan2(-q(1)*q(3)+q(2)*q(4), q(1)*q(2)+q(3)*q(4))
  endif
 
+ if (math_qToEuler(1) < 0.0_pReal) &
+   math_qToEuler(1) = math_qToEuler(1) + 2.0_pReal * pi
  if (math_qToEuler(2) < 0.0_pReal) &
    math_qToEuler(2) = math_qToEuler(2) + pi
+ if (math_qToEuler(3) < 0.0_pReal) &
+   math_qToEuler(3) = math_qToEuler(3) + 2.0_pReal * pi
 
 end function math_qToEuler
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief axis-angle (x, y, z, ang in radians) from quaternion (w+ix+jy+kz)
+!> @details quaternion is meant to represent an ACTIVE rotation
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!> @details formula for active rotation taken from 
+!> @details http://en.wikipedia.org/wiki/Rotation_representation_%28mathematics%29#Rodrigues_parameters
 !--------------------------------------------------------------------------------------------------
 pure function math_qToAxisAngle(Q)
 
@@ -1679,6 +1758,25 @@ pure function math_qToAxisAngle(Q)
  endif
 
 end function math_qToAxisAngle
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Euler axis-angle (x, y, z, ang in radians) from quaternion (w+ix+jy+kz)
+!> @details quaternion is meant to represent a PASSIVE rotation
+!> @details (see http://en.wikipedia.org/wiki/Euler_angles for definitions)
+!--------------------------------------------------------------------------------------------------
+pure function math_qToEulerAxisAngle(qPassive)
+
+ implicit none
+
+ real(pReal), dimension(4), intent(in) :: qPassive
+ real(pReal), dimension(4) :: q
+ real(pReal), dimension(4) :: math_qToEulerAxisAngle
+
+ q = math_qConj(qPassive)                        ! convert to active rotation
+ math_qToEulerAxisAngle = math_qToAxisAngle(q)
+ 
+end function math_qToEulerAxisAngle
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1890,7 +1988,7 @@ function math_sampleFiberOri(alpha,beta,noise)
  if(angle /= 0.0_pReal) then
 !   rotation axis between sample and crystal system (cross product)
    forall(i=1_pInt:3_pInt) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
-   oRot = math_AxisAngleToR(math_vectorproduct(fiberInC,fiberInS),angle)
+   oRot = math_EulerAxisAngleToR(math_vectorproduct(fiberInC,fiberInS),angle)
  else
    oRot = math_I3
  end if
@@ -1898,7 +1996,7 @@ function math_sampleFiberOri(alpha,beta,noise)
 ! ---# rotation matrix about fiber axis (random angle) #---
  do
    call halton(6_pInt,rnd)
-   fRot = math_AxisAngleToR(fiberInS,rnd(1)*2.0_pReal*pi)
+   fRot = math_EulerAxisAngleToR(fiberInS,rnd(1)*2.0_pReal*pi)
 
 ! ---# rotation about random axis perpend to fiber #---
 ! random axis pependicular to fiber axis
@@ -1924,7 +2022,7 @@ function math_sampleFiberOri(alpha,beta,noise)
  enddo
  if (rnd(6) <= 0.5) angle = -angle
  
- pRot = math_AxisAngleToR(axis,angle)
+ pRot = math_EulerAxisAngleToR(axis,angle)
 
 ! ---# apply the three rotations #---
  math_sampleFiberOri = math_RtoEuler(math_mul33x33(pRot,math_mul33x33(fRot,oRot)))

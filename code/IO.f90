@@ -1504,6 +1504,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'Dimension in nearest neigbor search wrong'
  case (408_pInt)
    msg = 'Polar decomposition error'
+ case (409_pInt)
+   msg = 'math_check: R*v == q*v failed'
  case (450_pInt)
    msg = 'unknown symmetry type specified'
  case (460_pInt)
