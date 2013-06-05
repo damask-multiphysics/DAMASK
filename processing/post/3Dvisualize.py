@@ -463,9 +463,7 @@ for filename in args:
   res = numpy.array([len(grid[0]),\
                      len(grid[1]),\
                      len(grid[2]),],'i')
-  if (res[0]%2 != 0 or res[1]%2 != 0 or (res[2] != 1 and res[2]%2 !=0)):
-    print 'using linear reconstruction for uneven resolution'
-    options.linearreconstruction = True
+
   dim = numpy.ones(3)
 
   for i,r in enumerate(res):
@@ -505,12 +503,9 @@ for filename in args:
                tablenodalcoords.labels.index(options.labelnodalcoords[2])]
     i = 0
     while tablenodalcoords.data_read():                                                    # read next data line of ASCII table
-
-
       mesh[i,:]=float(tablenodalcoords.data[column[:]])
-
-
       i += 1
+
     mesh=mesh.reshape(res[0]+1,res[1]+1,res[2]+1,3)
 
   fields =  {\
