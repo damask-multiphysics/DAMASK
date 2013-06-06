@@ -8,6 +8,8 @@ bin_link = { \
                   ],
            }
 
+MarcReleases =[2010,2011,2012]
+
 damaskEnv = damask.Environment('../../')          # script location relative to root
 baseDir = damaskEnv.relPath('code/')
 
@@ -21,3 +23,12 @@ for dir in bin_link:
       if os.path.lexists(sym_link): os.remove(sym_link)
       os.symlink(src,sym_link)
       print sym_link,'-->',src
+
+
+for version in MarcReleases:
+  src = os.path.abspath(os.path.join(baseDir,'DAMASK_marc.f90'))
+  if os.path.exists(src): 
+    sym_link = os.path.abspath(os.path.join(baseDir,'DAMASK_marc'+str(version)+'.f90'))                    
+    if os.path.lexists(sym_link): os.remove(sym_link)
+    os.symlink(src,sym_link)
+    print sym_link,'-->',src

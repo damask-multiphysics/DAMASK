@@ -39,12 +39,12 @@ SHELL = /bin/sh
 ########################################################################################
 
 #any values will be overwritten by setup_code.py
-FFTWROOT   ?= auto
-IMKLROOT   ?= auto
-ACMLROOT   ?= auto
-LAPACKROOT ?= auto
+FFTWROOT ?= /usr/lib/fftw
+IMKLROOT ?= /opt/intel/composerxe/mkl
+ACMLROOT ?= /opt/acml5.2.0
+LAPACKROOT ?= 
 
-F90?=ifort
+F90 ?= ifort
 
 COMPILERNAME ?= $(F90)
 
