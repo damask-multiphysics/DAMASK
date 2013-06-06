@@ -31,7 +31,7 @@ module math
    pInt
 
  implicit none
- private                                                                                            ! because FFTW is included in math.f90
+ private
  real(pReal),    parameter, public :: PI = 3.14159265358979323846264338327950288419716939937510_pReal !< ratio of a circle's circumference to its diameter
  real(pReal),    parameter, public :: INDEG = 180.0_pReal/PI                                        !< conversion from radian into degree
  real(pReal),    parameter, public :: INRAD = PI/180.0_pReal                                        !< conversion from degree into radian
@@ -225,6 +225,17 @@ real(pReal), dimension(4,36), parameter, private :: &
    math_rotate_forward3333
 #ifdef Spectral
  public :: &
+   fftw_set_timelimit, &
+   fftw_plan_dft_3d, &
+   fftw_plan_many_dft_r2c, &
+   fftw_plan_many_dft_c2r, &
+   fftw_plan_with_nthreads, &
+   fftw_init_threads, &
+   fftw_alloc_complex, &
+   fftw_execute_dft, &
+   fftw_execute_dft_r2c, &
+   fftw_execute_dft_c2r, &
+   fftw_destroy_plan, &
    math_curlFFT, &
    math_gradFFT, &
    math_divergenceFFT, &
@@ -346,12 +357,11 @@ subroutine math_init
  endif
 
  ! +++ check rotation sense of q and R +++
-
  q = math_qRand()          ! random quaternion
  call halton(3_pInt,v)     ! random vector
  R = math_qToR(q)
  if (any(abs(math_mul33x3(R,v) - math_qRot(q,v)) > tol_math_check)) then
-   write(6,'(a,4(f8.3,x))') 'q',q
+   write(6,'(a,4(f8.3,1x))') 'q',q
    call IO_error(409_pInt)
  endif
 
