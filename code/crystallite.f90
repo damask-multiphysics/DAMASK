@@ -3430,7 +3430,7 @@ end subroutine crystallite_orientations
 function crystallite_postResults(dt, gr, ip, el)
  use math, only: &
    math_qToEuler, &
-   math_qToAxisAngle, &
+   math_qToEulerAxisAngle, &
    math_mul33x33, &
    math_transpose33, &
    math_det33, &
@@ -3503,25 +3503,20 @@ function crystallite_postResults(dt, gr, ip, el)
                                               math_qToEuler(crystallite_orientation(1:4,gr,ip,el)) ! grain orientation as Euler angles in degree
      case ('grainrotation')
        mySize = 4_pInt
-       crystallite_postResults(c+1:c+mySize) = math_qToAxisAngle(crystallite_rotation(1:4,gr,ip,el))! grain rotation away from initial orientation as axis-angle in crystal reference coordinates
+       crystallite_postResults(c+1:c+mySize) = &
+           math_qToEulerAxisAngle(crystallite_rotation(1:4,gr,ip,el))                              ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                         ! angle in degree
      case ('grainrotationx')
        mySize = 1_pInt
-       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,gr,ip,el), &
-                                    crystallite_rotation(1:4,gr,ip,el)), &
-                                    math_qConj(crystallite_orientation(1:4,gr,ip,el))))            ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,gr,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(1) * rotation(4)                            ! angle in degree
      case ('grainrotationy')
        mySize = 1_pInt
-       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,gr,ip,el), &
-                                    crystallite_rotation(1:4,gr,ip,el)), &
-                                    math_qConj(crystallite_orientation(1:4,gr,ip,el))))            ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,gr,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(2) * rotation(4)                            ! angle in degree
      case ('grainrotationz')
        mySize = 1_pInt
-       rotation = math_qToAxisAngle(math_qMul(math_qMul(crystallite_orientation(1:4,gr,ip,el), &
-                                    crystallite_rotation(1:4,gr,ip,el)), &
-                                    math_qConj(crystallite_orientation(1:4,gr,ip,el))))            ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
+       rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,gr,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(3) * rotation(4)                            ! angle in degree
      case ('ipcoords')
        mySize = 3_pInt
