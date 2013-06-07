@@ -39,12 +39,12 @@ SHELL = /bin/sh
 ########################################################################################
 
 #any values will be overwritten by setup_code.py
-FFTWROOT ?= /usr/lib/fftw
-IMKLROOT ?= /opt/intel/composerxe/mkl
-ACMLROOT ?= /opt/acml5.2.0
-LAPACKROOT ?= 
+FFTWROOT ?= /usr/local
+IMKLROOT ?= 
+ACMLROOT ?= 
+LAPACKROOT ?= /usr
 
-F90 ?= ifort
+F90 ?= = ifort
 
 COMPILERNAME ?= $(F90)
 
@@ -115,6 +115,12 @@ endif
 LIBRARIES +=-lfftw3
 LIB_DIRS  +=-L$(FFTWROOT)/lib
 
+#hdf5
+ifeq "$(HDF5)" "ON"
+LIB_DIRS +=-L/opt/hdf5-1.8.10-patch1/hdf5/lib
+LIBRARIES +=-lhdf5_fortran -lhdf5
+INCLUDE_DIRS +=-I/opt/hdf5-1.8.10-patch1/hdf5/include -DHDF
+endif
 
 ifdef PETSC_DIR
 include ${PETSC_DIR}/conf/variables

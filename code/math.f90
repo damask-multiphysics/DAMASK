@@ -245,6 +245,7 @@ real(pReal), dimension(4,36), parameter, private :: &
    math_logstrainMat, &
    math_cauchy, &
    math_periodicNearestNeighbor, &
+   math_nearestNeighbor, &
    math_periodicNearestNeighborDistances
 #endif     
  private :: &
@@ -3349,6 +3350,7 @@ function math_periodicNearestNeighbor(geomdim, Favg, querySet, domainSet)
  math_periodicNearestNeighbor = math_periodicNearestNeighbor -1_pInt                                    ! let them run from 0 to domainPoints -1
  
 end function math_periodicNearestNeighbor
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Obtain the nearest neighbor from domainSet at points in querySet
