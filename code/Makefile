@@ -44,7 +44,7 @@ IMKLROOT ?=
 ACMLROOT ?= 
 LAPACKROOT ?= /usr
 
-F90 ?= = ifort
+F90 ?= ifort
 
 COMPILERNAME ?= $(F90)
 
