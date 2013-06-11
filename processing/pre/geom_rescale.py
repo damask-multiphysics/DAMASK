@@ -132,9 +132,9 @@ for file in files:
     file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
-  if numpy.all(info['grid'] == 0):
+  if numpy.all(newInfo['grid'] == 0):
     newInfo['grid'] = info['grid']
-  if numpy.all(info['size'] == 0.0):
+  if numpy.all(newInfo['size'] == 0.0):
     newInfo['size'] = info['size']
 
 #--- read data ------------------------------------------------------------------------------------
