@@ -504,12 +504,12 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
  else  
    reason = 0
  endif 
- write(6,'(1/,a)') ' ... reporting ....................................................'
+ write(6,'(1/,a)') ' ... reporting .............................................................'
  write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
             err_div/pAvgDivL2/err_div_tol, ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
  write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC =  ', &
                    err_stress/err_stress_tol, ' (',err_stress, ' Pa  , tol =',err_stress_tol,')' 
- write(6,'(/,a)') ' =========================================================================='
+ write(6,'(/,a)')  ' ==========================================================================='
  flush(6)
  
 end subroutine BasicPETSc_converged
