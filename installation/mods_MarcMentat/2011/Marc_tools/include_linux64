@@ -419,12 +419,12 @@ then
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2011 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
-   -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DMarc4DAMASK=2011 -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+   -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2011 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -openmp -openmp_report2 \
-   -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DMarc4DAMASK=2011 -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+   -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2011 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -fpp -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
-   -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DMarc4DAMASK=2011 -DLINUX -DLinux_intel $FDEFINES $DDM"
+   -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2011 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
 fi
 
 FORTLOWT="$FORTLOW"

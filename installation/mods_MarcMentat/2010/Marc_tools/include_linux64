@@ -386,17 +386,17 @@ then
   FORTLOW="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2010 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTLOWMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
-   -openmp -openmp_report2 $I8FFLAGS \
+   -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2010 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2010 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
-   -openmp -openmp_report2 $I8FFLAGS \
+   -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2010 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp -WB -w90 -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2010 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
-   -openmp -openmp_report2 $I8FFLAGS \
+   -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DMarc4DAMASK=2010 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -fpp -zero -mp -WB -w90 -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DMarc4DAMASK=2010 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"

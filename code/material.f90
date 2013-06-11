@@ -284,7 +284,7 @@ subroutine material_parseHomogenization(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)                                                ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
- if (echo) write(6,'(a)') trim(line)                                                                ! echo part header
+ if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
@@ -370,7 +370,7 @@ subroutine material_parseMicrostructure(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)                                                ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
- if (echo) write(6,*) trim(line)                                                                    ! echo part header
+ if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
@@ -448,7 +448,7 @@ subroutine material_parseCrystallite(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)                                                ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
- if (echo) write(6,*) trim(line)                                                                    ! echo part header
+ if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
@@ -522,7 +522,7 @@ subroutine material_parsePhase(myFile,myPart)
    read(myFile,'(a1024)',END=100) line
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,*) trim(line)                                                                  ! echo back read lines
+   if (echo) write(6,'(/,a)') trim(line)                                                            ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      phase_name(section) = IO_getTag(line,'[',']')
@@ -617,7 +617,7 @@ subroutine material_parseTexture(myFile,myPart)
  do while (IO_lc(IO_getTag(line,'<','>')) /= myPart)                                                ! wind forward to myPart
    read(myFile,'(a1024)',END=100) line
  enddo
- if (echo) write(6,'(a)') trim(line)                                                                ! echo part header
+ if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
 
  do
    read(myFile,'(a1024)',END=100) line
@@ -1009,8 +1009,9 @@ subroutine material_populateGrains
          
        enddo texture
 
-!--------------------------------------------------------------------------------------------------
-!>@ToDo calc fraction after weighing with volumePerGrain, exchange in MC steps to improve result (humbug at the moment) 
+!< @todo calc fraction after weighing with volumePerGrain, exchange in MC steps to improve result (humbug at the moment)
+
+ 
 
 !--------------------------------------------------------------------------------------------------
 ! distribute grains of all constituents as accurately as possible to given constituent fractions

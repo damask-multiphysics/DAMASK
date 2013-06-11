@@ -388,7 +388,7 @@ FORTLOWMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -W
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DMarc4DAMASK=2012 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -fpp -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
- -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DMarc4DAMASK=2012 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DMarc4DAMASK=2012 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
@@ -398,7 +398,7 @@ FORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -fpp -zero -mp1 -
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DMarc4DAMASK=2012 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 FORTNA="$FCOMP -c -assume byterecl -safe_cray_ptr -save -fpp -zero -mp1 -WB  -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
- -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DMarc4DAMASK=2012 -DMarc4DAMASK=2012 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DMarc4DAMASK=2012 -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
 
 if test "$MARCDEBUG" = "ON"
 then
