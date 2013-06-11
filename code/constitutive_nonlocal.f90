@@ -258,7 +258,7 @@ integer(pInt), parameter ::                 maxNchunks = 21_pInt
 integer(pInt), &
     dimension(1_pInt+2_pInt*maxNchunks) ::  positions
 integer(pInt), dimension(6) ::              configNchunks
-integer(pInt)          ::                   section, &
+integer(pInt)          ::                   section = 0_pInt, &
                                             maxNinstance, &
                                             maxTotalNslip, &
                                             myStructure, &
@@ -420,9 +420,6 @@ nonSchmidCoeff = 0.0_pReal
 !*** readout data from material.config file
 
 rewind(myFile)
-line = ''
-section = 0_pInt
-
 do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                               ! wind forward to <phase>
   read(myFile,'(a1024)',END=100) line
 enddo
@@ -435,160 +432,162 @@ do                                                                              
     section = section + 1_pInt                                                                                                     ! advance section counter
     cycle
   endif
-  if (section > 0_pInt .and. phase_plasticity(section) == CONSTITUTIVE_NONLOCAL_LABEL) then                                        ! one of my sections
-    i = phase_plasticityInstance(section)                                                                                          ! which instance of my plasticity is present phase
-    positions = IO_stringPos(line,maxNchunks)
-    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                             ! extract key
-    select case(tag)
-      case('plasticity','elasticity','/nonlocal/')
-        cycle
-      case ('(output)')
-        Noutput(i) = Noutput(i) + 1_pInt
-        constitutive_nonlocal_output(Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-      case ('lattice_structure')
-        constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-        configNchunks = lattice_configNchunks(constitutive_nonlocal_structureName(i))
-        Nchunks_SlipFamilies = configNchunks(1)
-        Nchunks_SlipSlip =     configNchunks(3)
-      case ('c/a_ratio','covera_ratio')
-        CoverA(i) = IO_floatValue(line,positions,2_pInt)
-       case ('c11')
-         Cslip66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c12')
-         Cslip66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c13')
-         Cslip66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c22')
-         Cslip66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c23')
-         Cslip66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c33')
-         Cslip66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c44')
-         Cslip66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c55')
-         Cslip66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c66')
-         Cslip66(6,6,i) = IO_floatValue(line,positions,2_pInt)
-      case ('nslip')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
-        enddo
-      case ('rhosgledgepos0')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          rhoSglEdgePos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case ('rhosgledgeneg0')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          rhoSglEdgeNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case ('rhosglscrewpos0')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          rhoSglScrewPos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case ('rhosglscrewneg0')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          rhoSglScrewNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case ('rhodipedge0')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          rhoDipEdge0(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case ('rhodipscrew0')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          rhoDipScrew0(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case ('lambda0')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case ('burgers')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case('cutoffradius','r')
-        cutoffRadius(i) = IO_floatValue(line,positions,2_pInt)
-      case('minimumdipoleheightedge','ddipminedge')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          minDipoleHeightPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case('minimumdipoleheightscrew','ddipminscrew')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          minDipoleHeightPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case('atomicvolume')
-        atomicVolume(i) = IO_floatValue(line,positions,2_pInt)
-      case('selfdiffusionprefactor','dsd0')
-        Dsd0(i) = IO_floatValue(line,positions,2_pInt)
-      case('selfdiffusionenergy','qsd')
-        selfDiffusionEnergy(i) = IO_floatValue(line,positions,2_pInt)
-      case('atol_rho','atol_density','absolutetolerancedensity','absolutetolerance_density')
-        aTolRho(i) = IO_floatValue(line,positions,2_pInt)
-      case('atol_shear','atol_plasticshear','atol_accumulatedshear','absolutetoleranceshear','absolutetolerance_shear')
-        aTolShear(i) = IO_floatValue(line,positions,2_pInt)
-      case('significantrho','significant_rho','significantdensity','significant_density')
-        significantRho(i) = IO_floatValue(line,positions,2_pInt)
-      case('significantn','significant_n','significantdislocations','significant_dislcations')
-        significantN(i) = IO_floatValue(line,positions,2_pInt)
-      case ('interaction_slipslip')
-        do it = 1_pInt, Nchunks_SlipSlip
-          interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
-        enddo
-      case('linetension','linetensioneffect','linetension_effect')
-        linetensionEffect(i) = IO_floatValue(line,positions,2_pInt)
-      case('edgejog','edgejogs','edgejogeffect','edgejog_effect')
-        edgeJogFactor(i) = IO_floatValue(line,positions,2_pInt)
-      case('peierlsstressedge','peierlsstress_edge')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case('peierlsstressscrew','peierlsstress_screw')
-        do f = 1_pInt, Nchunks_SlipFamilies
-          peierlsStressPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case('doublekinkwidth')
-        doublekinkwidth(i) = IO_floatValue(line,positions,2_pInt)
-      case('solidsolutionenergy')
-        solidSolutionEnergy(i) = IO_floatValue(line,positions,2_pInt)
-      case('solidsolutionsize')
-        solidSolutionSize(i) = IO_floatValue(line,positions,2_pInt)
-      case('solidsolutionconcentration')
-        solidSolutionConcentration(i) = IO_floatValue(line,positions,2_pInt)
-      case('p')
-        pParam(i) = IO_floatValue(line,positions,2_pInt)
-      case('q')
-        qParam(i) = IO_floatValue(line,positions,2_pInt)
-      case('viscosity','glideviscosity')
-        viscosity(i) = IO_floatValue(line,positions,2_pInt)
-      case('attackfrequency','fattack')
-        fattack(i) = IO_floatValue(line,positions,2_pInt)
-      case('rhosglscatter')
-        rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
-      case('rhosglrandom')
-        rhoSglRandom(i) = IO_floatValue(line,positions,2_pInt)
-      case('rhosglrandombinning')
-        rhoSglRandomBinning(i) = IO_floatValue(line,positions,2_pInt)
-      case('surfacetransmissivity')
-        surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
-      case('grainboundarytransmissivity')
-        grainboundaryTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
-      case('cflfactor')
-        CFLfactor(i) = IO_floatValue(line,positions,2_pInt)
-      case('fedgemultiplication','edgemultiplicationfactor','edgemultiplication')
-        fEdgeMultiplication(i) = IO_floatValue(line,positions,2_pInt)
-      case('shortrangestresscorrection')
-        shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
-      case ('nonschmid_coefficients')
-        do f = 1_pInt, lattice_maxNonSchmid
-          nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
-        enddo
-      case('deadzonescaling','deadzone','deadscaling')
-        deadZoneScaling(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
-      case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
-        probabilisticMultiplication(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
-      case default
-        call IO_error(210_pInt,ext_msg=tag//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
-    end select
+  if (section > 0_pInt ) then                                                                       ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+    if (phase_plasticity(section) == CONSTITUTIVE_NONLOCAL_LABEL) then                              ! one of my sections
+      i = phase_plasticityInstance(section)                                                                                          ! which instance of my plasticity is present phase
+      positions = IO_stringPos(line,maxNchunks)
+      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                             ! extract key
+      select case(tag)
+        case('plasticity','elasticity','/nonlocal/')
+          cycle
+        case ('(output)')
+          Noutput(i) = Noutput(i) + 1_pInt
+          constitutive_nonlocal_output(Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+        case ('lattice_structure')
+          constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+          configNchunks = lattice_configNchunks(constitutive_nonlocal_structureName(i))
+          Nchunks_SlipFamilies = configNchunks(1)
+          Nchunks_SlipSlip =     configNchunks(3)
+        case ('c/a_ratio','covera_ratio')
+          CoverA(i) = IO_floatValue(line,positions,2_pInt)
+         case ('c11')
+           Cslip66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c12')
+           Cslip66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c13')
+           Cslip66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c22')
+           Cslip66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c23')
+           Cslip66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c33')
+           Cslip66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c44')
+           Cslip66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c55')
+           Cslip66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c66')
+           Cslip66(6,6,i) = IO_floatValue(line,positions,2_pInt)
+        case ('nslip')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
+          enddo
+        case ('rhosgledgepos0')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            rhoSglEdgePos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case ('rhosgledgeneg0')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            rhoSglEdgeNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case ('rhosglscrewpos0')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            rhoSglScrewPos0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case ('rhosglscrewneg0')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            rhoSglScrewNeg0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case ('rhodipedge0')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            rhoDipEdge0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case ('rhodipscrew0')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            rhoDipScrew0(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case ('lambda0')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            lambda0PerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case ('burgers')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            burgersPerSlipFamily(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case('cutoffradius','r')
+          cutoffRadius(i) = IO_floatValue(line,positions,2_pInt)
+        case('minimumdipoleheightedge','ddipminedge')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            minDipoleHeightPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case('minimumdipoleheightscrew','ddipminscrew')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            minDipoleHeightPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case('atomicvolume')
+          atomicVolume(i) = IO_floatValue(line,positions,2_pInt)
+        case('selfdiffusionprefactor','dsd0')
+          Dsd0(i) = IO_floatValue(line,positions,2_pInt)
+        case('selfdiffusionenergy','qsd')
+          selfDiffusionEnergy(i) = IO_floatValue(line,positions,2_pInt)
+        case('atol_rho','atol_density','absolutetolerancedensity','absolutetolerance_density')
+          aTolRho(i) = IO_floatValue(line,positions,2_pInt)
+        case('atol_shear','atol_plasticshear','atol_accumulatedshear','absolutetoleranceshear','absolutetolerance_shear')
+          aTolShear(i) = IO_floatValue(line,positions,2_pInt)
+        case('significantrho','significant_rho','significantdensity','significant_density')
+          significantRho(i) = IO_floatValue(line,positions,2_pInt)
+        case('significantn','significant_n','significantdislocations','significant_dislcations')
+          significantN(i) = IO_floatValue(line,positions,2_pInt)
+        case ('interaction_slipslip')
+          do it = 1_pInt, Nchunks_SlipSlip
+            interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
+          enddo
+        case('linetension','linetensioneffect','linetension_effect')
+          linetensionEffect(i) = IO_floatValue(line,positions,2_pInt)
+        case('edgejog','edgejogs','edgejogeffect','edgejog_effect')
+          edgeJogFactor(i) = IO_floatValue(line,positions,2_pInt)
+        case('peierlsstressedge','peierlsstress_edge')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            peierlsStressPerSlipFamily(f,1_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case('peierlsstressscrew','peierlsstress_screw')
+          do f = 1_pInt, Nchunks_SlipFamilies
+            peierlsStressPerSlipFamily(f,2_pInt,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case('doublekinkwidth')
+          doublekinkwidth(i) = IO_floatValue(line,positions,2_pInt)
+        case('solidsolutionenergy')
+          solidSolutionEnergy(i) = IO_floatValue(line,positions,2_pInt)
+        case('solidsolutionsize')
+          solidSolutionSize(i) = IO_floatValue(line,positions,2_pInt)
+        case('solidsolutionconcentration')
+          solidSolutionConcentration(i) = IO_floatValue(line,positions,2_pInt)
+        case('p')
+          pParam(i) = IO_floatValue(line,positions,2_pInt)
+        case('q')
+          qParam(i) = IO_floatValue(line,positions,2_pInt)
+        case('viscosity','glideviscosity')
+          viscosity(i) = IO_floatValue(line,positions,2_pInt)
+        case('attackfrequency','fattack')
+          fattack(i) = IO_floatValue(line,positions,2_pInt)
+        case('rhosglscatter')
+          rhoSglScatter(i) = IO_floatValue(line,positions,2_pInt)
+        case('rhosglrandom')
+          rhoSglRandom(i) = IO_floatValue(line,positions,2_pInt)
+        case('rhosglrandombinning')
+          rhoSglRandomBinning(i) = IO_floatValue(line,positions,2_pInt)
+        case('surfacetransmissivity')
+          surfaceTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
+        case('grainboundarytransmissivity')
+          grainboundaryTransmissivity(i) = IO_floatValue(line,positions,2_pInt)
+        case('cflfactor')
+          CFLfactor(i) = IO_floatValue(line,positions,2_pInt)
+        case('fedgemultiplication','edgemultiplicationfactor','edgemultiplication')
+          fEdgeMultiplication(i) = IO_floatValue(line,positions,2_pInt)
+        case('shortrangestresscorrection')
+          shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
+        case ('nonschmid_coefficients')
+          do f = 1_pInt, lattice_maxNonSchmid
+            nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
+          enddo
+        case('deadzonescaling','deadzone','deadscaling')
+          deadZoneScaling(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
+        case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
+          probabilisticMultiplication(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
+        case default
+          call IO_error(210_pInt,ext_msg=tag//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+      end select
+    endif
   endif
 enddo
 

@@ -156,7 +156,7 @@ integer(pInt), intent(in) :: file
 integer(pInt), parameter :: maxNchunks = 21_pInt
 integer(pInt), dimension(1+2*maxNchunks) :: positions
 integer(pInt), dimension(6) :: configNchunks
-integer(pInt) :: section, maxNinstance,mySize=0_pInt,myStructure,maxTotalNslip,maxTotalNtwin,&
+integer(pInt) :: section = 0_pInt, maxNinstance,mySize=0_pInt,myStructure,maxTotalNslip,maxTotalNtwin,&
                  f,i,j,k,l,m,n,o,p,q,r,s,ns,nt, &
                  Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
@@ -289,8 +289,6 @@ allocate(constitutive_dislotwin_sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,
 
 !* Readout data from material.config file
 rewind(file)
-line = ''
-section = 0_pInt
 
 do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
    read(file,'(a1024)',END=100) line
@@ -304,148 +302,150 @@ do                                                       ! read thru sections of
      section = section + 1_pInt                          ! advance section counter
      cycle
    endif
-   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_dislotwin_label) then  ! one of my sections
-     i = phase_plasticityInstance(section)               ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
-     select case(tag)
-       case ('plasticity', 'elasticity')
-         cycle
-       case ('(output)')
-         constitutive_dislotwin_Noutput(i) = constitutive_dislotwin_Noutput(i) + 1_pInt
-         constitutive_dislotwin_output(constitutive_dislotwin_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('lattice_structure')
-         constitutive_dislotwin_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         configNchunks = lattice_configNchunks(constitutive_dislotwin_structureName(i))
-         Nchunks_SlipFamilies = configNchunks(1)
-         Nchunks_TwinFamilies = configNchunks(2)
-         Nchunks_SlipSlip =     configNchunks(3)
-         Nchunks_SlipTwin =     configNchunks(4)
-         Nchunks_TwinSlip =     configNchunks(5)
-         Nchunks_TwinTwin =     configNchunks(6)
-       case ('covera_ratio')
-         constitutive_dislotwin_CoverA(i) = IO_floatValue(line,positions,2_pInt)
-       case ('c11')
-         constitutive_dislotwin_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c12')
-         constitutive_dislotwin_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c13')
-         constitutive_dislotwin_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c22')
-         constitutive_dislotwin_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c23')
-         constitutive_dislotwin_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c33')
-         constitutive_dislotwin_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c44')
-         constitutive_dislotwin_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c55')
-         constitutive_dislotwin_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c66')
-         constitutive_dislotwin_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
-       case ('nslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
-         enddo
-       case ('ntwin')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_dislotwin_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
-         enddo
-       case ('rhoedge0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_rhoEdge0(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('rhoedgedip0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_rhoEdgeDip0(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('slipburgers')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_burgersPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinburgers')
-         do j = 1_pInt, Nchunks_TwinFamilies 
-           constitutive_dislotwin_burgersPerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('qedge')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_QedgePerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('v0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_v0PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('ndot0')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_dislotwin_Ndot0PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinsize')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_dislotwin_twinsizePerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('clambdaslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_CLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('grainsize')
-         constitutive_dislotwin_GrainSize(i) = IO_floatValue(line,positions,2_pInt)
-       case ('maxtwinfraction')
-         constitutive_dislotwin_MaxTwinFraction(i) = IO_floatValue(line,positions,2_pInt)
-       case ('pexponent')
-         constitutive_dislotwin_p(i) = IO_floatValue(line,positions,2_pInt)
-       case ('qexponent')
-         constitutive_dislotwin_q(i) = IO_floatValue(line,positions,2_pInt)
-       case ('rexponent')
-         constitutive_dislotwin_r(i) = IO_floatValue(line,positions,2_pInt)
-       case ('d0')
-         constitutive_dislotwin_D0(i) = IO_floatValue(line,positions,2_pInt)
-       case ('qsd')
-         constitutive_dislotwin_Qsd(i) = IO_floatValue(line,positions,2_pInt)
-       case ('atol_rho')
-         constitutive_dislotwin_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
-       case ('atol_twinfrac')
-         constitutive_dislotwin_aTolTwinFrac(i) = IO_floatValue(line,positions,2_pInt)
-       case ('cmfptwin')
-         constitutive_dislotwin_Cmfptwin(i) = IO_floatValue(line,positions,2_pInt)
-       case ('cthresholdtwin')
-         constitutive_dislotwin_Cthresholdtwin(i) = IO_floatValue(line,positions,2_pInt)
-       case ('solidsolutionstrength')
-         constitutive_dislotwin_SolidSolutionStrength(i) = IO_floatValue(line,positions,2_pInt)
-       case ('l0')
-         constitutive_dislotwin_L0(i) = IO_floatValue(line,positions,2_pInt)
-       case ('cedgedipmindistance')
-         constitutive_dislotwin_CEdgeDipMinDistance(i) = IO_floatValue(line,positions,2_pInt)
-       case ('catomicvolume')
-         constitutive_dislotwin_CAtomicVolume(i) = IO_floatValue(line,positions,2_pInt)
-       case ('interaction_slipslip','interactionslipslip')
-         do j = 1_pInt, Nchunks_SlipSlip
-           constitutive_dislotwin_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_sliptwin','interactionsliptwin')
-         do j = 1_pInt, Nchunks_SlipTwin
-           constitutive_dislotwin_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_twinslip','interactiontwinslip')
-         do j = 1_pInt, Nchunks_TwinSlip
-           constitutive_dislotwin_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_twintwin','interactiontwintwin')
-         do j = 1_pInt, Nchunks_TwinTwin
-           constitutive_dislotwin_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('sfe_0k')
-         constitutive_dislotwin_SFE_0K(i) = IO_floatValue(line,positions,2_pInt)
-       case ('dsfe_dt')
-         constitutive_dislotwin_dSFE_dT(i) = IO_floatValue(line,positions,2_pInt)
-       case ('shearbandresistance')
-         constitutive_dislotwin_sbResistance(i) = IO_floatValue(line,positions,2_pInt)
-       case ('shearbandvelocity')
-         constitutive_dislotwin_sbVelocity(i) = IO_floatValue(line,positions,2_pInt)
-       case ('qedgepersbsystem')
-         constitutive_dislotwin_sbQedge(i) = IO_floatValue(line,positions,2_pInt)
-       case default
-         call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_dislotwin_label//')')
-     end select
+   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+     if (phase_plasticity(section) == constitutive_dislotwin_LABEL) then                            ! one of my sections
+       i = phase_plasticityInstance(section)               ! which instance of my plasticity is present phase
+       positions = IO_stringPos(line,maxNchunks)
+       tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
+       select case(tag)
+         case ('plasticity', 'elasticity')
+           cycle
+         case ('(output)')
+           constitutive_dislotwin_Noutput(i) = constitutive_dislotwin_Noutput(i) + 1_pInt
+           constitutive_dislotwin_output(constitutive_dislotwin_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         case ('lattice_structure')
+           constitutive_dislotwin_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           configNchunks = lattice_configNchunks(constitutive_dislotwin_structureName(i))
+           Nchunks_SlipFamilies = configNchunks(1)
+           Nchunks_TwinFamilies = configNchunks(2)
+           Nchunks_SlipSlip =     configNchunks(3)
+           Nchunks_SlipTwin =     configNchunks(4)
+           Nchunks_TwinSlip =     configNchunks(5)
+           Nchunks_TwinTwin =     configNchunks(6)
+         case ('covera_ratio')
+           constitutive_dislotwin_CoverA(i) = IO_floatValue(line,positions,2_pInt)
+         case ('c11')
+           constitutive_dislotwin_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c12')
+           constitutive_dislotwin_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c13')
+           constitutive_dislotwin_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c22')
+           constitutive_dislotwin_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c23')
+           constitutive_dislotwin_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c33')
+           constitutive_dislotwin_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c44')
+           constitutive_dislotwin_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c55')
+           constitutive_dislotwin_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c66')
+           constitutive_dislotwin_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
+         case ('nslip')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_dislotwin_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
+           enddo
+         case ('ntwin')
+           do j = 1_pInt, Nchunks_TwinFamilies
+             constitutive_dislotwin_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
+           enddo
+         case ('rhoedge0')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_dislotwin_rhoEdge0(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('rhoedgedip0')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_dislotwin_rhoEdgeDip0(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('slipburgers')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_dislotwin_burgersPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('twinburgers')
+           do j = 1_pInt, Nchunks_TwinFamilies 
+             constitutive_dislotwin_burgersPerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('qedge')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_dislotwin_QedgePerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('v0')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_dislotwin_v0PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('ndot0')
+           do j = 1_pInt, Nchunks_TwinFamilies
+             constitutive_dislotwin_Ndot0PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('twinsize')
+           do j = 1_pInt, Nchunks_TwinFamilies
+             constitutive_dislotwin_twinsizePerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('clambdaslip')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_dislotwin_CLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('grainsize')
+           constitutive_dislotwin_GrainSize(i) = IO_floatValue(line,positions,2_pInt)
+         case ('maxtwinfraction')
+           constitutive_dislotwin_MaxTwinFraction(i) = IO_floatValue(line,positions,2_pInt)
+         case ('pexponent')
+           constitutive_dislotwin_p(i) = IO_floatValue(line,positions,2_pInt)
+         case ('qexponent')
+           constitutive_dislotwin_q(i) = IO_floatValue(line,positions,2_pInt)
+         case ('rexponent')
+           constitutive_dislotwin_r(i) = IO_floatValue(line,positions,2_pInt)
+         case ('d0')
+           constitutive_dislotwin_D0(i) = IO_floatValue(line,positions,2_pInt)
+         case ('qsd')
+           constitutive_dislotwin_Qsd(i) = IO_floatValue(line,positions,2_pInt)
+         case ('atol_rho')
+           constitutive_dislotwin_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
+         case ('atol_twinfrac')
+           constitutive_dislotwin_aTolTwinFrac(i) = IO_floatValue(line,positions,2_pInt)
+         case ('cmfptwin')
+           constitutive_dislotwin_Cmfptwin(i) = IO_floatValue(line,positions,2_pInt)
+         case ('cthresholdtwin')
+           constitutive_dislotwin_Cthresholdtwin(i) = IO_floatValue(line,positions,2_pInt)
+         case ('solidsolutionstrength')
+           constitutive_dislotwin_SolidSolutionStrength(i) = IO_floatValue(line,positions,2_pInt)
+         case ('l0')
+           constitutive_dislotwin_L0(i) = IO_floatValue(line,positions,2_pInt)
+         case ('cedgedipmindistance')
+           constitutive_dislotwin_CEdgeDipMinDistance(i) = IO_floatValue(line,positions,2_pInt)
+         case ('catomicvolume')
+           constitutive_dislotwin_CAtomicVolume(i) = IO_floatValue(line,positions,2_pInt)
+         case ('interaction_slipslip','interactionslipslip')
+           do j = 1_pInt, Nchunks_SlipSlip
+             constitutive_dislotwin_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('interaction_sliptwin','interactionsliptwin')
+           do j = 1_pInt, Nchunks_SlipTwin
+             constitutive_dislotwin_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('interaction_twinslip','interactiontwinslip')
+           do j = 1_pInt, Nchunks_TwinSlip
+             constitutive_dislotwin_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('interaction_twintwin','interactiontwintwin')
+           do j = 1_pInt, Nchunks_TwinTwin
+             constitutive_dislotwin_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('sfe_0k')
+           constitutive_dislotwin_SFE_0K(i) = IO_floatValue(line,positions,2_pInt)
+         case ('dsfe_dt')
+           constitutive_dislotwin_dSFE_dT(i) = IO_floatValue(line,positions,2_pInt)
+         case ('shearbandresistance')
+           constitutive_dislotwin_sbResistance(i) = IO_floatValue(line,positions,2_pInt)
+         case ('shearbandvelocity')
+           constitutive_dislotwin_sbVelocity(i) = IO_floatValue(line,positions,2_pInt)
+         case ('qedgepersbsystem')
+           constitutive_dislotwin_sbQedge(i) = IO_floatValue(line,positions,2_pInt)
+         case default
+           call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_dislotwin_label//')')
+       end select
+     endif
    endif
 enddo
 

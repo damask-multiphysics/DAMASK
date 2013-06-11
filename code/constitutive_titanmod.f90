@@ -247,7 +247,7 @@ integer(pInt), intent(in) :: file
 integer(pInt), parameter :: maxNchunks = 21_pInt
 integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
 integer(pInt), dimension(6) :: configNchunks
-integer(pInt) :: section,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,&
+integer(pInt) :: section = 0_pInt,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,&
                  Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
                  mySize,myStructure,maxTotalNslip,maxTotalNtwin
@@ -414,8 +414,6 @@ allocate(constitutive_titanmod_interactionTwinTwin(lattice_maxNinteraction,maxNi
 
 !* Read data from material.config file
 rewind(file)
-line = ''
-section = 0_pInt
 
 do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
    read(file,'(a1024)',END=100) line
@@ -429,202 +427,204 @@ enddo
      section = section + 1_pInt                           ! advance section counter
      cycle                                                ! skip to next line
    endif
-   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_titanmod_label) then  ! one of my sections
-     i = phase_plasticityInstance(section)                ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))   ! extract key
-     select case(tag)
-       case ('plasticity','elasticity')
-         cycle
-       case ('(output)')
-         constitutive_titanmod_Noutput(i) = constitutive_titanmod_Noutput(i) + 1_pInt
-         constitutive_titanmod_output(constitutive_titanmod_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('lattice_structure')
-         constitutive_titanmod_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         configNchunks = lattice_configNchunks(constitutive_titanmod_structureName(i))
-         Nchunks_SlipFamilies = configNchunks(1)
-         Nchunks_TwinFamilies = configNchunks(2)
-         Nchunks_SlipSlip =     configNchunks(3)
-         Nchunks_SlipTwin =     configNchunks(4)
-         Nchunks_TwinSlip =     configNchunks(5)
-         Nchunks_TwinTwin =     configNchunks(6)
-       case ('covera_ratio')
-         constitutive_titanmod_CoverA(i)       = IO_floatValue(line,positions,2_pInt)
-       case ('c11')
-         constitutive_titanmod_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c12')
-         constitutive_titanmod_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c13')
-         constitutive_titanmod_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c22')
-         constitutive_titanmod_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c23')
-         constitutive_titanmod_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c33')
-         constitutive_titanmod_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c44')
-         constitutive_titanmod_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c55')
-         constitutive_titanmod_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c66')
-         constitutive_titanmod_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('debyefrequency')
-         constitutive_titanmod_debyefrequency(i) = IO_floatValue(line,positions,2_pInt)
-       case ('kinkf0')
-         constitutive_titanmod_kinkf0(i) = IO_floatValue(line,positions,2_pInt)
-       case ('nslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
-         enddo
-       case ('ntwin')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
-         enddo
-       case ('rho_edge0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_rho_edge0(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('rho_screw0')
-         do j = 1_pInt, Nchunks_SlipFamilies 
-           constitutive_titanmod_rho_screw0(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('slipburgers')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_burgersPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinburgers')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_burgersPerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('f0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_f0_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinf0')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twinf0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-      case ('tau0e')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_tau0e_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-      case ('twintau0')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twintau0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('tau0s')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_tau0s_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('capre')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_capre_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('caprs')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_caprs_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('v0e')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_v0e_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twingamma0')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twingamma0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('v0s')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_v0s_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('kinkcriticallength')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_kinkcriticallength_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinsize')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twinsizePerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('celambdaslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_CeLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinlambdaslip')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twinlambdaslipPerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('cslambdaslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_CsLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('grainsize')
-         constitutive_titanmod_GrainSize(i) = IO_floatValue(line,positions,2_pInt)
-       case ('maxtwinfraction')
-         constitutive_titanmod_MaxTwinFraction(i) = IO_floatValue(line,positions,2_pInt)
-       case ('pe')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_pe_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinp')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twinp_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('ps')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_ps_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('qe')
-         do j = 1_pInt, Nchunks_SlipFamilies 
-           constitutive_titanmod_qe_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinq')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twinq_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('qs')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_titanmod_qs_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinshearconstant')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_titanmod_twinshearconstant_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('dc')
-         constitutive_titanmod_dc(i) = IO_floatValue(line,positions,2_pInt)
-       case ('twinhpconstant')
-         constitutive_titanmod_twinhpconstant(i) = IO_floatValue(line,positions,2_pInt)
-       case ('atol_rho')
-         constitutive_titanmod_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
-       case ('interactionslipslip')
-         do j = 1_pInt, Nchunks_SlipSlip
-           constitutive_titanmod_interactionSlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interactionee')
-         do j = 1_pInt, lattice_maxNinteraction
-           constitutive_titanmod_interaction_ee(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interactionss')
-         do j = 1_pInt, lattice_maxNinteraction
-           constitutive_titanmod_interaction_ss(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interactiones')
-         do j = 1_pInt, lattice_maxNinteraction
-           constitutive_titanmod_interaction_es(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interactionsliptwin')
-         do j = 1_pInt, Nchunks_SlipTwin
-           constitutive_titanmod_interactionSlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interactiontwinslip')
-         do j = 1_pInt, Nchunks_TwinSlip
-           constitutive_titanmod_interactionTwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interactiontwintwin')
-         do j = 1_pInt, Nchunks_TwinTwin
-           constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case default
-         call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_titanmod_label//')')
-     end select
+   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+     if (phase_plasticity(section) == constitutive_titanmod_LABEL) then                           ! one of my sections
+      i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
+      positions = IO_stringPos(line,maxNchunks)
+      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
+      select case(tag)
+        case ('plasticity','elasticity')
+          cycle
+        case ('(output)')
+          constitutive_titanmod_Noutput(i) = constitutive_titanmod_Noutput(i) + 1_pInt
+          constitutive_titanmod_output(constitutive_titanmod_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+        case ('lattice_structure')
+          constitutive_titanmod_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+          configNchunks = lattice_configNchunks(constitutive_titanmod_structureName(i))
+          Nchunks_SlipFamilies = configNchunks(1)
+          Nchunks_TwinFamilies = configNchunks(2)
+          Nchunks_SlipSlip =     configNchunks(3)
+          Nchunks_SlipTwin =     configNchunks(4)
+          Nchunks_TwinSlip =     configNchunks(5)
+          Nchunks_TwinTwin =     configNchunks(6)
+        case ('covera_ratio')
+          constitutive_titanmod_CoverA(i)       = IO_floatValue(line,positions,2_pInt)
+        case ('c11')
+          constitutive_titanmod_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c12')
+          constitutive_titanmod_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c13')
+          constitutive_titanmod_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c22')
+          constitutive_titanmod_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c23')
+          constitutive_titanmod_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c33')
+          constitutive_titanmod_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c44')
+          constitutive_titanmod_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c55')
+          constitutive_titanmod_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c66')
+          constitutive_titanmod_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+        case ('debyefrequency')
+          constitutive_titanmod_debyefrequency(i) = IO_floatValue(line,positions,2_pInt)
+        case ('kinkf0')
+          constitutive_titanmod_kinkf0(i) = IO_floatValue(line,positions,2_pInt)
+        case ('nslip')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
+          enddo
+        case ('ntwin')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
+          enddo
+        case ('rho_edge0')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_rho_edge0(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('rho_screw0')
+          do j = 1_pInt, Nchunks_SlipFamilies 
+            constitutive_titanmod_rho_screw0(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('slipburgers')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_burgersPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twinburgers')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_burgersPerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('f0')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_f0_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twinf0')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twinf0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+       case ('tau0e')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_tau0e_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+       case ('twintau0')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twintau0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('tau0s')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_tau0s_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('capre')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_capre_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('caprs')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_caprs_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('v0e')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_v0e_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twingamma0')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twingamma0_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('v0s')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_v0s_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('kinkcriticallength')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_kinkcriticallength_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twinsize')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twinsizePerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('celambdaslip')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_CeLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twinlambdaslip')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twinlambdaslipPerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('cslambdaslip')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_CsLambdaSlipPerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('grainsize')
+          constitutive_titanmod_GrainSize(i) = IO_floatValue(line,positions,2_pInt)
+        case ('maxtwinfraction')
+          constitutive_titanmod_MaxTwinFraction(i) = IO_floatValue(line,positions,2_pInt)
+        case ('pe')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_pe_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twinp')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twinp_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('ps')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_ps_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('qe')
+          do j = 1_pInt, Nchunks_SlipFamilies 
+            constitutive_titanmod_qe_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twinq')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twinq_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('qs')
+          do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_titanmod_qs_PerSlipFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('twinshearconstant')
+          do j = 1_pInt, Nchunks_TwinFamilies
+            constitutive_titanmod_twinshearconstant_PerTwinFamily(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('dc')
+          constitutive_titanmod_dc(i) = IO_floatValue(line,positions,2_pInt)
+        case ('twinhpconstant')
+          constitutive_titanmod_twinhpconstant(i) = IO_floatValue(line,positions,2_pInt)
+        case ('atol_rho')
+          constitutive_titanmod_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
+        case ('interactionslipslip')
+          do j = 1_pInt, Nchunks_SlipSlip
+            constitutive_titanmod_interactionSlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('interactionee')
+          do j = 1_pInt, lattice_maxNinteraction
+            constitutive_titanmod_interaction_ee(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('interactionss')
+          do j = 1_pInt, lattice_maxNinteraction
+            constitutive_titanmod_interaction_ss(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('interactiones')
+          do j = 1_pInt, lattice_maxNinteraction
+            constitutive_titanmod_interaction_es(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('interactionsliptwin')
+          do j = 1_pInt, Nchunks_SlipTwin
+            constitutive_titanmod_interactionSlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('interactiontwinslip')
+          do j = 1_pInt, Nchunks_TwinSlip
+            constitutive_titanmod_interactionTwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case ('interactiontwintwin')
+          do j = 1_pInt, Nchunks_TwinTwin
+            constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+          enddo
+        case default
+          call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_titanmod_label//')')
+      end select
+     endif
    endif
 enddo
 

@@ -132,7 +132,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  integer(pInt), parameter :: MAXNCHUNKS = lattice_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt), dimension(6) :: configNchunks
- integer(pInt) :: section, maxNinstance, i,j,k, f,o, &
+ integer(pInt) :: section = 0_pInt, maxNinstance, i,j,k, f,o, &
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                   Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
                   mySize=0_pInt, myStructure, index_myFamily, index_otherFamily
@@ -239,7 +239,6 @@ subroutine constitutive_phenopowerlaw_init(myFile)
           constitutive_phenopowerlaw_nonSchmidCoeff = 0.0_pReal
 
  rewind(myFile)
- section = 0_pInt
  
  do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                               ! wind forward to <phase>
    read(myFile,'(a1024)',END=100) line
@@ -253,124 +252,126 @@ subroutine constitutive_phenopowerlaw_init(myFile)
      section = section + 1_pInt                                                                     ! advance section counter
      cycle                                                                                          ! skip to next line
    endif
-   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_phenopowerlaw_label) then   ! one of my sections
-     i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('plasticity','elasticity')
-         cycle
-       case ('(output)')
-         constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
-         constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(i),i) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('lattice_structure')
-         constitutive_phenopowerlaw_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureName(i))
-         Nchunks_SlipFamilies = configNchunks(1)
-         Nchunks_TwinFamilies = configNchunks(2)
-         Nchunks_SlipSlip =     configNchunks(3)
-         Nchunks_SlipTwin =     configNchunks(4)
-         Nchunks_TwinSlip =     configNchunks(5)
-         Nchunks_TwinTwin =     configNchunks(6)
-       case ('covera_ratio')
-         constitutive_phenopowerlaw_CoverA(i) = IO_floatValue(line,positions,2_pInt)
-       case ('c11')
-         constitutive_phenopowerlaw_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c12')
-         constitutive_phenopowerlaw_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c13')
-         constitutive_phenopowerlaw_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c22')
-         constitutive_phenopowerlaw_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c23')
-         constitutive_phenopowerlaw_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c33')
-         constitutive_phenopowerlaw_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c44')
-         constitutive_phenopowerlaw_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c55')
-         constitutive_phenopowerlaw_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c66')
-         constitutive_phenopowerlaw_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
-       case ('nslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-            constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
-          enddo
-       case ('gdot0_slip')
-         constitutive_phenopowerlaw_gdot0_slip(i) = IO_floatValue(line,positions,2_pInt)
-       case ('n_slip')
-         constitutive_phenopowerlaw_n_slip(i) = IO_floatValue(line,positions,2_pInt)
-       case ('tau0_slip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('tausat_slip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('a_slip', 'w0_slip')
-         constitutive_phenopowerlaw_a_slip(i) = IO_floatValue(line,positions,2_pInt)
-       case ('ntwin')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
-         enddo
-       case ('gdot0_twin')
-         constitutive_phenopowerlaw_gdot0_twin(i) = IO_floatValue(line,positions,2_pInt)
-       case ('n_twin')
-         constitutive_phenopowerlaw_n_twin(i) = IO_floatValue(line,positions,2_pInt)
-       case ('tau0_twin')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_phenopowerlaw_tau0_twin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('s_pr')
-         constitutive_phenopowerlaw_spr(i) = IO_floatValue(line,positions,2_pInt)
-       case ('twin_b')
-         constitutive_phenopowerlaw_twinB(i) = IO_floatValue(line,positions,2_pInt)
-       case ('twin_c')
-         constitutive_phenopowerlaw_twinC(i) = IO_floatValue(line,positions,2_pInt)
-       case ('twin_d')
-         constitutive_phenopowerlaw_twinD(i) = IO_floatValue(line,positions,2_pInt)
-       case ('twin_e')
-         constitutive_phenopowerlaw_twinE(i) = IO_floatValue(line,positions,2_pInt)
-       case ('h0_slipslip')
-         constitutive_phenopowerlaw_h0_SlipSlip(i) = IO_floatValue(line,positions,2_pInt)
-       case ('h0_sliptwin')
-         constitutive_phenopowerlaw_h0_SlipTwin(i) = IO_floatValue(line,positions,2_pInt)
-         call IO_warning(42_pInt,ext_msg=trim(tag)//' ('//constitutive_phenopowerlaw_label//')')
-       case ('h0_twinslip')
-         constitutive_phenopowerlaw_h0_TwinSlip(i) = IO_floatValue(line,positions,2_pInt)
-       case ('h0_twintwin')
-         constitutive_phenopowerlaw_h0_TwinTwin(i) = IO_floatValue(line,positions,2_pInt)
-       case ('atol_resistance')
-         constitutive_phenopowerlaw_aTolResistance(i) = IO_floatValue(line,positions,2_pInt)
-       case ('atol_shear')
-         constitutive_phenopowerlaw_aTolShear(i)      = IO_floatValue(line,positions,2_pInt)
-       case ('atol_twinfrac')
-         constitutive_phenopowerlaw_aTolTwinfrac(i)   = IO_floatValue(line,positions,2_pInt)
-       case ('interaction_slipslip')
-         do j = 1_pInt, Nchunks_SlipSlip
-           constitutive_phenopowerlaw_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_sliptwin')
-         do j = 1_pInt, Nchunks_SlipTwin
-           constitutive_phenopowerlaw_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_twinslip')
-         do j = 1_pInt, Nchunks_TwinSlip
-           constitutive_phenopowerlaw_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_twintwin')
-         do j = 1_pInt, Nchunks_TwinTwin
-           constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('nonschmid_coefficients')
-         do j = 1_pInt, lattice_maxNonSchmid
-           constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case default
-         call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_phenopowerlaw_label//')')
-     end select
+   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+     if (phase_plasticity(section) == constitutive_phenopowerlaw_LABEL) then                        ! one of my sections
+       i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
+       positions = IO_stringPos(line,MAXNCHUNKS)
+       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
+       select case(tag)
+         case ('plasticity','elasticity')
+           cycle
+         case ('(output)')
+           constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
+           constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(i),i) = &
+                                                         IO_lc(IO_stringValue(line,positions,2_pInt))
+         case ('lattice_structure')
+           constitutive_phenopowerlaw_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureName(i))
+           Nchunks_SlipFamilies = configNchunks(1)
+           Nchunks_TwinFamilies = configNchunks(2)
+           Nchunks_SlipSlip =     configNchunks(3)
+           Nchunks_SlipTwin =     configNchunks(4)
+           Nchunks_TwinSlip =     configNchunks(5)
+           Nchunks_TwinTwin =     configNchunks(6)
+         case ('covera_ratio')
+           constitutive_phenopowerlaw_CoverA(i) = IO_floatValue(line,positions,2_pInt)
+         case ('c11')
+           constitutive_phenopowerlaw_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c12')
+           constitutive_phenopowerlaw_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c13')
+           constitutive_phenopowerlaw_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c22')
+           constitutive_phenopowerlaw_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c23')
+           constitutive_phenopowerlaw_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c33')
+           constitutive_phenopowerlaw_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c44')
+           constitutive_phenopowerlaw_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c55')
+           constitutive_phenopowerlaw_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c66')
+           constitutive_phenopowerlaw_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
+         case ('nslip')
+           do j = 1_pInt, Nchunks_SlipFamilies
+              constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
+            enddo
+         case ('gdot0_slip')
+           constitutive_phenopowerlaw_gdot0_slip(i) = IO_floatValue(line,positions,2_pInt)
+         case ('n_slip')
+           constitutive_phenopowerlaw_n_slip(i) = IO_floatValue(line,positions,2_pInt)
+         case ('tau0_slip')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('tausat_slip')
+           do j = 1_pInt, Nchunks_SlipFamilies
+             constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('a_slip', 'w0_slip')
+           constitutive_phenopowerlaw_a_slip(i) = IO_floatValue(line,positions,2_pInt)
+         case ('ntwin')
+           do j = 1_pInt, Nchunks_TwinFamilies
+             constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
+           enddo
+         case ('gdot0_twin')
+           constitutive_phenopowerlaw_gdot0_twin(i) = IO_floatValue(line,positions,2_pInt)
+         case ('n_twin')
+           constitutive_phenopowerlaw_n_twin(i) = IO_floatValue(line,positions,2_pInt)
+         case ('tau0_twin')
+           do j = 1_pInt, Nchunks_TwinFamilies
+             constitutive_phenopowerlaw_tau0_twin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('s_pr')
+           constitutive_phenopowerlaw_spr(i) = IO_floatValue(line,positions,2_pInt)
+         case ('twin_b')
+           constitutive_phenopowerlaw_twinB(i) = IO_floatValue(line,positions,2_pInt)
+         case ('twin_c')
+           constitutive_phenopowerlaw_twinC(i) = IO_floatValue(line,positions,2_pInt)
+         case ('twin_d')
+           constitutive_phenopowerlaw_twinD(i) = IO_floatValue(line,positions,2_pInt)
+         case ('twin_e')
+           constitutive_phenopowerlaw_twinE(i) = IO_floatValue(line,positions,2_pInt)
+         case ('h0_slipslip')
+           constitutive_phenopowerlaw_h0_SlipSlip(i) = IO_floatValue(line,positions,2_pInt)
+         case ('h0_sliptwin')
+           constitutive_phenopowerlaw_h0_SlipTwin(i) = IO_floatValue(line,positions,2_pInt)
+           call IO_warning(42_pInt,ext_msg=trim(tag)//' ('//constitutive_phenopowerlaw_label//')')
+         case ('h0_twinslip')
+           constitutive_phenopowerlaw_h0_TwinSlip(i) = IO_floatValue(line,positions,2_pInt)
+         case ('h0_twintwin')
+           constitutive_phenopowerlaw_h0_TwinTwin(i) = IO_floatValue(line,positions,2_pInt)
+         case ('atol_resistance')
+           constitutive_phenopowerlaw_aTolResistance(i) = IO_floatValue(line,positions,2_pInt)
+         case ('atol_shear')
+           constitutive_phenopowerlaw_aTolShear(i)      = IO_floatValue(line,positions,2_pInt)
+         case ('atol_twinfrac')
+           constitutive_phenopowerlaw_aTolTwinfrac(i)   = IO_floatValue(line,positions,2_pInt)
+         case ('interaction_slipslip')
+           do j = 1_pInt, Nchunks_SlipSlip
+             constitutive_phenopowerlaw_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('interaction_sliptwin')
+           do j = 1_pInt, Nchunks_SlipTwin
+             constitutive_phenopowerlaw_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('interaction_twinslip')
+           do j = 1_pInt, Nchunks_TwinSlip
+             constitutive_phenopowerlaw_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('interaction_twintwin')
+           do j = 1_pInt, Nchunks_TwinTwin
+             constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('nonschmid_coefficients')
+           do j = 1_pInt, lattice_maxNonSchmid
+             constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case default
+           call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_phenopowerlaw_label//')')
+       end select
+     endif
    endif
  enddo
 

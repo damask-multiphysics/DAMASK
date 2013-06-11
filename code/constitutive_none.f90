@@ -130,36 +130,38 @@ subroutine constitutive_none_init(myFile)
      section = section + 1_pInt                                                                     ! advance section counter
      cycle
    endif
-   if (section > 0_pInt .and. phase_plasticity(section) == constitutive_none_label) then            ! one of my sections
-     i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,MAXNCHUNKS)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('plasticity','elasticity')
-         cycle
-       case ('lattice_structure')
-              constitutive_none_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('c11')
-              constitutive_none_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c12')
-              constitutive_none_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c13')
-              constitutive_none_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c22')
-              constitutive_none_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c23')
-              constitutive_none_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c33')
-              constitutive_none_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c44')
-              constitutive_none_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c55')
-              constitutive_none_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-       case ('c66')
-              constitutive_none_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
-       case default
-              call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_none_label//')')
-     end select
+   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+     if ( phase_plasticity(section) == constitutive_none_LABEL) then                                ! one of my sections
+       i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
+       positions = IO_stringPos(line,MAXNCHUNKS)
+       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
+       select case(tag)
+         case ('plasticity','elasticity')
+           cycle
+         case ('lattice_structure')
+                constitutive_none_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         case ('c11')
+                constitutive_none_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c12')
+                constitutive_none_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c13')
+                constitutive_none_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c22')
+                constitutive_none_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c23')
+                constitutive_none_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c33')
+                constitutive_none_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c44')
+                constitutive_none_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c55')
+                constitutive_none_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+         case ('c66')
+                constitutive_none_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
+         case default
+                call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_none_label//')')
+       end select
+     endif
    endif
  enddo
 
