@@ -175,8 +175,7 @@ interactionMatrixSlipSlip                                            !< interact
 real(pReal), dimension(:,:,:,:), allocatable, private :: &
 lattice2slip, &                                                      !< orthogonal transformation matrix from lattice coordinate system to slip coordinate system (passive rotation !!!)
 rhoDotEdgeJogsOutput, &
-sourceProbability, &
-shearrate
+sourceProbability
 
 real(pReal), dimension(:,:,:,:,:), allocatable, private :: &
 Cslip3333, &                                                         !< elasticity matrix for each instance
@@ -746,9 +745,6 @@ lattice2slip = 0.0_pReal
 
 allocate(sourceProbability(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 sourceProbability = 2.0_pReal
-
-allocate(shearrate(maxTotalNslip,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems))
-shearrate = 0.0_pReal
 
 allocate(rhoDotFluxOutput(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
 allocate(rhoDotMultiplicationOutput(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
@@ -1857,7 +1853,6 @@ gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * burgers(1:ns,myInstance) * (1.0_pReal
 do t = 1_pInt,4_pInt
   dgdot_dtau(:,t) = rhoSgl(1:ns,t) * dv_dtau(1:ns,t) * burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
 enddo
-shearrate(1:ns,g,ip,el) = gdotTotal
 
 
 !*** Calculation of Lp and its tangent
@@ -2056,12 +2051,16 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
 !****************************************************************************
 !*** assign the changes in the dislocation densities to deltaState
 
-deltaRho = 0.0_pReal
 deltaRho = deltaRhoRemobilization &
          + deltaRhoDipole2SingleStress
 
-deltaState%p = reshape(deltaRho,(/10_pInt*ns/))
-
+deltaState%p = 0.0_pReal
+forall (s = 1:ns, t = 1_pInt:4_pInt) 
+  deltaState%p(iRhoU(s,t,myInstance)) = deltaRho(s,t)
+  deltaState%p(iRhoB(s,t,myInstance)) = deltaRho(s,t+4_pInt)
+endforall
+forall (s = 1:ns, c = 1_pInt:2_pInt) &
+  deltaState%p(iRhoD(s,c,myInstance)) = deltaRho(s,c+8_pInt)
 
 
 #ifndef _OPENMP
@@ -2261,10 +2260,10 @@ where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstan
   rhoDip = 0.0_pReal
 
 if (numerics_timeSyncing) then
-  forall (t = 1_pInt:4_pInt)
-    rhoSgl0(1:ns,t) = max(state0(g,ip,el)%p(iRhoU(1:ns,t,myInstance)), 0.0_pReal)
-    rhoSgl0(1:ns,t+4_pInt) = state0(g,ip,el)%p(iRhoB(1:ns,t,myInstance))
-    v0(1:ns,t) = state0(g,ip,el)%p(iV(1:ns,t,myInstance))
+  forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
+    rhoSgl0(s,t) = max(state0(g,ip,el)%p(iRhoU(s,t,myInstance)), 0.0_pReal)
+    rhoSgl0(s,t+4_pInt) = state0(g,ip,el)%p(iRhoB(s,t,myInstance))
+    v0(s,t) = state0(g,ip,el)%p(iV(s,t,myInstance))
   endforall
   where (abs(rhoSgl0) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstance) &
     .or. abs(rhoSgl0) < significantRho(myInstance)) &
@@ -2675,7 +2674,7 @@ else
   forall (s = 1:ns, c = 1_pInt:2_pInt) &
     constitutive_nonlocal_dotState(iRhoD(s,c,myInstance)) = rhoDot(s,c+8_pInt)
   forall (s = 1:ns) &
-    constitutive_nonlocal_dotState(iGamma(s,myInstance)) = shearrate(s,g,ip,el)
+    constitutive_nonlocal_dotState(iGamma(s,myInstance)) = sum(gdot(s,1:4))
 endif
 
 endfunction
