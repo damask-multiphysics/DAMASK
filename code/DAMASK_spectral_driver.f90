@@ -508,8 +508,8 @@ program DAMASK_spectral_Driver
          write(6,'(1/,a)') ' ... writing results to file ......................................'
          write(resUnit)  materialpoint_results                                                      ! write result to file
        endif
-       if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &
-                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! at frequency of writing restart information set restart parameter for FEsolving (first call to CPFEM_general will write ToDo: true?) 
+       if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
+                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! ToDo first call to CPFEM_general will write? 
          restartWrite = .true.
          lastRestartWritten = inc
        endif 

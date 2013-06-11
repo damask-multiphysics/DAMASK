@@ -3050,8 +3050,14 @@ logical function crystallite_integrateStress(&
                                      tock, &
                                      tickrate, &
                                      maxticks
-  external :: dgesv
-  
+#if(FLOAT==8)
+ external :: &
+   dgesv
+#elif(FLOAT==4)
+ external :: &
+   sgesv
+#endif
+
  !* be pessimistic
  
  crystallite_integrateStress = .false.

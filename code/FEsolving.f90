@@ -22,6 +22,7 @@
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief triggering reading in of restart information when doing a restart
+!> @todo Descriptions for public variables needed
 !--------------------------------------------------------------------------------------------------
 module FEsolving
  use prec, only: &
@@ -30,36 +31,36 @@ module FEsolving
  
  implicit none
  private
- integer(pInt), public :: &
-   cycleCounter =  0_pInt, &
-   theInc       = -1_pInt, &
-   restartInc   =  1_pInt
+ integer(pInt), public :: &                                                                         !< needs description
+   cycleCounter =  0_pInt, &                                                                        !< needs description
+   theInc       = -1_pInt, &                                                                        !< needs description
+   restartInc   =  1_pInt                                                                           !< needs description
    
  real(pReal), public :: &
-   theTime      = 0.0_pReal, &
-   theDelta     = 0.0_pReal
-   
+   theTime      = 0.0_pReal, &                                                                      !< needs description
+   theDelta     = 0.0_pReal                                                                         !< needs description
+
  logical, public :: & 
-   outdatedFFN1      = .false., &                                                                   !< toDo
+   outdatedFFN1      = .false., &                                                                   !< needs description
    symmetricSolver   = .false., &                                                                   !< use a symmetric solver (FEM)
    restartWrite      = .false., &                                                                   !< write current state to enable restart
    restartRead       = .false., &                                                                   !< restart information to continue calculation from saved state
    terminallyIll     = .false., &                                                                   !< at least one material point is terminally ill
-   lastMode          = .true.,  &                                                                   !< toDo
-   lastIncConverged  = .false., &                                                                   !< toDo
-   outdatedByNewInc  = .false.                                                                      !< toDo
+   lastMode          = .true.,  &                                                                   !< needs description
+   lastIncConverged  = .false., &                                                                   !< needs description
+   outdatedByNewInc  = .false.                                                                      !< needs description
 
  integer(pInt), dimension(:,:), allocatable, public :: &
-   FEsolving_execIP
+   FEsolving_execIP                                                                                 !< needs description
    
  integer(pInt), dimension(2), public :: &
-   FEsolving_execElem
+   FEsolving_execElem                                                                               !< needs description
    
  character(len=1024), public :: &
-   modelName
+   modelName                                                                                        !< needs description
    
  logical, dimension(:,:), allocatable, public :: &
-   calcMode
+   calcMode                                                                                         !< needs description
 
  public :: FE_init
 

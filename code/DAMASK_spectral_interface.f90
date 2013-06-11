@@ -231,6 +231,7 @@ end subroutine DAMASK_interface_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief extract working directory from loadcase file possibly based on current working dir
+!> @todo change working directory with call chdir(storeWorkingDirectory)?
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryArg)
 
@@ -267,7 +268,6 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    endif
  endif
  storeWorkingDirectory = rectifyPath(storeWorkingDirectory)
- !@ToDo change working directory with? call chdir(storeWorkingDirectory)
  
 end function storeWorkingDirectory
 

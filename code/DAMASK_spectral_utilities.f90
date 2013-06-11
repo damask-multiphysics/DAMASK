@@ -364,7 +364,7 @@ end subroutine utilities_updateGamma
 !> In case of debugging the FFT, also one component of the tensor (specified by row and column)
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !--------------------------------------------------------------------------------------------------
-subroutine utilities_FFTforward()                                                                   !< @ToDo make row and column between randomly between 1 and 3
+subroutine utilities_FFTforward()
  use math
 
  implicit none

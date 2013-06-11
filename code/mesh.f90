@@ -1242,6 +1242,7 @@ end subroutine mesh_spectral_build_nodes
 !--------------------------------------------------------------------------------------------------
 !> @brief Store FEid, type, material, texture, and node list per element.
 !! Allocates global array 'mesh_element'
+!> @todo does the IO_error makes sense?
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_elements(myUnit)
 
@@ -1321,7 +1322,7 @@ subroutine mesh_spectral_build_elements(myUnit)
      mesh_element( 3,e) = homog                                                                     ! homogenization
      mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
      mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
-                                       ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)               ! base node
+                                       ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)              ! base node
      mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
      mesh_element( 7,e) = mesh_element(5,e) + grid(1) + 2_pInt
      mesh_element( 8,e) = mesh_element(5,e) + grid(1) + 1_pInt
@@ -1329,13 +1330,13 @@ subroutine mesh_spectral_build_elements(myUnit)
      mesh_element(10,e) = mesh_element(9,e) + 1_pInt
      mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
      mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
-     mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         !needed for statistics
+     mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         ! needed for statistics
      mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
    enddo
  enddo
 
  deallocate(microstructures)
- if (e /= mesh_NcpElems) call IO_error(880_pInt,e)                                                  !@ToDo does that make sense?
+ if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
 
 end subroutine mesh_spectral_build_elements
 

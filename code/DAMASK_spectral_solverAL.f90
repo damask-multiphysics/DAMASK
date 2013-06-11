@@ -44,7 +44,7 @@ module DAMASK_spectral_solverAL
    
 !--------------------------------------------------------------------------------------------------
 ! derived types 
- type tSolutionParams                                                                               !< @ToDo: use here the type definition for a full loadcase including mask
+ type tSolutionParams                                                                               !< @todo use here the type definition for a full loadcase including mask
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
    real(pReal) :: temperature
@@ -115,6 +115,7 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
+!> @todo use sourced allocation, e.g. allocate(Fdot,source = F_lastInc)
 !--------------------------------------------------------------------------------------------------
 subroutine AL_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
@@ -171,7 +172,7 @@ subroutine AL_init(temperature)
  allocate (P            (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
- allocate (F_lastInc    (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)                           !< @Todo  sourced allocation allocate(Fdot,source = F_lastInc)
+ allocate (F_lastInc    (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (Fdot         (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (F_tau_lastInc(3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (F_tauDot     (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)

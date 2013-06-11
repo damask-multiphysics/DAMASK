@@ -20,7 +20,7 @@
 !* $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!! Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Parses material config file, either solverJobName.materialConfig or material.config
 !> @details reads the material configuration file, where solverJobName.materialConfig takes
 !! precedence over material.config and parses the sections 'homogenization', 'crystallite',
@@ -1008,7 +1008,6 @@ subroutine material_populateGrains
          enddo
          
        enddo texture
-
 !< @todo calc fraction after weighing with volumePerGrain, exchange in MC steps to improve result (humbug at the moment)
 
  
@@ -1080,7 +1079,7 @@ subroutine material_populateGrains
  deallocate(textureOfGrain)
  deallocate(orientationOfGrain)
  deallocate(Nelems)
- !>@ToDo - causing segmentation fault: needs looking into
+ !> @todo - causing segmentation fault: needs looking into
  !do homog = 1,material_Nhomogenization
  !  do micro = 1,material_Nmicrostructure
  !    if (Nelems(homog,micro) > 0_pInt) deallocate(elemsOfHomogMicro(homog,micro)%p)
