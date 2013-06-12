@@ -88,8 +88,8 @@ module numerics
    err_div_tol                =  5.0e-4_pReal, &                                                    !< Div(P)/avg(P)*meter
    err_stress_tolrel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC in percent
    err_stress_tolabs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC
-   err_f_tol                  =  1.0e-6_pReal,  &
-   err_p_tol                  =  1.0e-5_pReal,  &
+   err_f_tol                  =  1.0e-7_pReal,  &
+   err_p_tol                  =  1.0e-7_pReal,  &
    fftw_timelimit             = -1.0_pReal, &                                                       !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
    rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
    polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
