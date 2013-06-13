@@ -37,7 +37,6 @@ bin_link = { \
                 'addCauchy.py',
                 'addCompatibilityMismatch.py',
                 'addCurl.py',
-                'addDataToGeometry.py',
                 'addDeformedConfiguration.py',
                 'addDeterminant.py',
                 'addDeviator.py',
@@ -66,6 +65,7 @@ bin_link = { \
                 'showTable.py',
                 'tagLabel.py',
                 'vtk2ang.py',
+				'vtk_addData.py',
                 ],
             }
             
