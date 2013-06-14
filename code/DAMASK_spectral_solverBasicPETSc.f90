@@ -17,7 +17,7 @@
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
 !--------------------------------------------------------------------------------------------------
-! $Id: DAMASK_spectral_SolverAL.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
@@ -152,7 +152,7 @@ subroutine basicPETSc_init(temperature)
 
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
- write(6,'(a)') ' $Id: DAMASK_spectral_SolverBasicPETSC.f90 1654 2012-08-03 09:25:48Z MPIE\m.diehl $'
+ write(6,'(a)') ' $Id$'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
