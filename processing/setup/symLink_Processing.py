@@ -19,6 +19,7 @@ bin_link = { \
                 'randomSeeding.py',
                 'geom_fromAng.py',
                 'geom_fromVPSC.py',
+                'geom_fromEuclideanDistance.py'
                 'geom_fromMinimalSurface.py',
                 'geom_fromVoronoiTessellation.py',
                 'geom_fromOsteonGeometry.py',
@@ -29,7 +30,7 @@ bin_link = { \
                 'geom_unpack.py',
                 'geom_translate.py',
                 'geom_vicinityOffset.py',
-                'geom_fromEuclideanDistance.py'
+                'geom_stretchInterfaces.py',
                 ],
         'post' : [
                 '3Dvisualize.py',
