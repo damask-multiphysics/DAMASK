@@ -102,7 +102,9 @@ for file in files:
   
 
   try:
-    locationCol = table.labels.index('%s.x'%options.coords)                 # columns containing location data
+    locationCol = []
+    for i,direction in enumerate(['x','y','z']):
+      locationCol.append(table.labels.index('%s.%s'%(options.coords,direction))) # columns containing location data
     elemCol = table.labels.index('elem')                                    # columns containing location data
   except ValueError:
     print 'no coordinate data or element data found...'
@@ -111,8 +113,8 @@ for file in files:
   if (any(options.resolution)==0 or any(options.dimension)==0.0):
     grid = [{},{},{}]
     while table.data_read():                                                  # read next data line of ASCII table
-      for j in xrange(3):
-        grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
+      for j in range(3):
+        grid[j][str(table.data[locationCol[j]])] = True                        # remember coordinate along x,y,z
     resolution = numpy.array([len(grid[0]),\
                               len(grid[1]),\
                               len(grid[2]),],'i')                             # resolution is number of distinct coordinates found
@@ -121,9 +123,15 @@ for file in files:
                              max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
                              max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
                             ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
+    origin = resolution/numpy.maximum(numpy.ones(3,'d'),resolution-1.0)* \
+                numpy.array([min(map(float,grid[0].keys())),\
+                             min(map(float,grid[1].keys())),\
+                             min(map(float,grid[2].keys())),\
+                            ],'d')
   else:
     resolution = numpy.array(options.resolution,'i')
     dimension = numpy.array(options.dimension,'d')
+    origin = numpy.zeros(3,'d')
 
   if resolution[2] == 1:
     options.packing[2] = 1
@@ -156,13 +164,14 @@ for file in files:
   data /= packing.prod()
 
 
-  posOffset = (shift+[0.5,0.5,0.5])*dimension/resolution*packing
   elementSize = dimension/resolution*packing
+  posOffset = (shift+[0.5,0.5,0.5])*elementSize
   elem = 1
   for c in xrange(downSized[2]):
     for b in xrange(downSized[1]):
       for a in xrange(downSized[0]):
-        data[a,b,c,locationCol:locationCol+3] = posOffset + [a,b,c]*elementSize
+        for i,x in enumerate([a,b,c]):
+          data[a,b,c,locationCol[i]] = posOffset[i] + x*elementSize[i] + origin[i]
         data[a,b,c,elemCol] = elem
         table.data = data[a,b,c,:].tolist()
         table.data_write()                                                  # output processed line
