@@ -954,6 +954,9 @@ real(pReal) function utilities_getFilter(k)
       utilities_getFilter = (1.0_pReal + cos(PI*k(3)/grid(3))) &
                            *(1.0_pReal + cos(PI*k(2)/grid(2))) &
                            *(1.0_pReal + cos(PI*k(1)/grid(1)))/8.0_pReal
+    case ('gradient')                                                                                 !< cosine curve with 1 for avg and zero for highest freq
+      utilities_getFilter = 1.0_pReal/(1.0_pReal + &
+                                       (k(1)*k(1) + k(2)*k(2) + k(3)*k(3)))
     case default
       call IO_error(error_ID = 892_pInt, ext_msg = trim(myfilter))
   end select 
