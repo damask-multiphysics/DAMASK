@@ -3,6 +3,7 @@
 
 import os,sys,string,re,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from scipy import ndimage
 
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
@@ -160,38 +161,14 @@ for file in files:
                      i/info['grid'][0] /info['grid'][1]] = item
       i += 1
 
-  for i in range(options.N):
-    active = []
-    for z in xrange(info['grid'][2]):
-      for y in xrange(info['grid'][1]):
-        for x in xrange(info['grid'][0]):
-          me = microstructure[x,y,z]
-          others = me*numpy.ones(1+len(neighborhood),'i')
-          hot = False
-          o = 0
-
-          for offset in neighborhood:
-            otherX = (x+offset[0])%info['grid'][0]
-            otherY = (y+offset[1])%info['grid'][1]
-            otherZ = (z+offset[2])%info['grid'][2]
-            other = microstructure[otherX,otherY,otherZ]
-            o += 1
-            others[o] = other
-            if other != me:
-              hot = True
-              
-
-          if hot:
-            active.insert(0,numpy.array([x,y,z,0,0],'i'))                                 # remember current position, best candidate, and best change
-                                                                        # append might be not a good idea in linked lists. try to put at the start, not end!
-            for o in xrange(len(others)):
-              howMany = numpy.array(others[1:] == others[o],'i').sum()                       # count number of particular others in neighborhood
-              if active[0][3] < howMany:
-                active[0][3:5] = [howMany,others[o]]
-
-    for spot in active:
-      microstructure[spot[0],spot[1],spot[2]] = spot[4]
-
+  maxMicro = numpy.zeros(info['grid'])
+  microstructureNew = numpy.zeros(info['grid'],'i')
+  for i in range(numpy.amax(microstructure)):
+    diffusedMicro = ndimage.filters.gaussian_filter((microstructure == i).astype(float),numpy.sqrt(options.N))
+    microstructureNew = numpy.where(diffusedMicro > maxMicro,i,microstructureNew)
+    maxMicro = numpy.where(diffusedMicro > maxMicro,diffusedMicro,maxMicro)
+    
+  microstructure = microstructureNew
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
 
 
