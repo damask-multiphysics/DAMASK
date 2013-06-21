@@ -50,13 +50,18 @@ The final geometry is assembled by selecting at each voxel that grain index for 
 
 parser.add_option('-t', '--time', dest='t', type='int', \
                   help='time for curvature flow [%default]')
+parser.add_option('-b', '--black', dest='black', action='extend', type='string', \
+                  help='indices of stationary microstructures', metavar='<LIST>')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
 
-parser.set_defaults(twoD = False)
 parser.set_defaults(t = 1)
+parser.set_defaults(black = [])
+parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
+
+options.black = map(int,options.black)
 
 #--- setup file handles --------------------------------------------------------------------------   
 files = []
@@ -130,7 +135,14 @@ for file in files:
   microstructure = numpy.zeros(info['grid'],'i')
   i = 0
   for line in content:  
-    for item in map(int,line.split()):
+    items = line.split()
+    if len(items) > 2:
+      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
+      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      else:                            items = map(int,items)
+    else:                              items = map(int,items)
+
+    for item in items:
       microstructure[i%info['grid'][0],
                     (i/info['grid'][0])%info['grid'][1],
                      i/info['grid'][0] /info['grid'][1]] = item
@@ -143,7 +155,7 @@ for file in files:
 #--- diffuse each grain separately ----------------------------------------------------------------  
   for theGrain in xrange(1,1+numpy.amax(microstructure)):
     diffused = ndimage.filters.gaussian_filter((microstructure == theGrain).astype(float),\
-                                               numpy.sqrt(options.t),\
+                                               {True:0.0,False:numpy.sqrt(options.t)}[theGrain in options.black],\
                                                mode='wrap')
     winner = numpy.where(diffused > diffusedMax, theGrain, winner)
     diffusedMax = numpy.where(diffused > diffusedMax, diffused, diffusedMax)
