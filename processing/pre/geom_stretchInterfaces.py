@@ -69,17 +69,20 @@ mappings = {
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-Smoothens out interface roughness.
+Smoothens out interface roughness by simulated curvature flow.
+This is achieved by the diffusion of each initially sharply bounded grain volume within the periodic domain for a given time,
+i.e. up to a diffusion distance of sqrt(t) voxels.
+The final geometry is assembled by selecting at each voxel that grain index for which the concentration is largest.
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-N', '--iterations', dest='N', type='int', \
-                  help='number of iterations to apply smoothing [%default]')
+parser.add_option('-t', '--time', dest='t', type='int', \
+                  help='time for curvature flow [%default]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
 
 parser.set_defaults(twoD = False)
-parser.set_defaults(N = 1)
+parser.set_defaults(t = 1)
 
 (options, filenames) = parser.parse_args()
 
@@ -161,18 +164,24 @@ for file in files:
                      i/info['grid'][0] /info['grid'][1]] = item
       i += 1
 
-  maxMicro = numpy.zeros(info['grid'])
-  microstructureNew = numpy.zeros(info['grid'],'i')
-  for i in range(numpy.amax(microstructure)):
-    diffusedMicro = ndimage.filters.gaussian_filter((microstructure == i).astype(float),numpy.sqrt(options.N))
-    microstructureNew = numpy.where(diffusedMicro > maxMicro,i,microstructureNew)
-    maxMicro = numpy.where(diffusedMicro > maxMicro,diffusedMicro,maxMicro)
-    
-  microstructure = microstructureNew
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+#--- initialize helper data -----------------------------------------------------------------------  
+  winner      = numpy.zeros(info['grid'],'i')
+  diffusedMax = numpy.zeros(info['grid'])
+
+#--- diffuse each grain separately ----------------------------------------------------------------  
+  for theGrain in xrange(1,1+numpy.amax(microstructure)):
+    diffused = ndimage.filters.gaussian_filter((microstructure == theGrain).astype(float),\
+                                               numpy.sqrt(options.t),\
+                                               mode='wrap')
+    winner = numpy.where(diffused > diffusedMax, theGrain, winner)
+    diffusedMax = numpy.where(diffused > diffusedMax, diffused, diffusedMax)
+
+  microstructure = winner
 
 
 # --- assemble header -----------------------------------------------------------------------------
+  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+
   new_header.append('$Id$\n')
   new_header.append("grid\ta %i\tb %i\tc %i\n"%(
                      info['grid'][0],info['grid'][1],info['grid'][2]))
