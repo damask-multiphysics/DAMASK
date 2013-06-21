@@ -130,7 +130,14 @@ for file in files:
   structure = vtk.vtkIntArray()
   structure.SetName('Microstructures')
   for line in content:  
-    for item in map(int,line.split()):
+    items = line.split()
+    if len(items) > 2:
+      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
+      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      else:                            items = map(int,items)
+    else:                              items = map(int,items)
+
+    for item in items:
       structure.InsertNextValue(item)
 
   grid.GetCellData().AddArray(structure)
