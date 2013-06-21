@@ -134,14 +134,14 @@ for file in files:
 #--- unpack input ---------------------------------------------------------------------------------
   wordsWritten = 0
   for line in content:
-    words = map(str.lower,line.split())
-    if len(words) > 1:                                                                              # any packing keywords?
-      if (words[1] == 'to'): words = map(str,range(int(words[0]),int(words[2])+1))
-      if (words[1] == 'of'): words = [words[2]]*int(words[0])
+    words = line.split()
+    if len(words) > 2:                                                                              # any packing keywords?
+      if   words[1].lower() == 'to': words = map(str,range(int(words[0]),int(words[2])+1))
+      elif words[1].lower() == 'of': words = [words[2]]*int(words[0])
 
     for word in words:
       wordsWritten += 1
-      file['output'].write(word.zfill(digits)+{True:'\n',False:' '}[wordsWritten%format == 0])      # newline every format words
+      file['output'].write(word.rjust(digits)+{True:'\n',False:' '}[wordsWritten%format == 0])      # newline every format words
 
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
