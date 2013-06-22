@@ -123,11 +123,10 @@ for file in files:
                              max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
                              max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
                             ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
-    origin = resolution/numpy.maximum(numpy.ones(3,'d'),resolution-1.0)* \
-                numpy.array([min(map(float,grid[0].keys())),\
-                             min(map(float,grid[1].keys())),\
-                             min(map(float,grid[2].keys())),\
-                            ],'d')
+    origin = numpy.array([min(map(float,grid[0].keys())),\
+                          min(map(float,grid[1].keys())),\
+                          min(map(float,grid[2].keys())),\
+                         ],'d') - 0.5 * dimension / resolution
   else:
     resolution = numpy.array(options.resolution,'i')
     dimension = numpy.array(options.dimension,'d')
