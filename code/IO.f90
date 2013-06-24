@@ -433,11 +433,11 @@ logical function IO_abaqus_hasNoPart(myUnit)
 
  integer(pInt),    parameter                 :: maxNchunks = 1_pInt
  integer(pInt),    dimension(1+2*maxNchunks) :: myPos
- character(len=300)                          :: line
+ character(len=65536)                        :: line
  
  IO_abaqus_hasNoPart = .true.
  
-610 FORMAT(A300)
+610 FORMAT(A65536)
  rewind(myUnit)
  do
    read(myUnit,610,END=620) line
@@ -663,18 +663,18 @@ integer(pInt) function IO_countSections(myFile,part)
  integer(pInt),      intent(in) :: myFile
  character(len=*),   intent(in) :: part
 
- character(len=1024)            :: line
+ character(len=65536)           :: line
 
  line = ''
  IO_countSections = 0_pInt
  rewind(myFile)
 
  do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
  enddo
 
  do
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
@@ -702,7 +702,7 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
  integer(pInt),   dimension(Nsections)      :: counter
  integer(pInt),   dimension(1+2*maxNchunks) :: positions
  integer(pInt)                              :: section
- character(len=1024)                        :: line, &
+ character(len=65536)                       :: line, &
                                                tag
  line = ''
  counter = 0_pInt
@@ -710,11 +710,11 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
 
  rewind(myFile) 
  do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
  enddo
 
  do
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
@@ -749,7 +749,7 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
 
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt)                            :: section
- character(len=1024)                      :: line, &
+ character(len=65536)                     :: line, &
                                              tag
 
  IO_spotTagInPart = .false.                                                                         ! assume to nowhere spot tag
@@ -758,11 +758,11 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
 
  rewind(myFile)
  do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
  enddo
 
  do
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
@@ -792,7 +792,7 @@ logical function IO_globalTagInPart(myFile,part,myTag)
 
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  integer(pInt)                            :: section
- character(len=1024)                      :: line, &
+ character(len=65536)                     :: line, &
                                              tag
 
  IO_globalTagInPart = .false.                                                                       ! assume to nowhere spot tag
@@ -801,11 +801,11 @@ logical function IO_globalTagInPart(myFile,part,myTag)
 
  rewind(myFile)
  do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
  enddo
 
  do
-   read(myFile,'(a1024)',END=100) line
+   read(myFile,'(a65536)',END=100) line
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
@@ -1136,11 +1136,11 @@ subroutine IO_skipChunks(myUnit,N)
  
  integer(pInt)                            :: remainingChunks
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
- character(len=300)                       :: line
+ character(len=65536)                     :: line
 
  remainingChunks = N
  do while (remainingChunks > 0)
-   read(myUnit,'(A300)',end=100) line
+   read(myUnit,'(A65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
    remainingChunks = remainingChunks - myPos(1)
  enddo
@@ -1180,13 +1180,13 @@ integer(pInt) function IO_countDataLines(myUnit)
  integer(pInt), parameter                 :: maxNchunks = 1_pInt
 
  integer(pInt), dimension(1+2*maxNchunks) :: myPos
- character(len=300)                       :: line, &
+ character(len=65536)                     :: line, &
                                              tmp
 
  IO_countDataLines = 0_pInt
 
  do
-   read(myUnit,'(A300)',end=100) line
+   read(myUnit,'(A65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
    tmp = IO_lc(IO_stringValue(line,myPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
@@ -1222,7 +1222,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
 
 #ifndef Abaqus
  do
-   read(myUnit,'(A300)',end=100) line
+   read(myUnit,'(A65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
    if (myPos(1) < 1_pInt) then                                                                      ! empty line
      exit
@@ -1248,7 +1248,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
  enddo
      
  do l = 1_pInt,c
-   read(myUnit,'(A300)',end=100) line
+   read(myUnit,'(A65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
    IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &                           ! assuming range generation
                                 (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
@@ -1735,12 +1735,12 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
  integer(pInt), parameter                 :: maxNchunks = 6_pInt
 
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- character(len=300)                       :: line,fname
+ character(len=65536)                       :: line,fname
  logical                                  :: createSuccess,fexist
 
 
  do
-   read(unit2,'(A300)',END=220) line
+   read(unit2,'(A65536)',END=220) line
    positions = IO_stringPos(line,maxNchunks)
 
    if (IO_lc(IO_StringValue(line,positions,1_pInt))=='*include') then
