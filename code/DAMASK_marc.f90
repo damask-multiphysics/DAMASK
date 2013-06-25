@@ -16,6 +16,18 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
+#define QUOTE(x) #x                                                                                 
+#define PASTE(x,y) x ## y  
+
+#ifndef INT
+#define INT 4
+#endif
+
+#ifndef FLOAT
+#define FLOAT 8
+#endif
+
+#include "prec.f90"
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
@@ -44,19 +56,6 @@
 !> @details   - concom: lovl, inc
 !> @details   - creeps: timinc
 !--------------------------------------------------------------------------------------------------
-#define QUOTE(x) #x                                                                                 
-#define PASTE(x,y) x ## y  
-
-#ifndef INT
-#define INT 4
-#endif
-
-#ifndef FLOAT
-#define FLOAT 8
-#endif
-
-#include "prec.f90"
-
 module DAMASK_interface
  
  implicit none
