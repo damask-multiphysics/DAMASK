@@ -108,8 +108,8 @@ subroutine homogenization_RGC_init(myFile)
  integer(pInt), parameter  :: maxNchunks = 4_pInt
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) ::section=0_pInt, maxNinstance, i,j,e, output=-1_pInt, mySize, myInstance
- character(len=64) :: tag
- character(len=1024) :: line = ''
+ character(len=65536) :: tag
+ character(len=65536) :: line = ''
  
  write(6,'(/,3a)') ' <<<+-  homogenization_',trim(homogenization_RGC_label),' init  -+>>>'
  write(6,'(a)')    ' $Id$'
@@ -135,12 +135,12 @@ subroutine homogenization_RGC_init(myFile)
  
  rewind(myFile)
  
- do while (IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)                           ! wind forward to <homogenization>
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
+   line = IO_read(myFile)
  enddo
 
- do                                                                                                 ! read thru sections of phase part
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#')
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -198,7 +198,7 @@ subroutine homogenization_RGC_init(myFile)
    endif
  enddo elementLooping
 
-100   if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
+ if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    do i = 1_pInt,maxNinstance
      write(6,'(a15,1x,i4)')  'instance:  ', i
      write(6,*)

@@ -68,8 +68,8 @@ subroutine homogenization_isostrain_init(myFile)
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) section, i, j, output, mySize
  integer :: maxNinstance, k                                                                         ! no pInt (stores a system dependen value from 'count'
- character(len=64)   :: tag
- character(len=1024) :: line = ''                                                                   ! to start initialized
+ character(len=65536) :: tag
+ character(len=65536) :: line = ''                                                                   ! to start initialized
  
 
  write(6,*)
@@ -94,12 +94,12 @@ subroutine homogenization_isostrain_init(myFile)
  rewind(myFile)
  section = 0_pInt
  
- do while (IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)                           ! wind forward to <homogenization>
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
+   line = IO_read(myFile)
  enddo
 
- do                                                                                                 ! read thru sections of phase part
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#')
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -122,7 +122,7 @@ subroutine homogenization_isostrain_init(myFile)
    endif
  enddo
 
-100 do k = 1,maxNinstance
+ do k = 1,maxNinstance
    homogenization_isostrain_sizeState(i)    = 0_pInt
 
    do j = 1_pInt,maxval(homogenization_Noutput)

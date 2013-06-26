@@ -128,6 +128,7 @@ subroutine debug_init
    nMPstate, &
    nHomog
  use IO, only: &
+   IO_read, &
    IO_error, &
    IO_open_file_stat, &
    IO_isBlank, &
@@ -144,8 +145,8 @@ subroutine debug_init
  
  integer(pInt)                            :: i, what
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- character(len=64)                        :: tag
- character(len=1024)                      :: line
+ character(len=65536)                     :: tag
+ character(len=65536)                     :: line
 
  write(6,'(/,a)')   ' <<<+-  debug init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -175,9 +176,11 @@ subroutine debug_init
  
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
+
+
  fileExists: if(IO_open_file_stat(fileunit,debug_configFile)) then
-   do
-     read(fileunit,'(a1024)',END=100) line
+   do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+     line = IO_read(fileunit)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
@@ -223,7 +226,7 @@ subroutine debug_init
        case ('other')
          what = debug_MAXNTYPE + 2_pInt
      end select
-     if(what /= 0) then
+     if (what /= 0) then
        do i = 2_pInt, positions(1)
          select case(IO_lc(IO_stringValue(line,positions,i)))
            case('basic')
@@ -246,7 +249,7 @@ subroutine debug_init
        enddo
       endif
    enddo
-   100 close(fileunit)
+   close(fileunit)
  
    do i = 1_pInt, debug_maxNtype
      if (debug_level(i) == 0) &
