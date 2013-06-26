@@ -109,6 +109,7 @@ subroutine constitutive_j2_init(myFile)
    math_Mandel3333to66, &
    math_Voigt66to3333
  use IO, only: &
+   IO_read, &
    IO_lc, &
    IO_getTag, &
    IO_isBlank, &
@@ -131,8 +132,8 @@ subroutine constitutive_j2_init(myFile)
  
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) :: section = 0_pInt, maxNinstance, i,o, mySize
- character(len=64)   :: tag
- character(len=1024) :: line = ''                                                                   ! to start initialized
+ character(len=65536) :: tag
+ character(len=65536) :: line = ''                                                                  ! to start initialized
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_j2_LABEL)//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -192,23 +193,23 @@ subroutine constitutive_j2_init(myFile)
  
  rewind(myFile)
  
- do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                              ! wind forward to <phase>
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+   line = IO_read(myFile)
  enddo
  
- do                                                                                                                                ! read thru sections of phase part
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                                                     ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                                                         ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                                                         ! next section
      section = section + 1_pInt                                                                                                    ! advance section counter
      cycle
    endif
-   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-     if (phase_plasticity(section) == constitutive_j2_LABEL) then                                   ! one of my sections
-       i = phase_plasticityInstance(section)                                                                                         ! which instance of my plasticity is present phase
+   if (section > 0_pInt ) then                                                                                                     ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+     if (phase_plasticity(section) == constitutive_j2_LABEL) then                                                                  ! one of my sections
+       i = phase_plasticityInstance(section)                                                                                       ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,maxNchunks)
-       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                            ! extract key
+       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                          ! extract key
        select case(tag)
          case ('plasticity','elasticity')
            cycle
@@ -268,7 +269,7 @@ subroutine constitutive_j2_init(myFile)
    endif
  enddo
 
-100 do i = 1_pInt,maxNinstance                                        ! sanity checks
+ do i = 1_pInt,maxNinstance                                                                                                        ! sanity checks
    if (constitutive_j2_structureName(i) == '')            call IO_error(205_pInt,e=i)
    if (constitutive_j2_tau0(i) < 0.0_pReal)               call IO_error(211_pInt,ext_msg='tau0 (' &
                                                                //constitutive_j2_label//')')

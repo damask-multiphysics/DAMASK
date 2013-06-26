@@ -252,8 +252,8 @@ integer(pInt) :: section = 0_pInt,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,&
                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
                  mySize,myStructure,maxTotalNslip,maxTotalNtwin
 integer :: maxNinstance !no pInt
-character(len=64)   :: tag
-character(len=1024) :: line = ''                                                                   ! to start initialized
+character(len=65536) :: tag
+character(len=65536) :: line = ''                                                                   ! to start initialized
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_titanmod_LABEL)//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -415,12 +415,12 @@ allocate(constitutive_titanmod_interactionTwinTwin(lattice_maxNinteraction,maxNi
 !* Read data from material.config file
 rewind(file)
 
-do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
-   read(file,'(a1024)',END=100) line
+do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+  line = IO_read(file)
 enddo
-
- do                                                       ! read thru sections of phase part
-   read(file,'(a1024)',END=100) line
+ 
+do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   line = IO_read(file)
    if (IO_isBlank(line)) cycle                            ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                ! next section
@@ -628,7 +628,7 @@ enddo
    endif
 enddo
 
-100 do i = 1_pInt,maxNinstance
+do i = 1_pInt,maxNinstance
    constitutive_titanmod_structure(i) = &
    lattice_initializeStructure(constitutive_titanmod_structureName(i),constitutive_titanmod_CoverA(i))
    myStructure = constitutive_titanmod_structure(i)

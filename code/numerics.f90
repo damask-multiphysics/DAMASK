@@ -126,6 +126,7 @@ contains
 subroutine numerics_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
+   IO_read, &
    IO_error, &
    IO_open_file_stat, &
    IO_isBlank, &
@@ -148,8 +149,8 @@ subroutine numerics_init
                                              maxNchunks = 2_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- character(len=64) ::                        tag
- character(len=1024) ::                      line
+ character(len=65536) ::                     tag
+ character(len=65536) ::                     line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
  write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
@@ -172,8 +173,8 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
    line = ''
-   do
-     read(fileunit,'(a1024)',END=100) line
+   do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+     line = IO_read(fileunit)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
@@ -329,7 +330,7 @@ subroutine numerics_init
          call IO_error(300_pInt,ext_msg=tag)
      endselect
    enddo
-   100 close(fileunit)
+   close(fileunit)
 
  else fileExists
    write(6,'(a,/)') ' using standard values'

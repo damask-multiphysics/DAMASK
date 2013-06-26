@@ -136,8 +136,8 @@ subroutine constitutive_phenopowerlaw_init(myFile)
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                   Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
                   mySize=0_pInt, myStructure, index_myFamily, index_otherFamily
- character(len=64)   :: tag
- character(len=1024) :: line = ''                                                                   ! to start initialized
+ character(len=65536) :: tag
+ character(len=65536) :: line = ''                                                                   ! to start initialized
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_phenopowerlaw_LABEL)//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -240,12 +240,12 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
  rewind(myFile)
  
- do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                               ! wind forward to <phase>
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+   line = IO_read(myFile)
  enddo
-
- do                                                                                                 ! read thru sections of phase part
-   read(myFile,'(a1024)',END=100) line
+ 
+ do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -375,7 +375,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    endif
  enddo
 
-100 do i = 1_pInt,maxNinstance
+ do i = 1_pInt,maxNinstance
 
    constitutive_phenopowerlaw_structure(i) = lattice_initializeStructure(constitutive_phenopowerlaw_structureName(i), &    ! get structure
                                                                          constitutive_phenopowerlaw_CoverA(i))

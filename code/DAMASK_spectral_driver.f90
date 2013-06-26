@@ -40,6 +40,7 @@ program DAMASK_spectral_Driver
    getSolverJobName, &
    appendToOutFile
  use IO, only: &
+   IO_read, &
    IO_isBlank, &
    IO_open_file, &
    IO_stringPos, &
@@ -111,7 +112,7 @@ program DAMASK_spectral_Driver
    N_t    = 0_pInt, &                                                                               !< # of time indicators found in load case file 
    N_n    = 0_pInt, &                                                                               !< # of increment specifiers found in load case file
    N_def = 0_pInt                                                                                   !< # of rate of deformation specifiers found in load case file
- character(len=1024) :: &
+ character(len=65536) :: &
    line
 
 !--------------------------------------------------------------------------------------------------
@@ -161,10 +162,11 @@ program DAMASK_spectral_Driver
  call IO_open_file(myUnit,trim(loadCaseFile))
  rewind(myUnit)
  do
-   read(myUnit,'(a1024)',END = 100) line
+   line = IO_read(myUnit)
+   if (trim(line) == '#EOF#') exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    positions = IO_stringPos(line,maxNchunks)
-   do i = 1_pInt, positions(1)                                                                        ! reading compulsory parameters for loadcase
+   do i = 1_pInt, positions(1)                                                                      ! reading compulsory parameters for loadcase
      select case (IO_lc(IO_stringValue(line,positions,i)))
        case('l','velocitygrad','velgrad','velocitygradient','fdot','dotf','f')
          N_def = N_def + 1_pInt
@@ -176,8 +178,8 @@ program DAMASK_spectral_Driver
    enddo                                                                                            ! count all identifiers to allocate memory and do sanity check
  enddo
 
-100 if ((N_def /= N_n) .or. (N_n /= N_t)) &                                                         ! sanity check
-       call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                ! error message for incomplete loadcase
+ if ((N_def /= N_n) .or. (N_n /= N_t)) &                                                            ! sanity check
+   call IO_error(error_ID=837_pInt,ext_msg = trim(loadCaseFile))                                    ! error message for incomplete loadcase
  allocate (loadCases(N_n))                                                                          ! array of load cases
  loadCases%P%myType='p'
 
@@ -185,7 +187,8 @@ program DAMASK_spectral_Driver
 ! reading the load case and assign values to the allocated data structure
  rewind(myUnit)
  do
-   read(myUnit,'(a1024)',END = 101) line
+   line = IO_read(myUnit)
+   if (trim(line) == '#EOF#') exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
    positions = IO_stringPos(line,maxNchunks)
@@ -264,7 +267,7 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
      end select
  enddo; enddo
-101 close(myUnit)
+ close(myUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case

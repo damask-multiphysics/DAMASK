@@ -2026,9 +2026,9 @@ function mesh_deformedCoordsLinear(gDim,F,FavgIn) result(coords)
 !--------------------------------------------------------------------------------------------------
 ! report
  if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')          ' Restore geometry using linear integration'
-   write(6,'(a,3(i12  ))') ' grid     a b c: ', iRes
-   write(6,'(a,3(f12.5))') ' size     x y z: ', gDim
+   write(6,'(a)')           ' Restore geometry using linear integration'
+   write(6,'(a,3(i12  ))')  ' grid     a b c: ', iRes
+   write(6,'(a,3(es12.5))') ' size     x y z: ', gDim
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -2166,9 +2166,9 @@ function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) result(coords)
 !--------------------------------------------------------------------------------------------------
 ! report
  if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')          ' Restore geometry using FFT-based integration'
-   write(6,'(a,3(i12  ))') ' grid     a b c: ', iRes
-   write(6,'(a,3(f12.5))') ' size     x y z: ', gDim
+   write(6,'(a)')           ' Restore geometry using FFT-based integration'
+   write(6,'(a,3(i12  ))')  ' grid     a b c: ', iRes
+   write(6,'(a,3(es12.5))') ' size     x y z: ', gDim
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -2311,9 +2311,9 @@ function mesh_volumeMismatch(gDim,F,nodes) result(vMismatch)
 !--------------------------------------------------------------------------------------------------
 ! report and check 
  if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')          ' Calculating volume mismatch'
-   write(6,'(a,3(i12  ))') ' grid     a b c: ', iRes
-   write(6,'(a,3(f12.5))') ' size     x y z: ', gDim
+   write(6,'(a)')           ' Calculating volume mismatch'
+   write(6,'(a,3(i12  ))')  ' grid     a b c: ', iRes
+   write(6,'(a,3(es12.5))') ' size     x y z: ', gDim
  endif
   
  if (any([iRes/=size(nodes,2)-1_pInt,iRes/=size(nodes,3)-1_pInt,iRes/=size(nodes,4)-1_pInt]))&
@@ -2383,9 +2383,9 @@ function mesh_shapeMismatch(gDim,F,nodes,centres)  result(sMismatch)
 !--------------------------------------------------------------------------------------------------
 ! report and check
  if (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)')          ' Calculating shape mismatch'
-   write(6,'(a,3(i12  ))') ' grid     a b c: ', iRes
-   write(6,'(a,3(f12.5))') ' size     x y z: ', gDim
+   write(6,'(a)')           ' Calculating shape mismatch'
+   write(6,'(a,3(i12  ))')  ' grid     a b c: ', iRes
+   write(6,'(a,3(es12.5))') ' size     x y z: ', gDim
  endif
 
  if(any([iRes/=size(nodes,2)-1_pInt,iRes/=size(nodes,3)-1_pInt,iRes/=size(nodes,4)-1_pInt]) .or.&

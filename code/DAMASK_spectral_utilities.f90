@@ -201,8 +201,8 @@ subroutine utilities_init()
  geomSize = mesh_spectral_getSize(fileUnit)
  close(fileUnit)
 
- write(6,'(a,3(i12  ))') ' grid     a b c: ', grid
- write(6,'(a,3(f12.5))') ' size     x y z: ', geomSize
+ write(6,'(a,3(i12  ))')  ' grid     a b c: ', grid
+ write(6,'(a,3(es12.5))') ' size     x y z: ', geomSize
 
 !--------------------------------------------------------------------------------------------------
 ! scale dimension to calculate either uncorrected, dimension-independent, or dimension- and reso-

@@ -148,6 +148,7 @@ subroutine crystallite_init(Temperature)
    mesh_maxNips, &
    mesh_maxNipNeighbors
  use IO, only: &
+   IO_read, &
    IO_timeStamp, &
    IO_open_jobFile_stat, &
    IO_open_file, &
@@ -198,8 +199,8 @@ subroutine crystallite_init(Temperature)
    mySize, &
    myPhase, &
    myMat
- character(len=64) ::  tag
- character(len=1024) ::  line
+ character(len=65536) ::  tag
+ character(len=65536) ::  line
  
  write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -270,13 +271,13 @@ subroutine crystallite_init(Temperature)
  endif
  line = ''
  section = 0_pInt
- 
- do while (IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)                              ! wind forward to <crystallite>
-   read(myFile,'(a1024)',END=100) line
+
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)                                 ! wind forward to <crystallite>
+   line = IO_read(myFile)
  enddo
  
- do                                                                                                 ! read through sections of phase part
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -294,7 +295,7 @@ subroutine crystallite_init(Temperature)
    endif
  enddo
  
-100 close(myFile)
+ close(myFile)
  
  do i = 1_pInt,material_Ncrystallite
    do j = 1_pInt,crystallite_Noutput(i)

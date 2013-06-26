@@ -226,7 +226,8 @@ use math,     only: math_Mandel3333to66, &
                     math_Voigt66to3333, & 
                     math_mul3x3, &
                     math_transpose33
-use IO,       only: IO_lc, &
+use IO,       only: IO_read, &
+                    IO_lc, &
                     IO_getTag, &
                     IO_isBlank, &
                     IO_stringPos, &
@@ -275,8 +276,8 @@ integer(pInt)          ::                   section = 0_pInt, &
                                             Nchunks_SlipSlip = 0_pInt, &
                                             Nchunks_SlipFamilies = 0_pInt, &
                                             mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
-character(len=64)                           tag
-character(len=1024) :: line = ''                                ! to start initialized
+character(len=65536)                        tag
+character(len=65536) ::                     line = ''                                ! to start initialized
  
  write(6,*)
  write(6,*) '<<<+-  constitutive_',trim(CONSTITUTIVE_NONLOCAL_LABEL),' init  -+>>>'
@@ -419,12 +420,12 @@ nonSchmidCoeff = 0.0_pReal
 !*** readout data from material.config file
 
 rewind(myFile)
-do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                                               ! wind forward to <phase>
-  read(myFile,'(a1024)',END=100) line
+do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+  line = IO_read(myFile)
 enddo
-
-do                                                                                                                                 ! read thru sections of phase part
-  read(myFile,'(a1024)',END=100) line
+ 
+do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+  line = IO_read(myFile)
   if (IO_isBlank(line)) cycle                                                                                                      ! skip empty lines
   if (IO_getTag(line,'<','>') /= '') exit                                                                                          ! stop at next part
   if (IO_getTag(line,'[',']') /= '') then                                                                                          ! next section
@@ -591,7 +592,7 @@ do                                                                              
 enddo
 
 
-100 do i = 1_pInt,maxNinstance
+do i = 1_pInt,maxNinstance
 
   constitutive_nonlocal_structure(i) = &
     lattice_initializeStructure(constitutive_nonlocal_structureName(i), CoverA(i))                            ! our lattice structure is defined in the material.config file by the structureName (and the c/a ratio)

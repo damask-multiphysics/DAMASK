@@ -70,6 +70,7 @@ subroutine constitutive_none_init(myFile)
    math_Mandel3333to66, &
    math_Voigt66to3333
  use IO, only: &
+   IO_read, &
    IO_lc, &
    IO_getTag, &
    IO_isBlank, &
@@ -91,8 +92,8 @@ subroutine constitutive_none_init(myFile)
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) :: section = 0_pInt, maxNinstance, i
- character(len=64)   :: tag
- character(len=1024) :: line = ''                                                                   ! to start initialized
+ character(len=65536) :: tag
+ character(len=65536) :: line = ''                                                                   ! to start initialized
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_none_LABEL)//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -118,12 +119,12 @@ subroutine constitutive_none_init(myFile)
  
  rewind(myFile)
  
- do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                               ! wind forward to <phase>
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+   line = IO_read(myFile)
  enddo
  
- do                                                                                                 ! read thru sections of phase part
-   read(myFile,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -165,7 +166,7 @@ subroutine constitutive_none_init(myFile)
    endif
  enddo
 
-100 do i = 1_pInt,maxNinstance                 
+ do i = 1_pInt,maxNinstance                 
    if (constitutive_none_structureName(i) == '')              call IO_error(205_pInt,e=i)
  enddo
 

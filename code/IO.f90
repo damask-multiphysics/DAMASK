@@ -34,6 +34,7 @@ module IO
  private
  public :: &
    IO_init, &
+   IO_read, &
    IO_checkAndRewind, &
    IO_open_file_stat, &
    IO_open_jobFile_stat, &
@@ -109,8 +110,67 @@ end subroutine IO_init
 
 
 !--------------------------------------------------------------------------------------------------
+!> @brief recursively reads a line from a file.
+!> Recursion is triggered by "{path/to/inputfile}" in a line.
+!--------------------------------------------------------------------------------------------------
+recursive function IO_read(myUnit) result(line)
+ 
+ implicit none
+ integer(pInt), intent(in)    :: myUnit
+ integer(pInt), dimension(10) :: unitOn = 0_pInt                                                   ! save the stack of recursive file units
+ integer(pInt)                :: stack = 1_pInt                                                    ! current stack position
+ character(len=8192), dimension(10) :: pathOn = ''
+ character(len=512)           :: path,input
+ integer(pInt)                :: myStat
+ logical                      :: inUse
+ character(len=65536)         :: line
+
+ character(len=*), parameter  :: sep = achar(47)//achar(92)                                        ! forward and backward slash ("/", "\")
+
+ unitOn(1) = myUnit
+
+ read(unitOn(stack),'(a65536)',END=100) line
+ input = IO_getTag(line,'{','}')
+
+! --- normal case ---
+ if (input == '') return                                                                           ! regular line
+
+! --- recursion case ---
+ if (stack >= 10_pInt) call IO_error(104_pInt,ext_msg=input)                                       ! recursion limit reached
+
+ inquire(UNIT=unitOn(stack),NAME=path)                                                             ! path of current file
+ stack = stack+1_pInt
+ unitOn(stack) = unitOn(stack-1_pInt)+1_pInt                                                       ! assume next file unit to be free to use
+ pathOn(stack) = path(1:scan(path,sep,.true.))//input                                              ! glue include to current file's dir
+
+ do
+   inquire(UNIT=unitOn(stack),OPENED=inUse)
+   if (.not. inUse) exit
+   unitOn(stack) = unitOn(stack)+1_pInt                                                            ! test next fileunit
+ enddo
+
+ open(unitOn(stack),status='old',iostat=myStat,file=pathOn(stack))                                 ! open included file
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+
+ line = IO_read(myUnit)
+ 
+ return
+ 
+! --- end of file case ---
+100 if (stack > 1_pInt) then                                                                       ! can go back to former file
+   close(unitOn(stack))
+   stack = stack-1_pInt
+   line = IO_read(myUnit)
+ else                                                                                              ! top-most file reached
+   line = '#EOF#'                                                                                  !< @ToDo should be made a module parameter
+ endif
+ 
+end function IO_read
+
+
+!--------------------------------------------------------------------------------------------------
 !> @brief Checks if unit is opened for reading, if true rewinds. Otherwise stops with
-!! error message 102
+!> error message 102
 !--------------------------------------------------------------------------------------------------
 subroutine IO_checkAndRewind(myUnit)
  
@@ -123,6 +183,27 @@ implicit none
  rewind(myUnit)
 
 end subroutine IO_checkAndRewind
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Open existing file to given unit path to file is relative to working directory
+!--------------------------------------------------------------------------------------------------
+subroutine IO_open_file(myUnit,relPath)
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName
+ 
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: relPath
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+ 
+ path = trim(getSolverWorkingDirectoryName())//relPath
+ open(myUnit,status='old',iostat=myStat,file=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ 
+end subroutine IO_open_file
 
 
 !--------------------------------------------------------------------------------------------------
@@ -149,49 +230,6 @@ end function IO_open_file_stat
 !--------------------------------------------------------------------------------------------------
 !> @brief Open (write) file related to current job but with different extension to given unit
 !--------------------------------------------------------------------------------------------------
-logical function IO_open_jobFile_stat(myUnit,newExt)
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName, &
-   getSolverJobName
-
- implicit none
- integer(pInt),      intent(in) :: myUnit
- character(len=*),   intent(in) :: newExt
-
- integer(pInt)                  :: myStat
- character(len=1024)            :: path
-
- path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
- open(myUnit,status='old',iostat=myStat,file=path)
- IO_open_jobFile_stat = (myStat == 0_pInt)
-
-end function IO_open_JobFile_stat
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Open existing file to given unit path to file is relative to working directory
-!--------------------------------------------------------------------------------------------------
-subroutine IO_open_file(myUnit,relPath)
- use DAMASK_interface, only: &
-   getSolverWorkingDirectoryName
- 
- implicit none
- integer(pInt),      intent(in) :: myUnit
- character(len=*),   intent(in) :: relPath
-
- integer(pInt)                  :: myStat
- character(len=1024)            :: path
- 
- path = trim(getSolverWorkingDirectoryName())//relPath
- open(myUnit,status='old',iostat=myStat,file=path)
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
- 
-end subroutine IO_open_file
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief Open (write) file related to current job but with different extension to given unit
-!--------------------------------------------------------------------------------------------------
 subroutine IO_open_jobFile(myUnit,newExt)
  use DAMASK_interface, only: &
    getSolverWorkingDirectoryName, &
@@ -210,6 +248,28 @@ subroutine IO_open_jobFile(myUnit,newExt)
  if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
  
 end subroutine IO_open_jobFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Open (write) file related to current job but with different extension to given unit
+!--------------------------------------------------------------------------------------------------
+logical function IO_open_jobFile_stat(myUnit,newExt)
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName
+
+ implicit none
+ integer(pInt),      intent(in) :: myUnit
+ character(len=*),   intent(in) :: newExt
+
+ integer(pInt)                  :: myStat
+ character(len=1024)            :: path
+
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//newExt
+ open(myUnit,status='old',iostat=myStat,file=path)
+ IO_open_jobFile_stat = (myStat == 0_pInt)
+
+end function IO_open_JobFile_stat
 
 
 #ifndef Spectral
@@ -669,19 +729,19 @@ integer(pInt) function IO_countSections(myFile,part)
  IO_countSections = 0_pInt
  rewind(myFile)
 
- do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_getTag(line,'<','>') /= part)                             ! search for part
+   line = IO_read(myFile)
  enddo
 
- do
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#')
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
      IO_countSections = IO_countSections + 1_pInt
  enddo
 
-100 end function IO_countSections
+end function IO_countSections
  
 
 !--------------------------------------------------------------------------------------------------
@@ -709,12 +769,12 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
  section = 0_pInt
 
  rewind(myFile) 
- do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_getTag(line,'<','>') /= part)                             ! search for part
+   line = IO_read(myFile)
  enddo
 
- do
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#')
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
@@ -727,7 +787,7 @@ function IO_countTagInPart(myFile,part,myTag,Nsections)
    endif   
  enddo
 
-100 IO_countTagInPart = counter
+ IO_countTagInPart = counter
 
 end function IO_countTagInPart
 
@@ -757,12 +817,12 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
  line =''
 
  rewind(myFile)
- do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_getTag(line,'<','>') /= part)                             ! search for part
+   line = IO_read(myFile)
  enddo
 
- do
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#')
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
@@ -775,7 +835,7 @@ function IO_spotTagInPart(myFile,part,myTag,Nsections)
    endif   
  enddo
 
-100 end function IO_spotTagInPart
+ end function IO_spotTagInPart
 
 
 !--------------------------------------------------------------------------------------------------
@@ -800,12 +860,12 @@ logical function IO_globalTagInPart(myFile,part,myTag)
  line =''
 
  rewind(myFile)
- do while (IO_getTag(line,'<','>') /= part)                                                         ! search for part
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_getTag(line,'<','>') /= part)                             ! search for part
+   line = IO_read(myFile)
  enddo
 
- do
-   read(myFile,'(a65536)',END=100) line
+ do while (trim(line) /= '#EOF#')
+   line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
@@ -818,7 +878,7 @@ logical function IO_globalTagInPart(myFile,part,myTag)
    endif   
  enddo
 
-100 end function IO_globalTagInPart
+end function IO_globalTagInPart
 
 
 
@@ -1140,7 +1200,7 @@ subroutine IO_skipChunks(myUnit,N)
 
  remainingChunks = N
  do while (remainingChunks > 0)
-   read(myUnit,'(A65536)',end=100) line
+   read(myUnit,'(a65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
    remainingChunks = remainingChunks - myPos(1)
  enddo
@@ -1293,7 +1353,7 @@ function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
  do
    read(myUnit,'(A65536)',end=100) line
    myPos = IO_stringPos(line,maxNchunks)
-   if (myPos(1) < 1_pInt) then                                                                         ! empty line
+   if (myPos(1) < 1_pInt) then                                                                      ! empty line
      exit
    elseif (verify(IO_stringValue(line,myPos,1_pInt),'0123456789') > 0) then                         ! a non-int, i.e. set name
      do i = 1_pInt, lookupMaxN                                                                      ! loop over known set names
@@ -1430,6 +1490,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'could not read file:'
  case (103_pInt)
    msg = 'could not assemble input files'
+ case (104_pInt)
+   msg = '{input} recursion limit reached'
  
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh

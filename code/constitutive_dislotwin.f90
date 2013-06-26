@@ -161,8 +161,8 @@ integer(pInt) :: section = 0_pInt, maxNinstance,mySize=0_pInt,myStructure,maxTot
                  Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
                  index_myFamily, index_otherFamily
-character(len=64) tag
-character(len=1024) :: line = ''                                                                   ! to start initialized
+character(len=65536) :: tag
+character(len=65536) :: line = ''                                                                                                  ! to start initialized
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(constitutive_dislotwin_LABEL)//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -290,12 +290,12 @@ allocate(constitutive_dislotwin_sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,
 !* Readout data from material.config file
 rewind(file)
 
-do while (IO_lc(IO_getTag(line,'<','>')) /= 'phase')     ! wind forward to <phase>
-   read(file,'(a1024)',END=100) line
-enddo
-
-do                                                       ! read thru sections of phase part
-   read(file,'(a1024)',END=100) line
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+   line = IO_read(file)
+ enddo
+ 
+ do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   line = IO_read(file)
    if (IO_isBlank(line)) cycle                           ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit               ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then               ! next section
@@ -449,7 +449,7 @@ do                                                       ! read thru sections of
    endif
 enddo
 
-100 do i = 1_pInt,maxNinstance
+ do i = 1_pInt,maxNinstance
    constitutive_dislotwin_structure(i) = &
    lattice_initializeStructure(constitutive_dislotwin_structureName(i),constitutive_dislotwin_CoverA(i))
    myStructure = constitutive_dislotwin_structure(i)
