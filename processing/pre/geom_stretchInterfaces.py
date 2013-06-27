@@ -49,13 +49,16 @@ The final geometry is assembled by selecting at each voxel that grain index for 
 )
 
 parser.add_option('-t', '--time', dest='t', type='int', \
-                  help='time for curvature flow [%default]')
+                 help='time for curvature flow [%default]')
+parser.add_option('-N', '--smooth', dest='N', type='int', \
+                 help='number of steps for curvature flow [%default]')
 parser.add_option('-b', '--black', dest='black', action='extend', type='string', \
                   help='indices of stationary microstructures', metavar='<LIST>')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
 
 parser.set_defaults(t = 1)
+parser.set_defaults(N = 1)
 parser.set_defaults(black = [])
 parser.set_defaults(twoD = False)
 
@@ -149,20 +152,56 @@ for file in files:
       i += 1
 
 #--- initialize helper data -----------------------------------------------------------------------  
-  winner      = numpy.zeros(info['grid'],'i')
-  diffusedMax = numpy.zeros(info['grid'])
+
+  diffusionWindow = int(math.ceil(4.0*numpy.sqrt(options.t)))
+  for smoothIter in xrange(options.N):
+    extendedMicro = numpy.zeros(2*diffusionWindow+info['grid']).astype(int)
+    extendedMicro[:info['grid'][0],:info['grid'][1],:info['grid'][2]] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=diffusionWindow,axis=0),\
+                                  shift=diffusionWindow,axis=1),shift=diffusionWindow,axis=2)
+    extendedMicro[-info['grid'][0]:,:info['grid'][1],:info['grid'][2]] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=-diffusionWindow,axis=0),\
+                                  shift=diffusionWindow,axis=1),shift=diffusionWindow,axis=2)
+    extendedMicro[:info['grid'][0],-info['grid'][1]:,:info['grid'][2]] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=diffusionWindow,axis=0),\
+                                  shift=-diffusionWindow,axis=1),shift=diffusionWindow,axis=2)
+    extendedMicro[-info['grid'][0]:,-info['grid'][1]:,:info['grid'][2]] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=-diffusionWindow,axis=0),\
+                                  shift=-diffusionWindow,axis=1),shift=diffusionWindow,axis=2)
+    extendedMicro[:info['grid'][0],:info['grid'][1],-info['grid'][2]:] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=diffusionWindow,axis=0),\
+                                  shift=diffusionWindow,axis=1),shift=-diffusionWindow,axis=2)
+    extendedMicro[-info['grid'][0]:,:info['grid'][1],-info['grid'][2]:] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=-diffusionWindow,axis=0),\
+                                  shift=diffusionWindow,axis=1),shift=-diffusionWindow,axis=2)
+    extendedMicro[:info['grid'][0],-info['grid'][1]:,-info['grid'][2]:] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=diffusionWindow,axis=0),\
+                                  shift=-diffusionWindow,axis=1),shift=-diffusionWindow,axis=2)
+    extendedMicro[-info['grid'][0]:,-info['grid'][1]:,-info['grid'][2]:] = \
+                 numpy.roll(numpy.roll(numpy.roll(microstructure,shift=-diffusionWindow,axis=0),\
+                                  shift=-diffusionWindow,axis=1),shift=-diffusionWindow,axis=2)
+    winner      = numpy.zeros(extendedMicro.shape).astype(int)
+    winner[diffusionWindow:-diffusionWindow,diffusionWindow:-diffusionWindow,diffusionWindow:-diffusionWindow] =\
+                  numpy.where(numpy.reshape(numpy.in1d(microstructure,options.black),microstructure.shape),\
+                              microstructure,0)
+    diffusedMax = numpy.zeros(extendedMicro.shape)
+    boundingSlice = ndimage.measurements.find_objects(microstructure)
+    microList = set(numpy.unique(microstructure)).difference(set(options.black).union(set([0])))
 
 #--- diffuse each grain separately ----------------------------------------------------------------  
-  for theGrain in xrange(1,1+numpy.amax(microstructure)):
-    diffused = ndimage.filters.gaussian_filter((microstructure == theGrain).astype(float),\
-                                               {True:0.0,False:numpy.sqrt(options.t)}[theGrain in options.black],\
-                                               mode='wrap')
-    winner = numpy.where(diffused > diffusedMax, theGrain, winner)
-    diffusedMax = numpy.where(diffused > diffusedMax, diffused, diffusedMax)
 
-  microstructure = winner
-
-
+    for grain in microList:
+      xMin = boundingSlice[grain-1][0].start; xMax = boundingSlice[grain-1][0].stop + 2*diffusionWindow
+      yMin = boundingSlice[grain-1][1].start; yMax = boundingSlice[grain-1][1].stop + 2*diffusionWindow
+      zMin = boundingSlice[grain-1][2].start; zMax = boundingSlice[grain-1][2].stop + 2*diffusionWindow
+      diffused = ndimage.filters.gaussian_filter((extendedMicro[xMin:xMax,yMin:yMax,zMin:zMax] == grain).astype(float),\
+                                                 numpy.sqrt(options.t))
+      isMax = diffused > diffusedMax[xMin:xMax,yMin:yMax,zMin:zMax]
+      winner[xMin:xMax,yMin:yMax,zMin:zMax][isMax] = grain
+      diffusedMax[xMin:xMax,yMin:yMax,zMin:zMax] = numpy.where(isMax,diffused,diffusedMax[xMin:xMax,yMin:yMax,zMin:zMax])
+   
+    microstructure = winner[diffusionWindow:-diffusionWindow,diffusionWindow:-diffusionWindow,diffusionWindow:-diffusionWindow]
+ 
 # --- assemble header -----------------------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
 
