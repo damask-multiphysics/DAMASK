@@ -44,15 +44,15 @@ Scales a geometry description independently in x, y, and z direction in terms of
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
+parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, \
                   help='a,b,c grid of hexahedral box [unchanged]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, \
+parser.add_option('-s', '--size', dest='size', type='string', nargs = 3, \
                   help='x,y,z size of hexahedral box [unchanged]')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
 
-parser.set_defaults(grid = [0,0,0])
-parser.set_defaults(size  = [0.0,0.0,0.0])
+parser.set_defaults(grid = ['0','0','0'])
+parser.set_defaults(size  = ['0.0','0.0','0.0'])
 parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
@@ -99,8 +99,8 @@ for file in files:
           'homogenization':  0
          }
   newInfo = {
-          'grid':   numpy.array(options.grid),
-          'size':   numpy.array(options.size),
+          'grid':    numpy.zeros(3,'i'),
+          'size':    numpy.zeros(3,'d'),
           'microstructures': 0,
          }
 
@@ -132,16 +132,23 @@ for file in files:
     file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
-  if numpy.all(newInfo['grid'] == 0):
-    newInfo['grid'] = info['grid']
-  if numpy.all(newInfo['size'] == 0.0):
-    newInfo['size'] = info['size']
+  newInfo['grid'] = numpy.array([{True:int(o*float(n.translate(None,'xX'))), False:   int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['size'] = numpy.array([{True:    o*float(n.translate(None,'xX')) , False: float(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['size'],options.size)],'d')
+  newInfo['grid'] = numpy.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
+  newInfo['size'] = numpy.where(newInfo['size'] <= 0.0, info['size'],newInfo['size'])
 
 #--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'],'i')
   i = 0
   for line in content:  
-    for item in map(int,line.split()):
+    items = line.split()
+    if len(items) > 2:
+      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
+      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      else:                            items = map(int,items)
+    else:                              items = map(int,items)
+
+    for item in items:
       microstructure[i%info['grid'][0],
                     (i/info['grid'][0])%info['grid'][1],
                      i/info['grid'][0] /info['grid'][1]] = item
