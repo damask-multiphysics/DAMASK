@@ -32,10 +32,11 @@ identifiers = {
         'origin': ['x','y','z'],
           }
 mappings = {
-        'grid':           lambda x: int(x),
-        'size':           lambda x: float(x),
-        'origin':         lambda x: float(x),
-        'homogenization': lambda x: int(x),
+        'grid':            lambda x: int(x),
+        'size':            lambda x: float(x),
+        'origin':          lambda x: float(x),
+        'homogenization':  lambda x: int(x),
+        'microstructures': lambda x: int(x),
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
@@ -43,7 +44,7 @@ Changes the (three-dimensional) canvas of a spectral geometry description.
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
+parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, \
                   help='a,b,c grid of hexahedral box [unchanged]')
 parser.add_option('-o', '--offset', dest='offset', type='int', nargs = 3, \
                   help='a,b,c offset from old to new origin of grid %default')
@@ -52,7 +53,7 @@ parser.add_option('-f', '--fill', dest='fill', type='int', \
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
 
-parser.set_defaults(grid = [0,0,0])
+parser.set_defaults(grid = ['0','0','0'])
 parser.set_defaults(offset = [0,0,0])
 parser.set_defaults(twoD = False)
 parser.set_defaults(fill = 0)
@@ -101,8 +102,6 @@ for file in files:
           'homogenization':  0,
          }
   newInfo = {
-          'grid':    numpy.array(options.grid),
-          'size':    numpy.zeros(3,'d'),
           'origin':  numpy.zeros(3,'d'),
           'microstructures': 0,
          }
@@ -133,23 +132,33 @@ for file in files:
     file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
-#--- read data ------------------------------------------------------------------------------------  
+  newInfo['grid'] = numpy.array([{True:int(o*float(n.translate(None,'xX'))), False:   int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['grid'] = numpy.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
+
+  #--- read data ------------------------------------------------------------------------------------  
   microstructure = numpy.zeros(info['grid'],'i')
   i = 0
   for line in content:  
-    for item in map(int,line.split()):
+    items = line.split()
+    if len(items) > 2:
+      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
+      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      else:                            items = map(int,items)
+    else:                              items = map(int,items)
+
+    for item in items:
       microstructure[i%info['grid'][0],
                     (i/info['grid'][0])%info['grid'][1],
                      i/info['grid'][0] /info['grid'][1]] = item
       i += 1
  
-  microstructure_cropped = numpy.zeros(options.grid,'i')
+  microstructure_cropped = numpy.zeros(newInfo['grid'],'i')
   microstructure_cropped.fill({True:options.fill,False:microstructure.max()+1}[options.fill>0])
-  xindex = list(set(xrange(options.offset[0],options.offset[0]+options.grid[0])) & \
+  xindex = list(set(xrange(options.offset[0],options.offset[0]+newInfo['grid'][0])) & \
                                                                set(xrange(info['grid'][0])))
-  yindex = list(set(xrange(options.offset[1],options.offset[1]+options.grid[1])) & \
+  yindex = list(set(xrange(options.offset[1],options.offset[1]+newInfo['grid'][1])) & \
                                                                set(xrange(info['grid'][1])))
-  zindex = list(set(xrange(options.offset[2],options.offset[2]+options.grid[2])) & \
+  zindex = list(set(xrange(options.offset[2],options.offset[2]+newInfo['grid'][2])) & \
                                                                set(xrange(info['grid'][2])))
   translate_x = [i - options.offset[0] for i in xindex]
   translate_y = [i - options.offset[1] for i in yindex]
@@ -162,10 +171,8 @@ for file in files:
                          min(zindex):(max(zindex)+1)]
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
   
-  if numpy.all(options.grid == 0):
-    newInfo['grid'] = info['grid']
   newInfo['microstructures'] = microstructure_cropped.max()
-  newInfo['size']   = info['size']/info['grid']*options.grid
+  newInfo['size']   = info['size']/info['grid']*newInfo['grid']
   newInfo['origin'] = info['origin']+info['size']/info['grid']*options.offset
 
 
@@ -199,8 +206,8 @@ for file in files:
   file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
 
 # --- write microstructure information ------------------------------------------------------------
-  for z in xrange(options.grid[2]):
-    for y in xrange(options.grid[1]):
+  for z in xrange(newInfo['grid'][2]):
+    for y in xrange(newInfo['grid'][1]):
       file['output'].write({True:' ',False:'\n'}[options.twoD].join(map(lambda x: \
                                     ('%%%ii'%formatwidth)%x, microstructure_cropped[:,y,z])) + '\n')
 
