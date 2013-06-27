@@ -5,7 +5,8 @@
 # As it reads in the data coming from "materialpoint_results", it can be adopted to the data
 # computed using the FEM solvers. Its capable to handle elements with one IP in a regular order
 
-import os,sys,threading,re,numpy,time,string,fnmatch
+import os,sys,threading,re,numpy,time,string,fnmatch,vtk
+from vtk.util import numpy_support
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
@@ -269,35 +270,6 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
 
   return cmds
   
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++
-def vtk_writeASCII_box(diag,defgrad):
-# +++++++++++++++++++++++++++++++++++++++++++++++++++++
-  """ corner box for the average defgrad """
-  points = numpy.array([\
-                         [0.0,0.0,0.0,],\
-                         [diag[0],0.0,0.0,],\
-                         [diag[0],diag[1],0.0,],\
-                         [0.0,diag[1],0.0,],\
-                         [0.0,0.0,diag[2],],\
-                         [diag[0],0.0,diag[2],],\
-                         [diag[0],diag[1],diag[2],],\
-                         [0.0,diag[1],diag[2],],\
-                       ])
-
-  cmds = [\
-    '# vtk DataFile Version 3.1',
-    'powered by $Id$',
-    'ASCII',
-    'DATASET UNSTRUCTURED_GRID',
-    'POINTS 8 float',
-    ['\t'.join(map(str,numpy.dot(defgrad_av,points[p]))) for p in range(8)],
-    'CELLS 8 16',
-    ['1\t%i'%i for i in range(8)],
-    'CELL_TYPES 8',
-    ['1']*8,
-  ]
-  
-  return cmds
 
 
 
@@ -335,10 +307,6 @@ parser.add_option('--points', dest='output_points', action='store_true', \
                   help='produce VTK points file [%default]')
 parser.add_option('--nopoints', dest='output_points', action='store_false', \
                   help='omit VTK points file')
-parser.add_option('--box', dest='output_box', action='store_true', \
-                  help='produce VTK box file [%default]')
-parser.add_option('--nobox', dest='output_box', action='store_false', \
-                  help='omit VTK box file')
 parser.add_option('--separator', dest='separator', type='string', \
                   help='data separator [t(ab), n(ewline), s(pace)]')
 parser.add_option('--scaling', dest='scaling', action='extend', type='string', \
@@ -362,7 +330,6 @@ parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
 parser.set_defaults(output_mesh = True)
 parser.set_defaults(output_points = False)
-parser.set_defaults(output_box = False)
 parser.set_defaults(scaling = [])
 parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
@@ -398,6 +365,7 @@ for filename in args:
   column = {}
   matches = {}
   maxcol = 0
+  locol = -1
   
   for col,head in enumerate(headings):
     if head == {True:'ip.x',False:'node.x'}[options.cell]:
@@ -455,23 +423,23 @@ for filename in args:
 
   N = len(values)
 
-  grid = [{},{},{}]
+  tempGrid = [{},{},{}]
   for j in xrange(3):
     for i in xrange(N):
-      grid[j][str(values[i,locol+j])] = True
+      tempGrid[j][str(values[i,locol+j])] = True
 
-  res = numpy.array([len(grid[0]),\
-                     len(grid[1]),\
-                     len(grid[2]),],'i')
+  grid = numpy.array([len(tempGrid[0]),\
+                      len(tempGrid[1]),\
+                      len(tempGrid[2]),],'i')
 
   dim = numpy.ones(3)
 
-  for i,r in enumerate(res):
+  for i,r in enumerate(grid):
     if r > 1:
-      dim[i] = (max(map(float,grid[i].keys()))-min(map(float,grid[i].keys())))*r/(r-1.0)
-  if res[2]==1: # for 2D case set undefined dimension to given unitlength or alternatively give it the length of the smallest element
+      dim[i] = (max(map(float,tempGrid[i].keys()))-min(map(float,tempGrid[i].keys())))*r/(r-1.0)
+  if grid[2]==1: # for 2D case set undefined dimension to given unitlength or alternatively give it the length of the smallest element
     if options.unitlength == 0.0: 
-      dim[2] = min(dim/res)
+      dim[2] = min(dim/grid)
     else:
       dim[2] = options.unitlength
  
@@ -481,19 +449,19 @@ for filename in args:
     Favg = damask.core.math.tensorAvg(
                       numpy.reshape(numpy.transpose(values[:,column['tensor'][options.defgrad]:
                                                              column['tensor'][options.defgrad]+9]),
-                                                             (3,3,res[0],res[1],res[2])))
+                                                             (3,3,grid[0],grid[1],grid[2])))
   if not options.filenodalcoords:
     F = numpy.reshape(numpy.transpose(values[:,column['tensor'][options.defgrad]:
                                                column['tensor'][options.defgrad]+9]),
-                                                             (3,3,res[0],res[1],res[2]))
+                                                             (3,3,grid[0],grid[1],grid[2]))
     if options.linearreconstruction:
       centroids = damask.core.mesh.deformedCoordsLinear(dim,F,Favg)
     else:
       centroids = damask.core.mesh.deformedCoordsFFT(dim,F,Favg,options.scaling)
-    mesh = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
+    nodes = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
 
   else:
-    mesh = numpy.zeros(((res[0]+1)*(res[1]+1)*(res[2]+1),3),'d')
+    nodes = numpy.zeros(((3,grid[0]+1)*(grid[1]+1)*(grid[2]+1)),'d')
 
     filenodalcoords = open(options.filenodalcoords)
     tablenodalcoords = damask.ASCIItable(filenodalcoords)
@@ -503,10 +471,53 @@ for filename in args:
                tablenodalcoords.labels.index(options.labelnodalcoords[2])]
     i = 0
     while tablenodalcoords.data_read():                                                    # read next data line of ASCII table
-      mesh[i,:]=float(tablenodalcoords.data[column[:]])
+      nodes[i,:]=float(tablenodalcoords.data[column[:]])
       i += 1
 
-    mesh=mesh.reshape(res[0]+1,res[1]+1,res[2]+1,3)
+    nodes=nodes.reshape(3,grid[0]+1,grid[1]+1,grid[2]+1)
+
+#--- generate grid --------------------------------------------------------------------------------
+  structure = vtk.vtkIntArray()
+  structure.SetName('Microstructures')
+  temp = []
+  i=0
+  aHexahedronGrid = vtk.vtkUnstructuredGrid()
+  for z in range (grid[2]):
+    for y in range (grid[1]):
+      for x in range (grid[0]):
+        temp.append(vtk.vtkHexahedron())
+        base = z*(grid[1]+1)*(grid[0]+1)+y*(grid[0]+1)+x
+        temp[i].GetPointIds().SetId(0, base)
+        temp[i].GetPointIds().SetId(1, base+1)
+        temp[i].GetPointIds().SetId(2, base+grid[0]+2)
+        temp[i].GetPointIds().SetId(3, base+grid[0]+1)
+        temp[i].GetPointIds().SetId(4, base+(grid[1]+1)*(grid[0]+1))
+        temp[i].GetPointIds().SetId(5, base+(grid[1]+1)*(grid[0]+1)+1)
+        temp[i].GetPointIds().SetId(6, base+(grid[1]+1)*(grid[0]+1)+grid[0]+2)
+        temp[i].GetPointIds().SetId(7, base+(grid[1]+1)*(grid[0]+1)+grid[0]+1)
+        aHexahedronGrid.InsertNextCell(temp[i].GetCellType(),temp[i].GetPointIds())
+        i+=1
+        structure.InsertNextValue(i)
+
+  pcoords = vtk.vtkDoubleArray()
+  pcoords.SetNumberOfComponents(3)
+  for i in range(grid[0]+1):
+    for j in range(grid[1]+1):
+      for k in range(grid[2]+1):
+        pcoords.InsertNextTuple3(nodes[0,i,j,k],nodes[1,i,j,k],nodes[2,i,j,k])
+
+  points = vtk.vtkPoints()
+  points.SetData(pcoords)
+  aHexahedronGrid.SetPoints(points)
+  aHexahedronGrid.GetCellData().SetScalars(structure)
+  
+  outWriter = vtk.vtkXMLUnstructuredGridWriter()
+  outWriter.SetDataModeToBinary()
+  outWriter.SetCompressorTypeToZLib()
+  outWriter.SetFileName('ddd.vtu')
+  outWriter.SetInput(aHexahedronGrid)
+ # outWriter.Write()
+
 
   fields =  {\
              'tensor': {},\
@@ -541,14 +552,13 @@ for filename in args:
         col = column[datatype][label]
         if col != -1:
           print label,
-          fields[datatype][label] = numpy.reshape(values[:,col:col+length[datatype]],[res[0],res[1],res[2]]+reshape[datatype])
+          fields[datatype][label] = numpy.reshape(values[:,col:col+length[datatype]],[grid[0],grid[1],grid[2]]+reshape[datatype])
           fields[datatype]['_order_'] += [label]
   print '\n'
 
   out = {}
-  if options.output_mesh:   out['mesh']   = vtk_writeASCII_mesh(mesh,fields,res,sep[options.separator])
-  if options.output_points: out['points'] = vtk_writeASCII_points(centroids,fields,res,sep[options.separator])
-  if options.output_box:    out['box']    = vtk_writeASCII_box(dim,Favg)
+  if options.output_mesh:   out['mesh']   = vtk_writeASCII_mesh(nodes,fields,grid,sep[options.separator])
+  if options.output_points: out['points'] = vtk_writeASCII_points(centroids,fields,grid,sep[options.separator])
   
   for what in out.keys():
     print what
