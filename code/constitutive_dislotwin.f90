@@ -443,7 +443,7 @@ rewind(file)
          case ('qedgepersbsystem')
            constitutive_dislotwin_sbQedge(i) = IO_floatValue(line,positions,2_pInt)
          case default
-           call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_dislotwin_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//constitutive_dislotwin_label//')')
        end select
      endif
    endif

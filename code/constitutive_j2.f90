@@ -263,7 +263,7 @@ subroutine constitutive_j2_init(myFile)
          case ('atol_resistance')
            constitutive_j2_aTolResistance(i)  = IO_floatValue(line,positions,2_pInt)
          case default
-           call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_j2_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//constitutive_j2_label//')')
        end select
      endif
    endif

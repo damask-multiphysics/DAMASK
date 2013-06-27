@@ -369,7 +369,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
              constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case default
-           call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_phenopowerlaw_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//constitutive_phenopowerlaw_label//')')
        end select
      endif
    endif

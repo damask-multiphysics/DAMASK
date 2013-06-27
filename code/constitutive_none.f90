@@ -160,7 +160,7 @@ subroutine constitutive_none_init(myFile)
          case ('c66')
                 constitutive_none_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
          case default
-                call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_none_label//')')
+                call IO_error(210_pInt,ext_msg=trim(tag)//' ('//constitutive_none_label//')')
        end select
      endif
    endif

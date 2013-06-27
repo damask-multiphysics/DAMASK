@@ -585,7 +585,7 @@ do while (trim(line) /= '#EOF#')                                                
         case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
           probabilisticMultiplication(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case default
-          call IO_error(210_pInt,ext_msg=tag//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+          call IO_error(210_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
       end select
     endif
   endif

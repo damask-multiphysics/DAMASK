@@ -622,7 +622,7 @@ do while (trim(line) /= '#EOF#')                                                
             constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
           enddo
         case default
-          call IO_error(210_pInt,ext_msg=tag//' ('//constitutive_titanmod_label//')')
+          call IO_error(210_pInt,ext_msg=trim(tag)//' ('//constitutive_titanmod_label//')')
       end select
      endif
    endif
