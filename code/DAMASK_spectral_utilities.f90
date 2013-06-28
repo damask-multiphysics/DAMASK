@@ -360,7 +360,7 @@ end subroutine utilities_updateGamma
 
 !--------------------------------------------------------------------------------------------------
 !> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @detailed Does an unweighted FFT transform from real to complex.
+!> @details Does an unweighted FFT transform from real to complex.
 !> In case of debugging the FFT, also one component of the tensor (specified by row and column)
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !--------------------------------------------------------------------------------------------------
@@ -423,7 +423,7 @@ end subroutine utilities_FFTforward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief backward FFT of data in field_fourier to field_real
-!> @detailed Does an inverse FFT transform from complex to real
+!> @details Does an inverse FFT transform from complex to real
 !> In case of debugging the FFT, also one component of the tensor (specified by row and column)
 !> is independetly transformed complex to complex and compared to the whole tensor transform
 !> results is weighted by number of points stored in wgt
