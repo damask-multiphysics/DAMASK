@@ -66,7 +66,7 @@ bin_link = { \
                 'showTable.py',
                 'tagLabel.py',
                 'vtk2ang.py',
-				'vtk_addData.py',
+                'vtk_addData.py',
                 ],
             }
             
