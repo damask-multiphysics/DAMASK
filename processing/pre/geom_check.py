@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string,re,numpy,vtk
+import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 #--------------------------------------------------------------------------------------------------
@@ -52,6 +53,7 @@ files = []
 if filenames == []:
   files.append({'name':'STDIN',
                 'input':sys.stdin,
+                'output':sys.stdout,
                 'croak':sys.stderr,
                })
 else:
@@ -59,6 +61,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name,
                     'input':open(name),
+                    'output':sys.stdout,
                     'croak':sys.stdout,
                     })
 
@@ -66,19 +69,10 @@ else:
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    headers  = [file['input'].readline() for i in range(headerlines)]
-  else:
-    headerlines = 1
-    headers = firstline
+  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
+  theTable.head_read()
 
-  content = file['input'].readlines()
-  file['input'].close()
-
-#--- interprete header ----------------------------------------------------------------------------
+#--- interpret header ----------------------------------------------------------------------------
   info = {
           'grid':   numpy.zeros(3,'i'),
           'size':   numpy.zeros(3,'d'),
@@ -87,8 +81,9 @@ for file in files:
           'homogenization':  0
          }
 
-  for header in headers:
+  for header in theTable.info:
     headitems = map(str.lower,header.split())
+    if len(headitems) == 0: continue
     if headitems[0] == 'resolution': headitems[0] = 'grid'
     if headitems[0] == 'dimension':  headitems[0] = 'size'
     if headitems[0] in mappings.keys():
@@ -107,35 +102,35 @@ for file in files:
 
   if numpy.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
-    sys.exit()
+    continue
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
-    sys.exit()
+    continue
 
 
 #--- generate grid --------------------------------------------------------------------------------
   grid = vtk.vtkRectilinearGrid()
   grid.SetDimensions([x+1 for x in info['grid']])
-  temp = [] 
   for i in xrange(3):
-    temp.append(vtk.vtkDoubleArray())
-    temp[i].SetNumberOfTuples(info['grid'][i]+1)
-    for j in range(info['grid'][i]+1):
-      temp[i].InsertTuple1(j,j*info['size'][i]/info['grid'][i]+info['origin'][i])
-      if i == 0: grid.SetXCoordinates(temp[0])
-      if i == 1: grid.SetYCoordinates(temp[1])
-      if i == 2: grid.SetZCoordinates(temp[2])
+    temp = vtk.vtkDoubleArray()
+    temp.SetNumberOfTuples(info['grid'][i]+1)
+    for j in xrange(info['grid'][i]+1):
+      temp.InsertTuple1(j,j*info['size'][i]/info['grid'][i]+info['origin'][i])
+    if i == 0: grid.SetXCoordinates(temp)
+    if i == 1: grid.SetYCoordinates(temp)
+    if i == 2: grid.SetZCoordinates(temp)
 
 #--- read microstructure information --------------------------------------------------------------
   structure = vtk.vtkIntArray()
   structure.SetName('Microstructures')
-  for line in content:  
-    items = line.split()
+  theTable.data_rewind()
+  while theTable.data_read():
+    items = theTable.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
       elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
-      else:                            items = map(int,items)
-    else:                              items = map(int,items)
+      else:                          items = map(int,items)
+    else:                            items = map(int,items)
 
     for item in items:
       structure.InsertNextValue(item)
