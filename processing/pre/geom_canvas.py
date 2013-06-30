@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string,re,math,numpy
+import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 #--------------------------------------------------------------------------------------------------
@@ -50,12 +51,9 @@ parser.add_option('-o', '--offset', dest='offset', type='int', nargs = 3, \
                   help='a,b,c offset from old to new origin of grid %default')
 parser.add_option('-f', '--fill', dest='fill', type='int', \
                   help='(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
-parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement [%default]')
 
 parser.set_defaults(grid = ['0','0','0'])
 parser.set_defaults(offset = [0,0,0])
-parser.set_defaults(twoD = False)
 parser.set_defaults(fill = 0)
 
 (options, filenames) = parser.parse_args()
@@ -77,38 +75,31 @@ else:
                     'croak':sys.stdout,
                     })
 
-#--- loop over input files ------------------------------------------------------------------------ 
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    headers  = [file['input'].readline() for i in range(headerlines)]
-  else:
-    headerlines = 1
-    headers = firstline
+  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
+  theTable.head_read()
 
-  content = file['input'].readlines()
-  file['input'].close()
-
-#--- interprete header ----------------------------------------------------------------------------
+#--- interpret header ----------------------------------------------------------------------------
   info = {
           'grid':    numpy.zeros(3,'i'),
           'size':    numpy.zeros(3,'d'),
           'origin':  numpy.zeros(3,'d'),
-          'microstructures': 0,          
+          'microstructures': 0,
           'homogenization':  0,
          }
   newInfo = {
+          'grid':    numpy.zeros(3,'i'),
           'origin':  numpy.zeros(3,'d'),
           'microstructures': 0,
          }
+  extra_header = []
 
-  new_header = []
-  for header in headers:
+  for header in theTable.info:
     headitems = map(str.lower,header.split())
+    if len(headitems) == 0: continue                                                              # skip blank lines
     if headitems[0] == 'resolution': headitems[0] = 'grid'
     if headitems[0] == 'dimension':  headitems[0] = 'size'
     if headitems[0] in mappings.keys():
@@ -118,6 +109,8 @@ for file in files:
             mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
+    else:
+      extra_header.append(header)
 
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
@@ -127,31 +120,32 @@ for file in files:
 
   if numpy.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
-    sys.exit()
+    continue
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
-    sys.exit()
+    continue
 
-  newInfo['grid'] = numpy.array([{True:int(o*float(n.translate(None,'xX'))), False:   int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
-  newInfo['grid'] = numpy.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
-
-  #--- read data ------------------------------------------------------------------------------------  
-  microstructure = numpy.zeros(info['grid'],'i')
+#--- read data ------------------------------------------------------------------------------------
+  microstructure = numpy.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
   i = 0
-  for line in content:  
-    items = line.split()
+  theTable.data_rewind()
+  while theTable.data_read():
+    items = theTable.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
       elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
       else:                            items = map(int,items)
     else:                              items = map(int,items)
 
-    for item in items:
-      microstructure[i%info['grid'][0],
-                    (i/info['grid'][0])%info['grid'][1],
-                     i/info['grid'][0] /info['grid'][1]] = item
-      i += 1
- 
+    s = len(items)
+    microstructure[i:i+s] = items
+    i += s
+
+#--- do work ------------------------------------------------------------------------------------
+  newInfo['grid'] = numpy.array([{True:int(o*float(n.translate(None,'xX'))), False:   int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['grid'] = numpy.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
+
+  microstructure = microstructure.reshape(info['grid'],order='F')
   microstructure_cropped = numpy.zeros(newInfo['grid'],'i')
   microstructure_cropped.fill({True:options.fill,False:microstructure.max()+1}[options.fill>0])
   xindex = list(set(xrange(options.offset[0],options.offset[0]+newInfo['grid'][0])) & \
@@ -169,11 +163,11 @@ for file in files:
         = microstructure[min(xindex):(max(xindex)+1),\
                          min(yindex):(max(yindex)+1),\
                          min(zindex):(max(zindex)+1)]
-  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
-  
-  newInfo['microstructures'] = microstructure_cropped.max()
+
   newInfo['size']   = info['size']/info['grid']*newInfo['grid']
   newInfo['origin'] = info['origin']+info['size']/info['grid']*options.offset
+  newInfo['microstructures'] = microstructure_cropped.max()
+
 
 
 #--- report ---------------------------------------------------------------------------------------
@@ -188,30 +182,32 @@ for file in files:
 
   if numpy.any(newInfo['grid'] < 1):
     file['croak'].write('invalid new grid a b c.\n')
-    sys.exit()
+    continue
   if numpy.any(newInfo['size'] <= 0.0):
     file['croak'].write('invalid new size x y z.\n')
-    sys.exit()
+    continue
 
-# --- assemble header -----------------------------------------------------------------------------
-  new_header.append('$Id$\n')
-  new_header.append("grid\ta %i\tb %i\tc %i\n"%(
-                     newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2]))
-  new_header.append("size\tx %f\ty %f\tz %f\n"%(
-                     newInfo['size'][0],newInfo['size'][1],newInfo['size'][2]))
-  new_header.append("origin\tx %f\ty %f\tz %f\n"%(
-                     newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2]))
-  new_header.append("homogenization\t%i\n"%info['homogenization'])
-  new_header.append("microstructures\t%i\n"%newInfo['microstructures'])
-  file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
-
+#--- write header ---------------------------------------------------------------------------------
+  theTable.labels_clear()
+  theTable.info_clear()
+  theTable.info_append(extra_header+[
+    "$Id$",
+    "grid\ta %i\tb %i\tc %i"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2],),
+    "size\tx %f\ty %f\tz %f"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2],),
+    "origin\tx %f\ty %f\tz %f"%(newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2],),
+    "microstructures\t%i"%(newInfo['microstructures']),
+    "homogenization\t%i"%info['homogenization'],
+    ])
+  theTable.head_write()
+  theTable.output_flush()
+    
 # --- write microstructure information ------------------------------------------------------------
-  for z in xrange(newInfo['grid'][2]):
-    for y in xrange(newInfo['grid'][1]):
-      file['output'].write({True:' ',False:'\n'}[options.twoD].join(map(lambda x: \
-                                    ('%%%ii'%formatwidth)%x, microstructure_cropped[:,y,z])) + '\n')
-
+  formatwidth = int(math.floor(math.log10(microstructure_cropped.max())+1))
+  theTable.data = microstructure_cropped.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
+  theTable.data_writeArray('%%%ii'%(formatwidth))
+    
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
+    file['input'].close()
     file['output'].close()
     os.rename(file['name']+'_tmp',file['name'])
