@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string,re,math,numpy
+import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 #--------------------------------------------------------------------------------------------------
@@ -44,10 +45,10 @@ Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (excl
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement [%default]')
+parser.add_option('-1', '--onedimensional', dest='oneD', action='store_true', \
+                  help='output geom file with one-dimensional data arrangement [%default]')
 
-parser.set_defaults(twoD = False)
+parser.set_defaults(oneD = False)
 
 (options, filenames) = parser.parse_args()
 
@@ -68,34 +69,27 @@ else:
                     'croak':sys.stdout,
                     })
 
-#--- loop over input files ------------------------------------------------------------------------  
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    headers  = [file['input'].readline() for i in range(headerlines)]
-  else:
-    headerlines = 1
-    headers = firstline
+  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
+  theTable.head_read()
 
-  content = file['input'].readlines()
-  file['input'].close()
 
-#--- interprete header ----------------------------------------------------------------------------
+#--- interpret header ----------------------------------------------------------------------------
   info = {
           'grid':    numpy.zeros(3,'i'),
           'size':    numpy.zeros(3,'d'),
           'origin':  numpy.zeros(3,'d'),
-          'microstructures': 0,          
-          'homogenization':  0,
+          'microstructures': 0,
+          'homogenization':  0
          }
+  extra_header = []
 
-  new_header = []
-  for header in headers:
+  for header in theTable.info:
     headitems = map(str.lower,header.split())
+    if len(headitems) == 0: continue
     if headitems[0] == 'resolution': headitems[0] = 'grid'
     if headitems[0] == 'dimension':  headitems[0] = 'size'
     if headitems[0] in mappings.keys():
@@ -105,45 +99,62 @@ for file in files:
             mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
-    new_header.append(header)
-
-  format = {True:  info['grid'][0],
-            False: 1}[options.twoD]
+    else:
+      extra_header.append(header)
 
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n'%info['microstructures'])
+                      'microstructures: %i\n\n'%info['microstructures'])
 
   if numpy.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
-    sys.exit()
+    continue
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
-    sys.exit()
+    continue
 
-  file['output'].write('%i\theader\n'%(len(new_header))+''.join(new_header))
+#--- read data ------------------------------------------------------------------------------------
+  microstructure = numpy.zeros(info['grid'].prod(),'i')
+  i = 0
+  theTable.data_rewind()
+  while theTable.data_read():
+    items = theTable.data
+    if len(items) > 2:
+      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
+      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      else:                          items = map(int,items)
+    else:                            items = map(int,items)
 
-  if info['microstructures'] > 0:
-    digits = 1+int(math.log10(int(info['microstructures'])))
+    s = len(items)
+    microstructure[i:i+s] = items
+    i += s
+
+#--- write header ---------------------------------------------------------------------------------
+  theTable.labels_clear()
+  theTable.info_clear()
+  theTable.info_append(extra_header+[
+    "$Id$",
+    "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
+    "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
+    "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
+    "microstructures\t%i"%(info['microstructures']),
+    "homogenization\t%i"%info['homogenization'],
+    ])
+  theTable.head_write()
+  theTable.output_flush()
+  
+# --- write microstructure information ------------------------------------------------------------
+  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  if options.oneD:
+    theTable.data = microstructure
   else:
-    digits = 1+int(math.log10(int(info['grid'][0]*info['grid'][1]*info['grid'][2])))
-
-
-#--- unpack input ---------------------------------------------------------------------------------
-  wordsWritten = 0
-  for line in content:
-    words = line.split()
-    if len(words) > 2:                                                                              # any packing keywords?
-      if   words[1].lower() == 'to': words = map(str,range(int(words[0]),int(words[2])+1))
-      elif words[1].lower() == 'of': words = [words[2]]*int(words[0])
-
-    for word in words:
-      wordsWritten += 1
-      file['output'].write(word.rjust(digits)+{True:'\n',False:' '}[wordsWritten%format == 0])      # newline every format words
-
+    theTable.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  theTable.data_writeArray('%%%ii'%(formatwidth))
+    
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
+    file['input'].close()
     file['output'].close()
     os.rename(file['name']+'_tmp',file['name'])
