@@ -61,7 +61,6 @@ parser.add_option('-b', '--black', dest='black', action='extend', type='string',
 
 parser.set_defaults(t = 1)
 parser.set_defaults(black = [])
-parser.set_defaults(twoD = False)
 
 (options, filenames) = parser.parse_args()
 
