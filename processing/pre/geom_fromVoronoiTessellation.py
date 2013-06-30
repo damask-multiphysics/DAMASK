@@ -140,7 +140,7 @@ for file in files:
   for i in xrange(3):
     if info['size'][i] <= 0.0:                                                                      # any invalid size?
       info['size'][i] = float(info['grid'][i])/max(info['grid'])
-      file['croak'].write('rescaling size %i...\n'%i)
+      file['croak'].write('rescaling size %s...\n'%{0:'x',1:'y',2:'z'}[i])
 
   file['croak'].write('grains to map:  %i\n'%info['grains'] + \
                       'grid     a b c: %s\n'%(' x '.join(map(str,info['grid']))) + \
@@ -159,7 +159,6 @@ for file in files:
     continue
 
 #--- prepare data ---------------------------------------------------------------------------------
-  formatwidth = 1+int(math.log10(info['grains']))
   coords = (theData[:,:3]*info['size']).transpose()
   eulers = (theData[:,3:6]).transpose()
 
@@ -200,13 +199,14 @@ for file in files:
       "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
       "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
       "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
-      "microstructures\t%i"%(info['grains']-missing),
       "homogenization\t%i"%info['homogenization'],
+      "microstructures\t%i"%(info['grains']-missing),
       ])
     theTable.head_write()
     theTable.output_flush()
     
 # --- write microstructure information ------------------------------------------------------------
+    formatwidth = 1+int(math.log10(info['grains']))
     theTable.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
     theTable.data_writeArray('%%%ii'%(formatwidth))
     

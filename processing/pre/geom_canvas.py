@@ -27,6 +27,10 @@ class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
+synonyms = {
+        'grid':   ['resolution'],
+        'size':   ['dimension'],
+          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -100,8 +104,8 @@ for file in files:
   for header in theTable.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue                                                              # skip blank lines
-    if headitems[0] == 'resolution': headitems[0] = 'grid'
-    if headitems[0] == 'dimension':  headitems[0] = 'size'
+    for synonym,alternatives in synonyms.iteritems():
+      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
