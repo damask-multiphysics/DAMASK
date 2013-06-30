@@ -1559,11 +1559,11 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (404_pInt)
    msg = 'math_check: R -> euler -> R failed'
  case (405_pInt)
-   msg = 'I_TO_HALTON-error: An input base BASE is <= 1'
+   msg = 'I_TO_HALTON-error: an input base BASE is <= 1'
  case (406_pInt)
    msg = 'Prime-error: N must be between 0 and PRIME_MAX'
  case (407_pInt)
-   msg = 'Dimension in nearest neigbor search wrong'
+   msg = 'Dimension in nearest neighbor search wrong'
  case (408_pInt)
    msg = 'Polar decomposition error'
  case (409_pInt)
