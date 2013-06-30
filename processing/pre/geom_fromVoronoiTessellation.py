@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os,sys,math,string,re,numpy,
+import os,sys,math,string,re,numpy
 import damask 
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP 
 
