@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import os,sys,math,string,re,numpy, damask 
+import os,sys,math,string,re,numpy,
+import damask 
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP 
 
 #--------------------------------------------------------------------------------------------------
@@ -22,6 +23,27 @@ class extendedOption(Option):
     else:
       Option.take_action(self, action, dest, opt, value, values, parser)
   
+
+def meshgrid2(*arrs):
+  '''
+  code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
+  '''
+  arrs = tuple(reversed(arrs))
+  arrs = tuple(arrs)
+  lens = numpy.array(map(len, arrs))
+  dim = len(arrs)
+  ans = []
+  for i, arr in enumerate(arrs):
+     slc = numpy.ones(dim,'i')
+     slc[i] = lens[i]
+     arr2 = numpy.asarray(arr).reshape(slc)
+     for j, sz in enumerate(lens):
+         if j != i:
+             arr2 = arr2.repeat(sz, axis=j)
+   
+     ans.insert(0,arr2)
+  return tuple(ans)
+
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -51,9 +73,6 @@ parser.add_option('--crystallite', dest='crystallite', type='int', \
                   help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
-parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement [%default]')
-
                                    
 parser.set_defaults(grid = [0,0,0])
 parser.set_defaults(size  = [0.0,0.0,0.0])
@@ -61,8 +80,7 @@ parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = 1)
 parser.set_defaults(crystallite    = 1)
 parser.set_defaults(config = False)
-parser.set_defaults(twoD   = False)
-                                   
+
 (options,filenames) = parser.parse_args()
 
 #--- setup file handles ---------------------------------------------------------------------------  
@@ -87,30 +105,22 @@ else:
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    headers  = [file['input'].readline() for i in range(headerlines)]
-  else:
-    headerlines = 1
-    headers = firstline
+  theTable = damask.ASCIItable(file['input'],file['output'])
+  theTable.head_read()
+  theData = theTable.data_asArray(['x','y','z','phi1','Phi','phi2'])
 
-  content = file['input'].readlines()
-  file['input'].close()
-
-#--- interprete header ----------------------------------------------------------------------------
+#--- interpret header ----------------------------------------------------------------------------
   info = {
           'grid':    numpy.zeros(3,'i'),
           'size':    numpy.array(options.size),
           'origin':  numpy.zeros(3,'d'),
-          'grains':  0,          
-          'homogenization':  0,
+          'grains':  0,
+          'homogenization': options.homogenization,
          }
 
-  new_header = []
-  for header in headers:
+  for header in theTable.info:
     headitems = map(str.lower,header.split())
+    if len(headitems) == 0: continue                                                                # skip blank lines
     if headitems[0] == 'resolution': headitems[0] = 'grid'
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
@@ -120,9 +130,9 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
-  if info['grains'] != len(content):
+  if info['grains'] != len(theData):
     file['croak'].write('grain data not matching grain count...\n')
-    info['grains'] = min(info['grains'],len(content))
+    info['grains'] = min(info['grains'],len(theData))
   
   if 0 not in options.grid:                                                                         # user-specified grid
     info['grid'] = numpy.array(options.grid)
@@ -140,22 +150,18 @@ for file in files:
   
   if numpy.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
-    sys.exit()
+    continue
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
-    sys.exit()
+    continue
   if info['grains'] == 0:
     file['croak'].write('no grain info found.\n')
-    sys.exit()
+    continue
 
 #--- prepare data ---------------------------------------------------------------------------------
   formatwidth = 1+int(math.log10(info['grains']))
-  coords = numpy.zeros((3,info['grains']),'d')
-  eulers = numpy.zeros((3,info['grains']),'d')
-
-  for i in xrange(info['grains']):
-    coords[:,i] = map(float,content[i].split()[:3])*info['size']
-    eulers[:,i] = map(float,content[i].split()[3:6])
+  coords = (theData[:,:3]*info['size']).transpose()
+  eulers = (theData[:,3:6]).transpose()
 
 #--- switch according to task ---------------------------------------------------------------------
   if options.config:                                                                                # write config file
@@ -170,24 +176,13 @@ for file in files:
       file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
                            '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,i],eulers[1,i],eulers[2,i]))
 
-  else:                                                                                             # write geometry file  
-    twoD = info['grid'][2] < 2
-    N = info['grid'].prod()
-    shift = 0.5*info['size']/info['grid']                                                           # shift by half of side length to center of element
-    undeformed = numpy.zeros((3,N),'d')
+  else:                                                                                             # write geometry file
+    x = (numpy.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
+    y = (numpy.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
+    z = (numpy.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
+    undeformed = numpy.vstack(map(numpy.ravel, meshgrid2(x, y, z)))
 
-    for i in xrange(N):
-      undeformed[0,i] = info['size'][0]\
-                       * float(i                                              % info['grid'][0])\
-                                                                         /float(info['grid'][0])
-      undeformed[1,i] = info['size'][1]\
-                      * float(i//info['grid'][0]                        % info['grid'][1])\
-                                                                         /float(info['grid'][1])
-      undeformed[2,i] = info['size'][2]\
-                      * float(i//info['grid'][0]//info['grid'][1] % info['grid'][2])\
-                                                                         /float(info['grid'][2])
-      undeformed[:,i] += shift
-      
+    file['croak'].write('tesselating...\n')
     indices = damask.core.math.periodicNearestNeighbor(\
               info['size'],\
               numpy.eye(3),\
@@ -198,23 +193,27 @@ for file in files:
     file['croak'].write({True:'all',False:'only'}[missing == 0] + ' %i grains mapped.\n'%(info['grains']-missing))
 
 #--- write header ---------------------------------------------------------------------------------
-    new_header.append("$Id$ \n")
-    new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
-    new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
-    new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
-    new_header.append("microstructures\t%i\n"%(info['grains']-missing))
-    new_header.append("homogenization\t%i\n"%info['homogenization'])
-    file['output'].write('%i\theader\n'%(len(new_header)) + ''.join(new_header))
-
+    theTable.labels_clear()
+    theTable.info_clear()
+    theTable.info_append([
+      "$Id$",
+      "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
+      "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
+      "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
+      "microstructures\t%i"%(info['grains']-missing),
+      "homogenization\t%i"%info['homogenization'],
+      ])
+    theTable.head_write()
+    theTable.output_flush()
+    
 # --- write microstructure information ------------------------------------------------------------
-    for n in xrange(info['grid'][1:3].prod()):                                                        # loop over 2nd and 3rd size
-      file['output'].write({ True: ' ',
-                             False:'\n'}[options.twoD].\
-                             join(map(lambda x: str(x).rjust(formatwidth),\
-                                      indices[n*info['grid'][0]:(n+1)*info['grid'][0]]))+'\n')
-   
+    theTable.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
+    theTable.data_writeArray('%%%ii'%(formatwidth))
+    
 #--- output finalization --------------------------------------------------------------------------
+
   if file['name'] != 'STDIN':
+    file['input'].close()
     file['output'].close()
     os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \
                                   {True: '_material.config',
