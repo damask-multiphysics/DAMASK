@@ -15,11 +15,13 @@ class ASCIItable():
   def __init__(self,
                fileIn = sys.stdin,
                fileOut = sys.stdout,
-               buffered = True):
+               buffered = True,
+               labels = True):
     self.__IO__ = {'in': fileIn,
                    'out':fileOut,
                    'output':[],
                    'buffered':buffered,
+                   'labels':labels,
                    'validReadSize': 0,
                    'dataStart': 0,
                   }
@@ -72,26 +74,43 @@ class ASCIItable():
       pass
     firstline = self.__IO__['in'].readline()
     m = re.search('(\d+)\s*head', firstline.lower())
-    if m:
-      self.info      = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
-      self.labels    =  self.__IO__['in'].readline().split()
-    else:
-      self.info      = []
-      self.labels    = firstline.split()
-    self.__IO__['validReadSize'] = len(self.labels)
+    if self.__IO__['labels']:                                                                       # table features labels
+      if m:                                                                                         # found header info
+        self.info      = [self.__IO__['in'].readline().strip() for i in xrange(1,int(m.group(1)))]
+        self.labels    =  self.__IO__['in'].readline().split()
+      else:                                                                                         # no header info (but labels)
+        self.labels    = firstline.split()
+  
+      self.__IO__['validReadSize'] = len(self.labels)
+
+    else:                                                                                           # no labels present in table
+      if m:                                                                                         # found header info
+        self.info      = [self.__IO__['in'].readline().strip() for i in xrange(0,int(m.group(1)))]  # all header is info
+                                                                                                    # ... without any labels
     try:
-      self.__IO__['dataStart'] = self.__IO__['in'].tell()
+      self.__IO__['dataStart'] = self.__IO__['in'].tell()                                           # current file position is at start of data
     except IOError:
       pass
+
+    if self.__IO__['validReadSize'] == 0:                                                           # in case no valid data length is known
+      self.__IO__['validReadSize'] = len(self.__IO__['in'].readline().split())                      # assume constant data width from first line
 
 # ------------------------------------------------------------------
   def head_write(self):
     '''
        write current header information (info + labels)
     '''
-    return self.output_write (['%i\theader'%(len(self.info)+1),
-                              self.info,
-                              '\t'.join(self.labels)])
+    if self.__IO__['labels']:
+      return self.output_write ([
+                                 '%i\theader'%(len(self.info)+1),
+                                 self.info,
+                                 '\t'.join(self.labels),
+                                ])
+    else:
+      return self.output_write ([
+                                 '%i\theader'%(len(self.info)),
+                                 self.info,
+                                ])
 
 # ------------------------------------------------------------------
   def labels_append(self,
@@ -102,6 +121,10 @@ class ASCIItable():
     if isinstance(what,list):
       for item in what: self.labels_append(item)
     else:               self.labels += [str(what)]
+
+# ------------------------------------------------------------------
+  def labels_clear(self):
+    self.labels = []
 
 # ------------------------------------------------------------------
   def labels_index(self,
@@ -127,6 +150,9 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def info_append(self,
                   what):
+    '''
+       add item or list to existing set of infos
+    '''
     if isinstance(what,list):
       for item in what: self.info_append(item)
     else:               self.info += [str(what)]
@@ -146,10 +172,14 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def data_read(self):
-    line = self.__IO__['in'].readline()
-    items = line.split()[:self.__IO__['validReadSize']]                             # get next data row
-    self.data = {False:   [],
-                  True: items}[len(items) == self.__IO__['validReadSize']]          # take if correct number of entries
+    line = self.__IO__['in'].readline()                                               # get next data row
+    if self.__IO__['labels']:
+      items = line.split()[:self.__IO__['validReadSize']]                             # use up to valid size (label count)
+      self.data = {False:   [],
+                    True: items}[len(items) == self.__IO__['validReadSize']]          # take if correct number of entries
+    else:
+      self.data = line.split()                                                        # take all
+      
     return self.data != []
     
 # ------------------------------------------------------------------
@@ -166,6 +196,14 @@ class ASCIItable():
       return self.output_write (['\t'.join(map(str,items)) for items in self.data])
     else:
       return self.output_write ('\t'.join(map(str,self.data)))
+
+# ------------------------------------------------------------------
+  def data_writeArray(self,format):
+    import numpy
+    '''
+       write whole numpy array data
+    '''
+    return numpy.savetxt(self.__IO__['out'], self.data, fmt=format)
 
 # ------------------------------------------------------------------
   def data_append(self,
@@ -204,7 +242,7 @@ class ASCIItable():
        read whole data of all (given) labels as numpy array
     '''
 
-    if labels == []: indices = range(self.__IO__['validReadSize'])               # use all columns
+    if labels == []: indices = range(self.__IO__['validReadSize'])              # use all columns
     else: indices = self.labels_index(labels)                                   # use specified columns
 
     self.data_rewind()
