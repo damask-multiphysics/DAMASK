@@ -82,8 +82,8 @@ for file in files:
           'grid':    numpy.zeros(3,'i'),
           'size':    numpy.zeros(3,'d'),
           'origin':  numpy.zeros(3,'d'),
+          'homogenization':  0,
           'microstructures': 0,
-          'homogenization':  0
          }
   extra_header = []
 
@@ -139,8 +139,8 @@ for file in files:
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
-    "microstructures\t%i"%(info['microstructures']),
     "homogenization\t%i"%info['homogenization'],
+    "microstructures\t%i"%(info['microstructures']),
     ])
   theTable.head_write()
   theTable.output_flush()

@@ -32,10 +32,11 @@ identifiers = {
         'origin':  ['x','y','z'],
           }
 mappings = {
-        'grid':           lambda x: int(x),
-        'size':           lambda x: float(x),
-        'origin':         lambda x: float(x),
-        'homogenization': lambda x: int(x),
+        'grid':            lambda x: int(x),
+        'size':            lambda x: float(x),
+        'origin':          lambda x: float(x),
+        'homogenization':  lambda x: int(x),
+        'microstructures': lambda x: int(x),
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
@@ -49,8 +50,6 @@ parser.add_option('-m', '--microstructure', dest='microstructure', type='int', \
                   help='offset from old to new microstructure indices', metavar='<int>')
 parser.add_option('-s', '--substitute', action='extend', dest='substitute', type='string', \
                   help='substitutions of microstructure indices from,to,from,to,...', metavar='<list>')
-parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement')
 
 parser.set_defaults(origin = [0.0,0.0,0.0])
 parser.set_defaults(microstructure = 0)
@@ -92,8 +91,8 @@ for file in files:
           'grid':    numpy.zeros(3,'i'),
           'size':    numpy.zeros(3,'d'),
           'origin':  numpy.zeros(3,'d'),
+          'homogenization':  0,
           'microstructures': 0,
-          'homogenization':  0
          }
   newInfo = {
           'origin':  numpy.zeros(3,'d'),
@@ -171,8 +170,8 @@ for file in files:
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2],),
-    "microstructures\t%i"%(newInfo['microstructures']),
     "homogenization\t%i"%info['homogenization'],
+    "microstructures\t%i"%(newInfo['microstructures']),
     ])
   theTable.head_write()
   theTable.output_flush()

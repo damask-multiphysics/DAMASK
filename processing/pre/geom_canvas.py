@@ -87,8 +87,8 @@ for file in files:
           'grid':    numpy.zeros(3,'i'),
           'size':    numpy.zeros(3,'d'),
           'origin':  numpy.zeros(3,'d'),
-          'microstructures': 0,
           'homogenization':  0,
+          'microstructures': 0,
          }
   newInfo = {
           'grid':    numpy.zeros(3,'i'),
@@ -195,8 +195,8 @@ for file in files:
     "grid\ta %i\tb %i\tc %i"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2],),
-    "microstructures\t%i"%(newInfo['microstructures']),
     "homogenization\t%i"%info['homogenization'],
+    "microstructures\t%i"%(newInfo['microstructures']),
     ])
   theTable.head_write()
   theTable.output_flush()
