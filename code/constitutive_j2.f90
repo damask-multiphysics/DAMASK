@@ -19,9 +19,9 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief Isotropic (J2) Plasticity
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief material subroutine for isotropic (J2) plasticity
 !> @details Isotropic (J2) Plasticity which resembles the phenopowerlaw plasticity without
 !! resolving the stress on the slip systems. Will give the response of phenopowerlaw for an
 !! untextured polycrystal
@@ -47,11 +47,11 @@ module constitutive_j2
  character(len=64), dimension(:,:),   allocatable, target, public :: &
    constitutive_j2_output                                                                           !< name of each post result output
  
- integer(pInt),     dimension(:),     allocatable,         private :: &
-   constitutive_j2_Noutput                                                                          !< ??
-
  character(len=32), dimension(:),     allocatable,         private :: &
    constitutive_j2_structureName
+
+ integer(pInt),     dimension(:),     allocatable,         private :: &
+   constitutive_j2_Noutput                                                                          !< ??
    
  real(pReal),       dimension(:),     allocatable,         private :: &
    constitutive_j2_fTaylor, &                                                                       !< Taylor factor
@@ -71,7 +71,6 @@ module constitutive_j2
    constitutive_j2_tausat_SinhFitB, &                                                               !< fitting parameter for normalized strain rate vs. stress function
    constitutive_j2_tausat_SinhFitC, &                                                               !< fitting parameter for normalized strain rate vs. stress function
    constitutive_j2_tausat_SinhFitD                                                                  !< fitting parameter for normalized strain rate vs. stress function
-
 
  real(pReal),       dimension(:,:,:), allocatable,          private :: &
    constitutive_j2_Cslip_66
@@ -93,6 +92,7 @@ contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
+!> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_j2_init(myFile)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
@@ -100,6 +100,7 @@ subroutine constitutive_j2_init(myFile)
    math_Mandel3333to66, &
    math_Voigt66to3333
  use IO, only: &
+   IO_read, &
    IO_lc, &
    IO_getTag, &
    IO_isBlank, &
@@ -107,8 +108,7 @@ subroutine constitutive_j2_init(myFile)
    IO_stringValue, &
    IO_floatValue, &
    IO_error, &
-   IO_timeStamp, &
-   IO_read
+   IO_timeStamp
  use material
  use debug, only: &
    debug_level, &
@@ -133,12 +133,11 @@ subroutine constitutive_j2_init(myFile)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
- maxNinstance = int(count(phase_plasticity == constitutive_j2_label),pInt)
+ maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_J2_label),pInt)
  if (maxNinstance == 0_pInt) return
 
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
- endif
  
  allocate(constitutive_j2_sizeDotState(maxNinstance))
           constitutive_j2_sizeDotState = 0_pInt
@@ -184,7 +183,6 @@ subroutine constitutive_j2_init(myFile)
           constitutive_j2_tausat_SinhFitD = 0.0_pReal
  
  rewind(myFile)
- 
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
    line = IO_read(myFile)
  enddo
@@ -195,12 +193,12 @@ subroutine constitutive_j2_init(myFile)
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
-     cycle
+     cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
      if (phase_plasticity(section) == CONSTITUTIVE_J2_label) then                                   ! one of my sections
        i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
-       positions = IO_stringPos(line,maxNchunks)
+       positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case ('plasticity','elasticity')
@@ -256,7 +254,7 @@ subroutine constitutive_j2_init(myFile)
          case ('atol_resistance')
            constitutive_j2_aTolResistance(i)  = IO_floatValue(line,positions,2_pInt)
          case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//constitutive_j2_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_J2_label//')')
        end select
      endif
    endif
@@ -280,8 +278,8 @@ subroutine constitutive_j2_init(myFile)
                                                             //CONSTITUTIVE_J2_label//')')
  enddo sanityChecks
 
- do i = 1_pInt,maxNinstance
-   do o = 1_pInt,constitutive_j2_Noutput(i)
+ instancesLoop: do i = 1_pInt,maxNinstance
+   outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(i)
      select case(constitutive_j2_output(o,i))
        case('flowstress')
          mySize = 1_pInt
@@ -296,7 +294,7 @@ subroutine constitutive_j2_init(myFile)
        constitutive_j2_sizePostResults(i) = &
        constitutive_j2_sizePostResults(i) + mySize
      endif
-   enddo
+   enddo outputsLoop 
 
    constitutive_j2_sizeDotState(i) = 1_pInt
    constitutive_j2_sizeState(i)    = 1_pInt
@@ -306,14 +304,14 @@ subroutine constitutive_j2_init(myFile)
    constitutive_j2_Cslip_66(1:6,1:6,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))                   ! todo what is going on here?
 
- enddo
+ enddo instancesLoop
 
 end subroutine constitutive_j2_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief initial microstructural state
-!> @detail initial microstructural state is set to the value specified by tau0
+!> @brief sets the initial microstructural state for a given instance of this plasticity
+!> @details initial microstructural state is set to the value specified by tau0
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_j2_stateInit(myInstance)
   
@@ -327,12 +325,12 @@ end function constitutive_j2_stateInit
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief relevant state values for the current instance of this plasticity
+!> @brief sets the relevant state values for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_j2_aTolState(myInstance)
 
- implicit none
- integer(pInt), intent(in) ::  myInstance                                                           !< number specifying the instance of the plasticity
+implicit none
+ integer(pInt), intent(in) :: myInstance                                                            !< number specifying the instance of the plasticity
 
  real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
                               constitutive_j2_aTolState
@@ -343,20 +341,22 @@ end function constitutive_j2_aTolState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief homogenized elasticity matrix
+!> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_j2_homogenizedC(state,ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &
-   mesh_NcpElems,mesh_maxNips
+   mesh_NcpElems, &
+   mesh_maxNips
  use material, only: &
    homogenization_maxNgrains,&
    material_phase, &
    phase_plasticityInstance
  
  implicit none
- real(pReal), dimension(6,6) :: constitutive_j2_homogenizedC
+ real(pReal), dimension(6,6) :: &
+   constitutive_j2_homogenizedC
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -371,18 +371,17 @@ end function constitutive_j2_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculate derived quantities from state (not used here)
+!> @brief calculates derived quantities from state
+!> @details dummy subroutine, does nothing
 !--------------------------------------------------------------------------------------------------
 pure subroutine constitutive_j2_microstructure(temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &
-   mesh_NcpElems,&
+   mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
-   material_phase, &
-   phase_plasticityInstance
+   homogenization_maxNgrains
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -419,6 +418,11 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_v,&
    phase_plasticityInstance
 
  implicit none
+ real(pReal), dimension(3,3),                                                  intent(out) :: &
+   Lp                                                                                               !< plastic velocity gradient
+ real(pReal), dimension(9,9),                                                  intent(out) :: &
+   dLp_dTstar_99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                                                                  intent(in) :: &
@@ -429,11 +433,6 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_v,&
    el                                                                                               !< element
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
    state                                                                                            !< microstructure state
-
- real(pReal), dimension(3,3),                                                  intent(out) :: &
-   Lp                                                                                               !< plastic velocity gradient
- real(pReal), dimension(9,9),                                                  intent(out) :: &
-   dLp_dTstar_99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  real(pReal), dimension(3,3) :: &
    Tstar_dev_33                                                                                     !< deviatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
@@ -479,7 +478,7 @@ end subroutine constitutive_j2_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_dotState(Tstar_v,Temperature,state,ipc,ip, el)
+pure function constitutive_j2_dotState(Tstar_v,temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -498,7 +497,7 @@ pure function constitutive_j2_dotState(Tstar_v,Temperature,state,ipc,ip, el)
  real(pReal), dimension(6),                                                    intent(in):: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                                                                  intent(in) :: &
-   Temperature                                                                                      !< temperature at integration point
+   temperature                                                                                      !< temperature at integration point
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -561,13 +560,12 @@ end function constitutive_j2_dotState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief (instantaneous) incremental change of microstructure (dummy function)
+!> @brief (instantaneous) incremental change of microstructure
+!> @details dummy function, returns 0.0
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_j2_deltaState(Tstar_v,temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
- use math, only: &
-   math_mul6x6
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -597,7 +595,8 @@ end function constitutive_j2_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates the rate of change of temperature (dummy function)
+!> @brief calculates the rate of change of temperature
+!> @details dummy function, returns 0.0
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function constitutive_j2_dotTemperature(Tstar_v,temperature,state,ipc,ip,el)
  use prec, only: &
@@ -653,7 +652,8 @@ pure function constitutive_j2_postResults(Tstar_v,temperature,dt,state,ipc,ip,el
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state 
+   state                                                                                            !< microstructure state
+
  real(pReal), dimension(constitutive_j2_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
                                            constitutive_j2_postResults
  

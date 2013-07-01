@@ -937,8 +937,8 @@ do i = 1,maxNinstance
       case('dislocationstress')
         mySize = 6_pInt
       case default
-        call IO_error(212_pInt,ext_msg=constitutive_nonlocal_output(o,i)//'&
-                                       ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(212_pInt,ext_msg=constitutive_nonlocal_output(o,i)//&
+                                       '('//CONSTITUTIVE_NONLOCAL_LABEL//')')
     end select
 
     if (mySize > 0_pInt) then                                                                       ! any meaningful output found                               
