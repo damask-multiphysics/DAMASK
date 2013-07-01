@@ -5,30 +5,63 @@ import os,sys,string,re,math,numpy
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 from scipy import ndimage
+from multiprocessing import Pool
 
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
+
+   ACTIONS = Option.ACTIONS + ("extend",)
+   STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+   TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+   ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+   def take_action(self, action, dest, opt, value, values, parser):
+       if action == "extend":
+           lvalue = value.split(",")
+           values.ensure_value(dest, []).extend(lvalue)
+       else:
+           Option.take_action(self, action, dest, opt, value, values, parser)
+
+def grainCoarsenLocal(microLocal,ix,iy,iz,window): 
+   winner = numpy.zeros(microLocal.shape).astype(int)
+   winner = numpy.where(numpy.reshape(numpy.in1d(microLocal,options.black),microLocal.shape),
+                        microLocal,0)                                                               # zero out non-blacklisted microstructures
+   diffusedMax = (winner > 0).astype(float)                                                         # concentration of immutable microstructures
+   boundingSlice = ndimage.measurements.find_objects(microLocal)                                    # bounding boxes of each distinct microstructure region
+   for grain in set(numpy.unique(microLocal)).difference(set(options.black).union(set([0]))):       # diffuse all microstructures except immutable ones
+     mini = [max(0, boundingSlice[grain-1][i].start - window) for i in range(3)]                    # upper right of expanded bounding box
+     maxi = [min(microLocal.shape[i], boundingSlice[grain-1][i].stop + window) for i in range(3)]   # lower left  of expanded bounding box
+     diffused = ndimage.filters.gaussian_filter((microLocal[mini[0]:maxi[0],\
+                                                            mini[1]:maxi[1],\
+                                                            mini[2]:maxi[2]]==grain).astype(float),\
+                                                options.d)                                          # diffuse microstructure inside extended bounding box
+     isMax = diffused > diffusedMax[mini[0]:maxi[0],\
+                                    mini[1]:maxi[1],\
+                                    mini[2]:maxi[2]]                                                # me at highest concentration?
+     winner[mini[0]:maxi[0],\
+            mini[1]:maxi[1],\
+            mini[2]:maxi[2]][isMax] = grain                                                         # remember me ...
+     diffusedMax[mini[0]:maxi[0],\
+                 mini[1]:maxi[1],\
+                 mini[2]:maxi[2]] = numpy.where(isMax,\
+                                                diffused,\
+                                                diffusedMax[mini[0]:maxi[0],\
+                                                            mini[1]:maxi[1],\
+                                                            mini[2]:maxi[2]])                       # ... and my concentration
+   
+   return [winner[window:-window,window:-window,window:-window],ix,iy,iz]
+
+def log_result(result):
+   ix = result[1]; iy = result[2]; iz = result[3]
+   microstructure[ix*stride[0]:(ix+1)*stride[0],iy*stride[1]:(iy+1)*stride[1],iz*stride[2]:(iz+1)*stride[2]] = \
+             result[0]
     
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-
 synonyms = {
         'grid':   ['resolution'],
         'size':   ['dimension'],
@@ -54,12 +87,18 @@ The final geometry is assembled by selecting at each voxel that grain index for 
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-d', '--distance', dest='d', type='float', \
+parser.add_option('-d', '--distance', dest='d', type='int', \
                   help='diffusion distance in voxels [%default]', metavar='float')
+parser.add_option('-N', '--smooth', dest='N', type='int', \
+                 help='N for curvature flow [%default]')
+parser.add_option('-p', '--processors', dest='p', type='int', nargs = 3, \
+                  help='number of threads in x,y,z direction')
 parser.add_option('-b', '--black', dest='black', action='extend', type='string', \
-                  help='indices of stationary microstructures', metavar='<LIST>')
+                 help='indices of stationary microstructures', metavar='<LIST>')
 
-parser.set_defaults(t = 1)
+parser.set_defaults(d = 1)
+parser.set_defaults(N = 1)
+parser.set_defaults(p = [1,1,1])
 parser.set_defaults(black = [])
 
 (options, filenames) = parser.parse_args()
@@ -69,19 +108,19 @@ options.black = map(int,options.black)
 #--- setup file handles --------------------------------------------------------------------------   
 files = []
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
+ files.append({'name':'STDIN',
+               'input':sys.stdin,
+               'output':sys.stdout,
+               'croak':sys.stderr,
+              })
 else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
-                    })
+ for name in filenames:
+   if os.path.exists(name):
+     files.append({'name':name,
+                   'input':open(name),
+                   'output':open(name+'_tmp','w'),
+                   'croak':sys.stdout,
+                   })
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
@@ -147,22 +186,37 @@ for file in files:
     microstructure[i:i+s] = items
     i += s
 
-#--- do work ------------------------------------------------------------------------------------
+#--- do work -------------------------------------------------------------------------------------
   microstructure = microstructure.reshape(info['grid'],order='F')
 
+#--- domain decomposition -------------------------------------------------------------------------  
+  numProc = int(options.p[0]*options.p[1]*options.p[2])
+  stride = info['grid']/options.p
+  if numpy.any(numpy.floor(stride) != stride): 
+    file['croak'].write('invalid domain decomposition.\n')
+    continue
+
 #--- initialize helper data -----------------------------------------------------------------------  
-  winner      = numpy.zeros(info['grid'],'i')
-  diffusedMax = numpy.zeros(info['grid'])
+  window = 4*options.d
+  for smoothIter in xrange(options.N):
+    extendedMicro = numpy.tile(microstructure,[3,3,3])
+    extendedMicro = extendedMicro[(info['grid'][0]-window):-(info['grid'][0]-window),
+                                  (info['grid'][1]-window):-(info['grid'][1]-window),
+                                  (info['grid'][2]-window):-(info['grid'][2]-window)]
+    pool = Pool(processes=numProc)
+    for iz in xrange(options.p[2]):
+      for iy in xrange(options.p[1]):
+        for ix in xrange(options.p[0]):
+          pool.apply_async(grainCoarsenLocal,(extendedMicro[ix*stride[0]:(ix+1)*stride[0]+2*window,\
+                                                            iy*stride[1]:(iy+1)*stride[1]+2*window,\
+                                                            iz*stride[2]:(iz+1)*stride[2]+2*window],\
+                                              ix,iy,iz,window), callback=log_result)
+        
+    pool.close()
+    pool.join()
 
-#--- diffuse each grain separately ----------------------------------------------------------------  
-  for theGrain in xrange(1,1+numpy.amax(microstructure)):
-    diffused = ndimage.filters.gaussian_filter((microstructure == theGrain).astype(float),\
-                                               {True:0.0,False:options.d}[theGrain in options.black],\
-                                               mode='wrap')
-    winner = numpy.where(diffused > diffusedMax, theGrain, winner)
-    diffusedMax = numpy.where(diffused > diffusedMax, diffused, diffusedMax)
-
-  newInfo['microstructures'] = winner.max()
+ # --- assemble header -----------------------------------------------------------------------------
+  newInfo['microstructures'] = microstructure.max()
 
 #--- report ---------------------------------------------------------------------------------------
   if (newInfo['microstructures'] != info['microstructures']):
@@ -183,8 +237,8 @@ for file in files:
   theTable.output_flush()
   
 # --- write microstructure information ------------------------------------------------------------
-  formatwidth = int(math.floor(math.log10(winner.max())+1))
-  theTable.data = winner.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  formatwidth = int(math.floor(math.log10(microstructure.max())+1))
+  theTable.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
   theTable.data_writeArray('%%%ii'%(formatwidth))
     
 #--- output finalization --------------------------------------------------------------------------

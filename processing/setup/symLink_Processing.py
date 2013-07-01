@@ -30,7 +30,7 @@ bin_link = { \
                 'geom_unpack.py',
                 'geom_translate.py',
                 'geom_vicinityOffset.py',
-                'geom_stretchInterfaces.py',
+                'geom_grainGrowth.py',
                 ],
         'post' : [
                 '3Dvisualize.py',
