@@ -150,6 +150,22 @@ module lattice
      0.7071067812_pReal  &
      ],[lattice_fcc_Ntwin])                                                                         !< Twin system <112>{111} ??? Sorted according to Eisenlohr & Hantcherli
 
+ integer(pInt), dimension(2_pInt,lattice_fcc_Ntwin), parameter, public :: &
+   lattice_fcc_corellationTwinSlip = reshape(int( [&
+     2,3, &
+     1,3, &
+     1,2, &
+     5,6, &
+     4,6, &
+     4,5, &
+     8,9, &
+     7,9, &
+     7,8, &
+     11,12, &
+     10,12, &
+     10,11 &
+     ],pInt),[2_pInt,lattice_fcc_Ntwin])
+
  integer(pInt), dimension(lattice_fcc_Nslip,lattice_fcc_Nslip), target, public :: &
    lattice_fcc_interactionSlipSlip = reshape(int( [&
      1,2,2,4,6,5,3,5,5,4,5,6, &  ! ---> slip
