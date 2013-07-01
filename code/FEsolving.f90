@@ -183,8 +183,7 @@ subroutine FE_init
  if (iand(debug_level(debug_FEsolving),debug_levelBasic) /= 0_pInt) then
    write(6,*) 'restart writing:    ', restartWrite
    write(6,*) 'restart reading:    ', restartRead
-   if (restartRead) write(6,*) 'restart Job:        ', trim(modelName)
-   write(6,*)
+   if (restartRead) write(6,'(a,/)') 'restart Job:        '//trim(modelName)
  endif
 
 end subroutine FE_init

@@ -68,16 +68,14 @@ subroutine homogenization_isostrain_init(myFile)
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
  integer(pInt) section, i, j, output, mySize
  integer :: maxNinstance, k                                                                         ! no pInt (stores a system dependen value from 'count'
- character(len=65536) :: tag
- character(len=65536) :: line = ''                                                                   ! to start initialized
+ character(len=65536) :: &
+   tag  = '', &
+   line = ''                                                                                        ! to start initialized
  
-
- write(6,*)
- write(6,*) '<<<+-  homogenization_',trim(homogenization_isostrain_label),' init  -+>>>'
- write(6,*) '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  homogenization_'//trim(homogenization_isostrain_label)//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-
 
  maxNinstance = count(homogenization_type == homogenization_isostrain_label)
  if (maxNinstance == 0) return

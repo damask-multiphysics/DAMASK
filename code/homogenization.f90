@@ -153,9 +153,7 @@ subroutine homogenization_init(Temperature)
      case default
        knownHomogenization = .false.
    end select   
-   write(fileunit,*)
-   write(fileunit,'(a)') '['//trim(homogenization_name(p))//']'
-   write(fileunit,*)
+   write(fileunit,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
    if (knownHomogenization) then
      write(fileunit,'(a)') '(type)'//char(9)//trim(homogenization_type(p))
      write(fileunit,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)

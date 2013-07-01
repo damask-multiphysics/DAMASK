@@ -369,7 +369,7 @@ program DAMASK_spectral_Driver
    write(resUnit) 'increments', loadCases%incs                                                      ! one entry per currentLoadCase
    write(resUnit) 'startingIncrement', restartInc - 1_pInt                                          ! start with writing out the previous inc
    write(resUnit) 'eoh'                                                                             ! end of header
-   write(resUnit) materialpoint_results(1_pInt:materialpoint_sizeResults,1,1_pInt:product(grid))    ! initial (non-deformed or read-in) results
+   write(resUnit) materialpoint_results                                                             ! initial (non-deformed or read-in) results
    open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                '.sta',form='FORMATTED',status='REPLACE')
    write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                   ! statistics file
