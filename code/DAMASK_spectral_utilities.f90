@@ -951,9 +951,7 @@ real(pReal) function utilities_getFilter(k)
  select case (myfilter)
     case ('none')                                                                                   !< default is already nothing (1.0_pReal)
     case ('cosine')                                                                                 !< cosine curve with 1 for avg and zero for highest freq
-      utilities_getFilter = (1.0_pReal + cos(PI*k(3)/grid(3))) &
-                           *(1.0_pReal + cos(PI*k(2)/grid(2))) &
-                           *(1.0_pReal + cos(PI*k(1)/grid(1)))/8.0_pReal
+      utilities_getFilter = product(1.0_pReal + cos(PI*k*scaledGeomSize/grid))/8.0_pReal
     case ('gradient')                                                                                 !< cosine curve with 1 for avg and zero for highest freq
       utilities_getFilter = 1.0_pReal/(1.0_pReal + &
                                        (k(1)*k(1) + k(2)*k(2) + k(3)*k(3)))
