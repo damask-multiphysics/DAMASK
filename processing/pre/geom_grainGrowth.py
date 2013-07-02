@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy
+import os,sys,string,re,math,numpy,itertools
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 from scipy import ndimage
@@ -26,18 +26,42 @@ class extendedOption(Option):
            Option.take_action(self, action, dest, opt, value, values, parser)
 
 def grainCoarsenLocal(microLocal,ix,iy,iz,window): 
+   interfacialEnergy = lambda A,B: 1.0
    winner = numpy.zeros(microLocal.shape).astype(int)
    winner = numpy.where(numpy.reshape(numpy.in1d(microLocal,options.black),microLocal.shape),
                         microLocal,0)                                                               # zero out non-blacklisted microstructures
    diffusedMax = (winner > 0).astype(float)                                                         # concentration of immutable microstructures
    boundingSlice = ndimage.measurements.find_objects(microLocal)                                    # bounding boxes of each distinct microstructure region
-   for grain in set(numpy.unique(microLocal)).difference(set(options.black).union(set([0]))):       # diffuse all microstructures except immutable ones
+   for grain in set(numpy.unique(microLocal)) - set(options.black) - (set([0])):                    # diffuse all microstructures except immutable ones
      mini = [max(0, boundingSlice[grain-1][i].start - window) for i in range(3)]                    # upper right of expanded bounding box
      maxi = [min(microLocal.shape[i], boundingSlice[grain-1][i].stop + window) for i in range(3)]   # lower left  of expanded bounding box
-     diffused = ndimage.filters.gaussian_filter((microLocal[mini[0]:maxi[0],\
-                                                            mini[1]:maxi[1],\
-                                                            mini[2]:maxi[2]]==grain).astype(float),\
-                                                options.d)                                          # diffuse microstructure inside extended bounding box
+     microWindow = microLocal[mini[0]:maxi[0],mini[1]:maxi[1],mini[2]:maxi[2]]
+     neighbours = set(numpy.unique(ndimage.morphology.binary_dilation(microWindow==grain,\
+                                                                      structure=ndimage.generate_binary_structure(3,3))))\
+                  - set([grain]) - set(options.black)                                               # who is on my boundary?
+     if len(neighbours) == 0:                                                                       # no neighbours
+       diffused = numpy.ones(microWindow.shape)
+     elif len(neighbours) == 1:                                                                     # 1 neighbour
+       speed = interfacialEnergy(grain,neighbours.pop())                                            # speed proportional to interfacial energy between me and only neighbour
+       diffused = ndimage.filters.gaussian_filter((microWindow==grain).astype(float),speed*options.d)# diffuse microstructure inside extended bounding box
+     else:                                                                                          # more than 1 neighbour ie junctions
+       numerator = numpy.zeros(microWindow.shape)
+       denominator = numpy.zeros(microWindow.shape)
+       diffused = ndimage.filters.gaussian_filter((microWindow==grain).astype(float),options.d)     # diffuse microstructure inside extended bounding box
+       weights = {}
+       weights[grain] = diffused
+       for i in neighbours: 
+         weights[i] = ndimage.filters.gaussian_filter((microWindow==i).astype(float),options.d)     # partition of unity around me
+       for grainA,grainB in itertools.combinations(neighbours,2):                                   # combinations of triple junctions possible
+         speed = interfacialEnergy(grain,grainA) +\
+                 interfacialEnergy(grain,grainB) -\
+                 interfacialEnergy(grainA,grainB)                                                   # speed of the triple junction
+         weight = weights[grain] + weights[grainA] + weights[grainB]
+         numerator += weight*(speed*diffused + (1.-speed)*(microWindow==grain))
+         denominator += weight
+       
+       diffused = (numerator)/(denominator+1e-30)
+     
      isMax = diffused > diffusedMax[mini[0]:maxi[0],\
                                     mini[1]:maxi[1],\
                                     mini[2]:maxi[2]]                                                # me at highest concentration?
