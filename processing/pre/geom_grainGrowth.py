@@ -27,54 +27,75 @@ class extendedOption(Option):
 
 def grainCoarsenLocal(microLocal,ix,iy,iz,window): 
    interfacialEnergy = lambda A,B: 1.0
-   winner = numpy.zeros(microLocal.shape).astype(int)
-   winner = numpy.where(numpy.reshape(numpy.in1d(microLocal,options.black),microLocal.shape),
+   struc = ndimage.generate_binary_structure(3,3)
+   winner = numpy.where(numpy.in1d(microLocal,options.black).reshape(microLocal.shape),
                         microLocal,0)                                                               # zero out non-blacklisted microstructures
    diffusedMax = (winner > 0).astype(float)                                                         # concentration of immutable microstructures
    boundingSlice = ndimage.measurements.find_objects(microLocal)                                    # bounding boxes of each distinct microstructure region
-   for grain in set(numpy.unique(microLocal)) - set(options.black) - (set([0])):                    # diffuse all microstructures except immutable ones
+   diffused = {}
+   for grain in set(numpy.unique(microLocal)) - set(options.black) - (set([0])):                    # all microstructures except immutable ones
      mini = [max(0, boundingSlice[grain-1][i].start - window) for i in range(3)]                    # upper right of expanded bounding box
      maxi = [min(microLocal.shape[i], boundingSlice[grain-1][i].stop + window) for i in range(3)]   # lower left  of expanded bounding box
      microWindow = microLocal[mini[0]:maxi[0],mini[1]:maxi[1],mini[2]:maxi[2]]
-     neighbours = set(numpy.unique(ndimage.morphology.binary_dilation(microWindow==grain,\
-                                                                      structure=ndimage.generate_binary_structure(3,3))))\
-                  - set([grain]) - set(options.black)                                               # who is on my boundary?
-     if len(neighbours) == 0:                                                                       # no neighbours
-       diffused = numpy.ones(microWindow.shape)
-     elif len(neighbours) == 1:                                                                     # 1 neighbour
-       speed = interfacialEnergy(grain,neighbours.pop())                                            # speed proportional to interfacial energy between me and only neighbour
-       diffused = ndimage.filters.gaussian_filter((microWindow==grain).astype(float),speed*options.d)# diffuse microstructure inside extended bounding box
-     else:                                                                                          # more than 1 neighbour ie junctions
+     grainCharFunc = microWindow==grain
+     neighbours = set(numpy.unique(microWindow[ndimage.morphology.binary_dilation(grainCharFunc,structure=struc)]))\
+                - set([grain]) - set(options.black)                                                 # who is on my boundary?
+     try:                                                                                           # has grain been diffused previously?
+       diff = diffused[grain].copy()                                                                # yes: use previously diffused grain
+     except:  
+       diffused[grain] = ndimage.filters.gaussian_filter((grainCharFunc).astype(float),options.d)   # no: diffuse grain with unit speed
+       diff = diffused[grain].copy()
+     if len(neighbours) == 1:
+       speed = interfacialEnergy(grain,neighbours.pop())                                            # speed proportional to interfacial energy between me and neighbour
+       diff = speed*diff + (1.-speed)*(grainCharFunc)                                               # rescale diffused microstructure by speed
+     else:
+       tiny = 0.001
        numerator = numpy.zeros(microWindow.shape)
        denominator = numpy.zeros(microWindow.shape)
-       diffused = ndimage.filters.gaussian_filter((microWindow==grain).astype(float),options.d)     # diffuse microstructure inside extended bounding box
-       weights = {}
-       weights[grain] = diffused
+       weights = {grain: diff + tiny}
        for i in neighbours: 
-         weights[i] = ndimage.filters.gaussian_filter((microWindow==i).astype(float),options.d)     # partition of unity around me
-       for grainA,grainB in itertools.combinations(neighbours,2):                                   # combinations of triple junctions possible
+         miniI = [max(0, boundingSlice[i-1][j].start - window) for j in range(3)]                   # bounding box of neighbour
+         maxiI = [min(microLocal.shape[j], boundingSlice[i-1][j].stop + window) for j in range(3)]
+         miniCommon = [max(mini[j], boundingSlice[i-1][j].start - window) for j in range(3)]        # intersection of mine and neighbouring bounding box
+         maxiCommon = [min(maxi[j], boundingSlice[i-1][j].stop  + window) for j in range(3)]
+         weights[i] = tiny*numpy.ones(microWindow.shape)
+         try:                                                                                       # has neighbouring grain been diffused previously?
+           weights[i][miniCommon[0] - mini[0]:maxiCommon[0] - mini[0],\
+                      miniCommon[1] - mini[1]:maxiCommon[1] - mini[1],\
+                      miniCommon[2] - mini[2]:maxiCommon[2] - mini[2]] = diffused[i][miniCommon[0] - miniI[0]:maxiCommon[0] - miniI[0],\
+                                                                                     miniCommon[1] - miniI[1]:maxiCommon[1] - miniI[1],\
+                                                                                     miniCommon[2] - miniI[2]:maxiCommon[2] - miniI[2]] + tiny
+         except:                                                                                    # no: diffuse neighbouring grain with unit speed
+           diffused[i] = ndimage.filters.gaussian_filter((microLocal[miniI[0]:maxiI[0],\
+                                                                     miniI[1]:maxiI[1],\
+                                                                     miniI[2]:maxiI[2]]==i).astype(float),options.d)
+           weights[i][miniCommon[0] - mini[0]:maxiCommon[0] - mini[0],\
+                      miniCommon[1] - mini[1]:maxiCommon[1] - mini[1],\
+                      miniCommon[2] - mini[2]:maxiCommon[2] - mini[2]] = diffused[i][miniCommon[0] - miniI[0]:maxiCommon[0] - miniI[0],\
+                                                                                     miniCommon[1] - miniI[1]:maxiCommon[1] - miniI[1],\
+                                                                                     miniCommon[2] - miniI[2]:maxiCommon[2] - miniI[2]] + tiny
+       for grainA,grainB in itertools.combinations(neighbours,2):                                   # combinations of possible triple junctions
          speed = interfacialEnergy(grain,grainA) +\
                  interfacialEnergy(grain,grainB) -\
                  interfacialEnergy(grainA,grainB)                                                   # speed of the triple junction
-         weight = weights[grain] + weights[grainA] + weights[grainB]
-         numerator += weight*(speed*diffused + (1.-speed)*(microWindow==grain))
-         denominator += weight
+         weight = weights[grainA] * weights[grainB]
+         if numpy.any(weight > 0.01):                                                               # strongly interacting triple junction?
+           weight *= weights[grain]
+           numerator += weight*(speed*diff + (1.-speed)*(grainCharFunc))
+           denominator += weight
        
-       diffused = (numerator)/(denominator+1e-30)
+       diff = numerator/denominator                                                                 # weighted sum of strongly interacting triple junctions
      
-     isMax = diffused > diffusedMax[mini[0]:maxi[0],\
-                                    mini[1]:maxi[1],\
-                                    mini[2]:maxi[2]]                                                # me at highest concentration?
      winner[mini[0]:maxi[0],\
             mini[1]:maxi[1],\
-            mini[2]:maxi[2]][isMax] = grain                                                         # remember me ...
+            mini[2]:maxi[2]][diff > diffusedMax[mini[0]:maxi[0],\
+                                                mini[1]:maxi[1],\
+                                                mini[2]:maxi[2]]] = grain                           # remember me ...
      diffusedMax[mini[0]:maxi[0],\
                  mini[1]:maxi[1],\
-                 mini[2]:maxi[2]] = numpy.where(isMax,\
-                                                diffused,\
-                                                diffusedMax[mini[0]:maxi[0],\
-                                                            mini[1]:maxi[1],\
-                                                            mini[2]:maxi[2]])                       # ... and my concentration
+                 mini[2]:maxi[2]] = numpy.maximum(diff,diffusedMax[mini[0]:maxi[0],\
+                                                                   mini[1]:maxi[1],\
+                                                                   mini[2]:maxi[2]])                # ... and my concentration
    
    return [winner[window:-window,window:-window,window:-window],ix,iy,iz]
 
