@@ -463,7 +463,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
        endif
      endif
 
-     if (iand(mode, CPFEM_EXPLICIT) /= 0_pInt) then                                                            ! Abaqus explicit skips collect
+     if (.not. parallelExecution) then                                                             ! no collect
        materialpoint_Temperature(IP,cp_en) = Temperature
        materialpoint_F0(1:3,1:3,IP,cp_en) = ffn
        materialpoint_F(1:3,1:3,IP,cp_en) = ffn1
@@ -509,16 +509,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
                write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for el ip ',cp_en,IP
              !$OMP END CRITICAL (write2out)
            endif
-           call materialpoint_stressAndItsTangent(updateJaco, dt)                                    ! calculate stress and its tangent
-             !$OMP CRITICAL (write2out)
-               write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for el ip ',cp_en,IP
-               flush(6)
-             !$OMP END CRITICAL (write2out)
-             !$OMP CRITICAL (write2out)
-               write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for el ip ',cp_en,IP
-               flush(6)
-             !$OMP END CRITICAL (write2out)
-           call materialpoint_postResults(dt)                                                        ! post results
+           call materialpoint_stressAndItsTangent(updateJaco, dt)                                  ! calculate stress and its tangent
+           call materialpoint_postResults(dt)                                                      ! post results
          endif
          
        !* parallel computation and calulation not yet done
@@ -594,7 +586,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
    Temperature = materialpoint_Temperature(IP,cp_en)  ! homogenized result except for potentially non-isothermal starting condition.
  endif
 
- if (mode < 3 .and. iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt &                !< @ToDo mode 3 doesn't exist any more
+ if ((iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) .and. (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
                     .and. ((debug_e == cp_en .and. debug_i == IP) &
                             .or. .not. iand(debug_level(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
    !$OMP CRITICAL (write2out)
@@ -614,7 +606,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
  
 !--------------------------------------------------------------------------------------------------
 ! remember extreme values of stress and jacobian
- if (mode < 3) then
+ if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
    cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,IP,cp_en))
    if (maxval(cauchyStress33) > debug_stressMax) then                        
      debug_stressMaxLocation = [cp_en, IP]
