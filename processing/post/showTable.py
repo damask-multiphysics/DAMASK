@@ -19,8 +19,10 @@ parser.add_option('-i','--info',   dest='info',   action='store_true', help='out
 parser.add_option('-l','--labels', dest='labels', action='store_true', help='output labels')
 parser.add_option('-d','--data',   dest='data',   action='store_true', help='output data')
 parser.add_option('-c','--column', dest='col',    action='store_true', help='switch to label column format')
+parser.add_option('--nolabels',    dest='nolabels',    action='store_true', help='table has no labels')
 
 parser.set_defaults(col = False)
+parser.set_defaults(nolabels = False)
 (options,filenames) = parser.parse_args()
 
 
@@ -37,11 +39,12 @@ else:
 # ------------------------------------------ extract labels ---------------------------------------  
 
 for file in files:
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],buffered=False,labels=not options.nolabels)        # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
   if options.head or options.info:   file['output'].write('\n'.join(table.info)+'\n')
   if options.head or options.labels: file['output'].write({True:'\n',False:'\t'}[options.col].join(table.labels)+'\n')
   if options.data:
+    table.data_rewind()
     while table.data_read(): table.data_write()
 
   table.output_flush()
