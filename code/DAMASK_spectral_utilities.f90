@@ -184,8 +184,10 @@ subroutine utilities_init()
  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
 #ifdef PETSc
- if(debugPETSc) write(6,'(/,a)') ' Initializing PETSc with debug options: ', trim(PETScDebug), &
-                                 ' add more using the PETSc_Options keyword in numerics.config '
+ if(debugPETSc) write(6,'(3(/,a),/)') &
+                ' Initializing PETSc with debug options: ', &
+                trim(PETScDebug), &
+                ' add more using the PETSc_Options keyword in numerics.config '
  flush(6)
  call PetscOptionsClear(ierr); CHKERRQ(ierr)
  if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr); CHKERRQ(ierr)
@@ -871,10 +873,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  
  P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P 
  if (debugRotation) &
- write(6,'(/,a,/,3(3(2x,f12.7,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
+ write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
                                                      math_transpose33(P_av)/1.e6_pReal
  P_av = math_rotate_forward33(P_av,rotation_BC)
- write(6,'(/,a,/,3(3(2x,f12.7,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
+ write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
                                                      math_transpose33(P_av)/1.e6_pReal
 
 end subroutine utilities_constitutiveResponse
@@ -949,10 +951,10 @@ real(pReal) function utilities_getFilter(k)
  utilities_getFilter = 1.0_pReal
 
  select case (myfilter)
-    case ('none')                                                                                   !< default is already nothing (1.0_pReal)
-    case ('cosine')                                                                                 !< cosine curve with 1 for avg and zero for highest freq
+    case ('none')                                                                                   ! default, no weighting
+    case ('cosine')                                                                                 ! cosine curve with 1 for avg and zero for highest freq
       utilities_getFilter = product(1.0_pReal + cos(PI*k*scaledGeomSize/grid))/8.0_pReal
-    case ('gradient')                                                                                 !< cosine curve with 1 for avg and zero for highest freq
+    case ('gradient')                                                                               ! gradient, might need grid scaling as for cosine filter
       utilities_getFilter = 1.0_pReal/(1.0_pReal + &
                                        (k(1)*k(1) + k(2)*k(2) + k(3)*k(3)))
     case default

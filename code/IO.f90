@@ -1321,10 +1321,10 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return integer list corrsponding to items in consecutive lines.
-! First integer in array is counter
+!! First integer in array is counter
 !> @details Marc:      ints concatenated by "c" as last char, range of a "to" b, or named set
-! Abaqus:    triplet of start,stop,inc or named set
-! Spectral:  ints concatenated range of a "to" b, multiple entries with a "of" b
+!! Abaqus:    triplet of start,stop,inc or named set
+!! Spectral:  ints concatenated range of a "to" b, multiple entries with a "of" b
 !--------------------------------------------------------------------------------------------------
 function IO_continuousIntValues(myUnit,maxN,lookupName,lookupMap,lookupMaxN)
 

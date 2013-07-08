@@ -139,8 +139,6 @@ subroutine AL_init(temperature)
    grid, &
    geomSize, &
    wgt
- use numerics, only: &
-   petsc_options  
  use mesh, only: &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
@@ -312,7 +310,7 @@ use mesh, only: &
 ! PETSc Data
  PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_tau
  PetscErrorCode :: ierr   
- SNESConvergedReason ::reason
+ SNESConvergedReason :: reason
 
  incInfo = incInfoIn
  
@@ -331,10 +329,10 @@ use mesh, only: &
    call IO_write_jobBinaryFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
-   call IO_write_jobBinaryFile(777,'F_tau',size(F_tau))                                                     ! writing deformation gradient field to file
+   call IO_write_jobBinaryFile(777,'F_tau',size(F_tau))                                             ! writing deformation gradient field to file
    write (777,rec=1) F_tau
    close (777)
-   call IO_write_jobBinaryFile(777,'F_tau_lastInc',size(F_tau_lastInc))                                     ! writing F_lastInc field to file
+   call IO_write_jobBinaryFile(777,'F_tau_lastInc',size(F_tau_lastInc))                             ! writing F_lastInc field to file
    write (777,rec=1) F_tau_lastInc
    close (777)
    call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
@@ -418,7 +416,7 @@ use mesh, only: &
    AL_solution%iterationsNeeded = itmax
  else
    AL_solution%converged = .true.
-   AL_solution%iterationsNeeded = reportIter - 1_pInt
+   AL_solution%iterationsNeeded = reportIter
  endif
 
 end function AL_solution
@@ -457,8 +455,6 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    materialpoint_dPdF
 
  implicit none
- integer(pInt), save :: callNo = 3_pInt
-
 !--------------------------------------------------------------------------------------------------
 ! strange syntax in the next line because otherwise macros expand beyond 132 character limit 
  DMDALocalInfo,        dimension(&
@@ -497,11 +493,11 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
- if (iter == 0 .and. callNo>2) then
-   callNo = 0_pInt
-   reportIter = 0_pInt
+ if (iter == 0 .and. nfuncs == 0) then                                                             ! new increment
+   reportIter = -1_pInt
  endif
- if (callNo == 0 .or. mod(callNo,2) == 1_pInt) then
+ if (reportIter <= iter) then                                                                      ! new iteration
+   reportIter = reportIter + 1_pInt
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',reportIter, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
@@ -510,9 +506,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
    flush(6)
-   reportIter = reportIter + 1_pInt
  endif
- callNo = callNo +1_pInt
   
 !--------------------------------------------------------------------------------------------------
 ! 

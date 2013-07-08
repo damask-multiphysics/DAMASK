@@ -127,9 +127,7 @@ subroutine basicPETSc_init(temperature)
    Utilities_updateGamma, &
    grid, &
    wgt, &
-   geomSize
- use numerics, only: &
-   petsc_options  
+   geomSize 
  use mesh, only: &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
@@ -182,7 +180,7 @@ subroutine basicPETSc_init(temperature)
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
 
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                           ! initialize to identity
+   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                        ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
@@ -361,7 +359,7 @@ type(tSolutionState) function basicPETSc_solution( &
    basicPETSC_solution%iterationsNeeded = itmax
  else
    basicPETSC_solution%converged = .true.
-   basicPETSC_solution%iterationsNeeded = reportIter - 1_pInt
+   basicPETSC_solution%iterationsNeeded = reportIter
  endif
 
 end function BasicPETSc_solution
@@ -405,18 +403,17 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
- integer(pInt), save :: callNo = 3_pInt
 
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,iter,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
- if (iter == 0 .and. callNo>2) then
-   callNo = 0_pInt
-   reportIter = 0_pInt
+ if (iter == 0 .and. nfuncs == 0) then                                                             ! new increment
+   reportIter = -1_pInt
  endif
- if (callNo == 0 .or. mod(callNo,2) == 1_pInt) then
+ if (reportIter <= iter) then                                                                      ! new iteration
+   reportIter = reportIter + 1_pInt
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',reportIter, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
@@ -425,9 +422,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
    flush(6)
-   reportIter = reportIter + 1_pInt
  endif
- callNo = callNo +1_pInt
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response

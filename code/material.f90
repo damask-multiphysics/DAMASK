@@ -285,13 +285,13 @@ subroutine material_parseHomogenization(myFile,myPart)
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
    line = IO_read(myFile)
  enddo
- if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
+ if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
  do while (trim(line) /= '#EOF#')
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
+   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      homogenization_name(section) = IO_getTag(line,'[',']')
@@ -371,13 +371,13 @@ subroutine material_parseMicrostructure(myFile,myPart)
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
    line = IO_read(myFile)
  enddo
- if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
+ if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
  do while (trim(line) /= '#EOF#')
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
+   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      constituent = 0_pInt
@@ -450,13 +450,13 @@ subroutine material_parseCrystallite(myFile,myPart)
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
    line = IO_read(myFile)
  enddo
- if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
+ if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
  do while (trim(line) /= '#EOF#')
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
+   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      crystallite_name(section) = IO_getTag(line,'[',']')
@@ -519,13 +519,13 @@ subroutine material_parsePhase(myFile,myPart)
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
    line = IO_read(myFile)
  enddo
- if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
+ if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
  do while (trim(line) /= '#EOF#')
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
+   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      phase_name(section) = IO_getTag(line,'[',']')
@@ -621,13 +621,13 @@ subroutine material_parseTexture(myFile,myPart)
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
    line = IO_read(myFile)
  enddo
- if (echo) write(6,'(/,a)') trim(line)                                                              ! echo part header
+ if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
  do while (trim(line) /= '#EOF#')
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
+   if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      gauss = 0_pInt
