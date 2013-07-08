@@ -291,7 +291,7 @@ subroutine material_parseHomogenization(myFile,myPart)
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)',advance='no') trim(line)                                                 ! echo back read lines
+   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      homogenization_name(section) = IO_getTag(line,'[',']')
@@ -377,7 +377,7 @@ subroutine material_parseMicrostructure(myFile,myPart)
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)',advance='no') trim(line)                                                 ! echo back read lines
+   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      constituent = 0_pInt
@@ -456,7 +456,7 @@ subroutine material_parseCrystallite(myFile,myPart)
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)',advance='no') trim(line)                                                 ! echo back read lines
+   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      crystallite_name(section) = IO_getTag(line,'[',']')
@@ -525,7 +525,7 @@ subroutine material_parsePhase(myFile,myPart)
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)',advance='no') trim(line)                                                 ! echo back read lines
+   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      phase_name(section) = IO_getTag(line,'[',']')
@@ -627,7 +627,7 @@ subroutine material_parseTexture(myFile,myPart)
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
-   if (echo) write(6,'(a)',advance='no') trim(line)                                                 ! echo back read lines
+   if (echo) write(6,'(a)') trim(line)                                                              ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      gauss = 0_pInt
