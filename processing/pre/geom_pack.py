@@ -5,6 +5,9 @@ import os,sys,string,re,math,numpy
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -46,7 +49,7 @@ mappings = {
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 compress geometry files with ranges "a to b" and/or multiples "n of x".
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 (options, filenames) = parser.parse_args()
@@ -70,7 +73,8 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
   theTable.head_read()
@@ -105,7 +109,7 @@ for file in files:
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
-                      'microstructures: %i\n\n'%info['microstructures'])
+                      'microstructures: %i\n'%info['microstructures'])
 
   if numpy.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
@@ -118,7 +122,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    "$Id$",
+    scriptID,
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),

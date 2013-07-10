@@ -5,6 +5,9 @@ import os,sys,string,re,math,numpy
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -47,7 +50,7 @@ mappings = {
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Scales a geometry description independently in x, y, and z direction in terms of grid and/or size.
 Either absolute values or relative factors (like "0.25x") can be used.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, \
@@ -79,7 +82,8 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
   theTable.head_read()
@@ -187,7 +191,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    "$Id$",
+    scriptID,
     "grid\ta %i\tb %i\tc %i"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
