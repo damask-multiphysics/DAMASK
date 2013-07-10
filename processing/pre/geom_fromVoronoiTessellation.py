@@ -5,6 +5,9 @@ import os,sys,math,string,re,numpy
 import damask 
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP 
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -48,17 +51,26 @@ def meshgrid2(*arrs):
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
+synonyms = {
+        'grid':   ['resolution'],
+        'size':   ['dimension'],
+          }
 identifiers = {
-        'grid':  ['a','b','c'],
+        'grid':   ['a','b','c'],
+        'size':   ['x','y','z'],
+        'origin': ['x','y','z'],
           }
 mappings = {
-        'grid':    lambda x: int(x),
-        'grains':  lambda x: int(x),
+        'grid':            lambda x: int(x),
+        'size':            lambda x: float(x),
+        'origin':          lambda x: float(x),
+        'homogenization':  lambda x: int(x),
+        'microstructures': lambda x: int(x),
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration by standard Voronoi tessellation of given seeds file.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
@@ -103,25 +115,40 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   theTable = damask.ASCIItable(file['input'],file['output'])
   theTable.head_read()
-  theData = theTable.data_asArray(['x','y','z','phi1','Phi','phi2'])
+  
+  coords = theTable.data_asArray(['x','y','z'])
+  if numpy.all(theTable.labels_index(['phi1','Phi','phi2']) != -1):
+    eulers = theTable.data_asArray(['phi1','Phi','phi2'])
+  if theTable.labels_index('microstructure') != -1:
+    grain = theTable.data_asArray(['microstructure'])
+    grainIDs = numpy.unique(grain)
+  else:
+    grain = 1+numpy.arange(len(eulers))
+    grainIDs = grain
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
           'grid':    numpy.zeros(3,'i'),
           'size':    numpy.array(options.size),
           'origin':  numpy.zeros(3,'d'),
-          'grains':  0,
+          'microstructures':  0,
           'homogenization': options.homogenization,
          }
+  newInfo = {
+          'microstructures': 0,
+         }
+  extra_header = []
 
   for header in theTable.info:
     headitems = map(str.lower,header.split())
-    if len(headitems) == 0: continue                                                                # skip blank lines
-    if headitems[0] == 'resolution': headitems[0] = 'grid'
+    if len(headitems) == 0: continue
+    for synonym,alternatives in synonyms.iteritems():
+      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
@@ -129,10 +156,12 @@ for file in files:
             mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
+    else:
+      extra_header.append(header)
 
-  if info['grains'] != len(theData):
+  if info['microstructures'] != len(grainIDs):
     file['croak'].write('grain data not matching grain count...\n')
-    info['grains'] = min(info['grains'],len(theData))
+    info['microstructures'] = min(info['microstructures'],len(grainIDs))
   
   if 0 not in options.grid:                                                                         # user-specified grid
     info['grid'] = numpy.array(options.grid)
@@ -142,7 +171,7 @@ for file in files:
       info['size'][i] = float(info['grid'][i])/max(info['grid'])
       file['croak'].write('rescaling size %s...\n'%{0:'x',1:'y',2:'z'}[i])
 
-  file['croak'].write('grains to map:  %i\n'%info['grains'] + \
+  file['croak'].write('grains to map:  %i\n'%info['microstructures'] + \
                       'grid     a b c: %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z: %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z: %s\n'%(' : '.join(map(str,info['origin']))) + \
@@ -154,26 +183,30 @@ for file in files:
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
-  if info['grains'] == 0:
+  if info['microstructures'] == 0:
     file['croak'].write('no grain info found.\n')
     continue
 
 #--- prepare data ---------------------------------------------------------------------------------
-  coords = (theData[:,:3]*info['size']).transpose()
-  eulers = (theData[:,3:6]).transpose()
+  coords = (coords*info['size']).transpose()
+  eulers = eulers.transpose()
 
 #--- switch according to task ---------------------------------------------------------------------
   if options.config:                                                                                # write config file
+    formatwidth = 1+int(math.log10(info['microstructures']))
     file['output'].write('<microstructure>\n')
-    for i in xrange(info['grains']):
-      file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
+    for i in grainIDs:
+      file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
                            'crystallite %i\n'%options.crystallite + \
-                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase,str(i+1).rjust(formatwidth)))
+                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase,str(i).rjust(formatwidth)))
   
     file['output'].write('\n<texture>\n')
-    for i in xrange(info['grains']):
-      file['output'].write('\n[Grain%s]\n'%(str(i+1).zfill(formatwidth)) + \
-                           '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,i],eulers[1,i],eulers[2,i]))
+    for i in grainIDs:
+      eulerID = numpy.nonzero(grain == i)[0][0]                                                     # find first occurrence of this grain id
+      file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
+                           '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,eulerID],
+                                                                                             eulers[1,eulerID],
+                                                                                             eulers[2,eulerID]))
 
   else:                                                                                             # write geometry file
     x = (numpy.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
@@ -181,32 +214,37 @@ for file in files:
     z = (numpy.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
     undeformed = numpy.vstack(map(numpy.ravel, meshgrid2(x, y, z)))
 
-    file['croak'].write('tesselating...\n')
+    file['croak'].write('tessellating...\n')
     indices = damask.core.math.periodicNearestNeighbor(\
               info['size'],\
               numpy.eye(3),\
               undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
-    missing = 0
-    for i in xrange(info['grains']):
-      if i+1 not in indices: missing += 1
-    file['croak'].write({True:'all',False:'only'}[missing == 0] + ' %i grains mapped.\n'%(info['grains']-missing))
+    indices = grain[indices-1]
+
+    newInfo['microstructures'] = info['microstructures']
+    for i in grainIDs:
+      if i not in indices: newInfo['microstructures'] -= 1
+    file['croak'].write({True:'all',False:'only'}[newInfo['microstructures']  == info['microstructures'] ] +
+                        ' %i'%newInfo['microstructures'] + 
+                        {True:'',False:' out of %i'%info['microstructures']}[newInfo['microstructures'] == info['microstructures']] +
+                        ' grains mapped.\n')
 
 #--- write header ---------------------------------------------------------------------------------
     theTable.labels_clear()
     theTable.info_clear()
-    theTable.info_append([
-      "$Id$",
+    theTable.info_append(extra_header+[
+      scriptID,
       "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
       "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
       "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
       "homogenization\t%i"%info['homogenization'],
-      "microstructures\t%i"%(info['grains']-missing),
+      "microstructures\t%i"%(newInfo['microstructures']),
       ])
     theTable.head_write()
     theTable.output_flush()
     
 # --- write microstructure information ------------------------------------------------------------
-    formatwidth = 1+int(math.log10(info['grains']))
+    formatwidth = 1+int(math.log10(newInfo['microstructures']))
     theTable.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
     theTable.data_writeArray('%%%ii'%(formatwidth))
     
