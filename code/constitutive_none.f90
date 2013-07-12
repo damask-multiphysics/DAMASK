@@ -281,7 +281,7 @@ end subroutine constitutive_none_microstructure
 !> @brief calculates plastic velocity gradient and its tangent
 !> @details dummy function, returns 0.0 and Identity
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_none_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_dev_v, & 
+pure subroutine constitutive_none_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_dev_v, & 
                                                                    temperature, state, ipc, ip, el)
  use prec, only: &
    p_vec
@@ -299,7 +299,7 @@ pure subroutine constitutive_none_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_dev_v, 
  real(pReal), dimension(3,3),                                                  intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(9,9),                                                  intent(out) :: &
-   dLp_dTstar_99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+   dLp_dTstar99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_dev_v                                                                                      !< deviatoric part of 2nd Piola Kirchhoff stress tensor in Mandel notation
@@ -313,7 +313,7 @@ pure subroutine constitutive_none_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_dev_v, 
    state                                                                                            !< microstructure state
 
  Lp = 0.0_pReal                                                                                     ! set Lp to zero 
- dLp_dTstar_99 = math_identity2nd(9)                                                                ! set dLp_dTstar to Identity
+ dLp_dTstar99 = math_identity2nd(9)                                                                ! set dLp_dTstar to Identity
 
 end subroutine constitutive_none_LpAndItsTangent
 

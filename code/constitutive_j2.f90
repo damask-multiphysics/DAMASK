@@ -329,8 +329,8 @@ end function constitutive_j2_stateInit
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_j2_aTolState(myInstance)
 
-implicit none
- integer(pInt), intent(in) :: myInstance                                                            !< number specifying the instance of the plasticity
+ implicit none
+ integer(pInt), intent(in) :: myInstance                                                           !< number specifying the instance of the plasticity
 
  real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
                               constitutive_j2_aTolState
@@ -399,7 +399,7 @@ end subroutine constitutive_j2_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_v,&
+pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
                                                                        temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
@@ -421,7 +421,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_v,&
  real(pReal), dimension(3,3),                                                  intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(9,9),                                                  intent(out) :: &
-   dLp_dTstar_99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+   dLp_dTstar99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
@@ -453,7 +453,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_v,&
 
  if (norm_Tstar_dev <= 0.0_pReal) then                                                              ! Tstar == 0 --> both Lp and dLp_dTstar are zero
    Lp = 0.0_pReal
-   dLp_dTstar_99 = 0.0_pReal
+   dLp_dTstar99 = 0.0_pReal
  else
    gamma_dot = constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
              / &!----------------------------------------------------------------------------------
@@ -468,7 +468,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_v,&
                                       Tstar_dev_33(k,l)*Tstar_dev_33(m,n) / squarenorm_Tstar_dev
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
      dLp_dTstar_3333(k,l,k,l) = dLp_dTstar_3333(k,l,k,l) + 1.0_pReal
-   dLp_dTstar_99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(matID) * &
+   dLp_dTstar99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(matID) * &
                                       dLp_dTstar_3333 / norm_Tstar_dev)
  end if
 

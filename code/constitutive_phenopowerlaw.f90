@@ -422,6 +422,8 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
  enddo sanityChecks
 
+!--------------------------------------------------------------------------------------------------
+! allocation of variables whose size depends on the total number of active slip systems
  allocate(constitutive_phenopowerlaw_hardeningMatrix_SlipSlip(maxval(constitutive_phenopowerlaw_totalNslip),&   ! slip resistance from slip activity
                                                               maxval(constitutive_phenopowerlaw_totalNslip),&
                                                               maxNinstance))
@@ -664,7 +666,7 @@ end subroutine constitutive_phenopowerlaw_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar_99,Tstar_v,&
+pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
                                                                      temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
@@ -693,7 +695,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar_99,Tsta
  real(pReal), dimension(3,3),                                                  intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(9,9),                                                  intent(out) :: &
-   dLp_dTstar_99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+   dLp_dTstar99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
@@ -731,7 +733,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar_99,Tsta
 
  Lp = 0.0_pReal
  dLp_dTstar3333 = 0.0_pReal
- dLp_dTstar_99 = 0.0_pReal
+ dLp_dTstar99 = 0.0_pReal
 
  j = 0_pInt
  slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
@@ -811,7 +813,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar_99,Tsta
    enddo
  enddo twinFamiliesLoop
 
- dLp_dTstar_99 = math_Plain3333to99(dLp_dTstar3333)
+ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
 end subroutine constitutive_phenopowerlaw_LpAndItsTangent
 
