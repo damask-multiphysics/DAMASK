@@ -1270,7 +1270,7 @@ subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(inout) :: &
    state                                                                                            !< microstructure state
  integer(pInt) myInstance,myStructure,ns,nt,f,i,j,k,l,m,n,index_myFamily
  real(pReal) sumf,StressRatio_edge_p,minusStressRatio_edge_p,StressRatio_edge_pminus1,StressRatio_screw_p, &
