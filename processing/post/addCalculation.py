@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
-import os,re,sys,math,string,damask
+import os,re,sys,math,string,damask,numpy
 from optparse import OptionParser, Option
+
+def unravel(item):
+  if hasattr(item,'__contains__'): return ' '.join(map(unravel,item))
+  else: return str(item)
 
 # -----------------------------
 class extendableOption(Option):
@@ -36,11 +40,10 @@ Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round
 )
 
 
-parser.add_option('-l','--label',   dest='labels', action='extend', type='string', \
-                                    help='(list of) new column labels', metavar='<LIST>')
-parser.add_option('-f','--formula', dest='formulas', action='extend', type='string', \
-                                    help='(list of) formulas corresponding to labels', metavar='<LIST>')
-
+parser.add_option('-l','--label',    dest='labels', action='extend', type='string', \
+                                     help='(list of) new column labels', metavar='<LIST>')
+parser.add_option('-f','--formula',  dest='formulas', action='extend', type='string', \
+                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
 parser.set_defaults(labels= [])
 parser.set_defaults(formulas= [])
 
@@ -71,16 +74,14 @@ for file in files:
                '_row_': 0,
              }
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
+  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
   table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
-  column = {}
   evaluator = {}
 
   for label,formula in zip(options.labels,options.formulas):
-    table.labels_append(label)
     interpolator = []
     for position,operand in enumerate(set(re.findall(r'#(.+?)#',formula))):
       formula = formula.replace('#'+operand+'#','{%i}'%position)
@@ -98,19 +99,34 @@ for file in files:
           parser.error('column %s not found...\n'%operand)
   
     evaluator[label] = "'" + formula + "'.format(" + ','.join(interpolator) + ")"
-  
+
+# ------------------------------------------ calculate one result to get length of labels  ------
+  labelLen = {}
+  table.data_read()
+  for label in options.labels:
+    labelLen[label] = numpy.size(eval(eval(evaluator[label])))
+    print label, labelLen[label]
 
 # ------------------------------------------ assemble header ---------------------------------------  
+  for label,formula in zip(options.labels,options.formulas):
+    if labelLen[label] == 0:
+      print 'label ',label,' has length 0'
+      sys.exit()
+    elif labelLen[label] == 1:
+      table.labels_append(label)
+    else:
+      table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])])
 
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------  
 
   outputAlive = True
+  table.data_rewind()
   while outputAlive and table.data_read():                                  # read next data line of ASCII table
 
     specials['_row_'] += 1                                                  # count row
-    for label in options.labels: table.data_append(eval(eval(evaluator[label])))
+    for label in options.labels: table.data_append(unravel(eval(eval(evaluator[label]))))
     outputAlive = table.data_write()                                        # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
