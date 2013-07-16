@@ -162,7 +162,7 @@ for file in files:
       this = int((i+1)*float(newInfo['grid'][j])/info['grid'][j])
       multiplicity[j].append(this-last)
       last = this
-  
+
   microstructure = microstructure.reshape(info['grid'],order='F')
   microstructure = numpy.repeat(
                    numpy.repeat(
@@ -203,7 +203,7 @@ for file in files:
   
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
-  theTable.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  theTable.data = microstructure.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
   theTable.data_writeArray('%%%ii'%(formatwidth))
     
 #--- output finalization --------------------------------------------------------------------------
