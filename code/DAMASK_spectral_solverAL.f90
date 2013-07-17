@@ -589,7 +589,7 @@ subroutine AL_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
  real(pReal) :: err_stress_tol
  
  err_stress_tol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
- Converged = (it > itmin .and. &
+ Converged = (it >= itmin .and. &
                all([ err_f/err_f_tol, &
                      err_p/err_p_tol, &
                      err_stress/err_stress_tol] < 1.0_pReal)) &
