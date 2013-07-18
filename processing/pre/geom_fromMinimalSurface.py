@@ -4,6 +4,9 @@
 import os,sys,string,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -33,11 +36,11 @@ surface = {
             'gyroid':    lambda x,y,z: math.sin(x)*math.cos(y)+math.sin(y)*math.cos(z)+math.cos(x)*math.sin(z),
             'diamond':   lambda x,y,z: math.cos(x-y)*math.cos(z)+math.sin(x+y)*math.sin(z),
           }
-  
+
 
 parser = OptionParser(option_class=extendedOption, usage='%prog', description = """
 Generate a geometry file of a bicontinuous structure of given type.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-t','--type', dest='type', choices=minimal_surfaces, \
@@ -83,6 +86,7 @@ info = {
        }
 
 #--- report ---------------------------------------------------------------------------------------
+file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                     'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                     'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
@@ -92,12 +96,12 @@ file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) 
 if numpy.any(info['grid'] < 1):
   file['croak'].write('invalid grid a b c.\n')
   sys.exit()
-if numpy.any(info['size'] <= 0.0):	
+if numpy.any(info['size'] <= 0.0):
   file['croak'].write('invalid size x y z.\n')
   sys.exit()
 
 #--- write header ---------------------------------------------------------------------------------
-header = ['$Id$\n']
+header = [scriptID+'\n']
 header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
 header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
 header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
