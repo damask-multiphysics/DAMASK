@@ -10,6 +10,9 @@ that are written during the first run of the model.
 import sys,os,re
 from optparse import OptionParser
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 # -----------------------------
 def ParseOutputFormat(filename,what,me):
 # -----------------------------
@@ -98,6 +101,7 @@ me = {  'Homogenization':   options.homog,
 
 
 for file in files:
+  print '\033[1m'+scriptName+'\033[0m: '+file+'\n'
   if options.useFile != '':
     formatFile = os.path.splitext(options.useFile)[0]
   else:

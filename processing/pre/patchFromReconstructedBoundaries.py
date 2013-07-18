@@ -4,6 +4,9 @@
 import sys,os,math,re,string, damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 
 try:                                        # check for Python Image Lib
   import Image,ImageDraw
@@ -784,8 +787,7 @@ def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):            # bui
 parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
 Produce image, spectral geometry description, and (auto) Mentat procedure from TSL/OIM
 reconstructed boundary file
-
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option("-o", "--output", action='extend', dest='output', type='string', \
@@ -855,6 +857,7 @@ parser.set_defaults(twoD = False)
 
 (options, args) = parser.parse_args()
 
+print '\033[1m'+scriptName+'\033[0m\n'
 if not len(args):
   parser.error('no boundary file specified')
 

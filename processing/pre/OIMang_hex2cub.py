@@ -4,6 +4,9 @@
 import string,os,sys
 from optparse import OptionParser, Option
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #-------------------------------------------------------------------------------------------------
 class extendableOption(Option):
 #-------------------------------------------------------------------------------------------------
@@ -28,8 +31,7 @@ class extendableOption(Option):
 #--------------------------------------------------------------------------------------------------
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Converts ang files (EBSD Data) from hexagonal grid to a pixel grid
-
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-x', dest='columnX', action='store', type='int', \
@@ -46,16 +48,25 @@ addPoints = -1                                                                  
 #--- setup file handles ---------------------------------------------------------------------------   
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  if filenames == []:
+  files.append({'name':'STDIN',
+                'input':sys.stdin,
+                'output':sys.stdout,
+                'croak':sys.stderr,
+               })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append(   {'name':name, 'input':open(name),'output':open(os.path.splitext(name)[0]\
-                                                             +'_cub'+os.path.splitext(name)[1], 'w')})
+      files.append({'name':name, 
+                    'input':open(name),
+                    'output':open(os.path.splitext(name)[0]+'_cub'+os.path.splitext(name)[1], 'w'),
+                    'croak':sys.stdout,
+                 })
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
   x = 0
   for line in file['input']:
     lineSplit=line.split()
@@ -63,7 +74,7 @@ for file in files:
     if lineSplit[0]=='#':
       if len(lineSplit)>2:                                                                          # possibly interesting information
         if line.split()[2]=='SqrGrid': 
-          print 'The file is already a square grid file.'
+          file['croak'].write('The file is already a square grid file.')
           sys.exit()
         if lineSplit[1]=='XSTEP:':      stepSizeX = float(lineSplit[2]) 
         if lineSplit[1]=='YSTEP:':      stepSizeY = float(lineSplit[2])

@@ -2,7 +2,11 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,string,numpy
-from optparse import OptionParser, Option
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 
 #--------------------------------------------------------------------------------------------------
 class extendableOption(Option):
@@ -128,7 +132,7 @@ for file in files:
     file['output'].write('\n'.join(microstructure) + \
                          '\n'.join(texture))
   else:
-    header = ['$Id$\n']
+    header = [scriptID+'\n']
     header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
     header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
     header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

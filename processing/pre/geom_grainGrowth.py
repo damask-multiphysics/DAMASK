@@ -7,6 +7,9 @@ from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 from scipy import ndimage
 from multiprocessing import Pool
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -129,7 +132,7 @@ Smoothens out interface roughness by simulated curvature flow.
 This is achieved by the diffusion of each initially sharply bounded grain volume within the periodic domain
 up to a given distance 'd' voxels.
 The final geometry is assembled by selecting at each voxel that grain index for which the concentration remains largest.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-d', '--distance', dest='d', type='int', \
@@ -169,7 +172,8 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+    if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
   theTable.head_read()
@@ -271,7 +275,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    "$Id$",
+    scriptID,
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),

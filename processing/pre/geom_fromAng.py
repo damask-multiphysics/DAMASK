@@ -2,7 +2,10 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,math,string,numpy
-from optparse import OptionParser, Option
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
 
 #--------------------------------------------------------------------------------------------------
 class extendableOption(Option):
@@ -29,22 +32,25 @@ class extendableOption(Option):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration from EBSD data in given square-gridded 'ang' file.
 Two phases can be discriminated based on threshold value in a given data column.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 
-parser.add_option('--column',          dest='column', type='int', \
+parser.add_option('--column',              dest='column', type='int', \
                   help='data column to discriminate phase 1 from 2 [%default]')
-parser.add_option('-t','--threshold',  dest='threshold', type='float', \
+parser.add_option('-t','--threshold',      dest='threshold', type='float', \
                   help='threshold value to discriminate phase 1 from 2 [%default]')
-parser.add_option('--homogenization', dest='homogenization', type='int', \
+parser.add_option('--homogenization',      dest='homogenization', type='int', \
                   help='homogenization index to be used [%default]')
-parser.add_option('--phase', dest='phase', type='int', nargs = 2, \
+parser.add_option('--phase',               dest='phase', type='int', nargs = 2, \
                   help='two phase indices to be used %default')
-parser.add_option('--crystallite', dest='crystallite', type='int', \
+parser.add_option('--crystallite',         dest='crystallite', type='int', \
                   help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
+parser.add_option('-a', '--axis',         dest='axis', type='string', nargs = 3, \
+                  help='axis assignement of eulerangles x,y,z = %default')
+    
                   
 parser.set_defaults(column = 11)
 parser.set_defaults(threshold = 0.5)
@@ -52,8 +58,13 @@ parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = [1,2])
 parser.set_defaults(crystallite    = 1)
 parser.set_defaults(config = False)
-
+parser.set_defaults(axis           = ['y','x','-z'])
 (options,filenames) = parser.parse_args()
+
+for i in options.axis:
+  if i.lower() not in ['x','+x','-x','y','+y','-y','z','+z','-z']:
+    file['croak'].write('invalid axis %s %s %s' %(options.axis[0],options.axis[1],options.axis[2]))
+    sys.exit()
 
 #--- setup file handles ---------------------------------------------------------------------------
 files = []
@@ -75,7 +86,8 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   info = {
           'grid':   numpy.ones (3,'i'),
@@ -111,6 +123,7 @@ for file in files:
                            '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]],me)
                           ]
         texture +=        ['[Grain%s]\n'%me + \
+                           'rotation %s %s %s'%(options.axis[0],options.axis[1],options.axis[2]) +\
                            '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
                           ]
       else:                                                                                         # only info from header needed
@@ -138,7 +151,7 @@ for file in files:
     file['output'].write('\n'.join(microstructure) + \
                          '\n'.join(texture))
   else:
-    header = ['$Id$\n']
+    header = [scriptID+'\n']
     header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
     header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
     header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

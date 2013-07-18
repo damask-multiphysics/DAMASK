@@ -4,6 +4,9 @@
 import os,sys,string,re,math,numpy
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -42,7 +45,7 @@ mappings = {
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Offset microstructure index for points which see a microstructure different from themselves within a given (cubic) vicinity,
 i.e. within the region close to a grain/phase boundary.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-v', '--vicinity', dest='vicinity', type='int', \
@@ -78,7 +81,8 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
@@ -105,7 +109,7 @@ for file in files:
        }
 
   new_header = []
-  new_header.append('$Id$\n')
+  new_header.append(scriptID+'\n')
   for header in headers:
     headitems = map(str.lower,header.split())
     if headitems[0] == 'resolution': headitems[0] = 'grid'

@@ -4,6 +4,9 @@
 import os,sys,string,re,math,numpy,random
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #------------------------------------------------------------------------------------------------
@@ -37,7 +40,7 @@ mappings = {
 parser = OptionParser(option_class=extendedOption, usage='%prog [options]', description = """
 Distribute given number of points randomly within the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
 Reports positions with random crystal orientations in seeds file format to STDOUT.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-N', dest='N', type='int', \
@@ -78,7 +81,7 @@ seeds[2,:]=(numpy.mod(seedpoint//(options.grid[1]*options.grid[0]),options.grid[
                                                             +numpy.random.random())/options.grid[2]
 
 print "5\theader"
-print "$Id$"
+print scriptID
 print "grid\ta %i\tb %i\tc %i"%(options.grid[0],options.grid[1],options.grid[2],)
 print "microstructures\t%i"%options.N
 print "randomSeed\t%i"%(options.randomSeed)

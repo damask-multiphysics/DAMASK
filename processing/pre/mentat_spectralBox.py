@@ -4,6 +4,9 @@
 import os, sys, math, re, threading, time, string, damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
 #-------------------------------------------------------------------------------------------------
@@ -231,8 +234,7 @@ Generate FE hexahedral mesh from spectral description file.
 Acceptable formats are
 geom: header plus list of grain numbers or
 spectral: phi1,Phi,phi2,x,y,z,id,phase.
-
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 parser.add_option("-p", "--port", type="int",\
                   dest="port",\
@@ -243,7 +245,6 @@ parser.add_option("-g", "--geom", action="store_const", const="geom",\
 parser.add_option("-s", "--spectral", action="store_const", const="spectral",\
                   dest="filetype",\
                   help="file has 'spectral' format (VPSC Lebensohn)")
-
 parser.add_option("--homogenization", type="int",\
                   dest="homogenization",\
                   help="homogenization index from material.config (only required for geom file type)")
@@ -270,6 +271,7 @@ file = open(args[0])
 content = file.readlines()
 file.close()
 
+print '\033[1m'+scriptName+'\033[0m\n'
 if options.filetype not in ['spectral','geom']:
   options.filetype = os.path.splitext(args[0])[1][1:]
 

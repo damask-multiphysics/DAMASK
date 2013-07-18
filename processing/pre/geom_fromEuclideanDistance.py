@@ -3,7 +3,10 @@
 
 import os,re,sys,math,numpy,string,damask
 from scipy import ndimage
-from optparse import OptionParser, Option
+from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
 
 #--------------------------------------------------------------------------------------------------
 class extendableOption(Option):
@@ -111,8 +114,7 @@ neighborhoods = {
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Produce geom files containing Euclidean distance to grain structural features:
 boundaries, triple lines, and quadruple points.
-
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-t','--type',        dest='type', action='extend', type='string', \
@@ -157,7 +159,8 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   firstline = file['input'].readline()
   m = re.search('(\d+)\s*head', firstline.lower())
@@ -180,7 +183,7 @@ for file in files:
         'homogenization':  0
          }
   newInfo = {
-        	'microstructures': 0,
+        'microstructures': 0,
             }
 
   new_header = []
@@ -211,7 +214,7 @@ for file in files:
     file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
-  new_header.append('$Id$\n')
+  new_header.append(scriptID+'\n')
   new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
   new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

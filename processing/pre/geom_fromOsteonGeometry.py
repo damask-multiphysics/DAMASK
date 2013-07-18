@@ -4,6 +4,9 @@
 import os,sys,string,math,numpy,time
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 #------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #------------------------------------------------------------------------------------------------
@@ -30,7 +33,7 @@ parser = OptionParser(option_class=extendedOption, usage='%prog', description = 
 Generate a geometry file of an osteon enclosing the Harvesian canal and separated by interstitial tissue.
 The osteon phase is lamellar with a twisted plywood structure.
 Its fiber orientation is oscillating by +/- amplitude within one period.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs=2, \
@@ -131,7 +134,8 @@ for y in xrange(info['grid'][1]):
       alphaOfGrain[info['microstructures']] = alpha[y,x]
       betaOfGrain[ info['microstructures']] = beta[y,x]
       info['microstructures'] += 1
-
+#--- report ---------------------------------------------------------------------------------------
+else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                     'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                     'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
@@ -171,7 +175,7 @@ if options.config:
                                   betaOfGrain[i]))
   
 else:
-  header = ['$Id$\n']
+  header = [scriptID+'\n']
   header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
   header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
   header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

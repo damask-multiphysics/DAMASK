@@ -4,6 +4,9 @@
 import sys,os,pwd,math,re,string,numpy, damask
 from optparse import OptionParser
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 sys.path.append(damask.solver.Marc().libraryPath('../../'))
 
 try:
@@ -155,8 +158,7 @@ def servoLink():
 #-------------------------------------------------------------------------------------------------- 
 parser = OptionParser(usage='%prog [options]', description = """
 Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh presently opened in MSC.Mentat
-
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option("-p", "--port", type="int",\
@@ -171,6 +173,7 @@ parser.set_defaults(verbose = False)
 (options, args) = parser.parse_args()
 
 outputLocals = {}
+print '\033[1m'+scriptName+'\033[0m\n'
 print 'waiting to connect...'
 py_connect('',options.port)
 print 'connected...'
