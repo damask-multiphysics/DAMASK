@@ -943,7 +943,7 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      lattice_Stwin(1:3,1:3,i,myStructure) = math_tensorproduct(lattice_td(1:3,i,myStructure), &
                                                                lattice_tn(1:3,i,myStructure))
      lattice_Stwin_v(1:6,i,myStructure)   = math_Mandel33to6(math_symmetric33(lattice_Stwin(1:3,1:3,i,myStructure)))
-     lattice_Qtwin(1:3,1:3,i,myStructure) = math_AxisAngleToR(tn(1:3,i),180.0_pReal*INRAD)
+     lattice_Qtwin(1:3,1:3,i,myStructure) = math_axisAngleToR(tn(1:3,i),180.0_pReal*INRAD)
      lattice_shearTwin(i,myStructure)     = ts(i)
      if (abs(math_trace33(lattice_Stwin(1:3,1:3,i,myStructure))) > 1.0e-8_pReal) &
        call IO_error(0_pInt,myStructure,i,0_pInt,ext_msg = 'dilatational twin Schmid matrix')
