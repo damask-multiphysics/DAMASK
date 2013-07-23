@@ -123,7 +123,7 @@ for file in files:
                            '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]],me)
                           ]
         texture +=        ['[Grain%s]\n'%me + \
-                           'rotation %s %s %s '%(options.axis[0],options.axis[1],options.axis[2]) +\
+                           'rotation %s %s %s\n'%(options.axis[0],options.axis[1],options.axis[2]) +\
                            '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
                           ]
       else:                                                                                         # only info from header needed
