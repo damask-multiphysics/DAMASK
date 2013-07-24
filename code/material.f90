@@ -116,7 +116,7 @@ module material
    material_volume, &                                                                               !< volume of each grain,IP,element
    texture_Gauss, &                                                                                 !< data of each Gauss component
    texture_Fiber, &                                                                                 !< data of each Fiber component
-   texture_rotation                                                                                 !< rotation of each texture
+   texture_transformation                                                                           !< transformation for each texture
  
  logical, dimension(:), allocatable, private :: &
    homogenization_active
@@ -607,9 +607,9 @@ subroutine material_parseTexture(myFile,myPart)
  texture_maxNfiber = maxval(texture_Nfiber)
  allocate(texture_Gauss   (5,texture_maxNgauss,Nsections)); texture_Gauss    = 0.0_pReal
  allocate(texture_Fiber   (6,texture_maxNfiber,Nsections)); texture_Fiber    = 0.0_pReal
- allocate(texture_rotation(3,3,Nsections));                 
+ allocate(texture_transformation(3,3,Nsections));                 
  do j = 1_pInt, Nsections
-   texture_rotation(1:3,1:3,j) = math_I3
+   texture_transformation(1:3,1:3,j) = math_I3
  enddo
  
  rewind(myFile)
@@ -639,22 +639,22 @@ subroutine material_parseTexture(myFile,myPart)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      textureType: select case(tag)
 
-       case ('rotation') textureType
+       case ('axes', 'rotation') textureType
          do j = 1_pInt, 3_pInt                                                                      ! look for "x", "y", and "z" entries
            tag = IO_lc(IO_stringValue(line,positions,j+1_pInt))
            select case (tag)
              case('x', '+x')
-               texture_rotation(j,1:3,section) = (/ 1.0_pReal, 0.0_pReal, 0.0_pReal/)               ! original axis is now +x-axis
+               texture_transformation(j,1:3,section) = (/ 1.0_pReal, 0.0_pReal, 0.0_pReal/)               ! original axis is now +x-axis
              case('-x')
-               texture_rotation(j,1:3,section) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal/)               ! original axis is now -x-axis
+               texture_transformation(j,1:3,section) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal/)               ! original axis is now -x-axis
              case('y', '+y')
-               texture_rotation(j,1:3,section) = (/ 0.0_pReal, 1.0_pReal, 0.0_pReal/)               ! original axis is now +y-axis
+               texture_transformation(j,1:3,section) = (/ 0.0_pReal, 1.0_pReal, 0.0_pReal/)               ! original axis is now +y-axis
              case('-y')
-               texture_rotation(j,1:3,section) = (/ 0.0_pReal,-1.0_pReal, 0.0_pReal/)               ! original axis is now -y-axis
+               texture_transformation(j,1:3,section) = (/ 0.0_pReal,-1.0_pReal, 0.0_pReal/)               ! original axis is now -y-axis
              case('z', '+z')
-               texture_rotation(j,1:3,section) = (/ 0.0_pReal, 0.0_pReal, 1.0_pReal/)               ! original axis is now +z-axis
+               texture_transformation(j,1:3,section) = (/ 0.0_pReal, 0.0_pReal, 1.0_pReal/)               ! original axis is now +z-axis
              case('-z')
-               texture_rotation(j,1:3,section) = (/ 0.0_pReal, 0.0_pReal,-1.0_pReal/)               ! original axis is now -z-axis
+               texture_transformation(j,1:3,section) = (/ 0.0_pReal, 0.0_pReal,-1.0_pReal/)               ! original axis is now -z-axis
              case default
                call IO_error(157_pInt,section)
            end select
@@ -964,13 +964,13 @@ subroutine material_populateGrains
          endif
 
 !--------------------------------------------------------------------------------------------------
-! ...texture rotation
+! ...texture transformation
 
          do j = 1_pInt,myNorientations                                                              ! loop over each "real" orientation
            orientationOfGrain(1:3,grain+j) = math_RtoEuler( &                                       ! translate back to Euler angles
                                              math_mul33x33( &                                       ! pre-multiply
                                                math_EulertoR(orientationOfGrain(1:3,grain+j)), &    ! face-value orientation
-                                               texture_rotation(1:3,1:3,textureID) &               ! rotation matrix and
+                                               texture_transformation(1:3,1:3,textureID) &          ! and transformation matrix
                                              ) &
                                              )
          enddo

@@ -48,8 +48,8 @@ parser.add_option('--crystallite',         dest='crystallite', type='int', \
                   help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
-parser.add_option('-a', '--axis',         dest='axis', type='string', nargs = 3, \
-                  help='axis assignement of eulerangles x,y,z = %default')
+parser.add_option('-a', '--axes',         dest='axes', type='string', nargs = 3, \
+                  help='axes assignement of eulerangles x,y,z = %default')
     
                   
 parser.set_defaults(column = 11)
@@ -58,12 +58,12 @@ parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = [1,2])
 parser.set_defaults(crystallite    = 1)
 parser.set_defaults(config = False)
-parser.set_defaults(axis           = ['y','x','-z'])
+parser.set_defaults(axes           = ['y','x','-z'])
 (options,filenames) = parser.parse_args()
 
-for i in options.axis:
+for i in options.axes:
   if i.lower() not in ['x','+x','-x','y','+y','-y','z','+z','-z']:
-    file['croak'].write('invalid axis %s %s %s' %(options.axis[0],options.axis[1],options.axis[2]))
+    file['croak'].write('invalid axes %s %s %s' %(options.axes[0],options.axes[1],options.axes[2]))
     sys.exit()
 
 #--- setup file handles ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ for file in files:
                            '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]],me)
                           ]
         texture +=        ['[Grain%s]\n'%me + \
-                           'rotation %s %s %s\n'%(options.axis[0],options.axis[1],options.axis[2]) +\
+                           'axes %s %s %s\n'%(options.axes[0],options.axes[1],options.axes[2]) +\
                            '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
                           ]
       else:                                                                                         # only info from header needed

@@ -1510,7 +1510,7 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
  case (156_pInt)
    msg = 'reading from ODF file'
  case (157_pInt)
-   msg = 'illegal texture rotation specified'
+   msg = 'illegal texture transformation specified'
  case (160_pInt)
    msg = 'no entries in config part'
  case (170_pInt)
