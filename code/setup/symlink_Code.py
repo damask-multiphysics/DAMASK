@@ -8,7 +8,7 @@ bin_link = { \
                   ],
            }
 
-MarcReleases =[2010,2011,2012]
+MarcReleases =[2010,2011,2012,2013]
 
 damaskEnv = damask.Environment('../../')          # script location relative to root
 baseDir = damaskEnv.relPath('code/')

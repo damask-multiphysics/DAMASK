@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEFAULT_VERSION='2012'
+DEFAULT_VERSION='2013'
 
 WORKINGDIR=`dirname $0`
 
@@ -88,18 +88,18 @@ echo "MSC version: $VERSION"
 echo ''
 echo 'copying Marc tools...'
 theDIR=$INSTALLDIR/marc$VERSION/tools
-for filename in 'comp_user' \
-                'comp_user_l' \
-                'comp_user_h' \
-                'comp_user_mp' \
-                'comp_user_lmp' \
-                'comp_user_hmp' \
-                'run_marc' \
-                'run_l_marc' \
-                'run_h_marc' \
-                'run_mp_marc' \
-                'run_lmp_marc' \
-                'run_hmp_marc' \
+for filename in 'comp_damask' \
+                'comp_damask_l' \
+                'comp_damask_h' \
+                'comp_damask_mp' \
+                'comp_damask_lmp' \
+                'comp_damask_hmp' \
+                'run_damask' \
+                'run_damask_l' \
+                'run_damask_h' \
+                'run_damask_mp' \
+                'run_damask_lmp' \
+                'run_damask_hmp' \
                 'include_linux64'; do
   cp $WORKINGDIR/$VERSION/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
@@ -151,8 +151,8 @@ $INSTALLDIR/mentat$VERSION/bin/mentat -compile $INSTALLDIR/mentat$VERSION/menus/
 # setting access rights
 echo ''
 echo 'setting file access rights...'
-chmod 555 $INSTALLDIR/marc$VERSION/tools/run_*_marc
-chmod 555 $INSTALLDIR/marc$VERSION/tools/comp_user?*
+chmod 555 $INSTALLDIR/marc$VERSION/tools/run_damask*
+chmod 555 $INSTALLDIR/marc$VERSION/tools/comp_damask*
 chmod 555 $INSTALLDIR/mentat$VERSION/bin/submit{4..9}
 chmod 555 $INSTALLDIR/mentat$VERSION/bin/kill{4..9}
 
