@@ -350,7 +350,9 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug
                  DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o 
 
 ifdef PETSC_DIR
-PETSC_FILES = DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o
+PETSC_FILES = DAMASK_spectral_solverAL.o \
+                        DAMASK_spectral_solverBasicPETSc.o \
+                        DAMASK_spectral_solverPolarisation.o
 COMPILED_FILES += $(PETSC_FILES)
 endif
 
@@ -367,6 +369,9 @@ DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90\
                                DAMASK_spectral_utilities.o
   
 DAMASK_spectral_solverBasic.o: DAMASK_spectral_solverBasic.f90\
+                               DAMASK_spectral_utilities.o
+  
+DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90\
                                DAMASK_spectral_utilities.o
   
 DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90\

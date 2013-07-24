@@ -82,6 +82,7 @@ program DAMASK_spectral_Driver
 #ifdef PETSc
  use DAMASK_spectral_SolverBasicPETSC
  use DAMASK_spectral_SolverAL
+ use DAMASK_spectral_SolverPolarisation
 #endif
 
  implicit none
@@ -337,6 +338,10 @@ program DAMASK_spectral_Driver
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
      call AL_init(loadCases(1)%temperature)
+   case (DAMASK_spectral_SolverPolarisation_label)
+     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+       call IO_warning(42_pInt, ext_msg='debug Divergence')
+     call Polarisation_init(loadCases(1)%temperature)
 #endif
    case default
       call IO_error(error_ID = 891, ext_msg = trim(myspectralsolver))
@@ -459,9 +464,15 @@ program DAMASK_spectral_Driver
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
                  rotation_BC        = loadCases(currentLoadCase)%rotation)
-            
            case (DAMASK_spectral_SolverAL_label)
              solres = AL_solution (&
+                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                 P_BC               = loadCases(currentLoadCase)%P, &
+                 F_BC               = loadCases(currentLoadCase)%deformation, &
+                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
+                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+           case (DAMASK_spectral_SolverPolarisation_label)
+             solres = Polarisation_solution (&
                  incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
@@ -525,15 +536,15 @@ program DAMASK_spectral_Driver
  enddo loadCaseLooping
  
  select case (myspectralsolver)
- 
    case (DAMASK_spectral_SolverBasic_label)
      call basic_destroy()
 #ifdef PETSc
    case (DAMASK_spectral_SolverBasicPETSC_label)
      call BasicPETSC_destroy()
-     
    case (DAMASK_spectral_SolverAL_label)
      call AL_destroy()
+   case (DAMASK_spectral_SolverPolarisation_label)
+     call Polarisation_destroy()
 #endif 
  end select
  
