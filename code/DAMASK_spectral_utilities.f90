@@ -46,7 +46,7 @@ module DAMASK_spectral_utilities
 ! variables storing information for spectral method and FFTW
  integer(pInt), public                                         :: grid1Red                          !< grid(1)/2
  real(pReal),   public,  dimension(:,:,:,:,:),     pointer     :: field_real                        !< real representation (some stress or deformation) of field_fourier
- complex(pReal),private, dimension(:,:,:,:,:),     pointer     :: field_fourier                     !< field on which the Fourier transform operates
+ complex(pReal),public,  dimension(:,:,:,:,:),     pointer     :: field_fourier                     !< field on which the Fourier transform operates
  real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                         !< gamma operator (field) for spectral method
  real(pReal),   private, dimension(:,:,:,:),       allocatable :: xi                                !< wave vector field for divergence and for gamma operator
  real(pReal),   private, dimension(3,3,3,3)                    :: C_ref                             !< reference stiffness
@@ -102,6 +102,7 @@ module DAMASK_spectral_utilities
    utilities_FFTforward, &
    utilities_FFTbackward, &
    utilities_fourierConvolution, &
+   utilities_inverseLaplace, &
    utilities_divergenceRMS, &
    utilities_curlRMS, &
    utilities_maskedCompliance, &
@@ -484,6 +485,40 @@ subroutine utilities_FFTbackward()
 
 end subroutine utilities_FFTbackward
 
+
+!--------------------------------------------------------------------------------------------------
+!> @brief doing convolution with inverse laplace kernel
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_inverseLaplace()
+ use math, only: &
+   math_inv33, &
+   PI
+
+ implicit none  
+ integer(pInt) :: i, j, k
+ integer(pInt), dimension(3) :: k_s
+
+ write(6,'(/,a)') ' ... doing inverse laplace .................................................'
+ flush(6)
+ 
+!--------------------------------------------------------------------------------------------------
+! do the actual spectral method calculation (mechanical equilibrium)
+ do k = 1_pInt, grid(3)
+  k_s(3) = k - 1_pInt
+  if(k > grid(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - grid(3)                                        ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+  do j = 1_pInt, grid(2)
+    k_s(2) = j - 1_pInt
+    if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                    ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+    do i = 1_pInt, grid1Red
+      k_s(1) = i - 1_pInt  
+      if (any(k_s /= 0_pInt)) field_fourier(i,j,k, 1:3,1:3) = field_fourier(i,j,k, 1:3,1:3)/&
+                                                              cmplx(-sum((2.0_pReal*PI*k_s/geomSize)*&
+                                                                         (2.0_pReal*PI*k_s/geomSize)),0.0_pReal,pReal)                                                                    ! symmetry, junst running from 0,1,...,N/2,N/2+1
+enddo; enddo; enddo
+field_fourier(1,1,1,1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
+
+end subroutine utilities_inverseLaplace
+ 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief doing convolution gamma_hat * field_real, ensuring that average value = fieldAim

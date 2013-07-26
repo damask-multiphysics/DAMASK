@@ -47,7 +47,9 @@ module DAMASK_spectral_solverPolarisation
  type tSolutionParams                                                                               !< @todo use here the type definition for a full loadcase including mask
    real(pReal), dimension(3,3) :: P_BC, rotation_BC
    real(pReal) :: timeinc
+   real(pReal) :: timeincOld
    real(pReal) :: temperature
+   real(pReal) :: density
  end type tSolutionParams
  
  type(tSolutionParams), private :: params
@@ -63,9 +65,11 @@ module DAMASK_spectral_solverPolarisation
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
    F_lastInc, &                                                                                     !< field of previous compatible deformation gradients
+   F_lastInc2, &                                                                                    !< field of 2nd previous compatible deformation gradients
    F_tau_lastInc, &                                                                                 !< field of previous incompatible deformation gradient 
    Fdot, &                                                                                          !< field of assumed rate of compatible deformation gradient
    F_tauDot                                                                                         !< field of assumed rate of incopatible deformation gradient
+ complex(pReal),private, dimension(:,:,:,:,:), allocatable :: inertiaField_fourier
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -140,6 +144,7 @@ subroutine Polarisation_init(temperature)
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
    grid, &
+   grid1Red, &
    geomSize, &
    wgt
  use mesh, only: &
@@ -174,9 +179,11 @@ subroutine Polarisation_init(temperature)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
  allocate (F_lastInc    (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (F_lastInc2   (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (Fdot         (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (F_tau_lastInc(3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (F_tauDot     (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (inertiaField_fourier (grid1Red,grid(2),grid(3),3,3),source = cmplx(0.0_pReal,0.0_pReal,pReal))
     
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
@@ -200,6 +207,7 @@ subroutine Polarisation_init(temperature)
  F_tau => xx_psc(9:17,:,:,:)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F_lastInc     = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                    ! initialize to identity
+   F_lastInc2 = F_lastInc
    F_tau_lastInc = F_lastInc
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_tau = F
@@ -215,6 +223,10 @@ subroutine Polarisation_init(temperature)
    call IO_read_jobBinaryFile(777,'F_lastInc',&
                                                 trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
+   close (777)
+   call IO_read_jobBinaryFile(777,'F_lastInc2',&
+                                                trim(getSolverJobName()),size(F_lastInc2))
+   read (777,rec=1) F_lastInc2
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
@@ -263,7 +275,7 @@ end subroutine Polarisation_init
 !> @brief solution for the Polarisation scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
-  Polarisation_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC)
+  Polarisation_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC,density)
  use numerics, only: &
    update_gamma, &
    itmax, &
@@ -311,6 +323,7 @@ type(tSolutionState) function &
  character(len=*), intent(in) :: &
    incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+ real(pReal), intent(in) :: density
  real(pReal) :: err_stress_tol
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
@@ -379,7 +392,7 @@ type(tSolutionState) function &
                   timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
    F_tauDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_tau_lastInc,reshape(F_tau,[3,3,grid(1),grid(2),grid(3)]))  
-                
+   F_lastInc2 = F_lastInc
    F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
    F_tau_lastInc = reshape(F_tau,[3,3,grid(1),grid(2),grid(3)])
  endif
@@ -407,7 +420,9 @@ type(tSolutionState) function &
  params%P_BC = P_BC%values
  params%rotation_BC = rotation_BC
  params%timeinc = timeinc
+ params%timeincOld = timeinc_old
  params%temperature = temperature_bc
+ params%density = density
 
  err_stress_tol = 1.0_pReal; err_stress = 2.0_pReal * err_stress_tol                                ! ensure to start loop
  totalIter = -1_pInt
@@ -461,10 +476,13 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    math_invSym3333
  use DAMASK_spectral_Utilities, only: &
    grid, &
+   geomSize, &
    wgt, &
    field_real, &
+   field_fourier, &
    Utilities_FFTforward, &
    Utilities_fourierConvolution, &
+   Utilities_inverseLaplace, &
    Utilities_FFTbackward, &
    Utilities_constitutiveResponse
  use debug, only: &
@@ -528,6 +546,21 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
                                  math_transpose33(F_aim)
    flush(6)
  endif
+
+ if (params%density > 0.0_pReal) then
+!--------------------------------------------------------------------------------------------------
+! evaluate inertia
+   residual_F = ((F - F_lastInc)/params%timeinc - (F_lastInc - F_lastInc2)/params%timeincOld)/((params%timeinc + params%timeincOld)/2.0_pReal)
+   residual_F = params%density*product(geomSize/grid)*residual_F
+   field_real = 0.0_pReal
+   field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3) = reshape(residual_F,[grid(1),grid(2),grid(3),3,3],&
+                                                               order=[4,5,1,2,3]) ! field real has a different order
+   call Utilities_FFTforward()
+   call Utilities_inverseLaplace()
+   inertiaField_fourier = field_fourier
+ else
+   inertiaField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ endif    
   
 !--------------------------------------------------------------------------------------------------
 ! 
@@ -540,6 +573,7 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space 
  call Utilities_FFTforward()
+ field_fourier = field_fourier + polarAlpha*inertiaField_fourier
  call Utilities_fourierConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
  call Utilities_FFTbackward()
  

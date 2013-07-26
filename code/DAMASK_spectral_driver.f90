@@ -91,7 +91,8 @@ program DAMASK_spectral_Driver
    type(tBoundaryCondition) ::     P, &                                                             !< stress BC
                                    deformation                                                      !< deformation BC (Fdot or L)
    real(pReal) ::                  time                   = 0.0_pReal, &                            !< length of increment
-                                   temperature            = 300.0_pReal                             !< isothermal starting conditions
+                                   temperature            = 300.0_pReal, &                          !< isothermal starting conditions
+                                   density                = 0.0_pReal                               !< density
    integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
                                    outputfrequency        = 1_pInt, &                               !< frequency of result writes
                                    restartfrequency       = 0_pInt, &                               !< frequency of restart writes
@@ -232,6 +233,8 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%time = IO_floatValue(line,positions,i+1_pInt)
        case('temp','temperature')                                                                   ! starting temperature
          loadCases(currentLoadCase)%temperature = IO_floatValue(line,positions,i+1_pInt)
+       case('den','density')                                                                        ! starting density
+         loadCases(currentLoadCase)%density     = IO_floatValue(line,positions,i+1_pInt)
        case('n','incs','increments','steps')                                                        ! number of increments
          loadCases(currentLoadCase)%incs = IO_intValue(line,positions,i+1_pInt)
        case('logincs','logincrements','logsteps')                                                   ! number of increments (switch to log time scaling)
@@ -314,6 +317,7 @@ program DAMASK_spectral_Driver
      write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
               math_transpose33(loadCases(currentLoadCase)%rotation)
    write(6,'(2x,a,f12.6)') 'temperature:', loadCases(currentLoadCase)%temperature
+   write(6,'(2x,a,f12.6)') 'density:    ', loadCases(currentLoadCase)%density
    if (loadCases(currentLoadCase)%time < 0.0_pReal)          errorID = 834_pInt                     ! negative time increment
    write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
    if (loadCases(currentLoadCase)%incs < 1_pInt)             errorID = 835_pInt                     ! non-positive incs count
@@ -463,21 +467,24 @@ program DAMASK_spectral_Driver
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+                 rotation_BC        = loadCases(currentLoadCase)%rotation, &
+                 density            = loadCases(currentLoadCase)%density)
            case (DAMASK_spectral_SolverAL_label)
              solres = AL_solution (&
                  incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+                 rotation_BC        = loadCases(currentLoadCase)%rotation, &
+                 density            = loadCases(currentLoadCase)%density)
            case (DAMASK_spectral_SolverPolarisation_label)
              solres = Polarisation_solution (&
                  incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+                 rotation_BC        = loadCases(currentLoadCase)%rotation, &
+                 density            = loadCases(currentLoadCase)%density)
 #endif
          end select 
 
