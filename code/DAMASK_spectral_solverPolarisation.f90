@@ -580,9 +580,9 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
  write(6,'(/,a)') ' ... correcting F to fullfill stress BC ....................................'
- correctionFactor = (cos((1.0-500.0_pReal**(-sum((P_av-P_avLastEval)**2.0_pReal)/&                  ! only correct when averages stress of last two calls is close
+ correctionFactor = (cos((1.0-10000.0_pReal**(-sum((P_av-P_avLastEval)**2.0_pReal)/&                ! only correct when averages stress of last two calls doesn't strongly deviate
                                                        sum(P_av**2.0_pReal)))*PI)+1.0)/2.0_pReal
- write(6,'(/,a,f8.2)') ' stress BC correction factor = ', correctionFactor
+ write(6,'(/,a,f10.4)') ' stress BC correction factor = ', correctionFactor
  F_aim = F_aim - correctionFactor *math_mul3333xx33(S, ((P_av - params%P_BC)))                      ! S = 0.0 for no bc
  err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
  
