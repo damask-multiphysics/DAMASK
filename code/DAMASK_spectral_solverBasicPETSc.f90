@@ -427,10 +427,10 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
- if (iter == 0 .and. nfuncs == 0) then                                                             ! new increment
+ if (iter == 0 .and. nfuncs == 0) then                                                              ! new increment
    reportIter = -1_pInt
  endif
- if (reportIter <= iter) then                                                                      ! new iteration
+ if (reportIter <= iter) then                                                                       ! new iteration
    reportIter = reportIter + 1_pInt
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',reportIter, '≤', itmax
@@ -442,14 +442,15 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    flush(6)
  endif
 
-if (params%density > 0.0_pReal) then
 !--------------------------------------------------------------------------------------------------
 ! evaluate inertia
-   f_scal = ((x_scal - F_lastInc)/params%timeinc - (F_lastInc - F_lastInc2)/params%timeincOld)/((params%timeinc + params%timeincOld)/2.0_pReal)
+if (params%density > 0.0_pReal) then
+   f_scal = ((x_scal - F_lastInc)/params%timeinc - (F_lastInc - F_lastInc2)/params%timeincOld)/&
+                                                   ((params%timeinc + params%timeincOld)/2.0_pReal)
    f_scal = params%density*product(geomSize/grid)*f_scal
    field_real = 0.0_pReal
    field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3) = reshape(f_scal,[grid(1),grid(2),grid(3),3,3],&
-                                                               order=[4,5,1,2,3]) ! field real has a different order
+                                                               order=[4,5,1,2,3])                   ! field real has a different order
    call Utilities_FFTforward()
    call Utilities_inverseLaplace()
    inertiaField_fourier = field_fourier

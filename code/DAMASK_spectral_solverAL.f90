@@ -77,7 +77,8 @@ module DAMASK_spectral_solverAL
    F_aimDot, &                                                                                      !< assumed rate of average deformation gradient
    F_aim = math_I3, &                                                                               !< current prescribed deformation gradient
    F_aim_lastInc = math_I3, &                                                                       !< previous average deformation gradient
-   P_av = 0.0_pReal                                                                                 !< average 1st Piola--Kirchhoff stress
+   P_av = 0.0_pReal, &                                                                              !< average 1st Piola--Kirchhoff stress
+   P_avLastEval = 0.0_pReal                                                                         !< average 1st Piola--Kirchhoff stress last call of CPFEM_general
  character(len=1024), private :: incInfo                                                            !< time and increment information
  real(pReal), private, dimension(3,3,3,3) :: &
    C_volAvg = 0.0_pReal, &                                                                          !< current volume average stiffness 
@@ -93,7 +94,6 @@ module DAMASK_spectral_solverAL
    err_p                                                                                            !< difference of stress resulting from compatible and incompatible F
  logical, private :: ForwardData
  integer(pInt), private :: &
-   currIter = 0_pInt, &                                                                             !< helper to count total iteration correctly
    totalIter = 0_pInt                                                                               !< total iteration in current increment
  
  public :: &
@@ -277,10 +277,7 @@ end subroutine AL_init
 type(tSolutionState) function &
   AL_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC,density)
  use numerics, only: &
-   update_gamma, &
-   itmax, &
-   err_stress_tolrel, &
-   err_stress_tolabs
+   update_gamma
  use math, only: &
    math_mul33x33 ,&
    math_mul3333xx33, &
@@ -314,7 +311,8 @@ use mesh, only: &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime, &                                                                                  !< remaining time of current load case
-   temperature_bc
+   temperature_bc, &
+   density
  logical, intent(in) :: &
    guess
  type(tBoundaryCondition),      intent(in) :: &
@@ -323,8 +321,7 @@ use mesh, only: &
  character(len=*), intent(in) :: &
    incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
- real(pReal), intent(in) :: density
- real(pReal) :: err_stress_tol
+ 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
  PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_lambda
@@ -424,35 +421,20 @@ use mesh, only: &
  params%temperature = temperature_bc
  params%density = density
 
- err_stress_tol = 1.0_pReal; err_stress = 2.0_pReal * err_stress_tol                                ! ensure to start loop
- totalIter = -1_pInt
- do while(err_stress/err_stress_tol > 1.0_pReal)                                                    ! solve BVP and Stress RB
-
 !--------------------------------------------------------------------------------------------------
 ! solve BVP 
  call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr)
  CHKERRQ(ierr)
-!--------------------------------------------------------------------------------------------------
-! stress BC handling
-   err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                     ! mask = 0.0 for no bc
-   err_stress_tol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
-   F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                      ! S = 0.0 for no bc
-   write(6,'(1/,a)') ' ... correcting stress boundary condition  .................................'
-   write(6,'(1/,a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC = ', &
-                   err_stress/err_stress_tol, ' (',err_stress, ' Pa, tol =',err_stress_tol,')' 
-   write(6,'(/,a)') ' ==========================================================================='
 
 !--------------------------------------------------------------------------------------------------
 ! check convergence
  call SNESGetConvergedReason(snes,reason,ierr)
  CHKERRQ(ierr)
- 
  AL_solution%termIll = terminallyIll
  terminallyIll = .false.
-   AL_solution%converged = .true.
-   if (reason < 1 ) AL_solution%converged = .false.
-   AL_solution%iterationsNeeded = totalIter
- end do
+ AL_solution%converged = .true.
+ if (reason < 1 ) AL_solution%converged = .false.
+ AL_solution%iterationsNeeded = totalIter
 
 end function AL_solution
 
@@ -465,14 +447,20 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    itmax, &
    itmin, &
    polarAlpha, &
-   polarBeta
+   polarBeta, &
+   err_stress_tolrel, &
+   err_stress_tolabs, &
+   err_f_tol, &
+   err_p_tol, &
+   err_stress_tolabs
  use IO, only: &
    IO_intOut
  use math, only: &
    math_rotate_backward33, &
    math_transpose33, &
    math_mul3333xx33, &
-   math_invSym3333
+   math_invSym3333, &
+   PI
  use DAMASK_spectral_Utilities, only: &
    grid, &
    geomSize, &
@@ -516,6 +504,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscErrorCode :: ierr
  integer(pInt) :: &
    i, j, k
+ real(pReal) :: correctionFactor
 
  F              => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
@@ -529,12 +518,10 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
- if(nfuncs== 0 .and. PETScIter == 0) currIter = -1_pInt                                             ! new increment
-
- if (PETScIter == currIter .or. currIter == -1 ) then                                                    ! new iteration
+ if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
+ if (totalIter <= PETScIter) then                                                                   ! new iteration
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
-   currIter = currIter + 1_pInt
    totalIter = totalIter + 1_pInt
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
@@ -546,10 +533,11 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    flush(6)
  endif
 
- if (params%density > 0.0_pReal) then
 !--------------------------------------------------------------------------------------------------
 ! evaluate inertia
-   residual_F = ((F - F_lastInc)/params%timeinc - (F_lastInc - F_lastInc2)/params%timeincOld)/((params%timeinc + params%timeincOld)/2.0_pReal)
+ dynamic: if (params%density > 0.0_pReal) then
+   residual_F = ((F - F_lastInc)/params%timeinc - (F_lastInc - F_lastInc2)/params%timeincOld)/&
+                                                   ((params%timeinc + params%timeincOld)/2.0_pReal)
    residual_F = params%density*product(geomSize/grid)*residual_F
    field_real = 0.0_pReal
    field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3) = reshape(residual_F,[grid(1),grid(2),grid(3),3,3],&
@@ -557,9 +545,9 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    call Utilities_FFTforward()
    call Utilities_inverseLaplace()
    inertiaField_fourier = field_fourier
- else
+ else dynamic
    inertiaField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
- endif    
+ endif dynamic
 
 !--------------------------------------------------------------------------------------------------
 ! 
@@ -587,13 +575,20 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
                                      residual_F,C_volAvg,C_minMaxAvg,P_av,ForwardData,params%rotation_BC)
  ForwardData = .False.
   
+!--------------------------------------------------------------------------------------------------
+! stress BC handling
+ write(6,'(/,a)') ' ... correcting F to fullfill stress BC ....................................'
+ correctionFactor = (cos((1.0-500.0_pReal**(-sum((P_av-P_avLastEval)**2.0_pReal)/&                  ! only correct when averages stress of last two calls is close
+                                                       sum(P_av**2.0_pReal)))*PI)+1.0)/2.0_pReal
+ write(6,'(/,a,f8.2)') ' stress BC correction factor = ', correctionFactor
+ F_aim = F_aim - correctionFactor *math_mul3333xx33(S, ((P_av - params%P_BC)))                      ! S = 0.0 for no bc
+ err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
  err_p = 0.0_pReal
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-   err_p = err_p + sum((math_I3 + math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
-                        F_lambda(1:3,1:3,i,j,k))**2.0_pReal)
+   err_p = err_p + sum((math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3) - residual_F(1:3,1:3,i,j,k))**2.0_pReal)
    residual_F(1:3,1:3,i,j,k) = math_I3 + math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
                                F_lambda(1:3,1:3,i,j,k) &
                                + residual_F_lambda(1:3,1:3,i,j,k)
@@ -611,13 +606,13 @@ end subroutine AL_formResidual
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
 subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
- use numerics, only: &
+use numerics, only: &
   itmax, &
   itmin, &
   err_f_tol, &
   err_p_tol, &
-  err_stress_tolrel, &
-  err_stress_tolabs
+  err_stress_tolabs, &
+  err_stress_tolrel
  use FEsolving, only: &
    terminallyIll
 
@@ -631,27 +626,38 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
  SNESConvergedReason :: reason
  PetscObject :: dummy
  PetscErrorCode ::ierr
-
+ real(pReal) :: &
+   mismatch_f_tol, &
+   mismatch_p_tol, &
+   stressBC_tol
+   
+ mismatch_f_tol = max(maxval(abs(F_aim-math_I3))*err_stress_tolrel,err_f_tol)
+ mismatch_p_tol = max(maxval(abs(P_av))         *err_stress_tolrel,err_p_tol)
+ stressBC_tol   = max(maxval(abs(P_av))         *err_stress_tolrel,err_stress_tolabs)
+ 
  write(6,'(1/,a)') ' ... reporting .............................................................'
  write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' mismatch F =      ', &
-                     err_f/err_f_tol, &
-                ' (',err_f,' -,  tol =',err_f_tol,')'
+                     err_f/mismatch_f_tol, &
+                ' (',err_f,' -,  tol =',mismatch_f_tol,')'
  write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' mismatch P =      ', &
-                     err_p/err_p_tol, &
-                ' (',err_p,' -,  tol =',err_p_tol,')'
+                     err_p/mismatch_p_tol, &
+                ' (',err_p,' -,  tol =',mismatch_p_tol,')'
+ write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC = ', &
+                 err_stress/stressBC_tol, ' (',err_stress, ' Pa, tol =',stressBC_tol,')' 
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6) 
+ 
  converged: if ((totalIter >= itmin .and. &
-               all([ err_f/err_f_tol, &
-                     err_p/err_p_tol  ] < 1.0_pReal)) &
+               all([ err_f/mismatch_f_tol, &
+                     err_p/mismatch_p_tol, &
+                     err_stress/stressBC_tol] < 1.0_pReal)) &
              .or.    terminallyIll) then
    reason = 1
- elseif (totalIter >= itmax) then converged 
+ elseif (totalIter >= itmax) then converged
    reason = -1
-   write(6,'(/,a)') ' ===========================================================================' ! if leaving, write line for end of iteration (otherwise stress BC check will be done)
  else converged
    reason = 0
-   write(6,'(/,a)') ' ===========================================================================' ! if leaving, write line for end of iteration (otherwise stress BC check will be done)
  endif converged
- flush(6)
 
 end subroutine AL_converged
 

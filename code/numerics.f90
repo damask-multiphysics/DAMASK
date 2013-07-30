@@ -86,10 +86,10 @@ module numerics
 #ifdef Spectral
  real(pReal), protected, public :: &
    err_div_tol                =  5.0e-4_pReal, &                                                    !< Div(P)/avg(P)*meter
-   err_stress_tolrel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC in percent
-   err_stress_tolabs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC
-   err_f_tol                  =  1.0e-7_pReal,  &
-   err_p_tol                  =  1.0e-7_pReal,  &
+   err_stress_tolrel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC and of mismatch F and P in percent
+   err_stress_tolabs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC 
+   err_f_tol                  =  1.0e-7_pReal,  &                                                   !< absolute tolerance  mismatch F
+   err_p_tol                  =  1.0e3_pReal,  &                                                    !< absolute tolerance  mismatch P
    fftw_timelimit             = -1.0_pReal, &                                                       !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
    rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
    polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
@@ -338,7 +338,7 @@ subroutine numerics_init
 
 #ifdef Spectral
  select case(IO_lc(fftw_plan_mode))                                                                 ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-   case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
+   case('estimate','fftw_estimate')                                                                 ! ordered from slow execution (but fast plan creation) to fast execution
      fftw_planner_flag = 64_pInt
    case('measure','fftw_measure')
      fftw_planner_flag = 0_pInt

@@ -508,12 +508,13 @@ subroutine utilities_inverseLaplace()
   if(k > grid(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - grid(3)                                        ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
   do j = 1_pInt, grid(2)
     k_s(2) = j - 1_pInt
-    if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                    ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
+    if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                      ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
     do i = 1_pInt, grid1Red
       k_s(1) = i - 1_pInt  
-      if (any(k_s /= 0_pInt)) field_fourier(i,j,k, 1:3,1:3) = field_fourier(i,j,k, 1:3,1:3)/&
-                                                              cmplx(-sum((2.0_pReal*PI*k_s/geomSize)*&
-                                                                         (2.0_pReal*PI*k_s/geomSize)),0.0_pReal,pReal)                                                                    ! symmetry, junst running from 0,1,...,N/2,N/2+1
+      if (any(k_s /= 0_pInt)) field_fourier(i,j,k, 1:3,1:3) =  &
+                              field_fourier(i,j,k, 1:3,1:3)/ &
+                                        cmplx(-sum((2.0_pReal*PI*k_s/geomSize)*&
+                                                   (2.0_pReal*PI*k_s/geomSize)),0.0_pReal,pReal)   ! symmetry, junst running from 0,1,...,N/2,N/2+1
 enddo; enddo; enddo
 field_fourier(1,1,1,1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
 
