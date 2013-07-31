@@ -86,10 +86,11 @@ module numerics
 #ifdef Spectral
  real(pReal), protected, public :: &
    err_div_tol                =  5.0e-4_pReal, &                                                    !< Div(P)/avg(P)*meter
-   err_stress_tolrel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC and of mismatch F and P in percent
+   err_stress_tolrel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC
    err_stress_tolabs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC 
-   err_f_tol                  =  1.0e-7_pReal,  &                                                   !< absolute tolerance  mismatch F
-   err_p_tol                  =  1.0e3_pReal,  &                                                    !< absolute tolerance  mismatch P
+   err_f_tolabs               =  1.0e-8_pReal,  &                                                   !< absolute tolerance  mismatch F
+   err_p_tolabs               =  1.0e2_pReal,  &                                                    !< absolute tolerance  mismatch P
+   err_f_p_tolrel             =  1.0e-5_pReal, &                                                    !< relative tolerance for mismatch F and P
    fftw_timelimit             = -1.0_pReal, &                                                       !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
    rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
    polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
@@ -148,9 +149,11 @@ subroutine numerics_init
  integer(pInt), parameter ::                 FILEUNIT = 300_pInt ,&
                                              maxNchunks = 2_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
+ integer :: i                                                                                       ! no pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- character(len=65536) ::                     tag
- character(len=65536) ::                     line
+ character(len=65536) :: &
+   tag ,&
+   line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
  write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
@@ -173,8 +176,11 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
    line = ''
-   do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   do while (trim(line) /= '#EOF#')                                                                 ! read thru sections of phase part
      line = IO_read(fileunit)
+     do i=1,len(line)
+       if(line(i:i) == '=') line(i:i) = ' '                                                         ! also allow keyword = value version
+     enddo
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
@@ -304,18 +310,20 @@ subroutine numerics_init
          petsc_options = trim(line(positions(4):))
        case ('myspectralsolver')
          myspectralsolver = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('err_f_tol')
-         err_f_tol = IO_floatValue(line,positions,2_pInt)
-       case ('err_p_tol')
-         err_p_tol = IO_floatValue(line,positions,2_pInt)
+       case ('err_f_tolabs')
+         err_f_tolabs = IO_floatValue(line,positions,2_pInt)
+       case ('err_p_tolabs')
+         err_p_tolabs = IO_floatValue(line,positions,2_pInt)
+       case ('err_f_p_tolrel')
+         err_f_p_tolrel = IO_floatValue(line,positions,2_pInt)
        case ('polaralpha')
          polarAlpha = IO_floatValue(line,positions,2_pInt)
        case ('polarbeta')
          polarBeta = IO_floatValue(line,positions,2_pInt)
 #endif 
 #ifndef PETSc
-       case ('myspectralsolver', 'petsc_options','err_f_tol', 'err_p_tol', &
-             'polaralpha','polarBeta')                                                             ! found PETSc parameter, but compiled without PETSc
+       case ('myspectralsolver', 'petsc_options','err_f_tolabs', 'err_p_tolabs', &
+             'err_f_p_tolrel','polaralpha','polarBeta')                                             ! found PETSc parameter, but compiled without PETSc
          call IO_warning(41_pInt,ext_msg=tag)
 #endif
 #endif
@@ -323,7 +331,7 @@ subroutine numerics_init
       case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&                                 ! found spectral parameter for FEM build
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode','myspectralsolver', &
             'rotation_tol','divergence_correction','update_gamma','petsc_options','myfilter', &
-            'err_f_tol', 'err_p_tol', 'maxcutback','polaralpha','polarbeta')
+            'err_f_tolabs', 'err_p_tolabs', 'err_f_p_tolrel', 'maxcutback','polaralpha','polarbeta')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                 ! found unknown keyword
@@ -433,8 +441,9 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
  write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
 #ifdef PETSc
- write(6,'(a24,1x,es8.1)')   ' err_f_tol:              ',err_f_tol
- write(6,'(a24,1x,es8.1)')   ' err_p_tol:              ',err_p_tol
+ write(6,'(a24,1x,es8.1)')   ' err_f_tolabs:           ',err_f_tolabs
+ write(6,'(a24,1x,es8.1)')   ' err_p_tolabs:           ',err_p_tolabs
+ write(6,'(a24,1x,es8.1)')   ' err_f_p_tolrel:         ',err_f_p_tolrel
  write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
  write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
  write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
@@ -494,13 +503,13 @@ subroutine numerics_init
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
 #ifdef PETSc
- if (err_f_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_f_tol')
- if (err_p_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_p_tol')
+ if (err_f_tolabs <= 0.0_pReal)            call IO_error(301_pInt,ext_msg='err_f_tolabs')
+ if (err_p_tolabs <= 0.0_pReal)            call IO_error(301_pInt,ext_msg='err_p_tolabs')
+ if (err_f_p_tolrel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_f_p_tolrel')
  if (polarAlpha <= 0.0_pReal .or. &
      polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')
  if (polarBeta <= 0.0_pReal .or. &
      polarBeta >  2.0_pReal)               call IO_error(301_pInt,ext_msg='polarBeta')
- if (err_p_tol <= 0.0_pReal)               call IO_error(301_pInt,ext_msg='err_p_tol')
 #endif
 #endif
 

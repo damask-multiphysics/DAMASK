@@ -450,8 +450,9 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    polarBeta, &
    err_stress_tolrel, &
    err_stress_tolabs, &
-   err_f_tol, &
-   err_p_tol, &
+   err_f_tolabs, &
+   err_p_tolabs, &
+   err_f_p_tolrel, &
    err_stress_tolabs
  use IO, only: &
    IO_intOut
@@ -617,8 +618,9 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
  use numerics, only: &
   itmax, &
   itmin, &
-  err_f_tol, &
-  err_p_tol, &
+  err_f_tolabs, &
+  err_p_tolabs, &
+  err_f_p_tolrel, &
   err_stress_tolabs, &
   err_stress_tolrel
  use FEsolving, only: &
@@ -639,8 +641,8 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
    mismatch_p_tol, &
    stressBC_tol
    
- mismatch_f_tol = max(maxval(abs(F_aim-math_I3))*err_stress_tolrel,err_f_tol)
- mismatch_p_tol = max(maxval(abs(P_av))         *err_stress_tolrel,err_p_tol)
+ mismatch_f_tol = max(maxval(abs(F_aim-math_I3))*err_f_p_tolrel,err_f_tolabs)
+ mismatch_p_tol = max(maxval(abs(P_av))         *err_f_p_tolrel,err_p_tolabs)
  stressBC_tol   = max(maxval(abs(P_av))         *err_stress_tolrel,err_stress_tolabs)
  
  write(6,'(1/,a)') ' ... reporting .............................................................'
