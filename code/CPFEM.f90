@@ -565,6 +565,29 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
      endif
    endif
 
+
+   !* remember extreme values of stress and jacobian
+
+   cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,IP,cp_en))
+   if (maxval(cauchyStress33) > debug_stressMax) then                        
+     debug_stressMaxLocation = [cp_en, IP]
+     debug_stressMax = maxval(cauchyStress33)
+   endif
+   if (minval(cauchyStress33) < debug_stressMin) then
+     debug_stressMinLocation = [cp_en, IP]
+     debug_stressMin = minval(cauchyStress33)
+   endif
+   jacobian3333 = math_Mandel66to3333(CPFEM_dcsdE(1:6,1:6,IP,cp_en))
+   if (maxval(jacobian3333) > debug_jacobianMax) then
+     debug_jacobianMaxLocation = [cp_en, IP]
+     debug_jacobianMax = maxval(jacobian3333)
+   endif
+   if (minval(jacobian3333) < debug_jacobianMin) then
+     debug_jacobianMinLocation = [cp_en, IP]
+     debug_jacobianMin = minval(jacobian3333)
+   endif
+
+
    !* report stress and stiffness 
 
    if ((iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
@@ -614,30 +637,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
    call IO_warning(601,cp_en,IP)
  endif
  
-
- !*** remember extreme values of stress and jacobian
-
- if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
-   cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,IP,cp_en))
-   if (maxval(cauchyStress33) > debug_stressMax) then                        
-     debug_stressMaxLocation = [cp_en, IP]
-     debug_stressMax = maxval(cauchyStress33)
-   endif
-   if (minval(cauchyStress33) < debug_stressMin) then
-     debug_stressMinLocation = [cp_en, IP]
-     debug_stressMin = minval(cauchyStress33)
-   endif
-   jacobian3333 = math_Mandel66to3333(CPFEM_dcsdE(1:6,1:6,IP,cp_en))
-   if (maxval(jacobian3333) > debug_jacobianMax) then
-     debug_jacobianMaxLocation = [cp_en, IP]
-     debug_jacobianMax = maxval(jacobian3333)
-   endif
-   if (minval(jacobian3333) < debug_jacobianMin) then
-     debug_jacobianMinLocation = [cp_en, IP]
-     debug_jacobianMin = minval(jacobian3333)
-   endif
- endif
-
 
  !*** copy to output if required (FEM solver)
 
