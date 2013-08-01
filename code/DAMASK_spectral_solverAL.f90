@@ -17,7 +17,7 @@
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
 !--------------------------------------------------------------------------------------------------
-! $Id: DAMASK_spectral_solverAL.f90 2487 2013-06-14 09:49:33Z MPIE\f.roters $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
@@ -171,7 +171,7 @@ subroutine AL_init(temperature)
  
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
- write(6,'(a)') ' $Id: DAMASK_spectral_solverAL.f90 2487 2013-06-14 09:49:33Z MPIE\f.roters $'
+ write(6,'(a)') ' $Id$'
  write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
