@@ -282,8 +282,9 @@ type(tSolutionState) function &
    math_mul33x33 ,&
    math_mul3333xx33, &
    math_rotate_backward33, &
-   math_invSym3333
- use mesh, only: &
+   math_invSym3333, &
+   math_transpose33
+use mesh, only: &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
  use IO, only: &
@@ -328,7 +329,10 @@ type(tSolutionState) function &
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
 
- incInfo = incInfoIn                                                                                ! set global variable to incoming one
+ integer(pInt) :: i, j, k
+ real(pReal), dimension(3,3) :: F_lambda33
+
+ incInfo = incInfoIn
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
  F => xx_psc(0:8,:,:,:)
  F_tau => xx_psc(9:17,:,:,:)
@@ -400,6 +404,17 @@ type(tSolutionState) function &
  F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! ensure that it matches rotated F_aim
                                math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid(3)])
  F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot),  [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
+ if (.not. guess) then                                                                                 ! large strain forwarding
+   do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
+      F_lambda33 = reshape(F_tau(:,i,j,k)-F(:,i,j,k),[3,3])
+      F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
+                                  math_mul3333xx33(C_scale,&
+                                                   math_mul33x33(math_transpose33(F_lambda33),&
+                                                                 F_lambda33) -math_I3))*0.5_pReal)&
+                              + math_I3
+      F_tau(:,i,j,k) = reshape(F_lambda33,[9])+F(:,i,j,k)
+   enddo; enddo; enddo
+ endif
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
  CHKERRQ(ierr)
 
@@ -447,13 +462,7 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    itmax, &
    itmin, &
    polarAlpha, &
-   polarBeta, &
-   err_stress_tolrel, &
-   err_stress_tolabs, &
-   err_f_tolabs, &
-   err_p_tolabs, &
-   err_f_p_tolrel, &
-   err_stress_tolabs
+   polarBeta
  use IO, only: &
    IO_intOut
  use math, only: &
@@ -478,7 +487,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_spectral, &
    debug_spectralRotation
  use homogenization, only: &
-   materialpoint_P, &
    materialpoint_dPdF
 
  implicit none
@@ -520,7 +528,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
  if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
-
  if (totalIter <= PETScIter) then                                                                   ! new iteration
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration

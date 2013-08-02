@@ -282,7 +282,8 @@ type(tSolutionState) function &
    math_mul33x33 ,&
    math_mul3333xx33, &
    math_rotate_backward33, &
-   math_invSym3333
+   math_invSym3333, &
+   math_transpose33
 use mesh, only: &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
@@ -327,6 +328,9 @@ use mesh, only: &
  PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_lambda
  PetscErrorCode :: ierr   
  SNESConvergedReason ::reason
+
+ integer(pInt) :: i, j, k
+ real(pReal), dimension(3,3) :: F_lambda33
 
  incInfo = incInfoIn
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
@@ -400,6 +404,17 @@ use mesh, only: &
  F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
                                math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid(3)])
  F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot),  [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
+ if (.not. guess) then                                                                              ! large strain forwarding
+   do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
+      F_lambda33 = reshape(F_lambda(:,i,j,k),[3,3])
+      F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
+                                  math_mul3333xx33(C_scale,&
+                                                   math_mul33x33(math_transpose33(F_lambda33),&
+                                                                 F_lambda33) -math_I3))*0.5_pReal)&
+                              + math_I3
+      F_lambda(:,i,j,k) = reshape(F_lambda33,[9])
+   enddo; enddo; enddo
+ endif
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
  CHKERRQ(ierr)
 
@@ -447,13 +462,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    itmax, &
    itmin, &
    polarAlpha, &
-   polarBeta, &
-   err_stress_tolrel, &
-   err_stress_tolabs, &
-   err_f_tolabs, &
-   err_p_tolabs, &
-   err_f_p_tolrel, &
-   err_stress_tolabs
+   polarBeta
  use IO, only: &
    IO_intOut
  use math, only: &
@@ -478,7 +487,6 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_spectral, &
    debug_spectralRotation
  use homogenization, only: &
-   materialpoint_P, &
    materialpoint_dPdF
 
  implicit none
@@ -504,7 +512,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscObject :: dummy
  PetscErrorCode :: ierr
  integer(pInt) :: &
-   i, j, k
+   i, j, k, e
  real(pReal) :: correctionFactor
 
  F              => x_scal(1:3,1:3,1,&
@@ -588,10 +596,13 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
+ e = 0_pInt
  err_p = 0.0_pReal
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-   residual_F(1:3,1:3,i,j,k) = math_I3 + math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
-                               F_lambda(1:3,1:3,i,j,k) &
+   e = e + 1_pInt
+   residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(:,:,:,:,1,e) + C_scale), &
+                                                residual_F(1:3,1:3,i,j,k) - &
+                                                math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3)) &
                                + residual_F_lambda(1:3,1:3,i,j,k)
    err_p = err_p + sum((math_mul3333xx33(C_scale,residual_F(1:3,1:3,i,j,k) - residual_F_lambda(1:3,1:3,i,j,k)))**2.0_pReal)
  enddo; enddo; enddo
