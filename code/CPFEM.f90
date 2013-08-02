@@ -372,6 +372,18 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, el
  endif
 
 
+ 
+ !*** backup or restore jacobian
+ 
+ if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
+   CPFEM_dcsde_knownGood = CPFEM_dcsde
+ if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
+   CPFEM_dcsde = CPFEM_dcsde_knownGood
+
+ 
+
+ !*** age results and write restart data if requested
+ 
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
    crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
    crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
@@ -461,12 +473,30 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, el
    endif
  endif
 
- if (.not. parallelExecution) then                                                             ! no collect
+
+
+ !*** collection of FEM input with returning of randomize odd stress and jacobian
+ !*   In case that no parallel execution is required, there is no need to collect FEM input
+ 
+ if (.not. parallelExecution) then
    materialpoint_Temperature(IP,cp_en) = Temperature
    materialpoint_F0(1:3,1:3,IP,cp_en) = ffn
    materialpoint_F(1:3,1:3,IP,cp_en) = ffn1
+
+ elseif (iand(mode, CPFEM_COLLECT) /= 0_pInt) then
+   call random_number(rnd)
+   if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
+   materialpoint_Temperature(IP,cp_en) = Temperature
+   materialpoint_F0(1:3,1:3,IP,cp_en) = ffn
+   materialpoint_F(1:3,1:3,IP,cp_en) = ffn1
+   CPFEM_cs(1:6,IP,cp_en) = rnd * CPFEM_odd_stress
+   CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
+   CPFEM_calc_done = .false.
  endif
 
+ 
+
+ !*** calculation of stress and jacobian
 
  if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
  
@@ -603,25 +633,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, el
  endif
 
  
- !*** collection of FEM input with returning of randomize odd stress and jacobian
- 
- if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
-   CPFEM_dcsde_knownGood = CPFEM_dcsde
- if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
-   CPFEM_dcsde = CPFEM_dcsde_knownGood
- 
- if (iand(mode, CPFEM_COLLECT) /= 0_pInt) then
-   call random_number(rnd)
-   if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
-   materialpoint_Temperature(IP,cp_en) = Temperature
-   materialpoint_F0(1:3,1:3,IP,cp_en) = ffn
-   materialpoint_F(1:3,1:3,IP,cp_en) = ffn1
-   CPFEM_cs(1:6,IP,cp_en) = rnd * CPFEM_odd_stress
-   CPFEM_dcsde(1:6,1:6,IP,cp_en) = CPFEM_odd_jacobian * math_identity2nd(6)
-   CPFEM_calc_done = .false.
- endif
 
- 
+
  !*** homogenized result except for potentially non-isothermal starting condition
 
  if (theTime > 0.0_pReal) then
