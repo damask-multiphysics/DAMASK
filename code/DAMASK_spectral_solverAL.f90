@@ -590,10 +590,10 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! constructing residual
  err_p = 0.0_pReal
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-   err_p = err_p + sum((math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3) - residual_F(1:3,1:3,i,j,k))**2.0_pReal)
    residual_F(1:3,1:3,i,j,k) = math_I3 + math_mul3333xx33(S_scale,residual_F(1:3,1:3,i,j,k)) - &
                                F_lambda(1:3,1:3,i,j,k) &
                                + residual_F_lambda(1:3,1:3,i,j,k)
+   err_p = err_p + sum((math_mul3333xx33(C_scale,residual_F(1:3,1:3,i,j,k) - residual_F_lambda(1:3,1:3,i,j,k)))**2.0_pReal)
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------

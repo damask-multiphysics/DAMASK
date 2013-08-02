@@ -593,14 +593,11 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  err_p = 0.0_pReal
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
    e = e + 1_pInt
-   err_p = err_p + sum((math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) -&
-                                                 F(1:3,1:3,i,j,k) - residual_F_tau(1:3,1:3,i,j,k)/polarBeta -&
-                                                 math_I3) - &
-                       residual_F(1:3,1:3,i,j,k))**2.0_pReal)
    residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(:,:,:,:,1,e) + C_scale), &
                                                 residual_F(1:3,1:3,i,j,k) - &
                                                 math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3)) &
                                + residual_F_tau(1:3,1:3,i,j,k)
+   err_p = err_p + sum((math_mul3333xx33(C_scale,residual_F(1:3,1:3,i,j,k) - residual_F_tau(1:3,1:3,i,j,k)))**2.0_pReal)
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
