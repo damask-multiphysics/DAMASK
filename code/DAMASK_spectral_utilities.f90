@@ -803,6 +803,8 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  use debug, only: &
    debug_reset, &
    debug_info
+ use numerics, only: &
+   usePingPong
  use math, only: &
    math_transpose33, &
    math_rotate_forward33, &
@@ -856,7 +858,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
   calcMode    = iand(calcMode,    not(CPFEM_AGERESULTS)) 
  endif
 
- call CPFEM_general(collectMode,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &                        ! collect mode handles Jacobian backup / restoration
+ call CPFEM_general(collectMode,usePingPong,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &            ! collect mode handles Jacobian backup / restoration
                    temperature,timeinc,1_pInt,1_pInt)
  
  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid)])
@@ -880,7 +882,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    flush(6)
  endif
   
- call CPFEM_general(calcMode,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &                          ! first call calculates everything
+ call CPFEM_general(calcMode,usePingPong,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &              ! first call calculates everything
                     temperature,timeinc,1_pInt,1_pInt)
  
  max_dPdF = 0.0_pReal

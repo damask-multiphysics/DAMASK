@@ -147,8 +147,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    CPFEM_init_done, &
    CPFEM_initAll, &
    CPFEM_CALCRESULTS, &
-   CPFEM_AGERESULTS, &
-   CPFEM_EXPLICIT
+   CPFEM_AGERESULTS
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results
@@ -211,7 +210,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal) :: temp, timeInc
  integer(pInt) :: computationMode, n, i, cp_en
 
- computationMode = ior(CPFEM_CALCRESULTS,CPFEM_EXPLICIT)                                            ! always calculate, always explicit
+ computationMode = CPFEM_CALCRESULTS                                                                ! always calculate
  do n = 1,nblock(1)                                                                                 ! loop over vector of IPs
    temp    = tempOld(n)
    if ( .not. CPFEM_init_done ) then
@@ -284,7 +283,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    cp_en = mesh_FEasCP('elem',nBlock(4_pInt+n))
    mesh_ipCoordinates(1:3,n,cp_en) = mesh_unitlength * coordMp(n,1:3)
 
-   call CPFEM_general(computationMode,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde)
+   call CPFEM_general(computationMode,.false.,defgrd0,defgrd1,temp,timeInc,cp_en,nBlock(2),stress,ddsdde)
   
   !     Mandel:     11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
   !     straight:   11, 22, 33, 12, 23, 13

@@ -39,14 +39,12 @@ module CPFEM
  logical ::                                        CPFEM_init_done       = .false., &                !< remember whether init has been done already
                                                    CPFEM_init_inProgress = .false., &                !< remember whether first IP is currently performing init
                                                    CPFEM_calc_done       = .false.                   !< remember whether first IP has already calced the results
- logical, private ::                               parallelExecution     = .false.
  integer(pInt), parameter, public :: &
    CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
    CPFEM_AGERESULTS      = 2_pInt**1_pInt, &
    CPFEM_BACKUPJACOBIAN  = 2_pInt**2_pInt, &
    CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt, &
-   CPFEM_COLLECT         = 2_pInt**4_pInt, &
-   CPFEM_EXPLICIT        = 2_pInt**5_pInt
+   CPFEM_COLLECT         = 2_pInt**4_pInt
  
  public ::CPFEM_general, &
    CPFEM_initAll
@@ -144,8 +142,7 @@ subroutine CPFEM_init
    IO_timeStamp, &
    IO_error
  use numerics, only: &
-   DAMASK_NumThreadsInt, &
-   usePingPong
+   DAMASK_NumThreadsInt
  use debug, only: &
    debug_level, &
    debug_CPFEM, &
@@ -250,7 +247,6 @@ subroutine CPFEM_init
    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
    write(6,'(a32,1x,6(i8,1x))') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
    write(6,*)
-   write(6,*) 'parallelExecution:    ', parallelExecution
    write(6,*) 'symmetricSolver:      ', symmetricSolver
  endif
  flush(6)
@@ -261,11 +257,10 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
-subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian)
+subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, element, IP, cauchyStress, jacobian)
  ! note: cauchyStress = Cauchy stress cs(6) and jacobian = Consistent tangent dcs/dE
  use numerics, only:       defgradTolerance, &
-                           iJacoStiffness, &
-                           usePingPong
+                           iJacoStiffness
  use debug, only:          debug_level, &
                            debug_CPFEM, &
                            debug_levelBasic, &
@@ -341,6 +336,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
  real(pReal), dimension (3,3), intent(in) ::         ffn, &                                         !< deformation gradient for t=t0
                                                      ffn1                                           !< deformation gradient for t=t1
  integer(pInt), intent(in) ::                        mode                                           !< computation mode  1: regular computation plus aging of results
+ logical, intent(in) ::                              parallelExecution                              !< flag indicating parallel computation of requested IPs
  
  real(pReal), dimension(6), intent(out), optional ::           cauchyStress                         !< stress vector in Mandel notation
  real(pReal), dimension(6,6), intent(out), optional ::         jacobian                             !< jacobian in Mandel notation
@@ -359,9 +355,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
  
  cp_en = mesh_FEasCP('elem',element)
  
- if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt .and. cp_en == 1 .and. IP == 1) then
+ if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt &
+     .and. cp_en == debug_e .and. IP == debug_i) then
    !$OMP CRITICAL (write2out)
      write(6,'(/,a)') '#############################################'
+     write(6,'(a1,a22,1x,i8,a13)')   '#','element',        cp_en,        '#'
+     write(6,'(a1,a22,1x,i8,a13)')   '#','IP',             IP,           '#'
      write(6,'(a1,a22,1x,f15.7,a6)') '#','theTime',        theTime,      '#'
      write(6,'(a1,a22,1x,f15.7,a6)') '#','theDelta',       theDelta,     '#'
      write(6,'(a1,a22,1x,i8,a13)')   '#','theInc',         theInc,       '#'
@@ -372,7 +371,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, Temperature, dt, element, IP, cauchySt
    !$OMP END CRITICAL (write2out)
  endif
 
- parallelExecution = usePingPong .and. .not. (iand(mode, CPFEM_EXPLICIT) /= 0_pInt)
 
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
    crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)

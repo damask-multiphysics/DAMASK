@@ -122,6 +122,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  use prec, only: &
    pReal, &
    pInt
+ use numerics, only: &
+   usePingPong
  use FEsolving, only: &
    cycleCounter, &
    theInc, &
@@ -311,7 +313,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    !$OMP END CRITICAL (write2out)
  endif
    
- call CPFEM_general(computationMode,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
+ call CPFEM_general(computationMode,usePingPong,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
 
 !     Mandel:              11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     straight:            11, 22, 33, 12, 23, 13

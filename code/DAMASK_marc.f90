@@ -173,7 +173,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    pInt
  use numerics, only: &
 !$ DAMASK_NumThreadsInt, &
-   numerics_unitlength
+   numerics_unitlength, &
+   usePingPong
  use FEsolving, only: &
    cycleCounter, &
    theInc, &
@@ -298,9 +299,10 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
  computationMode = 0_pInt                                                                           ! save initialization value, since does not result in any calculation
- if (lovl == 4 ) then
-   if(timinc < theDelta .and. theInc == inc ) computationMode = CPFEM_RESTOREJACOBIAN               ! first after cutback
- else                                                                                               ! stress requested (lovl == 6)
+ if (lovl == 4 ) then                                                                               ! jacobian requested by marc
+   if (timinc < theDelta .and. theInc == inc) &
+     computationMode = CPFEM_RESTOREJACOBIAN                                                        ! first after cutback
+ else ! (lovl == 6)                                                                                 ! stress requested by marc
    cp_en = mesh_FEasCP('elem',m(1))
    if (cptim > theTime .or. inc /= theInc) then                                                     ! reached "convergence"
      terminallyIll = .false.
@@ -360,7 +362,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        computationMode = CPFEM_CALCRESULTS
      endif
    else                                                                                             ! now --- COLLECT ---
-     if ( lastMode /= calcMode(nn,cp_en) .and. & .not. terminallyIll) call debug_info()                                                                            ! first after ping pong reports (meaningful) debugging
+     if ( lastMode /= calcMode(nn,cp_en) .and. & .not. terminallyIll) call debug_info()             ! first after ping pong reports (meaningful) debugging
      if ( lastIncConverged ) then
        computationMode = ior(CPFEM_COLLECT,CPFEM_BACKUPJACOBIAN)                                    ! collect and backup Jacobian after convergence
        lastIncConverged = .false.                                                                   ! reset flag
@@ -379,7 +381,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    lastMode = calcMode(nn,cp_en)                                                                    ! record calculationMode
  endif
 
- call CPFEM_general(computationMode,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
+ call CPFEM_general(computationMode,usePingPong,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
 
 !     Mandel: 11, 22, 33, SQRT(2)*12, SQRT(2)*23, SQRT(2)*13
 !     Marc:   11, 22, 33, 12, 23, 13
