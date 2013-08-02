@@ -128,7 +128,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    cycleCounter, &
    theInc, &
    calcMode, &
-   lastMode, &
    theTime, &
    theDelta, &
    lastIncConverged, &
@@ -217,7 +216,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal) :: temperature                                                                         ! temp by Abaqus is intent(in)
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
- integer(pInt) :: computationMode, i, cp_en
+ integer(pInt) :: computationMode, i, cp_en, lastStep
  logical :: cutBack
 
  temperature = temp                                                                                 ! temp is intent(in)
@@ -236,21 +235,19 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  if (.not. CPFEM_init_done) call CPFEM_initAll(temperature,noel,npt)
 
  cp_en = mesh_FEasCP('elem',noel)
- if (time(2) > theTime .or. kinc /= theInc) then                                                    ! reached convergence
+ if (time(2) > theTime .or. kInc /= theInc) then                                                    ! reached convergence
    terminallyIll = .false.
    cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
-   if (kinc == 1) then                                                                              ! start of analysis 
+   if (kInc == 1) then                                                                              ! start of analysis 
      lastIncConverged = .false.                                                                     ! no Jacobian backup
      outdatedByNewInc = .false.                                                                     ! no aging of state
-     lastMode = .false.                                                                             ! pretend last step was collection
      calcMode = .false.                                                                             ! pretend last step was collection
      !$OMP CRITICAL (write2out)
      write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!'; flush(6)
      !$OMP END CRITICAL (write2out)
-   else if (kinc - theInc > 1) then                                                                 ! restart of broken analysis 
+   else if (kInc - theInc > 1) then                                                                 ! restart of broken analysis 
      lastIncConverged = .false.                                                                     ! no Jacobian backup
      outdatedByNewInc = .false.                                                                     ! no aging of state
-     lastMode = .true.                                                                              ! pretend last step was calculation
      calcMode = .true.                                                                              ! pretend last step was calculation
      !$OMP CRITICAL (write2out)
      write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!'; flush(6)
@@ -258,7 +255,6 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    else                                                                                             ! just the next inc 
      lastIncConverged = .true.                                                                      ! request Jacobian backup
      outdatedByNewInc = .true.                                                                      ! request aging of state
-     lastMode = .true.                                                                              ! assure last step was calculation
      calcMode = .true.                                                                              ! assure last step was calculation
      !$OMP CRITICAL (write2out)
      write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!'; flush(6)
@@ -278,7 +274,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  if (calcMode(npt,cp_en)) then                                                                      ! now calc
    computationMode = CPFEM_CALCRESULTS
-   if ( lastMode .neqv. calcMode(npt,cp_en) ) then                                                  ! first after ping pong
+   if ( lastStep .neqv. kStep ) then                                                                ! first after ping pong
      call debug_reset()                                                                             ! resets debugging
      outdatedFFN1 = .false.
      cycleCounter = cycleCounter + 1
@@ -289,7 +285,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    endif
  else                                                                                               ! now collect
    computationMode = CPFEM_COLLECT
-   if(lastMode .neqv. calcMode(npt,cp_en) .and. .not. terminallyIll) then
+   if(lastStep .neqv. kStep .and. .not. terminallyIll) then
      call debug_info()                                                                              ! first after ping pong reports debugging
    endif
    if (lastIncConverged) then
@@ -304,8 +300,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
 
  theTime  = time(2)                                                                                 ! record current starting time
  theDelta = dtime                                                                                   ! record current time increment
- theInc   = kinc                                                                                    ! record current increment number
- lastMode = calcMode(npt,cp_en)                                                                     ! record calculationMode
+ theInc   = kInc                                                                                    ! record current increment number
+ lastStep = kStep                                                                                   ! record step number
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
    !$OMP CRITICAL (write2out)

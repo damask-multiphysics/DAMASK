@@ -179,7 +179,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    cycleCounter, &
    theInc, &
    calcMode, &
-   lastMode, &
    theTime, &
    theDelta, &
    lastIncConverged, &
@@ -274,7 +273,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  logical :: cutBack
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
- integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
+ integer(pInt) :: computationMode, i, cp_en, node, CPnodeID, lastLovl
  !$ integer(pInt) :: defaultNumThreadsInt                                                           !< default value set by Marc
 
  if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0_pInt) then
@@ -298,11 +297,11 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
 
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
- computationMode = 0_pInt                                                                           ! save initialization value, since does not result in any calculation
+ computationMode = 0_pInt                                                                           ! save initialization value, since it does not result in any calculation
  if (lovl == 4 ) then                                                                               ! jacobian requested by marc
-   if (timinc < theDelta .and. theInc == inc) &
+   if (timinc < theDelta .and. theInc == inc .and. lastLovl /= lovl) &
      computationMode = CPFEM_RESTOREJACOBIAN                                                        ! first after cutback
- else ! (lovl == 6)                                                                                 ! stress requested by marc
+ elseif (lovl == 6) then                                                                            ! stress requested by marc
    cp_en = mesh_FEasCP('elem',m(1))
    if (cptim > theTime .or. inc /= theInc) then                                                     ! reached "convergence"
      terminallyIll = .false.
@@ -310,8 +309,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      if (inc == 0) then                                                                             ! >> start of analysis <<
        lastIncConverged = .false.                                                                   ! no Jacobian backup
        outdatedByNewInc = .false.                                                                   ! no aging of state
-       lastMode = .false.                                                                           ! pretend last step was collection
        calcMode = .false.                                                                           ! pretend last step was collection
+       lastLovl = lovl                                                                              ! pretend that this is NOT the first after a lovl change
        !$OMP CRITICAL (write2out)
          write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> start of analysis..! ',m(1),nn
          flush(6)
@@ -319,7 +318,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      else if (inc - theInc > 1) then                                                                ! >> restart of broken analysis <<
        lastIncConverged = .false.                                                                   ! no Jacobian backup
        outdatedByNewInc = .false.                                                                   ! no aging of state
-       lastMode = .true.                                                                            ! pretend last step was calculation
        calcMode = .true.                                                                            ! pretend last step was calculation
        !$OMP CRITICAL (write2out)
          write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> restart of analysis..! ',m(1),nn
@@ -328,7 +326,6 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      else                                                                                           ! >> just the next inc <<
        lastIncConverged = .true.                                                                    ! request Jacobian backup
        outdatedByNewInc = .true.                                                                    ! request aging of state
-       lastMode = .true.                                                                            ! assure last step was calculation
        calcMode = .true.                                                                            ! assure last step was calculation
        !$OMP CRITICAL (write2out)
          write(6,'(a,i6,1x,i2)') '<< HYPELA2 >> new increment..! ',m(1),nn
@@ -345,40 +342,44 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
      !$OMP END CRITICAL (write2out)
    endif                                                                                            ! convergence treatment end
 
-   calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                                                    ! ping pong (calc <--> collect)
-
-   if ( calcMode(nn,cp_en) ) then                                                                   ! now --- CALC ---
-     if ( lastMode /= calcMode(nn,cp_en) ) then                                                     ! first after ping pong
-       call debug_reset()                                                                           ! resets debugging
-       outdatedFFN1  = .false.
-       cycleCounter  = cycleCounter + 1_pInt
-       mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)                              ! update cell node coordinates
-       call mesh_build_ipCoordinates()                                                              ! update ip coordinates
+   
+   if (usePingPong) then
+     calcMode(nn,cp_en) = .not. calcMode(nn,cp_en)                                                  ! ping pong (calc <--> collect)
+     if (calcMode(nn,cp_en)) then                                                                   ! now --- CALC ---
+       if (lastLovl /= lovl) then                                                                   ! first after ping pong
+         call debug_reset()                                                                         ! resets debugging
+         outdatedFFN1  = .false.
+         cycleCounter  = cycleCounter + 1_pInt
+         mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)                            ! update cell node coordinates
+         call mesh_build_ipCoordinates()                                                            ! update ip coordinates
+       endif
+       if (outdatedByNewInc) then
+         computationMode = ior(CPFEM_CALCRESULTS,CPFEM_AGERESULTS)
+         outdatedByNewInc = .false.                                                                 ! reset flag
+       else
+         computationMode = CPFEM_CALCRESULTS
+       endif
+     else                                                                                           ! now --- COLLECT ---
+       if (lastLovl /= lovl .and. & .not. terminallyIll) &
+         call debug_info()                                                                          ! first after ping pong reports (meaningful) debugging
+       if (lastIncConverged) then
+         computationMode = ior(CPFEM_COLLECT,CPFEM_BACKUPJACOBIAN)                                  ! collect and backup Jacobian after convergence
+         lastIncConverged = .false.                                                                 ! reset flag
+       else
+         computationMode = CPFEM_COLLECT                                                            ! plain collect
+       endif
+       do node = 1,FE_Nnodes(mesh_element(2,cp_en))
+         CPnodeID = mesh_element(4_pInt+node,cp_en)
+         mesh_node(1:3,CPnodeID) = mesh_node0(1:3,CPnodeID) + numerics_unitlength * dispt(1:3,node)
+       enddo
      endif
-     if ( outdatedByNewInc ) then
-       computationMode = ior(CPFEM_CALCRESULTS,CPFEM_AGERESULTS)
-       outdatedByNewInc = .false.                                                                   ! reset flag
-     else
-       computationMode = CPFEM_CALCRESULTS
-     endif
-   else                                                                                             ! now --- COLLECT ---
-     if ( lastMode /= calcMode(nn,cp_en) .and. & .not. terminallyIll) call debug_info()             ! first after ping pong reports (meaningful) debugging
-     if ( lastIncConverged ) then
-       computationMode = ior(CPFEM_COLLECT,CPFEM_BACKUPJACOBIAN)                                    ! collect and backup Jacobian after convergence
-       lastIncConverged = .false.                                                                   ! reset flag
-     else
-       computationMode = CPFEM_COLLECT                                                              ! plain collect
-     endif
-     do node = 1,FE_Nnodes(mesh_element(2,cp_en))
-       CPnodeID = mesh_element(4_pInt+node,cp_en)
-       mesh_node(1:3,CPnodeID) = mesh_node0(1:3,CPnodeID) + numerics_unitlength * dispt(1:3,node)
-     enddo
    endif
 
    theTime  = cptim                                                                                 ! record current starting time
    theDelta = timinc                                                                                ! record current time increment
    theInc   = inc                                                                                   ! record current increment number
-   lastMode = calcMode(nn,cp_en)                                                                    ! record calculationMode
+   lastLovl = lovl                                                                                  ! record lovl
+
  endif
 
  call CPFEM_general(computationMode,usePingPong,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)

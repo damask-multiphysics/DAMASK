@@ -510,7 +510,6 @@ subroutine mesh_init(ip,el)
    FEsolving_execElem, &
    FEsolving_execIP, &
    calcMode, &
-   lastMode, &
    modelName
  
  implicit none
@@ -624,7 +623,6 @@ subroutine mesh_init(ip,el)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
- lastMode = .true.                                                                                  ! and its mode is already known...
 
 
 end subroutine mesh_init

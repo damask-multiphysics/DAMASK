@@ -46,7 +46,6 @@ module FEsolving
    restartWrite      = .false., &                                                                   !< write current state to enable restart
    restartRead       = .false., &                                                                   !< restart information to continue calculation from saved state
    terminallyIll     = .false., &                                                                   !< at least one material point is terminally ill
-   lastMode          = .true.,  &                                                                   !< needs description
    lastIncConverged  = .false., &                                                                   !< needs description
    outdatedByNewInc  = .false.                                                                      !< needs description
 
