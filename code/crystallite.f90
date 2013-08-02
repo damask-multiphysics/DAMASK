@@ -935,7 +935,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
                  write(6,*)
                endif
 #endif
-             else                                                 ! this crystallite just converged for the entire timestep
+             else                                                                                    ! this crystallite just converged for the entire timestep
                crystallite_todo(g,i,e) = .false.                                                     ! so done here
                !$OMP FLUSH(crystallite_todo)
                if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
