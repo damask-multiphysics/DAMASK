@@ -378,9 +378,9 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    theTime  = cptim                                                                                 ! record current starting time
    theDelta = timinc                                                                                ! record current time increment
    theInc   = inc                                                                                   ! record current increment number
-   lastLovl = lovl                                                                                  ! record lovl
 
  endif
+ lastLovl = lovl                                                                                    ! record lovl
 
  call CPFEM_general(computationMode,usePingPong,ffn,ffn1,t(1),timinc,m(1),nn,stress,ddsdde)
 
