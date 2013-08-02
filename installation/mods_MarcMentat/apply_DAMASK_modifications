@@ -79,10 +79,10 @@ do
   echo "Input command to invoke your preferred editor: [${DEFAULT_EDITOR}]"
   read EDITOR
   if [ -z "$EDITOR" ]; then
-    VERSION=${DEFAULT_EDITOR}
+    EDITOR=${DEFAULT_EDITOR}
   fi
 done
-echo "MSC version: $VERSION"
+echo "Editor: $EDITOR"
 
 # tools
 echo ''
@@ -155,6 +155,32 @@ chmod 555 $INSTALLDIR/marc$VERSION/tools/run_damask*
 chmod 555 $INSTALLDIR/marc$VERSION/tools/comp_damask*
 chmod 555 $INSTALLDIR/mentat$VERSION/bin/submit{4..9}
 chmod 555 $INSTALLDIR/mentat$VERSION/bin/kill{4..9}
+
+#creating symlinks for run_damask_scripts in /usr/local/bin
+BIN_DIR=/usr/local/bin
+echo ''
+echo "Do you want to create symlinks for run_damask scripts in ${BIN_DIR} [YES/no] ?"
+read YESNO
+  if [ -z "$YESNO" ]; then
+    YESNO=yes
+  fi
+case $YESNO in
+ y* | Y* )
+  echo''
+  echo 'creating symlinks ...'
+  echo''
+  theDIR=$INSTALLDIR/marc$VERSION/tools
+  for filename in 'run_damask' \
+                  'run_damask_l' \
+                  'run_damask_h' \
+                  'run_damask_mp' \
+                  'run_damask_lmp' \
+                  'run_damask_hmp'; do
+    echo ${filename:4}$VERSION
+    ln -s $theDIR/$filename $BIN_DIR/${filename:4}$VERSION 
+  done
+  ;;
+esac
 
 echo ''
 echo 'done.'
