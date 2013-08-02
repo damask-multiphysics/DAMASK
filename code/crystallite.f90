@@ -526,7 +526,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
    constitutive_state_backup, &
    constitutive_subState0, &
    constitutive_partionedState0, &
-   constitutive_homogenizedC, &
    constitutive_dotState, &
    constitutive_dotState_backup, &
    constitutive_TandItsTangent
@@ -936,10 +935,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
                  write(6,*)
                endif
 #endif
-             elseif (formerSubStep > 0.0_pReal) then                                                 ! this crystallite just converged for the entire timestep
+             else                                                 ! this crystallite just converged for the entire timestep
                crystallite_todo(g,i,e) = .false.                                                     ! so done here
                !$OMP FLUSH(crystallite_todo)
-               if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt) then
+               if (iand(debug_level(debug_crystallite),debug_levelBasic) /= 0_pInt &
+                   .and. formerSubStep > 0.0_pReal) then
                  !$OMP CRITICAL (distributionCrystallite)
                    debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) = &
                      debug_CrystalliteLoopDistribution(min(nCryst+1_pInt,NiterationCrystallite)) + 1_pInt
@@ -2980,8 +2980,7 @@ logical function crystallite_integrateStress(&
                          debug_cumLpTicks, &
                          debug_StressLoopDistribution
  use constitutive, only: constitutive_LpAndItsTangent, &
-                         constitutive_TandItsTangent, &
-                         constitutive_homogenizedC
+                         constitutive_TandItsTangent
  use math, only:         math_mul33x33, &
                          math_mul33xx33, &
                          math_mul66x6, &
