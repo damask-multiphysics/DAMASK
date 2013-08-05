@@ -183,7 +183,8 @@ rhoDotFluxOutput, &
 rhoDotMultiplicationOutput, &
 rhoDotSingle2DipoleGlideOutput, &
 rhoDotAthermalAnnihilationOutput, &
-rhoDotThermalAnnihilationOutput
+rhoDotThermalAnnihilationOutput, &
+screwStressProjection                                                !< combined projection of Schmid and non-Schmid stresses for resolved shear stress acting on screws
 
 real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
 compatibility                                                        !< slip system compatibility between me and my neighbors
@@ -414,7 +415,7 @@ allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
 minDipoleHeightPerSlipFamily = -1.0_pReal
 peierlsStressPerSlipFamily = 0.0_pReal
 
-allocate(nonSchmidCoeff(lattice_maxNonSchmid,maxNinstance))
+allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance))
 nonSchmidCoeff = 0.0_pReal
 
 !*** readout data from material.config file
@@ -577,7 +578,7 @@ do while (trim(line) /= '#EOF#')                                                
         case('shortrangestresscorrection')
           shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case ('nonschmid_coefficients')
-          do f = 1_pInt, lattice_maxNonSchmid
+          do f = 1_pInt, lattice_maxNnonSchmid
             nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
           enddo
         case('deadzonescaling','deadzone','deadscaling')
@@ -768,6 +769,10 @@ peierlsStress = 0.0_pReal
 
 allocate(colinearSystem(maxTotalNslip,maxNinstance))
 colinearSystem = 0_pInt
+
+allocate(screwStressProjection(3,3,4,maxTotalNslip,maxNinstance))
+screwStressProjection = 0.0_pReal
+                                            
 
 do i = 1,maxNinstance
   
@@ -1002,6 +1007,29 @@ do i = 1,maxNinstance
         = math_transpose33( reshape([ lattice_sd(1:3, slipSystemLattice(s1,i), myStructure), &
                                      -lattice_st(1:3, slipSystemLattice(s1,i), myStructure), &
                                       lattice_sn(1:3, slipSystemLattice(s1,i), myStructure)], [3,3]))
+  enddo
+
+  
+  !*** combined projection of Schmid and non-Schmid stress contributions to resolved shear stress for screws
+  !* four types t: 
+  !*   1) positive screw at positive resolved stress
+  !*   2) positive screw at negative resolved stress
+  !*   3) negative screw at positive resolved stress
+  !*   4) negative screw at negative resolved stress
+  
+  screwStressProjection = 0.0_pReal
+  do s = 1_pInt,ns 
+    do l = 1_pInt,lattice_NnonSchmid(myStructure)
+      screwStressProjection(1:3,1:3,1,s,i) = screwStressProjection(1:3,1:3,1,s,i) &
+          + nonSchmidCoeff(l,i) * lattice_Sslip(1:3,1:3,2*l,slipSystemLattice(s,i),myStructure)
+      screwStressProjection(1:3,1:3,2,s,i) = screwStressProjection(1:3,1:3,2,s,i) &
+          + nonSchmidCoeff(l,i) * lattice_Sslip(1:3,1:3,2*l+1,slipSystemLattice(s,i),myStructure)
+    enddo
+    screwStressProjection(1:3,1:3,3,s,i) = -screwStressProjection(1:3,1:3,2,s,i)
+    screwStressProjection(1:3,1:3,4,s,i) = -screwStressProjection(1:3,1:3,1,s,i)
+    forall (t = 1:4) &
+      screwStressProjection(1:3,1:3,t,s,i) = screwStressProjection(1:3,1:3,t,s,i) &
+          + lattice_Sslip(1:3,1:3,1,slipSystemLattice(s,i),myStructure)
   enddo
   
 enddo
@@ -1708,6 +1736,7 @@ subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temp
 
 use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
+                    math_mul33xx33, &
                     math_Mandel6to33
 use debug,    only: debug_level, &
                     debug_constitutive, &
@@ -1722,7 +1751,7 @@ use material, only: homogenization_maxNgrains, &
                     phase_plasticityInstance
 use lattice,  only: lattice_Sslip, &
                     lattice_Sslip_v, &
-                    NnonSchmid
+                    lattice_NnonSchmid
 use mesh,     only: mesh_ipVolume
 
 implicit none
@@ -1754,8 +1783,6 @@ integer(pInt)                               myInstance, &               ! curren
                                             s, &                        ! index of my current slip system
                                             sLattice                    ! index of my current slip system according to lattice order
 real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
-real(pReal), dimension(3,3,2,totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: & 
-                                            nonSchmidTensor
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
                                             rhoSgl                      ! single dislocation densities (including blocked) 
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
@@ -1773,7 +1800,6 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,e
 
 Lp = 0.0_pReal
 dLp_dTstar3333 = 0.0_pReal
-nonSchmidTensor = 0.0_pReal
 
 myInstance = phase_plasticityInstance(material_phase(g,ip,el))
 myStructure = constitutive_nonlocal_structure(myInstance) 
@@ -1795,31 +1821,26 @@ tauBack = state%p(iTauB(1:ns,myInstance))
 
 
 !*** get effective resolved shear stress
-!*** add non schmid contributions to ONLY screw components if present (i.e.  if NnonSchmid(myStructure) > 0)
+!*** for screws possible non-schmid contributions are also taken into account
 
 do s = 1_pInt,ns
-  sLattice = slipSystemLattice(s,myInstance)  
-  tau(s,1:4) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure)) + tauBack(s)
-  nonSchmidTensor(1:3,1:3,1,s) = lattice_Sslip(1:3,1:3,sLattice,myStructure)
-  nonSchmidTensor(1:3,1:3,2,s) = nonSchmidTensor(1:3,1:3,1,s)
-  do k = 1_pInt, NnonSchmid(myStructure)
-    tau(s,3) = tau(s,3) + nonSchmidCoeff(k,myInstance) &
-                        * math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,2*k,sLattice,myStructure))
-    tau(s,4) = tau(s,4) + nonSchmidCoeff(k,myInstance) &
-                        * math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,2*k+1,sLattice,myStructure))
-    nonSchmidTensor(1:3,1:3,1,s) = nonSchmidTensor(1:3,1:3,1,s) &
-                                 + nonSchmidCoeff(k,myInstance) &
-                                 * math_Mandel6to33(lattice_Sslip_v(1:6,2*k,sLattice,myStructure))
-    nonSchmidTensor(1:3,1:3,2,s) = nonSchmidTensor(1:3,1:3,2,s) &
-                                 + nonSchmidCoeff(k,myInstance) &
-                                 * math_Mandel6to33(lattice_Sslip_v(1:6,2*k+1,sLattice,myStructure))
-  enddo
+  sLattice = slipSystemLattice(s,myInstance)
+  tau(s,1:2) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure))
+  if (tau(s,1) > 0.0_pReal) then
+    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,1,s,myInstance))
+    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,3,s,myInstance))
+  else
+    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,2,s,myInstance))
+    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,4,s,myInstance))
+  endif
+  forall (t = 1_pInt:4_pInt) &
+    tau(s,t) = tau(s,t) + tauBack(s)                                                               ! add backstress
 enddo
 
 
 !*** get dislocation velocity and its tangent and store the velocity in the state array
 
-if (myStructure == 1_pInt .and. NnonSchmid(myStructure) == 0_pInt) then                            ! for fcc all velcities are equal
+if (myStructure == 1_pInt .and. lattice_NnonSchmid(myStructure) == 0_pInt) then                    ! for fcc all velcities are equal
   call constitutive_nonlocal_kinetics(v(1:ns,1), tau(1:ns,1), 1_pInt, Temperature, state, &
                                       g, ip, el, dv_dtau(1:ns,1))
   do t = 1_pInt,4_pInt
@@ -1860,13 +1881,22 @@ enddo
 
 do s = 1_pInt,ns
   sLattice = slipSystemLattice(s,myInstance)  
-  Lp = Lp + gdotTotal(s) * lattice_Sslip(1:3,1:3,sLattice,myStructure)
-  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-    dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
-      + dgdot_dtau(s,1) * lattice_Sslip(i,j,sLattice,myStructure) * lattice_Sslip(k,l,sLattice,myStructure) &
-      + dgdot_dtau(s,2) * lattice_Sslip(i,j,sLattice,myStructure) * lattice_Sslip(k,l,sLattice,myStructure) & 
-      + dgdot_dtau(s,3) * lattice_Sslip(i,j,sLattice,myStructure) * nonSchmidTensor(k,l,1,s) &
-      + dgdot_dtau(s,4) * lattice_Sslip(i,j,sLattice,myStructure) * nonSchmidTensor(k,l,2,s)
+  Lp = Lp + gdotTotal(s) * lattice_Sslip(1:3,1:3,1,sLattice,myStructure)
+  if (tau(s,1) > 0.0_pReal) then
+    forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+      dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
+        + dgdot_dtau(s,1) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) &
+        + dgdot_dtau(s,2) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) & 
+        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,1,s,myInstance) &
+        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,3,s,myInstance)
+  else
+    forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+      dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
+        + dgdot_dtau(s,1) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) &
+        + dgdot_dtau(s,2) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) & 
+        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,2,s,myInstance) &
+        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,4,s,myInstance)
+  endif
 enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 

@@ -1246,8 +1246,7 @@ subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
-   lattice_NtwinSystem, &
-   NnonSchmid
+   lattice_NtwinSystem
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -1441,14 +1440,14 @@ subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
 !*************************************************                
 !sumf=0.0_pReal
       !* Plastic velocity gradient for dislocation glide
-      Lp = Lp + (1.0_pReal - sumf)*gdot_slip(j)*lattice_Sslip(:,:,index_myFamily+i,myStructure)
+      Lp = Lp + (1.0_pReal - sumf)*gdot_slip(j)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,myStructure)
 
       !* Calculation of the tangent of Lp
       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
         dLp_dTstar3333(k,l,m,n) = &
         dLp_dTstar3333(k,l,m,n) + dgdot_dtauslip(j)*&
-                                  lattice_Sslip(k,l,index_myFamily+i,myStructure)*&
-                                  lattice_Sslip(m,n,index_myFamily+i,myStructure) 
+                                  lattice_Sslip(k,l,1,index_myFamily+i,myStructure)*&
+                                  lattice_Sslip(m,n,1,index_myFamily+i,myStructure) 
    enddo
 enddo
 

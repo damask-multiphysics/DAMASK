@@ -1139,14 +1139,14 @@ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over
         StressRatio_pminus1*(1-StressRatio_p)**(constitutive_dislotwin_q(myInstance)-1.0_pReal)
 
       !* Plastic velocity gradient for dislocation glide
-      Lp = Lp + (1.0_pReal - sumf)*gdot_slip(j)*lattice_Sslip(:,:,index_myFamily+i,myStructure)
+      Lp = Lp + (1.0_pReal - sumf)*gdot_slip(j)*lattice_Sslip(:,:,1,index_myFamily+i,myStructure)
 
       !* Calculation of the tangent of Lp
       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
         dLp_dTstar3333(k,l,m,n) = &
         dLp_dTstar3333(k,l,m,n) + dgdot_dtauslip(j)*&
-                                  lattice_Sslip(k,l,index_myFamily+i,myStructure)*&
-                                  lattice_Sslip(m,n,index_myFamily+i,myStructure)
+                                  lattice_Sslip(k,l,1,index_myFamily+i,myStructure)*&
+                                  lattice_Sslip(m,n,1,index_myFamily+i,myStructure)
    enddo
 enddo
 

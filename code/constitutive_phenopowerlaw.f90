@@ -240,7 +240,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
           constitutive_phenopowerlaw_aTolShear            = 0.0_pReal
  allocate(constitutive_phenopowerlaw_aTolTwinfrac(maxNinstance))
           constitutive_phenopowerlaw_aTolTwinfrac         = 0.0_pReal
- allocate(constitutive_phenopowerlaw_nonSchmidCoeff(lattice_maxNonSchmid,maxNinstance))
+ allocate(constitutive_phenopowerlaw_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance))
           constitutive_phenopowerlaw_nonSchmidCoeff = 0.0_pReal
 
  rewind(myFile)
@@ -368,7 +368,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
              constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('nonschmid_coefficients')
-           do j = 1_pInt, lattice_maxNonSchmid
+           do j = 1_pInt, lattice_maxNnonSchmid
              constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case default
@@ -682,7 +682,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
-   NnonSchmid
+   lattice_NnonSchmid
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -745,17 +745,17 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
 ! Calculation of Lp
      tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,structID))
      tau_slip_neg(j)  = tau_slip_pos(j)
-     nonSchmid_tensor(1:3,1:3,1)  = math_Mandel6to33(lattice_Sslip_v(1:6,1,index_myFamily+i,structID))
-     nonSchmid_tensor(1:3,1:3,2)  = nonSchmid_tensor(1:3,1:3,1)
-     do k = 1, NnonSchmid(structID) 
+     nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,structID)
+     nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
+     do k = 1,lattice_NnonSchmid(structID) 
        tau_slip_pos(j) = tau_slip_pos(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,structID))
        tau_slip_neg(j) = tau_slip_neg(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,structID))
        nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)*&
-                                           math_Mandel6to33(lattice_Sslip_v(1:6,2*k,index_myFamily+i,structID))
+                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,structID)
        nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)*&
-                                           math_Mandel6to33(lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,structID))
+                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,structID)
      enddo
      gdot_slip_pos(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(matID)* &
                     ((abs(tau_slip_pos(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*&
@@ -764,7 +764,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
                     ((abs(tau_slip_neg(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*&
                                                                     sign(1.0_pReal,tau_slip_neg(j))
      Lp = Lp + (1.0_pReal-state(ipc,ip,el)%p(index_F))*&                     ! 1-F
-               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,index_myFamily+i,structID)
+               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,structID)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
@@ -772,7 +772,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
        dgdot_dtauslip_pos(j) = gdot_slip_pos(j)*constitutive_phenopowerlaw_n_slip(matID)/tau_slip_pos(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-                                   dgdot_dtauslip_pos(j)*lattice_Sslip(k,l,index_myFamily+i,structID)* &
+                                   dgdot_dtauslip_pos(j)*lattice_Sslip(k,l,1,index_myFamily+i,structID)* &
                                                      nonSchmid_tensor(m,n,1)
      endif
      
@@ -780,7 +780,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
        dgdot_dtauslip_neg(j) = gdot_slip_neg(j)*constitutive_phenopowerlaw_n_slip(matID)/tau_slip_neg(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-                                   dgdot_dtauslip_neg(j)*lattice_Sslip(k,l,index_myFamily+i,structID)* &
+                                   dgdot_dtauslip_neg(j)*lattice_Sslip(k,l,1,index_myFamily+i,structID)* &
                                                      nonSchmid_tensor(m,n,2)
      endif
    enddo
@@ -832,7 +832,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,temperature,state,ipc,ip,el
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin, &
-   NnonSchmid   
+   lattice_NnonSchmid   
  use mesh, only: &
    mesh_NcpElems,&
    mesh_maxNips
@@ -911,7 +911,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,temperature,state,ipc,ip,el
 ! Calculation of dot gamma 
      tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,structID))
      tau_slip_neg(j)  = tau_slip_pos(j)
-     do k = 1, NnonSchmid(structID) 
+     do k = 1,lattice_NnonSchmid(structID) 
        tau_slip_pos(j) = tau_slip_pos(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,structID))
        tau_slip_neg(j) = tau_slip_neg(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
@@ -1069,7 +1069,8 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,temperature,dt,stat
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
-   lattice_NtwinSystem,NnonSchmid 
+   lattice_NtwinSystem, &
+   lattice_NnonSchmid 
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -1132,7 +1133,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,temperature,dt,stat
            j = j + 1_pInt
            tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,structID))
            tau_slip_neg  = tau_slip_pos
-           do k = 1, NnonSchmid(structID) 
+           do k = 1,lattice_NnonSchmid(structID) 
              tau_slip_pos = tau_slip_pos + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,structID))
              tau_slip_neg = tau_slip_neg + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
