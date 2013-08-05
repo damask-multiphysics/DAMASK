@@ -2355,43 +2355,55 @@ dUpper = max(dUpper,dLower)
 !*** calculate dislocation multiplication
 
 rhoDotMultiplication = 0.0_pReal
-if (probabilisticMultiplication(myInstance)) then
-  meshlength = mesh_ipVolume(ip,el)**0.333_pReal
-  where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
-    nSources = (sum(rhoSgl(1:ns,1:2),2) * fEdgeMultiplication(myInstance) + sum(rhoSgl(1:ns,3:4),2)) &
-             / sum(rhoSgl(1:ns,1:4),2) * meshlength / lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
-  elsewhere
-    nSources = meshlength / lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
-  endwhere
-  do s = 1_pInt,ns
-    if (nSources(s) < 1.0_pReal) then
-      if (sourceProbability(s,g,ip,el) > 1.0_pReal) then
-        call random_number(rnd)
-        sourceProbability(s,g,ip,el) = rnd
-        !$OMP FLUSH(sourceProbability)
+if (myStructure == 2_pInt) then                                                                     ! BCC
+  forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
+    rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / burgers(s,myInstance) &                   ! assuming double-cross-slip of screws to be decisive for multiplication
+                                * sqrt(rhoForest(s)) / lambda0(s,myInstance) !&                     ! mean free path
+                                !* sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))                          ! ratio of screw to overall velocity determines edge generation
+    rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) / burgers(s,myInstance) &                   ! assuming double-cross-slip of screws to be decisive for multiplication
+                                * sqrt(rhoForest(s)) / lambda0(s,myInstance) !&                     ! mean free path
+                                !* sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))                          ! ratio of edge to overall velocity determines screw generation
+  endforall
+
+else                                                                                                ! ALL OTHER STRUCTURES
+  if (probabilisticMultiplication(myInstance)) then
+    meshlength = mesh_ipVolume(ip,el)**0.333_pReal
+    where(sum(rhoSgl(1:ns,1:4),2) > 0.0_pReal)
+      nSources = (sum(rhoSgl(1:ns,1:2),2) * fEdgeMultiplication(myInstance) + sum(rhoSgl(1:ns,3:4),2)) &
+               / sum(rhoSgl(1:ns,1:4),2) * meshlength / lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
+    elsewhere
+      nSources = meshlength / lambda0(1:ns,myInstance) * sqrt(rhoForest(1:ns))
+    endwhere
+    do s = 1_pInt,ns
+      if (nSources(s) < 1.0_pReal) then
+        if (sourceProbability(s,g,ip,el) > 1.0_pReal) then
+          call random_number(rnd)
+          sourceProbability(s,g,ip,el) = rnd
+          !$OMP FLUSH(sourceProbability)
+        endif
+        if (sourceProbability(s,g,ip,el) > 1.0_pReal - nSources(s)) then
+          rhoDotMultiplication(s,1:4) = sum(rhoSglOriginal(s,1:4) * abs(v(s,1:4))) / meshlength
+        endif
+      else
+        sourceProbability(s,g,ip,el) = 2.0_pReal
+        rhoDotMultiplication(s,1:4) = &
+          (sum(abs(gdot(s,1:2))) * fEdgeMultiplication(myInstance) + sum(abs(gdot(s,3:4)))) &
+          / burgers(s,myInstance) * sqrt(rhoForest(s)) / lambda0(s,myInstance)
       endif
-      if (sourceProbability(s,g,ip,el) > 1.0_pReal - nSources(s)) then
-        rhoDotMultiplication(s,1:4) = sum(rhoSglOriginal(s,1:4) * abs(v(s,1:4))) / meshlength
-      endif
-    else
-      sourceProbability(s,g,ip,el) = 2.0_pReal
-      rhoDotMultiplication(s,1:4) = &
-        (sum(abs(gdot(s,1:2))) * fEdgeMultiplication(myInstance) + sum(abs(gdot(s,3:4)))) &
-        / burgers(s,myInstance) * sqrt(rhoForest(s)) / lambda0(s,myInstance)
-    endif
-  enddo
+    enddo
 #ifndef _OPENMP
-  if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
-      .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
-    write(6,'(a,/,4(12x,12(f12.5,1x),/))') '<< CONST >> sources', nSources
-    write(6,*)
-  endif
+    if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
+        .and. ((debug_e == el .and. debug_i == ip .and. debug_g == g)&
+               .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt )) then
+      write(6,'(a,/,4(12x,12(f12.5,1x),/))') '<< CONST >> sources', nSources
+      write(6,*)
+    endif
 #endif
-else
-  rhoDotMultiplication(1:ns,1:4) = spread( &
-      (sum(abs(gdot(1:ns,1:2)),2) * fEdgeMultiplication(myInstance) + sum(abs(gdot(1:ns,3:4)),2)) &
-    * sqrt(rhoForest(1:ns)) / lambda0(1:ns,myInstance) / burgers(1:ns,myInstance), 2, 4)
+  else
+    rhoDotMultiplication(1:ns,1:4) = spread( &
+        (sum(abs(gdot(1:ns,1:2)),2) * fEdgeMultiplication(myInstance) + sum(abs(gdot(1:ns,3:4)),2)) &
+      * sqrt(rhoForest(1:ns)) / lambda0(1:ns,myInstance) / burgers(1:ns,myInstance), 2, 4)
+  endif
 endif
 
 
