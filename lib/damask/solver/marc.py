@@ -86,7 +86,7 @@ class Marc(Solver):
 
     damaskEnv = damask.environment.Environment(rootRelation)
     
-    user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc%s'%release)
+    user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
     cmd = os.path.join(self.toolsPath(rootRelation,release),'run_marc') + \

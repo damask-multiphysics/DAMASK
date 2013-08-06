@@ -1,7 +1,8 @@
-4	header
-resolution	a 16	b 16	c 16
-dimension	x 1.000000	y 1.000000	z 1.000000
+5	header
+grid	a 16	b 16	c 16
+size	x 1.000000	y 1.000000	z 1.000000
 origin	x 0.000000	y 0.000000	z 0.000000
+microstructures 20
 homogenization	1
  2  2  2  4  4  4  4  1  1 15 15 15 15 15 19 19
 19  4  4  4  4  4  1  1  1 15 15 15 15 15 15 19
