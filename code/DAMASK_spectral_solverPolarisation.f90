@@ -79,7 +79,7 @@ module DAMASK_spectral_solverPolarisation
    F_aim_lastInc = math_I3, &                                                                       !< previous average deformation gradient
    P_av = 0.0_pReal, &                                                                              !< average 1st Piola--Kirchhoff stress
    P_avLastEval = 0.0_pReal                                                                         !< average 1st Piola--Kirchhoff stress last call of CPFEM_general
- character(len=1024), private :: incInfo                                                            !< time and increment information
+   character(len=1024), private :: incInfo                                                          !< time and increment information
  real(pReal), private, dimension(3,3,3,3) :: &
    C_volAvg = 0.0_pReal, &                                                                          !< current volume average stiffness 
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
@@ -90,8 +90,8 @@ module DAMASK_spectral_solverPolarisation
  
  real(pReal), private :: &
    err_stress, &                                                                                    !< deviation from stress BC
-   err_f, &                                                                                         !< difference between compatible and incompatible deformation gradient
-   err_p                                                                                            !< difference of stress resulting from compatible and incompatible F
+   err_curl, &                                                                                      !< RMS of curl of F
+   err_div                                                                                          !< RMS of div of P
  logical, private :: ForwardData
  integer(pInt), private :: &
    totalIter = 0_pInt                                                                               !< total iteration in current increment
@@ -470,6 +470,7 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    math_transpose33, &
    math_mul3333xx33, &
    math_invSym3333, &
+   math_mul33x33, &
    PI
  use DAMASK_spectral_Utilities, only: &
    grid, &
@@ -481,7 +482,9 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    Utilities_fourierConvolution, &
    Utilities_inverseLaplace, &
    Utilities_FFTbackward, &
-   Utilities_constitutiveResponse
+   Utilities_constitutiveResponse, &
+   Utilities_divergenceRMS, &
+   Utilities_curlRMS
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -513,7 +516,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  PetscErrorCode :: ierr
  integer(pInt) :: &
    i, j, k, e
- real(pReal) :: correctionFactor
  
  F              => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
@@ -562,8 +564,11 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! 
  field_real = 0.0_pReal
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-   field_real(i,j,k,1:3,1:3) = math_mul3333xx33(C_scale,(polarAlpha + polarBeta)*F(1:3,1:3,i,j,k) - &
-                                                               (polarAlpha)*F_tau(1:3,1:3,i,j,k))
+   field_real(i,j,k,1:3,1:3) = &
+     polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
+     polarAlpha*math_mul33x33(F(1:3,1:3,i,j,k), &
+                              math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))
+
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
@@ -572,7 +577,7 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  field_fourier = field_fourier + polarAlpha*inertiaField_fourier
  call Utilities_fourierConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
  call Utilities_FFTbackward()
- 
+
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
  residual_F_tau = polarBeta*F - reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),&
@@ -584,15 +589,14 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  call Utilities_constitutiveResponse(F_lastInc,F - residual_F_tau/polarBeta,params%temperature,params%timeinc, &
                                      residual_F,C_volAvg,C_minMaxAvg,P_av,ForwardData,params%rotation_BC)
  ForwardData = .False.
- 
+
 !--------------------------------------------------------------------------------------------------
-! stress BC handling
- write(6,'(/,a)') ' ... correcting F to fullfill stress BC ....................................'
- correctionFactor = (cos((1.0-10000.0_pReal**(-sum((P_av-P_avLastEval)**2.0_pReal)/&                ! only correct when averages stress of last two calls doesn't strongly deviate
-                                                       sum(P_av**2.0_pReal)))*PI)+1.0)/2.0_pReal
- write(6,'(/,a,f10.4)') ' stress BC correction factor = ', correctionFactor
- F_aim = F_aim - correctionFactor *math_mul3333xx33(S, ((P_av - params%P_BC)))                      ! S = 0.0 for no bc
- err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
+! calculate divergence
+ field_real = 0.0_pReal
+ field_real = reshape(residual_F,[grid(1),grid(2),grid(3),3,3],order=[4,5,1,2,3]) 
+ call Utilities_FFTforward()
+ err_div = Utilities_divergenceRMS()
+ call Utilities_FFTbackward()
  
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
@@ -602,15 +606,18 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
    e = e + 1_pInt
    residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(:,:,:,:,1,e) + C_scale), &
                                                 residual_F(1:3,1:3,i,j,k) - &
-                                                math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3)) &
-                               + residual_F_tau(1:3,1:3,i,j,k)
-   err_p = err_p + sum((math_mul3333xx33(C_scale,residual_F(1:3,1:3,i,j,k) - residual_F_tau(1:3,1:3,i,j,k)))**2.0_pReal)
+                                                math_mul33x33(F(1:3,1:3,i,j,k), &
+                                                           math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
+                            + residual_F_tau(1:3,1:3,i,j,k)
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
-! calculating errors  
- err_f = wgt*sqrt(sum(residual_F_tau**2.0_pReal))/polarBeta
- err_p = wgt*sqrt(err_p) 
+! calculating curl
+ field_real = 0.0_pReal
+ field_real = reshape(F,[grid(1),grid(2),grid(3),3,3],order=[4,5,1,2,3]) 
+ call Utilities_FFTforward()
+ err_curl = Utilities_curlRMS()
+ call Utilities_FFTbackward()
  
 end subroutine Polarisation_formResidual
 
@@ -622,9 +629,10 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
  use numerics, only: &
   itmax, &
   itmin, &
-  err_f_tolabs, &
-  err_p_tolabs, &
-  err_f_p_tolrel, &
+  err_div_tolRel, &
+  err_div_tolAbs, &
+  err_curl_tolRel, &
+  err_curl_tolAbs, &
   err_stress_tolabs, &
   err_stress_tolrel
  use FEsolving, only: &
@@ -641,31 +649,23 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
  PetscObject :: dummy
  PetscErrorCode ::ierr
  real(pReal) :: &
-   mismatch_f_tol, &
-   mismatch_p_tol, &
+   curlTol, &
+   divTol, &
    stressBC_tol
-   
- mismatch_f_tol = max(maxval(abs(F_aim-math_I3))*err_f_p_tolrel,err_f_tolabs)
- mismatch_p_tol = max(maxval(abs(P_av))         *err_f_p_tolrel,err_p_tolabs)
- stressBC_tol   = max(maxval(abs(P_av))         *err_stress_tolrel,err_stress_tolabs)
- 
- write(6,'(1/,a)') ' ... reporting .............................................................'
- write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' mismatch F =      ', &
-                     err_f/mismatch_f_tol, &
-                ' (',err_f,' -,  tol =',mismatch_f_tol,')'
- write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' mismatch P =      ', &
-                     err_p/mismatch_p_tol, &
-                ' (',err_p,' -,  tol =',mismatch_p_tol,')'
- write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC = ', &
-                 err_stress/stressBC_tol, ' (',err_stress, ' Pa, tol =',stressBC_tol,')' 
- write(6,'(/,a)') ' ==========================================================================='
- flush(6) 
- 
+     
+!--------------------------------------------------------------------------------------------------
+! stress BC handling
+ F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
+ err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
+ curlTol = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel,err_curl_tolAbs)
+ divTol  = max(maxval(abs(P_av))         *err_div_tolRel,err_div_tolAbs)
+ stressBC_tol = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
+
  converged: if ((totalIter >= itmin .and. &
-               all([ err_f/mismatch_f_tol, &
-                     err_p/mismatch_p_tol, &
-                     err_stress/stressBC_tol] < 1.0_pReal)) &
-             .or.    terminallyIll) then
+                           all([ err_div/divTol, &
+                                 err_curl/curlTol, &
+                                 err_stress/err_stress_tol       ] < 1.0_pReal)) &
+             .or.    terminallyIll)                
    reason = 1
  elseif (totalIter >= itmax) then converged
    reason = -1
@@ -673,6 +673,17 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
    reason = 0
  endif converged
 
+!--------------------------------------------------------------------------------------------------
+! report
+ write(6,'(1/,a)') ' ... reporting .............................................................'
+ write(6,'(/,a,f12.2,a,es12.2,a,es12.2,a)') ' error curl =      ', &
+            err_curl/curlTol,' (',err_curl,' -,  tol =',curlTol,')'
+ write(6,'(a,f12.2,a,es12.8,a,es12.8,a)') ' error divergence = ', &
+            err_div/divTol,  ' (',err_div,' / m,  tol =',divTol,')'
+ write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC = ', &
+            err_stress/stressBC_tol, ' (',err_stress, ' Pa, tol =',stressBC_tol,')' 
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6) 
 
 end subroutine Polarisation_converged
 

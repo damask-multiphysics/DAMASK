@@ -582,7 +582,7 @@ end function math_mul6x6
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief matrix multiplication 33x33 = 1 (double contraction --> ij * ij)
+!> @brief matrix multiplication 33xx33 = 1 (double contraction --> ij * ij)
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_mul33xx33(A,B)
 
@@ -2320,7 +2320,6 @@ pure subroutine math_hi(M,HI1M,HI2M,HI3M)
  HI2M=HI1M**2.0_pReal/2.0_pReal-  (M(1,1)**2.0_pReal+M(2,2)**2.0_pReal+M(3,3)**2.0_pReal)&
                                      /2.0_pReal-M(1,2)*M(2,1)-M(1,3)*M(3,1)-M(2,3)*M(3,2)
  HI3M=math_det33(M)
-! QUESTION: is 3rd equiv det(M) ?? if yes, use function math_det !agreed on YES
 
 end subroutine math_hi
 

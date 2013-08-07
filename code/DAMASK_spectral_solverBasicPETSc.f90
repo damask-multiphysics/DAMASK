@@ -495,9 +495,10 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
  use numerics, only: &
    itmax, &
    itmin, &
-   err_div_tol, &
-   err_stress_tolrel, &
-   err_stress_tolabs
+   err_div_TolAbs, &
+   err_div_TolRel, &
+   err_stress_tolRel, &
+   err_stress_tolAbs
  use math, only: &
    math_mul33x33, &
    math_eigenvalues33, &
@@ -515,32 +516,33 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
  SNESConvergedReason :: reason
  PetscObject :: dummy
  PetscErrorCode :: ierr
- logical :: Converged
  real(pReal) :: &
-   pAvgDivL2, &
-   err_stress_tol 
+   divTol, &
+   stressTol 
  
- err_stress_tol =max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
- pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(P_av,math_transpose33(P_av)))))
- Converged = (it >= itmin .and. &
-                           all([ err_div/pAvgDivL2/err_div_tol, &
+ divTol    = max(maxval(abs(P_av))*err_div_tolRel,err_div_tolAbs)
+ stressTol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
+ 
+ converged: if ((it >= itmin .and. &
+                           all([ err_div/divTol, &
                                  err_stress/err_stress_tol       ] < 1.0_pReal)) &
-             .or.    terminallyIll                 
- 
- if (Converged) then
+             .or.    terminallyIll)                
    reason = 1
- elseif (it >= itmax) then
+ elseif (totalIter >= itmax) then converged
    reason = -1
- else  
+ else converged
    reason = 0
- endif 
+ endif converged
+
+!--------------------------------------------------------------------------------------------------
+! report
  write(6,'(1/,a)') ' ... reporting .............................................................'
- write(6,'(/,a,f8.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
-            err_div/pAvgDivL2/err_div_tol, ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
- write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC =  ', &
-                   err_stress/err_stress_tol, ' (',err_stress, ' Pa  , tol =',err_stress_tol,')' 
- write(6,'(/,a)')  ' ==========================================================================='
- flush(6)
+ write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+            err_div/divTol,  ' (',err_div,' / m, tol =',divTol,')'
+ write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')   ' error stress BC =  ', &
+            err_stress/stressTol, ' (',err_stress, ' Pa,  tol =',stressTol,')' 
+ write(6,'(/,a)') ' ==========================================================================='
+ flush(6) 
  
 end subroutine BasicPETSc_converged
 

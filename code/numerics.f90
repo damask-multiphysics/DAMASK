@@ -77,20 +77,20 @@ module numerics
    volDiscrMod_RGC            =  1.0e+12_pReal, &                                                   !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
    volDiscrPow_RGC            =  5.0_pReal                                                          !< powerlaw penalty for volume discrepancy
  logical, protected, public :: &                                                   
-   analyticJaco               = .false., &                                                          !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+   analyticJaco               = .false., &                                                         !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
    usePingPong                = .true., & 
-   numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
+   numerics_timeSyncing       = .false.                                                            !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
 #ifdef Spectral
  real(pReal), protected, public :: &
-   err_div_tol                =  5.0e-4_pReal, &                                                    !< Div(P)/avg(P)*meter
-   err_stress_tolrel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC
-   err_stress_tolabs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC 
-   err_f_tolabs               =  1.0e-8_pReal,  &                                                   !< absolute tolerance  mismatch F
-   err_p_tolabs               =  1.0e2_pReal,  &                                                    !< absolute tolerance  mismatch P
-   err_f_p_tolrel             =  1.0e-5_pReal, &                                                    !< relative tolerance for mismatch F and P
+   err_div_tolAbs             =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
+   err_div_tolRel             =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
+   err_curl_tolAbs            =  1.0e-10_pReal, &                                                   !< absolute tolerance for compatibility
+   err_curl_tolRel            =  5.0e-4_pReal, &                                                    !< relative tolerance for compatibility
+   err_stress_tolAbs          =  1.0e3_pReal,  &                                                    !< absolute tolerance for fullfillment of stress BC
+   err_stress_tolRel          =  0.01_pReal, &                                                      !< relative tolerance for fullfillment of stress BC
    fftw_timelimit             = -1.0_pReal, &                                                       !< sets the timelimit of plan creation for FFTW, see manual on www.fftw.org, Default -1.0: disable timelimit
    rotation_tol               =  1.0e-12_pReal, &                                                   !< tolerance of rotation specified in loadcase, Default 1.0e-12: first guess
    polarAlpha                 =  1.0_pReal, &                                                       !< polarization scheme parameter 0.0 < alpha < 2.0. alpha = 1.0 ==> AL scheme, alpha = 2.0 ==> accelerated scheme 
@@ -277,8 +277,10 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Spectral
-       case ('err_div_tol')
-         err_div_tol = IO_floatValue(line,positions,2_pInt)
+       case ('err_div_tolabs')
+         err_div_tolAbs = IO_floatValue(line,positions,2_pInt)
+       case ('err_div_tolrel')
+         err_div_tolRel = IO_floatValue(line,positions,2_pInt)
        case ('err_stress_tolrel')
          err_stress_tolrel = IO_floatValue(line,positions,2_pInt)
        case ('err_stress_tolabs')
@@ -310,28 +312,27 @@ subroutine numerics_init
          petsc_options = trim(line(positions(4):))
        case ('myspectralsolver')
          myspectralsolver = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('err_f_tolabs')
-         err_f_tolabs = IO_floatValue(line,positions,2_pInt)
-       case ('err_p_tolabs')
-         err_p_tolabs = IO_floatValue(line,positions,2_pInt)
-       case ('err_f_p_tolrel')
-         err_f_p_tolrel = IO_floatValue(line,positions,2_pInt)
+       case ('err_curl_tolabs')
+         err_curl_tolAbs = IO_floatValue(line,positions,2_pInt)
+       case ('err_curl_tolrel')
+         err_curl_tolRel = IO_floatValue(line,positions,2_pInt)
        case ('polaralpha')
          polarAlpha = IO_floatValue(line,positions,2_pInt)
        case ('polarbeta')
          polarBeta = IO_floatValue(line,positions,2_pInt)
 #endif 
 #ifndef PETSc
-       case ('myspectralsolver', 'petsc_options','err_f_tolabs', 'err_p_tolabs', &
-             'err_f_p_tolrel','polaralpha','polarBeta')                                             ! found PETSc parameter, but compiled without PETSc
+       case ('myspectralsolver', 'petsc_options', &
+             'err_curl_tolabs','err_curl_tolrel','polaralpha','polarBeta')                          ! found PETSc parameter, but compiled without PETSc
          call IO_warning(41_pInt,ext_msg=tag)
 #endif
 #endif
 #ifndef Spectral
-      case ('err_div_tol','err_stress_tolrel','err_stress_tolabs',&                                 ! found spectral parameter for FEM build
-            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode','myspectralsolver', &
-            'rotation_tol','divergence_correction','update_gamma','petsc_options','myfilter', &
-            'err_f_tolabs', 'err_p_tolabs', 'err_f_p_tolrel', 'maxcutback','polaralpha','polarbeta')
+      case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
+            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
+            'rotation_tol','divergence_correction','update_gamma','myfilter', &
+            'err_div_tolabs','err_div_tolrel', &
+            'maxcutback','polaralpha','polarbeta')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                 ! found unknown keyword
@@ -419,7 +420,8 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Spectral
- write(6,'(a24,1x,es8.1)')   ' err_div_tol:            ',err_div_tol
+ write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolabs:      ',err_stress_tolabs
 
@@ -441,9 +443,8 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
  write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
 #ifdef PETSc
- write(6,'(a24,1x,es8.1)')   ' err_f_tolabs:           ',err_f_tolabs
- write(6,'(a24,1x,es8.1)')   ' err_p_tolabs:           ',err_p_tolabs
- write(6,'(a24,1x,es8.1)')   ' err_f_p_tolrel:         ',err_f_p_tolrel
+ write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
  write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
  write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
  write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
@@ -492,23 +493,23 @@ subroutine numerics_init
  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
 #ifdef Spectral
- if (err_div_tol <= 0.0_pReal)             call IO_error(301_pInt,ext_msg='err_div_tol')
+ if (err_div_tolRel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolRel')
+ if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolAbs')
  if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolabs')
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
- if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
+ if (itmin > itmax .or. itmin < 1_pInt)   call IO_error(301_pInt,ext_msg='itmin')
  if (divergence_correction < 0_pInt .or. &
      divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
  if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
 #ifdef PETSc
- if (err_f_tolabs <= 0.0_pReal)            call IO_error(301_pInt,ext_msg='err_f_tolabs')
- if (err_p_tolabs <= 0.0_pReal)            call IO_error(301_pInt,ext_msg='err_p_tolabs')
- if (err_f_p_tolrel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_f_p_tolrel')
+ if (err_curl_tolRel <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolRel')
+ if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolAbs')
  if (polarAlpha <= 0.0_pReal .or. &
      polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')
- if (polarBeta <= 0.0_pReal .or. &
+ if (polarBeta < 0.0_pReal .or. &
      polarBeta >  2.0_pReal)               call IO_error(301_pInt,ext_msg='polarBeta')
 #endif
 #endif

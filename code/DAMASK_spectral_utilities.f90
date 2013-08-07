@@ -690,7 +690,7 @@ real(pReal) function utilities_curlRMS()
  utilities_curlRMS = utilities_curlRMS + &
                      2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal) 
  enddo; enddo
- utilities_curlRMS = sqrt(utilities_curlRMS) *wgt 
+ utilities_curlRMS = sqrt(utilities_curlRMS) * wgt 
 
 end function utilities_curlRMS
 
@@ -709,10 +709,10 @@ function utilities_maskedCompliance(rot_BC,mask_stress,C)
    math_invert
 
  implicit none
- real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                         !< masked compliance
- real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                  !< current average stiffness
- real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                             !< rotation of load frame
- logical,     intent(in),  dimension(3,3)     :: mask_stress                                        !< mask of stress BC
+ real(pReal),              dimension(3,3,3,3) :: utilities_maskedCompliance                        !< masked compliance
+ real(pReal), intent(in) , dimension(3,3,3,3) :: C                                                !< current average stiffness
+ real(pReal), intent(in) , dimension(3,3)     :: rot_BC                                           !< rotation of load frame
+ logical,     intent(in),  dimension(3,3)     :: mask_stress                                     !< mask of stress BC
  integer(pInt) :: j, k, m, n 
  logical, dimension(9) :: mask_stressVector
  real(pReal), dimension(9,9) :: temp99_Real   
@@ -912,10 +912,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  P_av = sum(sum(sum(P,dim=5),dim=4),dim=3) * wgt                                                    ! average of P 
  if (debugRotation) &
  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress (lab) / MPa =',&
-                                                     math_transpose33(P_av)/1.e6_pReal
+                                                     math_transpose33(P_av)*1.e-6_pReal
  P_av = math_rotate_forward33(P_av,rotation_BC)
  write(6,'(/,a,/,3(3(2x,f12.4,1x)/))',advance='no') ' Piola--Kirchhoff stress / MPa =',&
-                                                     math_transpose33(P_av)/1.e6_pReal
+                                                     math_transpose33(P_av)*1.e-6_pReal
 
 end subroutine utilities_constitutiveResponse
 

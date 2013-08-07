@@ -337,8 +337,8 @@ type(tSolutionState) function basic_solution(&
    call Utilities_fourierConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,rotation_BC))
    call Utilities_FFTbackward()
    F = F - reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),shape(F),order=[3,4,5,1,2])    ! F(x)^(n+1) = F(x)^(n) + correction;  *wgt: correcting for missing normalization
-   basic_solution%converged = basic_Converged(err_div,P_av,err_stress,P_av)
-   write(6,'(/,a)') ' =========================================================================='
+   basic_solution%converged = basic_Converged(err_div,P_av,err_stress)
+   write(6,'(/,a)') ' ==========================================================================='
    flush(6)
    if ((basic_solution%converged .and. iter >= itmin) .or. basic_solution%termIll) then
      basic_solution%iterationsNeeded = iter
@@ -352,10 +352,11 @@ end function basic_solution
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check for basic scheme based on div of P and deviation from stress aim
 !--------------------------------------------------------------------------------------------------
-logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
+logical function basic_Converged(err_div,P_av,err_stress)
  use numerics, only: &
    itmin, &
-   err_div_tol, &
+   err_div_tolRel, &
+   err_div_tolAbs, &
    err_stress_tolrel, &
    err_stress_tolabs
  use math, only: &
@@ -365,28 +366,30 @@ logical function basic_Converged(err_div,pAvgDiv,err_stress,pAvgStress)
     
  implicit none
  real(pReal), dimension(3,3), intent(in) :: &
-   pAvgDiv,&
-   pAvgStress
+   P_av
  
  real(pReal), intent(in) :: &
    err_div, &
    err_stress
  
  real(pReal) :: &
-   err_stress_tol, &
-   pAvgDivL2
+   stressTol, &
+   divTol
   
- pAvgDivL2 = sqrt(maxval(math_eigenvalues33(math_mul33x33(pAvgDiv,math_transpose33(pAvgDiv)))))     ! L_2 norm of average stress (http://mathworld.wolfram.com/SpectralNorm.html)
- err_stress_tol = max(maxval(abs(pAvgStress))*err_stress_tolrel,err_stress_tolabs)
+ divTol  = max(maxval(abs(P_av))*err_div_tolRel,err_div_tolAbs)
+ stressTol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
  
- basic_Converged = all([ err_div/pAvgDivL2/err_div_tol,&
-                           err_stress/err_stress_tol    ]  < 1.0_pReal)
-  
- write(6,'(/,a,f10.2,a,es11.5,a,es11.4,a)') ' error divergence = ', &
-           err_div/pAvgDivL2/err_div_tol,  ' (',err_div/pAvgDivL2,' / m,  tol =',err_div_tol,')'
- write(6,  '(a,f10.2,a,es11.5,a,es11.4,a)') ' error stress BC =  ', &
-                err_stress/err_stress_tol, ' (',err_stress,       ' Pa,   tol =',err_stress_tol,')'  
- flush(6)
+ basic_Converged = all([ err_div/divTol,&
+                         err_stress/stressTol    ]  < 1.0_pReal)
+
+!--------------------------------------------------------------------------------------------------
+! report
+ write(6,'(1/,a)') ' ... reporting .............................................................'
+ write(6,'(1/,a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+            err_div/divTol,  ' (',err_div,' / m, tol =',divTol,')'
+ write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')   ' error stress BC =  ', &
+            err_stress/stressTol, ' (',err_stress, ' Pa,  tol =',stressTol,')' 
+ flush(6) 
 
 end function basic_Converged
 
