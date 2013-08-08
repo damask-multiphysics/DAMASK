@@ -179,7 +179,7 @@ subroutine debug_init
 
 
  fileExists: if(IO_open_file_stat(fileunit,debug_configFile)) then
-   do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+   do while (trim(line) /= '#EOF#')                                                                 ! read thru sections of phase part
      line = IO_read(fileunit)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      positions = IO_stringPos(line,maxNchunks)

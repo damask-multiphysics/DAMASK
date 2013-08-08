@@ -421,23 +421,23 @@ nonSchmidCoeff = 0.0_pReal
 !*** readout data from material.config file
 
 rewind(myFile)
-do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
   line = IO_read(myFile)
 enddo
  
-do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+do while (trim(line) /= '#EOF#')                                                                    ! read thru sections of phase part
   line = IO_read(myFile)
-  if (IO_isBlank(line)) cycle                                                                                                      ! skip empty lines
-  if (IO_getTag(line,'<','>') /= '') exit                                                                                          ! stop at next part
-  if (IO_getTag(line,'[',']') /= '') then                                                                                          ! next section
-    section = section + 1_pInt                                                                                                     ! advance section counter
+  if (IO_isBlank(line)) cycle                                                                       ! skip empty lines
+  if (IO_getTag(line,'<','>') /= '') exit                                                           ! stop at next part
+  if (IO_getTag(line,'[',']') /= '') then                                                           ! next section
+    section = section + 1_pInt                                                                      ! advance section counter
     cycle
   endif
   if (section > 0_pInt ) then                                                                       ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
     if (phase_plasticity(section) == CONSTITUTIVE_NONLOCAL_LABEL) then                              ! one of my sections
-      i = phase_plasticityInstance(section)                                                                                          ! which instance of my plasticity is present phase
+      i = phase_plasticityInstance(section)                                                         ! which instance of my plasticity is present phase
       positions = IO_stringPos(line,maxNchunks)
-      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                                                             ! extract key
+      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                            ! extract key
       select case(tag)
         case('plasticity','elasticity','/nonlocal/')
           cycle

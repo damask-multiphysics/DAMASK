@@ -300,11 +300,11 @@ allocate(constitutive_dislotwin_sbSv(6,6,homogenization_maxNgrains,mesh_maxNips,
 !* Readout data from material.config file
 rewind(file)
 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                                                  ! wind forward to <phase>
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
    line = IO_read(file)
 enddo
 
- do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+ do while (trim(line) /= '#EOF#')                                                                 ! read thru sections of phase part
    line = IO_read(file)
    if (IO_isBlank(line)) cycle                           ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit               ! stop at next part

@@ -272,11 +272,11 @@ subroutine crystallite_init(Temperature)
  line = ''
  section = 0_pInt
 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)                                 ! wind forward to <crystallite>
+ do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)  ! wind forward to <crystallite>
    line = IO_read(myFile)
  enddo
  
- do while (trim(line) /= '#EOF#')                                                                                                                                ! read thru sections of phase part
+ do while (trim(line) /= '#EOF#')                                                                   ! read thru sections of phase part
    line = IO_read(myFile)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
