@@ -74,12 +74,14 @@ module DAMASK_spectral_SolverBasicPETSc
    F_aimDot=0.0_pReal
  character(len=1024), private :: incInfo   
  real(pReal), private, dimension(3,3,3,3) :: &
-   C = 0.0_pReal, C_minmaxAvg = 0.0_pReal, C_lastInc= 0.0_pReal, &
-   S = 0.0_pReal
-
+   C_volAvg = 0.0_pReal, &                                                                          !< current volume average stiffness 
+   C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
+   C_minMaxAvg = 0.0_pReal, &                                                                       !< current (min+max)/2 stiffness
+   S = 0.0_pReal                                                                                    !< current compliance (filled up with zeros)
  real(pReal), private :: err_stress, err_div
  logical, private :: ForwardData
- integer(pInt), private :: reportIter = 0_pInt
+ integer(pInt), private :: &
+   totalIter = 0_pInt                                                                               !< total iteration in current increment
  real(pReal), private, dimension(3,3) :: mask_stress = 0.0_pReal
 
  public :: &
@@ -112,9 +114,9 @@ contains
 subroutine basicPETSc_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
+   IO_intOut, &
    IO_read_JobBinaryFile, &
    IO_write_JobBinaryFile, &
-   IO_intOut, &
    IO_timeStamp
  use debug, only: &
    debug_level, &
@@ -137,7 +139,7 @@ subroutine basicPETSc_init(temperature)
    mesh_deformedCoordsFFT
  use math, only: &
    math_invSym3333
-      
+   
  implicit none
  real(pReal), intent(inout) :: &
    temperature
@@ -212,11 +214,11 @@ subroutine basicPETSc_init(temperature)
    call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
-   call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
-   read (777,rec=1) C
+   call IO_read_jobBinaryFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
+   read (777,rec=1) C_volAvg
    close (777)
-   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
-   read (777,rec=1) C_lastInc
+   call IO_read_jobBinaryFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
+   read (777,rec=1) C_volAvgLastInc
    close (777)
    call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
    read (777,rec=1) temp3333_Real
@@ -227,10 +229,10 @@ subroutine basicPETSc_init(temperature)
  call Utilities_constitutiveResponse(&
     reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]),&
     reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]),&
-    temperature,0.0_pReal,P,C,C_minmaxAvg,temp33_Real,.false.,math_I3)
+    temperature,0.0_pReal,P,C_volAvg,C_minmaxAvg,temp33_Real,.false.,math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back into PETSc
  if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
-   temp3333_Real = C_minmaxAvg
+   temp3333_Real = C_minMaxAvg
  endif 
    
  call Utilities_updateGamma(temp3333_Real,.True.)
@@ -257,8 +259,8 @@ type(tSolutionState) function basicPETSc_solution( &
    grid, &
    geomSize, &
    tBoundaryCondition, &
-   Utilities_calculateRate, &
    Utilities_forwardField, &
+   Utilities_calculateRate, &
    Utilities_maskedCompliance, &
    Utilities_updateGamma, &
    cutBack
@@ -269,21 +271,26 @@ type(tSolutionState) function basicPETSc_solution( &
  implicit none
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
+
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
-  real(pReal), intent(in) :: &
+ real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime, &                                                                                  !< remaining time of current load case
-   temperature_bc
- logical, intent(in):: guess
- type(tBoundaryCondition),      intent(in) :: P_BC,F_BC
+   temperature_bc, &
+   density
+ logical, intent(in) :: &
+   guess
+ type(tBoundaryCondition),      intent(in) :: &
+   P_BC, &
+   F_BC
+ character(len=*), intent(in) :: &
+   incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
- character(len=*), intent(in) :: incInfoIn
- real(pReal), intent(in) :: density
  
 !--------------------------------------------------------------------------------------------------
-! 
+! PETSc Data
  PetscScalar, pointer :: F(:,:,:,:)
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
@@ -291,7 +298,7 @@ type(tSolutionState) function basicPETSc_solution( &
 
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
 !--------------------------------------------------------------------------------------------------
-! write restart information for spectral solver
+! restart information for spectral solver
  if (restartWrite) then
    write(6,'(/,a)') ' writing converged results for restart'
    flush(6)
@@ -304,38 +311,39 @@ type(tSolutionState) function basicPETSc_solution( &
    call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
    write (777,rec=1) F_aimDot
    close(777)
-   call IO_write_jobBinaryFile(777,'C',size(C))
-   write (777,rec=1) C
+   call IO_write_jobBinaryFile(777,'C_volAvg',size(C_volAvg))
+   write (777,rec=1) C_volAvg
    close(777)
-   call IO_write_jobBinaryFile(777,'C_lastInc',size(C_lastInc))
-   write (777,rec=1) C_lastInc
+   call IO_write_jobBinaryFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
+   write (777,rec=1) C_volAvgLastInc
    close(777)
  endif 
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
- if ( cutBack) then 
+ if (cutBack) then 
    F_aim = F_aim_lastInc
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)]) 
-   C = C_lastInc
+   C_volAvg = C_volAvgLastInc
  else
-   C_lastInc = C
-   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                             F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+   C_volAvgLastInc = C_volAvg
+
 
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
-   elseif(F_BC%myType=='fdot')   then                                                               ! f_aimDot is prescribed
+   elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
      f_aimDot = F_BC%maskFloat * F_BC%values
    elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
      f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
   endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
-  
+
 !--------------------------------------------------------------------------------------------------
-! update rate and forward last inc
+! update coordinates and rate and forward last inc
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,params%rotation_BC), &
                                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
    F_lastInc2 = F_lastInc
@@ -349,7 +357,7 @@ type(tSolutionState) function basicPETSc_solution( &
   
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
- S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C)
+ S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C_volAvg)
  if (update_gamma) call Utilities_updateGamma(C_minmaxAvg,restartWrite)
  
  ForwardData = .True.
@@ -374,7 +382,7 @@ type(tSolutionState) function basicPETSc_solution( &
    basicPETSC_solution%iterationsNeeded = itmax
  else
    basicPETSC_solution%converged = .true.
-   basicPETSC_solution%iterationsNeeded = reportIter
+   basicPETSC_solution%iterationsNeeded = totalIter
  endif
 
 end function BasicPETSc_solution
@@ -417,25 +425,23 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    x_scal, &
    f_scal 
  PetscInt :: &
-   iter, &
+   PETScIter, &
    nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
 
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
- call SNESGetIterationNumber(snes,iter,ierr); CHKERRQ(ierr)
+ call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
+ if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
+ if (totalIter <= PETScIter) then                                                                   ! new iteration
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
- if (iter == 0 .and. nfuncs == 0) then                                                              ! new increment
-   reportIter = -1_pInt
- endif
- if (reportIter <= iter) then                                                                       ! new iteration
-   reportIter = reportIter + 1_pInt
+   totalIter = totalIter + 1_pInt
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
-                    ' @ Iteration ', itmin, '≤',reportIter, '≤', itmax
+                    ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab)=', &
+   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
                                  math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
@@ -461,7 +467,7 @@ if (params%density > 0.0_pReal) then
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
  call Utilities_constitutiveResponse(F_lastInc,x_scal,params%temperature,params%timeinc, &
-                                     f_scal,C,C_minmaxAvg,P_av,ForwardData,params%rotation_BC)
+                                     f_scal,C_volAvg,C_minmaxAvg,P_av,ForwardData,params%rotation_BC)
  ForwardData = .false.
   
 !--------------------------------------------------------------------------------------------------
@@ -482,7 +488,7 @@ if (params%density > 0.0_pReal) then
  call Utilities_FFTbackward()
  
 !--------------------------------------------------------------------------------------------------
-! constructing residual                         
+! constructing residual
  f_scal = reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),shape(x_scal),order=[3,4,5,1,2]) 
 
 end subroutine BasicPETSc_formResidual
@@ -491,12 +497,12 @@ end subroutine BasicPETSc_formResidual
 !--------------------------------------------------------------------------------------------------
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
-subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ierr)
+subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
    itmax, &
    itmin, &
-   err_div_TolAbs, &
-   err_div_TolRel, &
+   err_div_tolRel, &
+   err_div_tolAbs, &
    err_stress_tolRel, &
    err_stress_tolAbs
  use math, only: &
@@ -508,7 +514,7 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
  
  implicit none
  SNES :: snes_local
- PetscInt :: it
+ PetscInt :: PETScIter
  PetscReal :: &
    xnorm, &
    snorm, &
@@ -523,10 +529,10 @@ subroutine BasicPETSc_converged(snes_local,it,xnorm,snorm,fnorm,reason,dummy,ier
  divTol    = max(maxval(abs(P_av))*err_div_tolRel,err_div_tolAbs)
  stressTol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
  
- converged: if ((it >= itmin .and. &
+ converged: if ((totalIter>= itmin .and. &
                            all([ err_div/divTol, &
-                                 err_stress/err_stress_tol       ] < 1.0_pReal)) &
-             .or.    terminallyIll)                
+                                 err_stress/stressTol       ] < 1.0_pReal)) &
+             .or.    terminallyIll) then  
    reason = 1
  elseif (totalIter >= itmax) then converged
    reason = -1
@@ -556,7 +562,7 @@ subroutine BasicPETSc_destroy()
 
  implicit none
  PetscErrorCode :: ierr
-  
+
  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
  call DMDestroy(da,ierr); CHKERRQ(ierr)

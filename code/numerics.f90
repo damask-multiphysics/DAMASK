@@ -331,11 +331,11 @@ subroutine numerics_init
       case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
             'rotation_tol','divergence_correction','update_gamma','myfilter', &
-            'err_div_tolabs','err_div_tolrel', &
+            'err_curl_tolabs','err_curl_tolrel', &
             'maxcutback','polaralpha','polarbeta')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
-       case default                                                                                 ! found unknown keyword
+       case default                                                                                ! found unknown keyword
          call IO_error(300_pInt,ext_msg=tag)
      endselect
    enddo
@@ -346,7 +346,7 @@ subroutine numerics_init
  endif fileExists
 
 #ifdef Spectral
- select case(IO_lc(fftw_plan_mode))                                                                 ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
+ select case(IO_lc(fftw_plan_mode))                                                                ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
    case('estimate','fftw_estimate')                                                                 ! ordered from slow execution (but fast plan creation) to fast execution
      fftw_planner_flag = 64_pInt
    case('measure','fftw_measure')

@@ -557,7 +557,7 @@ program DAMASK_spectral_Driver
  
 !--------------------------------------------------------------------------------------------------
 ! report summary of whole calculation
- write(6,'(/,a)') ' ##################################################################'
+ write(6,'(/,a)') ' ###########################################################################'
  write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
                                    notConvergedCounter + convergedCounter, ' (', &
                                    real(convergedCounter, pReal)/&

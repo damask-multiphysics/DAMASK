@@ -131,7 +131,7 @@ subroutine AL_init(temperature)
    IO_read_JobBinaryFile, &
    IO_write_JobBinaryFile, &
    IO_timeStamp
- use debug, only : &
+ use debug, only: &
   debug_level, &
   debug_spectral, &
   debug_spectralRestart
@@ -172,7 +172,7 @@ subroutine AL_init(temperature)
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
  write(6,'(a)') ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  allocate (P            (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
@@ -308,7 +308,7 @@ use mesh, only: &
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
-  real(pReal), intent(in) :: &
+ real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
    loadCaseTime, &                                                                                  !< remaining time of current load case
@@ -327,7 +327,7 @@ use mesh, only: &
 ! PETSc Data
  PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_lambda
  PetscErrorCode :: ierr   
- SNESConvergedReason ::reason
+ SNESConvergedReason :: reason
 
  integer(pInt) :: i, j, k
  real(pReal), dimension(3,3) :: F_lambda33
@@ -381,7 +381,7 @@ use mesh, only: &
      f_aimDot = F_BC%maskFloat * F_BC%values
    elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
      f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
-   endif
+  endif
    if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
    F_aim_lastInc = F_aim
 
@@ -403,7 +403,8 @@ use mesh, only: &
 ! update local deformation gradient
  F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
                                math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid(3)])
- F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot),  [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
+ F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &
+                                                                       [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
  if (.not. guess) then                                                                              ! large strain forwarding
    do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
       F_lambda33 = reshape(F_lambda(:,i,j,k),[3,3])
@@ -548,11 +549,11 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 ! evaluate inertia
  dynamic: if (params%density > 0.0_pReal) then
    residual_F = ((F - F_lastInc)/params%timeinc - (F_lastInc - F_lastInc2)/params%timeincOld)/&
-                                                   ((params%timeinc + params%timeincOld)/2.0_pReal)
+                                                  ((params%timeinc + params%timeincOld)/2.0_pReal)
    residual_F = params%density*product(geomSize/grid)*residual_F
    field_real = 0.0_pReal
    field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3) = reshape(residual_F,[grid(1),grid(2),grid(3),3,3],&
-                                                               order=[4,5,1,2,3])                    ! field real has a different order
+                                                               order=[4,5,1,2,3])                   ! field real has a different order
    call Utilities_FFTforward()
    call Utilities_inverseLaplace()
    inertiaField_fourier = field_fourier
@@ -577,7 +578,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  field_fourier = field_fourier + polarAlpha*inertiaField_fourier
  call Utilities_fourierConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
  call Utilities_FFTbackward()
- 
+
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
  residual_F_lambda = polarBeta*F - reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),&
@@ -625,8 +626,6 @@ end subroutine AL_formResidual
 !> @brief convergence check
 !--------------------------------------------------------------------------------------------------
 subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
- use math, only: &
-   math_mul3333xx33
  use numerics, only: &
    itmax, &
    itmin, &
@@ -634,8 +633,10 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
    err_div_tolAbs, &
    err_curl_tolRel, &
    err_curl_tolAbs, &
-   err_stress_tolabs, &
-   err_stress_tolrel
+   err_stress_tolAbs, &
+   err_stress_tolRel
+ use math, only: &
+   math_mul3333xx33
  use FEsolving, only: &
    terminallyIll
 
@@ -658,15 +659,18 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
 ! stress BC handling
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
  err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
- curlTol   = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel,err_curl_tolAbs)
- divTol    = max(maxval(abs(P_av))         *err_div_tolRel,err_div_tolAbs)
- stressTol = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
+
+!--------------------------------------------------------------------------------------------------
+! error calculation
+ curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel,err_curl_tolAbs)
+ divTol     = max(maxval(abs(P_av))         *err_div_tolRel,err_div_tolAbs)
+ stressTol  = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
 
  converged: if ((totalIter >= itmin .and. &
                            all([ err_div/divTol, &
                                  err_curl/curlTol, &
-                                 err_stress/err_stress_tol       ] < 1.0_pReal)) &
-             .or.    terminallyIll)                
+                                 err_stress/stressTol       ] < 1.0_pReal)) &
+             .or.    terminallyIll) then
    reason = 1
  elseif (totalIter >= itmax) then converged
    reason = -1
@@ -694,7 +698,7 @@ end subroutine AL_converged
 subroutine AL_destroy()
  use DAMASK_spectral_Utilities, only: &
    Utilities_destroy
- 
+
  implicit none
  PetscErrorCode :: ierr
 

@@ -601,7 +601,6 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
  e = 0_pInt
- err_p = 0.0_pReal
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
    e = e + 1_pInt
    residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(:,:,:,:,1,e) + C_scale), &
@@ -627,14 +626,16 @@ end subroutine Polarisation_formResidual
 !--------------------------------------------------------------------------------------------------
 subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr)
  use numerics, only: &
-  itmax, &
-  itmin, &
-  err_div_tolRel, &
-  err_div_tolAbs, &
-  err_curl_tolRel, &
-  err_curl_tolAbs, &
-  err_stress_tolabs, &
-  err_stress_tolrel
+   itmax, &
+   itmin, &
+   err_div_tolRel, &
+   err_div_tolAbs, &
+   err_curl_tolRel, &
+   err_curl_tolAbs, &
+   err_stress_tolabs, &
+   err_stress_tolrel
+ use math, only: &
+   math_mul3333xx33
  use FEsolving, only: &
    terminallyIll
 
@@ -651,21 +652,24 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
  real(pReal) :: &
    curlTol, &
    divTol, &
-   stressBC_tol
+   stressTol
      
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
  err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
- curlTol = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel,err_curl_tolAbs)
- divTol  = max(maxval(abs(P_av))         *err_div_tolRel,err_div_tolAbs)
- stressBC_tol = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
+
+!--------------------------------------------------------------------------------------------------
+! error calculation
+ curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel,err_curl_tolAbs)
+ divTol     = max(maxval(abs(P_av))         *err_div_tolRel,err_div_tolAbs)
+ stressTol  = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
 
  converged: if ((totalIter >= itmin .and. &
                            all([ err_div/divTol, &
                                  err_curl/curlTol, &
-                                 err_stress/err_stress_tol       ] < 1.0_pReal)) &
-             .or.    terminallyIll)                
+                                 err_stress/stressTol       ] < 1.0_pReal)) &
+             .or.    terminallyIll) then
    reason = 1
  elseif (totalIter >= itmax) then converged
    reason = -1
@@ -676,12 +680,12 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
 !--------------------------------------------------------------------------------------------------
 ! report
  write(6,'(1/,a)') ' ... reporting .............................................................'
- write(6,'(/,a,f12.2,a,es12.2,a,es12.2,a)') ' error curl =      ', &
-            err_curl/curlTol,' (',err_curl,' -,  tol =',curlTol,')'
- write(6,'(a,f12.2,a,es12.8,a,es12.8,a)') ' error divergence = ', &
-            err_div/divTol,  ' (',err_div,' / m,  tol =',divTol,')'
- write(6,'(a,f8.2,a,es11.5,a,es11.4,a)')   ' error stress BC = ', &
-            err_stress/stressBC_tol, ' (',err_stress, ' Pa, tol =',stressBC_tol,')' 
+ write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error curl =       ', &
+            err_curl/curlTol,' (',err_curl,' -,   tol =',curlTol,')'
+ write(6,'(a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+            err_div/divTol,  ' (',err_div,' / m, tol =',divTol,')'
+ write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')   ' error stress BC =  ', &
+            err_stress/stressTol, ' (',err_stress, ' Pa,  tol =',stressTol,')' 
  write(6,'(/,a)') ' ==========================================================================='
  flush(6) 
 

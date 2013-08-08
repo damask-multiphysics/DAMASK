@@ -650,7 +650,7 @@ real(pReal) function utilities_curlRMS()
  integer(pInt)  ::  i, j, k, l 
  complex(pReal), dimension(3,3) ::  curl_fourier
 
- write(6,'(/,a)') ' ... calculating curl ................................................'
+ write(6,'(/,a)') ' ... calculating curl ......................................................'
  flush(6)
 !--------------------------------------------------------------------------------------------------
 ! calculating max curl criterion in Fourier space
