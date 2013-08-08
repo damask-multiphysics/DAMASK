@@ -134,7 +134,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    outdatedByNewInc, &
    outdatedFFN1, &
    terminallyIll, &
-   symmetricSolver
+   symmetricSolver, &
+   lastStep
  use math, only: &
    invnrmMandel
  use debug, only: &
@@ -216,7 +217,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal) :: temperature                                                                         ! temp by Abaqus is intent(in)
  real(pReal), dimension(6) ::   stress_h
  real(pReal), dimension(6,6) :: ddsdde_h
- integer(pInt) :: computationMode, i, cp_en, lastStep
+ integer(pInt) :: computationMode, i, cp_en
  logical :: cutBack
 
  temperature = temp                                                                                 ! temp is intent(in)

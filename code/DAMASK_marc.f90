@@ -185,7 +185,8 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
    outdatedByNewInc, &
    outdatedFFN1, &
    terminallyIll, &
-   symmetricSolver
+   symmetricSolver, &
+   lastLovl
  use math, only: &
    math_transpose33,&
    invnrmMandel
@@ -273,7 +274,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  logical :: cutBack
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
- integer(pInt) :: computationMode, i, cp_en, node, CPnodeID, lastLovl
+ integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
  !$ integer(pInt) :: defaultNumThreadsInt                                                           !< default value set by Marc
 
  if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0_pInt) then
