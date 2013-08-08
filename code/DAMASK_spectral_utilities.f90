@@ -567,7 +567,7 @@ subroutine utilities_fourierConvolution(fieldAim)
      field_fourier(i,j,k, 1:3,1:3) = temp33_Complex
    enddo; enddo; enddo
  endif
- field_fourier(1,1,1,1:3,1:3) = cmplx(fieldAim*real(product(grid),pReal),0.0_pReal,pReal)      ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
+ field_fourier(1,1,1,1:3,1:3) = cmplx(fieldAim*real(product(grid),pReal),0.0_pReal,pReal)           ! singular point at xi=(0.0,0.0,0.0) i.e. i=j=k=1  
 
 end subroutine utilities_fourierConvolution
  
@@ -659,33 +659,33 @@ real(pReal) function utilities_curlRMS()
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); 
  do i = 2_pInt, grid1Red - 1_pInt
    do l = 1_pInt, 3_pInt
-     curl_fourier(l,1) = (field_fourier(i,j,k,l,3)*xi(2,i,j,k)&
-                                - field_fourier(i,j,k,l,2)*xi(3,i,j,k))*TWOPIIMG
-     curl_fourier(l,2) = (-field_fourier(i,j,k,l,3)*xi(1,i,j,k)&
-                                +field_fourier(i,j,k,l,1)*xi(3,i,j,k) )*TWOPIIMG
-     curl_fourier(l,3) = ( field_fourier(i,j,k,l,2)*xi(1,i,j,k)&
-                                -field_fourier(i,j,k,l,1)*xi(2,i,j,k) )*TWOPIIMG
+     curl_fourier(l,1) = (+field_fourier(i,j,k,l,3)*xi(2,i,j,k)&
+                          -field_fourier(i,j,k,l,2)*xi(3,i,j,k))*TWOPIIMG
+     curl_fourier(l,2) = (+field_fourier(i,j,k,l,1)*xi(3,i,j,k)&
+                          -field_fourier(i,j,k,l,3)*xi(1,i,j,k))*TWOPIIMG
+     curl_fourier(l,3) = (+field_fourier(i,j,k,l,2)*xi(1,i,j,k)&
+                          -field_fourier(i,j,k,l,1)*xi(2,i,j,k))*TWOPIIMG
    enddo
    utilities_curlRMS = utilities_curlRMS + &
                        2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)
  enddo 
  do l = 1_pInt, 3_pInt
-   curl_fourier = (field_fourier(1,j,k,l,3)*xi(2,1,j,k)&
-                              - field_fourier(1,j,k,l,2)*xi(3,1,j,k))*TWOPIIMG
-   curl_fourier = (-field_fourier(1,j,k,l,3)*xi(1,1,j,k)&
-                              +field_fourier(1,j,k,l,1)*xi(3,1,j,k) )*TWOPIIMG
-   curl_fourier = ( field_fourier(1,j,k,l,2)*xi(1,1,j,k)&
-                              -field_fourier(1,j,k,l,1)*xi(2,1,j,k) )*TWOPIIMG
+   curl_fourier = (+field_fourier(1,j,k,l,3)*xi(2,1,j,k)&
+                   -field_fourier(1,j,k,l,2)*xi(3,1,j,k))*TWOPIIMG
+   curl_fourier = (+field_fourier(1,j,k,l,1)*xi(3,1,j,k)&
+                   -field_fourier(1,j,k,l,3)*xi(1,1,j,k))*TWOPIIMG
+   curl_fourier = (+field_fourier(1,j,k,l,2)*xi(1,1,j,k)&
+                   -field_fourier(1,j,k,l,1)*xi(2,1,j,k))*TWOPIIMG
  enddo
  utilities_curlRMS = utilities_curlRMS + &
                      2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal)   
  do l = 1_pInt, 3_pInt  
-   curl_fourier = ( field_fourier(grid1Red,j,k,l,3)*xi(2,grid1Red,j,k)&
-                              -field_fourier(grid1Red,j,k,l,2)*xi(3,grid1Red,j,k))*TWOPIIMG
-   curl_fourier = (-field_fourier(grid1Red,j,k,l,3)*xi(1,grid1Red,j,k)&
-                              +field_fourier(grid1Red,j,k,l,1)*xi(3,grid1Red,j,k))*TWOPIIMG
-   curl_fourier = ( field_fourier(grid1Red,j,k,l,2)*xi(1,grid1Red,j,k)&
-                              -field_fourier(grid1Red,j,k,l,1)*xi(2,grid1Red,j,k))*TWOPIIMG
+   curl_fourier = (+field_fourier(grid1Red,j,k,l,3)*xi(2,grid1Red,j,k)&
+                   -field_fourier(grid1Red,j,k,l,2)*xi(3,grid1Red,j,k))*TWOPIIMG
+   curl_fourier = (+field_fourier(grid1Red,j,k,l,1)*xi(3,grid1Red,j,k)&
+                   -field_fourier(grid1Red,j,k,l,3)*xi(1,grid1Red,j,k))*TWOPIIMG
+   curl_fourier = (+field_fourier(grid1Red,j,k,l,2)*xi(1,grid1Red,j,k)&
+                   -field_fourier(grid1Red,j,k,l,1)*xi(2,grid1Red,j,k))*TWOPIIMG
  enddo
  utilities_curlRMS = utilities_curlRMS + &
                      2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal) 

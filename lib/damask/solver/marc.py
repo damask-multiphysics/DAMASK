@@ -92,8 +92,8 @@ class Marc(Solver):
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
     if int(release)>=2013:
-       script = 'run_damask%s'%({False:'',True:'_'}[len(optimization)>0 or openMP])
-       script = 'run_damask%s%s'%({False:'',True:optimization}[len(optimization)>0],{False:'',True:'mp'}[openMP])
+       script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
+       script =  script+'%s%s'%({False:'',True:optimization}[optimization!=''],{False:'',True:'mp'}[openMP])
     else:
        script = 'run_marc'
     
