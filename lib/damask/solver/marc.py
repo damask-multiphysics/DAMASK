@@ -77,6 +77,8 @@ class Marc(Solver):
                  job          = 'job1',
                  logfile      = None,
                  compile      = False,
+                 optimization ='',
+                 openMP       = False
                 ):
 
     import os,damask.environment
@@ -89,7 +91,13 @@ class Marc(Solver):
     user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
-    cmd = os.path.join(self.toolsPath(rootRelation,release),'run_marc') + \
+    if int(release)>=2013:
+       script = 'run_damask%s'%({False:'',True:'_'}[len(optimization)>0 or openMP])
+       script = 'run_damask%s%s'%({False:'',True:optimization}[len(optimization)>0],{False:'',True:'mp'}[openMP])
+    else:
+       script = 'run_marc'
+    
+    cmd = os.path.join(self.toolsPath(rootRelation,release),script) + \
           ' -jid ' + model + '_' + job + \
           ' -nprocd 1  -autorst 0 -ci n  -cr n  -dcoup 0 -b no -v no'
 
