@@ -377,21 +377,21 @@ DFORTLOW="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTLOWMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp -WB -w90 -O0 $I8FFLAGS -I$MARC_SOURCE/common \
- -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB -w90 -O1 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp -WB -w90 -O1 $I8FFLAGS -I$MARC_SOURCE/common \
- -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
  -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 DFORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp -WB -w90 -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
- -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
  -openmp -openmp_report2 \
  -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 
@@ -411,21 +411,21 @@ then
    -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTLOWMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
-   -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTRAN="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
    -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp -WB -w90 $I8FFLAGS -I$MARC_SOURCE/common \
-   -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTHIGH="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -save -zero -mp -WB -w90 -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
      -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
   DFORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp -WB -w90 -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
-   -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2010 \
    -openmp -openmp_report2 \
    -I$MARC_SOURCE/bcssolver/common -I$MARC_SOURCE/mumpssolver/include $I8FFLAGS -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
 
