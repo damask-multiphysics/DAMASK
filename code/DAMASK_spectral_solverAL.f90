@@ -77,6 +77,7 @@ module DAMASK_spectral_solverAL
    F_aimDot, &                                                                                      !< assumed rate of average deformation gradient
    F_aim = math_I3, &                                                                               !< current prescribed deformation gradient
    F_aim_lastInc = math_I3, &                                                                       !< previous average deformation gradient
+   F_av = 0.0_pReal, &                                                                              !< average incompatible def grad field
    P_av = 0.0_pReal, &                                                                              !< average 1st Piola--Kirchhoff stress
    P_avLastEval = 0.0_pReal                                                                         !< average 1st Piola--Kirchhoff stress last call of CPFEM_general
  character(len=1024), private :: incInfo                                                            !< time and increment information
@@ -89,7 +90,7 @@ module DAMASK_spectral_solverAL
    S_scale = 0.0_pReal
  
  real(pReal), private :: &
-   err_stress, &                                                                                    !< deviation from stress BC
+   err_BC, &                                                                                    !< deviation from stress BC
    err_curl, &                                                                                      !< RMS of curl of F
    err_div                                                                                          !< RMS of div of P
  logical, private :: ForwardData
@@ -530,6 +531,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
+ F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
+ 
  if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
  if (totalIter <= PETScIter) then                                                                   ! new iteration
 !--------------------------------------------------------------------------------------------------
@@ -653,23 +656,24 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
  real(pReal) :: &
    curlTol, &
    divTol, &
-   stressTol
+   BC_tol
      
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
- err_stress = maxval(abs(mask_stress * (P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
+ err_BC = maxval(abs((1.0_pReal - mask_stress)*math_mul3333xx33(C_scale,F_aim-F_av) + &
+                         mask_stress              *(P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
 
 !--------------------------------------------------------------------------------------------------
 ! error calculation
  curlTol    = max(maxval(abs(F_aim-math_I3))*err_curl_tolRel,err_curl_tolAbs)
  divTol     = max(maxval(abs(P_av))         *err_div_tolRel,err_div_tolAbs)
- stressTol  = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
+ BC_tol     = max(maxval(abs(P_av))    *err_stress_tolrel,err_stress_tolabs)
 
  converged: if ((totalIter >= itmin .and. &
                            all([ err_div/divTol, &
                                  err_curl/curlTol, &
-                                 err_stress/stressTol       ] < 1.0_pReal)) &
+                                 err_BC/BC_tol       ] < 1.0_pReal)) &
              .or.    terminallyIll) then
    reason = 1
  elseif (totalIter >= itmax) then converged
@@ -686,7 +690,7 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
             err_div/divTol,  ' (',err_div,' / m, tol =',divTol,')'
  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')   ' error stress BC =  ', &
-            err_stress/stressTol, ' (',err_stress, ' Pa,  tol =',stressTol,')' 
+            err_BC/BC_tol, ' (',err_BC, ' Pa,  tol =',BC_tol,')' 
  write(6,'(/,a)') ' ==========================================================================='
  flush(6) 
 
