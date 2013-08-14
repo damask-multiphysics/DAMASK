@@ -1306,12 +1306,10 @@ integer(pInt)                   neighboring_el, &             ! element number o
                                 neighboring_ns, &             ! total number of active slip systems at neighboring material point
                                 c, &                          ! index of dilsocation character (edge, screw)
                                 s, &                          ! slip system index
-                                s2, &                         ! slip system index
                                 t, &                          ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
                                 dir, &
                                 n, &
-                                nRealNeighbors, &             ! number of really existing neighbors
-                                interactionCoefficient
+                                nRealNeighbors                ! number of really existing neighbors
 integer(pInt), dimension(2) ::  neighbor
 real(pReal)                     detFe, &
                                 detFp, &
@@ -1385,26 +1383,19 @@ forall (s = 1_pInt:ns) &
 
 
 !*** calculate the threshold shear stress for dislocation slip 
+!*** coefficients are corrected for the line tension effect 
+!*** (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
 
 myInteractionMatrix = 0.0_pReal
 myInteractionMatrix(1:ns,1:ns) = interactionMatrixSlipSlip(1:ns,1:ns,instance)
-if (latticeStruct == 1_pInt) then                                                                   ! in case of fcc: coefficients are corrected for the line tension effect (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
+if (latticeStruct < 3_pInt) then                                                                    ! only fcc and bcc
   do s = 1_pInt,ns 
     myRhoForest = max(rhoForest(s),significantRho(instance))
     correction = (  1.0_pReal - linetensionEffect(instance) &
                   + linetensionEffect(instance) &
                   * log(0.35_pReal * burgers(s,instance) * sqrt(myRhoForest)) &
                   / log(0.35_pReal * burgers(s,instance) * 1e6_pReal)) ** 2.0_pReal
-    do s2 = 1_pInt,ns
-      interactionCoefficient = &
-        lattice_interactionSlipSlip(slipSystemLattice(s,instance), &
-                                    slipSystemLattice(s2,instance), &
-                                    latticeStruct)
-      select case(interactionCoefficient)
-        case(4_pInt,5_pInt,6_pInt)                                                                  ! only correct junction forming interactions (4,5,6)
-          myInteractionMatrix(s,s2) = correction * myInteractionMatrix(s,s2) 
-      endselect
-    enddo
+    myInteractionMatrix(s,1:ns) = correction * myInteractionMatrix(s,1:ns) 
   enddo
 endif
 forall (s = 1_pInt:ns) &
