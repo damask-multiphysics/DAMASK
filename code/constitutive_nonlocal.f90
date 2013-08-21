@@ -194,7 +194,6 @@ nonSchmidCoeff
 
 logical, dimension(:), allocatable, private :: &
 shortRangeStressCorrection, &                                        !< flag indicating the use of the short range stress correction by a excess density gradient term
-deadZoneScaling, &
 probabilisticMultiplication
 
 public :: &
@@ -351,7 +350,6 @@ allocate(rhoSglRandomBinning(maxNinstance))
 allocate(surfaceTransmissivity(maxNinstance))
 allocate(grainboundaryTransmissivity(maxNinstance))
 allocate(shortRangeStressCorrection(maxNinstance))
-allocate(deadZoneScaling(maxNinstance))
 allocate(probabilisticMultiplication(maxNinstance))
 allocate(CFLfactor(maxNinstance))
 allocate(fEdgeMultiplication(maxNinstance))
@@ -388,7 +386,6 @@ fEdgeMultiplication = 0.0_pReal
 linetensionEffect = 0.0_pReal
 edgeJogFactor = 1.0_pReal
 shortRangeStressCorrection = .false.
-deadZoneScaling = .false.
 probabilisticMultiplication = .false.
 
 allocate(rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
@@ -581,8 +578,6 @@ do while (trim(line) /= '#EOF#')                                                
           do f = 1_pInt, lattice_maxNnonSchmid
             nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
           enddo
-        case('deadzonescaling','deadzone','deadscaling')
-          deadZoneScaling(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
           probabilisticMultiplication(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case default
@@ -1771,8 +1766,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,e
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
                                             gdotTotal, &                !< shear rate
                                             tauBack, &                  !< back stress from dislocation gradients on same slip system
-                                            tauThreshold, &             !< threshold shear stress
-                                            deadZoneSize
+                                            tauThreshold                !< threshold shear stress
 
 
 !*** initialize local variables
@@ -1851,15 +1845,9 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, rhoSgl(s,t) * v(s,t-4_pInt) < 0.0_pRea
 
 !*** Calculation of gdot and its tangent
 
-deadZoneSize = 0.0_pReal
-if (deadZoneScaling(myInstance)) then
-  forall(s = 1_pInt:ns, sum(abs(rhoSgl(s,1:8))) > 0.0_pReal) &
-    deadZoneSize(s) = maxval(abs(rhoSgl(s,5:8)) / (rhoSgl(s,1:4) + abs(rhoSgl(s,5:8))))
-endif
-gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
-do t = 1_pInt,4_pInt
-  dgdot_dtau(:,t) = rhoSgl(1:ns,t) * dv_dtau(1:ns,t) * burgers(1:ns,myInstance) * (1.0_pReal - deadZoneSize)
-enddo
+gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * burgers(1:ns,myInstance)
+forall (t = 1_pInt:4_pInt) &
+  dgdot_dtau(1:ns,t) = rhoSgl(1:ns,t) * dv_dtau(1:ns,t) * burgers(1:ns,myInstance)
 
 
 !*** Calculation of Lp and its tangent
