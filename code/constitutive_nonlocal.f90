@@ -1545,7 +1545,8 @@ endsubroutine
 !*********************************************************************
 !* calculates kinetics                                               *
 !*********************************************************************
-subroutine constitutive_nonlocal_kinetics(v, dv_dtau, tau, tauThreshold, c, Temperature, g, ip, el)
+subroutine constitutive_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
+                                          tauThreshold, c, Temperature, g, ip, el)
 
 use debug,    only: debug_level, &
                     debug_constitutive, &
@@ -1567,23 +1568,23 @@ integer(pInt), intent(in) ::                g, &                        !< curre
                                             c                           !< dislocation character (1:edge, 2:screw)
 real(pReal), intent(in) ::                  Temperature                 !< temperature
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
-             intent(in) ::                  tau, &                      !< resolved external shear stress (for bcc this already contains non Schmid effects)
+             intent(in) ::                  tau, &                      !< resolved external shear stress (without non Schmid effects)
+                                            tauNS, &                    !< resolved external shear stress (including non Schmid effects)
                                             tauThreshold                !< threshold shear stress
 
 !*** output variables
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
-                            intent(out) ::  v                           !< velocity
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
-                            intent(out) :: dv_dtau                      !< velocity derivative with respect to resolved shear stress
+                            intent(out) ::  v, &                        !< velocity
+                                            dv_dtau, &                  !< velocity derivative with respect to resolved shear stress (without non Schmid contributions)
+                                            dv_dtauNS                   !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
 
 !*** local variables
 integer(pInt)    ::                         instance, &                 !< current instance of this plasticity
                                             ns, &                       !< short notation for the total number of active slip systems
                                             s                           !< index of my current slip system
-real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            tauEff                      !< effective shear stress
 real(pReal)                                 tauRel_P, & 
                                             tauRel_S, &
+                                            tauEff, &                   !< effective shear stress
                                             tPeierls, &                 !< waiting time in front of a peierls barriers
                                             tSolidSolution, &           !< waiting time in front of a solid solution obstacle
                                             vViscous, &                 !< viscous glide velocity
@@ -1607,30 +1608,31 @@ real(pReal)                                 tauRel_P, &
 instance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = totalNslip(instance)
 
-tauEff = abs(tau) - tauThreshold
-
 v = 0.0_pReal
 dv_dtau = 0.0_pReal
+dv_dtauNS = 0.0_pReal
 
 
 if (Temperature > 0.0_pReal) then
   do s = 1_pInt,ns
-    if (tauEff(s) > 0.0_pReal) then
-      
+    if (abs(tau(s)) > tauThreshold(s)) then
+
       !* Peierls contribution
+      !* Effective stress includes non Schmid constributions
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
       
+      tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))                                      ! ensure that the effective stress is positive
       meanfreepath_P = burgers(s,instance)
       jumpWidth_P = burgers(s,instance)
       activationLength_P = doublekinkwidth(instance) * burgers(s,instance)
       activationVolume_P = activationLength_P * jumpWidth_P * burgers(s,instance)
       criticalStress_P = peierlsStress(s,c,instance)
       activationEnergy_P = criticalStress_P * activationVolume_P
-      tauRel_P = min(1.0_pReal, tauEff(s) / criticalStress_P)       ! ensure that the activation probability cannot become greater than one
+      tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                          ! ensure that the activation probability cannot become greater than one
       tPeierls = 1.0_pReal / fattack(instance) &
                * exp(activationEnergy_P / (KB * Temperature) &
                      * (1.0_pReal - tauRel_P**pParam(instance))**qParam(instance))
-      if (tauEff(s) < criticalStress_P) then
+      if (tauEff < criticalStress_P) then
         dtPeierls_dtau = tPeierls * pParam(instance) * qParam(instance) * activationVolume_P / (KB * Temperature) &
                        * (1.0_pReal - tauRel_P**pParam(instance))**(qParam(instance)-1.0_pReal) &
                                     * tauRel_P**(pParam(instance)-1.0_pReal) 
@@ -1642,17 +1644,18 @@ if (Temperature > 0.0_pReal) then
       !* Contribution from solid solution strengthening
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
 
+      tauEff = abs(tau(s)) - tauThreshold(s)
       meanfreepath_S = burgers(s,instance) / sqrt(solidSolutionConcentration(instance))
       jumpWidth_S = solidSolutionSize(instance) * burgers(s,instance)
       activationLength_S = burgers(s,instance) / sqrt(solidSolutionConcentration(instance))
       activationVolume_S = activationLength_S * jumpWidth_S * burgers(s,instance)
       activationEnergy_S = solidSolutionEnergy(instance)
       criticalStress_S = activationEnergy_S / activationVolume_S
-      tauRel_S = min(1.0_pReal, tauEff(s) / criticalStress_S)       ! ensure that the activation probability cannot become greater than one
+      tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)                                          ! ensure that the activation probability cannot become greater than one
       tSolidSolution = 1.0_pReal / fattack(instance) &
                      * exp(activationEnergy_S / (KB * Temperature) &
                            * (1.0_pReal - tauRel_S**pParam(instance))**qParam(instance))
-      if (tauEff(s) < criticalStress_S) then
+      if (tauEff < criticalStress_S) then
         dtSolidSolution_dtau = tSolidSolution * pParam(instance) * qParam(instance) &
                              * activationVolume_S / (KB * Temperature) &
                              * (1.0_pReal - tauRel_S**pParam(instance))**(qParam(instance)-1.0_pReal) &
@@ -1664,8 +1667,9 @@ if (Temperature > 0.0_pReal) then
 
       !* viscous glide velocity
       
+      tauEff = abs(tau(s)) - tauThreshold(s)
       mobility = burgers(s,instance) / viscosity(instance)
-      vViscous = mobility * tauEff(s)
+      vViscous = mobility * tauEff
 
 
       !* Mean velocity results from waiting time at peierls barriers and solid solution obstacles with respective meanfreepath of 
@@ -1674,11 +1678,9 @@ if (Temperature > 0.0_pReal) then
 
       v(s) = sign(1.0_pReal,tau(s)) &
            / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous)
-      dv_dtau(s) = v(s) * v(s) &
-                 * (dtPeierls_dtau / meanfreepath_P &
-                    + dtSolidSolution_dtau / meanfreepath_S &
-                    + 1.0_pReal / (mobility * tauEff(s)*tauEff(s)))
-
+      dv_dtau(s) = v(s) * v(s) * (dtSolidSolution_dtau / meanfreepath_S &
+                                 + mobility / (vViscous * vViscous))
+      dv_dtauNS(s) = v(s) * v(s) * dtPeierls_dtau / meanfreepath_P 
     endif
   enddo
 endif
@@ -1691,10 +1693,12 @@ endif
     write(6,*)
     write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_kinetics at el ip g',el,ip,g
     write(6,*)
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauThreshold / MPa', tauThreshold / 1e6_pReal
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau / 1e6_pReal
-    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauEff / MPa', tauEff / 1e6_pReal
+    write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauNS / MPa', tauNS / 1e6_pReal
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / 1e-3m/s', v * 1e3
     write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtau', dv_dtau
+    write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtauNS', dv_dtauNS
   endif
 #endif
 
@@ -1760,10 +1764,11 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,e
                                             rhoSgl                      !< single dislocation densities (including blocked) 
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
                                             v, &                        !< velocity
-                                            tau, &                      !< resolved shear stress including non Schmid and backstress terms
-                                            dgdot_dtau, &               !< derivative of the shear rate with respect to the shear stress
-                                            dv_dtau                     !< velocity derivative with respect to the shear stress
+                                            tauNS, &                    !< resolved shear stress including non Schmid and backstress terms
+                                            dv_dtau, &                  !< velocity derivative with respect to the shear stress
+                                            dv_dtauNS                   !< velocity derivative with respect to the shear stress
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
+                                            tau, &                      !< resolved shear stress including backstress terms
                                             gdotTotal, &                !< shear rate
                                             tauBack, &                  !< back stress from dislocation gradients on same slip system
                                             tauThreshold                !< threshold shear stress
@@ -1799,26 +1804,31 @@ tauThreshold = state%p(iTauF(1:ns,myInstance))
 
 do s = 1_pInt,ns
   sLattice = slipSystemLattice(s,myInstance)
-  tau(s,1:2) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure))
-  if (tau(s,1) > 0.0_pReal) then
-    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,1,s,myInstance))
-    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,3,s,myInstance))
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure))
+  tauNS(s,1) = tau(s)
+  tauNS(s,2) = tau(s)
+  if (tau(s) > 0.0_pReal) then
+    tauNS(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,1,s,myInstance))
+    tauNS(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,3,s,myInstance))
   else
-    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,2,s,myInstance))
-    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,4,s,myInstance))
+    tauNS(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,2,s,myInstance))
+    tauNS(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,4,s,myInstance))
   endif
-  forall (t = 1_pInt:4_pInt) &
-    tau(s,t) = tau(s,t) + tauBack(s)                                                                ! add backstress
 enddo
+forall (t = 1_pInt:4_pInt) &
+  tauNS(1:ns,t) = tauNS(1:ns,t) + tauBack                                                           ! add backstress
+tau = tau + tauBack                                                                                 ! add backstress
 
 
 !*** get dislocation velocity and its tangent and store the velocity in the state array
 
 ! edges 
-call constitutive_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), tau(1:ns,1), tauThreshold(1:ns), &
+call constitutive_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), dv_dtauNS(1:ns,1), &
+                                    tau(1:ns), tauNS(1:ns,1), tauThreshold(1:ns), &
                                     1_pInt, Temperature, g, ip, el)
 v(1:ns,2) = v(1:ns,1)
 dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
+dv_dtauNS(1:ns,2) = dv_dtauNS(1:ns,1)
 state%p(iV(1:ns,2,myInstance)) = v(1:ns,1)
 
 !screws
@@ -1826,11 +1836,13 @@ if (lattice_NnonSchmid(myStructure) == 0_pInt) then                             
   forall(t = 3_pInt:4_pInt)
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
+    dv_dtauNS(1:ns,t) = dv_dtauNS(1:ns,1)
     state%p(iV(1:ns,t,myInstance)) = v(1:ns,1)
   endforall
 else                                                                                                ! take non-Schmid contributions into account
   do t = 3_pInt,4_pInt
-    call constitutive_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), tau(1:ns,t), tauThreshold(1:ns), &
+    call constitutive_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), dv_dtauNS(1:ns,t), &
+                                        tau(1:ns), tauNS(1:ns,t), tauThreshold(1:ns), &
                                         2_pInt , Temperature, g, ip, el)
     state%p(iV(1:ns,t,myInstance)) = v(1:ns,t)
   enddo
@@ -1843,32 +1855,36 @@ forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, rhoSgl(s,t) * v(s,t-4_pInt) < 0.0_pRea
   rhoSgl(s,t-4_pInt) = rhoSgl(s,t-4_pInt) + abs(rhoSgl(s,t))
 
 
-!*** Calculation of gdot and its tangent
-
-gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * burgers(1:ns,myInstance)
-forall (t = 1_pInt:4_pInt) &
-  dgdot_dtau(1:ns,t) = rhoSgl(1:ns,t) * dv_dtau(1:ns,t) * burgers(1:ns,myInstance)
-
 
 !*** Calculation of Lp and its tangent
+
+gdotTotal = sum(rhoSgl(1:ns,1:4) * v, 2) * burgers(1:ns,myInstance)
 
 do s = 1_pInt,ns
   sLattice = slipSystemLattice(s,myInstance)  
   Lp = Lp + gdotTotal(s) * lattice_Sslip(1:3,1:3,1,sLattice,myStructure)
-  if (tau(s,1) > 0.0_pReal) then
+
+  ! Schmid contributions to tangent
+  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
+    dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
+        + lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) &
+        * sum(rhoSgl(s,1:4) * dv_dtau(s,1:4)) * burgers(s,myInstance)
+
+  ! non Schmid contributions to tangent
+  if (tau(s) > 0.0_pReal) then
     forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
       dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
-        + dgdot_dtau(s,1) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) &
-        + dgdot_dtau(s,2) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) & 
-        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,1,s,myInstance) &
-        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,3,s,myInstance)
+          + lattice_Sslip(i,j,1,sLattice,myStructure) &
+          * ( nonSchmidProjection(k,l,1,s,myInstance) * rhoSgl(s,3) * dv_dtauNS(s,3) & 
+            + nonSchmidProjection(k,l,3,s,myInstance) * rhoSgl(s,4) * dv_dtauNS(s,4) ) &
+          * burgers(s,myInstance)
   else
     forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
       dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
-        + dgdot_dtau(s,1) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) &
-        + dgdot_dtau(s,2) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) & 
-        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,2,s,myInstance) &
-        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,4,s,myInstance)
+          + lattice_Sslip(i,j,1,sLattice,myStructure) &
+          * ( nonSchmidProjection(k,l,2,s,myInstance) * rhoSgl(s,3) * dv_dtauNS(s,3) & 
+            + nonSchmidProjection(k,l,4,s,myInstance) * rhoSgl(s,4) * dv_dtauNS(s,4) ) &
+          * burgers(s,myInstance)
   endif
 enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
@@ -2331,11 +2347,11 @@ rhoDotMultiplication = 0.0_pReal
 if (myStructure == 2_pInt) then                                                                     ! BCC
   forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
     rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / burgers(s,myInstance) &                   ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / lambda0(s,myInstance) !&                     ! mean free path
-                                !* sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))                          ! ratio of screw to overall velocity determines edge generation
+                                * sqrt(rhoForest(s)) / lambda0(s,myInstance) ! &                      ! mean free path
+                                ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))               ! ratio of screw to overall velocity determines edge generation
     rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) / burgers(s,myInstance) &                   ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / lambda0(s,myInstance) !&                     ! mean free path
-                                !* sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))                          ! ratio of edge to overall velocity determines screw generation
+                                * sqrt(rhoForest(s)) / lambda0(s,myInstance) ! &                      ! mean free path
+                                ! * 2.0_pReal * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))               ! ratio of edge to overall velocity determines screw generation
   endforall
 
 else                                                                                                ! ALL OTHER STRUCTURES
