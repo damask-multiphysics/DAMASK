@@ -184,7 +184,7 @@ rhoDotMultiplicationOutput, &
 rhoDotSingle2DipoleGlideOutput, &
 rhoDotAthermalAnnihilationOutput, &
 rhoDotThermalAnnihilationOutput, &
-screwStressProjection                                                !< combined projection of Schmid and non-Schmid stresses for resolved shear stress acting on screws
+nonSchmidProjection                                                !< combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
 
 real(pReal), dimension(:,:,:,:,:,:), allocatable, private :: &
 compatibility                                                        !< slip system compatibility between me and my neighbors
@@ -770,8 +770,8 @@ peierlsStress = 0.0_pReal
 allocate(colinearSystem(maxTotalNslip,maxNinstance))
 colinearSystem = 0_pInt
 
-allocate(screwStressProjection(3,3,4,maxTotalNslip,maxNinstance))
-screwStressProjection = 0.0_pReal
+allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstance))
+nonSchmidProjection = 0.0_pReal
                                             
 
 do i = 1,maxNinstance
@@ -1010,25 +1010,25 @@ do i = 1,maxNinstance
   enddo
 
   
-  !*** combined projection of Schmid and non-Schmid stress contributions to resolved shear stress for screws
+  !*** combined projection of Schmid and non-Schmid contributions to the resolved shear stress (only for screws)
   !* four types t: 
   !*   1) positive screw at positive resolved stress
   !*   2) positive screw at negative resolved stress
   !*   3) negative screw at positive resolved stress
   !*   4) negative screw at negative resolved stress
   
-  screwStressProjection = 0.0_pReal
+  nonSchmidProjection = 0.0_pReal
   do s = 1_pInt,ns 
     do l = 1_pInt,lattice_NnonSchmid(myStructure)
-      screwStressProjection(1:3,1:3,1,s,i) = screwStressProjection(1:3,1:3,1,s,i) &
+      nonSchmidProjection(1:3,1:3,1,s,i) = nonSchmidProjection(1:3,1:3,1,s,i) &
           + nonSchmidCoeff(l,i) * lattice_Sslip(1:3,1:3,2*l,slipSystemLattice(s,i),myStructure)
-      screwStressProjection(1:3,1:3,2,s,i) = screwStressProjection(1:3,1:3,2,s,i) &
+      nonSchmidProjection(1:3,1:3,2,s,i) = nonSchmidProjection(1:3,1:3,2,s,i) &
           + nonSchmidCoeff(l,i) * lattice_Sslip(1:3,1:3,2*l+1,slipSystemLattice(s,i),myStructure)
     enddo
-    screwStressProjection(1:3,1:3,3,s,i) = -screwStressProjection(1:3,1:3,2,s,i)
-    screwStressProjection(1:3,1:3,4,s,i) = -screwStressProjection(1:3,1:3,1,s,i)
+    nonSchmidProjection(1:3,1:3,3,s,i) = -nonSchmidProjection(1:3,1:3,2,s,i)
+    nonSchmidProjection(1:3,1:3,4,s,i) = -nonSchmidProjection(1:3,1:3,1,s,i)
     forall (t = 1:4) &
-      screwStressProjection(1:3,1:3,t,s,i) = screwStressProjection(1:3,1:3,t,s,i) &
+      nonSchmidProjection(1:3,1:3,t,s,i) = nonSchmidProjection(1:3,1:3,t,s,i) &
           + lattice_Sslip(1:3,1:3,1,slipSystemLattice(s,i),myStructure)
   enddo
   
@@ -1581,7 +1581,7 @@ type(p_vec), intent(in) ::                  state                       ! micros
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
                             intent(out) ::  v                           ! velocity
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
-                   intent(out), optional :: dv_dtau                     ! velocity derivative with respect to resolved shear stress
+                            intent(out) :: dv_dtau                      ! velocity derivative with respect to resolved shear stress
 
 !*** local variables
 integer(pInt)    ::                         instance, &                 ! current instance of this plasticity
@@ -1619,7 +1619,7 @@ tauThreshold = state%p(iTauF(1:ns,instance))
 tauEff = abs(tau) - tauThreshold
 
 v = 0.0_pReal
-if (present(dv_dtau)) dv_dtau = 0.0_pReal
+dv_dtau = 0.0_pReal
 
 
 if (Temperature > 0.0_pReal) then
@@ -1639,14 +1639,12 @@ if (Temperature > 0.0_pReal) then
       tPeierls = 1.0_pReal / fattack(instance) &
                * exp(activationEnergy_P / (KB * Temperature) &
                      * (1.0_pReal - tauRel_P**pParam(instance))**qParam(instance))
-      if (present(dv_dtau)) then
-        if (tauEff(s) < criticalStress_P) then
-          dtPeierls_dtau = tPeierls * pParam(instance) * qParam(instance) * activationVolume_P / (KB * Temperature) &
-                         * (1.0_pReal - tauRel_P**pParam(instance))**(qParam(instance)-1.0_pReal) &
-                                      * tauRel_P**(pParam(instance)-1.0_pReal) 
-        else
-          dtPeierls_dtau = 0.0_pReal
-        endif
+      if (tauEff(s) < criticalStress_P) then
+        dtPeierls_dtau = tPeierls * pParam(instance) * qParam(instance) * activationVolume_P / (KB * Temperature) &
+                       * (1.0_pReal - tauRel_P**pParam(instance))**(qParam(instance)-1.0_pReal) &
+                                    * tauRel_P**(pParam(instance)-1.0_pReal) 
+      else
+        dtPeierls_dtau = 0.0_pReal
       endif
 
 
@@ -1663,15 +1661,13 @@ if (Temperature > 0.0_pReal) then
       tSolidSolution = 1.0_pReal / fattack(instance) &
                      * exp(activationEnergy_S / (KB * Temperature) &
                            * (1.0_pReal - tauRel_S**pParam(instance))**qParam(instance))
-      if (present(dv_dtau)) then
-        if (tauEff(s) < criticalStress_S) then
-          dtSolidSolution_dtau = tSolidSolution * pParam(instance) * qParam(instance) &
-                               * activationVolume_S / (KB * Temperature) &
-                               * (1.0_pReal - tauRel_S**pParam(instance))**(qParam(instance)-1.0_pReal) &
-                                              * tauRel_S**(pParam(instance)-1.0_pReal) 
-        else
-          dtSolidSolution_dtau = 0.0_pReal
-        endif
+      if (tauEff(s) < criticalStress_S) then
+        dtSolidSolution_dtau = tSolidSolution * pParam(instance) * qParam(instance) &
+                             * activationVolume_S / (KB * Temperature) &
+                             * (1.0_pReal - tauRel_S**pParam(instance))**(qParam(instance)-1.0_pReal) &
+                                            * tauRel_S**(pParam(instance)-1.0_pReal) 
+      else
+        dtSolidSolution_dtau = 0.0_pReal
       endif
 
 
@@ -1687,13 +1683,10 @@ if (Temperature > 0.0_pReal) then
 
       v(s) = sign(1.0_pReal,tau(s)) &
            / (tPeierls / meanfreepath_P + tSolidSolution / meanfreepath_S + 1.0_pReal / vViscous)
-      if (present(dv_dtau)) then
-        dv_dtau(s) = v(s) * v(s) &
-                   * (dtPeierls_dtau / meanfreepath_P &
-                      + dtSolidSolution_dtau / meanfreepath_S &
-                      + 1.0_pReal / (mobility * tauEff(s)*tauEff(s)))
-      endif
-
+      dv_dtau(s) = v(s) * v(s) &
+                 * (dtPeierls_dtau / meanfreepath_P &
+                    + dtSolidSolution_dtau / meanfreepath_S &
+                    + 1.0_pReal / (mobility * tauEff(s)*tauEff(s)))
 
     endif
   enddo
@@ -1710,9 +1703,7 @@ endif
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tau / MPa', tau / 1e6_pReal
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> tauEff / MPa', tauEff / 1e6_pReal
     write(6,'(a,/,12x,12(f12.5,1x))') '<< CONST >> v / 1e-3m/s', v * 1e3
-    if (present(dv_dtau)) then
-      write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtau', dv_dtau
-    endif
+    write(6,'(a,/,12x,12(e12.5,1x))') '<< CONST >> dv_dtau', dv_dtau
   endif
 #endif
 
@@ -1818,11 +1809,11 @@ do s = 1_pInt,ns
   sLattice = slipSystemLattice(s,myInstance)
   tau(s,1:2) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,myStructure))
   if (tau(s,1) > 0.0_pReal) then
-    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,1,s,myInstance))
-    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,3,s,myInstance))
+    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,1,s,myInstance))
+    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,3,s,myInstance))
   else
-    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,2,s,myInstance))
-    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), screwStressProjection(1:3,1:3,4,s,myInstance))
+    tau(s,3) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,2,s,myInstance))
+    tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,4,s,myInstance))
   endif
   forall (t = 1_pInt:4_pInt) &
     tau(s,t) = tau(s,t) + tauBack(s)                                                               ! add backstress
@@ -1878,15 +1869,15 @@ do s = 1_pInt,ns
       dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
         + dgdot_dtau(s,1) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) &
         + dgdot_dtau(s,2) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) & 
-        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,1,s,myInstance) &
-        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,3,s,myInstance)
+        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,1,s,myInstance) &
+        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,3,s,myInstance)
   else
     forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
       dLp_dTstar3333(i,j,k,l) = dLp_dTstar3333(i,j,k,l) &
         + dgdot_dtau(s,1) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) &
         + dgdot_dtau(s,2) * lattice_Sslip(i,j,1,sLattice,myStructure) * lattice_Sslip(k,l,1,sLattice,myStructure) & 
-        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,2,s,myInstance) &
-        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * screwStressProjection(k,l,4,s,myInstance)
+        + dgdot_dtau(s,3) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,2,s,myInstance) &
+        + dgdot_dtau(s,4) * lattice_Sslip(i,j,1,sLattice,myStructure) * nonSchmidProjection(k,l,4,s,myInstance)
   endif
 enddo
 dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
