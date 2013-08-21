@@ -1829,7 +1829,6 @@ call constitutive_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), dv_dtauNS(1:ns,1
 v(1:ns,2) = v(1:ns,1)
 dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
 dv_dtauNS(1:ns,2) = dv_dtauNS(1:ns,1)
-state%p(iV(1:ns,2,myInstance)) = v(1:ns,1)
 
 !screws
 if (lattice_NnonSchmid(myStructure) == 0_pInt) then                                                 ! no non-Schmid contributions
@@ -1837,23 +1836,26 @@ if (lattice_NnonSchmid(myStructure) == 0_pInt) then                             
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
     dv_dtauNS(1:ns,t) = dv_dtauNS(1:ns,1)
-    state%p(iV(1:ns,t,myInstance)) = v(1:ns,1)
   endforall
 else                                                                                                ! take non-Schmid contributions into account
   do t = 3_pInt,4_pInt
     call constitutive_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), dv_dtauNS(1:ns,t), &
                                         tau(1:ns), tauNS(1:ns,t), tauThreshold(1:ns), &
                                         2_pInt , Temperature, g, ip, el)
-    state%p(iV(1:ns,t,myInstance)) = v(1:ns,t)
   enddo
 endif
+
+
+!*** store velocity in state
+
+forall (t = 1_pInt:4_pInt) &
+  state%p(iV(1:ns,t,myInstance)) = v(1:ns,t)
 
 
 !*** Bauschinger effect
 
 forall (s = 1_pInt:ns, t = 5_pInt:8_pInt, rhoSgl(s,t) * v(s,t-4_pInt) < 0.0_pReal) &
   rhoSgl(s,t-4_pInt) = rhoSgl(s,t-4_pInt) + abs(rhoSgl(s,t))
-
 
 
 !*** Calculation of Lp and its tangent
