@@ -124,8 +124,8 @@ for file in files:
   theTable.info_append(extra_header+[
     scriptID,
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
-    "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
-    "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
+    "size\tx %e\ty %e\tz %e"%(info['size'][0],info['size'][1],info['size'][2],),
+    "origin\tx %e\ty %e\tz %e"%(info['origin'][0],info['origin'][1],info['origin'][2],),
     "homogenization\t%i"%info['homogenization'],
     "microstructures\t%i"%(info['microstructures']),
     ])
