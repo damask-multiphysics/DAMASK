@@ -1550,7 +1550,7 @@ endsubroutine
 !*********************************************************************
 !* calculates kinetics                                               *
 !*********************************************************************
-subroutine constitutive_nonlocal_kinetics(v, tau, c, Temperature, state, g, ip, el, dv_dtau)
+subroutine constitutive_nonlocal_kinetics(v, dv_dtau, tau, tauThreshold, c, Temperature, g, ip, el)
 
 use debug,    only: debug_level, &
                     debug_constitutive, &
@@ -1566,56 +1566,52 @@ use material, only: material_phase, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                g, &                        ! current grain number
-                                            ip, &                       ! current integration point
-                                            el, &                       ! current element number
-                                            c                           ! dislocation character (1:edge, 2:screw)
-real(pReal), intent(in) ::                  Temperature                 ! temperature
+integer(pInt), intent(in) ::                g, &                        !< current grain number
+                                            ip, &                       !< current integration point
+                                            el, &                       !< current element number
+                                            c                           !< dislocation character (1:edge, 2:screw)
+real(pReal), intent(in) ::                  Temperature                 !< temperature
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
-             intent(in) ::                  tau                         ! resolved external shear stress (for bcc this already contains non Schmid effects)
-type(p_vec), intent(in) ::                  state                       ! microstructural state
-
-!*** input/output variables
+             intent(in) ::                  tau, &                      !< resolved external shear stress (for bcc this already contains non Schmid effects)
+                                            tauThreshold                !< threshold shear stress
 
 !*** output variables
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
-                            intent(out) ::  v                           ! velocity
+                            intent(out) ::  v                           !< velocity
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))), &
-                            intent(out) :: dv_dtau                      ! velocity derivative with respect to resolved shear stress
+                            intent(out) :: dv_dtau                      !< velocity derivative with respect to resolved shear stress
 
 !*** local variables
-integer(pInt)    ::                         instance, &                 ! current instance of this plasticity
-                                            ns, &                       ! short notation for the total number of active slip systems
-                                            s                           ! index of my current slip system
+integer(pInt)    ::                         instance, &                 !< current instance of this plasticity
+                                            ns, &                       !< short notation for the total number of active slip systems
+                                            s                           !< index of my current slip system
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            tauThreshold, &             ! threshold shear stress
-                                            tauEff                      ! effective shear stress
+                                            tauEff                      !< effective shear stress
 real(pReal)                                 tauRel_P, & 
                                             tauRel_S, &
-                                            tPeierls, &                 ! waiting time in front of a peierls barriers
-                                            tSolidSolution, &           ! waiting time in front of a solid solution obstacle
-                                            vViscous, &                 ! viscous glide velocity
-                                            dtPeierls_dtau, &           ! derivative with respect to resolved shear stress
-                                            dtSolidSolution_dtau, &     ! derivative with respect to resolved shear stress
-                                            meanfreepath_S, &           ! mean free travel distance for dislocations between two solid solution obstacles
-                                            meanfreepath_P, &           ! mean free travel distance for dislocations between two Peierls barriers
-                                            jumpWidth_P, &              ! depth of activated area
-                                            jumpWidth_S, &              ! depth of activated area
-                                            activationLength_P, &       ! length of activated dislocation line
-                                            activationLength_S, &       ! length of activated dislocation line
-                                            activationVolume_P, &       ! volume that needs to be activated to overcome barrier
-                                            activationVolume_S, &       ! volume that needs to be activated to overcome barrier
-                                            activationEnergy_P, &       ! energy that is needed to overcome barrier
-                                            activationEnergy_S, &       ! energy that is needed to overcome barrier
-                                            criticalStress_P, &         ! maximum obstacle strength
-                                            criticalStress_S, &         ! maximum obstacle strength
-                                            mobility                    ! dislocation mobility
+                                            tPeierls, &                 !< waiting time in front of a peierls barriers
+                                            tSolidSolution, &           !< waiting time in front of a solid solution obstacle
+                                            vViscous, &                 !< viscous glide velocity
+                                            dtPeierls_dtau, &           !< derivative with respect to resolved shear stress
+                                            dtSolidSolution_dtau, &     !< derivative with respect to resolved shear stress
+                                            meanfreepath_S, &           !< mean free travel distance for dislocations between two solid solution obstacles
+                                            meanfreepath_P, &           !< mean free travel distance for dislocations between two Peierls barriers
+                                            jumpWidth_P, &              !< depth of activated area
+                                            jumpWidth_S, &              !< depth of activated area
+                                            activationLength_P, &       !< length of activated dislocation line
+                                            activationLength_S, &       !< length of activated dislocation line
+                                            activationVolume_P, &       !< volume that needs to be activated to overcome barrier
+                                            activationVolume_S, &       !< volume that needs to be activated to overcome barrier
+                                            activationEnergy_P, &       !< energy that is needed to overcome barrier
+                                            activationEnergy_S, &       !< energy that is needed to overcome barrier
+                                            criticalStress_P, &         !< maximum obstacle strength
+                                            criticalStress_S, &         !< maximum obstacle strength
+                                            mobility                    !< dislocation mobility
 
 
 instance = phase_plasticityInstance(material_phase(g,ip,el))
 ns = totalNslip(instance)
 
-tauThreshold = state%p(iTauF(1:ns,instance))
 tauEff = abs(tau) - tauThreshold
 
 v = 0.0_pReal
@@ -1739,42 +1735,43 @@ use mesh,     only: mesh_ipVolume
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                g, &                        ! current grain number
-                                            ip, &                       ! current integration point
-                                            el                          ! current element number
-real(pReal), intent(in) ::                  Temperature                 ! temperature
-real(pReal), dimension(6), intent(in) ::    Tstar_v                     ! 2nd Piola-Kirchhoff stress in Mandel notation
+integer(pInt), intent(in) ::                g, &                        !< current grain number
+                                            ip, &                       !< current integration point
+                                            el                          !< current element number
+real(pReal), intent(in) ::                  Temperature                 !< temperature
+real(pReal), dimension(6), intent(in) ::    Tstar_v                     !< 2nd Piola-Kirchhoff stress in Mandel notation
 
 !*** input/output variables
-type(p_vec), intent(inout) ::               state                       ! microstructural state
+type(p_vec), intent(inout) ::               state                       !< microstructural state
 
 !*** output variables
-real(pReal), dimension(3,3), intent(out) :: Lp                          ! plastic velocity gradient
-real(pReal), dimension(9,9), intent(out) :: dLp_dTstar99                ! derivative of Lp with respect to Tstar (9x9 matrix)
+real(pReal), dimension(3,3), intent(out) :: Lp                          !< plastic velocity gradient
+real(pReal), dimension(9,9), intent(out) :: dLp_dTstar99                !< derivative of Lp with respect to Tstar (9x9 matrix)
 
 !*** local variables
-integer(pInt)                               myInstance, &               ! current instance of this plasticity
-                                            myStructure, &              ! current lattice structure
-                                            ns, &                       ! short notation for the total number of active slip systems
+integer(pInt)                               myInstance, &               !< current instance of this plasticity
+                                            myStructure, &              !< current lattice structure
+                                            ns, &                       !< short notation for the total number of active slip systems
                                             c, &
                                             i, &
                                             j, &
                                             k, &
                                             l, &
-                                            t, &                        ! dislocation type
-                                            s, &                        ! index of my current slip system
-                                            sLattice                    ! index of my current slip system according to lattice order
-real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              ! derivative of Lp with respect to Tstar (3x3x3x3 matrix)
+                                            t, &                        !< dislocation type
+                                            s, &                        !< index of my current slip system
+                                            sLattice                    !< index of my current slip system according to lattice order
+real(pReal), dimension(3,3,3,3) ::          dLp_dTstar3333              !< derivative of Lp with respect to Tstar (3x3x3x3 matrix)
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),8) :: &
-                                            rhoSgl                      ! single dislocation densities (including blocked) 
+                                            rhoSgl                      !< single dislocation densities (including blocked) 
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el))),4) :: &
-                                            v, &                        ! velocity
-                                            tau, &                      ! resolved shear stress including non Schmid and backstress terms
-                                            dgdot_dtau, &               ! derivative of the shear rate with respect to the shear stress
-                                            dv_dtau                     ! velocity derivative with respect to the shear stress
+                                            v, &                        !< velocity
+                                            tau, &                      !< resolved shear stress including non Schmid and backstress terms
+                                            dgdot_dtau, &               !< derivative of the shear rate with respect to the shear stress
+                                            dv_dtau                     !< velocity derivative with respect to the shear stress
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(g,ip,el)))) :: &
-                                            gdotTotal, &                ! shear rate
-                                            tauBack, &                  ! back stress from dislocation gradients on same slip system
+                                            gdotTotal, &                !< shear rate
+                                            tauBack, &                  !< back stress from dislocation gradients on same slip system
+                                            tauThreshold, &             !< threshold shear stress
                                             deadZoneSize
 
 
@@ -1800,9 +1797,10 @@ where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(myInstan
   rhoSgl = 0.0_pReal
 
 tauBack = state%p(iTauB(1:ns,myInstance))
+tauThreshold = state%p(iTauF(1:ns,myInstance))
 
 
-!*** get effective resolved shear stress
+!*** get resolved shear stress
 !*** for screws possible non-schmid contributions are also taken into account
 
 do s = 1_pInt,ns
@@ -1816,25 +1814,30 @@ do s = 1_pInt,ns
     tau(s,4) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmidProjection(1:3,1:3,4,s,myInstance))
   endif
   forall (t = 1_pInt:4_pInt) &
-    tau(s,t) = tau(s,t) + tauBack(s)                                                               ! add backstress
+    tau(s,t) = tau(s,t) + tauBack(s)                                                                ! add backstress
 enddo
 
 
 !*** get dislocation velocity and its tangent and store the velocity in the state array
 
-if (myStructure == 1_pInt .and. lattice_NnonSchmid(myStructure) == 0_pInt) then                    ! for fcc all velcities are equal
-  call constitutive_nonlocal_kinetics(v(1:ns,1), tau(1:ns,1), 1_pInt, Temperature, state, &
-                                      g, ip, el, dv_dtau(1:ns,1))
-  do t = 1_pInt,4_pInt
+! edges 
+call constitutive_nonlocal_kinetics(v(1:ns,1), dv_dtau(1:ns,1), tau(1:ns,1), tauThreshold(1:ns), &
+                                    1_pInt, Temperature, g, ip, el)
+v(1:ns,2) = v(1:ns,1)
+dv_dtau(1:ns,2) = dv_dtau(1:ns,1)
+state%p(iV(1:ns,2,myInstance)) = v(1:ns,1)
+
+!screws
+if (lattice_NnonSchmid(myStructure) == 0_pInt) then                                                 ! no non-Schmid contributions
+  forall(t = 3_pInt:4_pInt)
     v(1:ns,t) = v(1:ns,1)
     dv_dtau(1:ns,t) = dv_dtau(1:ns,1)
     state%p(iV(1:ns,t,myInstance)) = v(1:ns,1)
-  enddo
-else                                                                                               ! for all other lattice structures the velocities may vary with character and sign
-  do t = 1_pInt,4_pInt
-    c = (t-1_pInt)/2_pInt+1_pInt
-    call constitutive_nonlocal_kinetics(v(1:ns,t), tau(1:ns,t), c, Temperature, state, &
-                                        g, ip, el, dv_dtau(1:ns,t))
+  endforall
+else                                                                                                ! take non-Schmid contributions into account
+  do t = 3_pInt,4_pInt
+    call constitutive_nonlocal_kinetics(v(1:ns,t), dv_dtau(1:ns,t), tau(1:ns,t), tauThreshold(1:ns), &
+                                        2_pInt , Temperature, g, ip, el)
     state%p(iV(1:ns,t,myInstance)) = v(1:ns,t)
   enddo
 endif
