@@ -1012,7 +1012,6 @@ do i = 1,maxNinstance
   !*   3) negative screw at positive resolved stress
   !*   4) negative screw at negative resolved stress
   
-  nonSchmidProjection = 0.0_pReal
   do s = 1_pInt,ns 
     do l = 1_pInt,lattice_NnonSchmid(myStructure)
       nonSchmidProjection(1:3,1:3,1,s,i) = nonSchmidProjection(1:3,1:3,1,s,i) &
