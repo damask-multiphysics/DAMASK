@@ -308,6 +308,9 @@ type(tSolutionState) function basicPETSc_solution( &
    call IO_write_jobBinaryFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
+   call IO_write_jobBinaryFile(777,'F_lastInc2',size(F_lastInc2))                                   ! writing F_lastInc field to file
+   write (777,rec=1) F_lastInc2
+   close (777)
    call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
    write (777,rec=1) F_aimDot
    close(777)
