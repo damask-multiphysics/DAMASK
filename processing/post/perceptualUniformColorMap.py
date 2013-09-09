@@ -29,8 +29,7 @@ class extendableOption(Option):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing Cauchy stress based on given column(s) of
-deformation gradient and first Piola--Kirchhoff stress.
+Produces perceptually linear diverging and sequential colormaps in formats suitable for visualization software or simply as a list of interpolated colors.
 
 """ + string.replace('$Id$','\n','\\n')
 )
