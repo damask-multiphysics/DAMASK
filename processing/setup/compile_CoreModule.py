@@ -69,7 +69,7 @@ baseDir = damaskEnv.relPath('processing/')
 codeDir = damaskEnv.relPath('code/')
 
 if   'imkl' in damaskEnv.pathInfo and damaskEnv.pathInfo['imkl'] != '' and options.compiler != 'gfortran':
-  lib_lapack = '-L%s/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lpthread -lm'%(os.path.join(damaskEnv.pathInfo['imkl']))
+  lib_lapack = '-L%s/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm'%(os.path.join(damaskEnv.pathInfo['imkl']))
 elif 'acml' in damaskEnv.pathInfo and damaskEnv.pathInfo['acml'] != '':
   lib_lapack = '-L%s/%s64/lib -lacml'%(os.path.join(damaskEnv.pathInfo['acml']),compiler)
 elif 'lapack' in damaskEnv.pathInfo and damaskEnv.pathInfo['lapack'] != '':
