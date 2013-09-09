@@ -3,6 +3,8 @@
 import os,sys,string,damask
 from optparse import OptionParser
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -10,7 +12,7 @@ from optparse import OptionParser
 
 parser = OptionParser(usage='%prog [options] [file[s]]', description = """
 Show components of given ASCIItable(s).
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 
@@ -30,15 +32,18 @@ parser.set_defaults(nolabels = False)
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':sys.stdout})
+      files.append({'name':name, 'input':open(name), 'output':sys.stdout, 'croak':sys.stderr})
 
 # ------------------------------------------ extract labels ---------------------------------------  
 
 for file in files:
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+
   table = damask.ASCIItable(file['input'],file['output'],buffered=False,labels=not options.nolabels)        # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
   if options.head or options.info:   file['output'].write('\n'.join(table.info)+'\n')

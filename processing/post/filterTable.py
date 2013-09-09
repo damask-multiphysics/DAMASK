@@ -3,6 +3,9 @@
 import os,re,sys,fnmatch,math,string,damask
 from optparse import OptionParser, Option
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 # -----------------------------
 class extendableOption(Option):
 # -----------------------------
@@ -33,7 +36,7 @@ Filter rows according to condition and columns by either white or black listing.
 Examples:
 Every odd row if x coordinate is positive -- " #ip.x# >= 0.0 and #_row_#%2 == 1 ).
 All rows where label 'foo' equals 'bar' -- " #s#foo# == \"bar\" "
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 
@@ -55,16 +58,17 @@ parser.set_defaults(condition = '')
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   specials = { \
                '_row_': 0,
@@ -72,7 +76,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
+  table.info_append(string.replace(scriptID,'\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
   labels = []
