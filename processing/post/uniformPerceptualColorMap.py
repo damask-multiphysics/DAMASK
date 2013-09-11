@@ -28,9 +28,8 @@ class extendableOption(Option):
                                # MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing Cauchy stress based on given column(s) of
-deformation gradient and first Piola--Kirchhoff stress.
+parser = OptionParser(option_class=extendableOption, usage='%prog options [file]', description = """
+Generate uniform perceptual colormap.
 
 """ + string.replace('$Id$','\n','\\n')
 )
@@ -49,18 +48,14 @@ parser.add_option('-t','--trim', dest='trim', type='float', nargs = 2, \
                   help='trim the colormap w.r.t the given values [%default]')
 
 parser.set_defaults(colormodel = 'RGB')
-parser.set_defaults(outtype = 'paraview')
+parser.set_defaults(format = 'paraview')
 parser.set_defaults(steps = 10)
 parser.set_defaults(trim = [-1.0,1.0])
 parser.set_defaults(left = [1.0,1.0,1.0])
 parser.set_defaults(right = [0.0,0.0,0.0])
 (options,filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
-
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})  
+  
   
 # -----------------------------------------------------------------------------------------------------  
 
@@ -68,25 +63,30 @@ leftColor = Color(options.colormodel.upper(),list(options.left))
 rightColor = Color(options.colormodel.upper(),list(options.right))
 
 myColormap = Colormap(leftColor,rightColor)
-outColormap = myColormap.export(filenames[0],options.format.lower(),options.steps,list(options.trim))
 
-if options.format.lower() == 'paraview':
-  if filenames[0].endswith('.xml'):
-    outFile = open('%s'%filenames[0],'w')
-  else:
-    outFile = open('%s.xml'%filenames[0],'w')
 
-elif options.format.lower() == 'gmsh':
-  if filenames[0].endswith('.msh'): 
-    outFile = open('%s'%filenames[0],'w')
-  else:
-    outFile = open('%s.msh'%filenames[0],'w')
+if filenames == []:
+  outFile = sys.stdout
+  outColormap = myColormap.export('uniform perceptual colormap',options.format.lower(),options.steps,list(options.trim))
+else:
+  outColormap = myColormap.export(filenames[0],options.format.lower(),options.steps,list(options.trim))
+  if options.format.lower() == 'paraview':
+    if filenames[0].endswith('.xml'):
+      outFile = open('%s'%filenames[0],'w')
+    else:
+      outFile = open('%s.xml'%filenames[0],'w')
 
-elif options.format.lower() == 'raw':
-  if filenames[0].endswith('.txt'): 
-    outFile = open('%s'%filenames[0],'w')
-  else:
-    outFile = open('%s.txt'%filenames[0],'w')
+  elif options.format.lower() == 'gmsh':
+    if filenames[0].endswith('.msh'): 
+      outFile = open('%s'%filenames[0],'w')
+    else:
+      outFile = open('%s.msh'%filenames[0],'w')
+
+  elif options.format.lower() == 'raw':
+    if filenames[0].endswith('.txt'): 
+      outFile = open('%s'%filenames[0],'w')
+    else:
+      outFile = open('%s.txt'%filenames[0],'w')
 
 outFile.write(outColormap)
 outFile.close()
