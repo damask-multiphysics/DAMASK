@@ -880,53 +880,54 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      endif
      
    case ('hex')
-     if (CoverA >= 1.0_pReal) then                 ! checking physical significance of c/a
-       lattice_hex_Nstructure = lattice_hex_Nstructure + 1_pInt  ! count instances of hex structures
-       myStructure = 2_pInt + lattice_hex_Nstructure             ! 3,4,5,.. for hex
-       myNslipSystem = lattice_hex_NslipSystem     ! size of slip system families
-       myNtwinSystem = lattice_hex_NtwinSystem     ! size of twin system families
-       myNslip = lattice_hex_Nslip                 ! overall number of slip systems
-       myNtwin = lattice_hex_Ntwin                 ! overall number of twin systems
-       processMe = .true.
-       lattice_NnonSchmid(myStructure) = lattice_hex_NnonSchmid    ! Currently no known non schmid contributions for hex (to be changed later)
-! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexgonal system (a, b, c)
-       do i = 1_pInt,myNslip
-         sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
-         sd(2,i) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*(0.5_pReal*sqrt(3.0_pReal))
-         sd(3,i) =  lattice_hex_systemSlip(4,i)*CoverA
-         sn(1,i) =  lattice_hex_systemSlip(5,i)           ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
-         sn(2,i) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
-         sn(3,i) =  lattice_hex_systemSlip(8,i)/CoverA
-         do j = 1_pInt,lattice_hex_NnonSchmid
-           sns(1:3,1:3,1,j,i) = 0.0_pReal 
-           sns(1:3,1:3,2,j,i) = 0.0_pReal 
-         enddo  
-       enddo
-       do i = 1_pInt,myNtwin
-         td(1,i) =  lattice_hex_systemTwin(1,i)*1.5_pReal
-         td(2,i) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*(0.5_pReal*sqrt(3.0_pReal))
-         td(3,i) =  lattice_hex_systemTwin(4,i)*CoverA
-         tn(1,i) =  lattice_hex_systemTwin(5,i)
-         tn(2,i) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/sqrt(3.0_pReal)
-         tn(3,i) =  lattice_hex_systemTwin(8,i)/CoverA
-
-         select case(lattice_hex_shearTwin(i))                                          ! from Christian & Mahajan 1995 p.29
-           case (1_pInt)                                                                ! <-10.1>{10.2}
-                    ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
-           case (2_pInt)                                                                ! <11.6>{-1-1.1}
-                    ts(i) = 1.0_pReal/CoverA
-           case (3_pInt)                                                                ! <10.-2>{10.1}
-                    ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
-           case (4_pInt)                                                                ! <11.-3>{11.2}
-                    ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
-         end select
-
-       enddo
-       interactionSlipSlip => lattice_hex_interactionSlipSlip
-       interactionSlipTwin => lattice_hex_interactionSlipTwin
-       interactionTwinSlip => lattice_hex_interactionTwinSlip
-       interactionTwinTwin => lattice_hex_interactionTwinTwin
+     if (CoverA < 1.0_pReal) then                 ! checking physical significance of c/a
+       call IO_error(206_pInt)
      endif
+     lattice_hex_Nstructure = lattice_hex_Nstructure + 1_pInt  ! count instances of hex structures
+     myStructure = 2_pInt + lattice_hex_Nstructure             ! 3,4,5,.. for hex
+     myNslipSystem = lattice_hex_NslipSystem     ! size of slip system families
+     myNtwinSystem = lattice_hex_NtwinSystem     ! size of twin system families
+     myNslip = lattice_hex_Nslip                 ! overall number of slip systems
+     myNtwin = lattice_hex_Ntwin                 ! overall number of twin systems
+     processMe = .true.
+     lattice_NnonSchmid(myStructure) = lattice_hex_NnonSchmid    ! Currently no known non schmid contributions for hex (to be changed later)
+
+     ! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexgonal system (a, b, c)
+     do i = 1_pInt,myNslip
+       sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
+       sd(2,i) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*(0.5_pReal*sqrt(3.0_pReal))
+       sd(3,i) =  lattice_hex_systemSlip(4,i)*CoverA
+       sn(1,i) =  lattice_hex_systemSlip(5,i)           ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
+       sn(2,i) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
+       sn(3,i) =  lattice_hex_systemSlip(8,i)/CoverA
+       do j = 1_pInt,lattice_hex_NnonSchmid
+         sns(1:3,1:3,1,j,i) = 0.0_pReal 
+         sns(1:3,1:3,2,j,i) = 0.0_pReal 
+       enddo  
+     enddo
+     do i = 1_pInt,myNtwin
+       td(1,i) =  lattice_hex_systemTwin(1,i)*1.5_pReal
+       td(2,i) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*(0.5_pReal*sqrt(3.0_pReal))
+       td(3,i) =  lattice_hex_systemTwin(4,i)*CoverA
+       tn(1,i) =  lattice_hex_systemTwin(5,i)
+       tn(2,i) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/sqrt(3.0_pReal)
+       tn(3,i) =  lattice_hex_systemTwin(8,i)/CoverA
+       select case(lattice_hex_shearTwin(i))                                          ! from Christian & Mahajan 1995 p.29
+         case (1_pInt)                                                                ! <-10.1>{10.2}
+                  ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
+         case (2_pInt)                                                                ! <11.6>{-1-1.1}
+                  ts(i) = 1.0_pReal/CoverA
+         case (3_pInt)                                                                ! <10.-2>{10.1}
+                  ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
+         case (4_pInt)                                                                ! <11.-3>{11.2}
+                  ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
+       end select
+     enddo
+
+     interactionSlipSlip => lattice_hex_interactionSlipSlip
+     interactionSlipTwin => lattice_hex_interactionSlipTwin
+     interactionTwinSlip => lattice_hex_interactionTwinSlip
+     interactionTwinTwin => lattice_hex_interactionTwinTwin
  end select
 
  if (processMe) then
@@ -1064,13 +1065,14 @@ pure function lattice_symmetrizeC66(structName,C66)
 ! SlipTwinInteraction
 ! TwinSlipInteraction
 ! TwinTwinInteraction
+! NnonSchmid
 !--------------------------------------------------------------------------------------------------
 function lattice_configNchunks(struct)
  use prec, only: &
    pInt
 
  implicit none
- integer(pInt), dimension(6)  :: lattice_configNchunks
+ integer(pInt), dimension(7)  :: lattice_configNchunks
  character(len=*), intent(in) :: struct
 
  select case(struct(1:3))                                                                           ! check first three chars of structure name
@@ -1081,6 +1083,7 @@ function lattice_configNchunks(struct)
      lattice_configNchunks(4) = maxval(lattice_fcc_interactionSlipTwin)
      lattice_configNchunks(5) = maxval(lattice_fcc_interactionTwinSlip)
      lattice_configNchunks(6) = maxval(lattice_fcc_interactionTwinTwin)
+     lattice_configNchunks(7) = lattice_fcc_NnonSchmid
    case ('bcc')
      lattice_configNchunks(1) = count(lattice_bcc_NslipSystem > 0_pInt)
      lattice_configNchunks(2) = count(lattice_bcc_NtwinSystem > 0_pInt)
@@ -1088,6 +1091,7 @@ function lattice_configNchunks(struct)
      lattice_configNchunks(4) = maxval(lattice_bcc_interactionSlipTwin)
      lattice_configNchunks(5) = maxval(lattice_bcc_interactionTwinSlip)
      lattice_configNchunks(6) = maxval(lattice_bcc_interactionTwinTwin)
+     lattice_configNchunks(7) = lattice_bcc_NnonSchmid
    case ('hex')
      lattice_configNchunks(1) = count(lattice_hex_NslipSystem > 0_pInt)
      lattice_configNchunks(2) = count(lattice_hex_NtwinSystem > 0_pInt)
@@ -1095,6 +1099,7 @@ function lattice_configNchunks(struct)
      lattice_configNchunks(4) = maxval(lattice_hex_interactionSlipTwin)
      lattice_configNchunks(5) = maxval(lattice_hex_interactionTwinSlip)
      lattice_configNchunks(6) = maxval(lattice_hex_interactionTwinTwin)
+     lattice_configNchunks(7) = lattice_hex_NnonSchmid
  end select
 
 end function lattice_configNchunks

@@ -157,9 +157,9 @@ use lattice
 !* Input variables
 integer(pInt), intent(in) :: file
 !* Local variables
-integer(pInt), parameter :: maxNchunks = 21_pInt
-integer(pInt), dimension(1+2*maxNchunks) :: positions
-integer(pInt), dimension(6) :: configNchunks
+ integer(pInt), parameter :: MAXNCHUNKS = lattice_maxNinteraction + 1_pInt
+integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+integer(pInt), dimension(7) :: configNchunks
 integer(pInt) :: section = 0_pInt, maxNinstance,mySize=0_pInt,myStructure,maxTotalNslip,maxTotalNtwin,&
                  f,i,j,k,l,m,n,o,p,q,r,s,ns,nt, &
                  Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
@@ -315,7 +315,7 @@ enddo
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      if (phase_plasticity(section) == constitutive_dislotwin_LABEL) then                            ! one of my sections
      i = phase_plasticityInstance(section)               ! which instance of my plasticity is present phase
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))        ! extract key
      select case(tag)
        case ('plasticity', 'elasticity')
@@ -353,10 +353,18 @@ enddo
        case ('c66')
          constitutive_dislotwin_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
        case ('nslip')
+         if (positions(1) < 1_pInt + Nchunks_SlipFamilies) then
+           call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_DISLOTWIN_LABEL//')')
+         endif
+         Nchunks_SlipFamilies = positions(1) - 1_pInt
          do j = 1_pInt, Nchunks_SlipFamilies
            constitutive_dislotwin_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
          enddo
        case ('ntwin')
+         if (positions(1) < 1_pInt + Nchunks_TwinFamilies) then
+           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_DISLOTWIN_LABEL//')')
+         endif
+         Nchunks_TwinFamilies = positions(1) - 1_pInt
          do j = 1_pInt, Nchunks_TwinFamilies
            constitutive_dislotwin_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
          enddo
@@ -431,18 +439,30 @@ enddo
        case ('catomicvolume')
          constitutive_dislotwin_CAtomicVolume(i) = IO_floatValue(line,positions,2_pInt)
        case ('interaction_slipslip','interactionslipslip')
+         if (positions(1) < 1_pInt + Nchunks_SlipSlip) then
+           call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_DISLOTWIN_LABEL//')')
+         endif
          do j = 1_pInt, Nchunks_SlipSlip
            constitutive_dislotwin_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('interaction_sliptwin','interactionsliptwin')
+         if (positions(1) < 1_pInt + Nchunks_SlipTwin) then
+           call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_DISLOTWIN_LABEL//')')
+         endif
          do j = 1_pInt, Nchunks_SlipTwin
            constitutive_dislotwin_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('interaction_twinslip','interactiontwinslip')
+         if (positions(1) < 1_pInt + Nchunks_TwinSlip) then
+           call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_DISLOTWIN_LABEL//')')
+         endif
          do j = 1_pInt, Nchunks_TwinSlip
            constitutive_dislotwin_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case ('interaction_twintwin','interactiontwintwin')
+         if (positions(1) < 1_pInt + Nchunks_TwinTwin) then
+           call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_DISLOTWIN_LABEL//')')
+         endif
          do j = 1_pInt, Nchunks_TwinTwin
            constitutive_dislotwin_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
          enddo

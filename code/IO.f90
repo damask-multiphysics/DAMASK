@@ -1528,6 +1528,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'unknown plasticity specified:' 
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
+ case (206_pInt)
+   msg = 'hex lattice structure with invalid c/a ratio'
 
  case (210_pInt)
    msg = 'unknown material parameter:'
@@ -1535,6 +1537,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'material parameter out of bounds:'
  case (212_pInt)
    msg = 'unknown plasticity output:'
+ case (213_pInt)
+   msg = 'not enough values for material parameter:'
 
  case (252_pInt)
    msg = 'nonlocal plasticity works only for direct CPFEM, i.e. one grain per integration point'
@@ -1689,6 +1693,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    else
      write(6,'(a13,1x,i9,35x,a1)') ' + at element',e,'+'
    endif
+ elseif (present(i)) then  ! now having the meaning of "instance"
+   write(6,'(a15,1x,i9,33x,a1)') ' + for instance',i,'+'
  endif
  write(6,'(a)')      ' +--------------------------------------------------------+'
  flush(6)
@@ -1726,6 +1732,10 @@ subroutine IO_warning(warning_ID,e,i,g,ext_msg)
    msg = 'parameter has no effect'
  case (47_pInt)
    msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
+ case (50_pInt)
+   msg = 'not using all available slip system families'
+ case (51_pInt)
+   msg = 'not using all available twin system families'
  case (101_pInt)
    msg = 'crystallite debugging off'
  case (201_pInt)

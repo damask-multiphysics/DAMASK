@@ -231,7 +231,7 @@ subroutine constitutive_titanmod_init(myFile)
 
  integer(pInt), parameter :: MAXNCHUNKS = 21_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
- integer(pInt), dimension(6) :: configNchunks
+ integer(pInt), dimension(7) :: configNchunks
  integer(pInt) :: section = 0_pInt,f,i,j,k,l,m,n,o,p,q,r,s,s1,s2,t,t1,t2,ns,nt,&
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                   Nchunks_SlipFamilies, Nchunks_TwinFamilies, &

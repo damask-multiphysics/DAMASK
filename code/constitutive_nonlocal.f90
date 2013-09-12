@@ -235,6 +235,7 @@ use IO,       only: IO_read, &
                     IO_floatValue, &
                     IO_intValue, &
                     IO_error, &
+                    IO_warning, &
                     IO_timeStamp
 use debug,    only: debug_level, &
                     debug_constitutive, &
@@ -254,10 +255,10 @@ use lattice
 integer(pInt), intent(in) ::                myFile
 
 !*** local variables
-integer(pInt), parameter ::                 maxNchunks = 21_pInt
+ integer(pInt), parameter ::                MAXNCHUNKS = lattice_maxNinteraction + 1_pInt
 integer(pInt), &
-    dimension(1_pInt+2_pInt*maxNchunks) ::  positions
-integer(pInt), dimension(6) ::              configNchunks
+    dimension(1_pInt+2_pInt*MAXNCHUNKS) ::  positions
+integer(pInt), dimension(7) ::              configNchunks
 integer(pInt)          ::                   section = 0_pInt, &
                                             maxNinstance, &
                                             maxTotalNslip, &
@@ -275,6 +276,7 @@ integer(pInt)          ::                   section = 0_pInt, &
                                             c, &                ! index of dislocation character
                                             Nchunks_SlipSlip = 0_pInt, &
                                             Nchunks_SlipFamilies = 0_pInt, &
+                                            Nchunks_nonSchmid = 0_pInt, &
                                             mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
 character(len=65536)                        tag
 character(len=65536) ::                     line = ''                                ! to start initialized
@@ -433,7 +435,7 @@ do while (trim(line) /= '#EOF#')                                                
   if (section > 0_pInt ) then                                                                       ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
     if (phase_plasticity(section) == CONSTITUTIVE_NONLOCAL_LABEL) then                              ! one of my sections
       i = phase_plasticityInstance(section)                                                         ! which instance of my plasticity is present phase
-      positions = IO_stringPos(line,maxNchunks)
+      positions = IO_stringPos(line,MAXNCHUNKS)
       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                            ! extract key
       select case(tag)
         case('plasticity','elasticity','/nonlocal/')
@@ -446,6 +448,7 @@ do while (trim(line) /= '#EOF#')                                                
           configNchunks = lattice_configNchunks(constitutive_nonlocal_structureName(i))
           Nchunks_SlipFamilies = configNchunks(1)
           Nchunks_SlipSlip =     configNchunks(3)
+          Nchunks_nonSchmid = configNchunks(7)
         case ('c/a_ratio','covera_ratio')
           CoverA(i) = IO_floatValue(line,positions,2_pInt)
          case ('c11')
@@ -467,6 +470,10 @@ do while (trim(line) /= '#EOF#')                                                
          case ('c66')
            Cslip66(6,6,i) = IO_floatValue(line,positions,2_pInt)
         case ('nslip')
+          if (positions(1) < 1_pInt + Nchunks_SlipFamilies) then
+            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+          endif
+          Nchunks_SlipFamilies = positions(1) - 1_pInt
           do f = 1_pInt, Nchunks_SlipFamilies
             Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
           enddo
@@ -527,7 +534,10 @@ do while (trim(line) /= '#EOF#')                                                
         case('significantn','significant_n','significantdislocations','significant_dislcations')
           significantN(i) = IO_floatValue(line,positions,2_pInt)
         case ('interaction_slipslip')
-          do it = 1_pInt, Nchunks_SlipSlip
+           if (positions(1) < 1_pInt + Nchunks_SlipSlip) then
+             call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+           endif
+          do it = 1_pInt,Nchunks_SlipSlip
             interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
           enddo
         case('linetension','linetensioneffect','linetension_effect')
@@ -575,7 +585,10 @@ do while (trim(line) /= '#EOF#')                                                
         case('shortrangestresscorrection')
           shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case ('nonschmid_coefficients')
-          do f = 1_pInt, lattice_maxNnonSchmid
+          if (positions(1) < 1_pInt + Nchunks_nonSchmid) then
+            call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+          endif
+          do f = 1_pInt,Nchunks_nonSchmid
             nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
           enddo
         case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
