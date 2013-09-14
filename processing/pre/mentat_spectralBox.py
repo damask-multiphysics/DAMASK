@@ -26,9 +26,9 @@ def outStdout(cmd,locals):
     exec(cmd[3:])
   elif cmd[0:3] == '(?)':
     cmd = eval(cmd[3:])
-    print cmd
+    print(cmd)
   else:
-    print cmd
+    print(cmd)
   return
 
 #-------------------------------------------------------------------------------------------------
@@ -271,11 +271,11 @@ file = open(args[0])
 content = file.readlines()
 file.close()
 
-print '\033[1m'+scriptName+'\033[0m\n'
+print('\033[1m'+scriptName+'\033[0m\n')
 if options.filetype not in ['spectral','geom']:
   options.filetype = os.path.splitext(args[0])[1][1:]
 
-print '\nparsing %s...'%options.filetype,
+print('\nparsing %s...'%options.filetype,)
 sys.stdout.flush()
 
 (grid,size,homog,microstructures) = {\
@@ -283,7 +283,7 @@ sys.stdout.flush()
   'spectral': parse_spectralFile,
   }[options.filetype](content,options.homogenization)
 
-print '%i microstructures in %s with grid %s and homogenization %i\n'%(len(list(set(microstructures))),str(size),str(grid),homog)
+print('%i microstructures in %s with grid %s and homogenization %i\n'%(len(list(set(microstructures))),str(size),str(grid),homog))
 
 
 cmds = [\

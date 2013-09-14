@@ -52,7 +52,7 @@ class ASCIItable():
     import sys
     try:
       self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
-    except IOError, e:
+    except(IOError) as e:
       return False
     if clear: self.output_clear()
     return True
@@ -89,7 +89,7 @@ class ASCIItable():
                                                                                                     # ... without any labels
     try:
       self.__IO__['dataStart'] = self.__IO__['in'].tell()                                           # current file position is at start of data
-    except IOError:
+    except(IOError):
       pass
 
     if self.__IO__['validReadSize'] == 0:                                                           # in case no valid data length is known
@@ -137,12 +137,12 @@ class ASCIItable():
       for label in labels:
         try:
           idx.append(self.labels.index(label))
-        except ValueError:
+        except(ValueError):
           idx.append(-1)
     else:
       try:
         idx = self.labels.index(labels)
-      except ValueError:
+      except(ValueError):
         idx = -1
 
     return idx
@@ -221,7 +221,7 @@ class ASCIItable():
       if len(self.data) <= idx:
         self.data_append(['n/a' for i in xrange(idx+1-len(self.data))])         # grow data if too short
       self.data[idx] = str(what)
-    except ValueError:
+    except(ValueError):
       pass
 
     return idx
