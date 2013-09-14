@@ -19,11 +19,13 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief setting precision for real and int type depending on makros "FLOAT" and "INT"
+!> @author   Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author   Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @author   Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief    setting precision for real and int type depending on makros "FLOAT" and "INT"
+!> @details  setting precision for real and int type and for DAMASK_NaN. Definition is made 
+!!           depending on makros "FLOAT" and "INT" defined during compilation
 !--------------------------------------------------------------------------------------------------
 
 module prec
@@ -62,10 +64,9 @@ module prec
 #endif
 
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
- real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal
- real(pReal), parameter, public :: tol_gravityNodePos = 1.0e-100_pReal
+ real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
- type, public :: p_vec
+ type, public :: p_vec                                                                              !< variable length datatype used for storage of state
    real(pReal), dimension(:), pointer :: p
  end type p_vec
 

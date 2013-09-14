@@ -1374,7 +1374,6 @@ subroutine crystallite_integrateStateRK4()
                          constitutive_microstructure
  
  implicit none
- 
  real(pReal), dimension(4), parameter ::       TIMESTEPFRACTION = [0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal] ! factor giving the fraction of the original timestep used for Runge Kutta Integration
  real(pReal), dimension(4), parameter ::       WEIGHT = [1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal]           ! weight of slope used for Runge Kutta integration
 

@@ -31,7 +31,8 @@ program DAMASK_spectral_Driver
    iso_fortran_env                                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use prec, only: &
    pInt, &
-   pReal
+   pReal, &
+   tol_math_check
  use DAMASK_interface, only: &
    DAMASK_interface_init, &
    loadCaseFile, &
@@ -66,7 +67,6 @@ program DAMASK_spectral_Driver
    restartInc
  use numerics, only: &
    maxCutBack, &
-   rotation_tol, &
    mySpectralSolver, &
    regridMode
  use homogenization, only: &
@@ -310,9 +310,9 @@ program DAMASK_spectral_Driver
               transpose(loadCases(currentLoadCase)%P%maskLogical))
   if (any(abs(math_mul33x33(loadCases(currentLoadCase)%rotation, &
               math_transpose33(loadCases(currentLoadCase)%rotation))-math_I3) >&
-              reshape(spread(rotation_tol,1,9),[ 3,3]))&
+              reshape(spread(tol_math_check,1,9),[ 3,3]))&
               .or. abs(math_det33(loadCases(currentLoadCase)%rotation)) > &
-              1.0_pReal + rotation_tol) errorID = 846_pInt                                          ! given rotation matrix contains strain
+              1.0_pReal + tol_math_check) errorID = 846_pInt                                          ! given rotation matrix contains strain
    if (any(loadCases(currentLoadCase)%rotation /= math_I3)) &
      write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
               math_transpose33(loadCases(currentLoadCase)%rotation)

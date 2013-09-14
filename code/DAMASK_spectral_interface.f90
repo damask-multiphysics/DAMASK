@@ -71,7 +71,6 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 
  implicit none
-
  character(len=1024), optional, intent(in) :: &
    loadCaseParameterIn, &                                                                           !< if using the f2py variant, the -l argument of DAMASK_spectral.exe
    geometryParameterIn                                                                              !< if using the f2py variant, the -g argument of DAMASK_spectral.exe
@@ -86,7 +85,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  integer :: &
    i
  integer, parameter :: &
-   maxNchunks = 128                                                                                  !< DAMASK_spectral + (l,g,w,r)*2 + h
+   maxNchunks = 128                                                                                 !< DAMASK_spectral + (l,g,w,r)*2 + h
  integer, dimension(1+ 2* maxNchunks) :: &
    positions
  integer, dimension(8) :: &
@@ -118,7 +117,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    call get_command(commandLine)
    positions = IIO_stringPos(commandLine,maxNchunks)
    do i = 1, positions(1)
-     tag = IIO_lc(IIO_stringValue(commandLine,positions,i))                                           ! extract key
+     tag = IIO_lc(IIO_stringValue(commandLine,positions,i))                                         ! extract key
      select case(tag)
        case ('-h','--help')
          write(6,'(a)')  ' #######################################################################'
@@ -230,14 +229,15 @@ end subroutine DAMASK_interface_init
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief extract working directory from loadcase file possibly based on current working dir
-!> @todo change working directory with call chdir(storeWorkingDirectory)?
+!> @brief extract working directory from given argument or from location of geometry file,
+!!        possibly converting relative arguments to absolut path
+!> @todo  change working directory with call chdir(storeWorkingDirectory)?
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryArg)
 
  implicit none
- character(len=*),  intent(in) :: workingDirectoryArg
- character(len=*),  intent(in) :: geometryArg
+ character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
+ character(len=*),  intent(in) :: geometryArg                                                       !< geometry argument
  character(len=1024)           :: cwd
  character                     :: pathSep
  logical                       :: dirExists
@@ -278,7 +278,6 @@ end function storeWorkingDirectory
 character(len=1024) function getSolverWorkingDirectoryName()
 
  implicit none
-
  getSolverWorkingDirectoryName = workingDirectory
 
 end function getSolverWorkingDirectoryName
@@ -448,8 +447,11 @@ end function makeRelativePath
 character function getPathSep()
 
  implicit none
- character(len=2048) path
- integer(pInt) :: backslash = 0_pInt, slash = 0_pInt
+ character(len=2048) :: &
+   path
+ integer(pInt) :: &
+   backslash = 0_pInt, &
+   slash = 0_pInt
  integer :: i
 
  call get_environment_variable('PATH',path)

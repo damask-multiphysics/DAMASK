@@ -33,8 +33,9 @@ SHELL = /bin/sh
 # IMKLROOT       = pathinfo:IMKL   (will be adjusted by setup_code.py if present in pathinfo)
 # ACMLROOT       = pathinfo:ACML   (will be adjusted by setup_code.py if present in pathinfo)
 # LAPACKROOT     = pathinfo:LAPACK (will be adjusted by setup_code.py if present in pathinfo)
-# PREFIX         = arbitrary prefix
-# SUFFIX         = arbitrary suffix
+# PREFIX         = arbitrary prefix (before compilername)
+# OPTION         = arbitrary option (just before file to compile)
+# SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 
@@ -327,9 +328,9 @@ DEBUG_OPTIONS_gfortran    :=-g\
 #           underflow
 
 ifeq "$(DEBUG)" "ON"
-COMPILE_OPTIONS_$(F90) :=$(COMPILE_OPTIONS_$(F90)) $(DEBUG_OPTIONS_$(F90))
+COMPILE_OPTIONS_$(F90) +=$(DEBUG_OPTIONS_$(F90))
 endif
-
+COMPILE_OPTIONS_$(F90) +=$(OPTIONS)
 PRECISION_ifort :=-real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4
 #-real-size 32:               set precision to one of those 32/64/128 (= 4/8/16 bytes) for standard real (=8 for pReal)
 #-integer-size 16:            set precision to one of those 16/32/64 (= 2/4/8 bytes) for standard integer (=4 for pInt)
