@@ -1,0 +1,125 @@
+# Material : cp-Ti (alpha)
+
+#####################
+<homogenization>
+#####################
+
+[SX]
+type isostrain
+Ngrains 1
+
+#####################
+<microstructure>
+#####################
+
+[Cube]
+crystallite	1
+(constituent) phase 1 texture 1 fraction 1.0
+
+[Cube]
+crystallite	1
+(constituent) phase 1 texture 2 fraction 1.0
+
+#####################
+<crystallite>
+#####################
+
+[essential_output]
+(output) texture
+(output) orientation
+(output) grainrotation  # deviation from initial orientation as axis (1-3) and angle in degree (4)
+(output) f              # deformation gradient tensor; synonyms: "defgrad"
+(output) p              # first Piola-Kichhoff stress tensor; synonyms: "firstpiola", "1stpiola"
+
+# (output)	phase
+# (output)	texture
+# (output)	volume
+# (output)	orientation
+# (output)	eulerangles
+# (output)	grainorientation
+# (output)	grainorientationx
+# (output)	grainorientationy
+# (output)	grainorientationz
+# (output)	f
+# (output)	fe
+# (output)	fp
+# (output)	e
+# (output)	ee
+# (output)	p
+# (output)	s
+# (output)	lp
+# (output)	elasmatrix
+# (output)	ipcoords
+
+#####################
+<phase>
+#####################
+
+[Ti]
+plasticity	phenopowerlaw
+elasticity	hooke
+
+# (output)                resistance_slip
+# (output)                shearrate_slip
+# (output)                resolvedstress_slip
+# (output)                totalshear
+# (output)                resistance_twin
+# (output)                shearrate_twin
+# (output)                resolvedstress_twin
+# (output)                totalvolfrac
+
+lattice_structure	hex
+covera_ratio	1.587
+# M. Levy, Handbook of Elastic Properties of Solids, Liquids, and Gases (2001)
+c11	160e9
+c12	90e9
+c13	66.0e9
+# c22
+# c23
+c33	181.7e9
+c44	46.5e9
+c66	35e9 # =0.5*(c11-c12)
+
+# C. Zambaldi, "Orientation informed nanoindentation of a-titanium: Indentation pileup in hexagonal metals deforming by prismatic slip", J. Mater. Res., Vol. 27, No. 1, Jan 14, 2012
+nslip	3 3 0 6 0 0
+gdot0_slip	0.001
+n_slip	20
+tau0_slip	364.3e6 158.9e6 0 1140.9e6 0 0 # 158.9e6 1 1140.9e6 1 1
+tausat_slip	619.5e6 50e6 0 3673.1e6 0 0 # 1394.2e6 1 3673.1e6 1 1
+a_slip	2
+
+ntwin	0 0 0 0
+gdot0_twin	0.001 0 0 0
+n_twin	20
+tau0_twin	31e6 0 0 0 0
+s_pr	0
+twin_b	0
+twin_c	0
+twin_d	0
+twin_e	0
+
+h0_slipslip	15e6
+h0_sliptwin	15e6
+h0_twinslip	15e6
+h0_twintwin	15e6
+
+atol_resistance	1
+atol_shear	1
+# atol_twinfrac
+
+interaction_slipslip	1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+interaction_sliptwin	1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+interaction_twinslip	1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+interaction_twintwin	1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
+
+nonschmid_coefficients = 0
+
+#####################
+<texture>
+#####################
+
+[Cube]
+(gauss) phi1 0  Phi 0  phi2 0 scatter 0.0 fraction 1.0
+
+[Cube]
+(gauss) phi1 45  Phi 45  phi2 45 scatter 0.0 fraction 1.0

@@ -1539,6 +1539,8 @@ subroutine IO_error(error_ID,e,i,g,ext_msg)
    msg = 'unknown plasticity output:'
  case (213_pInt)
    msg = 'not enough values for material parameter:'
+ case (214_pInt)
+   msg = 'stiffness parameter close to zero:'
 
  case (252_pInt)
    msg = 'nonlocal plasticity works only for direct CPFEM, i.e. one grain per integration point'

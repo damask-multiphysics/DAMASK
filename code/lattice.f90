@@ -880,9 +880,8 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      endif
      
    case ('hex')
-     if (CoverA < 1.0_pReal) then                 ! checking physical significance of c/a
-       call IO_error(206_pInt)
-     endif
+     if (CoverA < 1.0_pReal .or. CoverA > 2.0_pReal) call IO_error(206_pInt)     ! checking physical significance of c/a
+
      lattice_hex_Nstructure = lattice_hex_Nstructure + 1_pInt  ! count instances of hex structures
      myStructure = 2_pInt + lattice_hex_Nstructure             ! 3,4,5,.. for hex
      myNslipSystem = lattice_hex_NslipSystem     ! size of slip system families
