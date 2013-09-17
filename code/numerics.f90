@@ -301,8 +301,6 @@ subroutine numerics_init
          fftw_plan_mode = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('myfilter')
          myfilter = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('rotation_tol')
-         rotation_tol = IO_floatValue(line,positions,2_pInt)
        case ('divergence_correction')
          divergence_correction = IO_intValue(line,positions,2_pInt)
        case ('update_gamma')
@@ -330,7 +328,7 @@ subroutine numerics_init
 #ifndef Spectral
       case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
-            'rotation_tol','divergence_correction','update_gamma','myfilter', &
+            'divergence_correction','update_gamma','myfilter', &
             'err_curl_tolabs','err_curl_tolrel', &
             'maxcutback','polaralpha','polarbeta')
          call IO_warning(40_pInt,ext_msg=tag)
@@ -420,28 +418,25 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Spectral
- write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
- write(6,'(a24,1x,es8.1)')   ' err_stress_tolrel:      ',err_stress_tolrel
- write(6,'(a24,1x,es8.1)')   ' err_stress_tolabs:      ',err_stress_tolabs
-
  write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
  write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
  write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
  write(6,'(a24,1x,i8)')      ' regridMode:             ',regridMode
  write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
+ write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
+ write(6,'(a24,1x,a)')       ' myfilter:               ',trim(myfilter)
  if(fftw_timelimit<0.0_pReal) then
    write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
  else    
    write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
  endif
  write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
-
- write(6,'(a24,1x,a)')       ' myfilter:               ',trim(myfilter)
  write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
- write(6,'(a24,1x,es8.1)')   ' rotation_tol:           ',rotation_tol
- write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
  write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
+ write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
+ write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
 #ifdef PETSc
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
@@ -493,17 +488,17 @@ subroutine numerics_init
  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
 #ifdef Spectral
- if (err_div_tolRel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolRel')
- if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolAbs')
- if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolrel')
- if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolabs')
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
- if (itmin > itmax .or. itmin < 1_pInt)   call IO_error(301_pInt,ext_msg='itmin')
+ if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (divergence_correction < 0_pInt .or. &
      divergence_correction > 2_pInt)       call IO_error(301_pInt,ext_msg='divergence_correction')
  if (maxCutBack < 0_pInt)                  call IO_error(301_pInt,ext_msg='maxCutBack')
  if (update_gamma .and. &
                    .not. memory_efficient) call IO_error(error_ID = 847_pInt)
+ if (err_stress_tolrel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolRel')
+ if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolAbs')
+ if (err_div_tolRel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolRel')
+ if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolAbs')
 #ifdef PETSc
  if (err_curl_tolRel <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolRel')
  if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolAbs')
