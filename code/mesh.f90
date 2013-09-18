@@ -1413,10 +1413,10 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    GeometryFile
  use IO, only: &
    IO_open_file, &
-   IO_read_jobBinaryFile ,&
-   IO_read_jobBinaryIntFile ,&
-   IO_write_jobBinaryFile, &
-   IO_write_jobBinaryIntFile, &
+   IO_read_realFile ,&
+   IO_read_intFile ,&
+   IO_write_jobRealFile, &
+   IO_write_jobIntFile, &
    IO_write_jobFile, &
    IO_error
  use numerics, only: &
@@ -1495,14 +1495,14 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  select case(myspectralsolver)
    case('basic')
      allocate(spectralF33(3,3,grid(1),grid(2),grid(3)))
-     call IO_read_jobBinaryFile(777,'F',trim(getSolverJobName()),size(spectralF33))
+     call IO_read_realFile(777,'F',trim(getSolverJobName()),size(spectralF33))
      read (777,rec=1) spectralF33
      close (777)
      Favg = sum(sum(sum(spectralF33,dim=5),dim=4),dim=3) * wgt
      coordinates = reshape(mesh_deformedCoordsFFT(geomSize,spectralF33),[3,mesh_NcpElems])
    case('basicpetsc','al')
      allocate(spectralF9(9,grid(1),grid(2),grid(3)))
-     call IO_read_jobBinaryFile(777,'F',trim(getSolverJobName()),size(spectralF9))
+     call IO_read_realFile(777,'F',trim(getSolverJobName()),size(spectralF9))
      read (777,rec=1) spectralF9
      close (777)
      Favg = reshape(sum(sum(sum(spectralF9,dim=4),dim=3),dim=2) * wgt, [3,3])
@@ -1648,14 +1648,14 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    case('basic')
      allocate(spectralF33New(3,3,resNew(1),resNew(2),resNew(3)))
      spectralF33New = spread(spread(spread(Favg,3,resNew(1)),4,resNew(2)),5,resNew(3))
-     call IO_write_jobBinaryFile(777,'F',size(spectralF33New))
+     call IO_write_jobRealFile(777,'F',size(spectralF33New))
      write (777,rec=1) spectralF33New
      close (777)
      
    case('basicpetsc','al')
      allocate(spectralF9New(9,resNew(1),resNew(2),resNew(3)))
      spectralF9New = spread(spread(spread(reshape(Favg,[9]),2,resNew(1)),3,resNew(2)),4,resNew(3))
-     call IO_write_jobBinaryFile(777,'F',size(spectralF9New))
+     call IO_write_jobRealFile(777,'F',size(spectralF9New))
      write (777,rec=1) spectralF9New
      close (777)
   end select
@@ -1663,14 +1663,14 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !---------------------------------------------------------------------------------
  allocate(F_lastIncNew(3,3,resNew(1),resNew(2),resNew(3)))
 
- call IO_read_jobBinaryFile(777,'F_aim_lastInc', &
+ call IO_read_realFile(777,'F_aim_lastInc', &
                                  trim(getSolverJobName()),size(Favg_LastInc))
  read (777,rec=1) Favg_LastInc
  close (777)
  
  F_lastIncNew = spread(spread(spread(Favg_LastInc,3,resNew(1)),4,resNew(2)),5,resNew(3))
  
- call IO_write_jobBinaryFile(777,'convergedSpectralDefgrad_lastInc',size(F_LastIncNew))
+ call IO_write_jobRealFile(777,'convergedSpectralDefgrad_lastInc',size(F_LastIncNew))
  write (777,rec=1) F_LastIncNew
  close (777)
  
@@ -1679,7 +1679,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 ! relocating data of material subroutine ---------------------------------------------------------
  allocate(material_phase    (1,1, mesh_NcpElems))
  allocate(material_phaseNew (1,1, NpointsNew))
- call IO_read_jobBinaryIntFile(777,'recordedPhase',trim(getSolverJobName()),size(material_phase))
+ call IO_read_intFile(777,'recordedPhase',trim(getSolverJobName()),size(material_phase))
  read (777,rec=1) material_phase
  close (777)
  do i = 1, NpointsNew
@@ -1691,7 +1691,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      write(6,*) material_phase(1,1,i), 'not found in material_phaseNew'
    endif
  enddo
- call IO_write_jobBinaryIntFile(777,'recordedPhase',size(material_phaseNew))
+ call IO_write_jobIntFile(777,'recordedPhase',size(material_phaseNew))
  write (777,rec=1) material_phaseNew
  close (777) 
  deallocate(material_phase)
@@ -1699,14 +1699,14 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !---------------------------------------------------------------------------
  allocate(F    (3,3,1,1, mesh_NcpElems))
  allocate(FNew (3,3,1,1, NpointsNew))
- call IO_read_jobBinaryFile(777,'convergedF',trim(getSolverJobName()),size(F))
+ call IO_read_realFile(777,'convergedF',trim(getSolverJobName()),size(F))
  read (777,rec=1) F
  close (777)
  do i = 1, NpointsNew
    FNew(1:3,1:3,1,1,i) = F(1:3,1:3,1,1,indices(i))
  enddo
 
- call IO_write_jobBinaryFile(777,'convergedF',size(FNew))
+ call IO_write_jobRealFile(777,'convergedF',size(FNew))
  write (777,rec=1) FNew
  close (777) 
  deallocate(F)
@@ -1714,14 +1714,14 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !--------------------------------------------------------------------- 
  allocate(Fp       (3,3,1,1,mesh_NcpElems))
  allocate(FpNew (3,3,1,1,NpointsNew))  
- call IO_read_jobBinaryFile(777,'convergedFp',trim(getSolverJobName()),size(Fp))
+ call IO_read_realFile(777,'convergedFp',trim(getSolverJobName()),size(Fp))
  read (777,rec=1) Fp
  close (777) 
  do i = 1, NpointsNew
    FpNew(1:3,1:3,1,1,i) = Fp(1:3,1:3,1,1,indices(i))
  enddo
  
- call IO_write_jobBinaryFile(777,'convergedFp',size(FpNew))
+ call IO_write_jobRealFile(777,'convergedFp',size(FpNew))
  write (777,rec=1) FpNew
  close (777) 
  deallocate(Fp)
@@ -1729,13 +1729,13 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !------------------------------------------------------------------------
  allocate(Lp       (3,3,1,1,mesh_NcpElems))
  allocate(LpNew  (3,3,1,1,NpointsNew)) 
- call IO_read_jobBinaryFile(777,'convergedLp',trim(getSolverJobName()),size(Lp))
+ call IO_read_realFile(777,'convergedLp',trim(getSolverJobName()),size(Lp))
  read (777,rec=1) Lp
  close (777)
  do i = 1, NpointsNew
    LpNew(1:3,1:3,1,1,i) = Lp(1:3,1:3,1,1,indices(i))
  enddo
- call IO_write_jobBinaryFile(777,'convergedLp',size(LpNew))
+ call IO_write_jobRealFile(777,'convergedLp',size(LpNew))
  write (777,rec=1) LpNew
  close (777)
  deallocate(Lp)
@@ -1743,13 +1743,13 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !----------------------------------------------------------------------------
  allocate(dcsdE       (6,6,1,1,mesh_NcpElems)) 
  allocate(dcsdENew (6,6,1,1,NpointsNew)) 
- call IO_read_jobBinaryFile(777,'convergeddcsdE',trim(getSolverJobName()),size(dcsdE))
+ call IO_read_realFile(777,'convergeddcsdE',trim(getSolverJobName()),size(dcsdE))
  read (777,rec=1) dcsdE
  close (777)
  do i = 1, NpointsNew
    dcsdENew(1:6,1:6,1,1,i) = dcsdE(1:6,1:6,1,1,indices(i))
  enddo
- call IO_write_jobBinaryFile(777,'convergeddcsdE',size(dcsdENew))
+ call IO_write_jobRealFile(777,'convergeddcsdE',size(dcsdENew))
  write (777,rec=1) dcsdENew
  close (777)
  deallocate(dcsdE)
@@ -1757,13 +1757,13 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !---------------------------------------------------------------------------
  allocate(dPdF       (3,3,3,3,1,1,mesh_NcpElems))
  allocate(dPdFNew (3,3,3,3,1,1,NpointsNew)) 
- call IO_read_jobBinaryFile(777,'convergeddPdF',trim(getSolverJobName()),size(dPdF))
+ call IO_read_realFile(777,'convergeddPdF',trim(getSolverJobName()),size(dPdF))
  read (777,rec=1) dPdF
  close (777)
  do i = 1, NpointsNew
    dPdFNew(1:3,1:3,1:3,1:3,1,1,i) = dPdF(1:3,1:3,1:3,1:3,1,1,indices(i))
  enddo
- call IO_write_jobBinaryFile(777,'convergeddPdF',size(dPdFNew))
+ call IO_write_jobRealFile(777,'convergeddPdF',size(dPdFNew))
  write (777,rec=1) dPdFNew
  close (777)
  deallocate(dPdF)
@@ -1771,13 +1771,13 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !---------------------------------------------------------------------------
  allocate(Tstar        (6,1,1,mesh_NcpElems))
  allocate(TstarNew  (6,1,1,NpointsNew)) 
- call IO_read_jobBinaryFile(777,'convergedTstar',trim(getSolverJobName()),size(Tstar))
+ call IO_read_realFile(777,'convergedTstar',trim(getSolverJobName()),size(Tstar))
  read (777,rec=1) Tstar
  close (777)
  do i = 1, NpointsNew
    TstarNew(1:6,1,1,i) = Tstar(1:6,1,1,indices(i))
  enddo
- call IO_write_jobBinaryFile(777,'convergedTstar',size(TstarNew))
+ call IO_write_jobRealFile(777,'convergedTstar',size(TstarNew))
  write (777,rec=1) TstarNew
  close (777)
  deallocate(Tstar)
@@ -1785,13 +1785,13 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  
 ! for the state, we first have to know the size------------------------------------------------------------------ 
  allocate(sizeStateConst(1,1,mesh_NcpElems))
- call IO_read_jobBinaryIntFile(777,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
+ call IO_read_intFile(777,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
  read (777,rec=1) sizeStateConst
  close (777)
  maxsize = maxval(sizeStateConst(1,1,1:mesh_NcpElems))
  allocate(StateConst      (1,1,mesh_NcpElems,maxsize))
 
- call IO_read_jobBinaryFile(777,'convergedStateConst',trim(getSolverJobName()))
+ call IO_read_realFile(777,'convergedStateConst',trim(getSolverJobName()))
  k = 0_pInt
  do i =1, mesh_NcpElems
    do j = 1,sizeStateConst(1,1,i)
@@ -1800,7 +1800,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    enddo
  enddo
  close(777)
- call IO_write_jobBinaryFile(777,'convergedStateConst')
+ call IO_write_jobRealFile(777,'convergedStateConst')
  k = 0_pInt
  do i = 1,NpointsNew
    do j = 1,sizeStateConst(1,1,indices(i))
@@ -1813,13 +1813,13 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(StateConst)
 !---------------------------------------------------------------------------- 
  allocate(sizeStateHomog(1,mesh_NcpElems))
- call IO_read_jobBinaryIntFile(777,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
+ call IO_read_intFile(777,'sizeStateHomog',trim(getSolverJobName()),size(sizeStateHomog))
  read (777,rec=1) sizeStateHomog
  close (777)
  maxsize = maxval(sizeStateHomog(1,1:mesh_NcpElems))
  allocate(stateHomog      (1,mesh_NcpElems,maxsize))
 
- call IO_read_jobBinaryFile(777,'convergedStateHomog',trim(getSolverJobName()))
+ call IO_read_realFile(777,'convergedStateHomog',trim(getSolverJobName()))
  k = 0_pInt
  do i =1, mesh_NcpElems
    do j = 1,sizeStateHomog(1,i)
@@ -1828,7 +1828,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    enddo
  enddo
  close(777)
- call IO_write_jobBinaryFile(777,'convergedStateHomog')
+ call IO_write_jobRealFile(777,'convergedStateHomog')
  k = 0_pInt
  do i = 1,NpointsNew
    do j = 1,sizeStateHomog(1,indices(i))
@@ -4092,8 +4092,8 @@ subroutine mesh_tell_statistics
  
  allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
 do e = 1_pInt,mesh_NcpElems
-  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,e=e) ! no homogenization specified
-  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,e=e) ! no microstructure specified
+  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,el=e) ! no homogenization specified
+  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,el=e) ! no microstructure specified
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1_pInt ! count combinations of homogenization and microstructure
 enddo

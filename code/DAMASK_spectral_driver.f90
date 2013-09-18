@@ -50,8 +50,6 @@ program DAMASK_spectral_Driver
    IO_intValue, &
    IO_error, &
    IO_lc, &
-   IO_read_jobBinaryFile, &
-   IO_write_jobBinaryFile, &
    IO_intOut, &
    IO_warning, &
    IO_timeStamp

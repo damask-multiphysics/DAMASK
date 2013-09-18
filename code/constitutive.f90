@@ -92,7 +92,7 @@ subroutine constitutive_init
    IO_open_file, &
    IO_open_jobFile_stat, &
    IO_write_jobFile, &
-   IO_write_jobBinaryIntFile, &
+   IO_write_jobIntFile, &
    IO_timeStamp
  use mesh, only: &
    mesh_maxNips, &
@@ -426,7 +426,7 @@ subroutine constitutive_init
  
 !--------------------------------------------------------------------------------------------------
 ! write out state size file
- call IO_write_jobBinaryIntFile(777,'sizeStateConst', size(constitutive_sizeState))
+ call IO_write_jobIntFile(777,'sizeStateConst', size(constitutive_sizeState))
  write (777,rec=1) constitutive_sizeState
  close(777)
 

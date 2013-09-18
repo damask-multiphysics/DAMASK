@@ -261,7 +261,7 @@ subroutine constitutive_j2_init(myFile)
  enddo
 
  sanityChecks: do i = 1_pInt,maxNinstance
-   if (constitutive_j2_structureName(i) == '')         call IO_error(205_pInt,e=i)
+   if (constitutive_j2_structureName(i) == '')         call IO_error(205_pInt,el=i)
    if (constitutive_j2_tau0(i) < 0.0_pReal)            call IO_error(211_pInt,ext_msg='tau0 (' &
                                                             //CONSTITUTIVE_J2_label//')')
    if (constitutive_j2_gdot0(i) <= 0.0_pReal)          call IO_error(211_pInt,ext_msg='gdot0 (' &

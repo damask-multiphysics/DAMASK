@@ -611,7 +611,7 @@ do i = 1_pInt,maxNinstance
   !*** sanity checks
   
   if (myStructure < 1_pInt) &
-    call IO_error(205_pInt,e=i)
+    call IO_error(205_pInt,el=i)
   if (sum(Nslip(:,i)) <= 0_pInt) &
     call IO_error(211_pInt,ext_msg='Nslip ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
   do o = 1_pInt,maxval(phase_Noutput)

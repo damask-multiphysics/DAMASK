@@ -27,8 +27,7 @@
 module constitutive_phenopowerlaw
  use prec, only: &
    pReal,&
-   pInt,&
-   tol_math_check
+   pInt
 
  implicit none
  private
@@ -119,6 +118,8 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_phenopowerlaw_init(myFile)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: &
+   tol_math_check
  use math, only: &
    math_Mandel3333to66, &
    math_Voigt66to3333
@@ -429,28 +430,28 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    constitutive_phenopowerlaw_totalNslip(i) = sum(constitutive_phenopowerlaw_Nslip(:,i))            ! how many slip systems altogether
    constitutive_phenopowerlaw_totalNtwin(i) = sum(constitutive_phenopowerlaw_Ntwin(:,i))            ! how many twin systems altogether
 
-   if (constitutive_phenopowerlaw_structure(i) < 1 )          call IO_error(205_pInt,i=i)
+   if (constitutive_phenopowerlaw_structure(i) < 1 )          call IO_error(205_pInt,el=i)
    if (any(constitutive_phenopowerlaw_tau0_slip(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,i=i,ext_msg='tau0_slip (' &
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='tau0_slip (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
-   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal) call IO_error(211_pInt,i=i,ext_msg='gdot0_slip (' &
+   if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal) call IO_error(211_pInt,el=i,ext_msg='gdot0_slip (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
-   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)     call IO_error(211_pInt,i=i,ext_msg='n_slip (' &
+   if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)     call IO_error(211_pInt,el=i,ext_msg='n_slip (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_tausat_slip(:,i) <= 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,i=i,ext_msg='tausat_slip (' &
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='tausat_slip (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_a_slip(i) == 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,i=i,ext_msg='a_slip (' &
+           constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='a_slip (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_tau0_twin(:,i) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,i=i,ext_msg='tau0_twin (' &
+           constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='tau0_twin (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
    if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,i=i,ext_msg='gdot0_twin (' &
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='gdot0_twin (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
    if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,i=i,ext_msg='n_twin (' &
+       any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='n_twin (' &
                                                                  //CONSTITUTIVE_PHENOPOWERLAW_label//')')
    if (constitutive_phenopowerlaw_aTolResistance(i) <= 0.0_pReal) &
      constitutive_phenopowerlaw_aTolResistance(i) = 1.0_pReal                                       ! default absolute tolerance 1 Pa

@@ -172,7 +172,7 @@ subroutine constitutive_none_init(myFile)
  enddo
 
  do i = 1_pInt,maxNinstance                 
-   if (constitutive_none_structureName(i) == '')              call IO_error(205_pInt,e=i)
+   if (constitutive_none_structureName(i) == '')              call IO_error(205_pInt,el=i)
  enddo
 
  instancesLoop: do i = 1_pInt,maxNinstance

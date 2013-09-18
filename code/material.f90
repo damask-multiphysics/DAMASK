@@ -878,7 +878,7 @@ subroutine material_populateGrains
        enddo
 
        if (grain /= myNgrains) &
-         call IO_error(0,e = homog,i = micro,ext_msg = 'inconsistent grain count after volume calc')
+         call IO_error(0,el = homog,ip = micro,ext_msg = 'inconsistent grain count after volume calc')
 
 !--------------------------------------------------------------------------------------------------
 ! divide myNgrains as best over constituents

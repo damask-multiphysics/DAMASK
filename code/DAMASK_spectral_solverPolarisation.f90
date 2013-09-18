@@ -129,8 +129,7 @@ subroutine Polarisation_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_intOut, &
-   IO_read_JobBinaryFile, &
-   IO_write_JobBinaryFile, &
+   IO_read_realFile, &
    IO_timeStamp
  use debug, only : &
   debug_level, &
@@ -217,38 +216,38 @@ subroutine Polarisation_init(temperature)
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
-   call IO_read_jobBinaryFile(777,'F',&
+   call IO_read_realFile(777,'F',&
                                                 trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_jobBinaryFile(777,'F_lastInc',&
+   call IO_read_realFile(777,'F_lastInc',&
                                                 trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
-   call IO_read_jobBinaryFile(777,'F_lastInc2',&
+   call IO_read_realFile(777,'F_lastInc2',&
                                                 trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
-   call IO_read_jobBinaryFile(777,'F_tau',&
+   call IO_read_realFile(777,'F_tau',&
                                            trim(getSolverJobName()),size(F_tau))
    read (777,rec=1) F_tau
    close (777)
-   call IO_read_jobBinaryFile(777,'F_tau_lastInc',&
+   call IO_read_realFile(777,'F_tau_lastInc',&
                                         trim(getSolverJobName()),size(F_tau_lastInc))
    read (777,rec=1) F_tau_lastInc
    close (777)
-   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
-   call IO_read_jobBinaryFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
+   call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
    read (777,rec=1) C_volAvg
    close (777)
-   call IO_read_jobBinaryFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
+   call IO_read_realFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
    read (777,rec=1) C_volAvgLastInc
    close (777)
-   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
+   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
    read (777,rec=1) C_minMaxAvg
    close (777)
  endif
@@ -289,7 +288,7 @@ use mesh, only: &
    mesh_ipCoordinates, &
    mesh_deformedCoordsFFT
  use IO, only: &
-   IO_write_JobBinaryFile
+   IO_write_jobRealFile
  use DAMASK_spectral_Utilities, only: &
    grid, &
    geomSize, &
@@ -343,25 +342,25 @@ use mesh, only: &
  if (restartWrite) then
    write(6,'(/,a)') ' writing converged results for restart'
    flush(6)
-   call IO_write_jobBinaryFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
+   call IO_write_jobRealFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
-   call IO_write_jobBinaryFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
+   call IO_write_jobRealFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
-   call IO_write_jobBinaryFile(777,'F_tau',size(F_tau))                                             ! writing deformation gradient field to file
+   call IO_write_jobRealFile(777,'F_tau',size(F_tau))                                             ! writing deformation gradient field to file
    write (777,rec=1) F_tau
    close (777)
-   call IO_write_jobBinaryFile(777,'F_tau_lastInc',size(F_tau_lastInc))                             ! writing F_lastInc field to file
+   call IO_write_jobRealFile(777,'F_tau_lastInc',size(F_tau_lastInc))                             ! writing F_lastInc field to file
    write (777,rec=1) F_tau_lastInc
    close (777)
-   call IO_write_jobBinaryFile(777,'F_aimDot',size(F_aimDot))
+   call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
    write (777,rec=1) F_aimDot
    close(777)
-   call IO_write_jobBinaryFile(777,'C_volAvg',size(C_volAvg))
+   call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
    write (777,rec=1) C_volAvg
    close(777)
-   call IO_write_jobBinaryFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
+   call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
    write (777,rec=1) C_volAvgLastInc
    close(777)
  endif 
@@ -659,8 +658,8 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
  F_aim = F_aim - math_mul3333xx33(S, ((P_av - params%P_BC)))                                        ! S = 0.0 for no bc
- err_BC = maxval(abs((1.0_pReal - mask_stress)*math_mul3333xx33(C_scale,F_aim-F_av) + &
-                         mask_stress              *(P_av - params%P_BC)))                                       ! mask = 0.0 for no bc
+ err_BC = maxval(abs((-mask_stress+1.0_pReal)*math_mul3333xx33(C_scale,F_aim-F_av) + &
+                         mask_stress              *(P_av - params%P_BC)))                           ! mask = 0.0 for no bc
 
 !--------------------------------------------------------------------------------------------------
 ! error calculation
@@ -685,10 +684,10 @@ subroutine Polarisation_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,
  write(6,'(1/,a)') ' ... reporting .............................................................'
  write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error curl =       ', &
             err_curl/curlTol,' (',err_curl,' -,   tol =',curlTol,')'
- write(6,'(a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
-            err_div/divTol,  ' (',err_div,' / m, tol =',divTol,')'
- write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')   ' error BC =  ', &
-            err_BC/BC_tol, ' (',err_BC, ' Pa,  tol =',BC_tol,')' 
+ write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+            err_div/divTol,  ' (',err_div, ' / m, tol =',divTol,')'
+ write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error BC =         ', &
+            err_BC/BC_tol, ' (',err_BC,    ' Pa,  tol =',BC_tol,')' 
  write(6,'(/,a)') ' ==========================================================================='
  flush(6) 
 

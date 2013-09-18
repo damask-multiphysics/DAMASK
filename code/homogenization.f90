@@ -104,7 +104,7 @@ subroutine homogenization_init(Temperature)
    IO_open_file, &
    IO_open_jobFile_stat, &
    IO_write_jobFile, &
-   IO_write_jobBinaryIntFile, &
+   IO_write_jobIntFile, &
    IO_timeStamp 
  use mesh, only: &
    mesh_maxNips, &
@@ -235,7 +235,7 @@ subroutine homogenization_init(Temperature)
 
 !--------------------------------------------------------------------------------------------------
 ! write state size file out
- call IO_write_jobBinaryIntFile(777,'sizeStateHomog',size(homogenization_sizeState))
+ call IO_write_jobIntFile(777,'sizeStateHomog',size(homogenization_sizeState))
  write (777,rec=1) homogenization_sizeState
  close(777)
  

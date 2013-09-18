@@ -318,7 +318,7 @@ end subroutine utilities_init
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_updateGamma(C,saveReference)
  use IO, only: &
-  IO_write_jobBinaryFile
+  IO_write_jobRealFile
  use numerics, only: &
    memory_efficient
  use math, only: &
@@ -337,7 +337,7 @@ subroutine utilities_updateGamma(C,saveReference)
  if (saveReference) then
    write(6,'(/,a)') ' writing reference stiffness to file'
    flush(6)
-   call IO_write_jobBinaryFile(777,'C_ref',size(C_ref))
+   call IO_write_jobRealFile(777,'C_ref',size(C_ref))
    write (777,rec=1) C_ref
    close(777)
  endif

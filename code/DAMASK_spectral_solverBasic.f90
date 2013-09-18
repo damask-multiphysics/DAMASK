@@ -69,8 +69,7 @@ subroutine basic_init(temperature)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  
  use IO, only: &
-   IO_read_JobBinaryFile, &
-   IO_write_JobBinaryFile, &
+   IO_read_realFile, &
    IO_intOut, &
    IO_timeStamp
  use debug, only: &
@@ -124,11 +123,11 @@ subroutine basic_init(temperature)
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
-   call IO_read_jobBinaryFile(777,'F',&
+   call IO_read_realFile(777,'F',&
                                                   trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_jobBinaryFile(777,'F_lastInc',&
+   call IO_read_realFile(777,'F_lastInc',&
                                                   trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
@@ -136,16 +135,16 @@ subroutine basic_init(temperature)
    F_aim         = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt                                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
    
-   call IO_read_jobBinaryFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
-   call IO_read_jobBinaryFile(777,'C',trim(getSolverJobName()),size(C))
+   call IO_read_realFile(777,'C',trim(getSolverJobName()),size(C))
    read (777,rec=1) C
    close (777)
-   call IO_read_jobBinaryFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
+   call IO_read_realFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
    read (777,rec=1) C_lastInc
    close (777)
-   call IO_read_jobBinaryFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
+   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
    read (777,rec=1) temp3333_Real
    close (777)
  endif
@@ -179,7 +178,7 @@ type(tSolutionState) function basic_solution(&
    mesh_ipCoordinates,&
    mesh_deformedCoordsFFT
  use IO, only: &
-   IO_write_JobBinaryFile, &
+   IO_write_jobRealFile, &
    IO_intOut
  use debug, only: &
    debug_level, &
@@ -242,19 +241,19 @@ type(tSolutionState) function basic_solution(&
  if (restartWrite) then
    write(6,'(/,a)') ' writing converged results for restart'
    flush(6)
-   call IO_write_jobBinaryFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
+   call IO_write_jobRealFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
-   call IO_write_jobBinaryFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
+   call IO_write_jobRealFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
-   call IO_write_jobBinaryFile(777,'F_aimDot',size(f_aimDot))
+   call IO_write_jobRealFile(777,'F_aimDot',size(f_aimDot))
    write (777,rec=1) f_aimDot
    close(777)
-   call IO_write_jobBinaryFile(777,'C',size(C))
+   call IO_write_jobRealFile(777,'C',size(C))
    write (777,rec=1) C
    close(777)
-   call IO_write_jobBinaryFile(777,'C_lastInc',size(C_lastInc))
+   call IO_write_jobRealFile(777,'C_lastInc',size(C_lastInc))
    write (777,rec=1) C_lastInc
    close(777)
  endif 

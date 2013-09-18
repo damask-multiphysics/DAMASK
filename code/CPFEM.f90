@@ -137,8 +137,8 @@ subroutine CPFEM_init
  use prec, only: &
    pInt
  use IO, only: &
-   IO_read_jobBinaryFile,&
-   IO_read_jobBinaryIntFile, &
+   IO_read_realFile,&
+   IO_read_intFile, &
    IO_timeStamp, &
    IO_error
  use numerics, only: &
@@ -192,31 +192,31 @@ subroutine CPFEM_init
      !$OMP END CRITICAL (write2out)
    endif
 
-   call IO_read_jobBinaryIntFile(777,'recordedPhase',modelName,size(material_phase))
+   call IO_read_intFile(777,'recordedPhase',modelName,size(material_phase))
    read (777,rec=1) material_phase
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergedF',modelName,size(crystallite_F0))
+   call IO_read_realFile(777,'convergedF',modelName,size(crystallite_F0))
    read (777,rec=1) crystallite_F0
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergedFp',modelName,size(crystallite_Fp0))
+   call IO_read_realFile(777,'convergedFp',modelName,size(crystallite_Fp0))
    read (777,rec=1) crystallite_Fp0
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergedLp',modelName,size(crystallite_Lp0))
+   call IO_read_realFile(777,'convergedLp',modelName,size(crystallite_Lp0))
    read (777,rec=1) crystallite_Lp0
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergeddPdF',modelName,size(crystallite_dPdF0))
+   call IO_read_realFile(777,'convergeddPdF',modelName,size(crystallite_dPdF0))
    read (777,rec=1) crystallite_dPdF0
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergedTstar',modelName,size(crystallite_Tstar0_v))
+   call IO_read_realFile(777,'convergedTstar',modelName,size(crystallite_Tstar0_v))
    read (777,rec=1) crystallite_Tstar0_v
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergedStateConst',modelName)
+   call IO_read_realFile(777,'convergedStateConst',modelName)
    m = 0_pInt
    do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
      do l = 1,size(constitutive_state0(i,j,k)%p)
@@ -226,7 +226,7 @@ subroutine CPFEM_init
    enddo; enddo; enddo
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergedStateHomog',modelName)
+   call IO_read_realFile(777,'convergedStateHomog',modelName)
    m = 0_pInt
    do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
      do l = 1,homogenization_sizeState(j,k)
@@ -236,7 +236,7 @@ subroutine CPFEM_init
    enddo; enddo
    close (777)
 
-   call IO_read_jobBinaryFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
+   call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
    read (777,rec=1) CPFEM_dcsdE
    close (777)
    restartRead = .false.
@@ -324,7 +324,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, el
                            materialpoint_Temperature, &
                            materialpoint_stressAndItsTangent, &
                            materialpoint_postResults
- use IO, only:             IO_write_jobBinaryFile, &
+ use IO, only:             IO_write_jobRealFile, &
                            IO_warning
  use DAMASK_interface
  
@@ -422,31 +422,31 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, el
       !$OMP END CRITICAL (write2out)
      endif
      
-     call IO_write_jobBinaryFile(777,'recordedPhase',size(material_phase))
+     call IO_write_jobRealFile(777,'recordedPhase',size(material_phase))
      write (777,rec=1) material_phase
      close (777)
 
-     call IO_write_jobBinaryFile(777,'convergedF',size(crystallite_F0))
+     call IO_write_jobRealFile(777,'convergedF',size(crystallite_F0))
      write (777,rec=1) crystallite_F0
      close (777)
      
-     call IO_write_jobBinaryFile(777,'convergedFp',size(crystallite_Fp0))
+     call IO_write_jobRealFile(777,'convergedFp',size(crystallite_Fp0))
      write (777,rec=1) crystallite_Fp0
      close (777)
      
-     call IO_write_jobBinaryFile(777,'convergedLp',size(crystallite_Lp0))
+     call IO_write_jobRealFile(777,'convergedLp',size(crystallite_Lp0))
      write (777,rec=1) crystallite_Lp0
      close (777)
      
-     call IO_write_jobBinaryFile(777,'convergeddPdF',size(crystallite_dPdF0))
+     call IO_write_jobRealFile(777,'convergeddPdF',size(crystallite_dPdF0))
      write (777,rec=1) crystallite_dPdF0
      close (777)
      
-     call IO_write_jobBinaryFile(777,'convergedTstar',size(crystallite_Tstar0_v))
+     call IO_write_jobRealFile(777,'convergedTstar',size(crystallite_Tstar0_v))
      write (777,rec=1) crystallite_Tstar0_v
      close (777)
      
-     call IO_write_jobBinaryFile(777,'convergedStateConst')
+     call IO_write_jobRealFile(777,'convergedStateConst')
      m = 0_pInt
      do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
        do l = 1,size(constitutive_state0(i,j,k)%p)
@@ -456,7 +456,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, el
      enddo; enddo; enddo
      close (777)
      
-     call IO_write_jobBinaryFile(777,'convergedStateHomog')
+     call IO_write_jobRealFile(777,'convergedStateHomog')
      m = 0_pInt
      do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
        do l = 1,homogenization_sizeState(j,k)
@@ -466,7 +466,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, Temperature, dt, el
      enddo; enddo
      close (777)
      
-     call IO_write_jobBinaryFile(777,'convergeddcsdE',size(CPFEM_dcsdE))
+     call IO_write_jobRealFile(777,'convergeddcsdE',size(CPFEM_dcsdE))
      write (777,rec=1) CPFEM_dcsdE
      close (777)
      
