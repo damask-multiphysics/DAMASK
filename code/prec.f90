@@ -52,7 +52,7 @@ module prec
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000', pReal)                    !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #endif
 #else
- NO SUITABLE PRECISION SELECTED, STOPPING COMPILATION
+ NO SUITABLE PRECISION FOR REAL SELECTED, STOPPING COMPILATION
 #endif
 
 #if (INT==4)
@@ -60,7 +60,7 @@ module prec
 #elif (INT==8)
  integer,     parameter, public :: pInt  = 8                                                        !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
 #else
- NO SUITABLE PRECISION SELECTED, STOPPING COMPILATION
+ NO SUITABLE PRECISION FOR INTEGER SELECTED, STOPPING COMPILATION
 #endif
 
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
