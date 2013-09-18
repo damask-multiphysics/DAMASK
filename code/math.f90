@@ -38,7 +38,7 @@ module math
  complex(pReal), parameter, public :: TWOPIIMG = (0.0_pReal,2.0_pReal)* PI                          !< Re(0.0), Im(2xPi)
 
  real(pReal), dimension(3,3), parameter, public :: &
-   math_I3 = reshape([&
+   MATH_I3 = reshape([&
      1.0_pReal,0.0_pReal,0.0_pReal, &
      0.0_pReal,1.0_pReal,0.0_pReal, &
      0.0_pReal,0.0_pReal,1.0_pReal  &
@@ -1680,7 +1680,7 @@ end function math_axisAngleToQ
 !--------------------------------------------------------------------------------------------------
 !> @brief orientation matrix from quaternion (w+ix+jy+kz)
 !> @details taken from http://arxiv.org/pdf/math/0701759v1.pdf
-!> @dteails see also http://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions
+!> @details see also http://en.wikipedia.org/wiki/Rotation_formalisms_in_three_dimensions
 !--------------------------------------------------------------------------------------------------
 pure function math_qToR(q)
 
@@ -1694,7 +1694,7 @@ pure function math_qToR(q)
    T(i,j) = q(i+1_pInt) * q(j+1_pInt)
  S = reshape( [0.0_pReal,     -q(4),      q(3), &
                     q(4), 0.0_pReal,     -q(2), &
-                   -q(3),      q(2), 0.0_pReal],[3,3])  ! notation is transposed!
+                   -q(3),      q(2), 0.0_pReal],[3,3])                                             ! notation is transposed
 
  math_qToR = (2.0_pReal * q(1)*q(1) - 1.0_pReal) * math_I3 &
            + 2.0_pReal * T - 2.0_pReal * q(1) * S
