@@ -39,13 +39,14 @@ SHELL = /bin/sh
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 
-#any values will be overwritten by setup_code.py
+#any values will be overwritten by configure.py
 FFTWROOT ?= /usr/local
 IMKLROOT ?= 
 ACMLROOT ?= 
 LAPACKROOT ?= /usr
 
 F90 ?= ifort
+########################################################################################
 
 COMPILERNAME ?= $(F90)
 
