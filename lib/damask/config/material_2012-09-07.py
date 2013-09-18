@@ -27,7 +27,7 @@ class Material():
   def __repr__(self):
     me = []
     for part in self.parts:
-      print 'doing',part
+      print('doing',part)
       me += ['','#-----------------------------#','<%s>'%part,'#-----------------------------#',]
       for section in self.data[part]['__order__']:
         section_number=self.data[part]['__order__'].index(section)
@@ -185,7 +185,7 @@ class Microstructure(Section):
     theData = ''
     for property in ['phase','texture','fraction']:
       if property not in data.keys():   # suboptimal!!
-        print 'Croak!'
+        print('Croak!')
       else:
         theData += '%s %s\t'%(property,data[property])
     self.add_multiKey('constituent',theData)
@@ -265,7 +265,7 @@ def example_1(write_file=False):
     p.add_key('interaction_slipslip',[1]*27)
     mat.add_section('phase','phase_label',p)
                                            
-    print mat
+    print(mat)
     mat.write(file='material.config_example_1')
     mat.write(file='material.config_example_1',overwrite=True)
     return mat

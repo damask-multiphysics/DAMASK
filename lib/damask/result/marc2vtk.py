@@ -23,31 +23,31 @@ class MARC_POST():
 
   def opent16(self,incr=None):
       self.fpath=os.path.join(self.projdir,self.postname)
-      print 'Trying to open ',self.fpath,' ...'
+      print('Trying to open ',self.fpath,' ...')
       self.p=py_post.post_open(self.fpath)
       if self.p==None:
-        print 'Could not open %s.'%self.postname; #return 'err'#; sys.exit(1)
+        print('Could not open %s.'%self.postname); #return 'err'#; sys.exit(1)
         raise Exception('Could not open t16')
-      print 'Postfile %s%s is open ...'%(self.projdir,self.postname)
+      print('Postfile %s%s is open ...'%(self.projdir,self.postname))
       self.maxincr=self.p.increments()       
-      print 'and has %i increments'%self.maxincr
+      print('and has %i increments'%self.maxincr)
       if incr is None:
         self.p.moveto(self.maxincr-1)   
       else:
         self.p.moveto(incr+1)
-      print 'moved to increment ', self.p.increment       
+      print('moved to increment ', self.p.increment)       
       self.p.extrapolation('translate') # linear, translate, average. query with p.extrapolate
-      print 'extrapolation method is ', self.p.extrapolate 
-      print 'collecting model information'
+      print('extrapolation method is ', self.p.extrapolate) 
+      print('collecting model information')
       self.t16info(printFlag=0)
-      print 't16 is open'
+      print('t16 is open')
       self.p
 
   def t16info(self, printFlag=1
               ):
       if not self.p:
         self.p=self.opent16()#post_open(self.postname)
-      print self.p
+      print(self.p)
       oldincr=self.p.position
       if oldincr==0:
         self.p.moveto(1)
@@ -65,15 +65,15 @@ class MARC_POST():
           self.nscal_list[i]=self.p.node_scalar_label(i)
       for i in range (0,self.elscals):
           self.elscal_list[i]=self.p.element_scalar_label(i)
-          if printFlag==1: print i, self.elscal_list[i]
+          if printFlag==1: print(i, self.elscal_list[i])
       for i in range (0,self.eltens):
           self.elten_list[i]=self.p.element_tensor_label(i)
-          if printFlag==1: print i, self.elten_list[i]
+          if printFlag==1: print(i, self.elten_list[i])
       for i in range(0,self.p.element_tensors()):
-        if printFlag==1: print 'Element Tensor: ', i, self.p.element_tensor_label(i)
-      if printFlag==1: print ''
+        if printFlag==1: print('Element Tensor: ', i, self.p.element_tensor_label(i))
+      if printFlag==1: print('')
       for i in range(0,self.p.element_scalars()):
-        if printFlag==1: print 'Element Scalar: ', i, self.p.element_scalar_label(i)
+        if printFlag==1: print('Element Scalar: ', i, self.p.element_scalar_label(i))
       if oldincr==0:
         self.p.moveto(0)     
 
@@ -87,7 +87,7 @@ class MARC_POST():
         else:
           print('post object not open?')
       except:
-        print 'ERROR. Could not close FEM result file.'
+        print('ERROR. Could not close FEM result file.')
 
   def getLabelNr(self, label=None, type='Scalar'): 
       if type[0]=='S' or type[0]=='s':   # element scalar
@@ -506,7 +506,7 @@ class VTK_WRITER():
       posXYZ+wVec,
       posXYZ+wVec+lVec]
       pts.extend([pts[0]+hVec,pts[1]+hVec,pts[2]+hVec,pts[3]+hVec])
-      print len(pts), pts
+      print(len(pts), pts)
       self.fsb.write('POINTS %i float\n'%len(pts))
       for npts in range(0,len(pts)):
         self.fsb.write('%f %f %f\n'%(pts[npts][0], pts[npts][1], pts[npts][2]))
@@ -543,7 +543,7 @@ class VTK_WRITER():
       
       self.fsb.write('\n')
       self.fsb.close()
-      print self.fsb
+      print(self.fsb)
 
   def example_unstructured(self):
     self.openFile(filename='example_unstructured_grid.vtk')

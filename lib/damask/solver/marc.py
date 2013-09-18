@@ -104,7 +104,7 @@ class Marc(Solver):
     if compile: cmd += ' -u ' + user+'.f90' + ' -save y'
     else:       cmd += ' -prog ' + user
 
-    print 'job submission with%s compilation: %s'%({False:'out',True:''}[compile],user)
+    print('job submission with%s compilation: %s'%({False:'out',True:''}[compile],user))
     if logfile:
       log = open(logfile, 'w')
     print(cmd)
@@ -120,7 +120,7 @@ class Marc(Solver):
     fid_out = open(outFile,'r')
     for ln in fid_out:
       if (string.find(ln,'tress iteration') is not -1):
-        print ln
+        print(ln)
       elif (string.find(ln,'Exit number') is not -1):
         substr = ln[string.find(ln,'Exit number'):len(ln)]
         exitnumber = int(substr[12:16])

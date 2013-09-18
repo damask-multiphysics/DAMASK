@@ -16,10 +16,10 @@ class Test():
   
   def __init__(self,test_description):
     
-    print '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n' \
+    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n' \
          +'----------------------------------------------------------------\n' \
          +'| '+test_description+'\n' \
-         +'----------------------------------------------------------------'
+         +'----------------------------------------------------------------')
     self.dirBase = os.path.dirname(os.path.realpath(inspect.getfile(self.__class__)))
     self.parser = OptionParser(
     description = 'Using: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $',
@@ -37,7 +37,7 @@ class Test():
     Run all variants and report first failure.
     '''
     if not self.testPossible(): return -1
-    if len(update)   == 0 and self.options.update: print ' This test has no reference to update'
+    if len(update)   == 0 and self.options.update: print(' This test has no reference to update')
     if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
     self.clean()
     self.prepareAll()
@@ -50,8 +50,8 @@ class Test():
           self.update(variant)
         elif not self.compare(variant):
           return variant+1
-      except Exception,e :
-        print '\nWARNING:\n %s\n'%e
+      except Exception as e :
+        print('\nWARNING:\n %s\n'%e)
         return variant+1
     return 0
   
@@ -159,7 +159,7 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print 'Reference2Current: Unable to copy file ', file
+        print('Reference2Current: Unable to copy file ', file)
  
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
     
@@ -169,8 +169,8 @@ class Test():
       try:
         shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print os.path.join(source,file)
-        print 'Base2Current: Unable to copy file ', file
+        print(os.path.join(source,file))
+        print('Base2Current: Unable to copy file ', file)
 
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
     
@@ -179,7 +179,7 @@ class Test():
       try:
         shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))  
       except:
-        print 'Current2Reference: Unable to copy file ', file
+        print('Current2Reference: Unable to copy file ', file)
         
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
     
@@ -188,7 +188,7 @@ class Test():
       try:
         shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print 'Proof2Current: Unable to copy file ', file
+        print('Proof2Current: Unable to copy file ', file)
         
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
     
@@ -196,13 +196,13 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print 'Current2Current: Unable to copy file ', file
+        print('Current2Current: Unable to copy file ', file)
 
   def execute_inCurrentDir(self,cmd,outfile='execute_log.txt'):
     
     os.chdir(self.dirCurrent())
     file=open(outfile,'a+')
-    print cmd
+    print(cmd)
     process = subprocess.Popen(shlex.split(cmd),stdout = file,stderr = subprocess.STDOUT)
     process.wait()
     file.close()
@@ -210,7 +210,7 @@ class Test():
   def compare_Array(self,File1,File2):
   
     import numpy
-    print 'comparing\n ' , File1,'\n ', File2
+    print('comparing\n ' , File1,'\n ', File2)
     refFile = open(File1)
     table = damask.ASCIItable(refFile)
     table.head_read()
@@ -224,7 +224,7 @@ class Test():
       max_loc=numpy.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
       curArray = curArray[curArray.nonzero()]
-      print ' ********\n * maximum relative error ',max_err,' for ', refArrayNonZero[max_loc],' and ',curArray[max_loc],'\n ********'
+      print(' ********\n * maximum relative error ',max_err,' for ', refArrayNonZero[max_loc],' and ',curArray[max_loc],'\n ********')
       return max_err
     else:
        raise Exception('mismatch in array size to compare')
@@ -246,7 +246,7 @@ class Test():
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
     
     import numpy
-    print 'comparing ASCII Tables\n' , file0,'\n', file1
+    print('comparing ASCII Tables\n' , file0,'\n', file1)
     if normHeadings == '': normHeadings = headings0
 
     if len(headings0) == len(headings1) == len(normHeadings):                                         #check if comparison is possible and determine lenght of columns
@@ -320,9 +320,9 @@ class Test():
         norm[i] = [1.0 for j in xrange(line0-len(skipLines))]
         absTol[i] = True
         if perLine:
-          print 'At least one norm of',headings0[i]['label'],'in 1. table is 0.0, using absolute tolerance'
+          print('At least one norm of',headings0[i]['label'],'in 1. table is 0.0, using absolute tolerance')
         else:
-          print 'Maximum norm of',headings0[i]['label'],'in 1. table is 0.0, using absolute tolerance'
+          print('Maximum norm of',headings0[i]['label'],'in 1. table is 0.0, using absolute tolerance')
 
     line1 = 0
     while table1.data_read():                                                     # read next data line of ASCII table
@@ -335,13 +335,13 @@ class Test():
 
     if (line0 != line1): raise Exception('found ', line0, ' lines in 1. table and ', line1, ' in 2. table')
 
-    print ' ********'
+    print(' ********')
     for i in xrange(dataLength):
       if absTol[i]:
-        print ' * maximum absolute error ',maxError[i],' for ', headings0[i]['label'],' and ',headings1[i]['label']
+        print(' * maximum absolute error ',maxError[i],' for ', headings0[i]['label'],' and ',headings1[i]['label'])
       else:
-        print ' * maximum relative error ',maxError[i],' for ', headings0[i]['label'],' and ',headings1[i]['label']
-    print ' ********'
+        print(' * maximum relative error ',maxError[i],' for ', headings0[i]['label'],' and ',headings1[i]['label'])
+    print(' ********')
     return maxError
     
   def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',normHeadings='',normType=None,\
@@ -366,14 +366,14 @@ class Test():
   def report_Success(self,culprit):
     
     if culprit == 0:
-      print '%s passed.'%({False: 'The test',
-                         True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1])
-      print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
+      print('%s passed.'%({False: 'The test',
+                         True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1]))
+      print('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
       return 0
     if culprit == -1:
-      print 'Warning: Could not start test'
+      print('Warning: Could not start test')
       return 0
     else:
-      print ' ********\n * Test %i failed...\n ********'%(culprit)
-      print '\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n'
+      print(' ********\n * Test %i failed...\n ********'%(culprit))
+      print('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
       return culprit

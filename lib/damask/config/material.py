@@ -118,7 +118,7 @@ class Material():
   def __repr__(self):
     me = []
     for part in self.parts:
-      print 'doing',part
+      print('doing',part)
       me += ['','#-----------------------------#','<%s>'%part,'#-----------------------------#',]
       for section in self.data[part]['__order__']:
         me += ['','[%s] %s'%(section,'-'*max(0,27-len(section))),'',]
@@ -260,7 +260,7 @@ def ex1():
     mat.add_section('phase','phase1',p)
     mat.add_section('texture','tex1',t)
     mat.add_microstructure('mustruct1',{'phase':['phase1']*2,'texture':['tex1']*2,'fraction':[0.2]*2})
-    print mat
+    print(mat)
     mat.write(file='poop')
     mat.write(file='poop',overwrite=True)
     
