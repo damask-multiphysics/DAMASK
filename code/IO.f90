@@ -650,16 +650,12 @@ function IO_hybridIA(Nast,ODFfileName)
  allocate(binSet(Nreps))
  bin = 0_pInt                                                                                       ! bin counter
  i = 1_pInt                                                                                         ! set counter
- do phi1=1_pInt,steps(1)
-   do Phi=1_pInt,steps(2)
-     do phi2=1_pInt,steps(3)
-       reps = nint(C*dV_V(phi2,Phi,phi1), pInt)
-       binSet(i:i+reps-1) = bin
-       bin = bin+1_pInt                                                                             ! advance bin
-       i = i+reps                                                                                   ! advance set
-     enddo
-   enddo
- enddo
+ do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2) ;do phi2=1_pInt,steps(3)
+   reps = nint(C*dV_V(phi2,Phi,phi1), pInt)
+   binSet(i:i+reps-1) = bin
+   bin = bin+1_pInt                                                                                 ! advance bin
+   i = i+reps                                                                                       ! advance set
+ enddo; enddo; enddo
 
  do i=1_pInt,Nast
    if (i < Nast) then
@@ -974,7 +970,6 @@ real(pReal) function IO_floatValue (string,positions,myPos)
  implicit none
  integer(pInt),   dimension(:),                intent(in) :: positions                            !< positions of tags in string
  integer(pInt),                                intent(in) :: myPos                                !< position of desired sub string
- character(len=1+positions(myPos*2+1)-positions(myPos*2)) :: IO_stringValue
  character(len=*),                             intent(in) :: string                               !< raw input with known positions
  character(len=15),              parameter  :: MYNAME = 'IO_floatValue: '
  character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
@@ -1148,7 +1143,9 @@ subroutine IO_skipChunks(myUnit,N)
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: myPos
  character(len=65536)                     :: line
 
+ line = ''
  remainingChunks = N
+
  do while (trim(line) /= IO_EOF .and. remainingChunks > 0)
    line = IO_read(myUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
@@ -1194,9 +1191,10 @@ integer(pInt) function IO_countDataLines(myUnit)
                                              tmp
 
  IO_countDataLines = 0_pInt
+ line = ''
 
- do
-   read(myUnit,'(A65536)',end=100) line
+ do while (trim(line) /= IO_EOF)
+   line = IO_read(myUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
    tmp = IO_lc(IO_stringValue(line,myPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
@@ -1205,7 +1203,7 @@ integer(pInt) function IO_countDataLines(myUnit)
      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
    endif
  enddo
-100 backspace(myUnit)
+ backspace(myUnit)
 
 end function IO_countDataLines
 
@@ -1229,10 +1227,11 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
  character(len=65536)                     :: line
 
  IO_countContinuousIntValues = 0_pInt
+ line = ''
 
 #ifndef Abaqus
  do while (trim(line) /= IO_EOF)
-   read(myUnit,'(A65536)') line
+   line = IO_read(myUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
    if (myPos(1) < 1_pInt) then                                                                      ! empty line
      exit
@@ -1260,7 +1259,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
  l = 1_pInt
  do while (trim(line) /= IO_EOF and l <= c)                                                         ! ToDo: is this correct
    l = l + 1_pInt
-   read(myUnit,'(A65536)') line
+   line = IO_read(myUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
    IO_countContinuousIntValues = IO_countContinuousIntValues + 1_pInt + &                           ! assuming range generation
                                 (IO_intValue(line,myPos,2_pInt)-IO_intValue(line,myPos,1_pInt))/&
