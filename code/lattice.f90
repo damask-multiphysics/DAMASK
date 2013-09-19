@@ -107,6 +107,7 @@ module lattice
 
  real(pReal), dimension(3+3,lattice_fcc_Nslip), parameter, private :: &
    lattice_fcc_systemSlip = reshape(real([&
+    ! Slip direction     Plane normal
       0, 1,-1,     1, 1, 1, &
      -1, 0, 1,     1, 1, 1, &
       1,-1, 0,     1, 1, 1, &
@@ -247,6 +248,7 @@ module lattice
 
  real(pReal), dimension(3+3,lattice_bcc_Nslip), parameter, private :: &
    lattice_bcc_systemSlip = reshape(real([&
+    ! Slip direction     Plane normal
     ! Slip system <111>{110} 
       1,-1, 1,     0, 1, 1, &
      -1,-1, 1,     0, 1, 1, &
@@ -439,6 +441,7 @@ module lattice
 
  real(pReal), dimension(4+4,lattice_hex_Nslip), parameter, private :: &
    lattice_hex_systemSlip = reshape(real([&
+    ! Slip direction     Plane normal
     ! Basal systems <11.0>{00.1} (independent of c/a-ratio, Bravais notation (4 coordinate base))
       2, -1, -1,  0,     0,  0,  0,  1, &
      -1,  2, -1,  0,     0,  0,  0,  1, &
@@ -471,7 +474,7 @@ module lattice
       2, -1, -1,  3,    -1,  0,  1,  1, &
       1, -2,  1,  3,     0,  1, -1,  1, &
      -1, -1,  2,  3,     0,  1, -1,  1, &
-    ! pyramidal system: c+a slip <11.3>{-1-1.2} -- as for hexagonal ice (Castelnau et al 1996, similar to twin system found below) 
+    ! pyramidal system: c+a slip <11.3>{-1-1.2} -- as for hexagonal ice (Castelnau et al. 1996, similar to twin system found below) 
       2, -1, -1,  3,    -2,  1,  1,  2, & ! sorted according to similar twin system
      -1,  2, -1,  3,     1, -2,  1,  2, & ! <11.3>{-1-1.2} shear = 2((c/a)^2-2)/(3 c/a)
      -1, -1,  2,  3,     1,  1, -2,  2, &
@@ -482,6 +485,7 @@ module lattice
 
  real(pReal), dimension(4+4,lattice_hex_Ntwin), parameter, private :: &
    lattice_hex_systemTwin =  reshape(real([&
+    ! Compression or Tension =f(twinning shear=f(c/a)) for each metal ! (according to Yoo 1981)
       1, -1,  0,  1,    -1,  1,  0,  2, & ! <-10.1>{10.2} shear = (3-(c/a)^2)/(sqrt(3) c/a)
      -1,  0,  1,  1,     1,  0, -1,  2, &
       0,  1, -1,  1,     0, -1,  1,  2, &
@@ -818,7 +822,7 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      lattice_fcc_Nstructure = lattice_fcc_Nstructure + 1_pInt    ! count fcc instances
      if (lattice_fcc_Nstructure == 1_pInt) then    ! me is first fcc structure
        processMe = .true.
-       lattice_NnonSchmid(myStructure) = lattice_fcc_NnonSchmid    ! Currently no known non schmid contributions for FCC (to be changed later)
+       lattice_NnonSchmid(myStructure) = lattice_fcc_NnonSchmid    ! Currently no known non Schmid contributions for FCC (to be changed later)
        do i = 1_pInt,myNslip                            ! assign slip system vectors
          sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)
          sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)
@@ -889,9 +893,9 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
      myNslip = lattice_hex_Nslip                 ! overall number of slip systems
      myNtwin = lattice_hex_Ntwin                 ! overall number of twin systems
      processMe = .true.
-     lattice_NnonSchmid(myStructure) = lattice_hex_NnonSchmid    ! Currently no known non schmid contributions for hex (to be changed later)
+     lattice_NnonSchmid(myStructure) = lattice_hex_NnonSchmid    ! Currently no known non Schmid contributions for hex (to be changed later)
 
-     ! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexgonal system (a, b, c)
+     ! converting from 4 axes coordinate system (a1=a2=a3=c) to ortho-hexagonal system (a, b, c)
      do i = 1_pInt,myNslip
        sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
        sd(2,i) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*(0.5_pReal*sqrt(3.0_pReal))
@@ -900,7 +904,7 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
        sn(2,i) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
        sn(3,i) =  lattice_hex_systemSlip(8,i)/CoverA
        do j = 1_pInt,lattice_hex_NnonSchmid
-         sns(1:3,1:3,1,j,i) = 0.0_pReal 
+         sns(1:3,1:3,1,j,i) = 0.0_pReal
          sns(1:3,1:3,2,j,i) = 0.0_pReal 
        enddo  
      enddo
