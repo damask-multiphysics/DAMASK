@@ -690,7 +690,8 @@ real(pReal) function utilities_curlRMS()
  utilities_curlRMS = utilities_curlRMS + &
                      2.0_pReal*sum(real(curl_fourier)**2.0_pReal + aimag(curl_fourier)**2.0_pReal) 
  enddo; enddo
- utilities_curlRMS = sqrt(utilities_curlRMS) * wgt 
+ utilities_curlRMS = sqrt(utilities_curlRMS) * wgt
+ if(grid(1) == 1_pInt) utilities_curlRMS = utilities_curlRMS * 0.5_pReal                           ! counted twice in case of grid(1) == 1
 
 end function utilities_curlRMS
 
