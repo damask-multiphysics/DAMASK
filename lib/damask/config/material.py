@@ -118,7 +118,7 @@ class Material():
   def __repr__(self):
     me = []
     for part in self.parts:
-      print('doing',part)
+      print('doing '+part)
       me += ['','#-----------------------------#','<%s>'%part,'#-----------------------------#',]
       for section in self.data[part]['__order__']:
         me += ['','[%s] %s'%(section,'-'*max(0,27-len(section))),'',]
