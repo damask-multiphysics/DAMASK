@@ -187,7 +187,7 @@ subroutine basicPETSc_init(temperature)
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
 
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                        ! initialize to identity
+   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                         ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_lastInc2 = F_lastInc
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
@@ -195,16 +195,13 @@ subroutine basicPETSc_init(temperature)
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
-   call IO_read_realFile(777,'F',&
-                                                trim(getSolverJobName()),size(F))
+   call IO_read_realFile(777,'F',trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_realFile(777,'F_lastInc',&
-                                                trim(getSolverJobName()),size(F_lastInc))
+   call IO_read_realFile(777,'F_lastInc',trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
-   call IO_read_realFile(777,'F_lastInc2',&
-                                                trim(getSolverJobName()),size(F_lastInc2))
+   call IO_read_realFile(777,'F_lastInc2',trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F

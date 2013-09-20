@@ -159,7 +159,7 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print('Reference2Current: Unable to copy file ', file)
+        print('Reference2Current: Unable to copy file %s'%file)
  
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
     
@@ -170,7 +170,7 @@ class Test():
         shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))  
       except:
         print(os.path.join(source,file))
-        print('Base2Current: Unable to copy file ', file)
+        print('Base2Current: Unable to copy file %s'%file)
 
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
     
@@ -179,7 +179,7 @@ class Test():
       try:
         shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))  
       except:
-        print('Current2Reference: Unable to copy file ', file)
+        print('Current2Reference: Unable to copy file %s'%file)
         
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
     
@@ -188,7 +188,7 @@ class Test():
       try:
         shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print('Proof2Current: Unable to copy file ', file)
+        print('Proof2Current: Unable to copy file %s'%file)
         
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
     
@@ -196,7 +196,7 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print('Current2Current: Unable to copy file ', file)
+        print('Current2Current: Unable to copy file %s'%file)
 
   def execute_inCurrentDir(self,cmd,outfile='execute_log.txt'):
     
@@ -210,7 +210,7 @@ class Test():
   def compare_Array(self,File1,File2):
   
     import numpy
-    print('comparing\n ' , File1,'\n ', File2)
+    print('comparing\n '+File1+'\n '+File2)
     refFile = open(File1)
     table = damask.ASCIItable(refFile)
     table.head_read()
@@ -224,7 +224,8 @@ class Test():
       max_loc=numpy.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
       curArray = curArray[curArray.nonzero()]
-      print(' ********\n * maximum relative error ',max_err,' for ', refArrayNonZero[max_loc],' and ',curArray[max_loc],'\n ********')
+      print(' ********\n * maximum relative error %f for %i and %i\n ********'
+                  %(max_err, refArrayNonZero[max_loc],curArray[max_loc]))
       return max_err
     else:
        raise Exception('mismatch in array size to compare')
@@ -246,7 +247,7 @@ class Test():
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
     
     import numpy
-    print('comparing ASCII Tables\n' , file0,'\n', file1)
+    print('comparing ASCII Tables\n' + file0 + '\n' + file1)
     if normHeadings == '': normHeadings = headings0
 
     if len(headings0) == len(headings1) == len(normHeadings):                                         #check if comparison is possible and determine lenght of columns
@@ -330,7 +331,8 @@ class Test():
         for i in xrange(dataLength):
           myData = numpy.array(map(float,table1.data[column[1][i]:\
                                                      column[1][i]+length[i]]),'d')
-          maxError[i] = max(maxError[i],numpy.linalg.norm(numpy.reshape(myData-data[i][line1-len(skipLines),:],shape[i]))/norm[i][line1-len(skipLines)])
+          maxError[i] = max(maxError[i],numpy.linalg.norm(numpy.reshape(myData-data[i][line1-len(skipLines),:],shape[i]))/
+                                                                                   norm[i][line1-len(skipLines)])
       line1 +=1
 
     if (line0 != line1): raise Exception('found ', line0, ' lines in 1. table and ', line1, ' in 2. table')
@@ -338,9 +340,9 @@ class Test():
     print(' ********')
     for i in xrange(dataLength):
       if absTol[i]:
-        print(' * maximum absolute error ',maxError[i],' for ', headings0[i]['label'],' and ',headings1[i]['label'])
+        print(' * maximum absolute error %f for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
       else:
-        print(' * maximum relative error ',maxError[i],' for ', headings0[i]['label'],' and ',headings1[i]['label'])
+        print(' * maximum relative error %f for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
     print(' ********')
     return maxError
     

@@ -216,22 +216,18 @@ subroutine Polarisation_init(temperature)
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
-   call IO_read_realFile(777,'F',&
-                                                trim(getSolverJobName()),size(F))
+   call IO_read_realFile(777,'F',trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_realFile(777,'F_lastInc',&
-                                                trim(getSolverJobName()),size(F_lastInc))
+   call IO_read_realFile(777,'F_lastInc',trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
-   call IO_read_realFile(777,'F_lastInc2',&
-                                                trim(getSolverJobName()),size(F_lastInc2))
+   call IO_read_realFile(777,'F_lastInc2',trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
-   call IO_read_realFile(777,'F_tau',&
-                                           trim(getSolverJobName()),size(F_tau))
+   call IO_read_realFile(777,'F_tau',trim(getSolverJobName()),size(F_tau))
    read (777,rec=1) F_tau
    close (777)
    call IO_read_realFile(777,'F_tau_lastInc',&
@@ -347,6 +343,9 @@ use mesh, only: &
    close (777)
    call IO_write_jobRealFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
+   close (777)
+   call IO_write_jobRealFile(777,'F_lastInc2',size(F_lastInc2))                                   ! writing F_lastInc field to file
+   write (777,rec=1) F_lastInc2
    close (777)
    call IO_write_jobRealFile(777,'F_tau',size(F_tau))                                             ! writing deformation gradient field to file
    write (777,rec=1) F_tau

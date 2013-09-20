@@ -208,30 +208,26 @@ subroutine AL_init(temperature)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F_lastInc     = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                    ! initialize to identity
    F_lastInc2 = F_lastInc
-   F_lambda_lastInc = F_lastInc
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_lambda = F
+   F_lambda_lastInc = F_lastInc
  elseif (restartInc > 1_pInt) then 
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
-   call IO_read_realFile(777,'F',&
-                                                trim(getSolverJobName()),size(F))
+   call IO_read_realFile(777,'F', trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_realFile(777,'F_lastInc',&
-                                                trim(getSolverJobName()),size(F_lastInc))
+   call IO_read_realFile(777,'F_lastInc', trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
-   call IO_read_realFile(777,'F_lastInc2',&
-                                                trim(getSolverJobName()),size(F_lastInc2))
+   call IO_read_realFile(777,'F_lastInc2', trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
    close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
-   call IO_read_realFile(777,'F_lambda',&
-                                           trim(getSolverJobName()),size(F_lambda))
+   call IO_read_realFile(777,'F_lambda',trim(getSolverJobName()),size(F_lambda))
    read (777,rec=1) F_lambda
    close (777)
    call IO_read_realFile(777,'F_lambda_lastInc',&
@@ -264,9 +260,9 @@ subroutine AL_init(temperature)
    C_volAvg = temp3333_Real
  endif 
 
- call Utilities_updateGamma(temp3333_Real2,.True.)
- C_scale = temp3333_Real2
- S_scale = math_invSym3333(temp3333_Real2)
+ call Utilities_updateGamma(C_minMaxAvg,.True.)
+ C_scale = C_minMaxAvg
+ S_scale = math_invSym3333(C_minMaxAvg)
  
 end subroutine AL_init
 
@@ -347,6 +343,9 @@ use mesh, only: &
    close (777)
    call IO_write_jobRealFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
+   close (777)
+   call IO_write_jobRealFile(777,'F_lastInc2',size(F_lastInc2))                                   ! writing F_lastInc field to file
+   write (777,rec=1) F_lastInc2
    close (777)
    call IO_write_jobRealFile(777,'F_lambda',size(F_lambda))                                       ! writing deformation gradient field to file
    write (777,rec=1) F_lambda
