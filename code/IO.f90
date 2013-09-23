@@ -306,7 +306,7 @@ subroutine IO_open_inputFile(myUnit,modelName)
  integer(pInt)                  :: fileType
  
  fileType = 1_pInt                                                                                  ! assume .pes
- path = trim(getSolverWorkingDirectoryName())//trim(modelModel)//inputFileExtension(fileType)       ! attempt .pes, if it exists: it should be used
+ path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)        ! attempt .pes, if it exists: it should be used
  open(myUnit+1,status='old',iostat=myStat,file=path)
  if(myStat /= 0_pInt) then                                                                          ! if .pes does not work / exist; use conventional extension, i.e.".inp"
     fileType = 2_pInt
@@ -1257,7 +1257,7 @@ integer(pInt) function IO_countContinuousIntValues(myUnit)
  enddo
  
  l = 1_pInt
- do while (trim(line) /= IO_EOF and l <= c)                                                         ! ToDo: is this correct
+ do while (trim(line) /= IO_EOF .and. l <= c)                                                     ! ToDo: is this correct
    l = l + 1_pInt
    line = IO_read(myUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
