@@ -48,10 +48,10 @@ fi
 
 while [ ! -d "$BLASDIR" ] || [ -z "$BLASDIR" ]
 do
-  echo "Input path of BLAS installation:"
-  read BLASDIR
   echo "Input type of BLAS installation [IMKL | ACML | LAPACK]:"
   read BLASTYPE
+  echo "Input path of BLAS installation:"
+  read BLASDIR
 done
 
 BLASDIR=${BLASDIR%/}               # remove trailing slash
