@@ -126,7 +126,7 @@ for file in files:
     eulers = theTable.data_asArray(['phi1','Phi','phi2'])
   if theTable.labels_index('microstructure') != -1:
     grain = theTable.data_asArray(['microstructure'])
-    grainIDs = numpy.unique(grain)
+    grainIDs = numpy.unique(grain).astype('i')
   else:
     grain = 1+numpy.arange(len(eulers))
     grainIDs = grain
