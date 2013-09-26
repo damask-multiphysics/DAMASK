@@ -42,8 +42,9 @@ module numerics
    nState                     = 10_pInt, &                                                          !< state loop limit
    nStress                    = 40_pInt, &                                                          !< stress loop limit
    pert_method                =  1_pInt, &                                                          !< method used in perturbation technique for tangent
-   fixedSeed                  =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
-   DAMASK_NumThreadsInt       =  0_pInt                                                             !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
+   fixedSeed                  =  0_pInt                                                             !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+ integer, protected, public :: &
+   DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  integer(pInt), public :: &
    numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
  integer(pInt), dimension(2) , protected, public :: &
@@ -165,7 +166,7 @@ subroutine numerics_init
 !$ if(gotDAMASK_NUM_THREADS /= 0) & 
 !$   call IO_warning(35_pInt,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
 !$ read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                        ! ...convert it to integer...
-!$ if (DAMASK_NumThreadsInt < 1_pInt) DAMASK_NumThreadsInt = 1_pInt                                 ! ...ensure that its at least one...
+!$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                           ! ...ensure that its at least one...
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
 
 !--------------------------------------------------------------------------------------------------

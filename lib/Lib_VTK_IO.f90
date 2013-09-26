@@ -425,7 +425,7 @@ contains
   integer function Get_Unit(Free_Unit)
   !---------------------------------------------------------------------------------------------------------------------------------
   implicit none
-  integer, intent(OUT), optional:: Free_Unit !< Free logic unit.
+  integer(I4P), intent(OUT), optional:: Free_Unit !< Free logic unit.
   integer::                        n1        !< Counter.
   integer::                        ios       !< Inquiring flag.
   logical::                        lopen     !< Inquiring flag.

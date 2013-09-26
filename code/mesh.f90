@@ -5090,6 +5090,8 @@ subroutine mesh_write_cellGeom
  use DAMASK_interface, only: &
    getSolverJobName, &
    getSolverWorkingDirectoryName
+ use IR_Precision, only: &
+   I4P
  use Lib_VTK_IO, only: &
    VTK_ini, &
    VTK_geo, &
@@ -5097,9 +5099,10 @@ subroutine mesh_write_cellGeom
    VTK_end 
  
  implicit none
- integer(pInt), dimension(1:mesh_Ncells)                                :: celltype 
- integer(pInt), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
- integer(pInt):: err, g, c, e, CellID, i, j
+ integer(I4P), dimension(1:mesh_Ncells)                                :: celltype 
+ integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
+ integer(I4P):: err
+ integer(I4P):: g, c, e, CellID, i, j
 
  cellID = 0_pInt
  j = 0_pInt
@@ -5119,11 +5122,11 @@ subroutine mesh_write_cellGeom
        title=trim(getSolverJobName())//' cell mesh', &
        filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &
        mesh_topology = 'UNSTRUCTURED_GRID')
- err = VTK_geo(NN = mesh_Ncellnodes, &
+ err = VTK_geo(NN = int(mesh_Ncellnodes,I4P), &
        X = mesh_cellnode(1,1:mesh_Ncellnodes), &
        Y = mesh_cellnode(2,1:mesh_Ncellnodes), &
        Z = mesh_cellnode(3,1:mesh_Ncellnodes))
- err = VTK_con(NC = mesh_Ncells, &
+ err = VTK_con(NC = int(mesh_Ncells,I4P), &
        connect = cellconnection(1:j), &
        cell_type = celltype)
  err = VTK_end()
@@ -5138,6 +5141,8 @@ subroutine mesh_write_elemGeom
  use DAMASK_interface, only: &
    getSolverJobName, &
    getSolverWorkingDirectoryName
+ use IR_Precision, only: &
+   I4P
  use Lib_VTK_IO, only: &
    VTK_ini, &
    VTK_geo, &
@@ -5145,9 +5150,10 @@ subroutine mesh_write_elemGeom
    VTK_end 
  
  implicit none
- integer(pInt), dimension(1:mesh_NcpElems)                     :: elemtype 
- integer(pInt), dimension(mesh_NcpElems*(1_pInt+FE_maxNnodes)) :: elementconnection
- integer(pInt):: err, e, t, n, i
+ integer(I4P), dimension(1:mesh_NcpElems)                     :: elemtype 
+ integer(I4P), dimension(mesh_NcpElems*(1_pInt+FE_maxNnodes)) :: elementconnection
+ integer(I4P):: err
+ integer(pInt):: e, t, n, i
 
  i = 0_pInt
  do e = 1_pInt, mesh_NcpElems                                                                      ! loop over cpElems
@@ -5164,11 +5170,11 @@ subroutine mesh_write_elemGeom
       title=trim(getSolverJobName())//' element mesh', &
       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_nodebased.vtk', &
       mesh_topology = 'UNSTRUCTURED_GRID')
- err =VTK_geo(NN = mesh_Nnodes, &
+ err =VTK_geo(NN = int(mesh_Nnodes,I4P), &
       X = mesh_node0(1,1:mesh_Nnodes), &
       Y = mesh_node0(2,1:mesh_Nnodes), &
       Z = mesh_node0(3,1:mesh_Nnodes))
- err =VTK_con(NC = mesh_Nelems, &
+ err =VTK_con(NC = int(mesh_Nelems,I4P), &
       connect = elementconnection(1:i), &
       cell_type = elemtype)
  err =VTK_end()

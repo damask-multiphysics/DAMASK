@@ -275,7 +275,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
  integer(pInt) :: computationMode, i, cp_en, node, CPnodeID
- !$ integer(pInt) :: defaultNumThreadsInt                                                           !< default value set by Marc
+ !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Marc
 
  if (iand(debug_level(debug_MARC),debug_LEVELBASIC) /= 0_pInt) then
    write(6,'(a,/,i8,i8,i2)') ' MSC.MARC information on shape of element(2), IP:', m, nn
