@@ -122,6 +122,8 @@ class ASCIItable():
       for item in what: self.labels_append(item)
     else:               self.labels += [str(what)]
 
+    self.__IO__['labels'] = True                                        # switch on processing (in particular writing) of labels
+
 # ------------------------------------------------------------------
   def labels_clear(self):
     self.labels = []
