@@ -1469,8 +1469,8 @@ subroutine crystallite_integrateStateRK4()
                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
              mySizeDotState = constitutive_sizeDotState(g,i,e)
              write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> updateState at el ip g ',e,i,g
-             write(6,'(a,/,(12x,12(e12.6,1x)),/)') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
-             write(6,'(a,/,(12x,12(e12.6,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+             write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
+             write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
            endif
 #endif
          endif
@@ -2467,9 +2467,9 @@ eIter = FEsolving_execElem(1:2)
                      .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
            write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> update state at el ip g ',e,i,g
            write(6,*)
-           write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
+           write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
            write(6,*)
-           write(6,'(a,/,(12x,12(e12.6,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+           write(6,'(a,/,(12x,12(e12.5,1x)))') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
            write(6,*)
          endif
 #endif
@@ -2807,8 +2807,8 @@ subroutine crystallite_integrateStateFPI()
                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
            write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> update state at el ip g ',e,i,g
            write(6,'(a,f6.1,/)')                 '<< CRYST >> statedamper ',statedamper
-           write(6,'(a,/,(12x,12(e12.6,1x)),/)') '<< CRYST >> state residuum',stateResiduum(1:mySizeDotState)
-           write(6,'(a,/,(12x,12(e12.6,1x)),/)') '<< CRYST >> new state',tempState(1:mySizeDotState)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> state residuum',stateResiduum(1:mySizeDotState)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',tempState(1:mySizeDotState)
          endif
 #endif
  
@@ -2941,8 +2941,8 @@ logical function crystallite_stateJump(g,i,e)
      .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
    write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip g ',e,i,g
-   write(6,'(a,/,(12x,12(e12.6,1x)),/)') '<< CRYST >> deltaState', constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
-   write(6,'(a,/,(12x,12(e12.6,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
+   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
  endif
 #endif
  
