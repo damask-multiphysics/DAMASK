@@ -34,7 +34,7 @@ module constitutive_phenopowerlaw
  character (len=*),                   parameter,           public :: &
    CONSTITUTIVE_PHENOPOWERLAW_label = 'phenopowerlaw'
     
- integer(pInt),     dimension(:),     allocatable,         public :: &
+ integer(pInt),     dimension(:),     allocatable,         public, protected :: &
    constitutive_phenopowerlaw_sizeDotState, &
    constitutive_phenopowerlaw_sizeState, &
    constitutive_phenopowerlaw_sizePostResults, &                                                    !< cumulative size of post results
@@ -142,7 +142,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    i,j,k, f,o, &
    Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
    Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_nonSchmid, &
-   myStructure, index_myFamily, index_otherFamily, &
+   structID, index_myFamily, index_otherFamily, &
    mySize=0_pInt, section = 0_pInt
  character(len=65536) :: &
    tag  = '', &
@@ -419,14 +419,15 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  enddo
 
  sanityChecks: do i = 1_pInt,maxNinstance
-   constitutive_phenopowerlaw_structure(i) = lattice_initializeStructure(constitutive_phenopowerlaw_structureName(i), &    ! get structure
-                                                                         constitutive_phenopowerlaw_CoverA(i))
+   constitutive_phenopowerlaw_structure(i) = &
+     lattice_initializeStructure(constitutive_phenopowerlaw_structureName(i), constitutive_phenopowerlaw_CoverA(i))   ! get structure
+                                                                         
    constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i) = &
-            min(lattice_NslipSystem(1:lattice_maxNslipFamily,constitutive_phenopowerlaw_structure(i)),& ! limit active slip systems per family to min of available and requested
-                constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i))
+     min(lattice_NslipSystem(1:lattice_maxNslipFamily,constitutive_phenopowerlaw_structure(i)),& ! limit active slip systems per family to min of available and requested
+                                  constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i))
    constitutive_phenopowerlaw_Ntwin(1:lattice_maxNtwinFamily,i) = &
-            min(lattice_NtwinSystem(1:lattice_maxNtwinFamily,constitutive_phenopowerlaw_structure(i)),& ! limit active twin systems per family to min of available and requested
-                constitutive_phenopowerlaw_Ntwin(:,i))
+     min(lattice_NtwinSystem(1:lattice_maxNtwinFamily,constitutive_phenopowerlaw_structure(i)),& ! limit active twin systems per family to min of available and requested
+                                  constitutive_phenopowerlaw_Ntwin(:,i))
    constitutive_phenopowerlaw_totalNslip(i) = sum(constitutive_phenopowerlaw_Nslip(:,i))            ! how many slip systems altogether
    constitutive_phenopowerlaw_totalNtwin(i) = sum(constitutive_phenopowerlaw_Ntwin(:,i))            ! how many twin systems altogether
 
@@ -504,11 +505,10 @@ subroutine constitutive_phenopowerlaw_init(myFile)
          call IO_error(212_pInt,ext_msg=constitutive_phenopowerlaw_output(o,i)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
      end select
 
-     if (mySize > 0_pInt) then                                                                      ! any meaningful output found
+     outputFound: if (mySize > 0_pInt) then
        constitutive_phenopowerlaw_sizePostResult(o,i) = mySize
-       constitutive_phenopowerlaw_sizePostResults(i) = &
-       constitutive_phenopowerlaw_sizePostResults(i) + mySize
-     endif
+       constitutive_phenopowerlaw_sizePostResults(i)  = constitutive_phenopowerlaw_sizePostResults(i) + mySize
+     endif outputFound
    enddo outputsLoop 
 
    constitutive_phenopowerlaw_sizeDotState(i) = constitutive_phenopowerlaw_totalNslip(i)+ &
@@ -518,11 +518,12 @@ subroutine constitutive_phenopowerlaw_init(myFile)
                                                 constitutive_phenopowerlaw_totalNtwin(i)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
    constitutive_phenopowerlaw_sizeState(i)    = constitutive_phenopowerlaw_sizeDotState(i)
 
-   myStructure = constitutive_phenopowerlaw_structure(i)
+   structID = constitutive_phenopowerlaw_structure(i)
 
-   constitutive_phenopowerlaw_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_phenopowerlaw_structureName(i),&
-                                                                      constitutive_phenopowerlaw_Cslip_66(:,:,i))   
-                                                                                                    ! assign elasticity tensor
+   constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
+     lattice_symmetrizeC66(constitutive_phenopowerlaw_structureName(i),&
+                                constitutive_phenopowerlaw_Cslip_66(:,:,i))     ! assign elasticity tensor
+                                                                                                  
    constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))
 
@@ -534,9 +535,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
          do k = 1_pInt,constitutive_phenopowerlaw_Nslip(o,i)                                        ! loop over (active) systems in other family (slip)
            constitutive_phenopowerlaw_hardeningMatrix_SlipSlip(index_myFamily+j,index_otherFamily+k,i) = &
                constitutive_phenopowerlaw_interaction_SlipSlip(lattice_interactionSlipSlip( &
-                                                                 sum(lattice_NslipSystem(1:f-1,myStructure))+j, &
-                                                                 sum(lattice_NslipSystem(1:o-1,myStructure))+k, &
-                                                                 myStructure), i )
+                                                                 sum(lattice_NslipSystem(1:f-1,structID))+j, &
+                                                                 sum(lattice_NslipSystem(1:o-1,structID))+k, &
+                                                                 structID), i )
        enddo; enddo
 
        do o = 1_pInt,lattice_maxNtwinFamily
@@ -544,9 +545,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
          do k = 1_pInt,constitutive_phenopowerlaw_Ntwin(o,i)                                        ! loop over (active) systems in other family (twin)
            constitutive_phenopowerlaw_hardeningMatrix_SlipTwin(index_myFamily+j,index_otherFamily+k,i) = &
                constitutive_phenopowerlaw_interaction_SlipTwin(lattice_interactionSlipTwin( &
-                                                                 sum(lattice_NslipSystem(1:f-1_pInt,myStructure))+j, &
-                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,myStructure))+k, &
-                                                                 myStructure), i )
+                                                                 sum(lattice_NslipSystem(1:f-1_pInt,structID))+j, &
+                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,structID))+k, &
+                                                                 structID), i )
        enddo; enddo
 
    enddo; enddo
@@ -560,9 +561,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
          do k = 1_pInt,constitutive_phenopowerlaw_Nslip(o,i)                                        ! loop over (active) systems in other family (slip)
            constitutive_phenopowerlaw_hardeningMatrix_TwinSlip(index_myFamily+j,index_otherFamily+k,i) = &
                constitutive_phenopowerlaw_interaction_TwinSlip(lattice_interactionTwinSlip( &
-                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,myStructure))+j, &
-                                                                 sum(lattice_NslipSystem(1:o-1_pInt,myStructure))+k, &
-                                                                 myStructure), i )
+                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,structID))+j, &
+                                                                 sum(lattice_NslipSystem(1:o-1_pInt,structID))+k, &
+                                                                 structID), i )
        enddo; enddo
 
        do o = 1_pInt,lattice_maxNtwinFamily
@@ -570,9 +571,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
          do k = 1_pInt,constitutive_phenopowerlaw_Ntwin(o,i)                                        ! loop over (active) systems in other family (twin)
            constitutive_phenopowerlaw_hardeningMatrix_TwinTwin(index_myFamily+j,index_otherFamily+k,i) = &
                constitutive_phenopowerlaw_interaction_TwinTwin(lattice_interactionTwinTwin( &
-                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,myStructure))+j, &
-                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,myStructure))+k, &
-                                                                 myStructure), i )
+                                                                 sum(lattice_NtwinSystem(1:f-1_pInt,structID))+j, &
+                                                                 sum(lattice_NtwinSystem(1:o-1_pInt,structID))+k, &
+                                                                 structID), i )
        enddo; enddo
 
    enddo; enddo
@@ -585,15 +586,15 @@ end subroutine constitutive_phenopowerlaw_init
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the initial microstructural state for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_stateInit(myInstance)
+pure function constitutive_phenopowerlaw_stateInit(matID)
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily
  
  implicit none
  integer(pInt), intent(in) :: &
-    myInstance                                                                                     !< number specifying the instance of the plasticity
- real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(myInstance)) :: &
+    matID                                                                                     !< number specifying the instance of the plasticity
+ real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(matID)) :: &
    constitutive_phenopowerlaw_stateInit
  integer(pInt) :: &
    i
@@ -602,17 +603,17 @@ pure function constitutive_phenopowerlaw_stateInit(myInstance)
  
  do i = 1_pInt,lattice_maxNslipFamily
    constitutive_phenopowerlaw_stateInit(1+&
-                                        sum(constitutive_phenopowerlaw_Nslip(1:i-1,myInstance)) : &
-                                        sum(constitutive_phenopowerlaw_Nslip(1:i  ,myInstance))) = &
-     constitutive_phenopowerlaw_tau0_slip(i,myInstance)
+                                        sum(constitutive_phenopowerlaw_Nslip(1:i-1,matID)) : &
+                                        sum(constitutive_phenopowerlaw_Nslip(1:i  ,matID))) = &
+     constitutive_phenopowerlaw_tau0_slip(i,matID)
  enddo
 
  do i = 1_pInt,lattice_maxNtwinFamily
-   constitutive_phenopowerlaw_stateInit(1+sum(constitutive_phenopowerlaw_Nslip(:,myInstance))+&
-                                        sum(constitutive_phenopowerlaw_Ntwin(1:i-1,myInstance)) : &
-                                          sum(constitutive_phenopowerlaw_Nslip(:,myInstance))+&
-                                        sum(constitutive_phenopowerlaw_Ntwin(1:i  ,myInstance))) = &
-     constitutive_phenopowerlaw_tau0_twin(i,myInstance)
+   constitutive_phenopowerlaw_stateInit(1+sum(constitutive_phenopowerlaw_Nslip(:,matID))+&
+                                        sum(constitutive_phenopowerlaw_Ntwin(1:i-1,matID)) : &
+                                          sum(constitutive_phenopowerlaw_Nslip(:,matID))+&
+                                        sum(constitutive_phenopowerlaw_Ntwin(1:i  ,matID))) = &
+     constitutive_phenopowerlaw_tau0_twin(i,matID)
  enddo
 
 end function constitutive_phenopowerlaw_stateInit
@@ -621,28 +622,28 @@ end function constitutive_phenopowerlaw_stateInit
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant state values for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_aTolState(myInstance)
+pure function constitutive_phenopowerlaw_aTolState(matID)
  
  implicit none
- integer(pInt), intent(in) :: myInstance                                                            !< number specifying the instance of the plasticity
+ integer(pInt), intent(in) :: matID                                                            !< number specifying the instance of the plasticity
  
-real(pReal), dimension(constitutive_phenopowerlaw_sizeState(myInstance)) :: &
+real(pReal), dimension(constitutive_phenopowerlaw_sizeState(matID)) :: &
    constitutive_phenopowerlaw_aTolState
 
- constitutive_phenopowerlaw_aTolState(1:constitutive_phenopowerlaw_totalNslip(myInstance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(myInstance)) = &
-          constitutive_phenopowerlaw_aTolResistance(myInstance)
- constitutive_phenopowerlaw_aTolState(1+constitutive_phenopowerlaw_totalNslip(myInstance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(myInstance)) = &
-          constitutive_phenopowerlaw_aTolShear(myInstance)
- constitutive_phenopowerlaw_aTolState(2+constitutive_phenopowerlaw_totalNslip(myInstance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(myInstance)) = &
-          constitutive_phenopowerlaw_aTolTwinFrac(myInstance)
- constitutive_phenopowerlaw_aTolState(3+constitutive_phenopowerlaw_totalNslip(myInstance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(myInstance): &
-                                     2+2*(constitutive_phenopowerlaw_totalNslip(myInstance)+ &
-                                          constitutive_phenopowerlaw_totalNtwin(myInstance))) = &
-          constitutive_phenopowerlaw_aTolShear(myInstance)
+ constitutive_phenopowerlaw_aTolState(1:constitutive_phenopowerlaw_totalNslip(matID)+ &
+                                       constitutive_phenopowerlaw_totalNtwin(matID)) = &
+          constitutive_phenopowerlaw_aTolResistance(matID)
+ constitutive_phenopowerlaw_aTolState(1+constitutive_phenopowerlaw_totalNslip(matID)+ &
+                                       constitutive_phenopowerlaw_totalNtwin(matID)) = &
+          constitutive_phenopowerlaw_aTolShear(matID)
+ constitutive_phenopowerlaw_aTolState(2+constitutive_phenopowerlaw_totalNslip(matID)+ &
+                                       constitutive_phenopowerlaw_totalNtwin(matID)) = &
+          constitutive_phenopowerlaw_aTolTwinFrac(matID)
+ constitutive_phenopowerlaw_aTolState(3+constitutive_phenopowerlaw_totalNslip(matID)+ &
+                                       constitutive_phenopowerlaw_totalNtwin(matID): &
+                                     2+2*(constitutive_phenopowerlaw_totalNslip(matID)+ &
+                                          constitutive_phenopowerlaw_totalNtwin(matID))) = &
+          constitutive_phenopowerlaw_aTolShear(matID)
 
 end function constitutive_phenopowerlaw_aTolState
 
@@ -735,7 +736,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
  real(pReal), dimension(3,3),                                                  intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(9,9),                                                  intent(out) :: &
-   dLp_dTstar99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+   dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
@@ -896,9 +897,15 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,temperature,state,ipc,ip,el
  real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_phenopowerlaw_dotState
 
- integer(pInt) :: matID,nSlip,nTwin,f,i,j,k,structID, &
-               index_Gamma,index_F,offset_accshear_slip,offset_accshear_twin,index_myFamily 
- real(pReal) :: c_SlipSlip,c_SlipTwin,c_TwinSlip,c_TwinTwin, ssat_offset
+ integer(pInt) :: &
+   matID,structID, &
+   nSlip,nTwin, &
+   f,i,j,k, &
+   index_Gamma,index_F,index_myFamily, &
+   offset_accshear_slip,offset_accshear_twin
+ real(pReal) :: &
+   c_SlipSlip,c_SlipTwin,c_TwinSlip,c_TwinTwin, &
+   ssat_offset
 
  real(pReal), dimension(constitutive_phenopowerlaw_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip,tau_slip_pos,tau_slip_neg,left_SlipSlip,left_SlipTwin,right_SlipSlip,right_TwinSlip
@@ -1028,7 +1035,7 @@ end function constitutive_phenopowerlaw_dotState
 !> @brief (instantaneous) incremental change of microstructure
 !> @details dummy function, returns 0.0
 !--------------------------------------------------------------------------------------------------
-function constitutive_phenopowerlaw_deltaState(Tstar_v,temperature,state,ipc,ip,el)
+pure function constitutive_phenopowerlaw_deltaState(Tstar_v,temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &

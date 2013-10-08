@@ -33,7 +33,7 @@ module constitutive_none
  character (len=*),                   parameter,            public :: &
    CONSTITUTIVE_NONE_label = 'none'                                                                 !< label for this constitutive model
  
- integer(pInt),     dimension(:),     allocatable,          public :: &
+ integer(pInt),     dimension(:),     allocatable,          public, protected :: &
    constitutive_none_sizeDotState, &
    constitutive_none_sizeState, &
    constitutive_none_sizePostResults
@@ -193,11 +193,11 @@ end subroutine constitutive_none_init
 !> @brief sets the initial microstructural state for a given instance of this plasticity
 !> @details dummy function, returns 0.0
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_none_stateInit(myInstance)
+pure function constitutive_none_stateInit(matID)
   
  implicit none
  real(pReal),  dimension(1)            :: constitutive_none_stateInit
- integer(pInt),             intent(in) :: myInstance                                               !< number specifying the instance of the plasticity
+ integer(pInt),             intent(in) :: matID                                               !< number specifying the instance of the plasticity
 
  constitutive_none_stateInit = 0.0_pReal
 
@@ -208,12 +208,12 @@ end function constitutive_none_stateInit
 !> @brief sets the relevant state values for a given instance of this plasticity
 !> @details ensures convergence as state is always 0.0
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_none_aTolState(myInstance)
+pure function constitutive_none_aTolState(matID)
 
  implicit none
- integer(pInt), intent(in) :: myInstance                                                           !< number specifying the instance of the plasticity
+ integer(pInt), intent(in) :: matID                                                           !< number specifying the instance of the plasticity
 
- real(pReal), dimension(constitutive_none_sizeState(myInstance)) :: &
+ real(pReal), dimension(constitutive_none_sizeState(matID)) :: &
                                                               constitutive_none_aTolState                                
  
  constitutive_none_aTolState = 1.0_pReal

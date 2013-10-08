@@ -36,10 +36,10 @@ module constitutive_j2
  character (len=*),                   parameter,           public :: &
    CONSTITUTIVE_J2_label = 'j2'                                                                     !< label for this constitutive model
  
- integer(pInt),     dimension(:),     allocatable,         public :: &
-   constitutive_j2_sizeDotState, &
-   constitutive_j2_sizeState, &
-   constitutive_j2_sizePostResults
+ integer(pInt),     dimension(:),     allocatable,         public, protected :: &
+   constitutive_j2_sizeDotState, &                                                                  !< number of dotStates
+   constitutive_j2_sizeState, &                                                                     !< total number of microstructural variables
+   constitutive_j2_sizePostResults                                                                  !< cumulative size of post results
    
  integer(pInt),     dimension(:,:),   allocatable, target, public :: &
    constitutive_j2_sizePostResult                                                                   !< size of each post result output
@@ -48,10 +48,10 @@ module constitutive_j2
    constitutive_j2_output                                                                           !< name of each post result output
  
  character(len=32), dimension(:),     allocatable,         private :: &
-   constitutive_j2_structureName
+   constitutive_j2_structureName                                                                    !< name of the lattice structure
 
  integer(pInt),     dimension(:),     allocatable,         private :: &
-   constitutive_j2_Noutput                                                                          !< ??
+   constitutive_j2_Noutput                                                                          !< number of outputs per instance
    
  real(pReal),       dimension(:),     allocatable,         private :: &
    constitutive_j2_fTaylor, &                                                                       !< Taylor factor
@@ -313,13 +313,13 @@ end subroutine constitutive_j2_init
 !> @brief sets the initial microstructural state for a given instance of this plasticity
 !> @details initial microstructural state is set to the value specified by tau0
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_stateInit(myInstance)
+pure function constitutive_j2_stateInit(matID)
   
  implicit none
  real(pReal),   dimension(1)            :: constitutive_j2_stateInit
- integer(pInt),              intent(in) :: myInstance                                               !< number specifying the instance of the plasticity
+ integer(pInt),              intent(in) :: matID                                               !< number specifying the instance of the plasticity
  
- constitutive_j2_stateInit = constitutive_j2_tau0(myInstance)
+ constitutive_j2_stateInit = constitutive_j2_tau0(matID)
 
 end function constitutive_j2_stateInit
 
@@ -327,15 +327,15 @@ end function constitutive_j2_stateInit
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant state values for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_aTolState(myInstance)
+pure function constitutive_j2_aTolState(matID)
 
  implicit none
- integer(pInt), intent(in) :: myInstance                                                           !< number specifying the instance of the plasticity
+ integer(pInt), intent(in) :: matID                                                           !< number specifying the instance of the plasticity
 
- real(pReal), dimension(constitutive_j2_sizeState(myInstance)) :: &
+ real(pReal), dimension(constitutive_j2_sizeState(matID)) :: &
                               constitutive_j2_aTolState
 
- constitutive_j2_aTolState = constitutive_j2_aTolResistance(myInstance)
+ constitutive_j2_aTolState = constitutive_j2_aTolResistance(matID)
 
 end function constitutive_j2_aTolState
 

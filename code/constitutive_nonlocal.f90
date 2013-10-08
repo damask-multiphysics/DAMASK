@@ -76,7 +76,7 @@ KB = 1.38e-23_pReal                                                  !< Physical
 
 !* Definition of global variables
 
-integer(pInt), dimension(:), allocatable, public :: &
+integer(pInt), dimension(:), allocatable, public, protected :: &
 constitutive_nonlocal_sizeDotState, &                                !< number of dotStates = number of basic state variables
 constitutive_nonlocal_sizeDependentState, &                          !< number of dependent state variables
 constitutive_nonlocal_sizeState, &                                   !< total number of state variables
