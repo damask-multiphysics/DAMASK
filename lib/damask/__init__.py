@@ -5,6 +5,7 @@ from .environment import Environment      # only one class
 from .asciitable  import ASCIItable       # only one class
 from .config      import Material         # will be extended to debug and numerics
 from .colormaps   import Colormap, Color
+from .orientation import Vector3, Quaternion
 #from .block       import Block           # only one class
 from .result      import Result           # one class with subclasses
 from .geometry    import Geometry         # one class with subclasses
@@ -51,4 +52,4 @@ except (ImportError,AttributeError) as e:
                                           ):
     sys.stderr.write('\nWARNING: Core module (Fortran code) not available, \n'\
                      'try to run setup_processing.sh or compile_CoreModule.py\n'\
-                     'Error Message when importing core.so: %s\n\n'%e)
+                     'Error message when importing core.so: %s\n\n'%e)

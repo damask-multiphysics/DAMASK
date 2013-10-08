@@ -244,11 +244,17 @@ class Vector3:
                         self.z - d * normal[2]])
 
     def inSST(self,symmetry):
-        return {'cubic':       lambda R: R.inFZ('cubic')       and R.x >= R.y and R.y >= R.z and R.z >= 0.0,
-                'hexagonal':   lambda R: R.inFZ('hexagonal')   and R.x >= math.sqrt(3)*R.y and R.y >= 0.0 and R.z >= 0.0,
-                'tetragonal':  lambda R: R.inFZ('tetragonal')  and R.x >= R.y and R.y >= 0.0 and R.z >= 0.0,
-                'orthorombic': lambda R: R.inFZ('orthorombic') and R.x >= 0.0 and R.y >= 0.0 and R.z >= 0.0,
-               }.get(symmetry.lower(),False)(self)
+      '''
+      Determination of disorientations follow the work of A. Heinz and P. Neumann:
+      Representation of Orientation and Disorientation Data for
+      Cubic, Hexagonal, Tetragonal and Orthorhombic Crystals
+      Acta Cryst. (1991). A47, 780-789
+      '''
+      return {'cubic':       lambda R: R.inFZ('cubic')       and R.x >= R.y and R.y >= R.z and R.z >= 0.0,
+              'hexagonal':   lambda R: R.inFZ('hexagonal')   and R.x >= math.sqrt(3)*R.y and R.y >= 0.0 and R.z >= 0.0,
+              'tetragonal':  lambda R: R.inFZ('tetragonal')  and R.x >= R.y and R.y >= 0.0 and R.z >= 0.0,
+              'orthorombic': lambda R: R.inFZ('orthorombic') and R.x >= 0.0 and R.y >= 0.0 and R.z >= 0.0,
+             }.get(symmetry.lower(),False)(self)
 
     def inFZ(self,symmetry):
         return {'cubic':       lambda R:     math.sqrt(2.0)-1.0 >= abs(R.x) \
