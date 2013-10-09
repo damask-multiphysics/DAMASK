@@ -205,7 +205,6 @@ constitutive_nonlocal_microstructure, &
 constitutive_nonlocal_LpAndItsTangent, &
 constitutive_nonlocal_dotState, &
 constitutive_nonlocal_deltaState, &
-constitutive_nonlocal_dotTemperature, &
 constitutive_nonlocal_updateCompatibility, &
 constitutive_nonlocal_postResults
 
@@ -216,9 +215,10 @@ constitutive_nonlocal_dislocationstress
 
 CONTAINS
 
-!**************************************
-!*      Module initialization         *
-!**************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief module initialization
+!> @details reads in material parameters, allocates arrays, and does sanity checks
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_init(myFile)
 
 use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
@@ -255,7 +255,7 @@ use lattice
 integer(pInt), intent(in) ::                myFile
 
 !*** local variables
- integer(pInt), parameter ::                MAXNCHUNKS = lattice_maxNinteraction + 1_pInt
+ integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
 integer(pInt), &
     dimension(1_pInt+2_pInt*MAXNCHUNKS) ::  positions
 integer(pInt), dimension(7) ::              configNchunks
@@ -281,19 +281,16 @@ integer(pInt)          ::                   section = 0_pInt, &
 character(len=65536)                        tag
 character(len=65536) ::                     line = ''                                ! to start initialized
  
- write(6,*)
- write(6,*) '<<<+-  constitutive_',trim(CONSTITUTIVE_NONLOCAL_LABEL),' init  -+>>>'
- write(6,*) '$Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_NONLOCAL_label//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
-maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
-if (maxNinstance == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
+ maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
+ if (maxNinstance == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
 
-if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
-  write(6,'(a16,1x,i5)') '# instances:',maxNinstance
-  write(6,*)
-endif
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
 !*** memory allocation for global variables
 
@@ -433,7 +430,7 @@ do while (trim(line) /= '#EOF#')                                                
     cycle
   endif
   if (section > 0_pInt ) then                                                                       ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-    if (phase_plasticity(section) == CONSTITUTIVE_NONLOCAL_LABEL) then                              ! one of my sections
+    if (trim(phase_plasticity(section)) == CONSTITUTIVE_NONLOCAL_LABEL) then                        ! one of my sections
       i = phase_plasticityInstance(section)                                                         ! which instance of my plasticity is present phase
       positions = IO_stringPos(line,MAXNCHUNKS)
       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                            ! extract key
@@ -1038,13 +1035,13 @@ do i = 1,maxNinstance
   
 enddo
 
-endsubroutine
+end subroutine constitutive_nonlocal_init
 
 
 
-!*********************************************************************
-!* initial microstructural state (just the "basic" states)           *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief sets the initial microstructural state for a given instance of this plasticity
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_stateInit(state)
 
 use IO,       only: IO_error
@@ -1167,13 +1164,13 @@ do matID = 1_pInt,maxNinstance
   endif
 enddo
 
-endsubroutine
+end subroutine constitutive_nonlocal_stateInit
 
 
 
-!*********************************************************************
-!* absolute state tolerance                                          *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief sets the relevant state values for a given instance of this plasticity
+!--------------------------------------------------------------------------------------------------
 pure function constitutive_nonlocal_aTolState(matID)
 
 implicit none
@@ -1198,13 +1195,13 @@ forall (c = 1_pInt:2_pInt) &
   constitutive_nonlocal_aTolState(iRhoD(1:ns,c,matID)) = aTolRho(matID)
 constitutive_nonlocal_aTolState(iGamma(1:ns,matID)) = aTolShear(matID)
 
-endfunction
+end function constitutive_nonlocal_aTolState
 
 
 
-!*********************************************************************
-!* calculates homogenized elacticity matrix                          *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the homogenized elasticity matrix
+!--------------------------------------------------------------------------------------------------
 pure function constitutive_nonlocal_homogenizedC(state,g,ip,el)
 
 use mesh,     only: mesh_NcpElems, &
@@ -1230,13 +1227,12 @@ matID = phase_plasticityInstance(material_phase(g,ip,el))
 
 constitutive_nonlocal_homogenizedC = Cslip66(1:6,1:6,matID)
  
-endfunction
+end function constitutive_nonlocal_homogenizedC
 
 
-
-!*********************************************************************
-!* calculates quantities characterizing the microstructure           *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates quantities characterizing the microstructure
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_microstructure(state, Temperature, Fe, Fp, gr, ip, el)
 
 use IO, only: &
@@ -1547,13 +1543,12 @@ state(gr,ip,el)%p(iTauB(1:ns,instance)) = tauBack
   endif
 #endif
 
-endsubroutine
+end subroutine constitutive_nonlocal_microstructure
 
 
-
-!*********************************************************************
-!* calculates kinetics                                               *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates kinetics 
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
                                           tauThreshold, c, Temperature, g, ip, el)
 
@@ -1711,13 +1706,12 @@ endif
   endif
 #endif
 
-endsubroutine
+end subroutine constitutive_nonlocal_kinetics
 
 
-
-!*********************************************************************
-!* calculates plastic velocity gradient and its tangent              *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates plastic velocity gradient and its tangent
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, state, g, ip, el)
 
 use math,     only: math_Plain3333to99, &
@@ -1912,13 +1906,12 @@ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
   endif
 #endif
 
-endsubroutine
+end subroutine constitutive_nonlocal_LpAndItsTangent
 
 
-
-!*********************************************************************
-!* incremental change of microstructure                              *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief (instantaneous) incremental change of microstructure
+!--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_deltaState(deltaState, state, Tstar_v, Temperature, g,ip,el)
 
 use debug,    only: debug_level, &
@@ -2103,13 +2096,13 @@ forall (s = 1:ns, c = 1_pInt:2_pInt) &
   endif
 #endif
 
-endsubroutine
+end subroutine constitutive_nonlocal_deltaState
 
 
 
-!*********************************************************************
-!* rate of change of microstructure                                  *
-!*********************************************************************
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates the rate of change of microstructure
+!--------------------------------------------------------------------------------------------------
 function constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, state, state0, timestep, subfrac, g,ip,el)
 
 use prec,     only: DAMASK_NaN
@@ -2719,7 +2712,7 @@ else
     constitutive_nonlocal_dotState(iGamma(s,matID)) = sum(gdot(s,1:4))
 endif
 
-endfunction
+end function constitutive_nonlocal_dotState
 
 
 
@@ -2897,39 +2890,7 @@ enddo   ! neighbor cycle
 
 compatibility(1:2,1:ns,1:ns,1:Nneighbors,i,e) = my_compatibility
 
-endsubroutine 
-
-
-
-!*********************************************************************
-!* rate of change of temperature                                     *
-!*********************************************************************
-pure function constitutive_nonlocal_dotTemperature(Tstar_v,Temperature,state,g,ip,el)
-
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips
-use material, only: homogenization_maxNgrains
-implicit none
-
-!* input variables
-integer(pInt), intent(in) ::              g, &              ! current grain ID
-                                          ip, &             ! current integration point
-                                          el                ! current element
-real(pReal), intent(in) ::                Temperature       ! temperature
-real(pReal), dimension(6), intent(in) ::  Tstar_v           ! 2nd Piola-Kirchhoff stress in Mandel notation
-type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: & 
-                                          state             ! microstructural state
-
-!* output variables
-real(pReal) constitutive_nonlocal_dotTemperature            ! evolution of Temperature
-
-!* local variables
-   
-constitutive_nonlocal_dotTemperature = 0.0_pReal
-
-endfunction
-
-
+end subroutine constitutive_nonlocal_updateCompatibility
 
 
 !*********************************************************************
@@ -3280,7 +3241,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
     
 endif
 
-endfunction
+end function constitutive_nonlocal_dislocationstress
 
 
 !*********************************************************************

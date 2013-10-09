@@ -33,12 +33,12 @@ module lattice
  implicit none
  private
  integer(pInt), parameter, public :: &
-   lattice_maxNslipFamily  =  6_pInt, &                                                             !< max # of slip system families over lattice structures
-   lattice_maxNtwinFamily  =  4_pInt, &                                                             !< max # of twin system families over lattice structures
-   lattice_maxNslip        = 33_pInt, &                                                             !< max # of slip systems over lattice structures
-   lattice_maxNtwin        = 24_pInt, &                                                             !< max # of twin systems over lattice structures
-   lattice_maxNinteraction = 42_pInt, &                                                             !< max # of interaction types (in hardening matrix part)
-   lattice_maxNnonSchmid   = 6_pInt                                                                 !< max # of non schmid contributions over lattice structures
+   LATTICE_maxNslipFamily  =  6_pInt, &                                                             !< max # of slip system families over lattice structures
+   LATTICE_maxNtwinFamily  =  4_pInt, &                                                             !< max # of twin system families over lattice structures
+   LATTICE_maxNslip        = 33_pInt, &                                                             !< max # of slip systems over lattice structures
+   LATTICE_maxNtwin        = 24_pInt, &                                                             !< max # of twin systems over lattice structures
+   LATTICE_maxNinteraction = 42_pInt, &                                                             !< max # of interaction types (in hardening matrix part)
+   LATTICE_maxNnonSchmid   = 6_pInt                                                                 !< max # of non schmid contributions over lattice structures
  
  integer(pInt), allocatable, dimension(:,:), protected, public :: &
    lattice_NslipSystem, &                                                                           !< total # of slip systems in each family

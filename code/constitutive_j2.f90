@@ -84,7 +84,6 @@ module constitutive_j2
    constitutive_j2_LpAndItsTangent, &
    constitutive_j2_dotState, &
    constitutive_j2_deltaState, &
-   constitutive_j2_dotTemperature, &
    constitutive_j2_postResults
 
 contains
@@ -128,7 +127,7 @@ subroutine constitutive_j2_init(myFile)
    tag  = '', &
    line = ''                                                                                        ! to start initialized
 
- write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(CONSTITUTIVE_J2_label)//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_J2_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
@@ -196,7 +195,7 @@ subroutine constitutive_j2_init(myFile)
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (phase_plasticity(section) == CONSTITUTIVE_J2_label) then                                   ! one of my sections
+     if (trim(phase_plasticity(section)) == CONSTITUTIVE_J2_label) then                             ! one of my sections
        i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
@@ -592,36 +591,6 @@ pure function constitutive_j2_deltaState(Tstar_v,temperature,state,ipc,ip,el)
  constitutive_j2_deltaState = 0.0_pReal
  
 end function constitutive_j2_deltaState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates the rate of change of temperature
-!> @details dummy function, returns 0.0
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function constitutive_j2_dotTemperature(Tstar_v,temperature,state,ipc,ip,el)
- use prec, only: &
-   p_vec
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains
- 
- implicit none
- real(pReal), dimension(6),                                                    intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature                                                                                      !< temperature at integration point
- integer(pInt),                                                                intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
-
- constitutive_j2_dotTemperature = 0.0_pReal
-
-end function constitutive_j2_dotTemperature
 
 
 !--------------------------------------------------------------------------------------------------

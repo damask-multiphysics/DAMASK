@@ -919,34 +919,6 @@ end subroutine constitutive_collectDeltaState
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 real(pReal) function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
- use prec, only: &
-   pLongInt
- use debug, only: &
-   debug_cumDotTemperatureCalls, &
-   debug_cumDotTemperatureTicks, &
-   debug_level, &
-   debug_constitutive, &
-   debug_levelBasic
- use material, only: &
-   phase_plasticity, &
-   material_phase
- use constitutive_none, only: &
-   constitutive_none_dotTemperature, &
-   constitutive_none_label
- use constitutive_j2, only: &
-   constitutive_j2_dotTemperature, &
-   constitutive_j2_label
- use constitutive_phenopowerlaw, only: & 
-   constitutive_phenopowerlaw_dotTemperature, &
-   constitutive_phenopowerlaw_label
- use constitutive_titanmod, only: &
-   constitutive_titanmod_dotTemperature, &
-   constitutive_titanmod_label
- use constitutive_dislotwin, only:     constitutive_dislotwin_dotTemperature, &
-                                       constitutive_dislotwin_label
- use constitutive_nonlocal, only:      constitutive_nonlocal_dotTemperature, &
-                                       constitutive_nonlocal_label
-
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                             !< grain number
@@ -956,46 +928,7 @@ real(pReal) function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
    Temperature
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
- integer(pLongInt) :: &
-   tick, tock, & 
-   tickrate, &
-   maxticks
- 
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
- 
- select case (phase_plasticity(material_phase(ipc,ip,el)))
- 
-   case (constitutive_none_label)
-     constitutive_dotTemperature = constitutive_none_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-    
-   case (constitutive_j2_label)
-     constitutive_dotTemperature = constitutive_j2_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-    
-   case (constitutive_phenopowerlaw_label)
-     constitutive_dotTemperature = constitutive_phenopowerlaw_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
- 
-   case (constitutive_titanmod_label)
-     constitutive_dotTemperature = constitutive_titanmod_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-    
-   case (constitutive_dislotwin_label)
-     constitutive_dotTemperature = constitutive_dislotwin_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-    
-   case (constitutive_nonlocal_label)
-     constitutive_dotTemperature = constitutive_nonlocal_dotTemperature(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-    
- end select
- 
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
-   call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
-   !$OMP CRITICAL (debugTimingDotTemperature)
-     debug_cumDotTemperatureCalls = debug_cumDotTemperatureCalls + 1_pInt
-     debug_cumDotTemperatureTicks = debug_cumDotTemperatureTicks + tock-tick
-     !$OMP FLUSH (debug_cumDotTemperatureTicks)
-     if (tock < tick) debug_cumDotTemperatureTicks  = debug_cumDotTemperatureTicks + maxticks
-   !$OMP END CRITICAL (debugTimingDotTemperature)
- endif
- 
+ constitutive_dotTemperature = 0.0_pReal
 end function constitutive_dotTemperature
 
 

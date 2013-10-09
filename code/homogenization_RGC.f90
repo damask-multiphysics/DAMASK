@@ -33,7 +33,7 @@ module homogenization_RGC
  implicit none
  private
  character (len=*),                              parameter, public :: &
-   homogenization_RGC_label = 'rgc'
+   HOMOGENIZATION_RGC_label = 'rgc'
  integer(pInt),     dimension(:),       allocatable,        public :: &
    homogenization_RGC_sizeState, &
    homogenization_RGC_sizePostResults
@@ -111,12 +111,12 @@ subroutine homogenization_RGC_init(myFile)
  character(len=65536) :: tag
  character(len=65536) :: line = ''
  
- write(6,'(/,3a)') ' <<<+-  homogenization_',trim(homogenization_RGC_label),' init  -+>>>'
- write(6,'(a)')    ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(homogenization_type == homogenization_RGC_label),pInt)
+ maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_label),pInt)
  if (maxNinstance == 0_pInt) return
 
  allocate(homogenization_RGC_sizeState(maxNinstance));       homogenization_RGC_sizeState = 0_pInt
@@ -147,38 +147,40 @@ subroutine homogenization_RGC_init(myFile)
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter
    endif
-   if (section > 0_pInt .and. homogenization_type(section) == homogenization_RGC_label) then        ! one of my sections
-     i = homogenization_typeInstance(section)                                                       ! which instance of my type is present homogenization
-     positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('(output)')
-         output = output + 1_pInt
-         homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('clustersize')
-              homogenization_RGC_Ngrains(1,i) = IO_intValue(line,positions,2_pInt)
-              homogenization_RGC_Ngrains(2,i) = IO_intValue(line,positions,3_pInt)
-              homogenization_RGC_Ngrains(3,i) = IO_intValue(line,positions,4_pInt)
-       case ('scalingparameter')
-              homogenization_RGC_xiAlpha(i) = IO_floatValue(line,positions,2_pInt)
-       case ('overproportionality')
-              homogenization_RGC_ciAlpha(i) = IO_floatValue(line,positions,2_pInt)
-       case ('grainsize')
-              homogenization_RGC_dAlpha(1,i) = IO_floatValue(line,positions,2_pInt)
-              homogenization_RGC_dAlpha(2,i) = IO_floatValue(line,positions,3_pInt)
-              homogenization_RGC_dAlpha(3,i) = IO_floatValue(line,positions,4_pInt)
-       case ('clusterorientation')
-              homogenization_RGC_angles(1,i) = IO_floatValue(line,positions,2_pInt)
-              homogenization_RGC_angles(2,i) = IO_floatValue(line,positions,3_pInt)
-              homogenization_RGC_angles(3,i) = IO_floatValue(line,positions,4_pInt)
-     end select
+   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
+     if (trim(homogenization_type(section)) == HOMOGENIZATION_RGC_label) then                       ! one of my sections
+       i = homogenization_typeInstance(section)                                                     ! which instance of my type is present homogenization
+       positions = IO_stringPos(line,maxNchunks)
+       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
+       select case(tag)
+         case ('(output)')
+           output = output + 1_pInt
+           homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         case ('clustersize')
+           homogenization_RGC_Ngrains(1,i) = IO_intValue(line,positions,2_pInt)
+           homogenization_RGC_Ngrains(2,i) = IO_intValue(line,positions,3_pInt)
+           homogenization_RGC_Ngrains(3,i) = IO_intValue(line,positions,4_pInt)
+         case ('scalingparameter')
+           homogenization_RGC_xiAlpha(i) = IO_floatValue(line,positions,2_pInt)
+         case ('overproportionality')
+           homogenization_RGC_ciAlpha(i) = IO_floatValue(line,positions,2_pInt)
+         case ('grainsize')
+           homogenization_RGC_dAlpha(1,i) = IO_floatValue(line,positions,2_pInt)
+           homogenization_RGC_dAlpha(2,i) = IO_floatValue(line,positions,3_pInt)
+           homogenization_RGC_dAlpha(3,i) = IO_floatValue(line,positions,4_pInt)
+         case ('clusterorientation')
+           homogenization_RGC_angles(1,i) = IO_floatValue(line,positions,2_pInt)
+           homogenization_RGC_angles(2,i) = IO_floatValue(line,positions,3_pInt)
+           homogenization_RGC_angles(3,i) = IO_floatValue(line,positions,4_pInt)
+       end select
+     endif  
    endif
  enddo
 
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
  elementLooping: do e = 1_pInt,mesh_NcpElems
-   if (homogenization_type(mesh_element(3,e)) == homogenization_RGC_label) then
+   if (homogenization_type(mesh_element(3,e)) == HOMOGENIZATION_RGC_label) then
      myInstance = homogenization_typeInstance(mesh_element(3,e))
      if (all (homogenization_RGC_angles(:,myInstance) >= 399.9_pReal)) then
        homogenization_RGC_orientation(1:3,1:3,1,e) = math_EulerToR(math_sampleRandomOri())

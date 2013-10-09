@@ -30,7 +30,7 @@ module homogenization_isostrain
  implicit none
  private
  character (len=*), parameter,                           public  :: &
-   homogenization_isostrain_label = 'isostrain'
+   HOMOGENIZATION_ISOSTRAIN_label = 'isostrain'
  
  integer(pInt), dimension(:),       allocatable,         public  :: &
    homogenization_isostrain_sizeState, &
@@ -72,12 +72,12 @@ subroutine homogenization_isostrain_init(myFile)
    tag  = '', &
    line = ''                                                                                        ! to start initialized
  
- write(6,'(/,a)')   ' <<<+-  homogenization_'//trim(homogenization_isostrain_label)//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = count(homogenization_type == homogenization_isostrain_label)
+ maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_label)
  if (maxNinstance == 0) return
 
  allocate(homogenization_isostrain_sizeState(maxNinstance)) ;      homogenization_isostrain_sizeState = 0_pInt
@@ -104,19 +104,21 @@ subroutine homogenization_isostrain_init(myFile)
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter
    endif
-   if (section > 0 .and. homogenization_type(section) == homogenization_isostrain_label) then       ! one of my sections
-     i = homogenization_typeInstance(section)                                                       ! which instance of my type is present homogenization
-     positions = IO_stringPos(line,maxNchunks)
-     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
-     select case(tag)
-       case ('(output)')
-         output = output + 1_pInt
-         homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('ngrains')
-              homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
-       case ('mapping')
-              homogenization_isostrain_mapping(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-     end select
+   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
+     if (trim(homogenization_type(section)) == HOMOGENIZATION_ISOSTRAIN_label) then                 ! one of my sections
+       i = homogenization_typeInstance(section)                                                     ! which instance of my type is present homogenization
+       positions = IO_stringPos(line,maxNchunks)
+       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
+       select case(tag)
+         case ('(output)')
+           output = output + 1_pInt
+           homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         case ('ngrains')
+                homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
+         case ('mapping')
+                homogenization_isostrain_mapping(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+       end select
+     endif
    endif
  enddo
 

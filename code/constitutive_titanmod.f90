@@ -190,7 +190,6 @@ module constitutive_titanmod
    constitutive_titanmod_LpAndItsTangent, &
    constitutive_titanmod_dotState, &
    constitutive_titanmod_deltaState, &
-   constitutive_titanmod_dotTemperature, &
    constitutive_titanmod_postResults, &
    constitutive_titanmod_homogenizedC, &
    constitutive_titanmod_aTolState
@@ -220,7 +219,7 @@ subroutine constitutive_titanmod_init(myFile)
  implicit none
  integer(pInt), intent(in) :: myFile
 
- integer(pInt), parameter :: MAXNCHUNKS = 21_pInt
+ integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt), dimension(7) :: configNchunks
  integer(pInt) :: &
@@ -230,15 +229,15 @@ subroutine constitutive_titanmod_init(myFile)
    s, s1, s2, &
    t, t1, t2, &
    ns, nt, &
-                  Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
-                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
+   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
+   Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
    mySize, structID, &
    maxTotalNslip,maxTotalNtwin, maxNinstance
  character(len=65536) :: &
    tag  = '', &
    line = ''                                                                                        ! to start initialized
  
- write(6,'(/,a)')   ' <<<+-  constitutive_'//trim(CONSTITUTIVE_TITANMOD_label)//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_TITANMOD_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
@@ -407,7 +406,7 @@ subroutine constitutive_titanmod_init(myFile)
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (phase_plasticity(section) == CONSTITUTIVE_TITANMOD_label) then                             ! one of my sections
+     if (trim(phase_plasticity(section)) == CONSTITUTIVE_TITANMOD_label) then                       ! one of my sections
        i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
@@ -1737,36 +1736,6 @@ pure function constitutive_titanmod_deltaState(Tstar_v,temperature,state,ipc,ip,
  constitutive_titanmod_deltaState = 0.0_pReal
  
 end function constitutive_titanmod_deltaState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates the rate of change of temperature
-!> @details dummy function, returns 0.0
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function constitutive_titanmod_dotTemperature(Tstar_v,temperature,state,ipc,ip,el)
- use prec, only: &
-   p_vec
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains
- 
- implicit none
- real(pReal), dimension(6),                                                    intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature                                                                                      !< temperature at integration point
- integer(pInt),                                                                intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
-
- constitutive_titanmod_dotTemperature = 0.0_pReal
-
-end function constitutive_titanmod_dotTemperature
 
 
 !--------------------------------------------------------------------------------------------------
