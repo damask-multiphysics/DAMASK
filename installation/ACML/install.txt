@@ -1,6 +1,0 @@
-Install the AMD Core Math Library
-
-1. download the current ACML from http://developer.amd.com/libraries/acml/downloads/pages/default.aspx#downloads
-2. untar the tgz file to a local directory
-3. run the ACML install script
-4. add installation path of ACML to DAMASK_ROOT/lib/pathinfo
