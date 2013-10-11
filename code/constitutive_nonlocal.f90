@@ -531,7 +531,7 @@ do while (trim(line) /= '#EOF#')                                                
           significantN(i) = IO_floatValue(line,positions,2_pInt)
         case ('interaction_slipslip')
            if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
-             call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
           do it = 1_pInt,Nchunks_SlipSlip
             interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
           enddo
@@ -581,7 +581,7 @@ do while (trim(line) /= '#EOF#')                                                
           shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case ('nonschmid_coefficients')
           if (positions(1) < 1_pInt + Nchunks_nonSchmid) &
-            call IO_error(213_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
           do f = 1_pInt,Nchunks_nonSchmid
             nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
           enddo

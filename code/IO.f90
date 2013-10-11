@@ -1488,8 +1488,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'material parameter out of bounds:'
  case (212_pInt)
    msg = 'unknown plasticity output:'
- case (213_pInt)
-   msg = 'not enough values for material parameter:'
  case (214_pInt)
    msg = 'stiffness parameter close to zero:'
 
@@ -1684,9 +1682,11 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
  case (47_pInt)
    msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
  case (50_pInt)
-   msg = 'not using all available slip system families'
+   msg = 'not all available slip system families are defined'
  case (51_pInt)
-   msg = 'not using all available twin system families'
+   msg = 'not all available twin system families are defined'
+ case (52_pInt)
+   msg = 'not all available parameters are defined'
  case (101_pInt)
    msg = 'crystallite debugging off'
  case (201_pInt)

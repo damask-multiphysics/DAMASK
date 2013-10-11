@@ -450,10 +450,14 @@ subroutine constitutive_titanmod_init(myFile)
          case ('kinkf0')
            constitutive_titanmod_kinkf0(i) = IO_floatValue(line,positions,2_pInt)
          case ('nslip')
+           if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
+             call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_SlipFamilies
              constitutive_titanmod_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
            enddo
          case ('ntwin')
+           if (positions(1) < 1_pInt + Nchunks_TwinFamilies) &
+             call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_TwinFamilies
              constitutive_titanmod_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
            enddo
@@ -571,10 +575,6 @@ subroutine constitutive_titanmod_init(myFile)
            constitutive_titanmod_twinhpconstant(i) = IO_floatValue(line,positions,2_pInt)
          case ('atol_rho')
            constitutive_titanmod_aTolRho(i) = IO_floatValue(line,positions,2_pInt)
-         case ('interactionslipslip')
-           do j = 1_pInt, Nchunks_SlipSlip
-             constitutive_titanmod_interactionSlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
          case ('interactionee')
            do j = 1_pInt, lattice_maxNinteraction
              constitutive_titanmod_interaction_ee(j,i) = IO_floatValue(line,positions,1_pInt+j)
@@ -587,15 +587,27 @@ subroutine constitutive_titanmod_init(myFile)
            do j = 1_pInt, lattice_maxNinteraction
              constitutive_titanmod_interaction_es(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
-         case ('interactionsliptwin')
+         case ('interaction_slipslip','interactionslipslip')
+           if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+           do j = 1_pInt, Nchunks_SlipSlip
+             constitutive_titanmod_interactionSlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+           enddo
+         case ('interaction_sliptwin','interactionsliptwin')
+           if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_SlipTwin
              constitutive_titanmod_interactionSlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
-         case ('interactiontwinslip')
+         case ('interaction_twinslip','interactiontwinslip')
+           if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_TwinSlip
              constitutive_titanmod_interactionTwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
-         case ('interactiontwintwin')
+         case ('interaction_twintwin','interactiontwintwin')
+           if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_TwinTwin
              constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
