@@ -214,7 +214,7 @@ subroutine homogenization_init(Temperature)
            allocate(homogenization_state0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
            allocate(homogenization_subState0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
            allocate(homogenization_state(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
-           homogenization_state0(i,e)%p  = homogenization_isostrain_stateInit(myInstance)
+           homogenization_state0(i,e)%p  = 0.0_pReal
            homogenization_sizeState(i,e) = homogenization_isostrain_sizeState(myInstance)
          endif
          homogenization_sizePostResults(i,e) = homogenization_isostrain_sizePostResults(myInstance)
@@ -223,7 +223,7 @@ subroutine homogenization_init(Temperature)
            allocate(homogenization_state0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
            allocate(homogenization_subState0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
            allocate(homogenization_state(i,e)%p(homogenization_RGC_sizeState(myInstance)))
-           homogenization_state0(i,e)%p  = homogenization_RGC_stateInit(myInstance)
+           homogenization_state0(i,e)%p  = 0.0_pReal
            homogenization_sizeState(i,e) = homogenization_RGC_sizeState(myInstance)
          endif
          homogenization_sizePostResults(i,e) = homogenization_RGC_sizePostResults(myInstance)
@@ -575,7 +575,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
      IpLooping4: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        call homogenization_averageStressAndItsTangent(i,e)
-       call homogenization_averageTemperature(i,e)   
+       materialpoint_Temperature(i,e) = homogenization_averageTemperature(i,e)   
      enddo IpLooping4
    enddo elementLooping4
    !$OMP END PARALLEL DO
@@ -652,7 +652,7 @@ end subroutine materialpoint_postResults
 !--------------------------------------------------------------------------------------------------
 !> @brief  partition material point def grad onto constituents
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_partitionDeformation(i,e)
+subroutine homogenization_partitionDeformation(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -670,25 +670,25 @@ subroutine homogenization_partitionDeformation(i,e)
 
  implicit none
  integer(pInt), intent(in) :: &
-   i, &                                                                                             !< integration point
-   e                                                                                                !< element number
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element number
  
- chosenHomogenization: select case(homogenization_type(mesh_element(3,e)))
+ chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label) chosenHomogenization
      call homogenization_isostrain_partitionDeformation(&
-                          crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                          crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,i,e),&
-                          materialpoint_subF(1:3,1:3,i,e),&
-                          homogenization_state(i,e), &
-                          i, &
-                          e)
+                          crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                          crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
+                          materialpoint_subF(1:3,1:3,ip,el),&
+                          homogenization_state(ip,el), &
+                          ip, &
+                          el)
    case (homogenization_RGC_label) chosenHomogenization
-     call homogenization_RGC_partitionDeformation(crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                                  crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,i,e),&
-                                                  materialpoint_subF(1:3,1:3,i,e),&
-                                                  homogenization_state(i,e), &
-                                                  i, &
-                                                  e)
+     call homogenization_RGC_partitionDeformation(crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                                  crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
+                                                  materialpoint_subF(1:3,1:3,ip,el),&
+                                                  homogenization_state(ip,el), &
+                                                  ip, &
+                                                  el)
  end select chosenHomogenization
 
 end subroutine homogenization_partitionDeformation
@@ -698,7 +698,7 @@ end subroutine homogenization_partitionDeformation
 !> @brief update the internal state of the homogenization scheme and tell whether "done" and 
 !> "happy" with result
 !--------------------------------------------------------------------------------------------------
-function homogenization_updateState(i,e)
+function homogenization_updateState(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -709,39 +709,32 @@ function homogenization_updateState(i,e)
    crystallite_dPdF, &
    crystallite_partionedF,&
    crystallite_partionedF0
- use homogenization_isostrain, only: &
-   homogenization_isostrain_updateState, &
-   homogenization_isostrain_label
  use homogenization_RGC, only: &
    homogenization_RGC_updateState, &
    homogenization_RGC_label
  
  implicit none
  integer(pInt), intent(in) :: &
-   i, &                                                                                             !< integration point
-   e                                                                                                !< element number
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element number
  logical, dimension(2) :: homogenization_updateState
  
- chosenHomogenization: select case(homogenization_type(mesh_element(3,e)))
-   case (homogenization_isostrain_label) chosenHomogenization
-     homogenization_updateState = &
-        homogenization_isostrain_updateState( homogenization_state(i,e), &
-                                              crystallite_P(1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                              crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                              i, &
-                                              e)
+ chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+
    case (homogenization_RGC_label) chosenHomogenization
      homogenization_updateState = &
-        homogenization_RGC_updateState( homogenization_state(i,e), &
-                                        homogenization_subState0(i,e), &
-                                        crystallite_P(1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                        crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                        crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,i,e),&
-                                        materialpoint_subF(1:3,1:3,i,e),&
-                                        materialpoint_subdt(i,e), &
-                                        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                        i, &
-                                        e)
+        homogenization_RGC_updateState( homogenization_state(ip,el), &
+                                        homogenization_subState0(ip,el), &
+                                        crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                        crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                        crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
+                                        materialpoint_subF(1:3,1:3,ip,el),&
+                                        materialpoint_subdt(ip,el), &
+                                        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                        ip, &
+                                        e)l
+   case default chosenHomogenization
+     homogenization_updateState = .true.
  end select chosenHomogenization
 
 end function homogenization_updateState
@@ -750,7 +743,7 @@ end function homogenization_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_averageStressAndItsTangent(i,e)
+subroutine homogenization_averageStressAndItsTangent(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -767,69 +760,61 @@ subroutine homogenization_averageStressAndItsTangent(i,e)
 
  implicit none
  integer(pInt), intent(in) :: &
-   i, &                                                                                             !< integration point
-   e                                                                                                !< element number
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element number
  
- chosenHomogenization: select case(homogenization_type(mesh_element(3,e)))
+ chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label) chosenHomogenization
-     call homogenization_isostrain_averageStressAndItsTangent(materialpoint_P(1:3,1:3,i,e), &
-                                                              materialpoint_dPdF(1:3,1:3,1:3,1:3,i,e),&
-                                                              crystallite_P(1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                                              crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                                              i, &
-                                                              e)
+     call homogenization_isostrain_averageStressAndItsTangent(materialpoint_P(1:3,1:3,ip,el), &
+                                                              materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+                                                              crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                                              crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                                              ip, &
+                                                              el)
    case (homogenization_RGC_label) chosenHomogenization
-     call homogenization_RGC_averageStressAndItsTangent( materialpoint_P(1:3,1:3,i,e), &
-                                                         materialpoint_dPdF(1:3,1:3,1:3,1:3,i,e),&
-                                                         crystallite_P(1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                                         crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,i,e), &
-                                                         i, &
-                                                         e)
+     call homogenization_RGC_averageStressAndItsTangent( materialpoint_P(1:3,1:3,ip,el), &
+                                                         materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+                                                         crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                                         crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                                         ip, &
+                                                         el)
  end select chosenHomogenization
 
 end subroutine homogenization_averageStressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief derive average temperature from constituent quantities
+!> @brief derive average temperature from constituent quantities (does not depend on choosen 
+!! homogenization scheme)
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_averageTemperature(i,e)
+real(pReal) function homogenization_averageTemperature(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
-   homogenization_type, &
-   homogenization_maxNgrains
+   homogenization_Ngrains
  use crystallite, only: &
    crystallite_Temperature
- use homogenization_isostrain, only: &
-   homogenization_isostrain_averageTemperature, &
-   homogenization_isostrain_label
- use homogenization_RGC, only: &
-   homogenization_RGC_averageTemperature, &
-   homogenization_RGC_label
 
  implicit none
  integer(pInt), intent(in) :: &
-   i, &                                                                                             !< integration point
-   e                                                                                                !< element number
- 
- chosenHomogenization: select case(homogenization_type(mesh_element(3,e)))
-   case (homogenization_isostrain_label) chosenHomogenization
-     materialpoint_Temperature(i,e) = &
-        homogenization_isostrain_averageTemperature(crystallite_Temperature(1:homogenization_maxNgrains,i,e), i, e)
-   case (homogenization_RGC_label) chosenHomogenization
-     materialpoint_Temperature(i,e) = &
-        homogenization_RGC_averageTemperature(crystallite_Temperature(1:homogenization_maxNgrains,i,e), i, e)
- end select chosenHomogenization
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains
 
-end subroutine homogenization_averageTemperature
+!--------------------------------------------------------------------------------------------------
+! computing the average temperature
+ Ngrains = homogenization_Ngrains(mesh_element(3,el))
+ homogenization_averageTemperature= sum(crystallite_Temperature(1:Ngrains,ip,el))/real(Ngrains,pReal)
+
+end function homogenization_averageTemperature
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion. call only, 
 !> if homogenization_sizePostResults(i,e) > 0 !!
 !--------------------------------------------------------------------------------------------------
-function homogenization_postResults(i,e)
+function homogenization_postResults(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -843,16 +828,16 @@ function homogenization_postResults(i,e)
  
  implicit none
  integer(pInt), intent(in) :: &
-   i, &                                                                                             !< integration point
-   e                                                                                                !< element number
- real(pReal), dimension(homogenization_sizePostResults(i,e)) :: homogenization_postResults
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element number
+ real(pReal), dimension(homogenization_sizePostResults(ip,el)) :: homogenization_postResults
 
  homogenization_postResults = 0.0_pReal
- chosenHomogenization: select case (homogenization_type(mesh_element(3,e)))
+ chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label) chosenHomogenization
-     homogenization_postResults = homogenization_isostrain_postResults(homogenization_state(i,e),i,e)
+     homogenization_postResults = homogenization_isostrain_postResults(homogenization_state(ip,el),ip,el)
    case (homogenization_RGC_label) chosenHomogenization
-     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(i,e),i,e)
+     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(ip,el),ip,el)
  end select chosenHomogenization
 
 end function homogenization_postResults

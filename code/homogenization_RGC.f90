@@ -52,14 +52,11 @@ module homogenization_RGC
  real(pReal),       dimension(:),       allocatable,        private :: &
    homogenization_RGC_xiAlpha, &
    homogenization_RGC_ciAlpha
-
  public :: &
    homogenization_RGC_init, &
-   homogenization_RGC_stateInit, &
    homogenization_RGC_partitionDeformation, &
    homogenization_RGC_averageStressAndItsTangent, &
    homogenization_RGC_updateState, &
-   homogenization_RGC_averageTemperature, &
    homogenization_RGC_postResults
  private :: &
    homogenization_RGC_stressPenalty, &
@@ -105,8 +102,8 @@ subroutine homogenization_RGC_init(myFile)
 
  implicit none
  integer(pInt), intent(in) :: myFile                                                                !< file pointer to material configuration
- integer(pInt), parameter  :: maxNchunks = 4_pInt
- integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+ integer(pInt), parameter  :: MAXNCHUNKS = 4_pInt
+ integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) ::section=0_pInt, maxNinstance, i,j,e, output=-1_pInt, mySize, myInstance
  character(len=65536) :: tag
  character(len=65536) :: line = ''
@@ -150,7 +147,7 @@ subroutine homogenization_RGC_init(myFile)
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
      if (trim(homogenization_type(section)) == HOMOGENIZATION_RGC_label) then                       ! one of my sections
        i = homogenization_typeInstance(section)                                                     ! which instance of my type is present homogenization
-       positions = IO_stringPos(line,maxNchunks)
+       positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case ('(output)')
@@ -247,20 +244,6 @@ subroutine homogenization_RGC_init(myFile)
  enddo
 
 end subroutine homogenization_RGC_init
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the initial homogenization state
-!--------------------------------------------------------------------------------------------------
-function homogenization_RGC_stateInit(myInstance)
-
- implicit none
- integer(pInt), intent(in) :: myInstance
- real(pReal), dimension(homogenization_RGC_sizeState(myInstance)) :: homogenization_RGC_stateInit
-
- homogenization_RGC_stateInit = 0.0_pReal
- 
-end function homogenization_RGC_stateInit
 
 
 !--------------------------------------------------------------------------------------------------
@@ -877,27 +860,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,
  avgP = sum(P,3)/real(Ngrains,pReal)
  dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
 
-end subroutine
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief derive average temperature from constituent quantities 
-!--------------------------------------------------------------------------------------------------
-real(pReal) pure function homogenization_RGC_averageTemperature(Temperature,ip,el)
- use mesh, only: mesh_element
- use material, only: homogenization_maxNgrains, homogenization_Ngrains
- 
- implicit none
- real(pReal), dimension (homogenization_maxNgrains), intent(in) :: Temperature
- integer(pInt),                                      intent(in) :: ip,el
- integer(pInt) :: Ngrains
-
-!--------------------------------------------------------------------------------------------------
-! computing the average temperature
- Ngrains = homogenization_Ngrains(mesh_element(3,el))
- homogenization_RGC_averageTemperature = sum(Temperature(1:Ngrains))/real(Ngrains,pReal)
-
-end function homogenization_RGC_averageTemperature
+end subroutine homogenization_RGC_averageStressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
@@ -990,9 +953,9 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,homID)
  real(pReal),   dimension (3,3) :: gDef,nDef
  real(pReal),   dimension (3)   :: nVect,surfCorr
  real(pReal),   dimension (2)   :: Gmoduli
- integer(pInt) homID,iGrain,iGNghb,iFace,i,j,k,l
- real(pReal) muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
-! 
+ integer(pInt) :: homID,iGrain,iGNghb,iFace,i,j,k,l
+ real(pReal) :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
+ 
  integer(pInt),                                             parameter  :: nFace = 6_pInt
  real(pReal),                                               parameter  :: nDefToler = 1.0e-10_pReal
 
@@ -1016,7 +979,7 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,homID)
    !$OMP END CRITICAL (write2out)
  endif
 
-!!!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! computing the mismatch and penalty stress tensor of all grains 
  do iGrain = 1_pInt,homogenization_Ngrains(mesh_element(3,el))
    Gmoduli = homogenization_RGC_equivalentModuli(iGrain,ip,el)
@@ -1129,8 +1092,8 @@ subroutine homogenization_RGC_volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el, homID
  integer(pInt), intent(in)                 :: ip,&                                                  ! integration point
    el 
  real(pReal), dimension (homogenization_maxNgrains) :: gVol
- integer(pInt) homID,iGrain,nGrain,i,j
-! 
+ integer(pInt) :: homID,iGrain,nGrain,i,j
+
  nGrain = homogenization_Ngrains(mesh_element(3,el))
 
 !--------------------------------------------------------------------------------------------------
@@ -1182,10 +1145,10 @@ function homogenization_RGC_surfaceCorrection(avgF,ip,el)
    el                                                                                               !< element number
  real(pReal), dimension(3,3)             :: invC,avgC
  real(pReal), dimension(3)               :: nVect
- real(pReal)   detF
+ real(pReal)  :: detF
  integer(pInt), dimension(4)             :: intFace
- integer(pInt) i,j,iBase
- logical       error
+ integer(pInt) :: i,j,iBase
+ logical     ::  error
 
  avgC = math_mul33x33(transpose(avgF),avgF)
  call math_invert33(avgC,invC,detF,error)
@@ -1219,7 +1182,7 @@ function homogenization_RGC_equivalentModuli(grainID,ip,el)
    el                                                                                               !< element number
  real(pReal), dimension (6,6) :: elasTens
  real(pReal), dimension(2)    :: homogenization_RGC_equivalentModuli
- real(pReal) cEquiv_11,cEquiv_12,cEquiv_44
+ real(pReal) :: cEquiv_11,cEquiv_12,cEquiv_44
 
  elasTens = constitutive_homogenizedC(grainID,ip,el)
 
