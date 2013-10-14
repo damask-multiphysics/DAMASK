@@ -358,7 +358,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
          call mesh_build_ipCoordinates()                                                            ! update ip coordinates
        endif
        if (outdatedByNewInc) then
-         computationMode = ior(computationMode,CPFEM_AGERESULTS)
+         computationMode = ior(computationMode,CPFEM_AGERESULTS)                                    ! calc and age results
          outdatedByNewInc = .false.                                                                 ! reset flag
        endif
      else                                                                                           ! now --- COLLECT ---

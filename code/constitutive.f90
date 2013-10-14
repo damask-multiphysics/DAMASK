@@ -641,7 +641,7 @@ end subroutine constitutive_TandItsTangent
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to 
-!> the elastic deformation gradient depending for hookes law
+!> the elastic deformation gradient using hookes law
 !--------------------------------------------------------------------------------------------------
 pure subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
 use math, only : &
