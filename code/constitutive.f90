@@ -61,7 +61,6 @@ module constitutive
  public :: & 
    constitutive_init, &
    constitutive_homogenizedC, &
-   constitutive_averageBurgers, &
    constitutive_microstructure, &
    constitutive_LpAndItsTangent, &
    constitutive_TandItsTangent, &
@@ -260,11 +259,11 @@ subroutine constitutive_init
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_none_sizeDotState(matID))) 
              enddo
            endif
-           constitutive_state0(g,i,e)%p =           constitutive_none_stateInit(matID)
-           constitutive_aTolState(g,i,e)%p =        constitutive_none_aTolState(matID)
-           constitutive_sizeState(g,i,e) =          constitutive_none_sizeState(matID)
-           constitutive_sizeDotState(g,i,e) =       constitutive_none_sizeDotState(matID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_none_sizePostResults(matID)
+           constitutive_state0(g,i,e)%p =           0.0_pReal
+           constitutive_aTolState(g,i,e)%p =        1.0_pReal
+           constitutive_sizeState(g,i,e) =          0.0_pReal
+           constitutive_sizeDotState(g,i,e) =       0.0_pReal
+           constitutive_sizePostResults(g,i,e) =    0.0_pReal
           
          case (constitutive_j2_label)
            allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(matID)))
@@ -504,52 +503,12 @@ end function constitutive_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns average length of Burgers vector (not material point model specific so far)
-!--------------------------------------------------------------------------------------------------
-real(pReal) function constitutive_averageBurgers(ipc,ip,el)
- use material, only: &
-   phase_plasticity,material_phase
- use constitutive_none, only: &
-   constitutive_none_label
- use constitutive_j2, only: &
-   constitutive_j2_label
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_label
- use constitutive_titanmod, only: &
-   constitutive_titanmod_label
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_label
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_label
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                             !< integration point number 
-   el                                                                                                !< element number
-
- constitutive_averageBurgers = 2.5e-10_pReal
-
-
-end function constitutive_averageBurgers
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
  use material, only: &
    phase_plasticity, &
    material_phase
- use constitutive_none, only: &
-   constitutive_none_label, &
-   constitutive_none_microstructure
- use constitutive_j2, only: &
-   constitutive_j2_label, &
-   constitutive_j2_microstructure
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_label, &
-   constitutive_phenopowerlaw_microstructure
  use constitutive_titanmod, only: &
    constitutive_titanmod_label, &
    constitutive_titanmod_microstructure
@@ -562,9 +521,9 @@ subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
  
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    Temperature
  real(pReal),   intent(in), dimension(3,3) :: &
@@ -572,25 +531,16 @@ subroutine constitutive_microstructure(Temperature, Fe, Fp, ipc, ip, el)
    Fp                                                                                               !< plastic deformation gradient
  
  select case (phase_plasticity(material_phase(ipc,ip,el)))
-  
-   case (constitutive_none_label)
-     call constitutive_none_microstructure(Temperature,constitutive_state,ipc,ip,el)
-      
-   case (constitutive_j2_label)
-     call constitutive_j2_microstructure(Temperature,constitutive_state,ipc,ip,el)
-      
-   case (constitutive_phenopowerlaw_label)
-     call constitutive_phenopowerlaw_microstructure(Temperature,constitutive_state,ipc,ip,el)
    
    case (constitutive_titanmod_label)
      call constitutive_titanmod_microstructure(Temperature,constitutive_state,ipc,ip,el)
     
    case (constitutive_dislotwin_label)
      call constitutive_dislotwin_microstructure(Temperature,constitutive_state,ipc,ip,el)
-    
+
    case (constitutive_nonlocal_label)
      call constitutive_nonlocal_microstructure(constitutive_state, Temperature, Fe, Fp, ipc,ip,el)
-      
+
  end select
  
 end subroutine constitutive_microstructure
@@ -624,9 +574,9 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, Temperature, ip
  
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    Temperature
  real(pReal),   intent(in),  dimension(6) :: &
@@ -664,7 +614,8 @@ end subroutine constitutive_LpAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to 
-!> the elastic deformation gradient depending on the selected elastic law
+!> the elastic deformation gradient depending on the selected elastic law (so far no case switch
+!! because only hooke is implemented
 !--------------------------------------------------------------------------------------------------
 pure subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  use material, only: &
@@ -672,9 +623,9 @@ pure subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fe                                                                                               !< elastic deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
@@ -682,12 +633,8 @@ pure subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
    dT_dFe                                                                                           !< derivative of 2nd P-K stress with respect to elastic deformation gradient
  
- select case (phase_elasticity(material_phase(ipc,ip,el)))
- 
-   case (constitutive_hooke_label)
-       call constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
-     
- end select
+ call constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+
  
 end subroutine constitutive_TandItsTangent
 
@@ -706,9 +653,9 @@ use math, only : &
 
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal),   intent(in),  dimension(3,3) :: &
    Fe                                                                                               !< elastic deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
@@ -751,7 +698,6 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, sub
    material_phase, &
    homogenization_maxNgrains
  use constitutive_none, only: &
-   constitutive_none_dotState, &
    constitutive_none_label
  use constitutive_j2, only:  &
    constitutive_j2_dotState, &
@@ -771,9 +717,9 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, sub
  
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal),  intent(in) :: &
    Temperature, &
    subdt                                                                                            !< timestep
@@ -795,7 +741,7 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, sub
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (constitutive_none_label)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_none_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
+     constitutive_dotState(ipc,ip,el)%p = 0.0_pReal !ToDo: needed or will it remain zero anyway?
   
    case (constitutive_j2_label)
      constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
@@ -844,30 +790,15 @@ subroutine constitutive_collectDeltaState(Tstar_v, Temperature, ipc, ip, el)
  use material, only: &
    phase_plasticity, &
    material_phase
- use constitutive_none, only: &
-   constitutive_none_deltaState, &
-   constitutive_none_label
- use constitutive_j2, only: &
-   constitutive_j2_deltaState, &
-   constitutive_j2_label
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_deltaState, &
-   constitutive_phenopowerlaw_label
- use constitutive_titanmod, only: &
-   constitutive_titanmod_deltaState, &
-   constitutive_titanmod_label
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_deltaState, &
-   constitutive_dislotwin_label
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_deltaState, &
    constitutive_nonlocal_label
  
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    Temperature
  real(pReal),   intent(in),  dimension(6) :: &
@@ -882,23 +813,11 @@ subroutine constitutive_collectDeltaState(Tstar_v, Temperature, ipc, ip, el)
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
 
-   case (constitutive_none_label)
-     constitutive_deltaState(ipc,ip,el)%p = constitutive_none_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
- 
-   case (constitutive_j2_label)
-     constitutive_deltaState(ipc,ip,el)%p = constitutive_j2_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
- 
-   case (constitutive_phenopowerlaw_label)
-     constitutive_deltaState(ipc,ip,el)%p = constitutive_phenopowerlaw_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-
-   case (constitutive_titanmod_label)
-     constitutive_deltaState(ipc,ip,el)%p = constitutive_titanmod_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-  
-   case (constitutive_dislotwin_label)
-     constitutive_deltaState(ipc,ip,el)%p = constitutive_dislotwin_deltaState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
- 
    case (constitutive_nonlocal_label)
      call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el),constitutive_state, Tstar_v,Temperature,ipc,ip,el)
+
+   case default
+     constitutive_deltaState(ipc,ip,el)%p = 0.0_pReal !ToDo: needed or will it remain zero anyway?
  
  end select
 
@@ -921,9 +840,9 @@ end subroutine constitutive_collectDeltaState
 real(pReal) function constitutive_dotTemperature(Tstar_v,Temperature,ipc,ip,el)
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    Temperature
  real(pReal),   intent(in),  dimension(6) :: &
@@ -944,7 +863,6 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
    material_phase, &
    homogenization_maxNgrains
  use constitutive_none, only: &
-   constitutive_none_postResults, &
    constitutive_none_label
  use constitutive_j2, only: &
    constitutive_j2_postResults, &
@@ -964,9 +882,9 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
  
  implicit none
  integer(pInt), intent(in) :: &
-   ipc, &                                                                                             !< grain number
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
  real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: &
    constitutive_postResults
  real(pReal),  intent(in) :: &
@@ -982,7 +900,7 @@ function constitutive_postResults(Tstar_v, Fe, Temperature, dt, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (constitutive_none_label)
-     constitutive_postResults = constitutive_none_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)
+     constitutive_postResults = 0.0_pReal
     
    case (constitutive_j2_label)
      constitutive_postResults = constitutive_j2_postResults(Tstar_v,Temperature,dt,constitutive_state,ipc,ip,el)

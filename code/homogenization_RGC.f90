@@ -1172,8 +1172,7 @@ end function homogenization_RGC_surfaceCorrection
 !--------------------------------------------------------------------------------------------------
 function homogenization_RGC_equivalentModuli(grainID,ip,el)
  use constitutive, only: &
-   constitutive_homogenizedC, &
-   constitutive_averageBurgers
+   constitutive_homogenizedC
 
  implicit none
  integer(pInt), intent(in)    :: &
@@ -1195,8 +1194,8 @@ function homogenization_RGC_equivalentModuli(grainID,ip,el)
  homogenization_RGC_equivalentModuli(1) = 0.2_pReal*(cEquiv_11 - cEquiv_12) + 0.6_pReal*cEquiv_44
 
 !--------------------------------------------------------------------------------------------------
-! obtain the length of Burgers vector
- homogenization_RGC_equivalentModuli(2) = constitutive_averageBurgers(grainID,ip,el)
+! obtain the length of Burgers vector (could be model dependend)
+ homogenization_RGC_equivalentModuli(2) = 2.5e-10_pReal
 
 end function homogenization_RGC_equivalentModuli
 

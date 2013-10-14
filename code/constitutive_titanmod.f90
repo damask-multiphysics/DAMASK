@@ -189,7 +189,6 @@ module constitutive_titanmod
    constitutive_titanmod_init, &
    constitutive_titanmod_LpAndItsTangent, &
    constitutive_titanmod_dotState, &
-   constitutive_titanmod_deltaState, &
    constitutive_titanmod_postResults, &
    constitutive_titanmod_homogenizedC, &
    constitutive_titanmod_aTolState
@@ -1713,41 +1712,6 @@ j = 0_pInt
   enddo twinFamiliesLoop
 
 end function constitutive_titanmod_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief (instantaneous) incremental change of microstructure
-!> @details dummy function, returns 0.0
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_titanmod_deltaState(Tstar_v,temperature,state,ipc,ip,el)
- use prec, only: &
-   p_vec
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains, &
-   material_phase, &
-   phase_plasticityInstance
- 
- implicit none
- real(pReal), dimension(6),                                                    intent(in):: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   Temperature                                                                                      !< temperature at integration point
- integer(pInt),                                                                intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
- 
- real(pReal), dimension(constitutive_titanmod_sizeDotState(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-                                             constitutive_titanmod_deltaState
-
- constitutive_titanmod_deltaState = 0.0_pReal
- 
-end function constitutive_titanmod_deltaState
 
 
 !--------------------------------------------------------------------------------------------------

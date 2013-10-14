@@ -80,10 +80,8 @@ module constitutive_j2
    constitutive_j2_stateInit, &
    constitutive_j2_aTolState, &
    constitutive_j2_homogenizedC, &
-   constitutive_j2_microstructure, &
    constitutive_j2_LpAndItsTangent, &
    constitutive_j2_dotState, &
-   constitutive_j2_deltaState, &
    constitutive_j2_postResults
 
 contains
@@ -362,37 +360,11 @@ pure function constitutive_j2_homogenizedC(state,ipc,ip,el)
    el                                                                                               !< element
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
    state                                                                                            !< microstructure state
- 
+
  constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(1:6,1:6,&
                                                phase_plasticityInstance(material_phase(ipc,ip,el)))
 
 end function constitutive_j2_homogenizedC
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!> @details dummy subroutine, does nothing
-!--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_j2_microstructure(temperature,state,ipc,ip,el)
- use prec, only: &
-   p_vec
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal),   intent(in) :: &
-   temperature                                                                                      !< temperature at IP 
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
-
-end subroutine constitutive_j2_microstructure
 
 
 !--------------------------------------------------------------------------------------------------
@@ -556,41 +528,6 @@ pure function constitutive_j2_dotState(Tstar_v,temperature,state,ipc,ip,el)
  constitutive_j2_dotState = hardening * gamma_dot
 
 end function constitutive_j2_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief (instantaneous) incremental change of microstructure
-!> @details dummy function, returns 0.0
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_deltaState(Tstar_v,temperature,state,ipc,ip,el)
- use prec, only: &
-   p_vec
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains, &
-   material_phase, &
-   phase_plasticityInstance
- 
- implicit none
- real(pReal), dimension(6),                                                    intent(in):: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   Temperature                                                                                      !< temperature at integration point
- integer(pInt),                                                                intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
- 
- real(pReal), dimension(constitutive_j2_sizeDotState(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-                                             constitutive_j2_deltaState
-
- constitutive_j2_deltaState = 0.0_pReal
- 
-end function constitutive_j2_deltaState
 
 
 !--------------------------------------------------------------------------------------------------

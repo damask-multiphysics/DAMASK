@@ -1055,8 +1055,7 @@ use mesh,     only: mesh_ipVolume, &
                     FE_geomtype
 use material, only: material_phase, &
                     phase_plasticityInstance, &
-                    phase_plasticity, &
-                    homogenization_Ngrains
+                    phase_plasticity
 
 implicit none
 
@@ -1069,7 +1068,6 @@ integer(pInt)                 el, &
                               ip, &
                               e, &
                               i, &
-                              idx, &
                               ns, &                           ! short notation for total number of active slip systems 
                               f, &                            ! index of lattice family
                               from, &
@@ -1221,7 +1219,7 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(6,6) ::  constitutive_nonlocal_homogenizedC  ! homogenized elasticity matrix
 
 !*** local variables
-integer(pInt)                   matID                          ! current instance of this plasticity
+integer(pInt)            ::       matID                          ! current instance of this plasticity
 
 matID = phase_plasticityInstance(material_phase(g,ip,el))
 
@@ -1273,8 +1271,7 @@ use material, only: &
   phase_plasticityInstance
 use lattice, only: &
   lattice_sd, &
-  lattice_st, &
-  lattice_interactionSlipSlip
+  lattice_st
 
 implicit none
 
@@ -1726,8 +1723,7 @@ use debug,    only: debug_level, &
                     debug_g, &
                     debug_i, &
                     debug_e
-use material, only: homogenization_maxNgrains, &
-                    material_phase, &
+use material, only: material_phase, &
                     phase_plasticityInstance
 use lattice,  only: lattice_Sslip, &
                     lattice_Sslip_v, &
@@ -3254,8 +3250,7 @@ use math,     only: math_mul6x6, &
                     math_mul33x33, &
                     pi
 use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_ipVolume
+                    mesh_maxNips
 use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_plasticityInstance, &
@@ -3271,6 +3266,7 @@ implicit none
 integer(pInt), intent(in) ::                g, &                      ! current grain number
                                             ip, &                     ! current integration point
                                             el                        ! current element number
+
 real(pReal), intent(in) ::                  Temperature, &            ! temperature
                                             dt                        ! time increment
 real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation

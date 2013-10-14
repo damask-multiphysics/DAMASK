@@ -102,10 +102,8 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_stateInit, &
    constitutive_phenopowerlaw_aTolState, &
    constitutive_phenopowerlaw_homogenizedC, &
-   constitutive_phenopowerlaw_microstructure, &
    constitutive_phenopowerlaw_LpAndItsTangent, &
    constitutive_phenopowerlaw_dotState, &
-   constitutive_phenopowerlaw_deltaState, &
    constitutive_phenopowerlaw_postResults
 
 contains
@@ -676,32 +674,6 @@ end function constitutive_phenopowerlaw_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!> @details dummy subroutine, does nothing
-!--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_phenopowerlaw_microstructure(temperature,state,ipc,ip,el)
- use prec, only: &
-   p_vec
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal),   intent(in) :: &
-   temperature                                                                                      !< temperature at IP 
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
-  
-end subroutine constitutive_phenopowerlaw_microstructure
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
@@ -880,7 +852,7 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,temperature,state,ipc,ip,el
    phase_plasticityInstance
  
  implicit none
- real(pReal), dimension(6),                                                    intent(in):: &
+ real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                                                                  intent(in) :: &
    temperature                                                                                      !< temperature at integration point
@@ -1026,41 +998,6 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,temperature,state,ipc,ip,el
  enddo twinFamiliesLoop2
 
 end function constitutive_phenopowerlaw_dotState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief (instantaneous) incremental change of microstructure
-!> @details dummy function, returns 0.0
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_deltaState(Tstar_v,temperature,state,ipc,ip,el)
- use prec, only: &
-   p_vec
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains, &
-   material_phase, &
-   phase_plasticityInstance
-
- implicit none
- real(pReal), dimension(6),                                                    intent(in):: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   Temperature                                                                                      !< temperature at integration point
- integer(pInt),                                                                intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
-
- real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-   constitutive_phenopowerlaw_deltaState
-
- constitutive_phenopowerlaw_deltaState = 0.0_pReal
-
-end function constitutive_phenopowerlaw_deltaState
 
 
 !--------------------------------------------------------------------------------------------------
