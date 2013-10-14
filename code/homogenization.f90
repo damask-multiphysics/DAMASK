@@ -732,7 +732,7 @@ function homogenization_updateState(ip,el)
                                         materialpoint_subdt(ip,el), &
                                         crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
                                         ip, &
-                                        e)l
+                                        el)
    case default chosenHomogenization
      homogenization_updateState = .true.
  end select chosenHomogenization
