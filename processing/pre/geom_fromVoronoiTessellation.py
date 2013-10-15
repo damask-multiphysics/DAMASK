@@ -161,8 +161,8 @@ for file in files:
       extra_header.append(header)
 
   if info['microstructures'] != len(grainIDs):
-    file['croak'].write('grain data not matching grain count...\n')
-    info['microstructures'] = min(info['microstructures'],len(grainIDs))
+    file['croak'].write('grain data not matching grain count (%i)...\n'%(len(grainIDs)))
+    info['microstructures'] = len(grainIDs)
   
   if 0 not in options.grid:                                                                         # user-specified grid
     info['grid'] = numpy.array(options.grid)
