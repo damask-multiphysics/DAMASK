@@ -52,8 +52,9 @@ def meshgrid2(*arrs):
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
 synonyms = {
-        'grid':   ['resolution'],
-        'size':   ['dimension'],
+        'grid':              ['resolution'],
+        'size':              ['dimension'],
+        'microstructures':   ['grains'],
           }
 identifiers = {
         'grid':   ['a','b','c'],
@@ -203,10 +204,10 @@ for file in files:
     file['output'].write('\n<texture>\n')
     for i in grainIDs:
       eulerID = numpy.nonzero(grain == i)[0][0]                                                     # find first occurrence of this grain id
-      file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
-                           '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,eulerID],
-                                                                                             eulers[1,eulerID],
-                                                                                             eulers[2,eulerID]))
+      file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth))) #+ \
+                         #  '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,eulerID],
+                                                                                            # eulers[1,eulerID],
+                                                                                            # eulers[2,eulerID]))
 
   else:                                                                                             # write geometry file
     x = (numpy.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
