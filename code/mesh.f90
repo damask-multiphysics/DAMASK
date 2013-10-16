@@ -669,7 +669,7 @@ integer(pInt) function mesh_FEasCP(what,myID)
    return
  endif
  
- do while (upper-lower > 1_pInt)                                                                    ! binary search in between bounds
+ binarySearch: do while (upper-lower > 1_pInt)
    center = (lower+upper)/2_pInt
    if (lookupMap(1_pInt,center) < myID) then
      lower = center
@@ -679,7 +679,7 @@ integer(pInt) function mesh_FEasCP(what,myID)
      mesh_FEasCP = lookupMap(2_pInt,center)
      exit
    endif
- enddo
+ enddo binarySearch
  
 end function mesh_FEasCP
 

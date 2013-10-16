@@ -151,7 +151,7 @@ program DAMASK_spectral_Driver
  external :: quit
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
- call CPFEM_initAll(temperature = 300.0_pReal, element = 1_pInt, IP= 1_pInt)
+ call CPFEM_initAll(temperature = 300.0_pReal, el = 1_pInt, ip = 1_pInt)
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_driver init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()

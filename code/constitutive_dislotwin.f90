@@ -934,10 +934,10 @@ pure function constitutive_dislotwin_homogenizedC(state,ipc,ip,el)
  sumf = sum(state(ipc,ip,el)%p((3_pInt*ns+1_pInt):(3_pInt*ns+nt))) ! safe for nt == 0
  
  !* Homogenized elasticity matrix
- constitutive_dislotwin_homogenizedC = (1.0_pReal-sumf)*constitutive_dislotwin_Cslip_66(:,:,matID)
+ constitutive_dislotwin_homogenizedC = (1.0_pReal-sumf)*constitutive_dislotwin_Cslip_66(1:6,1:6,matID)
  do i=1_pInt,nt
     constitutive_dislotwin_homogenizedC = &
-    constitutive_dislotwin_homogenizedC + state(ipc,ip,el)%p(3_pInt*ns+i)*constitutive_dislotwin_Ctwin_66(:,:,i,matID)
+    constitutive_dislotwin_homogenizedC + state(ipc,ip,el)%p(3_pInt*ns+i)*constitutive_dislotwin_Ctwin_66(1:6,1:6,i,matID)
  enddo
  
  end function constitutive_dislotwin_homogenizedC
@@ -945,7 +945,7 @@ pure function constitutive_dislotwin_homogenizedC(state,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_dislotwin_microstructure(Temperature,state,ipc,ip,el)
+subroutine constitutive_dislotwin_microstructure(temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -1529,7 +1529,7 @@ end function constitutive_dislotwin_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
+function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -1558,8 +1558,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,dt,state,ipc,ip,
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                                                                  intent(in) :: &
-   temperature, &                                                                                   !< temperature at integration point
-   dt
+   temperature                                                                                      !< temperature at integration point
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point

@@ -340,9 +340,7 @@ end function constitutive_j2_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_homogenizedC(state,ipc,ip,el)
- use prec, only: &
-   p_vec
+pure function constitutive_j2_homogenizedC(ipc,ip,el)
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -358,8 +356,6 @@ pure function constitutive_j2_homogenizedC(state,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
 
  constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(1:6,1:6,&
                                                phase_plasticityInstance(material_phase(ipc,ip,el)))
@@ -370,8 +366,7 @@ end function constitutive_j2_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
-                                                                       temperature,state,ipc,ip,el)
+pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -396,8 +391,6 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
 
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature                                                                                      !< temperature at IP 
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -449,7 +442,7 @@ end subroutine constitutive_j2_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_dotState(Tstar_v,temperature,state,ipc,ip,el)
+pure function constitutive_j2_dotState(Tstar_v,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -467,8 +460,6 @@ pure function constitutive_j2_dotState(Tstar_v,temperature,state,ipc,ip,el)
    constitutive_j2_dotState
  real(pReal), dimension(6),                                                    intent(in):: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature                                                                                      !< temperature at integration point
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -533,7 +524,7 @@ end function constitutive_j2_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_postResults(Tstar_v,temperature,dt,state,ipc,ip,el)
+pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -550,9 +541,6 @@ pure function constitutive_j2_postResults(Tstar_v,temperature,dt,state,ipc,ip,el
  implicit none
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature, &                                                                                   !< temperature at integration point
-   dt
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point

@@ -819,10 +819,11 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    CPFEM_AGERESULTS, &
    CPFEM_BACKUPJACOBIAN, &
    CPFEM_RESTOREJACOBIAN
+ use crystallite, only: &
+   crystallite_temperature
  use homogenization, only: &
    materialpoint_F0, &
    materialpoint_F, &
-   materialpoint_Temperature, &
    materialpoint_P, &
    materialpoint_dPdF
  
@@ -864,7 +865,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  
  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid)])
  materialpoint_F  = reshape(F,         [3,3,1,product(grid)])
- materialpoint_Temperature = temperature
+ crystallite_temperature = temperature
 
  call debug_reset()
 

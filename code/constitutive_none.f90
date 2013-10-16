@@ -49,8 +49,7 @@ module constitutive_none
 
  public :: &
    constitutive_none_init, &
-   constitutive_none_homogenizedC, &
-   constitutive_none_LpAndItsTangent
+   constitutive_none_homogenizedC
 
 contains
 
@@ -185,7 +184,7 @@ end subroutine constitutive_none_init
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_none_homogenizedC(state,ipc,ip,el)
+pure function constitutive_none_homogenizedC(ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &
@@ -203,51 +202,10 @@ pure function constitutive_none_homogenizedC(state,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
 
  constitutive_none_homogenizedC = constitutive_none_Cslip_66(1:6,1:6,&
                                               phase_plasticityInstance(material_phase(ipc,ip,el)))
 
 end function constitutive_none_homogenizedC
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates plastic velocity gradient and its tangent
-!> @details dummy function, returns 0.0 and Identity
-!--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_none_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_dev_v, & 
-                                                                   temperature, state, ipc, ip, el)
- use prec, only: &
-   p_vec
- use math, only: &
-   math_identity2nd
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains, &
-   material_phase, &
-   phase_plasticityInstance
- implicit none
- real(pReal), dimension(3,3),                                                  intent(out) :: &
-   Lp                                                                                               !< plastic velocity gradient
- real(pReal), dimension(9,9),                                                  intent(out) :: &
-   dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
- real(pReal), dimension(6),                                                    intent(in) :: &
-   Tstar_dev_v                                                                                      !< deviatoric part of 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature                                                                                      !< temperature at IP 
- integer(pInt),                                                                intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
-
- Lp = 0.0_pReal                                                                                     ! set Lp to zero 
- dLp_dTstar99 = math_identity2nd(9)                                                                 ! set dLp_dTstar to Identity
-
-end subroutine constitutive_none_LpAndItsTangent
 
 end module constitutive_none

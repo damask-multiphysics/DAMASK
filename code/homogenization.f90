@@ -36,8 +36,6 @@ module homogenization
  private
  type(p_vec),   dimension(:,:),         allocatable, public :: &
    homogenization_state0                                                                            !< pointer array to homogenization state at start of FE increment
- real(pReal),   dimension(:,:),         allocatable, public :: &
-   materialpoint_Temperature                                                                        !< temperature at IP
  real(pReal),   dimension(:,:,:,:),     allocatable, public :: &
    materialpoint_F0, &                                                                              !< def grad of IP at start of FE increment
    materialpoint_F, &                                                                               !< def grad of IP to be reached at end of FE increment
@@ -63,7 +61,8 @@ module homogenization
  real(pReal),   dimension(:,:),         allocatable, private :: &
    materialpoint_subFrac, &
    materialpoint_subStep, &
-   materialpoint_subdt
+   materialpoint_subdt, &
+   materialpoint_heat
  integer(pInt), dimension(:,:),         allocatable, private :: &
    homogenization_sizePostResults                                                                   !< size of postResults array per material point
  integer(pInt),                                      private :: &
@@ -82,7 +81,7 @@ module homogenization
    homogenization_partitionDeformation, &
    homogenization_updateState, &
    homogenization_averageStressAndItsTangent, &
-   homogenization_averageTemperature, &
+   homogenization_averageHeat, &
    homogenization_postResults
 
 contains
@@ -91,14 +90,16 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_init(Temperature)
+subroutine homogenization_init()
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_I3
  use debug, only: &
    debug_level, &
    debug_homogenization, &
-   debug_levelBasic
+   debug_levelBasic, &
+   debug_e, &
+   debug_g
  use IO, only: &
    IO_error, &
    IO_open_file, &
@@ -121,18 +122,16 @@ subroutine homogenization_init(Temperature)
  use homogenization_RGC
 
  implicit none
- real(pReal) Temperature
  integer(pInt), parameter :: fileunit = 200_pInt
- integer(pInt) e,i,p,myInstance
+ integer(pInt) :: e,i,p,myInstance
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
  logical :: knownHomogenization
  
 !--------------------------------------------------------------------------------------------------
 ! parse homogenization from config file
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then                               ! no local material configuration present...
+ if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                 ! no local material configuration present...
    call IO_open_file(fileunit,material_configFile)                                                  ! ... open material.config file
- endif
  call homogenization_isostrain_init(fileunit)
  call homogenization_RGC_init(fileunit)
  close(fileunit)
@@ -173,7 +172,8 @@ subroutine homogenization_init(Temperature)
           homogenization_sizeState                                    = 0_pInt
  allocate(homogenization_sizePostResults(mesh_maxNips,mesh_NcpElems))
           homogenization_sizePostResults                              = 0_pInt
- 
+ allocate(materialpoint_heat(mesh_maxNips,mesh_NcpElems))
+          materialpoint_heat                                          = 0.0_pReal
  allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems))
           materialpoint_dPdF                                          = 0.0_pReal
  allocate(materialpoint_F0(3,3,mesh_maxNips,mesh_NcpElems))
@@ -185,8 +185,6 @@ subroutine homogenization_init(Temperature)
           materialpoint_subF                                          = 0.0_pReal
  allocate(materialpoint_P(3,3,mesh_maxNips,mesh_NcpElems))
           materialpoint_P                                             = 0.0_pReal
- allocate(materialpoint_Temperature(mesh_maxNips,mesh_NcpElems))
-          materialpoint_Temperature                                   = Temperature
  allocate(materialpoint_subFrac(mesh_maxNips,mesh_NcpElems))
           materialpoint_subFrac                                       = 0.0_pReal
  allocate(materialpoint_subStep(mesh_maxNips,mesh_NcpElems))
@@ -204,7 +202,7 @@ subroutine homogenization_init(Temperature)
  materialpoint_F  = materialpoint_F0
  
 !--------------------------------------------------------------------------------------------------
-! allocate and initialize global state and postrestuls variables
+! allocate and initialize global state and postresutls variables
  elementLooping: do e = 1,mesh_NcpElems
    myInstance = homogenization_typeInstance(mesh_element(3,e))
    IpLooping: do i = 1,FE_Nips(FE_geomtype(mesh_element(2,e)))
@@ -247,38 +245,38 @@ subroutine homogenization_init(Temperature)
                                                         + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
  
- write(6,'(/,a)') ' <<<+-  homogenization init  -+>>>'
- write(6,'(a)')   ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
-   write(6,'(a32,1x,7(i8,1x))') 'homogenization_state0:          ', shape(homogenization_state0)
-   write(6,'(a32,1x,7(i8,1x))') 'homogenization_subState0:       ', shape(homogenization_subState0)
-   write(6,'(a32,1x,7(i8,1x))') 'homogenization_state:           ', shape(homogenization_state)
-   write(6,'(a32,1x,7(i8,1x))') 'homogenization_sizeState:       ', shape(homogenization_sizeState)
-   write(6,'(a32,1x,7(i8,1x))') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
-   write(6,*)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_F0:               ', shape(materialpoint_F0)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_F:                ', shape(materialpoint_F)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subF0:            ', shape(materialpoint_subF0)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subF:             ', shape(materialpoint_subF)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_P:                ', shape(materialpoint_P)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_Temperature:      ', shape(materialpoint_Temperature)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subStep:          ', shape(materialpoint_subStep)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_subdt:            ', shape(materialpoint_subdt)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_requested:        ', shape(materialpoint_requested)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_converged:        ', shape(materialpoint_converged)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
-   write(6,*)
-   write(6,'(a32,1x,7(i8,1x))') 'materialpoint_results:          ', shape(materialpoint_results)
-   write(6,*)
-   write(6,'(a32,1x,7(i8,1x))') 'maxSizeState:       ', homogenization_maxSizeState
-   write(6,'(a32,1x,7(i8,1x))') 'maxSizePostResults: ', homogenization_maxSizePostResults
+   write(6,'(a32,1x,7(i8,1x))')   'homogenization_state0:          ', shape(homogenization_state0)
+   write(6,'(a32,1x,7(i8,1x))')   'homogenization_subState0:       ', shape(homogenization_subState0)
+   write(6,'(a32,1x,7(i8,1x))')   'homogenization_state:           ', shape(homogenization_state)
+   write(6,'(a32,1x,7(i8,1x))')   'homogenization_sizeState:       ', shape(homogenization_sizeState)
+   write(6,'(a32,1x,7(i8,1x),/)') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F0:               ', shape(materialpoint_F0)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F:                ', shape(materialpoint_F)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subF0:            ', shape(materialpoint_subF0)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subF:             ', shape(materialpoint_subF)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_P:                ', shape(materialpoint_P)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_heat:             ', shape(materialpoint_heat)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subStep:          ', shape(materialpoint_subStep)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subdt:            ', shape(materialpoint_subdt)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_requested:        ', shape(materialpoint_requested)
+   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_converged:        ', shape(materialpoint_converged)
+   write(6,'(a32,1x,7(i8,1x),/)') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
+   write(6,'(a32,1x,7(i8,1x),/)') 'materialpoint_results:          ', shape(materialpoint_results)
+   write(6,'(a32,1x,7(i8,1x))')   'maxSizeState:       ', homogenization_maxSizeState
+   write(6,'(a32,1x,7(i8,1x))')   'maxSizePostResults: ', homogenization_maxSizePostResults
  endif
  flush(6)
-
+ 
+ if (debug_g < 1 .or. debug_g > homogenization_Ngrains(mesh_element(3,debug_e))) &
+   call IO_error(602_pInt,ext_msg='component (grain)')
+ 
 end subroutine homogenization_init
 
 
@@ -309,7 +307,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    constitutive_partionedState0, &
    constitutive_state
  use crystallite, only: &
-   crystallite_Temperature, &
+   crystallite_heat, &
    crystallite_F0, &
    crystallite_Fp0, &
    crystallite_Fp, &
@@ -319,7 +317,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    crystallite_dPdF0, &
    crystallite_Tstar0_v, &
    crystallite_Tstar_v, &
-   crystallite_partionedTemperature0, &
    crystallite_partionedF0, &
    crystallite_partionedF, &
    crystallite_partionedFp0, &
@@ -357,13 +354,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize to starting condition
- if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt .and. &
-          debug_e > 0 .and. debug_e <= mesh_NcpElems .and. debug_i > 0 .and. debug_i <= mesh_maxNips) then
+ if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
    !$OMP CRITICAL (write2out)
-     write(6,*)
-     write(6,'(a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
-     write(6,'(a,/,12x,f14.9)') '<< HOMOG >> Temp0', &
-                                     materialpoint_Temperature(debug_i,debug_e)
+     write(6,'(/a,i5,1x,i2)') '<< HOMOG >> Material Point start at el ip ', debug_e, debug_i
+
      write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F0', &
                                      math_transpose33(materialpoint_F0(1:3,1:3,debug_i,debug_e))
      write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< HOMOG >> F', &
@@ -377,7 +371,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
      constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p                           ! ...microstructures
-     crystallite_partionedTemperature0(g,i,e) = materialpoint_Temperature(i,e)                      ! ...temperatures
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
      crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
@@ -427,7 +420,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
          steppingNeeded: if (materialpoint_subStep(i,e) > subStepMinHomog) then
          
            ! wind forward grain starting point of...
-           crystallite_partionedTemperature0(1:myNgrains,i,e) = crystallite_Temperature(1:myNgrains,i,e)  ! ...temperatures
            crystallite_partionedF0(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedF(1:3,1:3,1:myNgrains,i,e) ! ...def grads
            crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Fp(1:3,1:3,1:myNgrains,i,e)    ! ...plastic def grads
            crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp(1:3,1:3,1:myNgrains,i,e)    ! ...plastic velocity grads
@@ -476,8 +468,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   
 !--------------------------------------------------------------------------------------------------
 ! restore...
-           crystallite_Temperature(1:myNgrains,i,e) = crystallite_partionedTemperature0(1:myNgrains,i,e)    ! ...temperatures
-                                                                                                            ! ...initial def grad unchanged
            crystallite_Fp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedFp0(1:3,1:3,1:myNgrains,i,e)      ! ...plastic def grads
            crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)      ! ...plastic velocity grads
            crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
@@ -575,7 +565,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
      IpLooping4: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        call homogenization_averageStressAndItsTangent(i,e)
-       materialpoint_Temperature(i,e) = homogenization_averageTemperature(i,e)   
+       materialpoint_heat(i,e) = homogenization_averageHeat(i,e)   
      enddo IpLooping4
    enddo elementLooping4
    !$OMP END PARALLEL DO
@@ -639,7 +629,7 @@ subroutine materialpoint_postResults(dt)
 
        grainLooping :do g = 1,myNgrains
          theSize = (1 + crystallite_sizePostResults(myCrystallite)) + (1 + constitutive_sizePostResults(g,i,e))
-         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(dt,g,i,e)     ! tell crystallite results
+         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)       ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping
      enddo IpLooping
@@ -677,18 +667,15 @@ subroutine homogenization_partitionDeformation(ip,el)
    case (homogenization_isostrain_label) chosenHomogenization
      call homogenization_isostrain_partitionDeformation(&
                           crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                          crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
                           materialpoint_subF(1:3,1:3,ip,el),&
-                          homogenization_state(ip,el), &
-                          ip, &
                           el)
    case (homogenization_RGC_label) chosenHomogenization
-     call homogenization_RGC_partitionDeformation(crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                                  crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
-                                                  materialpoint_subF(1:3,1:3,ip,el),&
-                                                  homogenization_state(ip,el), &
-                                                  ip, &
-                                                  el)
+     call homogenization_RGC_partitionDeformation(&
+                         crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                         materialpoint_subF(1:3,1:3,ip,el),&
+                         homogenization_state(ip,el), &
+                         ip, &
+                         el)
  end select chosenHomogenization
 
 end subroutine homogenization_partitionDeformation
@@ -765,35 +752,35 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
  
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label) chosenHomogenization
-     call homogenization_isostrain_averageStressAndItsTangent(materialpoint_P(1:3,1:3,ip,el), &
-                                                              materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-                                                              crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                                              crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                                              ip, &
-                                                              el)
+     call homogenization_isostrain_averageStressAndItsTangent(&
+       materialpoint_P(1:3,1:3,ip,el), &
+       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+       crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+       el)
    case (homogenization_RGC_label) chosenHomogenization
-     call homogenization_RGC_averageStressAndItsTangent( materialpoint_P(1:3,1:3,ip,el), &
-                                                         materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
-                                                         crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                                         crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
-                                                         ip, &
-                                                         el)
+     call homogenization_RGC_averageStressAndItsTangent(&
+       materialpoint_P(1:3,1:3,ip,el), &
+       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el),&
+       crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+       crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+       el)
  end select chosenHomogenization
 
 end subroutine homogenization_averageStressAndItsTangent
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief derive average temperature from constituent quantities (does not depend on choosen 
+!> @brief derive average heat from constituent quantities (does not depend on choosen 
 !! homogenization scheme)
 !--------------------------------------------------------------------------------------------------
-real(pReal) function homogenization_averageTemperature(ip,el)
+real(pReal) function homogenization_averageHeat(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
    homogenization_Ngrains
  use crystallite, only: &
-   crystallite_Temperature
+   crystallite_heat
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -803,11 +790,11 @@ real(pReal) function homogenization_averageTemperature(ip,el)
    Ngrains
 
 !--------------------------------------------------------------------------------------------------
-! computing the average temperature
+! computing the average heat
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
- homogenization_averageTemperature= sum(crystallite_Temperature(1:Ngrains,ip,el))/real(Ngrains,pReal)
+ homogenization_averageHeat= sum(crystallite_heat(1:Ngrains,ip,el))/real(Ngrains,pReal)
 
-end function homogenization_averageTemperature
+end function homogenization_averageHeat
 
 
 !--------------------------------------------------------------------------------------------------
@@ -835,9 +822,9 @@ function homogenization_postResults(ip,el)
  homogenization_postResults = 0.0_pReal
  chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label) chosenHomogenization
-     homogenization_postResults = homogenization_isostrain_postResults(homogenization_state(ip,el),ip,el)
+     homogenization_postResults = homogenization_isostrain_postResults(el)
    case (homogenization_RGC_label) chosenHomogenization
-     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(ip,el),ip,el)
+     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(ip,el),el)
  end select chosenHomogenization
 
 end function homogenization_postResults

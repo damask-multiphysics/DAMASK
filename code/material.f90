@@ -122,14 +122,17 @@ module material
    homogenization_active
 
 
- public  :: material_init
+ public :: &
+   material_init
  
- private :: material_parseHomogenization, &
-            material_parseMicrostructure, &
-            material_parseCrystallite, &
-            material_parsePhase, &
-            material_parseTexture, &
-            material_populateGrains
+ private :: &
+   material_parseHomogenization, &
+   material_parseMicrostructure, &
+   material_parseCrystallite, &
+   material_parsePhase, &
+   material_parseTexture, &
+   material_populateGrains
+
 contains
 
 

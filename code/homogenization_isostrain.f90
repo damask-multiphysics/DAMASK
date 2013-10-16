@@ -55,7 +55,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_init(myFile)
+subroutine homogenization_isostrain_init(myUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_Mandel3333to66, &
@@ -64,7 +64,7 @@ subroutine homogenization_isostrain_init(myFile)
  use material
  
  implicit none
- integer(pInt),                                      intent(in) :: myFile
+ integer(pInt),                                      intent(in) :: myUnit
  integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
  integer(pInt) :: &
@@ -96,15 +96,15 @@ subroutine homogenization_isostrain_init(myFile)
  allocate(homogenization_isostrain_output(maxval(homogenization_Noutput),maxNinstance))
           homogenization_isostrain_output = ''
  
- rewind(myFile)
+ rewind(myUnit)
  section = 0_pInt
  
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
-   line = IO_read(myFile)
+   line = IO_read(myUnit)
  enddo
 
  do while (trim(line) /= '#EOF#')
-   line = IO_read(myFile)
+   line = IO_read(myUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -120,7 +120,7 @@ subroutine homogenization_isostrain_init(myFile)
          case ('(output)')
            output = output + 1_pInt
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         case ('ngrains')
+         case ('ngrains','ncomponents')
                 homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
          case ('mapping')
                 homogenization_isostrain_mapping(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -134,17 +134,17 @@ subroutine homogenization_isostrain_init(myFile)
 
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_output(j,i))
-       case('ngrains')
+       case('ngrains','ncomponents')
          mySize = 1_pInt
        case default
          mySize = 0_pInt
      end select
 
-     if (mySize > 0_pInt) then                                                                      ! any meaningful output found
+     outputFound: if (mySize > 0_pInt) then
        homogenization_isostrain_sizePostResult(j,i) = mySize
        homogenization_isostrain_sizePostResults(i) = &
-       homogenization_isostrain_sizePostResults(i) + mySize
-     endif
+         homogenization_isostrain_sizePostResults(i) + mySize
+     endif outputFound
    enddo
  enddo
 
@@ -154,10 +154,9 @@ end subroutine homogenization_isostrain_init
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_partitionDeformation(F,F0,avgF,state,ip,el)
+subroutine homogenization_isostrain_partitionDeformation(F,avgF,el)
  use prec, only: &
-   pReal, &
-   p_vec
+   pReal
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -165,12 +164,9 @@ subroutine homogenization_isostrain_partitionDeformation(F,F0,avgF,state,ip,el)
    homogenization_Ngrains
  
  implicit none
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         ! partioned def grad per grain
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: F0                        ! initial partioned def grad per grain
- real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      ! my average def grad
- type(p_vec),                                              intent(in)  :: state                     ! my state
+ real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned def grad per grain
+ real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< my average def grad
  integer(pInt),                                            intent(in)  :: &
-   ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
 
  F = spread(avgF,3,homogenization_Ngrains(mesh_element(3,el)))
@@ -181,7 +177,7 @@ end subroutine homogenization_isostrain_partitionDeformation
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ip,el)
+subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,el)
  use prec, only: &
    pReal
  use mesh, only: &
@@ -196,9 +192,7 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
  real(pReal),   dimension (3,3,3,3),                           intent(out) :: dAvgPdAvgF            !< average stiffness at material point
  real(pReal),   dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P                     !< array of current grain stresses
  real(pReal),   dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF                  !< array of current grain stiffnesses
- integer(pInt),                                                intent(in)  :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+ integer(pInt),                                                intent(in)  :: el                    !< element number
  integer(pInt) :: &
    homID, & 
    Ngrains
@@ -224,10 +218,9 @@ end subroutine homogenization_isostrain_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion 
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_isostrain_postResults(state,ip,el)
+pure function homogenization_isostrain_postResults(el)
  use prec, only: &
-   pReal,&
-   p_vec
+   pReal
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -235,10 +228,7 @@ pure function homogenization_isostrain_postResults(state,ip,el)
    homogenization_Noutput
  
  implicit none
- type(p_vec),   intent(in) :: state
- integer(pInt), intent(in) :: &
-   ip, &                                                                                             !< integration point number
-   el                                                                                                !< element number
+ integer(pInt), intent(in) :: el                                                                  !< element number
  real(pReal),  dimension(homogenization_isostrain_sizePostResults &
                          (homogenization_typeInstance(mesh_element(3,el)))) :: &
    homogenization_isostrain_postResults
@@ -253,7 +243,7 @@ pure function homogenization_isostrain_postResults(state,ip,el)
  
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_isostrain_output(o,homID))
-     case ('ngrains')
+     case ('ngrains','ncomponents')
        homogenization_isostrain_postResults(c+1_pInt) = real(homogenization_isostrain_Ngrains(homID),pReal)
        c = c + 1_pInt
    end select

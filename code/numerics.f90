@@ -60,7 +60,6 @@ module numerics
    stepIncreaseCryst          =  1.5_pReal, &                                                       !< increase of next substep size when previous substep converged in crystallite
    stepIncreaseHomog          =  1.5_pReal, &                                                       !< increase of next substep size when previous substep converged in homogenization
    rTol_crystalliteState      =  1.0e-6_pReal, &                                                    !< relative tolerance in crystallite state loop 
-   rTol_crystalliteTemperature=  1.0e-6_pReal, &                                                    !< relative tolerance in crystallite temperature loop 
    rTol_crystalliteStress     =  1.0e-6_pReal, &                                                    !< relative tolerance in crystallite stress loop
    aTol_crystalliteStress     =  1.0e-8_pReal, &                                                    !< absolute tolerance in crystallite stress loop, Default 1.0e-8: residuum is in Lp and hence strain is on this order
    numerics_unitlength        =  1.0_pReal, &                                                       !< determines the physical length of one computational length unit
@@ -222,8 +221,6 @@ subroutine numerics_init
          stepIncreaseHomog = IO_floatValue(line,positions,2_pInt)
        case ('rtol_crystallitestate')
          rTol_crystalliteState = IO_floatValue(line,positions,2_pInt)
-       case ('rtol_crystallitetemperature')
-         rTol_crystalliteTemperature = IO_floatValue(line,positions,2_pInt)
        case ('rtol_crystallitestress')
          rTol_crystalliteStress = IO_floatValue(line,positions,2_pInt)
        case ('atol_crystallitestress')
@@ -377,7 +374,6 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')     ' nState:                 ',nState
  write(6,'(a24,1x,i8)')     ' nStress:                ',nStress
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
- write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteTemp:   ',rTol_crystalliteTemperature
  write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
  write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
  write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
@@ -469,7 +465,6 @@ subroutine numerics_init
  if (subStepSizeHomog <= 0.0_pReal)        call IO_error(301_pInt,ext_msg='subStepSizeHomog')
  if (stepIncreaseHomog <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='stepIncreaseHomog')
  if (rTol_crystalliteState <= 0.0_pReal)   call IO_error(301_pInt,ext_msg='rTol_crystalliteState')
- if (rTol_crystalliteTemperature <= 0.0_pReal) call IO_error(301_pInt,ext_msg='rTol_crystalliteTemperature')
  if (rTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='rTol_crystalliteStress')
  if (aTol_crystalliteStress <= 0.0_pReal)  call IO_error(301_pInt,ext_msg='aTol_crystalliteStress')
  if (any(numerics_integrator <= 0_pInt) .or. any(numerics_integrator >= 6_pInt)) &

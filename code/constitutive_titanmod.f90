@@ -1144,11 +1144,11 @@ real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_plasticityInstance
  
 !--------------------------------------------------------------------------------------------------
 ! homogenized elasticity matrix
- constitutive_titanmod_homogenizedC = (1.0_pReal-sumf)*constitutive_titanmod_Cslip_66(:,:,matID)
+ constitutive_titanmod_homogenizedC = (1.0_pReal-sumf)*constitutive_titanmod_Cslip_66(1:6,1:6,matID)
  do i=1_pInt,nt
-    constitutive_titanmod_homogenizedC = &
-    constitutive_titanmod_homogenizedC + volumefraction_PerTwinSys(i)*constitutive_titanmod_Ctwin_66(:,:,i,matID)
- 
+    constitutive_titanmod_homogenizedC = constitutive_titanmod_homogenizedC &
+                                       + volumefraction_PerTwinSys(i)*&
+                                                   constitutive_titanmod_Ctwin_66(1:6,1:6,i,matID)
  enddo 
  
 end function constitutive_titanmod_homogenizedC
@@ -1717,7 +1717,7 @@ end function constitutive_titanmod_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_titanmod_postResults(Tstar_v,Temperature,dt,state,ipc,ip,el)
+pure function constitutive_titanmod_postResults(state,ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &
@@ -1730,24 +1730,21 @@ pure function constitutive_titanmod_postResults(Tstar_v,Temperature,dt,state,ipc
    phase_Noutput
  
  implicit none
- real(pReal), dimension(6),                                                    intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature, &                                                                                   !< temperature at integration point
-   dt
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
    state                                                                                            !< microstructure state
+ real(pReal), dimension(constitutive_titanmod_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+   constitutive_titanmod_postResults
+
  integer(pInt) :: &
    matID, structID,&
    ns,nt,&
    o,i,c
  real(pReal) :: sumf
- real(pReal), dimension(constitutive_titanmod_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
- constitutive_titanmod_postResults
+
  real(pReal), dimension(constitutive_titanmod_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
          volumefraction_PerTwinSys
  

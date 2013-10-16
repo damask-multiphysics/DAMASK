@@ -77,7 +77,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_init(myFile)
+subroutine homogenization_RGC_init(myUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
   debug_level, &
@@ -101,7 +101,7 @@ subroutine homogenization_RGC_init(myFile)
  use material
 
  implicit none
- integer(pInt), intent(in) :: myFile                                                                !< file pointer to material configuration
+ integer(pInt), intent(in) :: myUnit                                                                !< file pointer to material configuration
  integer(pInt), parameter  :: MAXNCHUNKS = 4_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) ::section=0_pInt, maxNinstance, i,j,e, output=-1_pInt, mySize, myInstance
@@ -130,14 +130,14 @@ subroutine homogenization_RGC_init(myFile)
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems))
  homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)            ! initialize to identity
  
- rewind(myFile)
+ rewind(myUnit)
  
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
-   line = IO_read(myFile)
+   line = IO_read(myUnit)
  enddo
 
  do while (trim(line) /= '#EOF#')
-   line = IO_read(myFile)
+   line = IO_read(myUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -199,8 +199,7 @@ subroutine homogenization_RGC_init(myFile)
 
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    do i = 1_pInt,maxNinstance
-     write(6,'(a15,1x,i4)')  'instance:  ', i
-     write(6,*)
+     write(6,'(a15,1x,i4,/)')  'instance:  ', i
      write(6,'(a25,3(1x,i8))')    'cluster size:         ',(homogenization_RGC_Ngrains(j,i),j=1_pInt,3_pInt)
      write(6,'(a25,1x,e10.3)')    'scaling parameter:    ', homogenization_RGC_xiAlpha(i)
      write(6,'(a25,1x,e10.3)')    'over-proportionality: ', homogenization_RGC_ciAlpha(i)
@@ -228,11 +227,11 @@ subroutine homogenization_RGC_init(myFile)
          mySize = 0_pInt
      end select
 
-     if (mySize > 0_pInt) then                                                                      ! any meaningful output found
+     outputFound: if (mySize > 0_pInt) then
          homogenization_RGC_sizePostResult(j,i) = mySize
          homogenization_RGC_sizePostResults(i) = &
          homogenization_RGC_sizePostResults(i) + mySize
-     endif
+     endif outputFound
    enddo
 
    homogenization_RGC_sizeState(i) &
@@ -249,7 +248,7 @@ end subroutine homogenization_RGC_init
 !--------------------------------------------------------------------------------------------------
 !> @brief partitions the deformation gradient onto the constituents
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_partitionDeformation(F,F0,avgF,state,ip,el)
+subroutine homogenization_RGC_partitionDeformation(F,avgF,state,ip,el)
  use prec, only: &
    p_vec
  use debug, only: &
@@ -268,7 +267,6 @@ subroutine homogenization_RGC_partitionDeformation(F,F0,avgF,state,ip,el)
 
  implicit none
  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned F  per grain
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: F0                        !< initial partioned F per grain
  real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< averaged F
  type(p_vec),                                              intent(in)  :: state
  integer(pInt),                                            intent(in)  :: &
@@ -427,7 +425,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
 
 !--------------------------------------------------------------------------------------------------
 ! calculating volume discrepancy and stress penalty related to overall volume discrepancy 
- call homogenization_RGC_volumePenalty(D,volDiscrep,F,avgF,ip,el,homID)
+ call homogenization_RGC_volumePenalty(D,volDiscrep,F,avgF,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! debugging the mismatch, stress and penalties of grains
@@ -513,6 +511,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
  endif
  
  homogenization_RGC_updateState = .false.
+ 
 !--------------------------------------------------------------------------------------------------
 !  If convergence reached => done and happy
  if (residMax < relTol_RGC*stresMax .or. residMax < absTol_RGC) then 
@@ -521,8 +520,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
     if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
         .and. debug_e == el .and. debug_i == ip) then 
      !$OMP CRITICAL (write2out)
-     write(6,'(1x,a55)')'... done and happy'
-     write(6,*)' '
+     write(6,'(1x,a55,/)')'... done and happy'
      flush(6)
      !$OMP END CRITICAL (write2out)
    endif
@@ -552,16 +550,14 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
         .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
-     write(6,'(1x,a30,1x,e15.8)')'Constitutive work: ',constitutiveWork
+     write(6,'(1x,a30,1x,e15.8)')   'Constitutive work: ',constitutiveWork
      write(6,'(1x,a30,3(1x,e15.8))')'Magnitude mismatch: ',sum(NN(1,:))/real(nGrain,pReal), &
                                                            sum(NN(2,:))/real(nGrain,pReal), &
                                                            sum(NN(3,:))/real(nGrain,pReal)
-     write(6,'(1x,a30,1x,e15.8)')'Penalty energy: ',penaltyEnergy
-     write(6,'(1x,a30,1x,e15.8)')'Volume discrepancy: ',volDiscrep
-     write(6,*)''
-     write(6,'(1x,a30,1x,e15.8)')'Maximum relaxation rate: ',maxval(abs(drelax))/dt
-     write(6,'(1x,a30,1x,e15.8)')'Average relaxation rate: ',sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)
-     write(6,*)''
+     write(6,'(1x,a30,1x,e15.8)')   'Penalty energy: ',penaltyEnergy
+     write(6,'(1x,a30,1x,e15.8,/)') 'Volume discrepancy: ',volDiscrep
+     write(6,'(1x,a30,1x,e15.8)')   'Maximum relaxation rate: ',maxval(abs(drelax))/dt
+     write(6,'(1x,a30,1x,e15.8,/)') 'Average relaxation rate: ',sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)
      flush(6)
      !$OMP END CRITICAL (write2out)
    endif
@@ -577,8 +573,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
        .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
-     write(6,'(1x,a55)')'... broken'
-     write(6,*)' '
+     write(6,'(1x,a55,/)')'... broken'
      flush(6)
      !$OMP END CRITICAL (write2out)
    endif
@@ -589,8 +584,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
      .and. debug_e == el .and. debug_i == ip) then
      !$OMP CRITICAL (write2out)
-     write(6,'(1x,a55)')'... not yet done'
-     write(6,*)' '
+     write(6,'(1x,a55,/)')'... not yet done'
      flush(6)
      !$OMP END CRITICAL (write2out)
    endif
@@ -668,9 +662,9 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
    p_relax = relax
    p_relax(ipert) = relax(ipert) + pPert_RGC                                                        ! perturb the relaxation vector
    state%p(1:3*nIntFaceTot) = p_relax
-   call homogenization_RGC_grainDeformation(pF,F0,avgF,state,ip,el)                                 ! compute the grains deformation from perturbed state
+   call homogenization_RGC_grainDeformation(pF,avgF,state,ip,el)                                    ! compute the grains deformation from perturbed state
    call homogenization_RGC_stressPenalty(pR,pNN,avgF,pF,ip,el,homID)                                ! compute stress penalty due to interface mismatch from perturbed state
-   call homogenization_RGC_volumePenalty(pD,volDiscrep,pF,avgF,ip,el,homID)                         ! compute stress penalty due to volume discrepancy from perturbed state
+   call homogenization_RGC_volumePenalty(pD,volDiscrep,pF,avgF,ip,el)                               ! compute stress penalty due to volume discrepancy from perturbed state
 
 !--------------------------------------------------------------------------------------------------
 ! computing the global stress residual array from the perturbed state
@@ -814,9 +808,7 @@ end function homogenization_RGC_updateState
 !--------------------------------------------------------------------------------------------------
 !> @brief derive average stress and stiffness from constituent quantities 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,ip,el )
- use prec,  only: &
-   p_vec
+subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,el)
  use debug, only: &
   debug_level, &
   debug_homogenization,&
@@ -826,15 +818,14 @@ subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,
  use math, only: math_Plain3333to99
  
  implicit none
- real(pReal), dimension (3,3),                               intent(out) :: avgP ! average stress at material point
- real(pReal), dimension (3,3,3,3),                           intent(out) :: dAvgPdAvgF ! average stiffness at material point
- real(pReal), dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P ! array of current grain stresses
- real(pReal), dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF ! array of current grain stiffnesses
+ real(pReal), dimension (3,3),                               intent(out) :: avgP                    !< average stress at material point
+ real(pReal), dimension (3,3,3,3),                           intent(out) :: dAvgPdAvgF              !< average stiffness at material point
+ real(pReal), dimension (3,3,homogenization_maxNgrains),     intent(in)  :: P                       !< array of current grain stresses
+ real(pReal), dimension (3,3,3,3,homogenization_maxNgrains), intent(in)  :: dPdF                    !< array of current grain stiffnesses
+ integer(pInt),                                              intent(in)  :: el                      !< element number
  real(pReal), dimension (9,9) :: dPdF99
- integer(pInt),                                              intent(in) :: &
-   ip, &                                                                       ! integration point number
-   el                                                                          ! element number
- integer(pInt) homID, i, j, Ngrains, iGrain
+
+ integer(pInt) :: homID, i, j, Ngrains, iGrain
 
  homID = homogenization_typeInstance(mesh_element(3,el))
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
@@ -866,7 +857,7 @@ end subroutine homogenization_RGC_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion 
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_postResults(state,ip,el)
+pure function homogenization_RGC_postResults(state,el)
  use prec, only: &
    p_vec
  use mesh, only: &
@@ -877,9 +868,7 @@ pure function homogenization_RGC_postResults(state,ip,el)
  
  implicit none
  type(p_vec),   intent(in) :: state                                                                 ! my State
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            ! integration point number
-   el                                                                                               ! element number
+ integer(pInt), intent(in) :: el                                                                    ! element number
  integer(pInt) homID,o,c,nIntFaceTot
  real(pReal), dimension(homogenization_RGC_sizePostResults(homogenization_typeInstance(mesh_element(3,el)))) :: &
    homogenization_RGC_postResults
@@ -943,10 +932,10 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,homID)
    xSmoo_RGC
  
  implicit none
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: rPen          ! stress-like penalty
- real(pReal),   dimension (3,homogenization_maxNgrains),   intent(out) :: nMis         ! total amount of mismatch
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef         ! deformation gradients
- real(pReal),   dimension (3,3),                           intent(in)  :: avgF        ! initial effective stretch tensor
+ real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: rPen                      !< stress-like penalty
+ real(pReal),   dimension (3,homogenization_maxNgrains),   intent(out) :: nMis                      !< total amount of mismatch
+ real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: fDef                      !< deformation gradients
+ real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< initial effective stretch tensor
  integer(pInt),                                            intent(in)  :: ip,el
  integer(pInt), dimension (4)   :: intFace
  integer(pInt), dimension (3)   :: iGrain3,iGNghb3,nGDim
@@ -960,7 +949,6 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,homID)
  real(pReal),                                               parameter  :: nDefToler = 1.0e-10_pReal
 
  nGDim = homogenization_RGC_Ngrains(1:3,homID)
-
  rPen = 0.0_pReal
  nMis = 0.0_pReal
 
@@ -1064,7 +1052,7 @@ end subroutine homogenization_RGC_stressPenalty
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress-like penalty due to volume discrepancy 
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el, homID) 
+subroutine homogenization_RGC_volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el) 
  use debug, only: &
    debug_level, &
    debug_homogenization,&
@@ -1092,7 +1080,7 @@ subroutine homogenization_RGC_volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el, homID
  integer(pInt), intent(in)                 :: ip,&                                                  ! integration point
    el 
  real(pReal), dimension (homogenization_maxNgrains) :: gVol
- integer(pInt) :: homID,iGrain,nGrain,i,j
+ integer(pInt) :: iGrain,nGrain,i,j
 
  nGrain = homogenization_Ngrains(mesh_element(3,el))
 
@@ -1434,7 +1422,7 @@ end function homogenization_RGC_interface1to4
 !> @brief calculating the grain deformation gradient (the same with 
 ! homogenization_RGC_partionDeformation, but used only for perturbation scheme)
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_grainDeformation(F, F0, avgF, state, ip, el)
+subroutine homogenization_RGC_grainDeformation(F, avgF, state, ip, el)
  use prec, only: &
    p_vec
  use mesh, only: &
@@ -1446,7 +1434,6 @@ subroutine homogenization_RGC_grainDeformation(F, F0, avgF, state, ip, el)
  
  implicit none
  real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(out) :: F                         !< partioned F per grain
- real(pReal),   dimension (3,3,homogenization_maxNgrains), intent(in)  :: F0                        !< initiatial partioned F per grain
  real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< 
  type(p_vec),                                              intent(in)  :: state
  integer(pInt),                                            intent(in)  :: &

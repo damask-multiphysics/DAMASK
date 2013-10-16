@@ -61,25 +61,23 @@ module debug
    debug_MARC                    = 12_pInt, &
    debug_ABAQUS                  = 13_pInt
  integer(pInt), parameter, private :: &
-   debug_MAXNTYPE                = debug_ABAQUS                                                     ! must be set to the maximum defined debug type
+   debug_MAXNTYPE                = debug_ABAQUS                                                     !< must be set to the maximum defined debug type
    
  integer(pInt),protected, dimension(debug_maxNtype+2_pInt),  public :: &                            ! specific ones, and 2 for "all" and "other"
    debug_level                    = 0_pInt
 
  integer(pInt), public :: &
-   debug_cumLpCalls              = 0_pInt, &                                                        ! total number of calls to LpAndItsTangent
-   debug_cumDeltaStateCalls      = 0_pInt, &                                                        ! total number of calls to deltaState
-   debug_cumDotStateCalls        = 0_pInt, &                                                        ! total number of calls to dotState
-   debug_cumDotTemperatureCalls  = 0_pInt, &                                                        ! total number of calls to dotTemprature
+   debug_cumLpCalls              = 0_pInt, &                                                        !< total number of calls to LpAndItsTangent
+   debug_cumDeltaStateCalls      = 0_pInt, &                                                        !< total number of calls to deltaState
+   debug_cumDotStateCalls        = 0_pInt, &                                                        !< total number of calls to dotState
    debug_e                       = 1_pInt, &
    debug_i                       = 1_pInt, &
    debug_g                       = 1_pInt
 
  integer(pLongInt), public :: &
-   debug_cumLpTicks              = 0_pLongInt, &                                                    ! total cpu ticks spent in LpAndItsTangent
-   debug_cumDeltaStateTicks      = 0_pLongInt, &                                                    ! total cpu ticks spent in deltaState
-   debug_cumDotStateTicks        = 0_pLongInt, &                                                    ! total cpu ticks spent in dotState
-   debug_cumDotTemperatureTicks  = 0_pLongInt                                                       ! total cpu ticks spent in dotTemperature
+   debug_cumLpTicks              = 0_pLongInt, &                                                    !< total cpu ticks spent in LpAndItsTangent
+   debug_cumDeltaStateTicks      = 0_pLongInt, &                                                    !< total cpu ticks spent in deltaState
+   debug_cumDotStateTicks        = 0_pLongInt                                                       !< total cpu ticks spent in dotState
  
  integer(pInt), dimension(2), public :: &
    debug_stressMaxLocation       = 0_pInt, &
@@ -88,13 +86,13 @@ module debug
    debug_jacobianMinLocation     = 0_pInt
 
  integer(pInt), dimension(:), allocatable, public :: &
-   debug_CrystalliteLoopDistribution, &                                                             ! distribution of crystallite cutbacks
+   debug_CrystalliteLoopDistribution, &                                                             !< distribution of crystallite cutbacks
    debug_MaterialpointStateLoopDistribution, &
    debug_MaterialpointLoopDistribution
 
  integer(pInt), dimension(:,:), allocatable, public :: &
-   debug_StressLoopDistribution, &                                                                  ! distribution of stress iterations until convergence
-   debug_StateLoopDistribution                                                                      ! distribution of state iterations until convergence
+   debug_StressLoopDistribution, &                                                                  !< distribution of stress iterations until convergence
+   debug_StateLoopDistribution                                                                      !< distribution of state iterations until convergence
  
  real(pReal), public :: &
    debug_stressMax               = -huge(1.0_pReal), &
@@ -103,7 +101,7 @@ module debug
    debug_jacobianMin             =  huge(1.0_pReal)
  
  character(len=64), parameter, private ::  &
-   debug_CONFIGFILE         = 'debug.config'                                                        ! name of configuration file
+   debug_CONFIGFILE         = 'debug.config'                                                        !< name of configuration file
 
 #ifdef PETSc 
  character(len=1024), parameter, public :: &
@@ -335,11 +333,9 @@ subroutine debug_reset
  debug_cumLpTicks                          = 0_pLongInt
  debug_cumDeltaStateTicks                  = 0_pLongInt
  debug_cumDotStateTicks                    = 0_pLongInt
- debug_cumDotTemperatureTicks              = 0_pLongInt
  debug_cumLpCalls                          = 0_pInt
  debug_cumDeltaStateCalls                  = 0_pInt
  debug_cumDotStateCalls                    = 0_pInt
- debug_cumDotTemperatureCalls              = 0_pInt
  debug_stressMaxLocation                   = 0_pInt
  debug_stressMinLocation                   = 0_pInt
  debug_jacobianMaxLocation                 = 0_pInt
@@ -393,13 +389,6 @@ subroutine debug_info
          real(debug_cumDeltaStateTicks,pReal)/real(tickrate,pReal)
        write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
          real(debug_cumDeltaStateTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDeltaStateCalls,pReal)
-     endif
-     write(6,'(/,a33,1x,i12)')    'total calls to dotTemperature   :',debug_cumDotTemperatureCalls
-     if (debug_cumdotTemperatureCalls > 0_pInt) then
-       write(6,'(a33,1x,f12.3)')  'total CPU time/s                :',&
-         real(debug_cumDotTemperatureTicks,pReal)/real(tickrate,pReal)
-       write(6,'(a33,1x,f12.6)')  'avg CPU time/microsecs per call :',&
-         real(debug_cumDotTemperatureTicks,pReal)*1.0e6_pReal/real(tickrate*debug_cumDotTemperatureCalls,pReal)
      endif
    
      integral = 0_pInt

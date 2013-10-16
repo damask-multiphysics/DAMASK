@@ -646,7 +646,7 @@ end function constitutive_phenopowerlaw_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
+pure function constitutive_phenopowerlaw_homogenizedC(ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &
@@ -664,8 +664,6 @@ pure function constitutive_phenopowerlaw_homogenizedC(state,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
-   state                                                                                            !< microstructure state
 
  constitutive_phenopowerlaw_homogenizedC = constitutive_phenopowerlaw_Cslip_66(1:6,1:6,&
                                               phase_plasticityInstance(material_phase(ipc,ip,el)))
@@ -676,8 +674,7 @@ end function constitutive_phenopowerlaw_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,&
-                                                                     temperature,state,ipc,ip,el)
+pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -709,8 +706,6 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
 
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature                                                                                      !< temperature at IP 
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -831,7 +826,7 @@ end subroutine constitutive_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_phenopowerlaw_dotState(Tstar_v,temperature,state,ipc,ip,el)
+function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use lattice, only: &
@@ -854,8 +849,6 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,temperature,state,ipc,ip,el
  implicit none
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature                                                                                      !< temperature at integration point
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -1003,7 +996,7 @@ end function constitutive_phenopowerlaw_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_postResults(Tstar_v,temperature,dt,state,ipc,ip,el)
+pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &
@@ -1029,9 +1022,6 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,temperature,dt,stat
  implicit none
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                                                                  intent(in) :: &
-   temperature, &                                                                                   !< temperature at integration point
-   dt
  integer(pInt),                                                                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
