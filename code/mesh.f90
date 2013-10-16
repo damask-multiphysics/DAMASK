@@ -33,7 +33,6 @@ module mesh
 
  implicit none
  private
- 
  integer(pInt), public, protected :: &
    mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
    mesh_NelemSets, &
@@ -486,7 +485,6 @@ contains
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
-
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
@@ -503,6 +501,9 @@ subroutine mesh_init(ip,el)
 #else
    IO_open_InputFile
 #endif
+ use debug, only: &
+   debug_e, &
+   debug_i
  use numerics, only: &
    usePingPong, &
    numerics_unitlength
@@ -612,7 +613,12 @@ subroutine mesh_init(ip,el)
  call mesh_write_cellGeom
  call mesh_write_elemGeom
 
- if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) call IO_error(600_pInt)                      ! ping-pong must be disabled when havin non-DAMASK-elements
+ if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
+   call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK-elements
+ if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
+   call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
+ if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
+   call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
  
  FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
@@ -694,18 +700,18 @@ subroutine mesh_build_cellconnectivity
    cellnodeParent
  integer(pInt), dimension(mesh_maxNcellnodes) :: &
    localCellnode2globalCellnode
- integer(pInt) &
+ integer(pInt) :: &
    e,t,g,c,n,i, & 
    matchingNodeID, &
    localCellnodeID
  
 
- !*** Count cell nodes (including duplicates) and generate cell connectivity list
-
  allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems)) ; mesh_cell = 0_pInt
  allocate(matchingNode2cellnode(mesh_Nnodes)) ; matchingNode2cellnode = 0_pInt
  allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems)) ; cellnodeParent = 0_pInt
-
+ 
+!--------------------------------------------------------------------------------------------------
+! Count cell nodes (including duplicates) and generate cell connectivity list
  mesh_Ncellnodes = 0_pInt
  mesh_Ncells = 0_pInt
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over cpElems
@@ -760,12 +766,11 @@ end subroutine mesh_build_cellconnectivity
 function mesh_build_cellnodes(nodes,Ncellnodes)
  
  implicit none
-
- integer(pInt), intent(in) :: Ncellnodes                                                            !< requested number of cellnodes
+ integer(pInt),                         intent(in) :: Ncellnodes                                    !< requested number of cellnodes
  real(pReal), dimension(3,mesh_Nnodes), intent(in) :: nodes
  real(pReal), dimension(3,Ncellnodes) :: mesh_build_cellnodes
 
- integer(pInt) &
+ integer(pInt) :: &
    e,t,n,m, & 
    localCellnodeID
  real(pReal), dimension(3) :: &
@@ -911,7 +916,6 @@ pure function mesh_cellCenterCoordinates(ip,el)
  integer(pInt), intent(in) :: el, &                                                                  !< element number
                               ip                                                                     !< integration point number
  real(pReal), dimension(3) :: mesh_cellCenterCoordinates                                             !< x,y,z coordinates of the cell center of the requested IP cell
-
  integer(pInt) :: t,g,c,n
  
 
@@ -1170,7 +1174,6 @@ subroutine mesh_spectral_mapNodesAndElems
    math_range
 
  implicit none
-
  allocate (mesh_mapFEtoCPnode(2_pInt,mesh_Nnodes), source = 0_pInt)
  allocate (mesh_mapFEtoCPelem(2_pInt,mesh_NcpElems), source = 0_pInt)
 
@@ -1243,7 +1246,6 @@ end subroutine mesh_spectral_build_nodes
 !> @todo does the IO_error makes sense?
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_build_elements(myUnit)
-
  use IO, only: &
    IO_checkAndRewind, &
    IO_lc, &
@@ -5101,7 +5103,7 @@ subroutine mesh_write_cellGeom
  implicit none
  integer(I4P), dimension(1:mesh_Ncells)                                :: celltype 
  integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
- integer(I4P):: err
+ integer(I4P):: error
  integer(I4P):: g, c, e, CellID, i, j
 
  cellID = 0_pInt
@@ -5118,18 +5120,18 @@ subroutine mesh_write_cellGeom
    enddo
  enddo
 
- err = VTK_ini(output_format = 'ASCII', &
+ error=VTK_ini(output_format = 'ASCII', &
        title=trim(getSolverJobName())//' cell mesh', &
        filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &
        mesh_topology = 'UNSTRUCTURED_GRID')
- err = VTK_geo(NN = int(mesh_Ncellnodes,I4P), &
+ error=VTK_geo(NN = int(mesh_Ncellnodes,I4P), &
        X = mesh_cellnode(1,1:mesh_Ncellnodes), &
        Y = mesh_cellnode(2,1:mesh_Ncellnodes), &
        Z = mesh_cellnode(3,1:mesh_Ncellnodes))
- err = VTK_con(NC = int(mesh_Ncells,I4P), &
+ error=VTK_con(NC = int(mesh_Ncells,I4P), &
        connect = cellconnection(1:j), &
        cell_type = celltype)
- err = VTK_end()
+ error=VTK_end()
 
 end subroutine mesh_write_cellGeom
 
@@ -5152,7 +5154,7 @@ subroutine mesh_write_elemGeom
  implicit none
  integer(I4P), dimension(1:mesh_NcpElems)                     :: elemtype 
  integer(I4P), dimension(mesh_NcpElems*(1_pInt+FE_maxNnodes)) :: elementconnection
- integer(I4P):: err
+ integer(I4P):: error
  integer(pInt):: e, t, n, i
 
  i = 0_pInt
@@ -5166,18 +5168,18 @@ subroutine mesh_write_elemGeom
    i = i + 1_pInt + FE_Nnodes(t)
  enddo
 
- err =VTK_ini(output_format = 'ASCII', &
-      title=trim(getSolverJobName())//' element mesh', &
-      filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_nodebased.vtk', &
-      mesh_topology = 'UNSTRUCTURED_GRID')
- err =VTK_geo(NN = int(mesh_Nnodes,I4P), &
-      X = mesh_node0(1,1:mesh_Nnodes), &
-      Y = mesh_node0(2,1:mesh_Nnodes), &
-      Z = mesh_node0(3,1:mesh_Nnodes))
- err =VTK_con(NC = int(mesh_Nelems,I4P), &
-      connect = elementconnection(1:i), &
-      cell_type = elemtype)
- err =VTK_end()
+ error=VTK_ini(output_format = 'ASCII', &
+       title=trim(getSolverJobName())//' element mesh', &
+       filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_nodebased.vtk', &
+       mesh_topology = 'UNSTRUCTURED_GRID')
+ error=VTK_geo(NN = int(mesh_Nnodes,I4P), &
+       X = mesh_node0(1,1:mesh_Nnodes), &
+       Y = mesh_node0(2,1:mesh_Nnodes), &
+       Z = mesh_node0(3,1:mesh_Nnodes))
+ error=VTK_con(NC = int(mesh_Nelems,I4P), &
+       connect = elementconnection(1:i), &
+       cell_type = elemtype)
+ error =VTK_end()
 
 end subroutine mesh_write_elemGeom
 
@@ -5329,4 +5331,3 @@ end function mesh_get_nodeAtIP
 
 
 end module mesh
-
