@@ -265,18 +265,17 @@ subroutine crystallite_init(temperature)
                                      material_Ncrystallite)) ;       crystallite_sizePostResult = 0_pInt
  
  
- if (.not. IO_open_jobFile_stat(myFile,material_localFileExt)) then                                 ! no local material configuration present...
-   call IO_open_file(myFile,material_configFile)                                                    ! ...open material.config file
- endif
+ if (.not. IO_open_jobFile_stat(myUnit,material_localFileExt)) &                                    ! no local material configuration present...
+   call IO_open_file(myUnit,material_configFile)                                                    ! ...open material.config file
  line = ''
  section = 0_pInt
 
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)  ! wind forward to <crystallite>
-   line = IO_read(myFile)
+   line = IO_read(myUnit)
  enddo
  
  do while (trim(line) /= '#EOF#')                                                                   ! read thru sections of phase part
-   line = IO_read(myFile)
+   line = IO_read(myUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
@@ -294,7 +293,7 @@ subroutine crystallite_init(temperature)
    endif
  enddo
  
- close(myFile)
+ close(myUnit)
  
  do i = 1_pInt,material_Ncrystallite
    do j = 1_pInt,crystallite_Noutput(i)
@@ -331,16 +330,16 @@ subroutine crystallite_init(temperature)
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for crystallite output
- call IO_write_jobFile(myFile,'outputCrystallite')
+ call IO_write_jobFile(myUnit,'outputCrystallite')
   
  do p = 1_pInt,material_Ncrystallite
-   write(myFile,'(/,a,/)') '['//trim(crystallite_name(p))//']'
+   write(myUnit,'(/,a,/)') '['//trim(crystallite_name(p))//']'
    do e = 1_pInt,crystallite_Noutput(p)
-     write(myFile,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
+     write(myUnit,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
    enddo
  enddo
  
- close(myFile)
+ close(myUnit)
  
 !--------------------------------------------------------------------------------------------------
 ! initialize
