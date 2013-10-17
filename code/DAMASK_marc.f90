@@ -44,10 +44,8 @@
 !> @details   - set statevariable 3 to index of microstructure
 !> @details   - make sure the file "material.config" exists in the working directory
 !> @details   - make sure the file "numerics.config" exists in the working directory
-!> @details   - use nonsymmetric option for solver (e.g. direct profile or multifrontal sparse, 
-!> @details     the latter seems to be faster!)
-!> @details   - in case of ddm (domain decomposition) a SYMMETRIC solver has to be used, 
-!> @details     i.e uncheck "non-symmetric"
+!> @details   - use nonsymmetric option for solver (e.g. direct profile or multifrontal sparse, the latter seems to be faster!)
+!> @details   - in case of ddm (domain decomposition) a SYMMETRIC solver has to be used, i.e uncheck "non-symmetric"
 !> @details  Marc subroutines used:
 !> @details   - hypela2
 !> @details   - plotv
