@@ -211,18 +211,13 @@ subroutine homogenization_RGC_init(myUnit)
  do i = 1_pInt,maxNinstance
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_RGC_output(j,i))
-       case('constitutivework')
+       case('temperature','constitutivework','penaltyenergy','volumediscrepancy'&
+            'averagerelaxrate','maximumrelaxrate')
          mySize = 1_pInt
-       case('magnitudemismatch')
+       case('ipcoords','magnitudemismatch')
          mySize = 3_pInt
-       case('penaltyenergy')
-         mySize = 1_pInt
-       case('volumediscrepancy')
-         mySize = 1_pInt
-       case('averagerelaxrate')
-         mySize = 1_pInt
-       case('maximumrelaxrate')
-         mySize = 1_pInt
+       case('avgdefgrad','avgf','avgp','avgfirstpiola','avg1stpiola')
+         mySize = 9_pInt
        case default
          mySize = 0_pInt
      end select
@@ -857,18 +852,27 @@ end subroutine homogenization_RGC_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion 
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_RGC_postResults(state,el)
+pure function homogenization_RGC_postResults(state,ip,el,avgP,avgF)
  use prec, only: &
    p_vec
  use mesh, only: &
-   mesh_element
+   mesh_element, &
+   mesh_ipCoordinates
  use material, only: &
    homogenization_typeInstance,&
    homogenization_Noutput
+ use crystallite, only: &
+   crystallite_temperature
  
  implicit none
- type(p_vec),   intent(in) :: state                                                                 ! my State
- integer(pInt), intent(in) :: el                                                                    ! element number
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3), intent(in) :: &
+   avgP, &                                                                                          !< average stress at material point
+   avgF                                                                                             !< average deformation gradient at material point
+ type(p_vec),   intent(in) :: &
+   state                                                                                            ! my State
  integer(pInt) homID,o,c,nIntFaceTot
  real(pReal), dimension(homogenization_RGC_sizePostResults(homogenization_typeInstance(mesh_element(3,el)))) :: &
    homogenization_RGC_postResults
@@ -882,6 +886,18 @@ pure function homogenization_RGC_postResults(state,el)
  homogenization_RGC_postResults = 0.0_pReal
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_RGC_output(o,homID))
+     case ('temperature')
+       homogenization_RGC_postResults(c+1_pInt) = crystallite_temperature(ip,el)
+       c = c + 1_pInt
+     case ('avgdefgrad','avgf')
+       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
+       c = c + 9_pInt
+     case ('avgp','avgfirstpiola','avg1stpiola')
+       homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
+       c = c + 9_pInt
+     case ('ipcoords')
+       homogenization_RGC_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)                       ! current ip coordinates
+       c = c + 3_pInt
      case('constitutivework')
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+1)
        c = c + 1_pInt

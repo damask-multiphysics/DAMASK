@@ -130,7 +130,7 @@ subroutine homogenization_init()
  
 !--------------------------------------------------------------------------------------------------
 ! parse homogenization from config file
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                 ! no local material configuration present...
+ if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(fileunit,material_configFile)                                                  ! ... open material.config file
  call homogenization_isostrain_init(fileunit)
  call homogenization_RGC_init(fileunit)
@@ -581,7 +581,7 @@ end subroutine materialpoint_stressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief parallelized calculation of result array at material points
 !--------------------------------------------------------------------------------------------------
-subroutine materialpoint_postResults(dt)
+subroutine materialpoint_postResults
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
@@ -598,7 +598,6 @@ subroutine materialpoint_postResults(dt)
    crystallite_postResults
 
  implicit none
- real(pReal), intent(in) :: dt
  integer(pInt) :: &
    thePos, &
    theSize, &
@@ -822,9 +821,18 @@ function homogenization_postResults(ip,el)
  homogenization_postResults = 0.0_pReal
  chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
    case (homogenization_isostrain_label) chosenHomogenization
-     homogenization_postResults = homogenization_isostrain_postResults(el)
+     homogenization_postResults = homogenization_isostrain_postResults(&
+                                  ip, &
+                                  el, &
+                                  materialpoint_P(1:3,1:3,ip,el), &
+                                  materialpoint_F(1:3,1:3,ip,el))
    case (homogenization_RGC_label) chosenHomogenization
-     homogenization_postResults = homogenization_RGC_postResults(homogenization_state(ip,el),el)
+     homogenization_postResults = homogenization_RGC_postResults(&
+                                  homogenization_state(ip,el),&
+                                  ip, &
+                                  el, &
+                                  materialpoint_P(1:3,1:3,ip,el), &
+                                  materialpoint_F(1:3,1:3,ip,el))
  end select chosenHomogenization
 
 end function homogenization_postResults

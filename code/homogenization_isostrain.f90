@@ -134,8 +134,12 @@ subroutine homogenization_isostrain_init(myUnit)
 
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_output(j,i))
-       case('ngrains','ncomponents')
+       case('ngrains','ncomponents','temperature')
          mySize = 1_pInt
+       case('ipcoords')
+         mySize = 3_pInt
+       case('avgdefgrad','avgf','avgp','avgfirstpiola','avg1stpiola')
+         mySize = 9_pInt
        case default
          mySize = 0_pInt
      end select
@@ -218,17 +222,25 @@ end subroutine homogenization_isostrain_averageStressAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion 
 !--------------------------------------------------------------------------------------------------
-pure function homogenization_isostrain_postResults(el)
+pure function homogenization_isostrain_postResults(ip,el,avgP,avgF)
  use prec, only: &
    pReal
  use mesh, only: &
-   mesh_element
+   mesh_element, &
+   mesh_ipCoordinates
  use material, only: &
    homogenization_typeInstance, &
    homogenization_Noutput
+ use crystallite, only: &
+   crystallite_temperature
  
  implicit none
- integer(pInt), intent(in) :: el                                                                  !< element number
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3), intent(in) :: &
+   avgP, &                                                                                          !< average stress at material point
+   avgF                                                                                             !< average deformation gradient at material point
  real(pReal),  dimension(homogenization_isostrain_sizePostResults &
                          (homogenization_typeInstance(mesh_element(3,el)))) :: &
    homogenization_isostrain_postResults
@@ -246,7 +258,19 @@ pure function homogenization_isostrain_postResults(el)
      case ('ngrains','ncomponents')
        homogenization_isostrain_postResults(c+1_pInt) = real(homogenization_isostrain_Ngrains(homID),pReal)
        c = c + 1_pInt
-   end select
+     case ('temperature')
+       homogenization_isostrain_postResults(c+1_pInt) = crystallite_temperature(ip,el)
+       c = c + 1_pInt
+     case ('avgdefgrad','avgf')
+       homogenization_isostrain_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
+       c = c + 9_pInt
+     case ('avgp','avgfirstpiola','avg1stpiola')
+       homogenization_isostrain_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
+       c = c + 9_pInt
+     case ('ipcoords')
+       homogenization_isostrain_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)                       ! current ip coordinates
+       c = c + 3_pInt
+    end select
  enddo
 
 end function homogenization_isostrain_postResults

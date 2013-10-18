@@ -29,6 +29,7 @@ module CPFEM
    pInt
 
  implicit none
+ private
  real(pReal), parameter ::                         CPFEM_odd_stress    = 1e15_pReal, &               !< return value for stress in case of ping pong dummy cycle
                                                    CPFEM_odd_jacobian  = 1e50_pReal                  !< return value for jacobian in case of ping pong dummy cycle
 
@@ -383,16 +384,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
 
  
  !*** backup or restore jacobian
- 
  if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde_knownGood = CPFEM_dcsde
  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde = CPFEM_dcsde_knownGood
 
- 
-
  !*** age results and write restart data if requested
- 
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
    crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
    crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
@@ -516,7 +513,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) then
          !$OMP CRITICAL (write2out)
            write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at elFE ip',elCP,ip
-           write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',math_transpose33(materialpoint_F(1:3,1:3,ip,elCP))
+           write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',&
+                                             math_transpose33(materialpoint_F(1:3,1:3,ip,elCP))
            write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 now:',math_transpose33(ffn1)
          !$OMP END CRITICAL (write2out)
        endif
@@ -548,7 +546,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
            !$OMP END CRITICAL (write2out)
          endif
          call materialpoint_stressAndItsTangent(updateJaco, dt)                                  ! calculate stress and its tangent
-         call materialpoint_postResults(dt)                                                      ! post results
+         call materialpoint_postResults()                                                        ! post results
        endif
        
      !* parallel computation and calulation not yet done
@@ -556,11 +554,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      elseif (.not. CPFEM_calc_done) then
        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
          !$OMP CRITICAL (write2out)
-           write(6,'(a,i8,a,i8)') '<< CPFEM >> calculation for elements ',FEsolving_execElem(1),' to ',FEsolving_execElem(2)
+           write(6,'(a,i8,a,i8)') '<< CPFEM >> calculation for elements ',FEsolving_execElem(1),&
+                                                                   ' to ',FEsolving_execElem(2)
          !$OMP END CRITICAL (write2out)
        endif
        call materialpoint_stressAndItsTangent(updateJaco, dt)                                    ! calculate stress and its tangent (parallel execution inside)
-       call materialpoint_postResults(dt)                                                        ! post results
+       call materialpoint_postResults()                                                          ! post results
        CPFEM_calc_done = .true.
      endif
      
@@ -576,7 +575,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
          materialpoint_P(1:3,1:3,ip,elCP) = materialpoint_P(1:3,1:3,1,elCP)
          materialpoint_F(1:3,1:3,ip,elCP) = materialpoint_F(1:3,1:3,1,elCP)
          materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,elCP) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,elCP)
-         materialpoint_results(1:materialpoint_sizeResults,ip,elCP) = materialpoint_results(1:materialpoint_sizeResults,1,elCP)
+         materialpoint_results(1:materialpoint_sizeResults,ip,elCP) = &
+                                        materialpoint_results(1:materialpoint_sizeResults,1,elCP)
        endif
        ! translate from P to CS
        Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,ip,elCP), math_transpose33(materialpoint_F(1:3,1:3,ip,elCP)))
