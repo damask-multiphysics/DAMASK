@@ -109,7 +109,8 @@ module DAMASK_spectral_utilities
    utilities_constitutiveResponse, &
    utilities_calculateRate, &
    utilities_forwardField, &
-   utilities_destroy
+   utilities_destroy, &
+   utilities_temperatureUpdate
  private :: &
    utilities_getFilter
 
@@ -861,11 +862,10 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  endif
 
  call CPFEM_general(collectMode,usePingPong,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &            ! collect mode handles Jacobian backup / restoration
-                   temperature,timeinc,1_pInt,1_pInt)
+                   crystallite_temperature(1,1),timeinc,1_pInt,1_pInt)
  
  materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid)])
  materialpoint_F  = reshape(F,         [3,3,1,product(grid)])
- crystallite_temperature = temperature
 
  call debug_reset()
 
@@ -1002,6 +1002,68 @@ real(pReal) function utilities_getFilter(k)
   end select 
 
 end function utilities_getFilter
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates filter for fourier convolution depending on type given in numerics.config
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_temperatureUpdate()
+ use crystallite, only: &
+   crystallite_temperature
+ use homogenization, only: &                        
+   materialpoint_heat
+  
+ implicit none
+ integer x,y,z,e
+ real(pReal) :: a
+ do e=1_pInt, product(grid)
+   if (e==1) print*, materialpoint_heat(1,e)*0.0001_pReal
+   crystallite_temperature(1,e) = crystallite_temperature(1,e) + materialpoint_heat(1,e)*0.0001_pReal
+ enddo
+ e = 0_pInt
+ z = 0
+ y = 0
+ x = 0
+
+!< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
+ do z = 0_pInt,grid(3)-1_pInt
+   do y = 0_pInt,grid(2)-1_pInt
+     do x = 0_pInt,grid(1)-1_pInt
+       e = e + 1_pInt
+         a = 0.0_pReal
+         a = a+ crystallite_temperature(1, z * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + modulo(x+1_pInt,grid(1)) &
+                                      + 1_pInt)
+         a = a+ crystallite_temperature(1,z * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + modulo(x-1_pInt,grid(1)) &
+                                      + 1_pInt)
+         a = a+ crystallite_temperature(1,z * grid(1) * grid(2) &
+                                      + modulo(y+1_pInt,grid(2)) * grid(1) &
+                                      + x &
+                                      + 1_pInt)
+         a = a+ crystallite_temperature(1,z * grid(1) * grid(2) &
+                                      + modulo(y-1_pInt,grid(2)) * grid(1) &
+                                      + x &
+                                      + 1_pInt)
+         a = a+ crystallite_temperature(1, modulo(z+1_pInt,grid(3)) * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + x &
+                                      + 1_pInt)
+         a = a+ crystallite_temperature(1,modulo(z-1_pInt,grid(3)) * grid(1) * grid(2) &
+                                      + y * grid(1) &
+                                      + x &
+                                      + 1_pInt)
+         if (e==1) print*, a
+         if (e==1) print*, crystallite_temperature(1,e)
+         if (e==1) print*,(crystallite_temperature(1,e)+a)/7.0_pReal
+         crystallite_temperature(1,e) = (crystallite_temperature(1,e)+a)/7.0_pReal
+     enddo
+   enddo
+ enddo
+
+end subroutine utilities_temperatureUpdate
 
 
 !--------------------------------------------------------------------------------------------------

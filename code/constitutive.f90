@@ -66,7 +66,6 @@ module constitutive
    constitutive_TandItsTangent, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
-   constitutive_heat, &
    constitutive_postResults
  
  private :: &
@@ -844,25 +843,6 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  endif
 
 end subroutine constitutive_collectDeltaState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief contains the constitutive equation for calculating the rate of change of microstructure
-!--------------------------------------------------------------------------------------------------
-real(pReal) function constitutive_heat(Tstar_v,Temperature,ipc,ip,el)
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal),   intent(in) :: &
-   Temperature
- real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
-   
- constitutive_heat = 0.0_pReal
-
-end function constitutive_heat
 
 
 !--------------------------------------------------------------------------------------------------

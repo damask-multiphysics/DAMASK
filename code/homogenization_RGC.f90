@@ -211,7 +211,7 @@ subroutine homogenization_RGC_init(myUnit)
  do i = 1_pInt,maxNinstance
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_RGC_output(j,i))
-       case('temperature','constitutivework','penaltyenergy','volumediscrepancy'&
+       case('temperature','constitutivework','penaltyenergy','volumediscrepancy', &
             'averagerelaxrate','maximumrelaxrate')
          mySize = 1_pInt
        case('ipcoords','magnitudemismatch')

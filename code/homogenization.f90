@@ -52,6 +52,8 @@ module homogenization
  integer(pInt),                                      public, protected  :: &
    materialpoint_sizeResults, &
    homogenization_maxSizePostResults
+ real(pReal),   dimension(:,:),         allocatable, public, protected :: &
+   materialpoint_heat
 
  type(p_vec),   dimension(:,:),         allocatable, private :: &
    homogenization_subState0                                                                         !< pointer array to homogenization state at start of homogenization increment
@@ -61,8 +63,7 @@ module homogenization
  real(pReal),   dimension(:,:),         allocatable, private :: &
    materialpoint_subFrac, &
    materialpoint_subStep, &
-   materialpoint_subdt, &
-   materialpoint_heat
+   materialpoint_subdt
  integer(pInt), dimension(:,:),         allocatable, private :: &
    homogenization_sizePostResults                                                                   !< size of postResults array per material point
  integer(pInt),                                      private :: &
