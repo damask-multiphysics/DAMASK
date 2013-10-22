@@ -1014,16 +1014,16 @@ subroutine utilities_temperatureUpdate()
    materialpoint_heat
   
  implicit none
- integer x,y,z,e
- real(pReal) :: a
- do e=1_pInt, product(grid)
-   if (e==1) print*, materialpoint_heat(1,e)*0.0001_pReal
+ integer :: &
+   x,y,z,e
+ real(pReal) :: & 
+  a
+ forall(e=1_pInt:product(grid)) &
    crystallite_temperature(1,e) = crystallite_temperature(1,e) + materialpoint_heat(1,e)*0.0001_pReal
- enddo
  e = 0_pInt
- z = 0
- y = 0
- x = 0
+ z = 0_pInt
+ y = 0_pInt
+ x = 0_pInt
 
 !< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
  do z = 0_pInt,grid(3)-1_pInt
@@ -1055,9 +1055,6 @@ subroutine utilities_temperatureUpdate()
                                       + y * grid(1) &
                                       + x &
                                       + 1_pInt)
-         if (e==1) print*, a
-         if (e==1) print*, crystallite_temperature(1,e)
-         if (e==1) print*,(crystallite_temperature(1,e)+a)/7.0_pReal
          crystallite_temperature(1,e) = (crystallite_temperature(1,e)+a)/7.0_pReal
      enddo
    enddo
