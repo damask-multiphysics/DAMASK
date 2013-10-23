@@ -175,14 +175,15 @@ subroutine basicPETSc_init(temperature)
         DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
         DMDA_STENCIL_BOX,grid(1),grid(2),grid(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
         9,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
- CHKERRQ(ierr)
+   CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
  call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
- CHKERRQ(ierr)
+   CHKERRQ(ierr)
  call SNESGetKSP(snes,ksp,ierr); CHKERRQ(ierr)
- call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr); CHKERRQ(ierr)
+ call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr)
+   CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
