@@ -30,24 +30,32 @@ module CPFEM
 
  implicit none
  private
- real(pReal), parameter ::                         CPFEM_odd_stress    = 1e15_pReal, &               !< return value for stress in case of ping pong dummy cycle
-                                                   CPFEM_odd_jacobian  = 1e50_pReal                  !< return value for jacobian in case of ping pong dummy cycle
+ real(pReal),                      parameter,   private :: &
+   CPFEM_odd_stress    = 1e15_pReal, &                                                               !< return value for stress in case of ping pong dummy cycle
+   CPFEM_odd_jacobian  = 1e50_pReal                                                                  !< return value for jacobian in case of ping pong dummy cycle
 
- real(pReal), dimension (:,:,:),   allocatable ::  CPFEM_cs                                          !< Cauchy stress
- real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE                                       !< Cauchy stress tangent
- real(pReal), dimension (:,:,:,:), allocatable ::  CPFEM_dcsdE_knownGood                             !< known good tangent
+ real(pReal), dimension (:,:,:),   allocatable, private :: &
+   CPFEM_cs                                                                                          !< Cauchy stress
+ real(pReal), dimension (:,:,:,:), allocatable, private :: &
+   CPFEM_dcsdE                                                                                       !< Cauchy stress tangent
+ real(pReal), dimension (:,:,:,:), allocatable, private :: &
+   CPFEM_dcsdE_knownGood                                                                             !< known good tangent
 
- logical ::                                        CPFEM_init_done       = .false., &                !< remember whether init has been done already
-                                                   CPFEM_init_inProgress = .false., &                !< remember whether first ip is currently performing init
-                                                   CPFEM_calc_done       = .false.                   !< remember whether first ip has already calced the results
- integer(pInt), parameter, public :: &
+ logical,                                       public, protected :: &
+   CPFEM_init_done       = .false., &                                                                !< remember whether init has been done already
+   CPFEM_init_inProgress = .false., &                                                                !< remember whether first ip is currently performing init
+   CPFEM_calc_done       = .false.                                                                   !< remember whether first ip has already calced the results
+ 
+ integer(pInt), parameter,                      public :: &
    CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
    CPFEM_AGERESULTS      = 2_pInt**1_pInt, &
    CPFEM_BACKUPJACOBIAN  = 2_pInt**2_pInt, &
    CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt, &
    CPFEM_COLLECT         = 2_pInt**4_pInt
- 
- public ::CPFEM_general, &
+
+  
+ public :: & 
+   CPFEM_general, &
    CPFEM_initAll
 
 contains
