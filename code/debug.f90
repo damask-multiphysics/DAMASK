@@ -175,7 +175,7 @@ subroutine debug_init
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
 
-
+ line = ''
  fileExists: if(IO_open_file_stat(fileunit,debug_configFile)) then
    do while (trim(line) /= '#EOF#')                                                                 ! read thru sections of phase part
      line = IO_read(fileunit)
@@ -253,7 +253,7 @@ subroutine debug_init
      if (debug_level(i) == 0) &
        debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 2_pInt))                   ! fill undefined debug types with levels specified by "other" 
 
-       debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 1_pInt))                   ! fill all debug types with levels specified by "all" 
+     debug_level(i) = ior(debug_level(i), debug_level(debug_MAXNTYPE + 1_pInt))                     ! fill all debug types with levels specified by "all" 
    enddo
   
    if (iand(debug_level(debug_debug),debug_LEVELBASIC) /= 0) &
