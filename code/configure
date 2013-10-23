@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os,re,subprocess
+import os,re,subprocess,sys
 import damask
 
 damaskEnv = damask.Environment('../')          # script location relative to root
@@ -9,10 +9,12 @@ baseDir = damaskEnv.relPath('code/')
 compiler ={True:'ifort',False:'gfortran'}[\
            subprocess.call(['which', 'ifort'],\
            stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
+print('Updating Makefile in %s:\n'%baseDir)
 makefile = open(os.path.join(baseDir,'Makefile'))
 content = makefile.readlines()
 makefile.close()
 makefile = open(os.path.join(baseDir,'Makefile'),'w')
+screenOut=''
 for line in content:
   m = re.match(r'(FFTW|IMKL|ACML|LAPACK)ROOT\s*\?=\s*',line)
   c = re.match(r'F90\s*\?=\s*',line)
@@ -22,7 +24,10 @@ for line in content:
     else:
       substitution = ''
     line = '%sROOT ?= %s\n'%(m.group(1),substitution)
+    screenOut+=line
   if c:
     line = 'F90 ?= %s\n'%compiler
+    screenOut+=line
   makefile.write(line)
 makefile.close()
+print(screenOut)
