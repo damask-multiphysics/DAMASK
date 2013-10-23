@@ -1447,11 +1447,9 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
  case (150_pInt)
-   msg = 'crystallite index out of bounds'
+   msg = 'index out of bounds'
  case (151_pInt)
-   msg = 'phase index out of bounds'
- case (152_pInt)
-   msg = 'texture index out of bounds'
+   msg = 'microstructure has no constituents'
  case (153_pInt)
    msg = 'sum of phase fractions differs from 1'
  case (154_pInt)

@@ -192,13 +192,15 @@ subroutine material_init
  do m = 1_pInt,material_Nmicrostructure
    if (microstructure_crystallite(m) < 1_pInt .or. &
        microstructure_crystallite(m) > material_Ncrystallite) & 
-         call IO_error(150_pInt,m)
+         call IO_error(150_pInt,m,ext_msg='crystallite')
    if (minval(microstructure_phase(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
        maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > material_Nphase) &
-         call IO_error(151_pInt,m)
+         call IO_error(150_pInt,m,ext_msg='phase')
    if (minval(microstructure_texture(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
        maxval(microstructure_texture(1:microstructure_Nconstituents(m),m)) > material_Ntexture) &
-         call IO_error(152_pInt,m)
+         call IO_error(150_pInt,m,ext_msg='texture')
+   if (microstructure_Nconstituents(m) < 1_pInt) & 
+         call IO_error(151_pInt,m)
 !   if (abs(sum(microstructure_fraction(:,m)) - 1.0_pReal) >= 1.0e-6_pReal) then                     ! have ppm precision in fractions
 !     if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
 !         write(6,'(a,1x,f12.9)') ' sum of microstructure fraction = ',sum(microstructure_fraction(:,m))
