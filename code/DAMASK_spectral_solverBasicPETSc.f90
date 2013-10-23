@@ -78,7 +78,7 @@ module DAMASK_spectral_SolverBasicPETSc
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
    C_minMaxAvg = 0.0_pReal, &                                                                       !< current (min+max)/2 stiffness
    S = 0.0_pReal                                                                                    !< current compliance (filled up with zeros)
- real(pReal), private :: err_stress, err_div
+ real(pReal), private :: err_stress, err_div, err_divPrev, err_divDummy
  logical, private :: ForwardData
  integer(pInt), private :: &
    totalIter = 0_pInt                                                                               !< total iteration in current increment
@@ -152,6 +152,7 @@ subroutine basicPETSc_init(temperature)
    temp33_Real = 0.0_pReal
  real(pReal), dimension(3,3,3,3) :: &
    temp3333_Real = 0.0_pReal
+ KSP :: ksp
 
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
@@ -180,6 +181,8 @@ subroutine basicPETSc_init(temperature)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
+ call SNESGetKSP(snes,ksp,ierr); CHKERRQ(ierr)
+ call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr); CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
@@ -482,7 +485,7 @@ if (params%density > 0.0_pReal) then
                                                              order=[4,5,1,2,3]) ! field real has a different order
  call Utilities_FFTforward()
  field_fourier = field_fourier + inertiaField_fourier
- err_div = Utilities_divergenceRMS()
+ err_divDummy = Utilities_divergenceRMS()
  call Utilities_fourierConvolution(math_rotate_backward33(F_aim_lastIter-F_aim,params%rotation_BC))
  call Utilities_FFTbackward()
  
@@ -504,10 +507,6 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
    err_div_tolAbs, &
    err_stress_tolRel, &
    err_stress_tolAbs
- use math, only: &
-   math_mul33x33, &
-   math_eigenvalues33, &
-   math_transpose33
  use FEsolving, only: &
    terminallyIll
  
@@ -527,8 +526,9 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
  
  divTol    = max(maxval(abs(P_av))*err_div_tolRel,err_div_tolAbs)
  stressTol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
+ err_divPrev = err_div; err_div = err_divDummy
  
- converged: if ((totalIter>= itmin .and. &
+ converged: if ((totalIter >= itmin .and. &
                            all([ err_div/divTol, &
                                  err_stress/stressTol       ] < 1.0_pReal)) &
              .or.    terminallyIll) then  
@@ -550,6 +550,60 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
  flush(6) 
  
 end subroutine BasicPETSc_converged
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief convergence check
+!--------------------------------------------------------------------------------------------------
+subroutine BasicPETSc_convergedKSP(ksp_local,PETScIter,fnorm,reason,dummy,ierr)
+ use numerics, only: &
+   itmax, &
+   itmin, &
+   err_div_tolRel, &
+   err_div_tolAbs
+ use FEsolving, only: &
+   terminallyIll
+ use DAMASK_spectral_Utilities, only: &
+   wgt
+ 
+ implicit none
+ KSP :: ksp_local
+ PetscInt :: PETScIter, SNESIter
+ PetscReal :: &
+   fnorm, &
+   SNESfnorm, &
+   estimatedErrDiv
+ KSPConvergedReason :: reason
+ PetscObject :: dummy
+ PetscErrorCode :: ierr
+ real(pReal) :: &
+   divTol, &
+   r_tol 
+
+ call SNESGetIterationNumber(snes,SNESIter,ierr); CHKERRQ(ierr)
+ call SNESGetFunctionNorm(snes,SNESfnorm,ierr); CHKERRQ(ierr)
+ 
+ if (SNESIter == 0_pInt) then                                                              ! Eisenstat-Walker calculation of relative tolerance for inexact newton 
+   r_tol = 0.3
+ else
+   r_tol = (err_div/err_divPrev)**1.618
+ endif     
+ 
+ divTol    = max(maxval(abs(P_av))*err_div_tolRel,err_div_tolAbs)
+ estimatedErrDiv = fnorm*err_div/SNESfnorm                                                 ! Estimated error divergence
+ 
+ converged: if ((PETScIter >= itmin .and. &
+                 any([fnorm/snesFnorm/r_tol, &
+                     estimatedErrDiv/divTol] < 1.0_pReal)) &
+                .or. terminallyIll) then   
+   reason = 1
+ elseif (totalIter >= itmax) then converged
+   reason = -1
+ else converged
+   reason = 0
+ endif converged
+ 
+end subroutine BasicPETSc_convergedKSP
 
 
 !--------------------------------------------------------------------------------------------------
