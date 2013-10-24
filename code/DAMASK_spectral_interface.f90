@@ -128,7 +128,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
          write(6,'(a,/)')' Valid command line switches:'
          write(6,'(a)')  '    --geom         (-g, --geometry)'
          write(6,'(a)')  '    --load         (-l, --loadcase)'
-         write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory)'
+         write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
          write(6,'(a)')  '    --restart      (-r, --rs)'
          write(6,'(a)')  '    --regrid       (--rg)'
          write(6,'(a)')  '    --help         (-h)'
@@ -178,7 +178,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
          loadcaseArg = IIO_stringValue(commandLine,positions,i+1_pInt)
        case ('-g', '--geom', '--geometry')
          geometryArg = IIO_stringValue(commandLine,positions,i+1_pInt)
-       case ('-w', '--wd', '--workingdir', '--workingdirectory')
+       case ('-w', '-d', '--wd', '--directory', '--workingdir', '--workingdirectory')
          workingDirArg = IIO_stringValue(commandLine,positions,i+1_pInt)
        case ('-r', '--rs', '--restart')
          spectralRestartInc = IIO_IntValue(commandLine,positions,i+1_pInt)
@@ -253,10 +253,10 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
       /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
-   inquire(file = storeWorkingDirectory, exist=dirExists)                                           
-   if(.not. dirExists) then
-     write(6,'(a)') ' given working directory does not exist' 
-     call quit(1_pInt)                                                                              ! check if the directory exists
+   inquire(file = trim(storeWorkingDirectory)//'.', exist=dirExists)
+   if(.not. dirExists) then                                                                         ! check if the directory exists
+     write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
+     call quit(1_pInt)
    endif
  else                                                                                               ! using path to geometry file as working dir
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
