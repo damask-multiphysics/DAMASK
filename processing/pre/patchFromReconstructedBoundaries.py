@@ -119,7 +119,6 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
   if size > 0.0: scalePatch = size/dX
   else: scalePatch = 1.0
 
-
 # read segments
   segment = 0
   connectivityXY = {"0": {"0":[],"%g"%dY:[],},\
@@ -238,9 +237,18 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
           segments[segment].append(pointId)
       pointId += 1
 
+  crappyData = False
+  for pointId,point in enumerate(points):
+    if len(point['segments']) < 2:                            # point marks a dead end!
+      print "Dead end at segment %i (%f,%f)"%(1+point['segments'][0],boxX[0]+point['coords'][0]/scalePatch,boxY[0]+point['coords'][1]/scalePatch,)
+      crappyData = True
+
+  if crappyData:
+    sys.exit(-1)
+
   grains = {'draw': [], 'legs': []}
-  pointId = 0
-  for point in points:
+
+  for pointId,point in enumerate(points):
     while point['segments']:
       myStart = pointId
       grainDraw = [points[myStart]['coords']]
@@ -257,7 +265,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
           points[myEnd]['coords'][1]-points[myStart]['coords'][1]]
         myLen = math.sqrt(myV[0]**2+myV[1]**2)
         best = {'product': -2.0, 'peek': -1, 'len': -1, 'point': -1}
-        for peek in points[myEnd]['segments']:
+        for peek in points[myEnd]['segments']:                                                    # trying in turn all segments emanating from current endPoint
           if peek == myWalk:
             continue
           if segments[peek][0] == myEnd:
@@ -280,7 +288,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
         if myWalk in points[myStart]['segments']:
           points[myStart]['segments'].remove(myWalk)
         else:
-          sys.stderr.write(str(myWalk)+' not in segments of '+str(myStart))
+          sys.stderr.write(str(myWalk)+' not in segments of point '+str(myStart)+'\n')
         grainDraw.append(points[myStart]['coords'])
         grainLegs.append(myWalk)
       if innerAngleSum > 0.0:
@@ -288,7 +296,6 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
         grains['legs'].append(grainLegs)
       else:
         grains['box'] = grainLegs
-    pointId += 1
 
   
 # build overall data structure
@@ -872,7 +879,7 @@ except:
 options.output = [s.lower() for s in options.output]                        # lower case
 
 myName = os.path.splitext(args[0])[0]
-print "\n%s\n"%myName
+print "%s\n"%myName
 
 orientationData = rcbOrientationParser(boundarySegments)
 rcData = rcbParser(boundarySegments,options.M,options.size,options.tolerance)
