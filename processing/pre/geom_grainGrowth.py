@@ -140,7 +140,7 @@ parser.add_option('-d', '--distance', dest='d', type='int', \
 parser.add_option('-N', '--smooth', dest='N', type='int', \
                  help='N for curvature flow [%default]')
 parser.add_option('-p', '--processors', dest='p', type='int', nargs = 3, \
-                  help='number of threads in x,y,z direction')
+                  help='number of threads in x,y,z direction %default')
 parser.add_option('-b', '--black', dest='black', action='extend', type='string', \
                  help='indices of stationary microstructures', metavar='<LIST>')
 
@@ -172,7 +172,7 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-    if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
