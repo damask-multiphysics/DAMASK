@@ -44,6 +44,7 @@ FFTWROOT ?= /usr/local
 IMKLROOT ?= 
 ACMLROOT ?= 
 LAPACKROOT ?= /usr
+HDF5ROOT ?=
 
 F90 ?= ifort
 ########################################################################################
@@ -119,9 +120,9 @@ LIB_DIRS  +=-L$(FFTWROOT)/lib
 
 #hdf5
 ifeq "$(HDF5)" "ON"
-LIB_DIRS +=-L/opt/hdf5-1.8.10-patch1/hdf5/lib
-LIBRARIES +=-lhdf5_fortran -lhdf5
-INCLUDE_DIRS +=-I/opt/hdf5-1.8.10-patch1/hdf5/include -DHDF
+LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
+LIB_DIRS  +=-L$(HDF5ROOT)/lib
+INCLUDE_DIRS +=-I$(HDF5ROOT)/include -DHDF
 endif
 
 ifdef PETSC_DIR

@@ -124,31 +124,37 @@ class Test():
 
   def dirReference(self):
     '''
+    Directory containing reference results of the test.
     '''
     return os.path.normpath(os.path.join(self.dirBase,'reference/'))
 
   def dirCurrent(self):
     '''
+    Directory containing current results of the test.
     '''
     return os.path.normpath(os.path.join(self.dirBase,'current/'))
   
   def dirProof(self):
     '''
+    Directory containing human readable proof of correctness for the test.
     '''
     return os.path.normpath(os.path.join(self.dirBase,'proof/'))
     
   def fileInReference(self,file):
     '''
+    Path to a file in the refrence directory for the test.
     '''
     return os.path.join(self.dirReference(),file)
 
   def fileInCurrent(self,file):
     '''
+    Path to a file in the current results directory for the test.
     '''
     return os.path.join(self.dirCurrent(),file)
   
   def fileInProof(self,file):
     '''
+    Path to a file in the proof directory for the test.
     '''
     return os.path.join(self.dirProof(),file)
     

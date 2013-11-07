@@ -117,7 +117,6 @@ for tasks in execute:
       print 'failed..!'
       pass
 
-os.chdir(damaskEnv.relPath('processing/setup/'))
 modules = glob.glob('*.mod')
 for module in modules:
   print 'removing', module
