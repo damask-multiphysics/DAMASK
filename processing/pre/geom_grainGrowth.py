@@ -28,85 +28,7 @@ class extendedOption(Option):
        else:
            Option.take_action(self, action, dest, opt, value, values, parser)
 
-def grainCoarsenLocal(microLocal,ix,iy,iz,window): 
-   interfacialEnergy = lambda A,B: 1.0
-   struc = ndimage.generate_binary_structure(3,3)
-   winner = numpy.where(numpy.in1d(microLocal,options.black).reshape(microLocal.shape),
-                        microLocal,0)                                                               # zero out non-blacklisted microstructures
-   diffusedMax = (winner > 0).astype(float)                                                         # concentration of immutable microstructures
-   boundingSlice = ndimage.measurements.find_objects(microLocal)                                    # bounding boxes of each distinct microstructure region
-   diffused = {}
-   for grain in set(numpy.unique(microLocal)) - set(options.black) - (set([0])):                    # all microstructures except immutable ones
-     mini = [max(0, boundingSlice[grain-1][i].start - window) for i in range(3)]                    # upper right of expanded bounding box
-     maxi = [min(microLocal.shape[i], boundingSlice[grain-1][i].stop + window) for i in range(3)]   # lower left  of expanded bounding box
-     microWindow = microLocal[mini[0]:maxi[0],mini[1]:maxi[1],mini[2]:maxi[2]]
-     grainCharFunc = microWindow==grain
-     neighbours = set(numpy.unique(microWindow[ndimage.morphology.binary_dilation(grainCharFunc,structure=struc)]))\
-                - set([grain]) - set(options.black)                                                 # who is on my boundary?
-     try:                                                                                           # has grain been diffused previously?
-       diff = diffused[grain].copy()                                                                # yes: use previously diffused grain
-     except:  
-       diffused[grain] = ndimage.filters.gaussian_filter((grainCharFunc).astype(float),options.d)   # no: diffuse grain with unit speed
-       diff = diffused[grain].copy()
-     if len(neighbours) == 1:
-       speed = interfacialEnergy(grain,neighbours.pop())                                            # speed proportional to interfacial energy between me and neighbour
-       diff = speed*diff + (1.-speed)*(grainCharFunc)                                               # rescale diffused microstructure by speed
-     else:
-       tiny = 0.001
-       numerator = numpy.zeros(microWindow.shape)
-       denominator = numpy.zeros(microWindow.shape)
-       weights = {grain: diff + tiny}
-       for i in neighbours: 
-         miniI = [max(0, boundingSlice[i-1][j].start - window) for j in range(3)]                   # bounding box of neighbour
-         maxiI = [min(microLocal.shape[j], boundingSlice[i-1][j].stop + window) for j in range(3)]
-         miniCommon = [max(mini[j], boundingSlice[i-1][j].start - window) for j in range(3)]        # intersection of mine and neighbouring bounding box
-         maxiCommon = [min(maxi[j], boundingSlice[i-1][j].stop  + window) for j in range(3)]
-         weights[i] = tiny*numpy.ones(microWindow.shape)
-         try:                                                                                       # has neighbouring grain been diffused previously?
-           weights[i][miniCommon[0] - mini[0]:maxiCommon[0] - mini[0],\
-                      miniCommon[1] - mini[1]:maxiCommon[1] - mini[1],\
-                      miniCommon[2] - mini[2]:maxiCommon[2] - mini[2]] = diffused[i][miniCommon[0] - miniI[0]:maxiCommon[0] - miniI[0],\
-                                                                                     miniCommon[1] - miniI[1]:maxiCommon[1] - miniI[1],\
-                                                                                     miniCommon[2] - miniI[2]:maxiCommon[2] - miniI[2]] + tiny
-         except:                                                                                    # no: diffuse neighbouring grain with unit speed
-           diffused[i] = ndimage.filters.gaussian_filter((microLocal[miniI[0]:maxiI[0],\
-                                                                     miniI[1]:maxiI[1],\
-                                                                     miniI[2]:maxiI[2]]==i).astype(float),options.d)
-           weights[i][miniCommon[0] - mini[0]:maxiCommon[0] - mini[0],\
-                      miniCommon[1] - mini[1]:maxiCommon[1] - mini[1],\
-                      miniCommon[2] - mini[2]:maxiCommon[2] - mini[2]] = diffused[i][miniCommon[0] - miniI[0]:maxiCommon[0] - miniI[0],\
-                                                                                     miniCommon[1] - miniI[1]:maxiCommon[1] - miniI[1],\
-                                                                                     miniCommon[2] - miniI[2]:maxiCommon[2] - miniI[2]] + tiny
-       for grainA,grainB in itertools.combinations(neighbours,2):                                   # combinations of possible triple junctions
-         speed = interfacialEnergy(grain,grainA) +\
-                 interfacialEnergy(grain,grainB) -\
-                 interfacialEnergy(grainA,grainB)                                                   # speed of the triple junction
-         weight = weights[grainA] * weights[grainB]
-         if numpy.any(weight > 0.01):                                                               # strongly interacting triple junction?
-           weight *= weights[grain]
-           numerator += weight*(speed*diff + (1.-speed)*(grainCharFunc))
-           denominator += weight
-       
-       diff = numerator/denominator                                                                 # weighted sum of strongly interacting triple junctions
-     
-     winner[mini[0]:maxi[0],\
-            mini[1]:maxi[1],\
-            mini[2]:maxi[2]][diff > diffusedMax[mini[0]:maxi[0],\
-                                                mini[1]:maxi[1],\
-                                                mini[2]:maxi[2]]] = grain                           # remember me ...
-     diffusedMax[mini[0]:maxi[0],\
-                 mini[1]:maxi[1],\
-                 mini[2]:maxi[2]] = numpy.maximum(diff,diffusedMax[mini[0]:maxi[0],\
-                                                                   mini[1]:maxi[1],\
-                                                                   mini[2]:maxi[2]])                # ... and my concentration
-   
-   return [winner[window:-window,window:-window,window:-window],ix,iy,iz]
 
-def log_result(result):
-   ix = result[1]; iy = result[2]; iz = result[3]
-   microstructure[ix*stride[0]:(ix+1)*stride[0],iy*stride[1]:(iy+1)*stride[1],iz*stride[2]:(iz+1)*stride[2]] = \
-             result[0]
-    
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
@@ -139,8 +61,6 @@ parser.add_option('-d', '--distance', dest='d', type='int', \
                   help='diffusion distance in voxels [%default]', metavar='float')
 parser.add_option('-N', '--smooth', dest='N', type='int', \
                  help='N for curvature flow [%default]')
-parser.add_option('-p', '--processors', dest='p', type='int', nargs = 3, \
-                  help='number of threads in x,y,z direction %default')
 parser.add_option('-b', '--black', dest='black', action='extend', type='string', \
                  help='indices of stationary microstructures', metavar='<LIST>')
 
@@ -246,23 +166,34 @@ for file in files:
     continue
 
 #--- initialize helper data -----------------------------------------------------------------------  
-  window = 4*options.d
+  window = 0
+  X,Y,Z = numpy.mgrid[0:stride[0]+2*window,0:stride[1]+2*window,0:stride[2]+2*window]
+  gauss = numpy.exp(-(X*X+Y*Y+Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*numpy.pi*options.d*options.d,1.5)
+  gauss[:,:,(stride[2]+2*window)/2::] = gauss[:,:,(stride[2]+2*window)/2-1::-1]
+  gauss[:,(stride[1]+2*window)/2::,:] = gauss[:,(stride[1]+2*window)/2-1::-1,:]
+  gauss[(stride[0]+2*window)/2::,:,:] = gauss[(stride[0]+2*window)/2-1::-1,:,:]
+  gauss = numpy.fft.rfftn(gauss)
   for smoothIter in xrange(options.N):
-    extendedMicro = numpy.tile(microstructure,[3,3,3])
-    extendedMicro = extendedMicro[(info['grid'][0]-window):-(info['grid'][0]-window),
-                                  (info['grid'][1]-window):-(info['grid'][1]-window),
-                                  (info['grid'][2]-window):-(info['grid'][2]-window)]
-    pool = Pool(processes=numProc)
-    for iz in xrange(options.p[2]):
-      for iy in xrange(options.p[1]):
-        for ix in xrange(options.p[0]):
-          pool.apply_async(grainCoarsenLocal,(extendedMicro[ix*stride[0]:(ix+1)*stride[0]+2*window,\
-                                                            iy*stride[1]:(iy+1)*stride[1]+2*window,\
-                                                            iz*stride[2]:(iz+1)*stride[2]+2*window],\
-                                              ix,iy,iz,window), callback=log_result)
-        
-    pool.close()
-    pool.join()
+    interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0
+    struc = ndimage.generate_binary_structure(3,1)
+    microExt = numpy.zeros([microstructure.shape[0]+2,microstructure.shape[1]+2,microstructure.shape[2]+2])
+    microExt[1:-1,1:-1,1:-1] = microstructure
+    boundary = numpy.zeros(microstructure.shape)
+    for i in range(3):
+      for j in range(3):
+        for k in range(3):
+          boundary = numpy.maximum(boundary,\
+                                   interfacialEnergy(microstructure,microExt[i:microstructure.shape[0]+i,\
+                                                                         j:microstructure.shape[1]+j,\
+                                                                         k:microstructure.shape[2]+k]))
+    index = ndimage.morphology.distance_transform_edt(boundary == 0.,return_distances=False,return_indices=True)
+    boundary = numpy.fft.irfftn(numpy.fft.rfftn(numpy.where(ndimage.morphology.binary_dilation(boundary!=0.,\
+                                                                                             structure=struc,\
+                                                                                             iterations=2*options.d-1),\
+                                                          boundary[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape),\
+                                                          0.))*gauss)                                          
+    index = ndimage.morphology.distance_transform_edt(boundary >= 0.5,return_distances=False,return_indices=True)
+    microstructure = microstructure[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape)
 
  # --- assemble header -----------------------------------------------------------------------------
   newInfo['microstructures'] = microstructure.max()
