@@ -1303,9 +1303,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
        do g = 1,myNgrains
           crystallite_heat(g,i,e) = 0.98_pReal* &
-                               math_mul33xx33(crystallite_P(1:3,1:3,g,i,e), &
-                                              crystallite_partionedF(1:3,1:3,g,i,e)-&
-                                              crystallite_partionedF0(1:3,1:3,g,i,e))
+                               abs(math_mul33xx33(math_Mandel6to33(crystallite_Tstar_v), &
+                                              crystallite_Lp(1:3,1:3,g,i,e)))
       enddo
    enddo
  enddo elementLooping12

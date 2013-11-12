@@ -523,7 +523,6 @@ program DAMASK_spectral_Driver
                                      ' increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
        endif; flush(6)
-       call utilities_temperatureUpdate()
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          write(6,'(1/,a)') ' ... writing results to file ......................................'
          write(resUnit)  materialpoint_results                                                      ! write result to file
