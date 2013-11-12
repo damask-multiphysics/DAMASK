@@ -140,7 +140,7 @@ for file in files:
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = numpy.zeros(info['grid'].prod(),'i')
+  microstructure = numpy.zeros(numpy.prod([2 if i == 1 else i for i in info['grid']]),'i')              # 2D structures do not work
   i = 0
   theTable.data_rewind()
   while theTable.data_read():
@@ -155,12 +155,15 @@ for file in files:
     microstructure[i:i+s] = items
     i += s
 
-#--- do work -------------------------------------------------------------------------------------
-  microstructure = microstructure.reshape(info['grid'],order='F')
+#--- reshape, if 2D make copy ---------------------------------------------------------------------
+  nMicrostuctures = numpy.prod([2 if i == 1 else i for i in info['grid']])
+  if nMicrostuctures > info['grid'].prod():
+    microstructure[info['grid'].prod():nMicrostuctures] = microstructure[0:info['grid'].prod()]
+  microstructure = microstructure.reshape([2 if i == 1 else i for i in info['grid']],order='F')
 
 #--- domain decomposition -------------------------------------------------------------------------  
   numProc = int(options.p[0]*options.p[1]*options.p[2])
-  stride = info['grid']/options.p
+  stride = numpy.array([2 if i == 1 else i for i in info['grid']],'i')/options.p
   if numpy.any(numpy.floor(stride) != stride): 
     file['croak'].write('invalid domain decomposition.\n')
     continue
@@ -196,7 +199,7 @@ for file in files:
     microstructure = microstructure[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape)
 
  # --- assemble header -----------------------------------------------------------------------------
-  newInfo['microstructures'] = microstructure.max()
+  newInfo['microstructures'] = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].max()
 
 #--- report ---------------------------------------------------------------------------------------
   if (newInfo['microstructures'] != info['microstructures']):
@@ -218,7 +221,7 @@ for file in files:
   
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
-  theTable.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  theTable.data = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].reshape(numpy.prod(info['grid']),order='F').transpose()
   theTable.data_writeArray('%%%ii'%(formatwidth))
     
 #--- output finalization --------------------------------------------------------------------------
