@@ -31,7 +31,9 @@ module DAMASK_spectral_SolverBasicPETSc
  use math, only: &
    math_I3
  use DAMASK_spectral_Utilities, only: &
-   tSolutionState
+   tSolutionState, &
+   phaseFieldDataBin, &
+   maxPhaseFields
 
  implicit none
  private
@@ -49,6 +51,8 @@ module DAMASK_spectral_SolverBasicPETSc
    real(pReal) :: timeincOld
    real(pReal) :: temperature
    real(pReal) :: density
+   integer(pInt) :: nActivePhaseFields
+   type(phaseFieldDataBin) :: phaseFieldData(maxPhaseFields)
  end type tSolutionParams
  
  type(tSolutionParams), private :: params
@@ -62,9 +66,10 @@ module DAMASK_spectral_SolverBasicPETSc
 !--------------------------------------------------------------------------------------------------
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable ::  F_lastInc, Fdot, F_lastInc2
- real(pReal), private, dimension(:,:,:), allocatable :: &
-   heatSource_lastInc, &
+ real(pReal), private, dimension(:,:,:,:), allocatable :: &
+   phaseFieldRHS_lastInc, &
    phaseField_lastInc, &
+   phaseFieldRHS, &
    phaseFieldDot 
  complex(pReal), private, dimension(:,:,:,:,:), allocatable :: inertiaField_fourier
 
@@ -82,7 +87,8 @@ module DAMASK_spectral_SolverBasicPETSc
    C_volAvgLastInc = 0.0_pReal, &                                                                   !< previous volume average stiffness
    C_minMaxAvg = 0.0_pReal, &                                                                       !< current (min+max)/2 stiffness
    S = 0.0_pReal                                                                                    !< current compliance (filled up with zeros)
- real(pReal), private :: err_stress, err_div, err_divPrev, err_divDummy, err_phaseField, phaseField_Avg
+ real(pReal), private :: err_stress, err_div, err_divPrev, err_divDummy
+ real(pReal), private, dimension(:), allocatable :: err_phaseField, phaseField_Avg
  logical, private :: ForwardData
  integer(pInt), private :: &
    totalIter = 0_pInt                                                                               !< total iteration in current increment
@@ -115,7 +121,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields and fills them with data, potentially from restart info
 !--------------------------------------------------------------------------------------------------
-subroutine basicPETSc_init(temperature)
+subroutine basicPETSc_init(temperature,nActivePhaseFields,phaseFieldData)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran >4.6 at the moment)
  use IO, only: &
    IO_intOut, &
@@ -144,14 +150,14 @@ subroutine basicPETSc_init(temperature)
    math_invSym3333
    
  implicit none
- real(pReal), intent(inout) :: &
-   temperature
+ integer(pInt), intent(in) :: nActivePhaseFields
+ type(phaseFieldDataBin), intent(in) :: phaseFieldData(nActivePhaseFields)
+ real(pReal), intent(inOut) :: temperature
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
 #include <finclude/petscvec.h>
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  xx_psc, F
- PetscScalar,  dimension(:,:,:),   pointer     ::  phaseField
  PetscErrorCode :: ierr
  PetscObject    :: dummy
  real(pReal), dimension(3,3) :: &
@@ -159,23 +165,27 @@ subroutine basicPETSc_init(temperature)
  real(pReal), dimension(3,3,3,3) :: &
    temp3333_Real = 0.0_pReal
  KSP :: ksp
+ integer(pInt) :: i
 
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
  write(6,'(a)') ' $Id$'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-
- allocate (P        (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ 
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
+ allocate (P         (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (F_lastInc (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (F_lastInc2(3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (Fdot      (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
  allocate (inertiaField_fourier (grid1Red,grid(2),grid(3),3,3),source = cmplx(0.0_pReal,0.0_pReal,pReal))
- allocate (heatSource_lastInc (grid(1),grid(2),grid(3)),source = 0.0_pReal)
- allocate (phaseField_lastInc(grid(1),grid(2),grid(3)),source = 0.0_pReal)
- allocate (phaseFieldDot     (grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (phaseFieldRHS_lastInc (nActivePhaseFields,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (phaseField_lastInc    (nActivePhaseFields,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (phaseFieldDot         (nActivePhaseFields,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (phaseFieldRHS         (nActivePhaseFields,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (err_phaseField(nActivePhaseFields), source = 0.0_pReal) 
+ allocate (phaseField_Avg(nActivePhaseFields), source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! initialize solver specific parts of PETSc
@@ -183,31 +193,29 @@ subroutine basicPETSc_init(temperature)
  call DMDACreate3d(PETSC_COMM_WORLD, &
         DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
         DMDA_STENCIL_BOX,grid(1),grid(2),grid(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
-        10,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
+        9+nActivePhaseFields,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
    CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
- !call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr); CHKERRQ(ierr)     ! needed for newer versions of petsc
- call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr); CHKERRQ(ierr)     ! needed for newer versions of petsc
+ !call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
- call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
-   CHKERRQ(ierr)
+ call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr); CHKERRQ(ierr)
  call SNESGetKSP(snes,ksp,ierr); CHKERRQ(ierr)
- call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr)
-   CHKERRQ(ierr)
+ call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr); CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
- call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
+ call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                                 ! get the data out of PETSc to work with
  F => xx_psc(0:8,:,:,:)
- phaseField => xx_psc(9,:,:,:)
- 
- if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
+ if (restartInc == 1_pInt) then                                                                      ! no deformation (no restart)
    F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                         ! initialize to identity
-   F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
+   xx_psc(0:8,:,:,:) = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_lastInc2 = F_lastInc
-   phaseField = temperature
-   phaseField_lastInc = temperature
+   do i = 1, nActivePhaseFields
+     xx_psc(8+i,:,:,:)           = phaseFieldData(i)%phaseField0
+     phaseField_lastInc(i,:,:,:) = phaseFieldData(i)%phaseField0
+   enddo
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
@@ -257,7 +265,8 @@ end subroutine basicPETSc_init
 !> @brief solution for the Basic PETSC scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function basicPETSc_solution( &
-             incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC,density)
+             incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC,density, &
+             nActivePhaseFields,phaseFieldData)
  use numerics, only: &
    update_gamma, &
    itmax
@@ -290,6 +299,8 @@ type(tSolutionState) function basicPETSc_solution( &
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
+ integer(pInt), intent(in) :: nActivePhaseFields
+ type(phaseFieldDataBin), intent(in) :: phaseFieldData(nActivePhaseFields)
  real(pReal), intent(in) :: &
    timeinc, &                                                                                       !< increment in time for current solution
    timeinc_old, &                                                                                   !< increment in time of last increment
@@ -304,17 +315,17 @@ type(tSolutionState) function basicPETSc_solution( &
  character(len=*), intent(in) :: &
    incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+ integer(pInt) :: i
  
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
- PetscScalar, pointer :: xx_psc(:,:,:,:), F(:,:,:,:), phaseField(:,:,:)
+ PetscScalar, pointer :: xx_psc(:,:,:,:), F(:,:,:,:)
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
  incInfo = incInfoIn
 
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
  F => xx_psc(0:8,:,:,:)
- phaseField => xx_psc(9,:,:,:)
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
  if (restartWrite) then
@@ -343,9 +354,11 @@ type(tSolutionState) function basicPETSc_solution( &
                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
  if (cutBack) then 
    F_aim = F_aim_lastInc
-   F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)]) 
+   xx_psc(0:8,:,:,:) = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)]) 
    C_volAvg = C_volAvgLastInc
-   phaseField = phaseField_lastInc
+   do i = 1, nActivePhaseFields
+     xx_psc(8+i,:,:,:) = phaseField_lastInc(i,:,:,:)
+   enddo
  else
    C_volAvgLastInc = C_volAvg
 
@@ -368,17 +381,21 @@ type(tSolutionState) function basicPETSc_solution( &
                                             F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,params%rotation_BC), &
                                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
-   phaseFieldDot = (phaseField - phaseField_lastInc)/timeinc_old
+   do i = 1, nActivePhaseFields
+     phaseFieldDot(i,:,:,:) = (xx_psc(8+i,:,:,:) - phaseField_lastInc(i,:,:,:))/timeinc_old
+     phaseField_lastInc(i,:,:,:) = xx_psc(8+i,:,:,:)
+     phaseFieldRHS_lastInc(i,:,:,:) = phaseFieldRHS(i,:,:,:)
+   enddo
    F_lastInc2 = F_lastInc
-   F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid(3)])
-   phaseField_lastInc = phaseField
-   heatSource_lastInc = reshape(materialpoint_heat(1,:),[grid(1),grid(2),grid(3)])
+   F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid(3)])  
  endif
  F_aim = F_aim + f_aimDot * timeinc
 
  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot,math_rotate_backward33(F_aim, &
                                                             rotation_BC)),[9,grid(1),grid(2),grid(3)])
- phaseField = phaseField_lastInc + phaseFieldDot*timeinc
+ do i = 1, nActivePhaseFields
+   xx_psc(8+i,:,:,:) = phaseField_lastInc(i,:,:,:) + phaseFieldDot(i,:,:,:)*timeinc
+ enddo
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
   
 !--------------------------------------------------------------------------------------------------
@@ -397,6 +414,8 @@ type(tSolutionState) function basicPETSc_solution( &
  params%timeincOld = timeinc_old
  params%temperature = temperature_BC
  params%density = density
+ params%nActivePhaseFields = nActivePhaseFields
+ params%phaseFieldData(1:nActivePhaseFields) = phaseFieldData(1:nActivePhaseFields)
 
  call SNESSolve(snes,PETSC_NULL_OBJECT,solution_vec,ierr); CHKERRQ(ierr)
  call SNESGetConvergedReason(snes,reason,ierr); CHKERRQ(ierr)
@@ -451,34 +470,32 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  use crystallite, only: &
    crystallite_temperature
  use homogenization, only: &                        
-   materialpoint_heat
+   materialpoint_heat, &
+   materialpoint_P
+ use constitutive, only: &
+   constitutive_damage
 
  implicit none
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
    in
- PetscScalar, target, dimension(10, &
+ PetscScalar, target, dimension(9+params%nActivePhaseFields, &
    XG_RANGE,YG_RANGE,ZG_RANGE) :: &
    x_scal
- PetscScalar, target, dimension(10, &
+ PetscScalar, target, dimension(9+params%nActivePhaseFields, &
    X_RANGE,Y_RANGE,Z_RANGE) :: &
    f_scal
  PetscScalar, pointer, dimension(:,:,:,:) :: &
    F, &
    residual_F
- PetscScalar, pointer, dimension(:,:,:) :: &
-   phaseField, &
-   residual_phaseField
  PetscInt :: &
    PETScIter, &
    nfuncs
  PetscObject :: dummy
  PetscErrorCode :: ierr
- real(pReal) :: mobility, diffusivity
+ integer(pInt) :: i
 
  F                   => x_scal(1:9,1:grid(1),1:grid(2),1:grid(3))
  residual_F          => f_scal(1:9,1:grid(1),1:grid(2),1:grid(3))
- phaseField          => x_scal(10,1:grid(1),1:grid(2),1:grid(3))
- residual_phaseField => f_scal(10,1:grid(1),1:grid(2),1:grid(3))
  
  call SNESGetNumberFunctionEvals(snes,nfuncs,ierr); CHKERRQ(ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
@@ -517,7 +534,15 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
- crystallite_temperature(1,1_pInt:product(grid)) = reshape(phaseField,[product(grid)])
+ do i = 1, params%nActivePhaseFields
+   if(params%phaseFieldData(i)%label == 'thermal') &
+     crystallite_temperature(1,1_pInt:product(grid)) = &
+       reshape(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)),[product(grid)])
+   if(params%phaseFieldData(i)%label == 'fracture') &
+     constitutive_damage(1,1,1:product(grid)) = &
+       reshape(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)),[product(grid)])
+ enddo
+ 
  call Utilities_constitutiveResponse(F_lastInc,F,params%temperature,params%timeinc, &
                                      residual_F,C_volAvg,C_minmaxAvg,P_av,ForwardData,params%rotation_BC)
  ForwardData = .false.
@@ -540,31 +565,77 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  call Utilities_FFTbackward()
  
 !--------------------------------------------------------------------------------------------------
+! constructing phase field residual 
+ do i = 1, params%nActivePhaseFields
+   select case (params%phaseFieldData(i)%label)
+     case ('thermal')
+       phaseField_real = 0.0_pReal
+       phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = &
+          phaseField_lastInc(i,1:grid(1),1:grid(2),1:grid(3))
+       call utilities_scalarFFTforward()
+       call utilities_diffusion(params%phaseFieldData(i)%diffusion,params%timeinc)
+       call utilities_scalarFFTbackward()
+       f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) = &
+           phaseField_real(1:grid(1),1:grid(2),1:grid(3))
+       
+       phaseFieldRHS(i,1:grid(1),1:grid(2),1:grid(3)) = &
+           reshape(materialpoint_heat(1,1_pInt:product(grid)),[grid(1),grid(2),grid(3)])
+       phaseField_real = 0.0_pReal
+       phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = &
+         params%timeinc*params%phaseFieldData(i)%mobility* &
+           (phaseFieldRHS_lastInc(i,1:grid(1),1:grid(2),1:grid(3)) + &
+            phaseFieldRHS        (i,1:grid(1),1:grid(2),1:grid(3)))/2.0_pReal
+       call utilities_scalarFFTforward()
+       call utilities_diffusion(params%phaseFieldData(i)%diffusion,params%timeinc/2.0_pReal)
+       call utilities_scalarFFTbackward()
+       f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) = &
+           x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) - &
+           f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) - &
+           phaseField_real(1:grid(1),1:grid(2),1:grid(3))
+       err_phaseField(i) = maxval(abs(f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)))) 
+       phaseField_Avg(i) = sum(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)))*wgt
+ 
+     case ('fracture')
+       phaseField_real = 0.0_pReal
+       phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = &
+          phaseField_lastInc(i,1:grid(1),1:grid(2),1:grid(3))
+       call utilities_scalarFFTforward()
+       call utilities_diffusion(0.5_pReal*maxval(geomSize/real(grid,pReal))* &
+                                params%phaseFieldData(i)%diffusion,params%timeinc)
+       call utilities_scalarFFTbackward()
+       f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) = &
+           phaseField_real(1:grid(1),1:grid(2),1:grid(3))
+       
+       phaseFieldRHS(i,1:grid(1),1:grid(2),1:grid(3)) = &
+          - params%phaseFieldData(i)%mobility* &
+            sum(residual_F* &
+                (F-reshape(spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3)),[9,grid(1),grid(2),grid(3)])),dim=1) &
+          - params%phaseFieldData(i)%diffusion*(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) - 1.0_pReal)/ &
+            2.0_pReal/maxval(geomSize/real(grid,pReal))
+       phaseField_real = 0.0_pReal
+       phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = &
+         params%timeinc*params%phaseFieldData(i)%mobility* &
+           (phaseFieldRHS_lastInc(i,1:grid(1),1:grid(2),1:grid(3)) + &
+            phaseFieldRHS        (i,1:grid(1),1:grid(2),1:grid(3)))/2.0_pReal
+       call utilities_scalarFFTforward()
+       call utilities_diffusion(2.0_pReal*maxval(geomSize/real(grid,pReal))* &
+                                params%phaseFieldData(i)%diffusion,params%timeinc/2.0_pReal)
+       call utilities_scalarFFTbackward()
+       f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) = &
+           x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) - &
+           f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) - &
+           phaseField_real(1:grid(1),1:grid(2),1:grid(3))
+       err_phaseField(i) = maxval(abs(f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)))) 
+       phaseField_Avg(i) = sum(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)))*wgt
+     
+   end select  
+ enddo  
+ 
+!--------------------------------------------------------------------------------------------------
 ! constructing residual
  residual_F = reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),&
                                       [9,grid(1),grid(2),grid(3)],order=[2,3,4,1])
- 
-!--------------------------------------------------------------------------------------------------
-! constructing phase field residual
- diffusivity = 400.0; mobility = 4e6 !sample coefficients for copper... need to clear this up with better mode of input
- phaseField_real = 0.0_pReal
- phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = phaseField_lastInc
- call utilities_scalarFFTforward()
- call utilities_diffusion(diffusivity/mobility,params%timeinc)
- call utilities_scalarFFTbackward()
- residual_phaseField = phaseField_real(1:grid(1),1:grid(2),1:grid(3))
- phaseField_real = 0.0_pReal
- phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = &
-   (heatSource_lastInc + reshape(materialpoint_heat(1,1_pInt:product(grid)),[grid(1),grid(2),grid(3)]))* &
-   params%timeinc/mobility/2.0_pReal
- call utilities_scalarFFTforward()
- call utilities_diffusion(diffusivity/mobility,params%timeinc/2.0_pReal)
- call utilities_scalarFFTbackward()
- residual_phaseField = phaseField - &
-   (residual_phaseField + phaseField_real(1:grid(1),1:grid(2),1:grid(3)))
- 
- err_phaseField = maxval(abs(residual_phaseField)); phaseField_Avg = sum(phaseField)*wgt
-
+                                      
 end subroutine BasicPETSc_formResidual
 
 
@@ -601,9 +672,8 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
  err_divPrev = err_div; err_div = err_divDummy
  
  converged: if ((totalIter >= itmin .and. &
-                           all([ err_div/divTol, &
-                                 err_stress/stressTol, &
-                                 err_phaseField/phaseField_Avg/1.0e-3       ] < 1.0_pReal)) &
+                 all([ err_div/divTol, err_stress/stressTol] < 1.0_pReal) .and. &
+                 maxval(err_phaseField/phaseField_Avg) < 1.0e-3_pReal) &
              .or.    terminallyIll) then  
    reason = 1
  elseif (totalIter >= itmax) then converged
@@ -620,7 +690,7 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')   ' error stress BC =  ', &
             err_stress/stressTol, ' (',err_stress, ' Pa,  tol =',stressTol,')' 
  write(6,'(a,f10.2,a,es8.2,a,es9.2,a)')   ' error phase field =  ', &
-            err_phaseField/phaseField_Avg/1.0e-3, ' (',err_phaseField/phaseField_Avg, ' Pa,  tol =',1.0e-3,')' 
+            maxval(err_phaseField/phaseField_Avg)/1.0e-3, ' (',maxval(err_phaseField/phaseField_Avg), ' Pa,  tol =',1.0e-3,')' 
  write(6,'(/,a)') ' ==========================================================================='
  flush(6) 
  

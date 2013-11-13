@@ -36,6 +36,7 @@ module DAMASK_spectral_utilities
 #include <finclude/petscsys.h>
 #endif
  logical,       public                                         :: cutBack =.false.                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
+ integer(pInt), public, parameter  :: maxPhaseFields = 2_pInt
 !--------------------------------------------------------------------------------------------------
 ! grid related information information
  integer(pInt), public,  dimension(3) :: grid                                                       !< grid points as specified in geometry file
@@ -99,6 +100,14 @@ module DAMASK_spectral_utilities
    logical,     dimension(3,3) :: maskLogical = .false.
    character(len=64)           :: myType      = 'None'
  end type tBoundaryCondition
+
+ type, public :: phaseFieldDataBin                                                                     !< set of parameters defining a phase field
+   real(pReal)       :: diffusion      = 0.0_pReal, &                            !< thermal conductivity
+                        mobility       = 0.0_pReal, &                            !< thermal mobility
+                        phaseField0    = 0.0_pReal                               !< homogeneous damage field starting condition 
+   logical           :: active         = .false.
+   character(len=64) :: label      = ''
+ end type phaseFieldDataBin
  
  public :: &
    utilities_init, &
@@ -116,8 +125,7 @@ module DAMASK_spectral_utilities
    utilities_constitutiveResponse, &
    utilities_calculateRate, &
    utilities_forwardField, &
-   utilities_destroy, &
-   utilities_temperatureUpdate
+   utilities_destroy
  private :: &
    utilities_getFilter
 
@@ -612,9 +620,6 @@ subroutine utilities_diffusion(coefficient,timeinc)
  real(pReal),intent(in) :: timeinc, coefficient
  integer(pInt) :: i, j, k
  integer(pInt), dimension(3) :: k_s
-
- write(6,'(/,a)') ' ... doing diffusion .......................................................'
- flush(6)
  
 !--------------------------------------------------------------------------------------------------
 ! do the actual spectral method calculation (mechanical equilibrium)
@@ -1114,66 +1119,6 @@ real(pReal) function utilities_getFilter(k)
   end select 
 
 end function utilities_getFilter
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates filter for fourier convolution depending on type given in numerics.config
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_temperatureUpdate(timeinc)
- use crystallite, only: &
-   crystallite_temperature
- use homogenization, only: &                        
-   materialpoint_heat
-  
- implicit none
- real(pReal),intent(in) :: timeinc
- integer :: &
-   x,y,z,e
- real(pReal) :: & 
-  a
- forall(e=1_pInt:product(grid)) &
-   crystallite_temperature(1,e) = crystallite_temperature(1,e) + materialpoint_heat(1,e)*timeinc
- e = 0_pInt
- z = 0_pInt
- y = 0_pInt
- x = 0_pInt
-
-!< 6 or less neighboring IPs as [element_num, IP_index, neighbor_index that points to me]
- do z = 0_pInt,grid(3)-1_pInt
-   do y = 0_pInt,grid(2)-1_pInt
-     do x = 0_pInt,grid(1)-1_pInt
-       e = e + 1_pInt
-         a = 0.0_pReal
-         a = a+ crystallite_temperature(1, z * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + modulo(x+1_pInt,grid(1)) &
-                                      + 1_pInt)
-         a = a+ crystallite_temperature(1,z * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + modulo(x-1_pInt,grid(1)) &
-                                      + 1_pInt)
-         a = a+ crystallite_temperature(1,z * grid(1) * grid(2) &
-                                      + modulo(y+1_pInt,grid(2)) * grid(1) &
-                                      + x &
-                                      + 1_pInt)
-         a = a+ crystallite_temperature(1,z * grid(1) * grid(2) &
-                                      + modulo(y-1_pInt,grid(2)) * grid(1) &
-                                      + x &
-                                      + 1_pInt)
-         a = a+ crystallite_temperature(1, modulo(z+1_pInt,grid(3)) * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + x &
-                                      + 1_pInt)
-         a = a+ crystallite_temperature(1,modulo(z-1_pInt,grid(3)) * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + x &
-                                      + 1_pInt)
-         crystallite_temperature(1,e) = (crystallite_temperature(1,e)+a)/7.0_pReal
-     enddo
-   enddo
- enddo
-
-end subroutine utilities_temperatureUpdate
 
 
 !--------------------------------------------------------------------------------------------------
