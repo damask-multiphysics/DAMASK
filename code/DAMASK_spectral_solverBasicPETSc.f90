@@ -472,8 +472,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
  use homogenization, only: &                        
    materialpoint_heat, &
    materialpoint_P
- use constitutive, only: &
-   crystallite_damage
 
  implicit none
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
@@ -548,8 +546,6 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    if(params%phaseFieldData(i)%label == 'fracture') &
      residual_F = residual_F * spread(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)),dim=1,ncopies=9)
  enddo
- write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' stress (MPa) =', &
-                                 math_transpose33(sum(sum(sum(residual_F,dim=4),dim=3),dim=2)*wgt/1e6)
   
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
