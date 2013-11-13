@@ -473,7 +473,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    materialpoint_heat, &
    materialpoint_P
  use constitutive, only: &
-   constitutive_damage
+   crystallite_damage
 
  implicit none
  DMDALocalInfo, dimension(DMDA_LOCAL_INFO_SIZE) :: &
@@ -538,14 +538,18 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
    if(params%phaseFieldData(i)%label == 'thermal') &
      crystallite_temperature(1,1_pInt:product(grid)) = &
        reshape(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)),[product(grid)])
-   if(params%phaseFieldData(i)%label == 'fracture') &
-     constitutive_damage(1,1,1:product(grid)) = &
-       reshape(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)),[product(grid)])
  enddo
  
  call Utilities_constitutiveResponse(F_lastInc,F,params%temperature,params%timeinc, &
                                      residual_F,C_volAvg,C_minmaxAvg,P_av,ForwardData,params%rotation_BC)
  ForwardData = .false.
+ 
+ do i = 1, params%nActivePhaseFields
+   if(params%phaseFieldData(i)%label == 'fracture') &
+     residual_F = residual_F * spread(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)),dim=1,ncopies=9)
+ enddo
+ write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' stress (MPa) =', &
+                                 math_transpose33(sum(sum(sum(residual_F,dim=4),dim=3),dim=2)*wgt/1e6)
   
 !--------------------------------------------------------------------------------------------------
 ! stress BC handling
@@ -596,11 +600,12 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
        phaseField_Avg(i) = sum(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)))*wgt
  
      case ('fracture')
+       
        phaseField_real = 0.0_pReal
        phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = &
           phaseField_lastInc(i,1:grid(1),1:grid(2),1:grid(3))
        call utilities_scalarFFTforward()
-       call utilities_diffusion(0.5_pReal*maxval(geomSize/real(grid,pReal))* &
+       call utilities_diffusion(2.0_pReal*maxval(geomSize/real(grid,pReal))* &
                                 params%phaseFieldData(i)%diffusion,params%timeinc)
        call utilities_scalarFFTbackward()
        f_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) = &
@@ -611,7 +616,7 @@ subroutine BasicPETSC_formResidual(in,x_scal,f_scal,dummy,ierr)
             sum(residual_F* &
                 (F-reshape(spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3)),[9,grid(1),grid(2),grid(3)])),dim=1) &
           - params%phaseFieldData(i)%diffusion*(x_scal(9+i,1:grid(1),1:grid(2),1:grid(3)) - 1.0_pReal)/ &
-            2.0_pReal/maxval(geomSize/real(grid,pReal))
+            8.0_pReal/maxval(geomSize/real(grid,pReal))
        phaseField_real = 0.0_pReal
        phaseField_real(1:grid(1),1:grid(2),1:grid(3)) = &
          params%timeinc*params%phaseFieldData(i)%mobility* &
