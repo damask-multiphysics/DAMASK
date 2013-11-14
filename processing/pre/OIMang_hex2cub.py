@@ -48,12 +48,12 @@ addPoints = -1                                                                  
 #--- setup file handles ---------------------------------------------------------------------------   
 files = []
 if filenames == []:
-  if filenames == []:
   files.append({'name':'STDIN',
                 'input':sys.stdin,
                 'output':sys.stdout,
                 'croak':sys.stderr,
                })
+ 
 else:
   for name in filenames:
     if os.path.exists(name):

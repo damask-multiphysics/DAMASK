@@ -106,8 +106,9 @@ for file in files:
     words = line.split()
     if words[0] == '#':                                                                             # process initial comments block
       if len(words) > 2:
-        if words[1] == 'HexGrid': 
-          file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n'); break
+        if words[2].lower() == 'hexgrid': 
+          file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n')
+          sys.exit()
         if words[1] == 'XSTEP:':     step[0] = float(words[2])
         if words[1] == 'YSTEP:':     step[1] = float(words[2])
         if words[1] == 'NCOLS_ODD:':
@@ -115,19 +116,16 @@ for file in files:
         if words[1] == 'NROWS:':         
           info['grid'][1] = int(words[2]); formatwidth = 1+int(math.log10(info['grid'][0]*info['grid'][1]))
     else:                                                                                           # finished with comments block
-      if options.config:                                                                            # write configuration (line by line)
-        point += 1
-        me = str(point).zfill(formatwidth)
-        microstructure += ['[Grain%s]\n'%me + \
-                           'crystallite\t%i\n'%options.crystallite + \
-                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]],me)
-                          ]
-        texture +=        ['[Grain%s]\n'%me + \
-                           'axes %s %s %s\n'%(options.axes[0],options.axes[1],options.axes[2]) +\
-                           '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
-                          ]
-      else:                                                                                         # only info from header needed
-        break
+      point += 1
+      me = str(point).zfill(formatwidth)
+      microstructure += ['[Grain%s]\n'%me + \
+                         'crystallite\t%i\n'%options.crystallite + \
+                         '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]],me)
+                        ]
+      texture +=        ['[Grain%s]\n'%me + \
+                         'axes %s %s %s\n'%(options.axes[0],options.axes[1],options.axes[2]) +\
+                         '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(map(lambda x: float(x)*180.0/math.pi, words[:3]))
+                        ]
 
   info['microstructures'] = info['grid'][0]*info['grid'][1]
   info['size'] = step[0]*info['grid'][0],step[1]*info['grid'][1],min(step)
@@ -144,6 +142,9 @@ for file in files:
     sys.exit()
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
+    sys.exit()
+  if info['grid'].prod() != len(microstructure) -1:
+    file['croak'].write('found %s microstructures. Header info in ang file might be wrong.\n'%point)
     sys.exit()
 
 #--- write data -----------------------------------------------------------------------------------
