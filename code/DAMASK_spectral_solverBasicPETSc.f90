@@ -196,8 +196,8 @@ subroutine basicPETSc_init(temperature,nActivePhaseFields,phaseFieldData)
         9+nActivePhaseFields,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
    CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr); CHKERRQ(ierr)     ! needed for newer versions of petsc
- !call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
+ !call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr); CHKERRQ(ierr)     ! needed for newer versions of petsc
+ call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr); CHKERRQ(ierr)
  call SNESGetKSP(snes,ksp,ierr); CHKERRQ(ierr)
@@ -666,15 +666,17 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
  PetscErrorCode :: ierr
  real(pReal) :: &
    divTol, &
-   stressTol 
+   stressTol, &
+   phaseField_err = 0.0_pReal 
  
  divTol    = max(maxval(abs(P_av))*err_div_tolRel,err_div_tolAbs)
  stressTol = max(maxval(abs(P_av))*err_stress_tolrel,err_stress_tolabs)
  err_divPrev = err_div; err_div = err_divDummy
  
+ if (params%nActivePhaseFields .ne. 0_pInt) phaseField_err = maxval(err_phaseField/phaseField_Avg)
  converged: if ((totalIter >= itmin .and. &
                  all([ err_div/divTol, err_stress/stressTol] < 1.0_pReal) .and. &
-                 maxval(err_phaseField/phaseField_Avg) < 1.0e-3_pReal) &
+                 phaseField_err < 1.0e-3_pReal) &
              .or.    terminallyIll) then  
    reason = 1
  elseif (totalIter >= itmax) then converged
