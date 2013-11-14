@@ -692,8 +692,10 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
             err_div/divTol,  ' (',err_div,' / m, tol =',divTol,')'
  write(6,'(a,f12.2,a,es8.2,a,es9.2,a)')   ' error stress BC =  ', &
             err_stress/stressTol, ' (',err_stress, ' Pa,  tol =',stressTol,')' 
- write(6,'(a,f10.2,a,es8.2,a,es9.2,a)')   ' error phase field =  ', &
-            maxval(err_phaseField/phaseField_Avg)/1.0e-3, ' (',maxval(err_phaseField/phaseField_Avg), ' Pa,  tol =',1.0e-3,')' 
+ if (params%nActivePhaseFields .ne. 0_pInt) then
+   write(6,'(a,f10.2,a,es8.2,a,es9.2,a)')   ' error phase field =  ', &
+              phaseField_err/1.0e-3, ' (',phaseField_err, ' Pa,  tol =',1.0e-3,')' 
+ endif 
  write(6,'(/,a)') ' ==========================================================================='
  flush(6) 
  
