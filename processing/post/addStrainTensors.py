@@ -147,7 +147,7 @@ for file in files:
         stretch['V'] = numpy.dot(F,numpy.linalg.inv(R))
         for theStretch in stretches:
           for i in range(9):
-            if abs(stretch[theStretch][i%3,i//3]) < 1e-15:    # kill nasty noisy data
+            if abs(stretch[theStretch][i%3,i//3]) < 1e-12:    # kill nasty noisy data
               stretch[theStretch][i%3,i//3] = 0.0
           (D,V) = numpy.linalg.eig(stretch[theStretch])       # eigen decomposition (of symmetric matrix)
           for i,eigval in enumerate(D):
