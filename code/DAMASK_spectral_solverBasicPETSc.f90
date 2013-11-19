@@ -199,9 +199,11 @@ subroutine basicPETSc_init(temperature,nActivePhaseFields,phaseFieldData)
  !call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr); CHKERRQ(ierr)     ! needed for newer versions of petsc
  call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
- call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr); CHKERRQ(ierr)
+ call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
+ CHKERRQ(ierr)
  call SNESGetKSP(snes,ksp,ierr); CHKERRQ(ierr)
- call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr); CHKERRQ(ierr)
+ call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr)
+ CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
