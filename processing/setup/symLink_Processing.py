@@ -17,6 +17,7 @@ bin_link = { \
                 'OIMang_hex2cub.py',
                 'patchFromReconstructedBoundaries.py',
                 'randomSeeding.py',
+                'seed_check.py',
                 'geom_fromAng.py',
                 'geom_fromVPSC.py',
                 'geom_fromEuclideanDistance.py',
