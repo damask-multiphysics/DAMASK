@@ -1148,13 +1148,13 @@ do matID = 1_pInt,maxNinstance
               do j = 1_pInt,2_pInt
                 noise(j) = math_sampleGaussVar(0.0_pReal, rhoSglScatter(matID))
               enddo
-              state(1,i,e)%p(iRhoU(s,1,matID)) = rhoSglEdgePos0(f, matID) + noise(1)
-              state(1,i,e)%p(iRhoU(s,2,matID)) = rhoSglEdgeNeg0(f, matID) + noise(1)
-              state(1,i,e)%p(iRhoU(s,3,matID)) = rhoSglScrewPos0(f, matID) + noise(2)
-              state(1,i,e)%p(iRhoU(s,4,matID)) = rhoSglScrewNeg0(f, matID) + noise(2)
+              state(1,i,e)%p(iRhoU(s,1,matID)) = rhoSglEdgePos0(f,matID) + noise(1)
+              state(1,i,e)%p(iRhoU(s,2,matID)) = rhoSglEdgeNeg0(f,matID) + noise(1)
+              state(1,i,e)%p(iRhoU(s,3,matID)) = rhoSglScrewPos0(f,matID) + noise(2)
+              state(1,i,e)%p(iRhoU(s,4,matID)) = rhoSglScrewNeg0(f,matID) + noise(2)
             enddo 
-            state(1,i,e)%p(iRhoD(from:upto,1,matID)) = rhoDipEdge0(f, matID)
-            state(1,i,e)%p(iRhoD(from:upto,2,matID)) = rhoDipScrew0(f, matID)
+            state(1,i,e)%p(iRhoD(from:upto,1,matID)) = rhoDipEdge0(f,matID)
+            state(1,i,e)%p(iRhoD(from:upto,2,matID)) = rhoDipScrew0(f,matID)
           enddo
         endif
       enddo
@@ -1271,7 +1271,7 @@ use lattice, only: &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::    gr, &                          ! current grain ID
+integer(pInt), intent(in) ::    gr, &                         ! current grain ID
                                 ip, &                         ! current integration point
                                 el                            ! current element
 real(pReal), dimension(3,3), intent(in) :: &
@@ -1285,23 +1285,23 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 !*** output variables
 
 !*** local variables
-integer(pInt)                   neighboring_el, &             ! element number of neighboring material point
-                                neighboring_ip, &             ! integration point of neighboring material point
-                                instance, &                   ! my instance of this plasticity
-                                neighboring_instance, &       ! instance of this plasticity of neighboring material point
-                                latticeStruct, &              ! my lattice structure
-                                neighboring_latticeStruct, &  ! lattice structure of neighboring material point
+integer(pInt)                   neighbor_el, &                ! element number of neighboring material point
+                                neighbor_ip, &                ! integration point of neighboring material point
+                                matID, &                      ! my instance of this plasticity
+                                neighbor_matID, &             ! instance of this plasticity of neighboring material point
+                                structID, &                   ! my lattice structure
+                                neighbor_structID, &          ! lattice structure of neighboring material point
                                 phase, &
-                                neighboring_phase, &
+                                neighbor_phaseID, &
                                 ns, &                         ! total number of active slip systems at my material point
-                                neighboring_ns, &             ! total number of active slip systems at neighboring material point
+                                neighbor_ns, &                ! total number of active slip systems at neighboring material point
                                 c, &                          ! index of dilsocation character (edge, screw)
                                 s, &                          ! slip system index
                                 t, &                          ! index of dilsocation type (e+, e-, s+, s-, used e+, used e-, used s+, used s-)
                                 dir, &
                                 n, &
                                 nRealNeighbors                ! number of really existing neighbors
-integer(pInt), dimension(2) ::  neighbor
+integer(pInt), dimension(2) ::  neighbors
 real(pReal)                     detFe, &
                                 detFp, &
                                 FVsize, &
@@ -1333,32 +1333,32 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(gr,ip,
                        totalNslip(phase_plasticityInstance(material_phase(gr,ip,el)))) :: &
                                 myInteractionMatrix           ! corrected slip interaction matrix
 real(pReal), dimension(2,maxval(totalNslip),mesh_maxNipNeighbors) :: &
-                                neighboring_rhoExcess, &      ! excess density at neighboring material point
-                                neighboring_rhoTotal          ! total density at neighboring material point
+                                neighbor_rhoExcess, &      ! excess density at neighboring material point
+                                neighbor_rhoTotal          ! total density at neighboring material point
 real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(gr,ip,el))),2) :: &
                                 m                             ! direction of dislocation motion
 logical                         inversionError
 
 
 phase = material_phase(gr,ip,el)
-instance = phase_plasticityInstance(phase)
-latticeStruct = constitutive_nonlocal_structure(instance)
-ns = totalNslip(instance)
+matID = phase_plasticityInstance(phase)
+structID = constitutive_nonlocal_structure(matID)
+ns = totalNslip(matID)
 
 
 !*** get basic states
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(state(gr,ip,el)%p(iRhoU(s,t,instance)), 0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) = state(gr,ip,el)%p(iRhoB(s,t,instance))
+  rhoSgl(s,t) = max(state(gr,ip,el)%p(iRhoU(s,t,matID)), 0.0_pReal)                              ! ensure positive single mobile densities
+  rhoSgl(s,t+4_pInt) = state(gr,ip,el)%p(iRhoB(s,t,matID))
 endforall
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-  rhoDip(s,c) = max(state(gr,ip,el)%p(iRhoD(s,c,instance)), 0.0_pReal)                              ! ensure positive dipole densities
-where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance) &
-  .or. abs(rhoSgl) < significantRho(instance)) &
+  rhoDip(s,c) = max(state(gr,ip,el)%p(iRhoD(s,c,matID)), 0.0_pReal)                              ! ensure positive dipole densities
+where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(matID) &
+  .or. abs(rhoSgl) < significantRho(matID)) &
   rhoSgl = 0.0_pReal
-where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance) &
-  .or. abs(rhoDip) < significantRho(instance)) &
+where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(matID) &
+  .or. abs(rhoDip) < significantRho(matID)) &
   rhoDip = 0.0_pReal
 
 
@@ -1367,9 +1367,9 @@ where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance
 
 forall (s = 1_pInt:ns) &
   rhoForest(s) = dot_product((sum(abs(rhoSgl(1:ns,[1,2,5,6])),2) + rhoDip(1:ns,1)), &
-                              forestProjectionEdge(s,1:ns,instance)) & 
+                              forestProjectionEdge(s,1:ns,matID)) & 
                + dot_product((sum(abs(rhoSgl(1:ns,[3,4,7,8])),2) + rhoDip(1:ns,2)), &
-                              forestProjectionScrew(s,1:ns,instance))
+                              forestProjectionScrew(s,1:ns,matID))
 
 
 
@@ -1378,19 +1378,19 @@ forall (s = 1_pInt:ns) &
 !*** (see Kubin,Devincre,Hoc; 2008; Modeling dislocation storage rates and mean free paths in face-centered cubic crystals)
 
 myInteractionMatrix = 0.0_pReal
-myInteractionMatrix(1:ns,1:ns) = interactionMatrixSlipSlip(1:ns,1:ns,instance)
-if (latticeStruct < 3_pInt) then                                                                    ! only fcc and bcc
+myInteractionMatrix(1:ns,1:ns) = interactionMatrixSlipSlip(1:ns,1:ns,matID)
+if (structID < 3_pInt) then                                                                    ! only fcc and bcc
   do s = 1_pInt,ns 
-    myRhoForest = max(rhoForest(s),significantRho(instance))
-    correction = (  1.0_pReal - linetensionEffect(instance) &
-                  + linetensionEffect(instance) &
-                  * log(0.35_pReal * burgers(s,instance) * sqrt(myRhoForest)) &
-                  / log(0.35_pReal * burgers(s,instance) * 1e6_pReal)) ** 2.0_pReal
+    myRhoForest = max(rhoForest(s),significantRho(matID))
+    correction = (  1.0_pReal - linetensionEffect(matID) &
+                  + linetensionEffect(matID) &
+                  * log(0.35_pReal * burgers(s,matID) * sqrt(myRhoForest)) &
+                  / log(0.35_pReal * burgers(s,matID) * 1e6_pReal)) ** 2.0_pReal
     myInteractionMatrix(s,1:ns) = correction * myInteractionMatrix(s,1:ns) 
   enddo
 endif
 forall (s = 1_pInt:ns) &
-  tauThreshold(s) = mu(instance) * burgers(s,instance) &
+  tauThreshold(s) = mu(matID) * burgers(s,matID) &
                   * sqrt(dot_product((sum(abs(rhoSgl),2) + sum(abs(rhoDip),2)), myInteractionMatrix(s,1:ns)))
 
 
@@ -1400,7 +1400,7 @@ forall (s = 1_pInt:ns) &
 
 tauBack = 0.0_pReal
 
-if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance)) then
+if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(matID)) then
   call math_invert33(Fe, invFe, detFe, inversionError)
   call math_invert33(Fp, invFp, detFp, inversionError)
   rhoExcess(1,1:ns) = rhoSgl(1:ns,1) - rhoSgl(1:ns,2)
@@ -1410,36 +1410,36 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
   !* loop through my neighborhood and get the connection vectors (in lattice frame) and the excess densities
   
   nRealNeighbors = 0_pInt
-  neighboring_rhoTotal = 0.0_pReal
+  neighbor_rhoTotal = 0.0_pReal
   do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))
-    neighboring_el = mesh_ipNeighborhood(1,n,ip,el)
-    neighboring_ip = mesh_ipNeighborhood(2,n,ip,el)
-    if (neighboring_el > 0 .and. neighboring_ip > 0) then
-      neighboring_phase = material_phase(gr,neighboring_ip,neighboring_el)
-      neighboring_instance = phase_plasticityInstance(neighboring_phase)
-      neighboring_latticeStruct = constitutive_nonlocal_structure(neighboring_instance)
-      neighboring_ns = totalNslip(neighboring_instance)
-      if (.not. phase_localPlasticity(neighboring_phase) &
-          .and. neighboring_latticeStruct == latticeStruct & 
-          .and. neighboring_instance == instance) then
-        if (neighboring_ns == ns) then
+    neighbor_el = mesh_ipNeighborhood(1,n,ip,el)
+    neighbor_ip = mesh_ipNeighborhood(2,n,ip,el)
+    if (neighbor_el > 0 .and. neighbor_ip > 0) then
+      neighbor_phaseID = material_phase(gr,neighbor_ip,neighbor_el)
+      neighbor_matID = phase_plasticityInstance(neighbor_phaseID)
+      neighbor_structID = constitutive_nonlocal_structure(neighbor_matID)
+      neighbor_ns = totalNslip(neighbor_matID)
+      if (.not. phase_localPlasticity(neighbor_phaseID) &
+          .and. neighbor_structID == structID & 
+          .and. neighbor_matID == matID) then
+        if (neighbor_ns == ns) then
           nRealNeighbors = nRealNeighbors + 1_pInt
           forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-            neighboring_rhoExcess(c,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,2*c-1,neighboring_instance)), 0.0_pReal) &! positive mobiles
-              - max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,2*c,neighboring_instance)), 0.0_pReal)    ! negative mobiles
-            neighboring_rhoTotal(c,s,n) = &
-                max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,2*c-1,neighboring_instance)), 0.0_pReal) &! positive mobiles
-              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoU(s,2*c,neighboring_instance)), 0.0_pReal) &  ! negative mobiles
-              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoB(s,2*c-1,neighboring_instance))) &           ! positive deads
-              + abs(state(gr,neighboring_ip,neighboring_el)%p(iRhoB(s,2*c,neighboring_instance))) &             ! negative deads
-              + max(state(gr,neighboring_ip,neighboring_el)%p(iRhoD(s,c,neighboring_instance)), 0.0_pReal)      ! dipoles
+            neighbor_rhoExcess(c,s,n) = &
+                max(state(gr,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c-1,neighbor_matID)), 0.0_pReal) &! positive mobiles
+              - max(state(gr,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c,neighbor_matID)), 0.0_pReal)    ! negative mobiles
+            neighbor_rhoTotal(c,s,n) = &
+                max(state(gr,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c-1,neighbor_matID)), 0.0_pReal) &! positive mobiles
+              + max(state(gr,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c,neighbor_matID)), 0.0_pReal) &  ! negative mobiles
+              + abs(state(gr,neighbor_ip,neighbor_el)%p(iRhoB(s,2*c-1,neighbor_matID))) &           ! positive deads
+              + abs(state(gr,neighbor_ip,neighbor_el)%p(iRhoB(s,2*c,neighbor_matID))) &             ! negative deads
+              + max(state(gr,neighbor_ip,neighbor_el)%p(iRhoD(s,c,neighbor_matID)), 0.0_pReal)      ! dipoles
           endforall
           connection_latticeConf(1:3,n) = &
-            math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighboring_ip,neighboring_el) &
+            math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
                                 - mesh_ipCoordinates(1:3,ip,el))
           normal_latticeConf = math_mul33x3(math_transpose33(invFp), mesh_ipAreaNormal(1:3,n,ip,el))
-          if (math_mul3x3(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) then       ! neighbor connection points in opposite direction to face normal: must be periodic image
+          if (math_mul3x3(normal_latticeConf,connection_latticeConf(1:3,n)) < 0.0_pReal) then       ! neighboring connection points in opposite direction to face normal: must be periodic image
             connection_latticeConf(1:3,n) = normal_latticeConf * mesh_ipVolume(ip,el) &
                                                                / mesh_ipArea(n,ip,el)               ! instead take the surface normal scaled with the diameter of the cell
           endif
@@ -1450,12 +1450,12 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
       else
         ! local neighbor or different lattice structure or different constitution instance -> use central values instead
         connection_latticeConf(1:3,n) = 0.0_pReal
-        neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
+        neighbor_rhoExcess(1:2,1:ns,n) = rhoExcess
       endif
     else
       ! free surface -> use central values instead
       connection_latticeConf(1:3,n) = 0.0_pReal
-      neighboring_rhoExcess(1:2,1:ns,n) = rhoExcess
+      neighbor_rhoExcess(1:2,1:ns,n) = rhoExcess
     endif
   enddo
   
@@ -1464,8 +1464,8 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
   !* 1. interpolation of the excess density in the neighorhood
   !* 2. interpolation of the dead dislocation density in the central volume
   
-  m(1:3,1:ns,1) =  lattice_sd(1:3,slipSystemLattice(1:ns,instance),latticeStruct)
-  m(1:3,1:ns,2) = -lattice_st(1:3,slipSystemLattice(1:ns,instance),latticeStruct)
+  m(1:3,1:ns,1) =  lattice_sd(1:3,slipSystemLattice(1:ns,matID),structID)
+  m(1:3,1:ns,2) = -lattice_st(1:3,slipSystemLattice(1:ns,matID),structID)
 
   do s = 1_pInt,ns
     
@@ -1473,12 +1473,12 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
 
     do c = 1_pInt,2_pInt
       do dir = 1_pInt,3_pInt
-        neighbor(1) = 2_pInt * dir - 1_pInt
-        neighbor(2) = 2_pInt * dir
-        connections(dir,1:3) = connection_latticeConf(1:3,neighbor(1)) &
-                             - connection_latticeConf(1:3,neighbor(2))
-        rhoExcessDifferences(dir) = neighboring_rhoExcess(c,s,neighbor(1)) &
-                                  - neighboring_rhoExcess(c,s,neighbor(2))
+        neighbors(1) = 2_pInt * dir - 1_pInt
+        neighbors(2) = 2_pInt * dir
+        connections(dir,1:3) = connection_latticeConf(1:3,neighbors(1)) &
+                             - connection_latticeConf(1:3,neighbors(2))
+        rhoExcessDifferences(dir) = neighbor_rhoExcess(c,s,neighbors(1)) &
+                                  - neighbor_rhoExcess(c,s,neighbors(2))
       enddo
       call math_invert33(connections,invConnections,temp,inversionError)
       if (inversionError) then
@@ -1499,15 +1499,15 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
     
     rhoExcessGradient_over_rho = 0.0_pReal
     forall (c = 1_pInt:2_pInt) &
-      rhoTotal(c) = (sum(abs(rhoSgl(s,[2*c-1,2*c,2*c+3,2*c+4]))) + rhoDip(s,c) + sum(neighboring_rhoTotal(c,s,:))) &
+      rhoTotal(c) = (sum(abs(rhoSgl(s,[2*c-1,2*c,2*c+3,2*c+4]))) + rhoDip(s,c) + sum(neighbor_rhoTotal(c,s,:))) &
                   / real(1_pInt + nRealNeighbors,pReal)
     forall (c = 1_pInt:2_pInt, rhoTotal(c) > 0.0_pReal) &
       rhoExcessGradient_over_rho(c) = rhoExcessGradient(c) / rhoTotal(c)
     
     !* gives the local stress correction when multiplied with a factor
 
-    tauBack(s) = - mu(instance) * burgers(s,instance) / (2.0_pReal * pi) &
-               * (rhoExcessGradient_over_rho(1) / (1.0_pReal - nu(instance)) + rhoExcessGradient_over_rho(2))
+    tauBack(s) = - mu(matID) * burgers(s,matID) / (2.0_pReal * pi) &
+               * (rhoExcessGradient_over_rho(1) / (1.0_pReal - nu(matID)) + rhoExcessGradient_over_rho(2))
 
   enddo
 endif
@@ -1515,9 +1515,9 @@ endif
 
 !*** set dependent states
 
-state(gr,ip,el)%p(iRhoF(1:ns,instance)) = rhoForest
-state(gr,ip,el)%p(iTauF(1:ns,instance)) = tauThreshold
-state(gr,ip,el)%p(iTauB(1:ns,instance)) = tauBack
+state(gr,ip,el)%p(iRhoF(1:ns,matID)) = rhoForest
+state(gr,ip,el)%p(iTauF(1:ns,matID)) = tauThreshold
+state(gr,ip,el)%p(iTauB(1:ns,matID)) = tauBack
 
 
 #ifndef _OPENMP
@@ -1557,7 +1557,7 @@ use material, only: material_phase, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                ipc, &                        !< current grain number
+integer(pInt), intent(in) ::                ipc, &                      !< current grain number
                                             ip, &                       !< current integration point
                                             el, &                       !< current element number
                                             c                           !< dislocation character (1:edge, 2:screw)
@@ -1574,7 +1574,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(ipc,ip
                                             dv_dtauNS                   !< velocity derivative with respect to resolved shear stress (including non Schmid contributions)
 
 !*** local variables
-integer(pInt)    ::                         instance, &                 !< current instance of this plasticity
+integer(pInt)    ::                         matID, &                    !< current instance of this plasticity
                                             ns, &                       !< short notation for the total number of active slip systems
                                             s                           !< index of my current slip system
 real(pReal)                                 tauRel_P, & 
@@ -1600,8 +1600,8 @@ real(pReal)                                 tauRel_P, &
                                             mobility                    !< dislocation mobility
 
 
-instance = phase_plasticityInstance(material_phase(ipc,ip,el))
-ns = totalNslip(instance)
+matID = phase_plasticityInstance(material_phase(ipc,ip,el))
+ns = totalNslip(matID)
 
 v = 0.0_pReal
 dv_dtau = 0.0_pReal
@@ -1617,20 +1617,20 @@ if (Temperature > 0.0_pReal) then
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
       
       tauEff = max(0.0_pReal, abs(tauNS(s)) - tauThreshold(s))                                      ! ensure that the effective stress is positive
-      meanfreepath_P = burgers(s,instance)
-      jumpWidth_P = burgers(s,instance)
-      activationLength_P = doublekinkwidth(instance) * burgers(s,instance)
-      activationVolume_P = activationLength_P * jumpWidth_P * burgers(s,instance)
-      criticalStress_P = peierlsStress(s,c,instance)
+      meanfreepath_P = burgers(s,matID)
+      jumpWidth_P = burgers(s,matID)
+      activationLength_P = doublekinkwidth(matID) * burgers(s,matID)
+      activationVolume_P = activationLength_P * jumpWidth_P * burgers(s,matID)
+      criticalStress_P = peierlsStress(s,c,matID)
       activationEnergy_P = criticalStress_P * activationVolume_P
       tauRel_P = min(1.0_pReal, tauEff / criticalStress_P)                                          ! ensure that the activation probability cannot become greater than one
-      tPeierls = 1.0_pReal / fattack(instance) &
+      tPeierls = 1.0_pReal / fattack(matID) &
                * exp(activationEnergy_P / (KB * Temperature) &
-                     * (1.0_pReal - tauRel_P**pParam(instance))**qParam(instance))
+                     * (1.0_pReal - tauRel_P**pParam(matID))**qParam(matID))
       if (tauEff < criticalStress_P) then
-        dtPeierls_dtau = tPeierls * pParam(instance) * qParam(instance) * activationVolume_P / (KB * Temperature) &
-                       * (1.0_pReal - tauRel_P**pParam(instance))**(qParam(instance)-1.0_pReal) &
-                                    * tauRel_P**(pParam(instance)-1.0_pReal) 
+        dtPeierls_dtau = tPeierls * pParam(matID) * qParam(matID) * activationVolume_P / (KB * Temperature) &
+                       * (1.0_pReal - tauRel_P**pParam(matID))**(qParam(matID)-1.0_pReal) &
+                                    * tauRel_P**(pParam(matID)-1.0_pReal) 
       else
         dtPeierls_dtau = 0.0_pReal
       endif
@@ -1640,21 +1640,21 @@ if (Temperature > 0.0_pReal) then
       !* The derivative only gives absolute values; the correct sign is taken care of in the formula for the derivative of the velocity
 
       tauEff = abs(tau(s)) - tauThreshold(s)
-      meanfreepath_S = burgers(s,instance) / sqrt(solidSolutionConcentration(instance))
-      jumpWidth_S = solidSolutionSize(instance) * burgers(s,instance)
-      activationLength_S = burgers(s,instance) / sqrt(solidSolutionConcentration(instance))
-      activationVolume_S = activationLength_S * jumpWidth_S * burgers(s,instance)
-      activationEnergy_S = solidSolutionEnergy(instance)
+      meanfreepath_S = burgers(s,matID) / sqrt(solidSolutionConcentration(matID))
+      jumpWidth_S = solidSolutionSize(matID) * burgers(s,matID)
+      activationLength_S = burgers(s,matID) / sqrt(solidSolutionConcentration(matID))
+      activationVolume_S = activationLength_S * jumpWidth_S * burgers(s,matID)
+      activationEnergy_S = solidSolutionEnergy(matID)
       criticalStress_S = activationEnergy_S / activationVolume_S
       tauRel_S = min(1.0_pReal, tauEff / criticalStress_S)                                          ! ensure that the activation probability cannot become greater than one
-      tSolidSolution = 1.0_pReal / fattack(instance) &
+      tSolidSolution = 1.0_pReal / fattack(matID) &
                      * exp(activationEnergy_S / (KB * Temperature) &
-                           * (1.0_pReal - tauRel_S**pParam(instance))**qParam(instance))
+                           * (1.0_pReal - tauRel_S**pParam(matID))**qParam(matID))
       if (tauEff < criticalStress_S) then
-        dtSolidSolution_dtau = tSolidSolution * pParam(instance) * qParam(instance) &
+        dtSolidSolution_dtau = tSolidSolution * pParam(matID) * qParam(matID) &
                              * activationVolume_S / (KB * Temperature) &
-                             * (1.0_pReal - tauRel_S**pParam(instance))**(qParam(instance)-1.0_pReal) &
-                                            * tauRel_S**(pParam(instance)-1.0_pReal) 
+                             * (1.0_pReal - tauRel_S**pParam(matID))**(qParam(matID)-1.0_pReal) &
+                                            * tauRel_S**(pParam(matID)-1.0_pReal) 
       else
         dtSolidSolution_dtau = 0.0_pReal
       endif
@@ -1663,7 +1663,7 @@ if (Temperature > 0.0_pReal) then
       !* viscous glide velocity
       
       tauEff = abs(tau(s)) - tauThreshold(s)
-      mobility = burgers(s,instance) / viscosity(instance)
+      mobility = burgers(s,matID) / viscosity(matID)
       vViscous = mobility * tauEff
 
 
@@ -1727,7 +1727,7 @@ use mesh,     only: mesh_ipVolume
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                ipc, &                        !< current grain number
+integer(pInt), intent(in) ::                ipc, &                      !< current grain number
                                             ip, &                       !< current integration point
                                             el                          !< current element number
 real(pReal), intent(in) ::                  Temperature                 !< temperature
@@ -1741,8 +1741,8 @@ real(pReal), dimension(3,3), intent(out) :: Lp                          !< plast
 real(pReal), dimension(9,9), intent(out) :: dLp_dTstar99                !< derivative of Lp with respect to Tstar (9x9 matrix)
 
 !*** local variables
-integer(pInt)                               matID, &               !< current instance of this plasticity
-                                            structID, &              !< current lattice structure
+integer(pInt)                               matID, &                    !< current instance of this plasticity
+                                            structID, &                 !< current lattice structure
                                             ns, &                       !< short notation for the total number of active slip systems
                                             i, &
                                             j, &
@@ -1925,7 +1925,7 @@ use material, only: homogenization_maxNgrains, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                ipc, &                      ! current grain number
+integer(pInt), intent(in) ::                ipc, &                    ! current grain number
                                             ip, &                     ! current integration point
                                             el                        ! current element number
 real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 2nd Piola-Kirchhoff stress in Mandel notation
@@ -1938,8 +1938,8 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 type(p_vec), intent(out) ::                 deltaState                ! change of state variables / microstructure
  
 !*** local variables
-integer(pInt)                               matID, &             ! current instance of this plasticity
-                                            structID, &            ! current lattice structure
+integer(pInt)                               matID, &                  ! current instance of this plasticity
+                                            structID, &               ! current lattice structure
                                             ns, &                     ! short notation for the total number of active slip systems
                                             c, &                      ! character of dislocation
                                             t, &                      ! type of dislocation
@@ -2137,7 +2137,7 @@ use lattice,  only: lattice_Sslip_v, &
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                ipc, &                      !< current grain number
+integer(pInt), intent(in) ::                ipc, &                    !< current grain number
                                             ip, &                     !< current integration point
                                             el                        !< current element number
 real(pReal), intent(in) ::                  Temperature, &            !< temperature
@@ -2159,9 +2159,9 @@ real(pReal), dimension(constitutive_nonlocal_sizeDotState(phase_plasticityInstan
                                             constitutive_nonlocal_dotState !< evolution of state variables / microstructure
  
 !*** local variables
-integer(pInt)                               matID, &             !< current instance of this plasticity
-                                            neighbor_instance, &      !< instance of my neighbor's plasticity
-                                            structID, &            !< current lattice structure
+integer(pInt)                               matID, &                  !< current instance of this plasticity
+                                            neighbor_matID, &         !< instance of my neighbor's plasticity
+                                            structID, &               !< current lattice structure
                                             ns, &                     !< short notation for the total number of active slip systems
                                             c, &                      !< character of dislocation
                                             n, &                      !< index of my current neighbor
@@ -2251,12 +2251,12 @@ gdot = 0.0_pReal
 
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(state(ipc,ip,el)%p(iRhoU(s,t,matID)), 0.0_pReal)                             ! ensure positive single mobile densities
+  rhoSgl(s,t) = max(state(ipc,ip,el)%p(iRhoU(s,t,matID)), 0.0_pReal)                                ! ensure positive single mobile densities
   rhoSgl(s,t+4_pInt) = state(ipc,ip,el)%p(iRhoB(s,t,matID))
   v(s,t) = state(ipc,ip,el)%p(iV(s,t,matID))
 endforall
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
-  rhoDip(s,c) = max(state(ipc,ip,el)%p(iRhoD(s,c,matID)), 0.0_pReal)                             ! ensure positive dipole densities
+  rhoDip(s,c) = max(state(ipc,ip,el)%p(iRhoD(s,c,matID)), 0.0_pReal)                                ! ensure positive dipole densities
 endforall
 rhoForest = state(ipc,ip,el)%p(iRhoF(1:ns,matID))
 tauThreshold = state(ipc,ip,el)%p(iTauF(1:ns,matID))
@@ -2336,14 +2336,14 @@ dUpper = max(dUpper,dLower)
 !*** calculate dislocation multiplication
 
 rhoDotMultiplication = 0.0_pReal
-if (structID == 2_pInt) then                                                                     ! BCC
+if (structID == 2_pInt) then                                                                        ! BCC
   forall (s = 1:ns, sum(abs(v(s,1:4))) > 0.0_pReal)
-    rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / burgers(s,matID) &                   ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / lambda0(s,matID) ! &                      ! mean free path
-                                ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))               ! ratio of screw to overall velocity determines edge generation
-    rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) / burgers(s,matID) &                   ! assuming double-cross-slip of screws to be decisive for multiplication
-                                * sqrt(rhoForest(s)) / lambda0(s,matID) ! &                      ! mean free path
-                                ! * 2.0_pReal * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))               ! ratio of edge to overall velocity determines screw generation
+    rhoDotMultiplication(s,1:2) = sum(abs(gdot(s,3:4))) / burgers(s,matID) &                        ! assuming double-cross-slip of screws to be decisive for multiplication
+                                * sqrt(rhoForest(s)) / lambda0(s,matID) ! &                         ! mean free path
+                                ! * 2.0_pReal * sum(abs(v(s,3:4))) / sum(abs(v(s,1:4)))             ! ratio of screw to overall velocity determines edge generation
+    rhoDotMultiplication(s,3:4) = sum(abs(gdot(s,3:4))) / burgers(s,matID) &                        ! assuming double-cross-slip of screws to be decisive for multiplication
+                                * sqrt(rhoForest(s)) / lambda0(s,matID) ! &                         ! mean free path
+                                ! * 2.0_pReal * sum(abs(v(s,1:2))) / sum(abs(v(s,1:4)))             ! ratio of edge to overall velocity determines screw generation
   endforall
 
 else                                                                                                ! ALL OTHER STRUCTURES
@@ -2394,7 +2394,7 @@ endif
 
 rhoDotFlux = 0.0_pReal
 
-if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                                      ! only for nonlocal plasticity
+if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                                    ! only for nonlocal plasticity
   
 
   !*** check CFL (Courant-Friedrichs-Lewy) condition for flux
@@ -2440,7 +2440,7 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
     opposite_n  = mesh_ipNeighborhood(3,opposite_neighbor,ip,el)
   
     if (neighbor_n > 0_pInt) then                                                                   ! if neighbor exists, average deformation gradient
-      neighbor_instance = phase_plasticityInstance(material_phase(ipc,neighbor_ip,neighbor_el))
+      neighbor_matID = phase_plasticityInstance(material_phase(ipc,neighbor_ip,neighbor_el))
       neighbor_Fe = Fe(1:3,1:3,ipc,neighbor_ip,neighbor_el)
       neighbor_F = math_mul33x33(neighbor_Fe, Fp(1:3,1:3,ipc,neighbor_ip,neighbor_el))
       Favg = 0.5_pReal * (my_F + neighbor_F)
@@ -2466,15 +2466,15 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
     if (considerEnteringFlux) then
       if(numerics_timeSyncing .and. (subfrac(ipc,neighbor_ip,neighbor_el) /= subfrac(ipc,ip,el))) then  ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
         forall (s = 1:ns, t = 1_pInt:4_pInt)
-          neighbor_v(s,t) = state0(ipc,neighbor_ip,neighbor_el)%p(iV(s,t,neighbor_instance))
-          neighbor_rhoSgl(s,t) = max(state0(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,t,neighbor_instance)), 0.0_pReal)
-          neighbor_rhoSgl(s,t+4_pInt) = state0(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,t,neighbor_instance))
+          neighbor_v(s,t) = state0(ipc,neighbor_ip,neighbor_el)%p(iV(s,t,neighbor_matID))
+          neighbor_rhoSgl(s,t) = max(state0(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,t,neighbor_matID)), 0.0_pReal)
+          neighbor_rhoSgl(s,t+4_pInt) = state0(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,t,neighbor_matID))
         endforall
       else
         forall (s = 1:ns, t = 1_pInt:4_pInt)
-          neighbor_v(s,t) = state(ipc,neighbor_ip,neighbor_el)%p(iV(s,t,neighbor_instance))
-          neighbor_rhoSgl(s,t) = max(state(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,t,neighbor_instance)), 0.0_pReal)
-          neighbor_rhoSgl(s,t+4_pInt) = state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,t,neighbor_instance))
+          neighbor_v(s,t) = state(ipc,neighbor_ip,neighbor_el)%p(iV(s,t,neighbor_matID))
+          neighbor_rhoSgl(s,t) = max(state(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,t,neighbor_matID)), 0.0_pReal)
+          neighbor_rhoSgl(s,t+4_pInt) = state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,t,neighbor_matID))
         endforall
       endif
       where (abs(neighbor_rhoSgl) * mesh_ipVolume(neighbor_ip,neighbor_el) ** 0.667_pReal &
@@ -2748,12 +2748,12 @@ integer(pInt)                                   Nneighbors, &                 ! 
                                                 n, &                          ! neighbor index 
                                                 neighbor_e, &                 ! element index of my neighbor
                                                 neighbor_i, &                 ! integration point index of my neighbor
-                                                my_phase, &
-                                                neighbor_phase, &
-                                                my_texture, &
-                                                neighbor_texture, &
-                                                my_structure, &               ! lattice structure
-                                                my_instance, &                ! instance of plasticity
+                                                phaseID, &
+                                                neighbor_phaseID, &
+                                                textureID, &
+                                                neighbor_textureID, &
+                                                structID, &                   ! lattice structure
+                                                matID, &                      ! instance of plasticity
                                                 ns, &                         ! number of active slip systems
                                                 s1, &                         ! slip system index (me)
                                                 s2                            ! slip system index (my neighbor)
@@ -2773,13 +2773,13 @@ logical, dimension(totalNslip(phase_plasticityInstance(material_phase(1,i,e)))) 
 
 
 Nneighbors = FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))
-my_phase = material_phase(1,i,e)
-my_texture = material_texture(1,i,e)
-my_instance = phase_plasticityInstance(my_phase)
-my_structure = constitutive_nonlocal_structure(my_instance)
-ns = totalNslip(my_instance)
-slipNormal(1:3,1:ns) = lattice_sn(1:3, slipSystemLattice(1:ns,my_instance), my_structure)
-slipDirection(1:3,1:ns) = lattice_sd(1:3, slipSystemLattice(1:ns,my_instance), my_structure)
+phaseID = material_phase(1,i,e)
+textureID = material_texture(1,i,e)
+matID = phase_plasticityInstance(phaseID)
+structID = constitutive_nonlocal_structure(matID)
+ns = totalNslip(matID)
+slipNormal(1:3,1:ns) = lattice_sn(1:3, slipSystemLattice(1:ns,matID), structID)
+slipDirection(1:3,1:ns) = lattice_sd(1:3, slipSystemLattice(1:ns,matID), structID)
 
 
 !*** start out fully compatible
@@ -2801,7 +2801,7 @@ do n = 1_pInt,Nneighbors
   
   if (neighbor_e <= 0_pInt .or. neighbor_i <= 0_pInt) then
     forall(s1 = 1_pInt:ns) &
-      my_compatibility(1:2,s1,s1,n) = sqrt(surfaceTransmissivity(my_instance))
+      my_compatibility(1:2,s1,s1,n) = sqrt(surfaceTransmissivity(matID))
     cycle
   endif
   
@@ -2812,9 +2812,9 @@ do n = 1_pInt,Nneighbors
   !* If one of the two "CPFEM" phases has a local plasticity law, 
   !* we do not consider this to be a phase boundary, so completely compatible.
   
-  neighbor_phase = material_phase(1,neighbor_i,neighbor_e)
-  if (neighbor_phase /= my_phase) then
-    if (.not. phase_localPlasticity(neighbor_phase) .and. .not. phase_localPlasticity(my_phase)) then
+  neighbor_phaseID = material_phase(1,neighbor_i,neighbor_e)
+  if (neighbor_phaseID /= phaseID) then
+    if (.not. phase_localPlasticity(neighbor_phaseID) .and. .not. phase_localPlasticity(phaseID)) then
       forall(s1 = 1_pInt:ns) &
         my_compatibility(1:2,s1,s1,n) = 0.0_pReal ! = sqrt(0.0)
     endif
@@ -2825,12 +2825,12 @@ do n = 1_pInt,Nneighbors
   !* GRAIN BOUNDARY !
   !* fixed transmissivity for adjacent ips with different texture (only if explicitly given in material.config)
 
-  if (grainboundaryTransmissivity(my_instance) >= 0.0_pReal) then
-    neighbor_texture = material_texture(1,neighbor_i,neighbor_e)
-    if (neighbor_texture /= my_texture) then
-      if (.not. phase_localPlasticity(neighbor_phase)) then
+  if (grainboundaryTransmissivity(matID) >= 0.0_pReal) then
+    neighbor_textureID = material_texture(1,neighbor_i,neighbor_e)
+    if (neighbor_textureID /= textureID) then
+      if (.not. phase_localPlasticity(neighbor_phaseID)) then
         forall(s1 = 1_pInt:ns) &
-          my_compatibility(1:2,s1,s1,n) = sqrt(grainboundaryTransmissivity(my_instance))
+          my_compatibility(1:2,s1,s1,n) = sqrt(grainboundaryTransmissivity(matID))
       endif
       cycle
     endif
@@ -2910,7 +2910,7 @@ implicit none
 
 
 !*** input variables
-integer(pInt), intent(in) ::    ipc, &                          ! current grain ID
+integer(pInt), intent(in) ::    ipc, &                        ! current grain ID
                                 ip, &                         ! current integration point
                                 el                            ! current element
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
@@ -2926,12 +2926,12 @@ real(pReal), dimension(3,3) ::  constitutive_nonlocal_dislocationstress
 !*** local variables
 integer(pInt)                   neighbor_el, &                ! element number of neighbor material point
                                 neighbor_ip, &                ! integration point of neighbor material point
-                                instance, &                   ! my instance of this plasticity
-                                neighbor_instance, &          ! instance of this plasticity of neighbor material point
-                                latticeStruct, &              ! my lattice structure
-                                neighbor_latticeStruct, &     ! lattice structure of neighbor material point
+                                matID, &                      ! my instance of this plasticity
+                                neighbor_matID, &             ! instance of this plasticity of neighbor material point
+                                structID, &                   ! my lattice structure
+                                neighbor_structID, &          ! lattice structure of neighbor material point
                                 phase, &
-                                neighbor_phase, &
+                                neighbor_phaseID, &
                                 ns, &                         ! total number of active slip systems at my material point
                                 neighbor_ns, &                ! total number of active slip systems at neighbor material point
                                 c, &                          ! index of dilsocation character (edge, screw)
@@ -2973,17 +2973,17 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(ipc,ip
 logical                         inversionError
 
 phase = material_phase(ipc,ip,el)
-instance = phase_plasticityInstance(phase)
-latticeStruct = constitutive_nonlocal_structure(instance)
-ns = totalNslip(instance)
+matID = phase_plasticityInstance(phase)
+structID = constitutive_nonlocal_structure(matID)
+ns = totalNslip(matID)
 
 
 
 !*** get basic states
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(state(ipc,ip,el)%p(iRhoU(s,t,instance)), 0.0_pReal)                               ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) = state(ipc,ip,el)%p(iRhoB(s,t,instance))
+  rhoSgl(s,t) = max(state(ipc,ip,el)%p(iRhoU(s,t,matID)), 0.0_pReal)                               ! ensure positive single mobile densities
+  rhoSgl(s,t+4_pInt) = state(ipc,ip,el)%p(iRhoB(s,t,matID))
 endforall
 
 
@@ -3007,8 +3007,8 @@ if (.not. phase_localPlasticity(phase)) then
   periodicImages = 0_pInt
   do dir = 1_pInt,3_pInt
     if (mesh_periodicSurface(dir)) then
-      periodicImages(1,dir) =   floor((coords(dir) - cutoffRadius(instance) - minCoord(dir)) / meshSize(dir), pInt)
-      periodicImages(2,dir) = ceiling((coords(dir) + cutoffRadius(instance) - maxCoord(dir)) / meshSize(dir), pInt)
+      periodicImages(1,dir) =   floor((coords(dir) - cutoffRadius(matID) - minCoord(dir)) / meshSize(dir), pInt)
+      periodicImages(2,dir) = ceiling((coords(dir) + cutoffRadius(matID) - maxCoord(dir)) / meshSize(dir), pInt)
     endif
   enddo
 
@@ -3018,20 +3018,20 @@ if (.not. phase_localPlasticity(phase)) then
   
   do neighbor_el = 1_pInt,mesh_NcpElems
 ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el)))
-      neighbor_phase = material_phase(ipc,neighbor_ip,neighbor_el)
-      if (phase_localPlasticity(neighbor_phase)) then
+      neighbor_phaseID = material_phase(ipc,neighbor_ip,neighbor_el)
+      if (phase_localPlasticity(neighbor_phaseID)) then
         cycle
       endif
-      neighbor_instance = phase_plasticityInstance(neighbor_phase)
-      neighbor_latticeStruct = constitutive_nonlocal_structure(neighbor_instance)
-      neighbor_ns = totalNslip(neighbor_instance)
+      neighbor_matID = phase_plasticityInstance(neighbor_phaseID)
+      neighbor_structID = constitutive_nonlocal_structure(neighbor_matID)
+      neighbor_ns = totalNslip(neighbor_matID)
       call math_invert33(Fe(1:3,1:3,1,neighbor_ip,neighbor_el), neighbor_invFe, detFe, inversionError)
       neighbor_ipVolumeSideLength = mesh_ipVolume(neighbor_ip,neighbor_el) ** (1.0_pReal/3.0_pReal) ! reference volume used here
       forall (s = 1_pInt:neighbor_ns, c = 1_pInt:2_pInt)
-        neighbor_rhoExcess(c,1,s) = state(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c-1,neighbor_instance)) &  ! positive mobiles
-                                  - state(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c,neighbor_instance))      ! negative mobiles
-        neighbor_rhoExcess(c,2,s) = abs(state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,2*c-1,neighbor_instance))) & ! positive deads
-                                  - abs(state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,2*c,neighbor_instance)))     ! negative deads
+        neighbor_rhoExcess(c,1,s) = state(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c-1,neighbor_matID)) &  ! positive mobiles
+                                  - state(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,2*c,neighbor_matID))      ! negative mobiles
+        neighbor_rhoExcess(c,2,s) = abs(state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,2*c-1,neighbor_matID))) & ! positive deads
+                                  - abs(state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,2*c,neighbor_matID)))     ! negative deads
       endforall
       Tdislo_neighborLattice = 0.0_pReal
       do deltaX = periodicImages(1,1),periodicImages(2,1)
@@ -3048,7 +3048,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                                  + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
               connection = neighbor_coords - coords
               distance = sqrt(sum(connection * connection))
-              if (distance > cutoffRadius(instance)) then
+              if (distance > cutoffRadius(matID)) then
                 cycle
               endif
                 
@@ -3064,15 +3064,15 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
               !* and add up the stress contributions from egde and screw excess on these slip systems (if significant)
       
               do s = 1_pInt,neighbor_ns
-                if (all(abs(neighbor_rhoExcess(:,:,s)) < significantRho(instance))) then
+                if (all(abs(neighbor_rhoExcess(:,:,s)) < significantRho(matID))) then
                   cycle                                                                             ! not significant
                 endif
                 
                 
                 !* map the connection vector from the lattice into the slip system frame
                 
-                connection_neighborSlip = math_mul33x3(lattice2slip(1:3,1:3,s,neighbor_instance), &
-                                                          connection_neighborLattice)
+                connection_neighborSlip = math_mul33x3(lattice2slip(1:3,1:3,s,neighbor_matID), &
+                                                       connection_neighborLattice)
                 
                 
                 !* edge contribution to stress
@@ -3086,12 +3086,12 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                 zsquare = z * z
 
                 do j = 1_pInt,2_pInt
-                  if (abs(neighbor_rhoExcess(1,j,s)) < significantRho(instance)) then
+                  if (abs(neighbor_rhoExcess(1,j,s)) < significantRho(matID)) then
                     cycle 
                   elseif (j > 1_pInt) then
                     x = connection_neighborSlip(1) + sign(0.5_pReal * segmentLength, &
-                                                          state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,1,neighbor_instance)) &
-                                                        - state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,2,neighbor_instance)))
+                                                          state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,1,neighbor_matID)) &
+                                                        - state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,2,neighbor_matID)))
                     xsquare = x * x
                   endif
                    
@@ -3111,7 +3111,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                                             * (1.0_pReal + xsquare / Rsquare + xsquare / denominator) &
                                             * neighbor_rhoExcess(1,j,s)
                     sigma(2,2) = sigma(2,2) - real(side,pReal) &
-                                            * (flipSign * 2.0_pReal * nu(instance) * z / denominator + z * lambda / Rcube) &
+                                            * (flipSign * 2.0_pReal * nu(matID) * z / denominator + z * lambda / Rcube) &
                                             * neighbor_rhoExcess(1,j,s)
                     sigma(3,3) = sigma(3,3) + real(side,pReal) &
                                             * flipSign * z / denominator &
@@ -3124,7 +3124,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                                             * (1.0_pReal - zsquare / Rsquare - zsquare / denominator) &
                                             * neighbor_rhoExcess(1,j,s)
                     sigma(2,3) = sigma(2,3) - real(side,pReal) &
-                                            * (nu(instance) / R - zsquare / Rcube) * neighbor_rhoExcess(1,j,s)
+                                            * (nu(matID) / R - zsquare / Rcube) * neighbor_rhoExcess(1,j,s)
                   enddo
                 enddo 
                 
@@ -3132,12 +3132,12 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                 
                 x = connection_neighborSlip(1)   ! have to restore this value, because position might have been adapted for edge deads before
                 do j = 1_pInt,2_pInt
-                  if (abs(neighbor_rhoExcess(2,j,s)) < significantRho(instance)) then
+                  if (abs(neighbor_rhoExcess(2,j,s)) < significantRho(matID)) then
                     cycle 
                   elseif (j > 1_pInt) then
                     y = connection_neighborSlip(2) + sign(0.5_pReal * segmentLength, &
-                                                          state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,3,neighbor_instance)) &
-                                                        - state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,4,neighbor_instance)))
+                                                          state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,3,neighbor_matID)) &
+                                                        - state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,4,neighbor_matID)))
                     ysquare = y * y
                   endif
 
@@ -3152,9 +3152,9 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                       exit ipLoop
                     endif
                     
-                    sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z * (1.0_pReal - nu(instance)) / denominator &
+                    sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z * (1.0_pReal - nu(matID)) / denominator &
                                                                               * neighbor_rhoExcess(2,j,s)
-                    sigma(1,3) = sigma(1,3) + real(side,pReal) * flipSign * y * (1.0_pReal - nu(instance)) / denominator &
+                    sigma(1,3) = sigma(1,3) + real(side,pReal) * flipSign * y * (1.0_pReal - nu(matID)) / denominator &
                                                                               * neighbor_rhoExcess(2,j,s)
                   enddo
                 enddo
@@ -3172,12 +3172,12 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                 
                 !* scale stresses and map them into the neighbor material point's lattice configuration
                 
-                sigma = sigma * mu(neighbor_instance) * burgers(s,neighbor_instance) &
-                              / (4.0_pReal * pi * (1.0_pReal - nu(neighbor_instance))) &
+                sigma = sigma * mu(neighbor_matID) * burgers(s,neighbor_matID) &
+                              / (4.0_pReal * pi * (1.0_pReal - nu(neighbor_matID))) &
                               * mesh_ipVolume(neighbor_ip,neighbor_el) / segmentLength      ! reference volume is used here (according to the segment length calculation)
                 Tdislo_neighborLattice = Tdislo_neighborLattice &
-                      + math_mul33x33(math_transpose33(lattice2slip(1:3,1:3,s,neighbor_instance)), &
-                        math_mul33x33(sigma, lattice2slip(1:3,1:3,s,neighbor_instance)))
+                      + math_mul33x33(math_transpose33(lattice2slip(1:3,1:3,s,neighbor_matID)), &
+                        math_mul33x33(sigma, lattice2slip(1:3,1:3,s,neighbor_matID)))
                                             
               enddo ! slip system loop
 
@@ -3190,22 +3190,22 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
             else
               
               forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
-                rhoExcessDead(c,s) = state(ipc,ip,el)%p(iRhoB(s,2*c-1,instance)) &  ! positive deads (here we use symmetry: if this has negative sign it is treated as negative density at positive position instead of positive density at negative position)
-                                   + state(ipc,ip,el)%p(iRhoB(s,2*c,instance))      ! negative deads (here we use symmetry: if this has negative sign it is treated as positive density at positive position instead of negative density at negative position)
+                rhoExcessDead(c,s) = state(ipc,ip,el)%p(iRhoB(s,2*c-1,matID)) &  ! positive deads (here we use symmetry: if this has negative sign it is treated as negative density at positive position instead of positive density at negative position)
+                                   + state(ipc,ip,el)%p(iRhoB(s,2*c,matID))      ! negative deads (here we use symmetry: if this has negative sign it is treated as positive density at positive position instead of negative density at negative position)
 
               do s = 1_pInt,ns
-                if (all(abs(rhoExcessDead(:,s)) < significantRho(instance))) then
+                if (all(abs(rhoExcessDead(:,s)) < significantRho(matID))) then
                   cycle                                                                             ! not significant
                 endif
                 sigma = 0.0_pReal                                                                   ! all components except for sigma13 are zero
-                sigma(1,3) = - (rhoExcessDead(1,s) + rhoExcessDead(2,s) * (1.0_pReal - nu(instance))) &
-                           * neighbor_ipVolumeSideLength * mu(instance) * burgers(s,instance) &
-                           / (sqrt(2.0_pReal) * pi * (1.0_pReal - nu(instance)))
+                sigma(1,3) = - (rhoExcessDead(1,s) + rhoExcessDead(2,s) * (1.0_pReal - nu(matID))) &
+                           * neighbor_ipVolumeSideLength * mu(matID) * burgers(s,matID) &
+                           / (sqrt(2.0_pReal) * pi * (1.0_pReal - nu(matID)))
                 sigma(3,1) = sigma(1,3)
                 
                 Tdislo_neighborLattice = Tdislo_neighborLattice &
-                                      + math_mul33x33(math_transpose33(lattice2slip(1:3,1:3,s,instance)), &
-                                                      math_mul33x33(sigma, lattice2slip(1:3,1:3,s,instance)))
+                                      + math_mul33x33(math_transpose33(lattice2slip(1:3,1:3,s,matID)), &
+                                                      math_mul33x33(sigma, lattice2slip(1:3,1:3,s,matID)))
                                             
               enddo ! slip system loop
 
