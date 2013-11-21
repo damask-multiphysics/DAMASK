@@ -260,7 +260,7 @@ integer(pInt), &
     dimension(1_pInt+2_pInt*MAXNCHUNKS) ::  positions
 integer(pInt), dimension(7) ::              configNchunks
 integer(pInt)          ::                   section = 0_pInt, &
-                                            maxNinstance, &
+                                            maxNmatIDs, &
                                             maxTotalNslip, &
                                             structID, &
                                             f, &                ! index of my slip family
@@ -286,21 +286,21 @@ character(len=65536) ::                     line = ''                           
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
- if (maxNinstance == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
+ maxNmatIDs = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
+ if (maxNmatIDs == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+   write(6,'(a16,1x,i5,/)') '# instances:',maxNmatIDs
 
 !*** memory allocation for global variables
 
-allocate(constitutive_nonlocal_sizeDotState(maxNinstance))
-allocate(constitutive_nonlocal_sizeDependentState(maxNinstance))
-allocate(constitutive_nonlocal_sizeState(maxNinstance))
-allocate(constitutive_nonlocal_sizePostResults(maxNinstance))
-allocate(constitutive_nonlocal_sizePostResult(maxval(phase_Noutput), maxNinstance))
-allocate(constitutive_nonlocal_output(maxval(phase_Noutput), maxNinstance))
-allocate(Noutput(maxNinstance))
+allocate(constitutive_nonlocal_sizeDotState(maxNmatIDs))
+allocate(constitutive_nonlocal_sizeDependentState(maxNmatIDs))
+allocate(constitutive_nonlocal_sizeState(maxNmatIDs))
+allocate(constitutive_nonlocal_sizePostResults(maxNmatIDs))
+allocate(constitutive_nonlocal_sizePostResult(maxval(phase_Noutput), maxNmatIDs))
+allocate(constitutive_nonlocal_output(maxval(phase_Noutput), maxNmatIDs))
+allocate(Noutput(maxNmatIDs))
 constitutive_nonlocal_sizeDotState = 0_pInt
 constitutive_nonlocal_sizeDependentState = 0_pInt
 constitutive_nonlocal_sizeState = 0_pInt
@@ -309,12 +309,12 @@ constitutive_nonlocal_sizePostResult = 0_pInt
 constitutive_nonlocal_output = ''
 Noutput = 0_pInt
 
-allocate(constitutive_nonlocal_structureName(maxNinstance))
-allocate(constitutive_nonlocal_structure(maxNinstance))
-allocate(Nslip(lattice_maxNslipFamily, maxNinstance))
-allocate(slipFamily(lattice_maxNslip, maxNinstance))
-allocate(slipSystemLattice(lattice_maxNslip, maxNinstance))
-allocate(totalNslip(maxNinstance))
+allocate(constitutive_nonlocal_structureName(maxNmatIDs))
+allocate(constitutive_nonlocal_structure(maxNmatIDs))
+allocate(Nslip(lattice_maxNslipFamily, maxNmatIDs))
+allocate(slipFamily(lattice_maxNslip, maxNmatIDs))
+allocate(slipSystemLattice(lattice_maxNslip, maxNmatIDs))
+allocate(totalNslip(maxNmatIDs))
 constitutive_nonlocal_structureName = ''
 constitutive_nonlocal_structure = 0_pInt
 Nslip = 0_pInt
@@ -322,38 +322,38 @@ slipFamily = 0_pInt
 slipSystemLattice = 0_pInt
 totalNslip = 0_pInt
 
-allocate(CoverA(maxNinstance))
-allocate(mu(maxNinstance))
-allocate(nu(maxNinstance))
-allocate(atomicVolume(maxNinstance))
-allocate(Dsd0(maxNinstance))
-allocate(selfDiffusionEnergy(maxNinstance))
-allocate(aTolRho(maxNinstance))
-allocate(aTolShear(maxNinstance))
-allocate(significantRho(maxNinstance))
-allocate(significantN(maxNinstance))
-allocate(Cslip66(6,6,maxNinstance))
-allocate(Cslip3333(3,3,3,3,maxNinstance))
-allocate(cutoffRadius(maxNinstance))
-allocate(doublekinkwidth(maxNinstance))
-allocate(solidSolutionEnergy(maxNinstance))
-allocate(solidSolutionSize(maxNinstance))
-allocate(solidSolutionConcentration(maxNinstance))
-allocate(pParam(maxNinstance))
-allocate(qParam(maxNinstance))
-allocate(viscosity(maxNinstance))
-allocate(fattack(maxNinstance))
-allocate(rhoSglScatter(maxNinstance))
-allocate(rhoSglRandom(maxNinstance))
-allocate(rhoSglRandomBinning(maxNinstance))
-allocate(surfaceTransmissivity(maxNinstance))
-allocate(grainboundaryTransmissivity(maxNinstance))
-allocate(shortRangeStressCorrection(maxNinstance))
-allocate(probabilisticMultiplication(maxNinstance))
-allocate(CFLfactor(maxNinstance))
-allocate(fEdgeMultiplication(maxNinstance))
-allocate(linetensionEffect(maxNinstance))
-allocate(edgeJogFactor(maxNinstance))
+allocate(CoverA(maxNmatIDs))
+allocate(mu(maxNmatIDs))
+allocate(nu(maxNmatIDs))
+allocate(atomicVolume(maxNmatIDs))
+allocate(Dsd0(maxNmatIDs))
+allocate(selfDiffusionEnergy(maxNmatIDs))
+allocate(aTolRho(maxNmatIDs))
+allocate(aTolShear(maxNmatIDs))
+allocate(significantRho(maxNmatIDs))
+allocate(significantN(maxNmatIDs))
+allocate(Cslip66(6,6,maxNmatIDs))
+allocate(Cslip3333(3,3,3,3,maxNmatIDs))
+allocate(cutoffRadius(maxNmatIDs))
+allocate(doublekinkwidth(maxNmatIDs))
+allocate(solidSolutionEnergy(maxNmatIDs))
+allocate(solidSolutionSize(maxNmatIDs))
+allocate(solidSolutionConcentration(maxNmatIDs))
+allocate(pParam(maxNmatIDs))
+allocate(qParam(maxNmatIDs))
+allocate(viscosity(maxNmatIDs))
+allocate(fattack(maxNmatIDs))
+allocate(rhoSglScatter(maxNmatIDs))
+allocate(rhoSglRandom(maxNmatIDs))
+allocate(rhoSglRandomBinning(maxNmatIDs))
+allocate(surfaceTransmissivity(maxNmatIDs))
+allocate(grainboundaryTransmissivity(maxNmatIDs))
+allocate(shortRangeStressCorrection(maxNmatIDs))
+allocate(probabilisticMultiplication(maxNmatIDs))
+allocate(CFLfactor(maxNmatIDs))
+allocate(fEdgeMultiplication(maxNmatIDs))
+allocate(linetensionEffect(maxNmatIDs))
+allocate(edgeJogFactor(maxNmatIDs))
 CoverA = 0.0_pReal 
 mu = 0.0_pReal
 atomicVolume = 0.0_pReal
@@ -387,15 +387,15 @@ edgeJogFactor = 1.0_pReal
 shortRangeStressCorrection = .false.
 probabilisticMultiplication = .false.
 
-allocate(rhoSglEdgePos0(lattice_maxNslipFamily,maxNinstance))
-allocate(rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNinstance))
-allocate(rhoSglScrewPos0(lattice_maxNslipFamily,maxNinstance))
-allocate(rhoSglScrewNeg0(lattice_maxNslipFamily,maxNinstance))
-allocate(rhoDipEdge0(lattice_maxNslipFamily,maxNinstance))
-allocate(rhoDipScrew0(lattice_maxNslipFamily,maxNinstance))
-allocate(burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance))
-allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNinstance))
-allocate(interactionSlipSlip(lattice_maxNinteraction,maxNinstance))
+allocate(rhoSglEdgePos0(lattice_maxNslipFamily,maxNmatIDs))
+allocate(rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNmatIDs))
+allocate(rhoSglScrewPos0(lattice_maxNslipFamily,maxNmatIDs))
+allocate(rhoSglScrewNeg0(lattice_maxNslipFamily,maxNmatIDs))
+allocate(rhoDipEdge0(lattice_maxNslipFamily,maxNmatIDs))
+allocate(rhoDipScrew0(lattice_maxNslipFamily,maxNmatIDs))
+allocate(burgersPerSlipFamily(lattice_maxNslipFamily,maxNmatIDs))
+allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNmatIDs))
+allocate(interactionSlipSlip(lattice_maxNinteraction,maxNmatIDs))
 rhoSglEdgePos0 = -1.0_pReal
 rhoSglEdgeNeg0 = -1.0_pReal
 rhoSglScrewPos0 = -1.0_pReal
@@ -406,12 +406,12 @@ burgersPerSlipFamily = 0.0_pReal
 lambda0PerSlipFamily = 0.0_pReal
 interactionSlipSlip = 0.0_pReal
 
-allocate(minDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
-allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNinstance))
+allocate(minDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNmatIDs))
+allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNmatIDs))
 minDipoleHeightPerSlipFamily = -1.0_pReal
 peierlsStressPerSlipFamily = 0.0_pReal
 
-allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance))
+allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNmatIDs))
 nonSchmidCoeff = 0.0_pReal
 
 !*** readout data from material.config file
@@ -595,7 +595,7 @@ do while (trim(line) /= '#EOF#')                                                
 enddo
 
 
-do i = 1_pInt,maxNinstance
+do i = 1_pInt,maxNmatIDs
 
   constitutive_nonlocal_structure(i) = &
     lattice_initializeStructure(constitutive_nonlocal_structureName(i), CoverA(i))                            ! our lattice structure is defined in the material.config file by the structureName (and the c/a ratio)
@@ -707,15 +707,15 @@ enddo
 
 maxTotalNslip = maxval(totalNslip)
 
-allocate(iRhoU(maxTotalNslip,4,maxNinstance))
-allocate(iRhoB(maxTotalNslip,4,maxNinstance))
-allocate(iRhoD(maxTotalNslip,2,maxNinstance))
-allocate(iV(maxTotalNslip,4,maxNinstance))
-allocate(iD(maxTotalNslip,2,maxNinstance))
-allocate(iGamma(maxTotalNslip,maxNinstance))
-allocate(iRhoF(maxTotalNslip,maxNinstance))
-allocate(iTauF(maxTotalNslip,maxNinstance))
-allocate(iTauB(maxTotalNslip,maxNinstance))
+allocate(iRhoU(maxTotalNslip,4,maxNmatIDs))
+allocate(iRhoB(maxTotalNslip,4,maxNmatIDs))
+allocate(iRhoD(maxTotalNslip,2,maxNmatIDs))
+allocate(iV(maxTotalNslip,4,maxNmatIDs))
+allocate(iD(maxTotalNslip,2,maxNmatIDs))
+allocate(iGamma(maxTotalNslip,maxNmatIDs))
+allocate(iRhoF(maxTotalNslip,maxNmatIDs))
+allocate(iTauF(maxTotalNslip,maxNmatIDs))
+allocate(iTauB(maxTotalNslip,maxNmatIDs))
 iRhoU = 0_pInt
 iRhoB = 0_pInt
 iRhoD = 0_pInt
@@ -726,25 +726,25 @@ iRhoF = 0_pInt
 iTauF = 0_pInt
 iTauB = 0_pInt
 
-allocate(burgers(maxTotalNslip, maxNinstance))
+allocate(burgers(maxTotalNslip,maxNmatIDs))
 burgers = 0.0_pReal
 
-allocate(lambda0(maxTotalNslip, maxNinstance))
+allocate(lambda0(maxTotalNslip,maxNmatIDs))
 lambda0 = 0.0_pReal
 
-allocate(minDipoleHeight(maxTotalNslip,2,maxNinstance))
+allocate(minDipoleHeight(maxTotalNslip,2,maxNmatIDs))
 minDipoleHeight = -1.0_pReal
 
-allocate(forestProjectionEdge(maxTotalNslip, maxTotalNslip, maxNinstance))
+allocate(forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNmatIDs))
 forestProjectionEdge = 0.0_pReal
 
-allocate(forestProjectionScrew(maxTotalNslip, maxTotalNslip, maxNinstance))
+allocate(forestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNmatIDs))
 forestProjectionScrew = 0.0_pReal
 
-allocate(interactionMatrixSlipSlip(maxTotalNslip, maxTotalNslip, maxNinstance))
+allocate(interactionMatrixSlipSlip(maxTotalNslip,maxTotalNslip,maxNmatIDs))
 interactionMatrixSlipSlip = 0.0_pReal
 
-allocate(lattice2slip(1:3, 1:3, maxTotalNslip, maxNinstance))
+allocate(lattice2slip(1:3, 1:3, maxTotalNslip, maxNmatIDs))
 lattice2slip = 0.0_pReal
 
 allocate(sourceProbability(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
@@ -766,17 +766,17 @@ rhoDotEdgeJogsOutput = 0.0_pReal
 allocate(compatibility(2,maxTotalNslip, maxTotalNslip, mesh_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
 compatibility = 0.0_pReal
 
-allocate(peierlsStress(maxTotalNslip,2,maxNinstance))
+allocate(peierlsStress(maxTotalNslip,2,maxNmatIDs))
 peierlsStress = 0.0_pReal
 
-allocate(colinearSystem(maxTotalNslip,maxNinstance))
+allocate(colinearSystem(maxTotalNslip,maxNmatIDs))
 colinearSystem = 0_pInt
 
-allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstance))
+allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNmatIDs))
 nonSchmidProjection = 0.0_pReal
                                             
 
-do i = 1,maxNinstance
+do i = 1,maxNmatIDs
   
   structID = constitutive_nonlocal_structure(i)                                                                                  ! lattice structure of this instance
     
@@ -1076,7 +1076,7 @@ integer(pInt)                 el, &
                               t, &
                               j, &
                               matID, &
-                              maxNinstance
+                              maxNmatIDs
 real(pReal), dimension(2) ::  noise
 real(pReal), dimension(4) ::  rnd   
 real(pReal)                   meanDensity, &
@@ -1085,7 +1085,7 @@ real(pReal)                   meanDensity, &
                               minimumIpVolume
 
 
-maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
+maxNmatIDs = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
 
 
 ! ititalize all states to zero
@@ -1098,7 +1098,7 @@ do e = 1_pInt,mesh_NcpElems
 enddo
 
 
-do matID = 1_pInt,maxNinstance
+do matID = 1_pInt,maxNmatIDs
   ns = totalNslip(matID)
 
   ! randomly distribute dislocation segments on random slip system and of random type in the volume 
