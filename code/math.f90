@@ -2818,6 +2818,7 @@ end function math_rotate_forward3333
 #ifdef Spectral
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates curl field using differentation in Fourier space
+!> @todo enable odd resolution
 !--------------------------------------------------------------------------------------------------
 function math_curlFFT(geomdim,field)
  use IO, only: &
@@ -2951,6 +2952,7 @@ end function math_curlFFT
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates gradient field using differentation in Fourier space
+!> @todo enable odd resolution
 !--------------------------------------------------------------------------------------------------
 function math_gradFFT(geomdim,field)
  use IO, only: &
@@ -3079,6 +3081,7 @@ end function math_gradFFT
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates divergence field using integration in Fourier space
+!> @todo enable odd resolution
 !--------------------------------------------------------------------------------------------------
 function math_divergenceFFT(geomdim,field)
  use IO, only: &
@@ -3268,7 +3271,7 @@ function math_divergenceFDM(geomdim,order,field)
  
  contains
  !--------------------------------------------------------------------------------------------------
- !> @brief  ! small helper functions for indexing CAREFUL, index and location runs from 
+ !> @brief small helper functions for indexing. CAREFUL: index and location runs from 
  ! 0 to N-1 (python style)
  !--------------------------------------------------------------------------------------------------
  pure function periodic_location(idx,res)
@@ -3284,7 +3287,7 @@ function math_divergenceFDM(geomdim,order,field)
  end function periodic_location
 
  !--------------------------------------------------------------------------------------------------
- !> @brief  ! small helper functions for indexing CAREFUL, index and location runs from 
+ !> @brief small helper functions for indexing CAREFUL: index and location runs from 
  ! 0 to N-1 (python style)
  !--------------------------------------------------------------------------------------------------
  integer(pInt) pure function periodic_index(location,res)
