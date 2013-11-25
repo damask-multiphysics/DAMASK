@@ -5,7 +5,7 @@ from .environment import Environment      # only one class
 from .asciitable  import ASCIItable       # only one class
 from .config      import Material         # will be extended to debug and numerics
 from .colormaps   import Colormap, Color
-from .orientation import Vector3, Quaternion
+from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
 #from .block       import Block           # only one class
 from .result      import Result           # one class with subclasses
 from .geometry    import Geometry         # one class with subclasses
