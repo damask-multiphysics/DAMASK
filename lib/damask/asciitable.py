@@ -210,9 +210,10 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_append(self,
                   what):
-    if isinstance(what,list):
+    try:
       for item in what: self.data_append(item)
-    else:               self.data += [str(what)]
+    except TypeError:
+      self.data += [str(what)]
 
 # ------------------------------------------------------------------
   def data_set(self,
