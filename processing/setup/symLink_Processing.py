@@ -48,6 +48,8 @@ bin_link = { \
                 'addEuclideanDistance.py',
                 'addMises.py',
                 'addNorm.py',
+                'addOrientations.py',
+                'addIPFcolor.py',
                 'addPK2.py',
                 'addSchmidfactors.py',
                 'addSpectralDecomposition.py',
