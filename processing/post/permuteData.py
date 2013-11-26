@@ -98,7 +98,6 @@ for file in files:
 
   permutation = {}
   theColumns = table.data_asArray([column['scalar'][label] for label in active['scalar']])
-  print 'shape:',theColumns.shape
   for i,label in enumerate(active['scalar']):
     unique = list(set(theColumns[:,i]))
     permutated = numpy.random.permutation(unique)
