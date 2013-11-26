@@ -36,6 +36,7 @@ bin_link = { \
                 ],
         'post' : [
                 '3Dvisualize.py',
+                'permuteData.py'
                 'addCalculation.py',
                 'addCauchy.py',
                 'addCompatibilityMismatch.py',
@@ -71,6 +72,8 @@ bin_link = { \
                 'tagLabel.py',
                 'vtk2ang.py',
                 'vtk_addData.py',
+                'vtk_pointcloud.py',
+                'vtk_addPointcloudData.py'
                 ],
             }
             
