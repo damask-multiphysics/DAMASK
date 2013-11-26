@@ -88,8 +88,6 @@ for file in files:
   pos = table.data_asArray(range(column['vector'][options.pos],\
                                  column['vector'][options.pos]+datainfo['vector']['len']))
 
-  print range(column['vector'][options.pos],\
-                                 column['vector'][options.pos]+datainfo['vector']['len']),len(pos),pos[0]
   for p in pos:
     id = Points.InsertNextPoint(p)
     Vertices.InsertNextCell(1)
