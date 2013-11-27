@@ -34,21 +34,46 @@ module material
 
  implicit none
  private
- character(len=64), parameter, public  :: &
+ character(len=*),                         parameter,            public :: &
+   ELASTICITY_HOOKE_label         = 'hooke', &
+   PLASTICITY_NONE_label          = 'none', &
+   PLASTICITY_J2_label            = 'j2', &
+   PLASTICITY_PHENOPOWERLAW_label = 'phenopowerlaw', &
+   PLASTICITY_DISLOTWIN_label     = 'dislotwin', &
+   PLASTICITY_TITANMOD_label      = 'titanmod', &
+   PLASTICITY_NONLOCAL_label      = 'nonlocal', &
+   HOMOGENIZATION_ISOSTRAIN_label = 'isostrain', &
+   HOMOGENIZATION_RGC_label       = 'rgc'
+
+ enum, bind(c) 
+   enumerator :: ELASTICITY_hooke_ID
+   enumerator :: PLASTICITY_none_ID, &
+                 PLASTICITY_J2_ID, &
+                 PLASTICITY_phenopowerlaw_ID, &
+                 PLASTICITY_dislotwin_ID, &
+                 PLASTICITY_titanmod_ID, &
+                 PLASTICITY_nonlocal_ID
+   enumerator :: HOMOGENIZATION_isostrain_ID, &
+                 HOMOGENIZATION_RGC_ID
+ end enum
+
+ character(len=*), parameter, public  :: &
    MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file 
    MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file  
    
- character(len=32), parameter, public  :: &
+ character(len=*), parameter, public  :: &
    MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
    MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
    MATERIAL_partPhase          = 'phase'                                                            !< keyword for phase part
- 
- character(len=64), dimension(:), allocatable, public, protected :: &
+
+ integer(kind(ELASTICITY_hooke_ID)), dimension(:), allocatable, public, protected :: &
    phase_elasticity, &                                                                              !< elasticity of each phase  
    phase_plasticity, &                                                                              !< plasticity of each phase  
+   homogenization_type                                                                              !< type of each homogenization
+
+ character(len=64), dimension(:), allocatable, public, protected :: &
    phase_name, &                                                                                    !< name of each phase
    homogenization_name, &                                                                           !< name of each homogenization
-   homogenization_type, &                                                                           !< type of each homogenization
    crystallite_name                                                                                 !< name of each crystallite setting
 
  integer(pInt), public, protected :: &
@@ -82,7 +107,7 @@ module material
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
 
- character(len=32), parameter, private :: &
+ character(len=*), parameter, private :: &
    MATERIAL_partMicrostructure = 'microstructure', &                                                !< keyword for microstructure part
    MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
    
@@ -123,8 +148,17 @@ module material
 
 
  public :: &
-   material_init
- 
+   material_init, &
+   ELASTICITY_hooke_ID ,&
+   PLASTICITY_none_ID, &
+   PLASTICITY_J2_ID, &
+   PLASTICITY_phenopowerlaw_ID, &
+   PLASTICITY_dislotwin_ID, &
+   PLASTICITY_titanmod_ID, &
+   PLASTICITY_nonlocal_ID, &
+   HOMOGENIZATION_isostrain_ID, &
+   HOMOGENIZATION_RGC_ID
+
  private :: &
    material_parseHomogenization, &
    material_parseMicrostructure, &
@@ -164,43 +198,32 @@ subroutine material_init
  write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then                               ! no local material configuration present...
+ if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(fileunit,material_configFile)                                                  ! ...open material.config file
- endif
  call material_parseHomogenization(fileunit,material_partHomogenization)
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)') ' Homogenization parsed'
- endif
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'
  call material_parseMicrostructure(fileunit,material_partMicrostructure)
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)') ' Microstructure parsed'
- endif
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'
  call material_parseCrystallite(fileunit,material_partCrystallite)
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)') ' Crystallite parsed'
- endif
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'
  call material_parseTexture(fileunit,material_partTexture)
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)') ' Texture parsed'
- endif
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'
  call material_parsePhase(fileunit,material_partPhase)
- if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
-   write(6,'(a)') ' Phase parsed'
- endif
+ if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'
  close(fileunit)
 
  do m = 1_pInt,material_Nmicrostructure
-   if (microstructure_crystallite(m) < 1_pInt .or. &
-       microstructure_crystallite(m) > material_Ncrystallite) & 
-         call IO_error(150_pInt,m,ext_msg='crystallite')
-   if (minval(microstructure_phase(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
-       maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > material_Nphase) &
-         call IO_error(150_pInt,m,ext_msg='phase')
-   if (minval(microstructure_texture(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
-       maxval(microstructure_texture(1:microstructure_Nconstituents(m),m)) > material_Ntexture) &
-         call IO_error(150_pInt,m,ext_msg='texture')
-   if (microstructure_Nconstituents(m) < 1_pInt) & 
-         call IO_error(151_pInt,m)
+   if(microstructure_crystallite(m) < 1_pInt .or. &
+      microstructure_crystallite(m) > material_Ncrystallite) & 
+        call IO_error(150_pInt,m,ext_msg='crystallite')
+   if(minval(microstructure_phase(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
+      maxval(microstructure_phase(1:microstructure_Nconstituents(m),m)) > material_Nphase) &
+        call IO_error(150_pInt,m,ext_msg='phase')
+   if(minval(microstructure_texture(1:microstructure_Nconstituents(m),m)) < 1_pInt .or. &
+      maxval(microstructure_texture(1:microstructure_Nconstituents(m),m)) > material_Ntexture) &
+        call IO_error(150_pInt,m,ext_msg='texture')
+   if(microstructure_Nconstituents(m) < 1_pInt) & 
+        call IO_error(151_pInt,m)
 !   if (abs(sum(microstructure_fraction(:,m)) - 1.0_pReal) >= 1.0e-6_pReal) then                     ! have ppm precision in fractions
 !     if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
 !         write(6,'(a,1x,f12.9)') ' sum of microstructure fraction = ',sum(microstructure_fraction(:,m))
@@ -262,7 +285,7 @@ subroutine material_parseHomogenization(myFile,myPart)
  integer(pInt),     parameter :: maxNchunks = 2_pInt
  
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) Nsections, section, s
+ integer(pInt)        :: Nsections, section, s
  character(len=65536) :: tag
  character(len=65536) :: line
  logical              :: echo
@@ -274,7 +297,7 @@ subroutine material_parseHomogenization(myFile,myPart)
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
  
  allocate(homogenization_name(Nsections));          homogenization_name = ''
- allocate(homogenization_type(Nsections));          homogenization_type = ''
+ allocate(homogenization_type(Nsections));          homogenization_type = -1 
  allocate(homogenization_typeInstance(Nsections));  homogenization_typeInstance = 0_pInt
  allocate(homogenization_Ngrains(Nsections));       homogenization_Ngrains = 0_pInt
  allocate(homogenization_Noutput(Nsections));       homogenization_Noutput = 0_pInt
@@ -306,11 +329,16 @@ subroutine material_parseHomogenization(myFile,myPart)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('type')
-         homogenization_type(section) = IO_lc(IO_stringValue(line,positions,2_pInt))                ! adding: IO_lc function
-         do s = 1_pInt,section
-           if (homogenization_type(s) == homogenization_type(section)) &
-             homogenization_typeInstance(section) = homogenization_typeInstance(section) + 1_pInt   ! count instances
-         enddo
+         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case(HOMOGENIZATION_ISOSTRAIN_label)
+             homogenization_type(section) = HOMOGENIZATION_ISOSTRAIN_ID        
+           case(HOMOGENIZATION_RGC_label)
+             homogenization_type(section) = HOMOGENIZATION_RGC_ID
+           case default
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+         end select
+         homogenization_typeInstance(section) = &
+                                          count(homogenization_type==homogenization_type(section))  ! count instances
        case ('ngrains')
          homogenization_Ngrains(section) = IO_intValue(line,positions,2_pInt)
      end select
@@ -495,7 +523,7 @@ subroutine material_parsePhase(myFile,myPart)
  integer(pInt), parameter :: maxNchunks = 2_pInt
  
  integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) Nsections, section, s
+ integer(pInt) Nsections, section
  character(len=65536) :: tag
  character(len=65536) :: line
  logical              :: echo
@@ -507,9 +535,9 @@ subroutine material_parsePhase(myFile,myPart)
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(phase_name(Nsections));                phase_name = ''
- allocate(phase_elasticity(Nsections));          phase_elasticity = ''
+ allocate(phase_elasticity(Nsections));          phase_elasticity = -1
  allocate(phase_elasticityInstance(Nsections));  phase_elasticityInstance = 0_pInt
- allocate(phase_plasticity(Nsections));          phase_plasticity = ''
+ allocate(phase_plasticity(Nsections));          phase_plasticity = -1
  allocate(phase_plasticityInstance(Nsections));  phase_plasticityInstance = 0_pInt
  allocate(phase_Noutput(Nsections));             phase_Noutput = 0_pInt
  allocate(phase_localPlasticity(Nsections));     phase_localPlasticity = .false.
@@ -540,17 +568,31 @@ subroutine material_parsePhase(myFile,myPart)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('elasticity')
-         phase_elasticity(section) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         do s = 1_pInt,section
-           if (phase_elasticity(s) == phase_elasticity(section)) &
-             phase_elasticityInstance(section) = phase_elasticityInstance(section) + 1_pInt         ! count instances
-         enddo
+         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case (ELASTICITY_HOOKE_label)
+             phase_elasticity(section) = ELASTICITY_HOOKE_ID
+           case default
+             call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+         end select
+         phase_elasticityInstance(section) = count(phase_elasticity == phase_elasticity(section))   ! count instances
        case ('plasticity')
-         phase_plasticity(section) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         do s = 1_pInt,section
-           if (phase_plasticity(s) == phase_plasticity(section)) &
-             phase_plasticityInstance(section) = phase_plasticityInstance(section) + 1_pInt         ! count instances
-         enddo
+         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case (PLASTICITY_NONE_label)
+             phase_plasticity(section) = PLASTICITY_NONE_ID
+           case (PLASTICITY_J2_label)
+             phase_plasticity(section) = PLASTICITY_J2_ID
+           case (PLASTICITY_PHENOPOWERLAW_label)
+             phase_plasticity(section) = PLASTICITY_PHENOPOWERLAW_ID
+           case (PLASTICITY_DISLOTWIN_label)
+             phase_plasticity(section) = PLASTICITY_DISLOTWIN_ID
+           case (PLASTICITY_TITANMOD_label)
+             phase_plasticity(section) = PLASTICITY_TITANMOD_ID
+           case (PLASTICITY_NONLOCAL_label)
+             phase_plasticity(section) = PLASTICITY_NONLOCAL_ID
+           case default
+             call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+         end select
+         phase_plasticityInstance(section) = count(phase_plasticity == phase_plasticity(section))   ! count instances
      end select
    endif
  enddo
