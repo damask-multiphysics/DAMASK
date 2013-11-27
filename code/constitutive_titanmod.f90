@@ -28,6 +28,8 @@ module constitutive_titanmod
  use prec, only: &
    pReal, &
    pInt
+ use lattice, only: &
+   LATTICE_iso_ID
 
  implicit none
  private
@@ -65,8 +67,8 @@ module constitutive_titanmod
  integer(pInt),     dimension(:),          allocatable,         private :: & 
    constitutive_titanmod_Noutput                                                                     !<  number of outputs per instance of this plasticity 
 
- character(len=32), dimension(:), allocatable, public, protected :: &
-   constitutive_titanmod_structureName                                                               !<  name of the lattice structure
+ integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+   constitutive_titanmod_structureID                                                                 !< ID of the lattice structure
 
  integer(pInt),     dimension(:),          allocatable,         private :: & 
    constitutive_titanmod_structure, &                                                                !<  number representing the kind of lattice structure
@@ -265,8 +267,8 @@ subroutine constitutive_titanmod_init(myFile)
  allocate(constitutive_titanmod_Noutput(maxNinstance))
           constitutive_titanmod_Noutput = 0_pInt
  
- allocate(constitutive_titanmod_structureName(maxNinstance)) 
-          constitutive_titanmod_structureName = ''
+ allocate(constitutive_titanmod_structureID(maxNinstance)) 
+          constitutive_titanmod_structureID= -1
  allocate(constitutive_titanmod_structure(maxNinstance))
           constitutive_titanmod_structure = 0_pInt
  allocate(constitutive_titanmod_Nslip(lattice_maxNslipFamily,maxNinstance))
@@ -413,8 +415,19 @@ subroutine constitutive_titanmod_init(myFile)
            constitutive_titanmod_Noutput(i) = constitutive_titanmod_Noutput(i) + 1_pInt
            constitutive_titanmod_output(constitutive_titanmod_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
          case ('lattice_structure')
-           constitutive_titanmod_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-           configNchunks = lattice_configNchunks(constitutive_titanmod_structureName(i))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+             case(LATTICE_iso_label)
+               constitutive_titanmod_structureID(i) = LATTICE_iso_ID
+             case(LATTICE_fcc_label)
+               constitutive_titanmod_structureID(i) = LATTICE_fcc_ID
+             case(LATTICE_bcc_label)
+               constitutive_titanmod_structureID(i) = LATTICE_bcc_ID
+             case(LATTICE_hex_label)
+               constitutive_titanmod_structureID(i) = LATTICE_hex_ID
+             case(LATTICE_ort_label)
+               constitutive_titanmod_structureID(i) = LATTICE_ort_ID
+           end select
+           configNchunks = lattice_configNchunks(constitutive_titanmod_structureID(i))
            Nchunks_SlipFamilies = configNchunks(1)
            Nchunks_TwinFamilies = configNchunks(2)
            Nchunks_SlipSlip =     configNchunks(3)
@@ -616,7 +629,7 @@ subroutine constitutive_titanmod_init(myFile)
 
  sanityChecks: do i = 1_pInt,maxNinstance
    constitutive_titanmod_structure(i) = &
-   lattice_initializeStructure(constitutive_titanmod_structureName(i),constitutive_titanmod_CoverA(i))
+   lattice_initializeStructure(constitutive_titanmod_structureID(i),constitutive_titanmod_CoverA(i))
    structID = constitutive_titanmod_structure(i)
 
    if (structID < 1_pInt)                                             call IO_error(205_pInt,el=i)
@@ -838,7 +851,7 @@ subroutine constitutive_titanmod_init(myFile)
     enddo outputsLoop 
    
    constitutive_titanmod_Cslip_66(1:6,1:6,i) = &
-     lattice_symmetrizeC66(constitutive_titanmod_structureName(i),& 
+     lattice_symmetrizeC66(constitutive_titanmod_structureID(i),& 
                                                 constitutive_titanmod_Cslip_66(1:6,1:6,i))          ! assign elasticity tensor
    constitutive_titanmod_Gmod(i) = &
        0.2_pReal*(constitutive_titanmod_Cslip_66(1,1,i)-constitutive_titanmod_Cslip_66(1,2,i))&

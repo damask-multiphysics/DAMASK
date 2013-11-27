@@ -165,13 +165,13 @@ subroutine crystallite_init(temperature)
  use constitutive, only: &
    constitutive_microstructure
  use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_structureName
+   constitutive_phenopowerlaw_structureID
  use constitutive_dislotwin, only: &   
-   constitutive_dislotwin_structureName
+   constitutive_dislotwin_structureID
  use constitutive_titanmod, only: &
-   constitutive_titanmod_structureName
+   constitutive_titanmod_structureID
  use constitutive_nonlocal, only: &    
-   constitutive_nonlocal_structureName
+   constitutive_nonlocal_structureID
   
  implicit none
  real(pReal),   intent(in) :: temperature
@@ -368,16 +368,16 @@ subroutine crystallite_init(temperature)
        select case (phase_plasticity(myPhase))
          case (PLASTICITY_PHENOPOWERLAW_ID)
            crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_phenopowerlaw_structureName(myMat))
+             lattice_symmetryType(constitutive_phenopowerlaw_structureID(myMat))
          case (PLASTICITY_TITANMOD_ID)
            crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_titanmod_structureName(myMat))
+             lattice_symmetryType(constitutive_titanmod_structureID(myMat))
          case (PLASTICITY_DISLOTWIN_ID)
            crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_dislotwin_structureName(myMat))
+             lattice_symmetryType(constitutive_dislotwin_structureID(myMat))
          case (PLASTICITY_NONLOCAL_ID)
            crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_nonlocal_structureName(myMat))
+             lattice_symmetryType(constitutive_nonlocal_structureID(myMat))
          case default
            crystallite_symmetryID(g,i,e) = 0_pInt                                                   !< @ToDo: does this happen for j2 material?
        end select

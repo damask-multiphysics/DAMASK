@@ -27,6 +27,8 @@ module constitutive_none
  use prec, only: &
    pReal, &
    pInt
+ use lattice, only: &
+  LATTICE_iso_ID
  
  implicit none
  private
@@ -38,8 +40,8 @@ module constitutive_none
  integer(pInt),     dimension(:,:),   allocatable, target,  public :: &
    constitutive_none_sizePostResult                                                                 !< size of each post result output
 
- character(len=32), dimension(:),     allocatable,          private :: &
-   constitutive_none_structureName
+ integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+   constitutive_none_structureID                                                                !< ID of the lattice structure
 
  real(pReal),       dimension(:,:,:), allocatable,          private :: &
    constitutive_none_Cslip_66
@@ -75,8 +77,7 @@ subroutine constitutive_none_init(myFile)
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
- use lattice, only: &
-   lattice_symmetrizeC66
+ use lattice
 
  implicit none
  integer(pInt), intent(in) :: myFile
@@ -106,8 +107,8 @@ subroutine constitutive_none_init(myFile)
           constitutive_none_sizeState = 0_pInt
  allocate(constitutive_none_sizePostResults(maxNinstance))
           constitutive_none_sizePostResults = 0_pInt
- allocate(constitutive_none_structureName(maxNinstance))
-          constitutive_none_structureName        = ''
+ allocate(constitutive_none_structureID(maxNinstance))
+          constitutive_none_structureID        = -1
  allocate(constitutive_none_Cslip_66(6,6,maxNinstance))
           constitutive_none_Cslip_66 = 0.0_pReal
  
@@ -134,7 +135,18 @@ subroutine constitutive_none_init(myFile)
          case ('plasticity','elasticity')
            cycle
          case ('lattice_structure')
-           constitutive_none_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+             case(LATTICE_iso_label)
+               constitutive_none_structureID(i) = LATTICE_iso_ID
+             case(LATTICE_fcc_label)
+               constitutive_none_structureID(i) = LATTICE_fcc_ID
+             case(LATTICE_bcc_label)
+               constitutive_none_structureID(i) = LATTICE_bcc_ID
+             case(LATTICE_hex_label)
+               constitutive_none_structureID(i) = LATTICE_hex_ID
+             case(LATTICE_ort_label)
+               constitutive_none_structureID(i) = LATTICE_ort_ID
+           end select
          case ('c11')
            constitutive_none_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
          case ('c12')
@@ -160,18 +172,14 @@ subroutine constitutive_none_init(myFile)
    endif
  enddo
 
- do i = 1_pInt,maxNinstance                 
-   if (constitutive_none_structureName(i) == '')              call IO_error(205_pInt,el=i)
- enddo
-
  instancesLoop: do i = 1_pInt,maxNinstance
    constitutive_none_sizeDotState(i)    = 1_pInt
    constitutive_none_sizeState(i)       = 1_pInt
 
-   constitutive_none_Cslip_66(:,:,i) = lattice_symmetrizeC66(constitutive_none_structureName(i),&
-                                                                      constitutive_none_Cslip_66(:,:,i))
-   constitutive_none_Cslip_66(:,:,i) = &
-     math_Mandel3333to66(math_Voigt66to3333(constitutive_none_Cslip_66(:,:,i)))
+   constitutive_none_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(constitutive_none_structureID(i),&
+                                                           constitutive_none_Cslip_66(1:6,1:6,i))
+   constitutive_none_Cslip_66(1:6,1:6,i) = &
+     math_Mandel3333to66(math_Voigt66to3333(constitutive_none_Cslip_66(1:6,1:6,i)))
 
  enddo instancesLoop
 

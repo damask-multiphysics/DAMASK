@@ -500,7 +500,7 @@ module lattice
       1, -2,  1,  6,    -1,  2, -1,  1, &
       1,  1, -2,  6,    -1, -1,  2,  1, &
 !
-     -1,  1,  0, -2,    -1,  1,  0,  1,  & !! <10.-2>{10.1} shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
+     -1,  1,  0, -2,    -1,  1,  0,  1, & !! <10.-2>{10.1} shear = (4(c/a)^2-9)/(4 sqrt(3) c/a)
       1,  0, -1, -2,     1,  0, -1,  1, &
       0, -1,  1, -2,     0, -1,  1,  1, &
       1, -1,  0, -2,     1, -1,  0,  1, &
@@ -690,15 +690,31 @@ module lattice
      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,16,17, &
      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16  &
      ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin],order=[2,1])                                     !< Twin--slip interaction types for hex (isotropic, 16 in total)
-     
- 
+ enum, bind(c)
+   enumerator :: LATTICE_iso_ID, &
+                 LATTICE_fcc_ID, &
+                 LATTICE_bcc_ID, &
+                 LATTICE_hex_ID, &
+                 LATTICE_ort_ID
+ end enum
+ character(len=*),                         parameter,            public :: &
+   LATTICE_iso_label         = 'iso', &
+   LATTICE_fcc_label         = 'fcc', &
+   LATTICE_bcc_label         = 'bcc', &
+   LATTICE_hex_label         = 'hex', &
+   LATTICE_ort_label         = 'ort'
 
  public :: &
   lattice_init, &
   lattice_initializeStructure, &
   lattice_symmetryType, &
   lattice_symmetrizeC66, &
-  lattice_configNchunks
+  lattice_configNchunks, &
+  LATTICE_iso_ID, &
+  LATTICE_fcc_ID, &
+  LATTICE_bcc_ID, &
+  LATTICE_hex_ID, &
+  LATTICE_ort_ID
 
 contains
 
@@ -732,9 +748,8 @@ subroutine lattice_init
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) then                               ! no local material configuration present...
+ if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(fileunit,material_configFile)                                                  ! ... open material.config file
- endif
  Nsections = IO_countSections(fileunit,material_partPhase)
  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
  close(fileunit)
@@ -778,7 +793,7 @@ end subroutine lattice_init
 !--------------------------------------------------------------------------------------------------
 !> @brief   Calculation of Schmid matrices, etc.
 !--------------------------------------------------------------------------------------------------
-integer(pInt) function lattice_initializeStructure(struct,CoverA)
+integer(pInt) function lattice_initializeStructure(struct_ID,CoverA)
  use math, only: &
    math_vectorproduct, &
    math_tensorproduct, &
@@ -793,8 +808,8 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
    IO_error
  
  implicit none
- character(len=*) struct
- real(pReal) CoverA
+ integer(kind(LATTICE_fcc_ID)), intent(in) :: struct_ID
+ real(pReal) :: CoverA
  real(pReal), dimension(3) :: sdU = 0.0_pReal, &
                               snU = 0.0_pReal, &
                               np = 0.0_pReal, &
@@ -812,8 +827,8 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
 
  processMe = .false.
 
- select case(struct(1:3))                          ! check first three chars of structure name
-   case ('fcc')
+ select case(struct_ID)
+   case (LATTICE_fcc_ID)
      myStructure = 1_pInt
      myNslipSystem = lattice_fcc_NslipSystem       ! size of slip system families
      myNtwinSystem = lattice_fcc_NtwinSystem       ! size of twin system families
@@ -842,7 +857,7 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
        interactionTwinTwin => lattice_fcc_interactionTwinTwin
      endif
      
-   case ('bcc')
+   case (LATTICE_bcc_ID)
      myStructure = 2_pInt
      myNslipSystem = lattice_bcc_NslipSystem       ! size of slip system families
      myNtwinSystem = lattice_bcc_NtwinSystem       ! size of twin system families
@@ -883,7 +898,7 @@ integer(pInt) function lattice_initializeStructure(struct,CoverA)
        interactionTwinTwin => lattice_bcc_interactionTwinTwin
      endif
      
-   case ('hex')
+   case (LATTICE_hex_ID)
      if (CoverA < 1.0_pReal .or. CoverA > 2.0_pReal) call IO_error(206_pInt)     ! checking physical significance of c/a
 
      lattice_hex_Nstructure = lattice_hex_Nstructure + 1_pInt  ! count instances of hex structures
@@ -984,15 +999,15 @@ end function lattice_initializeStructure
 !> @brief Maps structure to symmetry type 
 !> @details fcc(1) and bcc(2) are cubic(1) hex(3+) is hexagonal(2)
 !--------------------------------------------------------------------------------------------------
-integer(pInt) pure function lattice_symmetryType(structName)
+integer(pInt) pure function lattice_symmetryType(struct_ID)
 
  implicit none
- character(len=32), intent(in) :: structName
+ integer(kind(LATTICE_fcc_ID)), intent(in) :: struct_ID
 
- select case(structName(1:3))
-   case ('fcc','bcc')
+ select case(struct_ID)
+   case (LATTICE_fcc_ID,LATTICE_bcc_ID)
      lattice_symmetryType = 1_pInt
-   case ('hex')
+   case (LATTICE_hex_ID)
      lattice_symmetryType = 2_pInt
    case default
      lattice_symmetryType = 0_pInt
@@ -1006,30 +1021,30 @@ end function lattice_symmetryType
 !--------------------------------------------------------------------------------------------------
 !> @brief Symmetrizes stiffness matrix according to lattice type
 !--------------------------------------------------------------------------------------------------
-pure function lattice_symmetrizeC66(structName,C66)
+pure function lattice_symmetrizeC66(struct_ID,C66)
 
  implicit none
- character(len=32), intent(in) :: structName
+ integer(kind(LATTICE_fcc_ID)), intent(in) :: struct_ID
  real(pReal), dimension(6,6), intent(in) :: C66
  real(pReal), dimension(6,6) :: lattice_symmetrizeC66
  integer(pInt) :: j,k
 
  lattice_symmetrizeC66 = 0.0_pReal
  
- select case(structName(1:3))
-   case ('iso')
+ select case(struct_ID)
+   case (LATTICE_iso_ID)
      forall(k=1_pInt:3_pInt)
        forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) = C66(1,2)
        lattice_symmetrizeC66(k,k) = C66(1,1)
        lattice_symmetrizeC66(k+3,k+3) = 0.5_pReal*(C66(1,1)-C66(1,2))
      end forall
-   case ('fcc','bcc')
+   case (LATTICE_fcc_ID,LATTICE_bcc_ID)
      forall(k=1_pInt:3_pInt)
        forall(j=1_pInt:3_pInt) lattice_symmetrizeC66(k,j) =   C66(1,2)
        lattice_symmetrizeC66(k,k) =     C66(1,1)
        lattice_symmetrizeC66(k+3_pInt,k+3_pInt) = C66(4,4)
      end forall    
-   case ('hex')
+   case (LATTICE_hex_ID)
      lattice_symmetrizeC66(1,1) = C66(1,1)
      lattice_symmetrizeC66(2,2) = C66(1,1)
      lattice_symmetrizeC66(3,3) = C66(3,3)
@@ -1042,7 +1057,7 @@ pure function lattice_symmetrizeC66(structName,C66)
      lattice_symmetrizeC66(4,4) = C66(4,4)
      lattice_symmetrizeC66(5,5) = C66(4,4)
      lattice_symmetrizeC66(6,6) = 0.5_pReal*(C66(1,1)-C66(1,2))
-   case ('ort')
+   case (LATTICE_ort_ID)
      lattice_symmetrizeC66(1,1) = C66(1,1)
      lattice_symmetrizeC66(2,2) = C66(2,2)
      lattice_symmetrizeC66(3,3) = C66(3,3)
@@ -1070,16 +1085,16 @@ pure function lattice_symmetrizeC66(structName,C66)
 ! TwinTwinInteraction
 ! NnonSchmid
 !--------------------------------------------------------------------------------------------------
-function lattice_configNchunks(struct)
+function lattice_configNchunks(struct_ID)
  use prec, only: &
    pInt
 
  implicit none
  integer(pInt), dimension(7)  :: lattice_configNchunks
- character(len=*), intent(in) :: struct
+ integer(kind(LATTICE_fcc_ID)) :: struct_ID
 
- select case(struct(1:3))                                                                           ! check first three chars of structure name
-   case ('fcc')
+ select case(struct_ID)
+   case (LATTICE_fcc_ID)
      lattice_configNchunks(1) = count(lattice_fcc_NslipSystem > 0_pInt)
      lattice_configNchunks(2) = count(lattice_fcc_NtwinSystem > 0_pInt)
      lattice_configNchunks(3) = maxval(lattice_fcc_interactionSlipSlip)
@@ -1087,7 +1102,7 @@ function lattice_configNchunks(struct)
      lattice_configNchunks(5) = maxval(lattice_fcc_interactionTwinSlip)
      lattice_configNchunks(6) = maxval(lattice_fcc_interactionTwinTwin)
      lattice_configNchunks(7) = lattice_fcc_NnonSchmid
-   case ('bcc')
+   case (LATTICE_bcc_ID)
      lattice_configNchunks(1) = count(lattice_bcc_NslipSystem > 0_pInt)
      lattice_configNchunks(2) = count(lattice_bcc_NtwinSystem > 0_pInt)
      lattice_configNchunks(3) = maxval(lattice_bcc_interactionSlipSlip)
@@ -1095,7 +1110,7 @@ function lattice_configNchunks(struct)
      lattice_configNchunks(5) = maxval(lattice_bcc_interactionTwinSlip)
      lattice_configNchunks(6) = maxval(lattice_bcc_interactionTwinTwin)
      lattice_configNchunks(7) = lattice_bcc_NnonSchmid
-   case ('hex')
+   case (LATTICE_hex_ID)
      lattice_configNchunks(1) = count(lattice_hex_NslipSystem > 0_pInt)
      lattice_configNchunks(2) = count(lattice_hex_NtwinSystem > 0_pInt)
      lattice_configNchunks(3) = maxval(lattice_hex_interactionSlipSlip)

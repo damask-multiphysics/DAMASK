@@ -28,6 +28,8 @@ module constitutive_dislotwin
  use prec, only: &
    pReal, &
    pInt
+ use lattice, only: &
+   LATTICE_iso_ID
 
  implicit none
  private
@@ -36,8 +38,8 @@ module constitutive_dislotwin
    constitutive_dislotwin_sizeState, &                                                              !< total number of microstructural state variables
    constitutive_dislotwin_sizePostResults                                                           !< cumulative size of post results
 
- character(len=32), dimension(:),           allocatable,         public, protected :: &
-   constitutive_dislotwin_structureName                                                             !< name of the lattice structure
+ integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+  constitutive_dislotwin_structureID                                                                 !< ID of the lattice structure                                                         !< name of the lattice structure
 
  integer(pInt),     dimension(:,:),         allocatable, target, public :: &
    constitutive_dislotwin_sizePostResult                                                            !< size of each post result output
@@ -227,8 +229,8 @@ subroutine constitutive_dislotwin_init(file)
  allocate(constitutive_dislotwin_Noutput(maxNinstance))
           constitutive_dislotwin_Noutput = 0_pInt
  
- allocate(constitutive_dislotwin_structureName(maxNinstance))
-          constitutive_dislotwin_structureName = ''
+ allocate(constitutive_dislotwin_structureID(maxNinstance))
+          constitutive_dislotwin_structureID = -1
  allocate(constitutive_dislotwin_structure(maxNinstance))
           constitutive_dislotwin_structure = 0_pInt
  allocate(constitutive_dislotwin_Nslip(lattice_maxNslipFamily,maxNinstance))
@@ -348,8 +350,19 @@ subroutine constitutive_dislotwin_init(file)
            constitutive_dislotwin_Noutput(i) = constitutive_dislotwin_Noutput(i) + 1_pInt
            constitutive_dislotwin_output(constitutive_dislotwin_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
          case ('lattice_structure')
-           constitutive_dislotwin_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-           configNchunks = lattice_configNchunks(constitutive_dislotwin_structureName(i))
+          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+            case(LATTICE_iso_label)
+              constitutive_dislotwin_structureID(i) = LATTICE_iso_ID
+            case(LATTICE_fcc_label)
+              constitutive_dislotwin_structureID(i) = LATTICE_fcc_ID
+            case(LATTICE_bcc_label)
+              constitutive_dislotwin_structureID(i) = LATTICE_bcc_ID
+            case(LATTICE_hex_label)
+              constitutive_dislotwin_structureID(i) = LATTICE_hex_ID
+            case(LATTICE_ort_label)
+              constitutive_dislotwin_structureID(i) = LATTICE_ort_ID
+          end select
+           configNchunks = lattice_configNchunks(constitutive_dislotwin_structureID(i))
            Nchunks_SlipFamilies = configNchunks(1)
            Nchunks_TwinFamilies = configNchunks(2)
            Nchunks_SlipSlip =     configNchunks(3)
@@ -503,7 +516,7 @@ subroutine constitutive_dislotwin_init(file)
  
  sanityChecks: do i = 1_pInt,maxNinstance
     constitutive_dislotwin_structure(i) = &
-      lattice_initializeStructure(constitutive_dislotwin_structureName(i),constitutive_dislotwin_CoverA(i))
+      lattice_initializeStructure(constitutive_dislotwin_structureID(i),constitutive_dislotwin_CoverA(i))
     structID = constitutive_dislotwin_structure(i)
  
     if (structID < 1_pInt)                                                 call IO_error(205_pInt,el=i)
@@ -652,7 +665,7 @@ subroutine constitutive_dislotwin_init(file)
  
      
     !* Elasticity matrix and shear modulus according to material.config
-    constitutive_dislotwin_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(constitutive_dislotwin_structureName(i),&
+    constitutive_dislotwin_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(constitutive_dislotwin_structureID(i),&
                                                                       constitutive_dislotwin_Cslip_66(:,:,i)) 
     constitutive_dislotwin_Gmod(i) = &
        0.2_pReal*(constitutive_dislotwin_Cslip_66(1,1,i)-constitutive_dislotwin_Cslip_66(1,2,i)) &
@@ -1097,7 +1110,8 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin, &
-   lattice_fcc_corellationTwinSlip
+   lattice_fcc_corellationTwinSlip, &
+   LATTICE_fcc_ID
  
  implicit none
  integer(pInt), intent(in) :: ipc,ip,el
@@ -1261,8 +1275,8 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  
        !* Shear rates and their derivatives due to twin
        if ( tau_twin(j) > 0.0_pReal ) then
-         select case(constitutive_dislotwin_structureName(matID))
-           case ('fcc')
+         select case(constitutive_dislotwin_structureID(matID))
+           case (LATTICE_fcc_ID)
              s1=lattice_fcc_corellationTwinSlip(1,index_myFamily+i)
              s2=lattice_fcc_corellationTwinSlip(2,index_myFamily+i)
              if (tau_twin(j) < constitutive_dislotwin_tau_r(j,matID)) then
@@ -1304,14 +1318,27 @@ end subroutine constitutive_dislotwin_LpAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,el)
- use prec,     only: p_vec
- 
- use math,     only: pi
- use mesh,     only: mesh_NcpElems, mesh_maxNips
- use material, only: homogenization_maxNgrains, material_phase, phase_plasticityInstance
- use lattice,  only: lattice_Sslip_v, lattice_Stwin_v, &
-                     lattice_maxNslipFamily,lattice_maxNtwinFamily, &
-                     lattice_NslipSystem, lattice_NtwinSystem, lattice_sheartwin, lattice_fcc_corellationTwinSlip
+ use prec, only: &
+   p_vec
+ use math, only: &
+   pi
+ use mesh, only: &
+   mesh_NcpElems, &
+   mesh_maxNips
+ use material, only: &
+   homogenization_maxNgrains, &
+   material_phase, &
+   phase_plasticityInstance
+ use lattice,  only: &
+   lattice_Sslip_v, &
+   lattice_Stwin_v, &
+   lattice_maxNslipFamily, &
+   lattice_maxNtwinFamily, &
+   lattice_NslipSystem, &
+   lattice_NtwinSystem, &
+   lattice_sheartwin, &
+   lattice_fcc_corellationTwinSlip, &
+   LATTICE_fcc_ID
 
  implicit none
  real(pReal), dimension(6),                                                    intent(in):: &
@@ -1447,8 +1474,8 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
  
        !* Shear rates and their derivatives due to twin
        if ( tau_twin(j) > 0.0_pReal ) then
-         select case(constitutive_dislotwin_structureName(matID))
-           case ('fcc')
+         select case(constitutive_dislotwin_structureID(matID))
+           case (LATTICE_fcc_ID)
              s1=lattice_fcc_corellationTwinSlip(1,index_myFamily+i)
              s2=lattice_fcc_corellationTwinSlip(2,index_myFamily+i)
              if (tau_twin(j) < constitutive_dislotwin_tau_r(j,matID)) then
@@ -1505,7 +1532,8 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
    lattice_shearTwin, &
-   lattice_fcc_corellationTwinSlip
+   lattice_fcc_corellationTwinSlip, &
+   LATTICE_fcc_ID
 
  implicit none
  real(pReal), dimension(6),                                                    intent(in) :: &
@@ -1688,8 +1716,8 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
  
               !* Shear rates due to twin
               if ( tau > 0.0_pReal ) then
-                select case(constitutive_dislotwin_structureName(matID))
-                  case ('fcc')
+                select case(constitutive_dislotwin_structureID(matID))
+                  case (LATTICE_fcc_ID)
                   s1=lattice_fcc_corellationTwinSlip(1,index_myFamily+i)
                   s2=lattice_fcc_corellationTwinSlip(2,index_myFamily+i)
                   if (tau < constitutive_dislotwin_tau_r(j,matID)) then

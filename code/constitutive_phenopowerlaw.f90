@@ -28,6 +28,8 @@ module constitutive_phenopowerlaw
  use prec, only: &
    pReal,&
    pInt
+ use lattice, only: &
+  LATTICE_iso_ID
 
  implicit none
  private
@@ -43,8 +45,8 @@ module constitutive_phenopowerlaw
  character(len=64), dimension(:,:),   allocatable, target, public :: & 
    constitutive_phenopowerlaw_output                                                                !< name of each post result output
  
- character(len=32), dimension(:),     allocatable,         public :: &
-   constitutive_phenopowerlaw_structureName
+ integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+   constitutive_phenopowerlaw_structureID                                    !< ID of the lattice structure
 
  integer(pInt),     dimension(:),      allocatable,        private :: &
    constitutive_phenopowerlaw_Noutput, &                                                            !< number of outputs per instance of this constitution 
@@ -189,8 +191,8 @@ subroutine constitutive_phenopowerlaw_init(myFile)
           constitutive_phenopowerlaw_outputID              = -1
  allocate(constitutive_phenopowerlaw_Noutput(maxNinstance))
           constitutive_phenopowerlaw_Noutput              = 0_pInt
- allocate(constitutive_phenopowerlaw_structureName(maxNinstance))
-          constitutive_phenopowerlaw_structureName        = ''
+ allocate(constitutive_phenopowerlaw_structureID(maxNinstance))
+          constitutive_phenopowerlaw_structureID          = -1
  allocate(constitutive_phenopowerlaw_structure(maxNinstance))
           constitutive_phenopowerlaw_structure            = 0_pInt
  allocate(constitutive_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance))
@@ -303,8 +305,19 @@ subroutine constitutive_phenopowerlaw_init(myFile)
                constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalvolfrac_ID
            end select
          case ('lattice_structure')
-           constitutive_phenopowerlaw_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-           configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureName(i))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+             case(LATTICE_iso_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_iso_ID
+             case(LATTICE_fcc_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_fcc_ID
+             case(LATTICE_bcc_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_bcc_ID
+             case(LATTICE_hex_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_hex_ID
+             case(LATTICE_ort_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_ort_ID
+           end select
+           configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureID(i))
            Nchunks_SlipFamilies = configNchunks(1)
            Nchunks_TwinFamilies = configNchunks(2)
            Nchunks_SlipSlip =     configNchunks(3)
@@ -450,7 +463,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
  sanityChecks: do i = 1_pInt,maxNinstance
    constitutive_phenopowerlaw_structure(i) = &
-     lattice_initializeStructure(constitutive_phenopowerlaw_structureName(i), constitutive_phenopowerlaw_CoverA(i))   ! get structure
+     lattice_initializeStructure(constitutive_phenopowerlaw_structureID(i), constitutive_phenopowerlaw_CoverA(i))   ! get structure
                                                                          
    constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i) = &
      min(lattice_NslipSystem(1:lattice_maxNslipFamily,constitutive_phenopowerlaw_structure(i)),& ! limit active slip systems per family to min of available and requested
@@ -550,11 +563,11 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
    structID = constitutive_phenopowerlaw_structure(i)
 
-   constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
-     lattice_symmetrizeC66(constitutive_phenopowerlaw_structureName(i),&
+   constitutive_phenopowerlaw_Cslip_66(1:6,1:6,i) = &
+     lattice_symmetrizeC66(constitutive_phenopowerlaw_structureID(i),&
                                 constitutive_phenopowerlaw_Cslip_66(:,:,i))     ! assign elasticity tensor
                                                                                                   
-   constitutive_phenopowerlaw_Cslip_66(:,:,i) = &
+   constitutive_phenopowerlaw_Cslip_66(1:6,1:6,i) = &
      math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))
 
    do f = 1_pInt,lattice_maxNslipFamily                                                             ! >>> interaction slip -- X

@@ -29,6 +29,8 @@ use prec, only: &
   pReal, &
   pInt, &
   p_vec
+use lattice, only: &
+  LATTICE_iso_ID
 
 implicit none
 private
@@ -92,8 +94,8 @@ iV, &                                                                !< state in
 iD                                                                   !< state indices for stable dipole height
 
 
-character(len=32), dimension(:), allocatable, public :: &
-constitutive_nonlocal_structureName                                  !< name of the lattice structure
+integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+constitutive_nonlocal_structureID                                    !< ID of the lattice structure
 
 integer(pInt), dimension(:), allocatable, public :: &
 constitutive_nonlocal_structure                                      !< number representing the kind of lattice structure
@@ -238,7 +240,6 @@ use material, only: homogenization_maxNgrains, &
                     PLASTICITY_NONLOCAL_ID
 use lattice
 
-!*** input variables
 integer(pInt), intent(in) ::                myFile
 
 !*** local variables
@@ -296,13 +297,13 @@ constitutive_nonlocal_sizePostResult = 0_pInt
 constitutive_nonlocal_output = ''
 Noutput = 0_pInt
 
-allocate(constitutive_nonlocal_structureName(maxNmatIDs))
+allocate(constitutive_nonlocal_structureID(maxNmatIDs))
 allocate(constitutive_nonlocal_structure(maxNmatIDs))
 allocate(Nslip(lattice_maxNslipFamily, maxNmatIDs))
 allocate(slipFamily(lattice_maxNslip, maxNmatIDs))
 allocate(slipSystemLattice(lattice_maxNslip, maxNmatIDs))
 allocate(totalNslip(maxNmatIDs))
-constitutive_nonlocal_structureName = ''
+constitutive_nonlocal_structureID = -1
 constitutive_nonlocal_structure = 0_pInt
 Nslip = 0_pInt
 slipFamily = 0_pInt
@@ -428,8 +429,19 @@ do while (trim(line) /= '#EOF#')                                                
           Noutput(i) = Noutput(i) + 1_pInt
           constitutive_nonlocal_output(Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
         case ('lattice_structure')
-          constitutive_nonlocal_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-          configNchunks = lattice_configNchunks(constitutive_nonlocal_structureName(i))
+          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+            case(LATTICE_iso_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_iso_ID
+            case(LATTICE_fcc_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_fcc_ID
+            case(LATTICE_bcc_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_bcc_ID
+            case(LATTICE_hex_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_hex_ID
+            case(LATTICE_ort_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_ort_ID
+          end select
+          configNchunks = lattice_configNchunks(constitutive_nonlocal_structureID(i))
           Nchunks_SlipFamilies = configNchunks(1)
           Nchunks_SlipSlip =     configNchunks(3)
           Nchunks_nonSchmid = configNchunks(7)
@@ -585,7 +597,7 @@ enddo
 do i = 1_pInt,maxNmatIDs
 
   constitutive_nonlocal_structure(i) = &
-    lattice_initializeStructure(constitutive_nonlocal_structureName(i), CoverA(i))                            ! our lattice structure is defined in the material.config file by the structureName (and the c/a ratio)
+    lattice_initializeStructure(constitutive_nonlocal_structureID(i), CoverA(i))                            ! our lattice structure is defined in the material.config file by the structureName (and the c/a ratio)
   structID = constitutive_nonlocal_structure(i)
   
   
@@ -944,7 +956,7 @@ do i = 1,maxNmatIDs
   
   !*** elasticity matrix and shear modulus according to material.config
   
-  Cslip66(:,:,i) = lattice_symmetrizeC66(constitutive_nonlocal_structureName(i), Cslip66(:,:,i)) 
+  Cslip66(:,:,i) = lattice_symmetrizeC66(constitutive_nonlocal_structureID(i), Cslip66(:,:,i)) 
   mu(i) = 0.2_pReal * ( Cslip66(1,1,i) - Cslip66(1,2,i) + 3.0_pReal*Cslip66(4,4,i))                 ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
   nu(i) = (Cslip66(1,1,i) + 4.0_pReal*Cslip66(1,2,i) - 2.0_pReal*Cslip66(4,4,i)) &
         / (4.0_pReal*Cslip66(1,1,i) + 6.0_pReal*Cslip66(1,2,i) + 2.0_pReal*Cslip66(4,4,i))          ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
