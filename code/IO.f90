@@ -1474,7 +1474,7 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
  case (200_pInt)
    msg = 'unknown elasticity specified:' 
  case (201_pInt)
-   msg = 'unknown plasticity specified:' 
+   msg = 'unknown plasticity specified:'
  case (205_pInt)
    msg = 'unknown lattice structure encountered'
  case (206_pInt)

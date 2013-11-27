@@ -165,16 +165,12 @@ subroutine crystallite_init(temperature)
  use constitutive, only: &
    constitutive_microstructure
  use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_label, &
    constitutive_phenopowerlaw_structureName
- use constitutive_titanmod, only: &
-   constitutive_titanmod_label, &
-   constitutive_titanmod_structureName
  use constitutive_dislotwin, only: &   
-   constitutive_dislotwin_label, &
    constitutive_dislotwin_structureName
+ use constitutive_titanmod, only: &
+   constitutive_titanmod_structureName
  use constitutive_nonlocal, only: &    
-   constitutive_nonlocal_label, &
    constitutive_nonlocal_structureName
   
  implicit none
@@ -370,16 +366,16 @@ subroutine crystallite_init(temperature)
        myPhase = material_phase(g,i,e)
        myMat   = phase_plasticityInstance(myPhase)
        select case (phase_plasticity(myPhase))
-         case (constitutive_phenopowerlaw_label)
+         case (PLASTICITY_PHENOPOWERLAW_ID)
            crystallite_symmetryID(g,i,e) = &
              lattice_symmetryType(constitutive_phenopowerlaw_structureName(myMat))
-         case (constitutive_titanmod_label)
+         case (PLASTICITY_TITANMOD_ID)
            crystallite_symmetryID(g,i,e) = &
              lattice_symmetryType(constitutive_titanmod_structureName(myMat))
-         case (constitutive_dislotwin_label)
+         case (PLASTICITY_DISLOTWIN_ID)
            crystallite_symmetryID(g,i,e) = &
              lattice_symmetryType(constitutive_dislotwin_structureName(myMat))
-         case (constitutive_nonlocal_label)
+         case (PLASTICITY_NONLOCAL_ID)
            crystallite_symmetryID(g,i,e) = &
              lattice_symmetryType(constitutive_nonlocal_structureName(myMat))
          case default

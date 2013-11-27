@@ -31,9 +31,6 @@ module constitutive_phenopowerlaw
 
  implicit none
  private
- character (len=*),                   parameter,           public :: &
-   CONSTITUTIVE_PHENOPOWERLAW_label = 'phenopowerlaw'
-    
  integer(pInt),     dimension(:),     allocatable,         public, protected :: &
    constitutive_phenopowerlaw_sizeDotState, &
    constitutive_phenopowerlaw_sizeState, &
@@ -145,12 +142,12 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    tag  = '', &
    line = ''                                                                                         ! to start initialized
  
- write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_PHENOPOWERLAW_label//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
- maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_PHENOPOWERLAW_label),pInt)
+ maxNinstance = int(count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -256,7 +253,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (trim(phase_plasticity(section)) == CONSTITUTIVE_PHENOPOWERLAW_label) then                  ! one of my sections
+     if (phase_plasticity(section) == PLASTICITY_PHENOPOWERLAW_ID) then                             ! one of my sections
        i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
@@ -282,42 +279,42 @@ subroutine constitutive_phenopowerlaw_init(myFile)
          case ('c11')
            constitutive_phenopowerlaw_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(1,1,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c12')
            constitutive_phenopowerlaw_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(1,2,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c13')
            constitutive_phenopowerlaw_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(1,3,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c22')
            constitutive_phenopowerlaw_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(2,2,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c23')
            constitutive_phenopowerlaw_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(2,3,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c33')
            constitutive_phenopowerlaw_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(3,3,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c44')
            constitutive_phenopowerlaw_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(4,4,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c55')
            constitutive_phenopowerlaw_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(5,5,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('c66')
            constitutive_phenopowerlaw_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
            if (abs(constitutive_phenopowerlaw_Cslip_66(6,6,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('nslip')
            if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
-             call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            Nchunks_SlipFamilies = positions(1) - 1_pInt
            do j = 1_pInt, Nchunks_SlipFamilies
               constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
@@ -338,7 +335,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
            constitutive_phenopowerlaw_a_slip(i) = IO_floatValue(line,positions,2_pInt)
          case ('ntwin')
            if (positions(1) < 1_pInt + Nchunks_TwinFamilies) &
-             call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            Nchunks_TwinFamilies = positions(1) - 1_pInt
            do j = 1_pInt, Nchunks_TwinFamilies
              constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
@@ -365,7 +362,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
            constitutive_phenopowerlaw_h0_SlipSlip(i) = IO_floatValue(line,positions,2_pInt)
          case ('h0_sliptwin')
            constitutive_phenopowerlaw_h0_SlipTwin(i) = IO_floatValue(line,positions,2_pInt)
-           call IO_warning(42_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+           call IO_warning(42_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          case ('h0_twinslip')
            constitutive_phenopowerlaw_h0_TwinSlip(i) = IO_floatValue(line,positions,2_pInt)
          case ('h0_twintwin')
@@ -378,36 +375,36 @@ subroutine constitutive_phenopowerlaw_init(myFile)
            constitutive_phenopowerlaw_aTolTwinfrac(i)   = IO_floatValue(line,positions,2_pInt)
          case ('interaction_slipslip')
            if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            do j = 1_pInt, Nchunks_SlipSlip
              constitutive_phenopowerlaw_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('interaction_sliptwin')
            if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            do j = 1_pInt, Nchunks_SlipTwin
              constitutive_phenopowerlaw_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('interaction_twinslip')
            if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            do j = 1_pInt, Nchunks_TwinSlip
              constitutive_phenopowerlaw_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('interaction_twintwin')
            if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            do j = 1_pInt, Nchunks_TwinTwin
              constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('nonschmid_coefficients')
            if (positions(1) < 1_pInt + Nchunks_nonSchmid) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            do j = 1_pInt,Nchunks_nonSchmid
              constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
        end select
      endif
    endif
@@ -429,26 +426,26 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    if (constitutive_phenopowerlaw_structure(i) < 1 )          call IO_error(205_pInt,el=i)
    if (any(constitutive_phenopowerlaw_tau0_slip(:,i) < 0.0_pReal .and. &
            constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='tau0_slip (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (constitutive_phenopowerlaw_gdot0_slip(i) <= 0.0_pReal) call IO_error(211_pInt,el=i,ext_msg='gdot0_slip (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (constitutive_phenopowerlaw_n_slip(i) <= 0.0_pReal)     call IO_error(211_pInt,el=i,ext_msg='n_slip (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_tausat_slip(:,i) <= 0.0_pReal .and. &
            constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='tausat_slip (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_a_slip(i) == 0.0_pReal .and. &
            constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='a_slip (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_tau0_twin(:,i) < 0.0_pReal .and. &
            constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='tau0_twin (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (    constitutive_phenopowerlaw_gdot0_twin(i) <= 0.0_pReal .and. &
        any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='gdot0_twin (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (    constitutive_phenopowerlaw_n_twin(i) <= 0.0_pReal .and. &
        any(constitutive_phenopowerlaw_Ntwin(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='n_twin (' &
-                                                                 //CONSTITUTIVE_PHENOPOWERLAW_label//')')
+                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
    if (constitutive_phenopowerlaw_aTolResistance(i) <= 0.0_pReal) &
      constitutive_phenopowerlaw_aTolResistance(i) = 1.0_pReal                                       ! default absolute tolerance 1 Pa
    if (constitutive_phenopowerlaw_aTolShear(i) <= 0.0_pReal) &
@@ -497,7 +494,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
             )
          mySize = 1_pInt
        case default
-         call IO_error(212_pInt,ext_msg=constitutive_phenopowerlaw_output(o,i)//' ('//CONSTITUTIVE_PHENOPOWERLAW_label//')')
+         call IO_error(212_pInt,ext_msg=constitutive_phenopowerlaw_output(o,i)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
      end select
 
      outputFound: if (mySize > 0_pInt) then

@@ -16,20 +16,15 @@
 ! You should have received a copy of the GNU General Public License
 ! along with DAMASK. If not, see <http://www.gnu.org/licenses/>.
 !
-!##############################################################
-!* $Id$
-!************************************ 
-!*  Module: CONSTITUTIVE_NONLOCAL   *
-!************************************
-!* contains:                        *
-!* - constitutive equations         *
-!* - parameters definition          *
-!************************************
-
-
-MODULE constitutive_nonlocal
-
-!* Include other modules
+!--------------------------------------------------------------------------------------------------
+! $Id$
+!--------------------------------------------------------------------------------------------------
+!> @author Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief material subroutine for plasticity including dislocation flux
+!--------------------------------------------------------------------------------------------------
+module constitutive_nonlocal
 use prec, only: &
   pReal, &
   pInt, &
@@ -37,13 +32,6 @@ use prec, only: &
 
 implicit none
 private
-
-
-!* Definition of parameters
-
-character (len=*), parameter, public :: &
-CONSTITUTIVE_NONLOCAL_LABEL = 'nonlocal'
-
 character(len=22), dimension(11), parameter, private :: &
 BASICSTATES = ['rhoSglEdgePosMobile   ', &
                'rhoSglEdgeNegMobile   ', &
@@ -213,14 +201,13 @@ constitutive_nonlocal_kinetics, &
 constitutive_nonlocal_dislocationstress
 
 
-CONTAINS
+contains
 
 !--------------------------------------------------------------------------------------------------
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_init(myFile)
-
 use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 use math,     only: math_Mandel3333to66, & 
                     math_Voigt66to3333, & 
@@ -246,10 +233,10 @@ use mesh,     only: mesh_NcpElems, &
 use material, only: homogenization_maxNgrains, &
                     phase_plasticity, &
                     phase_plasticityInstance, &
-                    phase_Noutput
+                    phase_Noutput, &
+                    PLASTICITY_NONLOCAL_label, &
+                    PLASTICITY_NONLOCAL_ID
 use lattice
-
-!*** output variables
 
 !*** input variables
 integer(pInt), intent(in) ::                myFile
@@ -278,15 +265,15 @@ integer(pInt)          ::                   section = 0_pInt, &
                                             Nchunks_SlipFamilies = 0_pInt, &
                                             Nchunks_nonSchmid = 0_pInt, &
                                             mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
-character(len=65536)                        tag
-character(len=65536) ::                     line = ''                                ! to start initialized
+character(len=65536)                    ::  tag, &
+                                            line = ''                                ! to start initialized
  
- write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_NONLOCAL_label//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNmatIDs = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
+ maxNmatIDs = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
  if (maxNmatIDs == 0) return                                                                                                       ! we don't have to do anything if there's no instance for this constitutive law
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -429,8 +416,8 @@ do while (trim(line) /= '#EOF#')                                                
     section = section + 1_pInt                                                                      ! advance section counter
     cycle
   endif
-  if (section > 0_pInt ) then                                                                       ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-    if (trim(phase_plasticity(section)) == CONSTITUTIVE_NONLOCAL_LABEL) then                        ! one of my sections
+  if (section > 0_pInt ) then                                                                       ! do not short-circuit here (.and. with next if statement). It's not safe in Fortran
+    if (phase_plasticity(section) == PLASTICITY_NONLOCAL_ID) then                                   ! one of my sections
       i = phase_plasticityInstance(section)                                                         ! which instance of my plasticity is present phase
       positions = IO_stringPos(line,MAXNCHUNKS)
       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                            ! extract key
@@ -468,7 +455,7 @@ do while (trim(line) /= '#EOF#')                                                
            Cslip66(6,6,i) = IO_floatValue(line,positions,2_pInt)
         case ('nslip')
           if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
-            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_LABEL//')')
           Nchunks_SlipFamilies = positions(1) - 1_pInt
           do f = 1_pInt, Nchunks_SlipFamilies
             Nslip(f,i) = IO_intValue(line,positions,1_pInt+f)
@@ -531,7 +518,7 @@ do while (trim(line) /= '#EOF#')                                                
           significantN(i) = IO_floatValue(line,positions,2_pInt)
         case ('interaction_slipslip')
            if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_LABEL//')')
           do it = 1_pInt,Nchunks_SlipSlip
             interactionSlipSlip(it,i) = IO_floatValue(line,positions,1_pInt+it)
           enddo
@@ -581,14 +568,14 @@ do while (trim(line) /= '#EOF#')                                                
           shortRangeStressCorrection(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case ('nonschmid_coefficients')
           if (positions(1) < 1_pInt + Nchunks_nonSchmid) &
-            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_label//')')
           do f = 1_pInt,Nchunks_nonSchmid
             nonSchmidCoeff(f,i) = IO_floatValue(line,positions,1_pInt+f)
           enddo
         case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
           probabilisticMultiplication(i) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
         case default
-          call IO_error(210_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+          call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_label//')')
       end select
     endif
   endif
@@ -607,7 +594,7 @@ do i = 1_pInt,maxNmatIDs
   if (structID < 1_pInt) &
     call IO_error(205_pInt,el=i)
   if (sum(Nslip(:,i)) <= 0_pInt) &
-    call IO_error(211_pInt,ext_msg='Nslip ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='Nslip ('//PLASTICITY_NONLOCAL_label//')')
   do o = 1_pInt,maxval(phase_Noutput)
     if(len(constitutive_nonlocal_output(o,i)) > 64_pInt) &
       call IO_error(666_pInt)
@@ -615,83 +602,83 @@ do i = 1_pInt,maxNmatIDs
   do f = 1_pInt,lattice_maxNslipFamily
     if (Nslip(f,i) > 0_pInt) then
       if (rhoSglEdgePos0(f,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='rhoSglEdgePos0 ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='rhoSglEdgePos0 ('//PLASTICITY_NONLOCAL_label//')')
       if (rhoSglEdgeNeg0(f,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='rhoSglEdgeNeg0 ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='rhoSglEdgeNeg0 ('//PLASTICITY_NONLOCAL_label//')')
       if (rhoSglScrewPos0(f,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='rhoSglScrewPos0 ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='rhoSglScrewPos0 ('//PLASTICITY_NONLOCAL_label//')')
       if (rhoSglScrewNeg0(f,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='rhoSglScrewNeg0 ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='rhoSglScrewNeg0 ('//PLASTICITY_NONLOCAL_label//')')
       if (rhoDipEdge0(f,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='rhoDipEdge0 ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='rhoDipEdge0 ('//PLASTICITY_NONLOCAL_label//')')
       if (rhoDipScrew0(f,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='rhoDipScrew0 ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='rhoDipScrew0 ('//PLASTICITY_NONLOCAL_label//')')
       if (burgersPerSlipFamily(f,i) <= 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='Burgers ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='Burgers ('//PLASTICITY_NONLOCAL_label//')')
       if (lambda0PerSlipFamily(f,i) <= 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='lambda0 ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='lambda0 ('//PLASTICITY_NONLOCAL_label//')')
       if (minDipoleHeightPerSlipFamily(f,1,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='minimumDipoleHeightEdge ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='minimumDipoleHeightEdge ('//PLASTICITY_NONLOCAL_label//')')
       if (minDipoleHeightPerSlipFamily(f,2,i) < 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='minimumDipoleHeightScrew ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='minimumDipoleHeightScrew ('//PLASTICITY_NONLOCAL_label//')')
       if (peierlsStressPerSlipFamily(f,1,i) <= 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='peierlsStressEdge ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='peierlsStressEdge ('//PLASTICITY_NONLOCAL_label//')')
       if (peierlsStressPerSlipFamily(f,2,i) <= 0.0_pReal) &
-        call IO_error(211_pInt,ext_msg='peierlsStressScrew ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+        call IO_error(211_pInt,ext_msg='peierlsStressScrew ('//PLASTICITY_NONLOCAL_label//')')
     endif
   enddo
   if (any(interactionSlipSlip(1:maxval(lattice_interactionSlipSlip(:,:,structID)),i) < 0.0_pReal)) &
-    call IO_error(211_pInt,ext_msg='interaction_SlipSlip ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='interaction_SlipSlip ('//PLASTICITY_NONLOCAL_label//')')
   if (linetensionEffect(i) < 0.0_pReal .or. linetensionEffect(i) > 1.0_pReal) &
-    call IO_error(211_pInt,ext_msg='linetension ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='linetension ('//PLASTICITY_NONLOCAL_label//')')
   if (edgeJogFactor(i) < 0.0_pReal .or. edgeJogFactor(i) > 1.0_pReal) &
-    call IO_error(211_pInt,ext_msg='edgejog ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='edgejog ('//PLASTICITY_NONLOCAL_label//')')
   if (cutoffRadius(i) < 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='r ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='r ('//PLASTICITY_NONLOCAL_label//')')
   if (atomicVolume(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='atomicVolume ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='atomicVolume ('//PLASTICITY_NONLOCAL_label//')')
   if (Dsd0(i) < 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='selfDiffusionPrefactor ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='selfDiffusionPrefactor ('//PLASTICITY_NONLOCAL_label//')')
   if (selfDiffusionEnergy(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='selfDiffusionEnergy ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='selfDiffusionEnergy ('//PLASTICITY_NONLOCAL_label//')')
   if (aTolRho(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='aTol_rho ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='aTol_rho ('//PLASTICITY_NONLOCAL_label//')')
   if (aTolShear(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='aTol_shear ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='aTol_shear ('//PLASTICITY_NONLOCAL_label//')')
   if (significantRho(i) < 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='significantRho ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='significantRho ('//PLASTICITY_NONLOCAL_label//')')
   if (significantN(i) < 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='significantN ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='significantN ('//PLASTICITY_NONLOCAL_label//')')
   if (doublekinkwidth(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='doublekinkwidth ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='doublekinkwidth ('//PLASTICITY_NONLOCAL_label//')')
   if (solidSolutionEnergy(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='solidSolutionEnergy ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='solidSolutionEnergy ('//PLASTICITY_NONLOCAL_label//')')
   if (solidSolutionSize(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='solidSolutionSize ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='solidSolutionSize ('//PLASTICITY_NONLOCAL_label//')')
   if (solidSolutionConcentration(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='solidSolutionConcentration ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='solidSolutionConcentration ('//PLASTICITY_NONLOCAL_label//')')
   if (pParam(i) <= 0.0_pReal .or. pParam(i) > 1.0_pReal) &
-    call IO_error(211_pInt,ext_msg='p ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='p ('//PLASTICITY_NONLOCAL_label//')')
   if (qParam(i) < 1.0_pReal .or. qParam(i) > 2.0_pReal) &
-    call IO_error(211_pInt,ext_msg='q ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='q ('//PLASTICITY_NONLOCAL_label//')')
   if (viscosity(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='viscosity ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='viscosity ('//PLASTICITY_NONLOCAL_label//')')
   if (fattack(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='attackFrequency ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='attackFrequency ('//PLASTICITY_NONLOCAL_label//')')
   if (rhoSglScatter(i) < 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='rhoSglScatter ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='rhoSglScatter ('//PLASTICITY_NONLOCAL_label//')')
   if (rhoSglRandom(i) < 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='rhoSglRandom ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='rhoSglRandom ('//PLASTICITY_NONLOCAL_label//')')
   if (rhoSglRandomBinning(i) <= 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='rhoSglRandomBinning ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='rhoSglRandomBinning ('//PLASTICITY_NONLOCAL_label//')')
   if (surfaceTransmissivity(i) < 0.0_pReal .or. surfaceTransmissivity(i) > 1.0_pReal) &
-    call IO_error(211_pInt,ext_msg='surfaceTransmissivity ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='surfaceTransmissivity ('//PLASTICITY_NONLOCAL_label//')')
   if (grainboundaryTransmissivity(i) > 1.0_pReal) &
-    call IO_error(211_pInt,ext_msg='grainboundaryTransmissivity ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='grainboundaryTransmissivity ('//PLASTICITY_NONLOCAL_label//')')
   if (CFLfactor(i) < 0.0_pReal) &
-    call IO_error(211_pInt,ext_msg='CFLfactor ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='CFLfactor ('//PLASTICITY_NONLOCAL_label//')')
   if (fEdgeMultiplication(i) < 0.0_pReal .or. fEdgeMultiplication(i) > 1.0_pReal) &
-    call IO_error(211_pInt,ext_msg='edgemultiplicationfactor ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(211_pInt,ext_msg='edgemultiplicationfactor ('//PLASTICITY_NONLOCAL_label//')')
   
   
   !*** determine total number of active slip systems
@@ -851,7 +838,7 @@ do i = 1,maxNmatIDs
     enddo
   enddo
   if (iD(ns,2,i) /= constitutive_nonlocal_sizeState(i)) &  ! check if last index is equal to size of state
-    call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+    call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
   
 
   !*** determine size of postResults array
@@ -945,7 +932,7 @@ do i = 1,maxNmatIDs
         mySize = 6_pInt
       case default
         call IO_error(212_pInt,ext_msg=constitutive_nonlocal_output(o,i)//&
-                                       '('//CONSTITUTIVE_NONLOCAL_LABEL//')')
+                                       '('//PLASTICITY_NONLOCAL_label//')')
     end select
 
     if (mySize > 0_pInt) then                                                                       ! any meaningful output found                               
@@ -1043,7 +1030,6 @@ end subroutine constitutive_nonlocal_init
 !> @brief sets the initial microstructural state for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_nonlocal_stateInit(state)
-
 use IO,       only: IO_error
 use lattice,  only: lattice_maxNslipFamily
 use math,     only: math_sampleGaussVar
@@ -1055,7 +1041,8 @@ use mesh,     only: mesh_ipVolume, &
                     FE_geomtype
 use material, only: material_phase, &
                     phase_plasticityInstance, &
-                    phase_plasticity
+                    phase_plasticity ,&
+                    PLASTICITY_NONLOCAL_ID
 
 implicit none
 
@@ -1085,14 +1072,14 @@ real(pReal)                   meanDensity, &
                               minimumIpVolume
 
 
-maxNmatIDs = int(count(phase_plasticity == CONSTITUTIVE_NONLOCAL_LABEL),pInt)
+maxNmatIDs = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
 
 
 ! ititalize all states to zero
 
 do e = 1_pInt,mesh_NcpElems
   do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-    if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,i,e))) &
+    if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e))) &
       state(1,i,e)%p = 0.0_pReal
   enddo
 enddo
@@ -1110,7 +1097,7 @@ do matID = 1_pInt,maxNmatIDs
     totalVolume = 0.0_pReal
     do e = 1_pInt,mesh_NcpElems
       do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-        if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,i,e)) &
+        if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
             .and. matID == phase_plasticityInstance(material_phase(1,i,e))) then
           totalVolume = totalVolume + mesh_ipVolume(i,e)
           minimumIpVolume = min(minimumIpVolume, mesh_ipVolume(i,e))
@@ -1126,7 +1113,7 @@ do matID = 1_pInt,maxNmatIDs
       call random_number(rnd)
       el = nint(rnd(1)*real(mesh_NcpElems,pReal)+0.5_pReal,pInt)
       ip = nint(rnd(2)*real(FE_Nips(FE_geomtype(mesh_element(2,el))),pReal)+0.5_pReal,pInt)
-      if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,ip,el)) &
+      if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,ip,el)) &
           .and. matID == phase_plasticityInstance(material_phase(1,ip,el))) then
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
         t = nint(rnd(4)*4.0_pReal+0.5_pReal,pInt)
@@ -1139,7 +1126,7 @@ do matID = 1_pInt,maxNmatIDs
   else
     do e = 1_pInt,mesh_NcpElems
       do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-        if (CONSTITUTIVE_NONLOCAL_LABEL == phase_plasticity(material_phase(1,i,e)) &
+        if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
             .and. matID == phase_plasticityInstance(material_phase(1,i,e))) then
           do f = 1_pInt,lattice_maxNslipFamily
             from = 1_pInt + sum(Nslip(1:f-1_pInt,matID))
@@ -2129,7 +2116,8 @@ use material, only: homogenization_maxNgrains, &
                     material_phase, &
                     phase_plasticityInstance, &
                     phase_localPlasticity, &
-                    phase_plasticity
+                    phase_plasticity ,&
+                    PLASTICITY_NONLOCAL_ID
 use lattice,  only: lattice_Sslip_v, &
                     lattice_sd, &
                     lattice_st
@@ -2152,8 +2140,6 @@ type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
                                             state, &                  !< current microstructural state
                                             state0                    !< microstructural state at beginning of crystallite increment
 
-!*** input/output variables
- 
 !*** output variables
 real(pReal), dimension(constitutive_nonlocal_sizeDotState(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
                                             constitutive_nonlocal_dotState !< evolution of state variables / microstructure
@@ -2458,7 +2444,7 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
     neighbor_v = 0.0_pReal        ! needed for check of sign change in flux density below 
     neighbor_rhoSgl = 0.0_pReal
     if (neighbor_n > 0_pInt) then
-      if (phase_plasticity(material_phase(1,neighbor_ip,neighbor_el)) == CONSTITUTIVE_NONLOCAL_LABEL &
+      if (phase_plasticity(material_phase(1,neighbor_ip,neighbor_el)) == PLASTICITY_NONLOCAL_ID &
           .and. any(compatibility(:,:,:,n,ip,el) > 0.0_pReal)) &
         considerEnteringFlux = .true.
     endif
@@ -2521,7 +2507,7 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
     
     considerLeavingFlux = .true.
     if (opposite_n > 0_pInt) then
-      if (phase_plasticity(material_phase(1,opposite_ip,opposite_el)) /= CONSTITUTIVE_NONLOCAL_LABEL) &
+      if (phase_plasticity(material_phase(1,opposite_ip,opposite_el)) /= PLASTICITY_NONLOCAL_ID) &
         considerLeavingFlux = .false.
     endif
 

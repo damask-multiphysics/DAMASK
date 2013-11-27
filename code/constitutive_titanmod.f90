@@ -31,8 +31,6 @@ module constitutive_titanmod
 
  implicit none
  private
- character(len=*), parameter, public :: &
-   CONSTITUTIVE_TITANMOD_label = 'titanmod'
  character(len=18), dimension(3),          parameter,           private :: &
    CONSTITUTIVE_TITANMOD_listBasicSlipStates = & 
    ['rho_edge    ', 'rho_screw   ', 'shear_system']
@@ -212,7 +210,6 @@ subroutine constitutive_titanmod_init(myFile)
    debug_level,&
    debug_constitutive,&
    debug_levelBasic
-
  use lattice
  
  implicit none
@@ -236,12 +233,12 @@ subroutine constitutive_titanmod_init(myFile)
    tag  = '', &
    line = ''                                                                                        ! to start initialized
  
- write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_TITANMOD_label//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_TITANMOD_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_TITANMOD_label),pInt)
+ maxNinstance = int(count(phase_plasticity == PLASTICITY_TITANMOD_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -405,7 +402,7 @@ subroutine constitutive_titanmod_init(myFile)
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (trim(phase_plasticity(section)) == CONSTITUTIVE_TITANMOD_label) then                       ! one of my sections
+     if (phase_plasticity(section) == PLASTICITY_TITANMOD_ID) then                                  ! one of my sections
        i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
@@ -450,13 +447,13 @@ subroutine constitutive_titanmod_init(myFile)
            constitutive_titanmod_kinkf0(i) = IO_floatValue(line,positions,2_pInt)
          case ('nslip')
            if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
-             call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+             call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_SlipFamilies
              constitutive_titanmod_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
            enddo
          case ('ntwin')
            if (positions(1) < 1_pInt + Nchunks_TwinFamilies) &
-             call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+             call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_TwinFamilies
              constitutive_titanmod_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
            enddo
@@ -588,30 +585,30 @@ subroutine constitutive_titanmod_init(myFile)
            enddo
          case ('interaction_slipslip','interactionslipslip')
            if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_SlipSlip
              constitutive_titanmod_interactionSlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('interaction_sliptwin','interactionsliptwin')
            if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_SlipTwin
              constitutive_titanmod_interactionSlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('interaction_twinslip','interactiontwinslip')
            if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_TwinSlip
              constitutive_titanmod_interactionTwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case ('interaction_twintwin','interactiontwintwin')
            if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
            do j = 1_pInt, Nchunks_TwinTwin
              constitutive_titanmod_interactionTwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
            enddo
          case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_TITANMOD_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_TITANMOD_label//')')
       end select
      endif
    endif
@@ -624,58 +621,58 @@ subroutine constitutive_titanmod_init(myFile)
 
    if (structID < 1_pInt)                                             call IO_error(205_pInt,el=i)
    if (sum(constitutive_titanmod_Nslip(:,i)) <= 0_pInt)               call IO_error(211_pInt,el=i,ext_msg='nslip (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
    if (sum(constitutive_titanmod_Ntwin(:,i)) < 0_pInt)                call IO_error(211_pInt,el=i,ext_msg='ntwin (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
    do f = 1_pInt,lattice_maxNslipFamily
      if (constitutive_titanmod_Nslip(f,i) > 0_pInt) then   
        if (constitutive_titanmod_rho_edge0(f,i) < 0.0_pReal)          call IO_error(211_pInt,el=i,ext_msg='rho_edge0 (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_rho_screw0(f,i) < 0.0_pReal)         call IO_error(211_pInt,el=i,ext_msg='rho_screw0 (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_burgersPerSlipFam(f,i) <= 0.0_pReal) call IO_error(211_pInt,el=i,ext_msg='slipburgers (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_f0_PerSlipFam(f,i) <= 0.0_pReal)     call IO_error(211_pInt,el=i,ext_msg='f0 (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_tau0e_PerSlipFam(f,i) <= 0.0_pReal)  call IO_error(211_pInt,el=i,ext_msg='tau0e (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_tau0s_PerSlipFam(f,i) <= 0.0_pReal)  call IO_error(211_pInt,el=i,ext_msg='tau0s (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_capre_PerSlipFam(f,i) <= 0.0_pReal)  call IO_error(211_pInt,el=i,ext_msg='capre (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_caprs_PerSlipFam(f,i) <= 0.0_pReal)  call IO_error(211_pInt,el=i,ext_msg='caprs (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_v0e_PerSlipFam(f,i) <= 0.0_pReal)    call IO_error(211_pInt,el=i,ext_msg='v0e (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_v0s_PerSlipFam(f,i) <= 0.0_pReal)    call IO_error(211_pInt,el=i,ext_msg='v0s (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_kinkcriticallength_PerSlipFam(f,i) <= 0.0_pReal) &
                                                                       call IO_error(211_pInt,el=i,ext_msg='kinkCriticalLength (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
      endif
    enddo
    do f = 1_pInt,lattice_maxNtwinFamily
      if (constitutive_titanmod_Ntwin(f,i) > 0_pInt) then   
        if (constitutive_titanmod_burgersPerTwinFam(f,i) <= 0.0_pReal)  call IO_error(211_pInt,el=i,ext_msg='twinburgers (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_twinf0_PerTwinFam(f,i) <= 0.0_pReal)  call IO_error(211_pInt,el=i,ext_msg='twinf0 (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_twinshearconstant_PerTwinFam(f,i) <= 0.0_pReal) &
                                                                        call IO_error(211_pInt,el=i,ext_msg='twinshearconstant (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_twintau0_PerTwinFam(f,i) <= 0.0_pReal)call IO_error(211_pInt,el=i,ext_msg='twintau0 (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
        if (constitutive_titanmod_twingamma0_PerTwinFam(f,i) <= 0.0_pReal) &
                                                                        call IO_error(211_pInt,el=i,ext_msg='twingamma0 (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
      endif
    enddo
    if (constitutive_titanmod_dc(i) <= 0.0_pReal)                       call IO_error(211_pInt,el=i,ext_msg='dc (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
    if (constitutive_titanmod_twinhpconstant(i) <= 0.0_pReal)           call IO_error(211_pInt,el=i,ext_msg='twinhpconstant (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
    if (constitutive_titanmod_aTolRho(i) <= 0.0_pReal)                  call IO_error(211_pInt,el=i,ext_msg='aTolRho (' &
-                                                                                  //CONSTITUTIVE_TITANMOD_label//')')
+                                                                                  //PLASTICITY_TITANMOD_label//')')
    
 !--------------------------------------------------------------------------------------------------
 ! determine total number of active slip or twin systems
@@ -831,7 +828,7 @@ subroutine constitutive_titanmod_init(myFile)
           mySize = 1_pInt
         case default
           call IO_error(212_pInt,ext_msg=constitutive_titanmod_output(o,i)// &
-                                                            ' ('//CONSTITUTIVE_TITANMOD_label//')')
+                                                            ' ('//PLASTICITY_TITANMOD_label//')')
       end select
 
       outputFound: if (mySize > 0_pInt) then 

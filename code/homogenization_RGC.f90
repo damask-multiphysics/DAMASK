@@ -32,8 +32,6 @@ module homogenization_RGC
 
  implicit none
  private
- character (len=*),                              parameter, public :: &
-   HOMOGENIZATION_RGC_label = 'rgc'
  integer(pInt),     dimension(:),       allocatable,        public :: &
    homogenization_RGC_sizeState, &
    homogenization_RGC_sizePostResults
@@ -113,7 +111,7 @@ subroutine homogenization_RGC_init(myUnit)
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_label),pInt)
+ maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
  allocate(homogenization_RGC_sizeState(maxNinstance));       homogenization_RGC_sizeState = 0_pInt
@@ -124,11 +122,11 @@ subroutine homogenization_RGC_init(myUnit)
  allocate(homogenization_RGC_dAlpha(3,maxNinstance));        homogenization_RGC_dAlpha = 0.0_pReal
  allocate(homogenization_RGC_angles(3,maxNinstance));        homogenization_RGC_angles = 400.0_pReal
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance))
- homogenization_RGC_output = ''
+   homogenization_RGC_output = ''
  allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),maxNinstance))
- homogenization_RGC_sizePostResult = 0_pInt
+   homogenization_RGC_sizePostResult = 0_pInt
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems))
- homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)            ! initialize to identity
+   homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)          ! initialize to identity
  
  rewind(myUnit)
  
@@ -145,7 +143,7 @@ subroutine homogenization_RGC_init(myUnit)
      output = 0_pInt                                                                                ! reset output counter
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (trim(homogenization_type(section)) == HOMOGENIZATION_RGC_label) then                       ! one of my sections
+     if (homogenization_type(section) == HOMOGENIZATION_RGC_ID) then                                ! one of my sections
        i = homogenization_typeInstance(section)                                                     ! which instance of my type is present homogenization
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
@@ -177,7 +175,7 @@ subroutine homogenization_RGC_init(myUnit)
 !--------------------------------------------------------------------------------------------------
 ! assigning cluster orientations
  elementLooping: do e = 1_pInt,mesh_NcpElems
-   if (homogenization_type(mesh_element(3,e)) == HOMOGENIZATION_RGC_label) then
+   if (homogenization_type(mesh_element(3,e)) == HOMOGENIZATION_RGC_ID) then
      myInstance = homogenization_typeInstance(mesh_element(3,e))
      if (all (homogenization_RGC_angles(:,myInstance) >= 399.9_pReal)) then
        homogenization_RGC_orientation(1:3,1:3,1,e) = math_EulerToR(math_sampleRandomOri())
@@ -199,7 +197,7 @@ subroutine homogenization_RGC_init(myUnit)
 
  if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt) then
    do i = 1_pInt,maxNinstance
-     write(6,'(a15,1x,i4,/)')  'instance:  ', i
+     write(6,'(a15,1x,i4,/)')     'instance:  ', i
      write(6,'(a25,3(1x,i8))')    'cluster size:         ',(homogenization_RGC_Ngrains(j,i),j=1_pInt,3_pInt)
      write(6,'(a25,1x,e10.3)')    'scaling parameter:    ', homogenization_RGC_xiAlpha(i)
      write(6,'(a25,1x,e10.3)')    'over-proportionality: ', homogenization_RGC_ciAlpha(i)
@@ -896,7 +894,7 @@ pure function homogenization_RGC_postResults(state,ip,el,avgP,avgF)
        homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
        c = c + 9_pInt
      case ('ipcoords')
-       homogenization_RGC_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)                       ! current ip coordinates
+       homogenization_RGC_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)             ! current ip coordinates
        c = c + 3_pInt
      case('constitutivework')
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+1)

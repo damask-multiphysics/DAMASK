@@ -30,9 +30,6 @@ module constitutive_none
  
  implicit none
  private
- character (len=*),                   parameter,            public :: &
-   CONSTITUTIVE_NONE_label = 'none'                                                                 !< label for this constitutive model
- 
  integer(pInt),     dimension(:),     allocatable,          public, protected :: &
    constitutive_none_sizeDotState, &
    constitutive_none_sizeState, &
@@ -92,12 +89,12 @@ subroutine constitutive_none_init(myFile)
    tag  = '', &
    line = ''                                                                                        ! to start initialized
  
- write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_NONE_label//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
- maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_NONE_label),pInt)
+ maxNinstance = int(count(phase_plasticity == PLASTICITY_NONE_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -129,7 +126,7 @@ subroutine constitutive_none_init(myFile)
      cycle
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (trim(phase_plasticity(section)) == CONSTITUTIVE_NONE_label) then                           ! one of my sections
+     if (phase_plasticity(section) == PLASTICITY_NONE_ID) then                                      ! one of my sections
        i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
@@ -157,7 +154,7 @@ subroutine constitutive_none_init(myFile)
          case ('c66')
            constitutive_none_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
          case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_NONE_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONE_label//')')
        end select
      endif
    endif

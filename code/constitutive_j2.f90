@@ -33,9 +33,6 @@ module constitutive_j2
  
  implicit none
  private
- character (len=*),                   parameter,           public :: &
-   CONSTITUTIVE_J2_label = 'j2'                                                                     !< label for this constitutive model
- 
  integer(pInt),     dimension(:),     allocatable,         public, protected :: &
    constitutive_j2_sizeDotState, &                                                                  !< number of dotStates
    constitutive_j2_sizeState, &                                                                     !< total number of microstructural variables
@@ -125,12 +122,12 @@ subroutine constitutive_j2_init(myFile)
    tag  = '', &
    line = ''                                                                                        ! to start initialized
 
- write(6,'(/,a)')   ' <<<+-  constitutive_'//CONSTITUTIVE_J2_label//' init  -+>>>'
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_J2_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
- maxNinstance = int(count(phase_plasticity == CONSTITUTIVE_J2_label),pInt)
+ maxNinstance = int(count(phase_plasticity == PLASTICITY_J2_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -193,7 +190,7 @@ subroutine constitutive_j2_init(myFile)
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (trim(phase_plasticity(section)) == CONSTITUTIVE_J2_label) then                             ! one of my sections
+     if (phase_plasticity(section) == PLASTICITY_J2_ID) then                                        ! one of my sections
        i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
@@ -251,7 +248,7 @@ subroutine constitutive_j2_init(myFile)
          case ('atol_resistance')
            constitutive_j2_aTolResistance(i)  = IO_floatValue(line,positions,2_pInt)
          case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//CONSTITUTIVE_J2_label//')')
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        end select
      endif
    endif
@@ -260,19 +257,19 @@ subroutine constitutive_j2_init(myFile)
  sanityChecks: do i = 1_pInt,maxNinstance
    if (constitutive_j2_structureName(i) == '')         call IO_error(205_pInt,el=i)
    if (constitutive_j2_tau0(i) < 0.0_pReal)            call IO_error(211_pInt,ext_msg='tau0 (' &
-                                                            //CONSTITUTIVE_J2_label//')')
+                                                            //PLASTICITY_J2_label//')')
    if (constitutive_j2_gdot0(i) <= 0.0_pReal)          call IO_error(211_pInt,ext_msg='gdot0 (' &
-                                                            //CONSTITUTIVE_J2_label//')')
+                                                            //PLASTICITY_J2_label//')')
    if (constitutive_j2_n(i) <= 0.0_pReal)              call IO_error(211_pInt,ext_msg='n (' &
-                                                            //CONSTITUTIVE_J2_label//')')
+                                                            //PLASTICITY_J2_label//')')
    if (constitutive_j2_tausat(i) <= 0.0_pReal)         call IO_error(211_pInt,ext_msg='tausat (' &
-                                                            //CONSTITUTIVE_J2_label//')')
+                                                            //PLASTICITY_J2_label//')')
    if (constitutive_j2_a(i) <= 0.0_pReal)              call IO_error(211_pInt,ext_msg='a (' &
-                                                            //CONSTITUTIVE_J2_label//')')
+                                                            //PLASTICITY_J2_label//')')
    if (constitutive_j2_fTaylor(i) <= 0.0_pReal)        call IO_error(211_pInt,ext_msg='taylorfactor (' &
-                                                            //CONSTITUTIVE_J2_label//')')
+                                                            //PLASTICITY_J2_label//')')
    if (constitutive_j2_aTolResistance(i) <= 0.0_pReal) call IO_error(211_pInt,ext_msg='aTol_resistance (' &
-                                                            //CONSTITUTIVE_J2_label//')')
+                                                            //PLASTICITY_J2_label//')')
  enddo sanityChecks
 
  instancesLoop: do i = 1_pInt,maxNinstance
@@ -283,7 +280,7 @@ subroutine constitutive_j2_init(myFile)
        case('strainrate')
          mySize = 1_pInt
        case default
-         call IO_error(212_pInt,ext_msg=constitutive_j2_output(o,i)//' ('//CONSTITUTIVE_J2_label//')')
+         call IO_error(212_pInt,ext_msg=constitutive_j2_output(o,i)//' ('//PLASTICITY_J2_label//')')
      end select
   
      if (mySize > 0_pInt) then                                                                      ! any meaningful output found
