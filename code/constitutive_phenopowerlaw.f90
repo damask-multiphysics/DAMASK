@@ -93,7 +93,21 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_hardeningMatrix_TwinSlip, &
    constitutive_phenopowerlaw_hardeningMatrix_TwinTwin, &
    constitutive_phenopowerlaw_Cslip_66
-
+ enum, bind(c) 
+   enumerator :: resistance_slip_ID, &
+                 accumulatedshear_slip_ID, &
+                 shearrate_slip_ID, &
+                 resolvedstress_slip_ID, &
+                 totalshear_ID, &
+                 resistance_twin_ID, &
+                 accumulatedshear_twin_ID, &
+                 shearrate_twin_ID, &
+                 resolvedstress_twin_ID, &
+                 totalvolfrac_ID
+ end enum
+ integer(kind(resistance_slip_ID)), dimension(:,:),   allocatable, private :: & 
+   constitutive_phenopowerlaw_outputID                                                              !< ID of each post result output
+ 
  public :: &
    constitutive_phenopowerlaw_init, &
    constitutive_phenopowerlaw_stateInit, &
@@ -171,6 +185,8 @@ subroutine constitutive_phenopowerlaw_init(myFile)
           constitutive_phenopowerlaw_sizePostResult       = 0_pInt
  allocate(constitutive_phenopowerlaw_output(maxval(phase_Noutput),maxNinstance))
           constitutive_phenopowerlaw_output               = ''
+ allocate(constitutive_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance))
+          constitutive_phenopowerlaw_outputID              = -1
  allocate(constitutive_phenopowerlaw_Noutput(maxNinstance))
           constitutive_phenopowerlaw_Noutput              = 0_pInt
  allocate(constitutive_phenopowerlaw_structureName(maxNinstance))
@@ -264,6 +280,28 @@ subroutine constitutive_phenopowerlaw_init(myFile)
            constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
            constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(i),i) = &
                                                          IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+             case ('resistance_slip')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resistance_slip_ID
+             case ('accumulatedshear_slip')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = accumulatedshear_slip_ID
+             case ('shearrate_slip')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = shearrate_slip_ID
+             case ('resolvedstress_slip')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resolvedstress_slip_ID
+             case ('totalshear')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalshear_ID
+             case ('resistance_twin')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resistance_twin_ID
+             case ('accumulatedshear_twin')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = accumulatedshear_twin_ID
+             case ('shearrate_twin')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = shearrate_twin_ID
+             case ('resolvedstress_twin')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resolvedstress_twin_ID
+             case ('totalvolfrac')
+               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalvolfrac_ID
+           end select
          case ('lattice_structure')
            constitutive_phenopowerlaw_structureName(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
            configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureName(i))
@@ -476,21 +514,21 @@ subroutine constitutive_phenopowerlaw_init(myFile)
 
  instancesLoop: do i = 1_pInt,maxNinstance
    outputsLoop: do o = 1_pInt,constitutive_phenopowerlaw_Noutput(i)
-    select case(constitutive_phenopowerlaw_output(o,i))
-       case('resistance_slip', &
-            'shearrate_slip', &
-            'accumulatedshear_slip', &
-            'resolvedstress_slip' &
+    select case(constitutive_phenopowerlaw_outputID(o,i))
+       case(resistance_slip_ID, &
+            shearrate_slip_ID, &
+            accumulatedshear_slip_ID, &
+            resolvedstress_slip_ID &
             )
          mySize = constitutive_phenopowerlaw_totalNslip(i)
-       case('resistance_twin', &
-            'shearrate_twin', &
-            'accumulatedshear_twin', &
-            'resolvedstress_twin' &
+       case(resistance_twin_ID, &
+            shearrate_twin_ID, &
+            accumulatedshear_twin_ID, &
+            resolvedstress_twin_ID &
             )
          mySize = constitutive_phenopowerlaw_totalNtwin(i)
-       case('totalshear', &
-            'totalvolfrac' &
+       case(totalshear_ID, &
+            totalvolfrac_ID &
             )
          mySize = 1_pInt
        case default
@@ -1053,17 +1091,17 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
  c = 0_pInt
 
  outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
-   select case(constitutive_phenopowerlaw_output(o,matID))
-     case ('resistance_slip')
+   select case(constitutive_phenopowerlaw_outputID(o,matID))
+     case (resistance_slip_ID)
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(ipc,ip,el)%p(1:nSlip)
        c = c + nSlip
 
-     case ('accumulatedshear_slip')
+     case (accumulatedshear_slip_ID)
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(ipc,ip,el)%p(index_accshear_slip:&
                                                                                      index_accshear_slip+nSlip)
        c = c + nSlip
 
-     case ('shearrate_slip')
+     case (shearrate_slip_ID)
        j = 0_pInt
        slipFamiliesLoop1: do f = 1_pInt,lattice_maxNslipFamily
          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,structID))                             ! at which index starts my family
@@ -1085,7 +1123,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
        enddo slipFamiliesLoop1
        c = c + nSlip
 
-     case ('resolvedstress_slip')
+     case (resolvedstress_slip_ID)
        j = 0_pInt
        slipFamiliesLoop2: do f = 1_pInt,lattice_maxNslipFamily
          index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,structID))                             ! at which index starts my family
@@ -1097,22 +1135,22 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
        enddo slipFamiliesLoop2
        c = c + nSlip
 
-     case ('totalshear')
+     case (totalshear_ID)
        constitutive_phenopowerlaw_postResults(c+1_pInt) = &
                              state(ipc,ip,el)%p(index_Gamma)
        c = c + 1_pInt
 
-     case ('resistance_twin')
+     case (resistance_twin_ID)
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
                              state(ipc,ip,el)%p(1_pInt+nSlip:nTwin+nSlip)
        c = c + nTwin
 
-     case ('accumulatedshear_twin')
+     case (accumulatedshear_twin_ID)
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
                              state(ipc,ip,el)%p(index_accshear_twin:index_accshear_twin+nTwin)
        c = c + nTwin
 
-     case ('shearrate_twin')
+     case (shearrate_twin_ID)
        j = 0_pInt
        twinFamiliesLoop1: do f = 1_pInt,lattice_maxNtwinFamily
          index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,structID))                             ! at which index starts my family
@@ -1127,7 +1165,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
        enddo twinFamiliesLoop1
        c = c + nTwin
 
-     case ('resolvedstress_twin')
+     case (resolvedstress_twin_ID)
        j = 0_pInt
        twinFamiliesLoop2: do f = 1_pInt,lattice_maxNtwinFamily
          index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,structID))                             ! at which index starts my family
@@ -1139,7 +1177,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
        enddo twinFamiliesLoop2
        c = c + nTwin
 
-     case ('totalvolfrac')
+     case (totalvolfrac_ID)
        constitutive_phenopowerlaw_postResults(c+1_pInt) = state(ipc,ip,el)%p(index_F)
        c = c + 1_pInt
 

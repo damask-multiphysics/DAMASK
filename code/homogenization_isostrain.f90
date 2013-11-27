@@ -37,10 +37,22 @@ module homogenization_isostrain
  
  character(len=64), dimension(:,:), allocatable, target, public :: &
   homogenization_isostrain_output                                                                   !< name of each post result output
- character(len=64), dimension(:),   allocatable,         private :: &
-   homogenization_isostrain_mapping
  integer(pInt),        dimension(:),    allocatable,         private :: &
    homogenization_isostrain_Ngrains
+ enum, bind(c) 
+   enumerator :: ncomponents, &
+                 temperature, &
+                 ipcoords, &
+                 avgdefgrad, &
+                 avgfirstpiola
+   enumerator :: parallel, &
+                 average
+ end enum
+ integer(kind(ncomponents)), dimension(:,:), allocatable, private :: &
+  homogenization_isostrain_outputID                                                                 !< ID of each post result output
+ integer(kind(average)), dimension(:), allocatable, private :: &
+  homogenization_isostrain_mapping                                                                  !< ID of each post result output
+
 
  public :: &
    homogenization_isostrain_init, &
@@ -90,9 +102,11 @@ subroutine homogenization_isostrain_init(myUnit)
  allocate(homogenization_isostrain_Ngrains(maxNinstance))
           homogenization_isostrain_Ngrains = 0_pInt
  allocate(homogenization_isostrain_mapping(maxNinstance))
-          homogenization_isostrain_mapping = 'avg'
+          homogenization_isostrain_mapping = average
  allocate(homogenization_isostrain_output(maxval(homogenization_Noutput),maxNinstance))
           homogenization_isostrain_output = ''
+ allocate(homogenization_isostrain_outputID(maxval(homogenization_Noutput),maxNinstance))
+          homogenization_isostrain_outputID = -1
  
  rewind(myUnit)
  section = 0_pInt
@@ -118,10 +132,31 @@ subroutine homogenization_isostrain_init(myUnit)
          case ('(output)')
            output = output + 1_pInt
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(homogenization_isostrain_output(output,i))
+             case('ngrains','ncomponents')
+               homogenization_isostrain_outputID(output,i) = ncomponents
+             case('temperature')
+               homogenization_isostrain_outputID(output,i) = temperature
+             case('ipcoords')
+               homogenization_isostrain_outputID(output,i) = ipcoords
+             case('avgdefgrad','avgf')
+               homogenization_isostrain_outputID(output,i) = avgdefgrad
+             case('avgp','avgfirstpiola','avg1stpiola')
+               homogenization_isostrain_outputID(output,i) = avgfirstpiola
+             case default
+               mySize = 0_pInt
+             end select
          case ('ngrains','ncomponents')
                 homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
          case ('mapping')
-                homogenization_isostrain_mapping(i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+             case ('parallel','sum')
+               homogenization_isostrain_mapping(i) = parallel
+             case ('average','mean','avg')
+               homogenization_isostrain_mapping(i) = average
+             case default
+               print*, 'There should be an error here'
+           end select
        end select
      endif
    endif
@@ -131,12 +166,12 @@ subroutine homogenization_isostrain_init(myUnit)
    homogenization_isostrain_sizeState(i)    = 0_pInt
 
    do j = 1_pInt,maxval(homogenization_Noutput)
-     select case(homogenization_isostrain_output(j,i))
-       case('ngrains','ncomponents','temperature')
+     select case(homogenization_isostrain_outputID(j,i))
+       case(ncomponents, temperature)
          mySize = 1_pInt
-       case('ipcoords')
+       case(ipcoords)
          mySize = 3_pInt
-       case('avgdefgrad','avgf','avgp','avgfirstpiola','avg1stpiola')
+       case(avgdefgrad, avgfirstpiola)
          mySize = 9_pInt
        case default
          mySize = 0_pInt
@@ -203,13 +238,10 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
 
  select case (homogenization_isostrain_mapping(homID))
-   case ('parallel','sum')
+   case (parallel)
      avgP       = sum(P,3)
      dAvgPdAvgF = sum(dPdF,5)
-   case ('average','mean','avg')
-     avgP       = sum(P,3)   /real(Ngrains,pReal)
-     dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
-   case default
+   case (average)
      avgP       = sum(P,3)   /real(Ngrains,pReal)
      dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
  end select
@@ -252,20 +284,20 @@ pure function homogenization_isostrain_postResults(ip,el,avgP,avgF)
  homogenization_isostrain_postResults = 0.0_pReal
  
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
-   select case(homogenization_isostrain_output(o,homID))
-     case ('ngrains','ncomponents')
+   select case(homogenization_isostrain_outputID(o,homID))
+     case (ncomponents)
        homogenization_isostrain_postResults(c+1_pInt) = real(homogenization_isostrain_Ngrains(homID),pReal)
        c = c + 1_pInt
-     case ('temperature')
+     case (temperature)
        homogenization_isostrain_postResults(c+1_pInt) = crystallite_temperature(ip,el)
        c = c + 1_pInt
-     case ('avgdefgrad','avgf')
+     case (avgdefgrad)
        homogenization_isostrain_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
        c = c + 9_pInt
-     case ('avgp','avgfirstpiola','avg1stpiola')
+     case (avgfirstpiola)
        homogenization_isostrain_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
        c = c + 9_pInt
-     case ('ipcoords')
+     case (ipcoords)
        homogenization_isostrain_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)                       ! current ip coordinates
        c = c + 3_pInt
     end select
