@@ -47,7 +47,7 @@ module constitutive_j2
    constitutive_j2_output                                                                           !< name of each post result output
  
  integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
-   constitutive_j2_structureID                                                                !< ID of the lattice structure 
+   constitutive_j2_structureID                                                                      !< ID of the lattice structure 
  
  integer(pInt),     dimension(:),     allocatable,         private :: &
    constitutive_j2_Noutput                                                                          !< number of outputs per instance
@@ -119,6 +119,8 @@ subroutine constitutive_j2_init(myFile)
  
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) :: section = 0_pInt, maxNinstance, i,o, mySize
+ character(len=32) :: &
+   structure  = ''
  character(len=65536) :: &
    tag  = '', &
    line = ''                                                                                        ! to start initialized
@@ -203,7 +205,8 @@ subroutine constitutive_j2_init(myFile)
            constitutive_j2_output(constitutive_j2_Noutput(i),i) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
          case ('lattice_structure')
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(structure(1:3))
              case(LATTICE_iso_label)
                constitutive_j2_structureID(i) = LATTICE_iso_ID
              case(LATTICE_fcc_label)

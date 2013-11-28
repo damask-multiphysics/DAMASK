@@ -231,9 +231,11 @@ subroutine constitutive_titanmod_init(myFile)
    Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
    mySize, structID, &
    maxTotalNslip,maxTotalNtwin, maxNinstance
+ character(len=32) :: &
+   structure  = ''
  character(len=65536) :: &
    tag  = '', &
-   line = ''                                                                                        ! to start initialized
+   line = ''  
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_TITANMOD_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -414,8 +416,9 @@ subroutine constitutive_titanmod_init(myFile)
          case ('(output)')
            constitutive_titanmod_Noutput(i) = constitutive_titanmod_Noutput(i) + 1_pInt
            constitutive_titanmod_output(constitutive_titanmod_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         case ('lattice_structure')
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case ('lattice_structure')
+             structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+             select case(structure(1:3))
              case(LATTICE_iso_label)
                constitutive_titanmod_structureID(i) = LATTICE_iso_ID
              case(LATTICE_fcc_label)

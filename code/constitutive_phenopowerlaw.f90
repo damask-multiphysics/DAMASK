@@ -154,9 +154,11 @@ subroutine constitutive_phenopowerlaw_init(myFile)
    Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_nonSchmid, &
    structID, index_myFamily, index_otherFamily, &
    mySize=0_pInt, section = 0_pInt
+ character(len=32) :: &
+   structure  = ''
  character(len=65536) :: &
    tag  = '', &
-   line = ''                                                                                         ! to start initialized
+   line = ''  
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -304,8 +306,9 @@ subroutine constitutive_phenopowerlaw_init(myFile)
              case ('totalvolfrac')
                constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalvolfrac_ID
            end select
-         case ('lattice_structure')
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case ('lattice_structure')
+             structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+             select case(structure(1:3))
              case(LATTICE_iso_label)
                constitutive_phenopowerlaw_structureID(i) = LATTICE_iso_ID
              case(LATTICE_fcc_label)

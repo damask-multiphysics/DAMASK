@@ -86,9 +86,11 @@ subroutine constitutive_none_init(myFile)
 
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) :: section = 0_pInt, maxNinstance, i
+ character(len=32) :: &
+   structure  = ''
  character(len=65536) :: &
    tag  = '', &
-   line = ''                                                                                        ! to start initialized
+   line = ''     
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -135,7 +137,8 @@ subroutine constitutive_none_init(myFile)
          case ('plasticity','elasticity')
            cycle
          case ('lattice_structure')
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(structure(1:3))
              case(LATTICE_iso_label)
                constitutive_none_structureID(i) = LATTICE_iso_ID
              case(LATTICE_fcc_label)

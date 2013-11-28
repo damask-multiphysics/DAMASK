@@ -194,8 +194,11 @@ subroutine constitutive_dislotwin_init(file)
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                   Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
                   index_myFamily, index_otherFamily
- character(len=65536) :: tag
- character(len=65536) :: line = ''                                                                                                  ! to start initialized
+ character(len=32) :: &
+   structure  = ''
+ character(len=65536) :: &
+   tag  = '', &
+   line = ''
   
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -350,7 +353,8 @@ subroutine constitutive_dislotwin_init(file)
            constitutive_dislotwin_Noutput(i) = constitutive_dislotwin_Noutput(i) + 1_pInt
            constitutive_dislotwin_output(constitutive_dislotwin_Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
          case ('lattice_structure')
-          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(structure(1:3))
             case(LATTICE_iso_label)
               constitutive_dislotwin_structureID(i) = LATTICE_iso_ID
             case(LATTICE_fcc_label)

@@ -266,8 +266,11 @@ integer(pInt)          ::                   section = 0_pInt, &
                                             Nchunks_SlipFamilies = 0_pInt, &
                                             Nchunks_nonSchmid = 0_pInt, &
                                             mySize = 0_pInt     ! to suppress warnings, safe as init is called only once
-character(len=65536)                    ::  tag, &
-                                            line = ''                                ! to start initialized
+ character(len=32) :: &
+   structure  = ''
+ character(len=65536) :: &
+   tag  = '', &
+   line = ''  
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -428,8 +431,9 @@ do while (trim(line) /= '#EOF#')                                                
         case ('(output)')
           Noutput(i) = Noutput(i) + 1_pInt
           constitutive_nonlocal_output(Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-        case ('lattice_structure')
-          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+          case ('lattice_structure')
+            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+            select case(structure(1:3))
             case(LATTICE_iso_label)
               constitutive_nonlocal_structureID(i) = LATTICE_iso_ID
             case(LATTICE_fcc_label)
