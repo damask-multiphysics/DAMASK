@@ -46,7 +46,7 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_output                                                                !< name of each post result output
  
  integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
-   constitutive_phenopowerlaw_structureID                                    !< ID of the lattice structure
+   constitutive_phenopowerlaw_structureID                                                           !< ID of the lattice structure
 
  integer(pInt),     dimension(:),      allocatable,        private :: &
    constitutive_phenopowerlaw_Noutput, &                                                            !< number of outputs per instance of this constitution 
@@ -306,19 +306,19 @@ subroutine constitutive_phenopowerlaw_init(myFile)
              case ('totalvolfrac')
                constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalvolfrac_ID
            end select
-           case ('lattice_structure')
-             structure = IO_lc(IO_stringValue(line,positions,2_pInt))
-             select case(structure(1:3))
-             case(LATTICE_iso_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_iso_ID
-             case(LATTICE_fcc_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_fcc_ID
-             case(LATTICE_bcc_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_bcc_ID
-             case(LATTICE_hex_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_hex_ID
-             case(LATTICE_ort_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_ort_ID
+         case ('lattice_structure')
+           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(structure(1:3))
+           case(LATTICE_iso_label)
+             constitutive_phenopowerlaw_structureID(i) = LATTICE_iso_ID
+           case(LATTICE_fcc_label)
+             constitutive_phenopowerlaw_structureID(i) = LATTICE_fcc_ID
+           case(LATTICE_bcc_label)
+             constitutive_phenopowerlaw_structureID(i) = LATTICE_bcc_ID
+           case(LATTICE_hex_label)
+             constitutive_phenopowerlaw_structureID(i) = LATTICE_hex_ID
+           case(LATTICE_ort_label)
+             constitutive_phenopowerlaw_structureID(i) = LATTICE_ort_ID
            end select
            configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureID(i))
            Nchunks_SlipFamilies = configNchunks(1)
