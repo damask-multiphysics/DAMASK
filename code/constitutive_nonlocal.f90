@@ -186,6 +186,93 @@ logical, dimension(:), allocatable, private :: &
 shortRangeStressCorrection, &                                        !< flag indicating the use of the short range stress correction by a excess density gradient term
 probabilisticMultiplication
 
+enum, bind(c) 
+  enumerator :: rho_ID, &
+                delta_ID, &
+                rho_edge_ID, &
+                rho_screw_ID, &
+                rho_sgl_ID, &
+                delta_sgl_ID, &
+                rho_sgl_edge_ID, &
+                rho_sgl_edge_pos_ID, &
+                rho_sgl_edge_neg_ID, &
+                rho_sgl_screw_ID, &
+                rho_sgl_screw_pos_ID, &
+                rho_sgl_screw_neg_ID, &
+                rho_sgl_mobile_ID, &
+                rho_sgl_edge_mobile_ID, &
+                rho_sgl_edge_pos_mobile_ID, &
+                rho_sgl_edge_neg_mobile_ID, &
+                rho_sgl_screw_mobile_ID, &
+                rho_sgl_screw_pos_mobile_ID, &
+                rho_sgl_screw_neg_mobile_ID, &
+                rho_sgl_immobile_ID, &
+                rho_sgl_edge_immobile_ID, &
+                rho_sgl_edge_pos_immobile_ID, &
+                rho_sgl_edge_neg_immobile_ID, &
+                rho_sgl_screw_immobile_ID, &
+                rho_sgl_screw_pos_immobile_ID, &
+                rho_sgl_screw_neg_immobile_ID, &
+                rho_dip_ID, &
+                delta_dip_ID, &
+                rho_dip_edge_ID, &
+                rho_dip_screw_ID, &
+                excess_rho_ID, &
+                excess_rho_edge_ID, &
+                excess_rho_screw_ID, &
+                rho_forest_ID, &
+                shearrate_ID, &
+                resolvedstress_ID, &
+                resolvedstress_external_ID, &
+                resolvedstress_back_ID, &
+                resistance_ID, &
+                rho_dot_ID, &
+                rho_dot_sgl_ID, &
+                rho_dot_dip_ID, &
+                rho_dot_gen_ID, &
+                rho_dot_gen_edge_ID, &
+                rho_dot_gen_screw_ID, &
+                rho_dot_sgl2dip_ID, &
+                rho_dot_sgl2dip_edge_ID, &
+                rho_dot_sgl2dip_screw_ID, &
+                rho_dot_ann_ath_ID, &
+                rho_dot_ann_the_ID, &
+                rho_dot_ann_the_edge_ID, &
+                rho_dot_ann_the_screw_ID, &
+                rho_dot_edgejogs_ID, &
+                rho_dot_flux_ID, &
+                rho_dot_flux_edge_ID, &
+                rho_dot_flux_screw_ID, &
+                velocity_edge_pos_ID, &
+                velocity_edge_neg_ID, &
+                velocity_screw_pos_ID, &
+                velocity_screw_neg_ID, &
+                slipdirectionx_ID, &
+                slipdirectiony_ID, &
+                slipdirectionz_ID, &
+                slipnormalx_ID, &
+                slipnormaly_ID, &
+                slipnormalz_ID, &
+                fluxdensity_edge_posx_ID, &
+                fluxdensity_edge_posy_ID, &
+                fluxdensity_edge_posz_ID, &
+                fluxdensity_edge_negx_ID, &
+                fluxdensity_edge_negy_ID, &
+                fluxdensity_edge_negz_ID, &
+                fluxdensity_screw_posx_ID, &
+                fluxdensity_screw_posy_ID, &
+                fluxdensity_screw_posz_ID, &
+                fluxdensity_screw_negx_ID, &
+                fluxdensity_screw_negy_ID, &
+                fluxdensity_screw_negz_ID, &
+                maximumdipoleheight_edge_ID, &
+                maximumdipoleheight_screw_ID, &
+                accumulatedshear_ID, &
+                dislocationstress_ID
+end enum
+integer(kind(rho_ID)), dimension(:,:),   allocatable, private :: & 
+  constitutive_nonlocal_outputID                                                              !< ID of each post result output
+
 public :: &
 constitutive_nonlocal_init, &
 constitutive_nonlocal_stateInit, &
@@ -431,19 +518,185 @@ do while (trim(line) /= '#EOF#')                                                
         case ('(output)')
           Noutput(i) = Noutput(i) + 1_pInt
           constitutive_nonlocal_output(Noutput(i),i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-          case ('lattice_structure')
-            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
-            select case(structure(1:3))
-            case(LATTICE_iso_label)
-              constitutive_nonlocal_structureID(i) = LATTICE_iso_ID
-            case(LATTICE_fcc_label)
-              constitutive_nonlocal_structureID(i) = LATTICE_fcc_ID
-            case(LATTICE_bcc_label)
-              constitutive_nonlocal_structureID(i) = LATTICE_bcc_ID
-            case(LATTICE_hex_label)
-              constitutive_nonlocal_structureID(i) = LATTICE_hex_ID
-            case(LATTICE_ort_label)
-              constitutive_nonlocal_structureID(i) = LATTICE_ort_ID
+          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+            case('rho')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_ID
+            case('delta')
+              constitutive_nonlocal_outputID(Noutput(i),i) = delta_ID
+            case('rho_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_edge_ID
+            case('rho_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_screw_ID
+            case('rho_sgl')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_ID
+            case('delta_sgl')
+              constitutive_nonlocal_outputID(Noutput(i),i) = delta_sgl_ID
+            case('rho_sgl_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_ID
+            case('rho_sgl_edge_pos')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_pos_ID
+            case('rho_sgl_edge_neg')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_neg_ID
+            case('rho_sgl_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_ID
+            case('rho_sgl_screw_pos')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_pos_ID
+            case('rho_sgl_screw_neg')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_neg_ID
+            case('rho_sgl_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_mobile_ID
+            case('rho_sgl_edge_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_mobile_ID
+            case('rho_sgl_edge_pos_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_pos_mobile_ID
+            case('rho_sgl_edge_neg_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_neg_mobile_ID
+            case('rho_sgl_screw_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_mobile_ID
+            case('rho_sgl_screw_pos_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_pos_mobile_ID
+            case('rho_sgl_screw_neg_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_neg_mobile_ID
+            case('rho_sgl_immobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_immobile_ID
+            case('rho_sgl_edge_immobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_immobile_ID
+            case('rho_sgl_edge_pos_immobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_pos_immobile_ID
+            case('rho_sgl_edge_neg_immobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_edge_neg_immobile_ID
+            case('rho_sgl_screw_immobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_immobile_ID
+            case('rho_sgl_screw_pos_immobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_pos_immobile_ID
+            case('rho_sgl_screw_neg_immobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_sgl_screw_neg_immobile_ID
+            case('rho_dip')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dip_ID
+            case('delta_dip')
+              constitutive_nonlocal_outputID(Noutput(i),i) = delta_dip_ID
+            case('rho_dip_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dip_edge_ID
+            case('rho_dip_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dip_screw_ID
+            case('excess_rho')
+              constitutive_nonlocal_outputID(Noutput(i),i) = excess_rho_ID
+            case('excess_rho_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = excess_rho_edge_ID
+            case('excess_rho_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = excess_rho_screw_ID
+            case('rho_forest')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_forest_ID
+            case('shearrate')
+              constitutive_nonlocal_outputID(Noutput(i),i) = shearrate_ID
+            case('resolvedstress')
+              constitutive_nonlocal_outputID(Noutput(i),i) = resolvedstress_ID
+            case('resolvedstress_external')
+              constitutive_nonlocal_outputID(Noutput(i),i) = resolvedstress_external_ID
+            case('resolvedstress_back')
+              constitutive_nonlocal_outputID(Noutput(i),i) = resolvedstress_back_ID
+            case('resistance')
+              constitutive_nonlocal_outputID(Noutput(i),i) = resistance_ID
+            case('rho_dot')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_ID
+            case('rho_dot_sgl')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_sgl_ID
+            case('rho_dot_dip')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_dip_ID
+            case('rho_dot_gen')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_gen_ID
+            case('rho_dot_gen_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_gen_edge_ID
+            case('rho_dot_gen_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_gen_screw_ID
+            case('rho_dot_sgl2dip')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_sgl2dip_ID
+            case('rho_dot_sgl2dip_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_sgl2dip_edge_ID
+            case('rho_dot_sgl2dip_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_sgl2dip_screw_ID
+            case('rho_dot_ann_ath')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_ann_ath_ID
+            case('rho_dot_ann_the')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_ann_the_ID
+            case('rho_dot_ann_the_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_ann_the_edge_ID
+            case('rho_dot_ann_the_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_ann_the_screw_ID
+            case('rho_dot_edgejogs')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_edgejogs_ID
+            case('rho_dot_flux')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_flux_ID
+            case('rho_dot_flux_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_flux_edge_ID
+            case('rho_dot_flux_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_flux_screw_ID
+            case('velocity_edge_pos')
+              constitutive_nonlocal_outputID(Noutput(i),i) = velocity_edge_pos_ID
+            case('velocity_edge_neg')
+              constitutive_nonlocal_outputID(Noutput(i),i) = velocity_edge_neg_ID
+            case('velocity_screw_pos')
+              constitutive_nonlocal_outputID(Noutput(i),i) = velocity_screw_pos_ID
+            case('velocity_screw_neg')
+              constitutive_nonlocal_outputID(Noutput(i),i) = velocity_screw_neg_ID
+            case('slipdirection.x')
+              constitutive_nonlocal_outputID(Noutput(i),i) = slipdirectionx_ID
+            case('slipdirection.y')
+              constitutive_nonlocal_outputID(Noutput(i),i) = slipdirectiony_ID
+            case('slipdirection.z')
+              constitutive_nonlocal_outputID(Noutput(i),i) = slipdirectionz_ID
+            case('slipnormal.x')
+              constitutive_nonlocal_outputID(Noutput(i),i) = slipnormalx_ID
+            case('slipnormal.y')
+              constitutive_nonlocal_outputID(Noutput(i),i) = slipnormaly_ID
+            case('slipnormal.z')
+              constitutive_nonlocal_outputID(Noutput(i),i) = slipnormalz_ID
+            case('fluxdensity_edge_pos.x')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_edge_posx_ID
+            case('fluxdensity_edge_pos.y')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_edge_posy_ID
+            case('fluxdensity_edge_pos.z')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_edge_posz_ID
+            case('fluxdensity_edge_neg.x')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_edge_negx_ID
+            case('fluxdensity_edge_neg.y')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_edge_negy_ID
+            case('fluxdensity_edge_neg.z')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_edge_negz_ID
+            case('fluxdensity_screw_pos.x')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_screw_posx_ID
+            case('fluxdensity_screw_pos.y')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_screw_posy_ID
+            case('fluxdensity_screw_pos.z')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_screw_posz_ID
+            case('fluxdensity_screw_neg.x')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_screw_negx_ID
+            case('fluxdensity_screw_neg.y')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_screw_negy_ID
+            case('fluxdensity_screw_neg.z')
+              constitutive_nonlocal_outputID(Noutput(i),i) = fluxdensity_screw_negz_ID
+            case('maximumdipoleheight_edge')
+              constitutive_nonlocal_outputID(Noutput(i),i) = maximumdipoleheight_edge_ID
+            case('maximumdipoleheight_screw')
+              constitutive_nonlocal_outputID(Noutput(i),i) = maximumdipoleheight_screw_ID
+            case('accumulatedshear')
+              constitutive_nonlocal_outputID(Noutput(i),i) = accumulatedshear_ID
+            case('dislocationstress')
+              constitutive_nonlocal_outputID(Noutput(i),i) = dislocationstress_ID
+          end select
+        case ('lattice_structure')
+          structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+          select case(structure(1:3))
+          case(LATTICE_iso_label)
+            constitutive_nonlocal_structureID(i) = LATTICE_iso_ID
+          case(LATTICE_fcc_label)
+            constitutive_nonlocal_structureID(i) = LATTICE_fcc_ID
+          case(LATTICE_bcc_label)
+            constitutive_nonlocal_structureID(i) = LATTICE_bcc_ID
+          case(LATTICE_hex_label)
+            constitutive_nonlocal_structureID(i) = LATTICE_hex_ID
+          case(LATTICE_ort_label)
+            constitutive_nonlocal_structureID(i) = LATTICE_ort_ID
           end select
           configNchunks = lattice_configNchunks(constitutive_nonlocal_structureID(i))
           Nchunks_SlipFamilies = configNchunks(1)
@@ -451,24 +704,24 @@ do while (trim(line) /= '#EOF#')                                                
           Nchunks_nonSchmid = configNchunks(7)
         case ('c/a_ratio','covera_ratio')
           CoverA(i) = IO_floatValue(line,positions,2_pInt)
-         case ('c11')
-           Cslip66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c12')
-           Cslip66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c13')
-           Cslip66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c22')
-           Cslip66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c23')
-           Cslip66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c33')
-           Cslip66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c44')
-           Cslip66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c55')
-           Cslip66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c66')
-           Cslip66(6,6,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c11')
+          Cslip66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c12')
+          Cslip66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c13')
+          Cslip66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c22')
+          Cslip66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c23')
+          Cslip66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c33')
+          Cslip66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c44')
+          Cslip66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c55')
+          Cslip66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+        case ('c66')
+          Cslip66(6,6,i) = IO_floatValue(line,positions,2_pInt)
         case ('nslip')
           if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
             call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_LABEL//')')
@@ -779,7 +1032,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNmatIDs))
 nonSchmidProjection = 0.0_pReal
                                             
 
-do i = 1,maxNmatIDs
+instancesLoop: do i = 1,maxNmatIDs
   
   structID = constitutive_nonlocal_structure(i)                                                                                  ! lattice structure of this instance
     
@@ -859,92 +1112,91 @@ do i = 1,maxNmatIDs
 
   !*** determine size of postResults array
   
-  do o = 1_pInt,Noutput(i)
-    select case(constitutive_nonlocal_output(o,i))
-      case( 'rho', &
-            'delta', &
-            'rho_edge', &
-            'rho_screw', &
-            'rho_sgl', &
-            'delta_sgl', &
-            'rho_sgl_edge', &
-            'rho_sgl_edge_pos', &
-            'rho_sgl_edge_neg', &
-            'rho_sgl_screw', &
-            'rho_sgl_screw_pos', &
-            'rho_sgl_screw_neg', &
-            'rho_sgl_mobile', &
-            'rho_sgl_edge_mobile', &
-            'rho_sgl_edge_pos_mobile', &
-            'rho_sgl_edge_neg_mobile', &
-            'rho_sgl_screw_mobile', &
-            'rho_sgl_screw_pos_mobile', &
-            'rho_sgl_screw_neg_mobile', &
-            'rho_sgl_immobile', &
-            'rho_sgl_edge_immobile', &
-            'rho_sgl_edge_pos_immobile', &
-            'rho_sgl_edge_neg_immobile', &
-            'rho_sgl_screw_immobile', &
-            'rho_sgl_screw_pos_immobile', &
-            'rho_sgl_screw_neg_immobile', &
-            'rho_dip', &
-            'delta_dip', &
-            'rho_dip_edge', &
-            'rho_dip_screw', &
-            'excess_rho', &
-            'excess_rho_edge', &
-            'excess_rho_screw', &
-            'rho_forest', &
-            'shearrate', &
-            'resolvedstress', &
-            'resolvedstress_external', &
-            'resolvedstress_back', &
-            'resistance', &
-            'rho_dot', &
-            'rho_dot_sgl', &
-            'rho_dot_dip', &
-            'rho_dot_gen', &
-            'rho_dot_gen_edge', &
-            'rho_dot_gen_screw', &
-            'rho_dot_sgl2dip', &
-            'rho_dot_sgl2dip_edge', &
-            'rho_dot_sgl2dip_screw', &
-            'rho_dot_ann_ath', &
-            'rho_dot_ann_the', &
-            'rho_dot_ann_the_edge', &
-            'rho_dot_ann_the_screw', &
-            'rho_dot_edgejogs', &
-            'rho_dot_flux', &
-            'rho_dot_flux_edge', &
-            'rho_dot_flux_screw', &
-            'velocity_edge_pos', &
-            'velocity_edge_neg', &
-            'velocity_screw_pos', &
-            'velocity_screw_neg', &
-            'slipdirection.x', &
-            'slipdirection.y', &
-            'slipdirection.z', &
-            'slipnormal.x', &
-            'slipnormal.y', &
-            'slipnormal.z', &
-            'fluxdensity_edge_pos.x', &
-            'fluxdensity_edge_pos.y', &
-            'fluxdensity_edge_pos.z', &
-            'fluxdensity_edge_neg.x', &
-            'fluxdensity_edge_neg.y', &
-            'fluxdensity_edge_neg.z', &
-            'fluxdensity_screw_pos.x', &
-            'fluxdensity_screw_pos.y', &
-            'fluxdensity_screw_pos.z', &
-            'fluxdensity_screw_neg.x', &
-            'fluxdensity_screw_neg.y', &
-            'fluxdensity_screw_neg.z', &
-            'maximumdipoleheight_edge', &
-            'maximumdipoleheight_screw', &
-            'accumulatedshear', &
-            'boundarylayer' )
+  outputsLoop: do o = 1_pInt,Noutput(i)
+    select case(constitutive_nonlocal_outputID(o,i))
+      case( rho_ID, &
+            delta_ID, &
+            rho_edge_ID, &
+            rho_screw_ID, &
+            rho_sgl_ID, &
+            delta_sgl_ID, &
+            rho_sgl_edge_ID, &
+            rho_sgl_edge_pos_ID, &
+            rho_sgl_edge_neg_ID, &
+            rho_sgl_screw_ID, &
+            rho_sgl_screw_pos_ID, &
+            rho_sgl_screw_neg_ID, &
+            rho_sgl_mobile_ID, &
+            rho_sgl_edge_mobile_ID, &
+            rho_sgl_edge_pos_mobile_ID, &
+            rho_sgl_edge_neg_mobile_ID, &
+            rho_sgl_screw_mobile_ID, &
+            rho_sgl_screw_pos_mobile_ID, &
+            rho_sgl_screw_neg_mobile_ID, &
+            rho_sgl_immobile_ID, &
+            rho_sgl_edge_immobile_ID, &
+            rho_sgl_edge_pos_immobile_ID, &
+            rho_sgl_edge_neg_immobile_ID, &
+            rho_sgl_screw_immobile_ID, &
+            rho_sgl_screw_pos_immobile_ID, &
+            rho_sgl_screw_neg_immobile_ID, &
+            rho_dip_ID, &
+            delta_dip_ID, &
+            rho_dip_edge_ID, &
+            rho_dip_screw_ID, &
+            excess_rho_ID, &
+            excess_rho_edge_ID, &
+            excess_rho_screw_ID, &
+            rho_forest_ID, &
+            shearrate_ID, &
+            resolvedstress_ID, &
+            resolvedstress_external_ID, &
+            resolvedstress_back_ID, &
+            resistance_ID, &
+            rho_dot_ID, &
+            rho_dot_sgl_ID, &
+            rho_dot_dip_ID, &
+            rho_dot_gen_ID, &
+            rho_dot_gen_edge_ID, &
+            rho_dot_gen_screw_ID, &
+            rho_dot_sgl2dip_ID, &
+            rho_dot_sgl2dip_edge_ID, &
+            rho_dot_sgl2dip_screw_ID, &
+            rho_dot_ann_ath_ID, &
+            rho_dot_ann_the_ID, &
+            rho_dot_ann_the_edge_ID, &
+            rho_dot_ann_the_screw_ID, &
+            rho_dot_edgejogs_ID, &
+            rho_dot_flux_ID, &
+            rho_dot_flux_edge_ID, &
+            rho_dot_flux_screw_ID, &
+            velocity_edge_pos_ID, &
+            velocity_edge_neg_ID, &
+            velocity_screw_pos_ID, &
+            velocity_screw_neg_ID, &
+            slipdirectionx_ID, &
+            slipdirectiony_ID, &
+            slipdirectionz_ID, &
+            slipnormalx_ID, &
+            slipnormaly_ID, &
+            slipnormalz_ID, &
+            fluxdensity_edge_posx_ID, &
+            fluxdensity_edge_posy_ID, &
+            fluxdensity_edge_posz_ID, &
+            fluxdensity_edge_negx_ID, &
+            fluxdensity_edge_negy_ID, &
+            fluxdensity_edge_negz_ID, &
+            fluxdensity_screw_posx_ID, &
+            fluxdensity_screw_posy_ID, &
+            fluxdensity_screw_posz_ID, &
+            fluxdensity_screw_negx_ID, &
+            fluxdensity_screw_negy_ID, &
+            fluxdensity_screw_negz_ID, &
+            maximumdipoleheight_edge_ID, &
+            maximumdipoleheight_screw_ID, &
+            accumulatedshear_ID )
         mySize = totalNslip(i)
-      case('dislocationstress')
+      case(dislocationstress_ID)
         mySize = 6_pInt
       case default
         call IO_error(212_pInt,ext_msg=constitutive_nonlocal_output(o,i)//&
@@ -955,7 +1207,7 @@ do i = 1,maxNmatIDs
       constitutive_nonlocal_sizePostResult(o,i) = mySize
       constitutive_nonlocal_sizePostResults(i)  = constitutive_nonlocal_sizePostResults(i) + mySize
     endif
-  enddo
+  enddo outputsLoop
   
   
   !*** elasticity matrix and shear modulus according to material.config
@@ -1036,7 +1288,7 @@ do i = 1,maxNmatIDs
           + lattice_Sslip(1:3,1:3,1,slipSystemLattice(s,i),structID)
   enddo
   
-enddo
+enddo instancesLoop
 
 end subroutine constitutive_nonlocal_init
 
@@ -3047,7 +3299,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                 .or. deltaX /= 0_pInt .or. deltaY /= 0_pInt .or. deltaZ /= 0_pInt) then
             
               neighbor_coords = mesh_cellCenterCoordinates(neighbor_ip,neighbor_el) &
-                                 + (/real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)/) * meshSize
+                                 + [real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)] * meshSize
               connection = neighbor_coords - coords
               distance = sqrt(sum(connection * connection))
               if (distance > cutoffRadius(matID)) then
@@ -3373,345 +3625,344 @@ forall (s = 1_pInt:ns) &
                                       lattice_sn(1:3,slipSystemLattice(s,matID),structID))
 
 
-do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
-  select case(constitutive_nonlocal_output(o,matID))
-    
-    case ('rho')
+outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
+  select case(constitutive_nonlocal_outputID(o,matID))
+    case (rho_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl),2) + sum(rhoDip,2)
       cs = cs + ns
       
-    case ('rho_sgl')
+    case (rho_sgl_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl),2)
       cs = cs + ns
       
-    case ('rho_sgl_mobile')
+    case (rho_sgl_mobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,1:4)),2)
       cs = cs + ns
       
-    case ('rho_sgl_immobile')
+    case (rho_sgl_immobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,5:8),2)
       cs = cs + ns
       
-    case ('rho_dip')
+    case (rho_dip_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDip,2)
       cs = cs + ns
       
-    case ('rho_edge')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,(/1,2,5,6/))),2) + rhoDip(1:ns,1)
+    case (rho_edge_ID)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[1,2,5,6])),2) + rhoDip(1:ns,1)
       cs = cs + ns
       
-    case ('rho_sgl_edge')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,(/1,2,5,6/))),2)
+    case (rho_sgl_edge_ID)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[1,2,5,6])),2)
       cs = cs + ns
       
-    case ('rho_sgl_edge_mobile')
+    case (rho_sgl_edge_mobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,1:2),2)
       cs = cs + ns
       
-    case ('rho_sgl_edge_immobile')
+    case (rho_sgl_edge_immobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,5:6),2)
       cs = cs + ns
       
-    case ('rho_sgl_edge_pos')
+    case (rho_sgl_edge_pos_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) + abs(rhoSgl(1:ns,5))
       cs = cs + ns
       
-    case ('rho_sgl_edge_pos_mobile')
+    case (rho_sgl_edge_pos_mobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1)
       cs = cs + ns
       
-    case ('rho_sgl_edge_pos_immobile')
+    case (rho_sgl_edge_pos_immobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,5)
       cs = cs + ns
       
-    case ('rho_sgl_edge_neg')
+    case (rho_sgl_edge_neg_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,2) + abs(rhoSgl(1:ns,6))
       cs = cs + ns
       
-    case ('rho_sgl_edge_neg_mobile')
+    case (rho_sgl_edge_neg_mobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,2)
       cs = cs + ns
       
-    case ('rho_sgl_edge_neg_immobile')
+    case (rho_sgl_edge_neg_immobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,6)
       cs = cs + ns
       
-    case ('rho_dip_edge')
+    case (rho_dip_edge_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,1)
       cs = cs + ns
       
-    case ('rho_screw')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,(/3,4,7,8/))),2) + rhoDip(1:ns,2)
+    case (rho_screw_ID)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[3,4,7,8])),2) + rhoDip(1:ns,2)
       cs = cs + ns
       
-    case ('rho_sgl_screw')
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,(/3,4,7,8/))),2)
+    case (rho_sgl_screw_ID)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl(1:ns,[3,4,7,8])),2)
       cs = cs + ns
             
-    case ('rho_sgl_screw_mobile')
+    case (rho_sgl_screw_mobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,3:4),2)
       cs = cs + ns
       
-    case ('rho_sgl_screw_immobile')
+    case (rho_sgl_screw_immobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoSgl(1:ns,7:8),2)
       cs = cs + ns
       
-    case ('rho_sgl_screw_pos')
+    case (rho_sgl_screw_pos_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) + abs(rhoSgl(1:ns,7))
       cs = cs + ns
       
-    case ('rho_sgl_screw_pos_mobile')
+    case (rho_sgl_screw_pos_mobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3)
       cs = cs + ns
       
-    case ('rho_sgl_screw_pos_immobile')
+    case (rho_sgl_screw_pos_immobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,7)
       cs = cs + ns
       
-    case ('rho_sgl_screw_neg')
+    case (rho_sgl_screw_neg_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,4) + abs(rhoSgl(1:ns,8))
       cs = cs + ns
 
-    case ('rho_sgl_screw_neg_mobile')
+    case (rho_sgl_screw_neg_mobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,4)
       cs = cs + ns
 
-    case ('rho_sgl_screw_neg_immobile')
+    case (rho_sgl_screw_neg_immobile_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,8)
       cs = cs + ns
 
-    case ('rho_dip_screw')
+    case (rho_dip_screw_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDip(1:ns,2)
       cs = cs + ns
       
-    case ('excess_rho')
+    case (excess_rho_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = (rhoSgl(1:ns,1) + abs(rhoSgl(1:ns,5))) &
                                                          - (rhoSgl(1:ns,2) + abs(rhoSgl(1:ns,6))) &
                                                          + (rhoSgl(1:ns,3) + abs(rhoSgl(1:ns,7))) &
                                                          - (rhoSgl(1:ns,4) + abs(rhoSgl(1:ns,8)))
       cs = cs + ns
       
-    case ('excess_rho_edge')
+    case (excess_rho_edge_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = (rhoSgl(1:ns,1) + abs(rhoSgl(1:ns,5))) &
                                                          - (rhoSgl(1:ns,2) + abs(rhoSgl(1:ns,6)))
       cs = cs + ns
       
-    case ('excess_rho_screw')
+    case (excess_rho_screw_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = (rhoSgl(1:ns,3) + abs(rhoSgl(1:ns,7))) &
                                                          - (rhoSgl(1:ns,4) + abs(rhoSgl(1:ns,8)))
       cs = cs + ns
       
-    case ('rho_forest')
+    case (rho_forest_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoForest
       cs = cs + ns
     
-    case ('delta')
+    case (delta_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = 1.0_pReal / sqrt(sum(abs(rhoSgl),2) + sum(rhoDip,2))
       cs = cs + ns
       
-    case ('delta_sgl')
+    case (delta_sgl_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = 1.0_pReal / sqrt(sum(abs(rhoSgl),2))
       cs = cs + ns
       
-    case ('delta_dip')
+    case (delta_dip_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = 1.0_pReal / sqrt(sum(rhoDip,2))
       cs = cs + ns
       
-    case ('shearrate')
+    case (shearrate_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(gdot,2)
       cs = cs + ns
       
-    case ('resolvedstress')
+    case (resolvedstress_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = tau
       cs = cs + ns
       
-    case ('resolvedstress_back')
+    case (resolvedstress_back_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = tauBack
       cs = cs + ns
       
-    case ('resolvedstress_external')
+    case (resolvedstress_external_ID)
       do s = 1_pInt,ns  
         sLattice = slipSystemLattice(s,matID)
         constitutive_nonlocal_postResults(cs+s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,structID))
       enddo
       cs = cs + ns
       
-    case ('resistance')
+    case (resistance_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = tauThreshold
       cs = cs + ns
     
-    case ('rho_dot')
+    case (rho_dot_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl,2) + sum(rhoDotDip,2)
       cs = cs + ns
       
-    case ('rho_dot_sgl')
+    case (rho_dot_sgl_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl,2)
       cs = cs + ns
       
-    case ('rho_dot_dip')
+    case (rho_dot_dip_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotDip,2)
       cs = cs + ns
     
-    case ('rho_dot_gen')
+    case (rho_dot_gen_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,1,ipc,ip,el) &
                                                          + rhoDotMultiplicationOutput(1:ns,2,ipc,ip,el)
       cs = cs + ns
 
-    case ('rho_dot_gen_edge')
+    case (rho_dot_gen_edge_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,1,ipc,ip,el)
       cs = cs + ns
 
-    case ('rho_dot_gen_screw')
+    case (rho_dot_gen_screw_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotMultiplicationOutput(1:ns,2,ipc,ip,el)
       cs = cs + ns
       
-    case ('rho_dot_sgl2dip')
+    case (rho_dot_sgl2dip_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotSingle2DipoleGlideOutput(1:ns,1,ipc,ip,el) &
                                                          + rhoDotSingle2DipoleGlideOutput(1:ns,2,ipc,ip,el)
       cs = cs + ns
     
-    case ('rho_dot_sgl2dip_edge')
+    case (rho_dot_sgl2dip_edge_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotSingle2DipoleGlideOutput(1:ns,1,ipc,ip,el)
       cs = cs + ns
     
-    case ('rho_dot_sgl2dip_screw')
+    case (rho_dot_sgl2dip_screw_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotSingle2DipoleGlideOutput(1:ns,2,ipc,ip,el)
       cs = cs + ns
     
-    case ('rho_dot_ann_ath')
+    case (rho_dot_ann_ath_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotAthermalAnnihilationOutput(1:ns,1,ipc,ip,el) & 
                                                          + rhoDotAthermalAnnihilationOutput(1:ns,2,ipc,ip,el)
       cs = cs + ns
       
-    case ('rho_dot_ann_the') 
+    case (rho_dot_ann_the_ID) 
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotThermalAnnihilationOutput(1:ns,1,ipc,ip,el) & 
                                                          + rhoDotThermalAnnihilationOutput(1:ns,2,ipc,ip,el)
       cs = cs + ns
 
-    case ('rho_dot_ann_the_edge') 
+    case (rho_dot_ann_the_edge_ID) 
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotThermalAnnihilationOutput(1:ns,1,ipc,ip,el) 
       cs = cs + ns
 
-    case ('rho_dot_ann_the_screw') 
+    case (rho_dot_ann_the_screw_ID) 
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotThermalAnnihilationOutput(1:ns,2,ipc,ip,el)
       cs = cs + ns
 
-    case ('rho_dot_edgejogs') 
+    case (rho_dot_edgejogs_ID) 
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotEdgeJogsOutput(1:ns,ipc,ip,el)
       cs = cs + ns
 
-    case ('rho_dot_flux')
+    case (rho_dot_flux_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:4,ipc,ip,el),2) &
                                                       + sum(abs(rhoDotFluxOutput(1:ns,5:8,ipc,ip,el)),2)
       cs = cs + ns
     
-    case ('rho_dot_flux_edge')
+    case (rho_dot_flux_edge_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:2,ipc,ip,el),2) &
                                                       + sum(abs(rhoDotFluxOutput(1:ns,5:6,ipc,ip,el)),2)
       cs = cs + ns
       
-    case ('rho_dot_flux_screw')
+    case (rho_dot_flux_screw_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,3:4,ipc,ip,el),2) &
                                                       + sum(abs(rhoDotFluxOutput(1:ns,7:8,ipc,ip,el)),2)
       cs = cs + ns
             
-    case ('velocity_edge_pos')
+    case (velocity_edge_pos_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = v(1:ns,1)
       cs = cs + ns
     
-    case ('velocity_edge_neg')
+    case (velocity_edge_neg_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = v(1:ns,2)
       cs = cs + ns
     
-    case ('velocity_screw_pos')
+    case (velocity_screw_pos_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = v(1:ns,3)
       cs = cs + ns
     
-    case ('velocity_screw_neg')
+    case (velocity_screw_neg_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = v(1:ns,4)
       cs = cs + ns
     
-    case ('slipdirection.x')
+    case (slipdirectionx_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(1,1:ns,1)
       cs = cs + ns
     
-    case ('slipdirection.y')
+    case (slipdirectiony_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(2,1:ns,1)
       cs = cs + ns
     
-    case ('slipdirection.z')
+    case (slipdirectionz_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = m_currentconf(3,1:ns,1)
       cs = cs + ns
     
-    case ('slipnormal.x')
+    case (slipnormalx_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(1,1:ns)
       cs = cs + ns
     
-    case ('slipnormal.y')
+    case (slipnormaly_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(2,1:ns)
       cs = cs + ns
     
-    case ('slipnormal.z')
+    case (slipnormalz_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = n_currentconf(3,1:ns)
       cs = cs + ns
     
-    case ('fluxdensity_edge_pos.x')
+    case (fluxdensity_edge_posx_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(1,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_pos.y')
+    case (fluxdensity_edge_posy_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(2,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_pos.z')
+    case (fluxdensity_edge_posz_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,1) * v(1:ns,1) * m_currentconf(3,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_neg.x')
+    case (fluxdensity_edge_negx_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(1,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_neg.y')
+    case (fluxdensity_edge_negy_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(2,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_edge_neg.z')
+    case (fluxdensity_edge_negz_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,2) * v(1:ns,2) * m_currentconf(3,1:ns,1)
       cs = cs + ns
     
-    case ('fluxdensity_screw_pos.x')
+    case (fluxdensity_screw_posx_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(1,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_pos.y')
+    case (fluxdensity_screw_posy_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(2,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_pos.z')
+    case (fluxdensity_screw_posz_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoSgl(1:ns,3) * v(1:ns,3) * m_currentconf(3,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_neg.x')
+    case (fluxdensity_screw_negx_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(1,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_neg.y')
+    case (fluxdensity_screw_negy_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(2,1:ns,2)
       cs = cs + ns
     
-    case ('fluxdensity_screw_neg.z')
+    case (fluxdensity_screw_negz_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = - rhoSgl(1:ns,4) * v(1:ns,4) * m_currentconf(3,1:ns,2)
       cs = cs + ns
     
-    case ('maximumdipoleheight_edge')
+    case (maximumdipoleheight_edge_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = dUpper(1:ns,1)
       cs = cs + ns
       
-    case ('maximumdipoleheight_screw')
+    case (maximumdipoleheight_screw_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = dUpper(1:ns,2)
       cs = cs + ns
     
-    case('dislocationstress')
+    case(dislocationstress_ID)
       sigma = constitutive_nonlocal_dislocationstress(state, Fe, ipc, ip, el)
       constitutive_nonlocal_postResults(cs+1_pInt) = sigma(1,1)
       constitutive_nonlocal_postResults(cs+2_pInt) = sigma(2,2)
@@ -3721,22 +3972,12 @@ do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
       constitutive_nonlocal_postResults(cs+6_pInt) = sigma(3,1)
       cs = cs + 6_pInt
     
-    case('accumulatedshear')
+    case(accumulatedshear_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = state(ipc,ip,el)%p(iGamma(1:ns,matID))
       cs = cs + ns
     
-    case('boundarylayer')
-      do s = 1_pInt,ns
-        if (sum(abs(rhoSgl(s,1:8))) > 0.0_pReal) then
-          constitutive_nonlocal_postResults(cs+s) = maxval(abs(rhoSgl(s,5:8))/(rhoSgl(s,1:4)+abs(rhoSgl(s,5:8))))
-        else
-          constitutive_nonlocal_postResults(cs+s) = 0.0_pReal
-        endif
-      enddo
-      cs = cs + ns
-
- end select
-enddo
+  end select
+enddo outputsLoop
 
 end function constitutive_nonlocal_postResults
 
