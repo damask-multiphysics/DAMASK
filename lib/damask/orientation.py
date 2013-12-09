@@ -658,7 +658,7 @@ class Symmetry:
 
     if color:                                                                      # have to return color array
       if inSST:
-        rgb = numpy.power(theComponents/numpy.linalg.norm(theComponents),0.3333333)                                 # smoothen color ramps
+        rgb = numpy.power(theComponents/numpy.linalg.norm(theComponents),0.5)      # smoothen color ramps
         rgb = numpy.minimum(numpy.ones(3,'d'),rgb)                                 # limit to maximum intensity
         rgb /= max(rgb)                                                            # normalize to (HS)V = 1
       else:
