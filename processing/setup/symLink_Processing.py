@@ -36,7 +36,7 @@ bin_link = { \
                 ],
         'post' : [
                 '3Dvisualize.py',
-                'permuteData.py'
+                'permuteData.py',
                 'addCalculation.py',
                 'addCauchy.py',
                 'addCompatibilityMismatch.py',
