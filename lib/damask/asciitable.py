@@ -138,14 +138,20 @@ class ASCIItable():
       idx = []
       for label in labels:
         try:
-          idx.append(self.labels.index(label))
-        except(ValueError):
-          idx.append(-1)
+          idx.append(label+0)
+        except TypeError:
+          try:
+            idx.append(self.labels.index(label))
+          except ValueError:
+            idx.append(-1)
     else:
       try:
-        idx = self.labels.index(labels)
-      except(ValueError):
-        idx = -1
+        idx = label+0
+      except TypeError:
+        try:
+          idx = self.labels.index(labels)
+        except(ValueError):
+          idx = -1
 
     return idx
 
@@ -210,9 +216,9 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_append(self,
                   what):
-    try:
+    if isinstance(what,list):
       for item in what: self.data_append(item)
-    except TypeError:
+    else:
       self.data += [str(what)]
 
 # ------------------------------------------------------------------
@@ -249,5 +255,7 @@ class ASCIItable():
     else: indices = self.labels_index(labels)                                   # use specified columns
 
     self.data_rewind()
-    return numpy.loadtxt(self.__IO__['in'], usecols=indices)
-
+    theArray = numpy.loadtxt(self.__IO__['in'], usecols=indices)
+    if len(theArray.shape) < 2:                                                 # single column
+      theArray = theArray.reshape(theArray.shape[0],1)
+    return theArray
