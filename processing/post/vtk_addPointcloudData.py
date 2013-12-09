@@ -62,7 +62,7 @@ Nvertices = reader.GetNumberOfVerts()
 Polydata = reader.GetOutput()
 
 if Npoints != Ncells or Npoints != Nvertices:
-  options.error('Number of points, cells, and vertices in VTK differ from each other'); sys.exit()
+  parser.error('Number of points, cells, and vertices in VTK differ from each other'); sys.exit()
 if options.scalar != None:  datainfo['scalar']['label'] += options.scalar
 if options.color  != None:  datainfo['color']['label']  += options.color
 
