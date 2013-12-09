@@ -3,6 +3,9 @@
 import os,re,sys,math,string,damask,numpy
 from optparse import OptionParser, Option
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 def unravel(item):
   if hasattr(item,'__contains__'): return ' '.join(map(unravel,item))
   else: return str(item)
@@ -36,7 +39,7 @@ Add column(s) with derived values according to user defined arithmetic operation
 Columns can be specified either by label or index. Use ';' for ',' in functions.
 
 Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round(#ip.z#;3)**2 )"
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 
@@ -59,16 +62,17 @@ for i in xrange(len(options.formulas)):
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------  
+#--- loop over input files ------------------------------------------------------------------------
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   specials = { \
                '_row_': 0,
@@ -76,46 +80,49 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
+  table.info_append(string.replace(scriptID,'\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
 
   evaluator = {}
-
+  brokenFormula = {}
+  
   for label,formula in zip(options.labels,options.formulas):
     interpolator = []
-    for position,operand in enumerate(set(re.findall(r'#(.+?)#',formula))):
-      formula = formula.replace('#'+operand+'#','{%i}'%position)
-      if operand in specials:
-        interpolator += ['specials["%s"]'%operand]
-      elif operand.isdigit():
-        if len(table.labels) > int(operand):
-          interpolator += ['float(table.data[%i])'%(int(operand))]
+    for position,column in enumerate(set(re.findall(r'#(.+?)#',formula))):                          # loop over unique set of column labels in formula
+      formula = formula.replace('#'+column+'#','{%i}'%position)
+      if column in specials:
+        interpolator += ['specials["%s"]'%column]
+      elif column.isdigit():
+        if len(table.labels) > int(column):
+          interpolator += ['float(table.data[%i])'%(int(column))]
         else:
-          parser.error('column %s not present...\n'%operand)
+          file['croak'].write('column %s not found...\n'%column)
+          brokenFormula{label} = True
       else:
         try:
-          interpolator += ['float(table.data[%i])'%table.labels.index(operand)]
+          interpolator += ['float(table.data[%i])'%table.labels.index(column)]
         except:
-          parser.error('column %s not found...\n'%operand)
-  
-    evaluator[label] = "'" + formula + "'.format(" + ','.join(interpolator) + ")"
+          file['croak'].write('column %s not found...\n'%column)
+          brokenFormula{label} = True
+
+    if label not in brokenFormula:  
+      evaluator[label] = "'" + formula + "'.format(" + ','.join(interpolator) + ")"
 
 # ------------------------------------------ calculate one result to get length of labels  ------
-  labelLen = {}
   table.data_read()
+  labelLen = {}
   for label in options.labels:
     labelLen[label] = numpy.size(eval(eval(evaluator[label])))
-    print label, labelLen[label]
 
 # ------------------------------------------ assemble header ---------------------------------------  
   for label,formula in zip(options.labels,options.formulas):
     if labelLen[label] == 0:
-      print 'label ',label,' has length 0'
-      sys.exit()
-    elif labelLen[label] == 1:
-      table.labels_append(label)
-    else:
-      table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])])
+      brokenFormula[label] = True
+    if label not in brokenFormula:
+      if labelLen[label] == 1:
+        table.labels_append(label)
+      else:
+        table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])])
 
   table.head_write()
 
@@ -123,6 +130,7 @@ for file in files:
 
   outputAlive = True
   table.data_rewind()
+
   while outputAlive and table.data_read():                                  # read next data line of ASCII table
 
     specials['_row_'] += 1                                                  # count row
