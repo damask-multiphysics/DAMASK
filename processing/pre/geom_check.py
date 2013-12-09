@@ -147,19 +147,25 @@ for file in files:
 
 #--- write data -----------------------------------------------------------------------------------
   if file['name'] == 'STDIN':
-    outWriter = vtk.vtkRectilinearGridWriter()
-    outWriter.WriteToOutputStringOn()
-    outWriter.SetFileTypeToASCII()
-    outWriter.SetHeader('# powered by '+scriptID)
-    outWriter.SetInput(grid)
-    outWriter.Write()
-    sys.stdout.write(outWriter.GetOutputString()[0:outWriter.GetOutputStringLength()])
+    writer = vtk.vtkRectilinearGridWriter()
+    writer.WriteToOutputStringOn()
+    writer.SetFileTypeToASCII()
+    writer.SetHeader('# powered by '+scriptID)
+    if vtk.VTK_MAJOR_VERSION <= 5:
+      writer.SetInput(grid)
+    else:
+      writer.SetInputData(grid)
+    writer.Write()
+    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
   else:
     (head,tail) = os.path.split(file['name'])
-    outWriter = vtk.vtkXMLRectilinearGridWriter()
-    outWriter.SetDataModeToBinary()
-    outWriter.SetCompressorTypeToZLib()
-    outWriter.SetFileName(os.path.join(head,'mesh_'+os.path.splitext(tail)[0]
-                                                   +'.'+outWriter.GetDefaultFileExtension()))
-    outWriter.SetInput(grid)
-    outWriter.Write()
+    writer = vtk.vtkXMLRectilinearGridWriter()
+    writer.SetDataModeToBinary()
+    writer.SetCompressorTypeToZLib()
+    writer.SetFileName(os.path.join(head,'mesh_'+os.path.splitext(tail)[0]
+                                                   +'.'+writer.GetDefaultFileExtension()))
+    if vtk.VTK_MAJOR_VERSION <= 5:
+      writer.SetInput(grid)
+    else:
+      writer.SetInputData(grid)
+    writer.Write()
