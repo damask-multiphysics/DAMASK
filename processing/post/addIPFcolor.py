@@ -32,7 +32,7 @@ Add RGB color value corresponding to TSL-OIM scheme for inverse pole figures.
 )
 
 parser.add_option('-p', '--pole', dest='pole', type='float', nargs=3,\
-                  help = 'list of poles (directions)')
+                  help = 'lab frame direction for inverse pole figure %default')
 parser.add_option('-s', '--symmetry', dest='symmetry', type='string', \
                   help = 'crystal symmetry [%default]')
 parser.add_option('-e', '--eulers',   dest='eulers', type='string', \
@@ -48,7 +48,7 @@ parser.add_option('-c',               dest='c', type='string', \
 parser.add_option('-q', '--quaternion', dest='quaternion', type='string', \
                   help = 'quaternion label')
 
-parser.set_defaults(output = [])
+parser.set_defaults(pole = [0.0,0.0,1.0])
 parser.set_defaults(symmetry = 'cubic')
 
 (options, filenames) = parser.parse_args()
