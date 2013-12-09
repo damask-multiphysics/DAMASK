@@ -48,7 +48,7 @@ class Quaternion:
           (self.w, self.x, self.y, self.z)
 
     def __mul__(self, other):
-      if isinstance(other, Quaternion):
+      try:                                                          # quaternion
           Ax = self.x
           Ay = self.y
           Az = self.z
@@ -58,12 +58,13 @@ class Quaternion:
           Bz = other.z
           Bw = other.w
           Q = Quaternion()
-          Q.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx    
+          Q.x = + Ax * Bw + Ay * Bz - Az * By + Aw * Bx
           Q.y = - Ax * Bz + Ay * Bw + Az * Bx + Aw * By
           Q.z = + Ax * By - Ay * Bx + Az * Bw + Aw * Bz
           Q.w = - Ax * Bx - Ay * By - Az * Bz + Aw * Bw
           return Q
-      elif isinstance(other, numpy.ndarray) and other.shape == (3,):    # active rotation of vector (i.e. within fixed coordinate system)
+      except: pass
+      try:                                                         # vector (perform active rotation, i.e. q*v*q.conjugated)
           w = self.w
           x = self.x
           y = self.y
@@ -82,18 +83,19 @@ class Quaternion:
              2 * x * z * Vx + 2 * y * z * Vy + \
              z * z * Vz - 2 * w * y * Vx - y * y * Vz + \
              2 * w * x * Vy - x * x * Vz + w * w * Vz ])
-      elif isinstance(other, (int,float,long)):
+      except: pass
+      try:                                                        # scalar
           Q = self.copy()
           Q.w *= other
           Q.x *= other
           Q.y *= other
           Q.z *= other
           return Q
-      else:
+      except:
           return self.copy()
 
     def __imul__(self, other):
-      if isinstance(other, Quaternion):
+      try:                                                          # Quaternion
           Ax = self.x
           Ay = self.y
           Az = self.z
@@ -106,8 +108,9 @@ class Quaternion:
           self.y = -Ax * Bz + Ay * Bw + Az * Bx + Aw * By
           self.z =  Ax * By - Ay * Bx + Az * Bw + Aw * Bz
           self.w = -Ax * Bx - Ay * By - Az * Bz + Aw * Bw
+      except: pass
       return self
-
+    
     def __div__(self, other):
       if isinstance(other, (int,float,long)):
         w = self.w / other
@@ -334,9 +337,9 @@ class Quaternion:
     @classmethod
     def fromAngleAxis(cls, angle, axis):
         if not isinstance(axis, numpy.ndarray): axis = numpy.array(axis)
-        axis /= numpy.linal.norm(axis)
-        s = math.sin(angle / 2)
-        w = math.cos(angle / 2)
+        axis /= numpy.linalg.norm(axis)
+        s = math.sin(angle / 2.0)
+        w = math.cos(angle / 2.0)
         x = axis[0] * s
         y = axis[1] * s
         z = axis[2] * s
@@ -484,7 +487,7 @@ class Symmetry:
   def __cmp__(self,other):
     return cmp(Symmetry.lattices.index(self.lattice),Symmetry.lattices.index(other.lattice))
 
-  def equivalentQuaternions(self,quaternion,inverse = False):
+  def equivalentQuaternions(self,quaternion):
     '''
     List of symmetrically equivalent quaternions based on own symmetry.
     '''
@@ -553,10 +556,7 @@ class Symmetry:
                     [ 1.0,0.0,0.0,0.0 ],
                   ]
 
-    if inverse:
-      return [Quaternion(q)*quaternion for q in symQuats]
-    else:
-      return [quaternion*Quaternion(q) for q in symQuats]
+    return [quaternion*Quaternion(q) for q in symQuats]
 
 
   def inFZ(self,R):
@@ -654,11 +654,11 @@ class Symmetry:
     else:
       theComponents = numpy.dot(basis,numpy.array([vector[0],vector[1],abs(vector[2])]))
       
-    inSST = numpy.all(theComponents >= 0.0) and numpy.all(theComponents <= 1.0)
+    inSST = numpy.all(theComponents >= 0.0)
 
     if color:                                                                      # have to return color array
       if inSST:
-        rgb = numpy.power(theComponents,0.3333333)                                 # smoothen color ramps
+        rgb = numpy.power(theComponents/numpy.linalg.norm(theComponents),0.3333333)                                 # smoothen color ramps
         rgb = numpy.minimum(numpy.ones(3,'d'),rgb)                                 # limit to maximum intensity
         rgb /= max(rgb)                                                            # normalize to (HS)V = 1
       else:
@@ -772,8 +772,8 @@ class Orientation:
 
     color = numpy.zeros(3,'d')
 
-    for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion,inverse=True)):
-      pole = q*axis                               # align crystal direction to axis
+    for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):
+      pole = q.conjugated()*axis                               # align crystal direction to axis
       inSST,color = self.symmetry.inSST(pole,color=True)
       if inSST: break
 
