@@ -33,18 +33,20 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 )
 
 
-parser.add_option('-d','--data',    dest='data', nargs=2, type='int', \
+parser.add_option('-d','--data',    dest='data', nargs=2, type='int',
                                     help='columns containing x and y')
-parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int', \
+parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int',
                                     help='number of bins in x and y direction')
-parser.add_option('-t','--type',    dest='type', nargs=3, type='string', \
+parser.add_option('-t','--type',    dest='type', nargs=3, type='string',
                                     help='type of x, y, and z axis [linear]')
-parser.add_option('-x','--xrange',  dest='xrange', nargs=2, type='float', \
+parser.add_option('-x','--xrange',  dest='xrange', nargs=2, type='float',
                                     help='value range in x direction [auto]')
-parser.add_option('-y','--yrange',  dest='yrange', nargs=2, type='float', \
+parser.add_option('-y','--yrange',  dest='yrange', nargs=2, type='float',
                                     help='value range in y direction [auto]')
-parser.add_option('-z','--zrange',  dest='zrange', nargs=2, type='float', \
+parser.add_option('-z','--zrange',  dest='zrange', nargs=2, type='float',
                                     help='value range in z direction [auto]')
+parser.add_option('-i','--invert',  dest='invert', action='store_true',
+                                    help='invert probability density')
 
 parser.set_defaults(data = [1,2])
 parser.set_defaults(bins = [10,10])
@@ -52,6 +54,7 @@ parser.set_defaults(type = ['linear','linear','linear'])
 parser.set_defaults(xrange = [0.0,0.0])
 parser.set_defaults(yrange = [0.0,0.0])
 parser.set_defaults(zrange = [0.0,0.0])
+parser.set_defaults(invert = False)
 
 (options,filenames) = parser.parse_args()
 
@@ -109,6 +112,7 @@ for file in files:
                      min(1.0,max(0.0,(grid[x,y]-range[2,0])/delta[2]))]
       if options.type[0].lower() == 'log': result[i,0] = numpy.exp(result[i,0])
       if options.type[1].lower() == 'log': result[i,1] = numpy.exp(result[i,1])
+      if options.invert:                   result[i,2] = 1.0-result[i,2]
       i += 1
         
   file['output'].write('1\thead\n')
