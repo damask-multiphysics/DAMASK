@@ -97,13 +97,13 @@ for file in files:
           interpolator += ['float(table.data[%i])'%(int(column))]
         else:
           file['croak'].write('column %s not found...\n'%column)
-          brokenFormula{label} = True
+          brokenFormula[label] = True
       else:
         try:
           interpolator += ['float(table.data[%i])'%table.labels.index(column)]
         except:
           file['croak'].write('column %s not found...\n'%column)
-          brokenFormula{label} = True
+          brokenFormula[label] = True
 
     if label not in brokenFormula:  
       evaluator[label] = "'" + formula + "'.format(" + ','.join(interpolator) + ")"
