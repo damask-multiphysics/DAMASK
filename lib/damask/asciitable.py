@@ -146,7 +146,7 @@ class ASCIItable():
             idx.append(-1)
     else:
       try:
-        idx = label+0
+        idx = labels+0
       except TypeError:
         try:
           idx = self.labels.index(labels)
@@ -206,12 +206,12 @@ class ASCIItable():
       return self.output_write ('\t'.join(map(str,self.data)))
 
 # ------------------------------------------------------------------
-  def data_writeArray(self,format):
+  def data_writeArray(self,format='%g'):
     import numpy
     '''
        write whole numpy array data
     '''
-    return numpy.savetxt(self.__IO__['out'], self.data, fmt=format)
+    return numpy.savetxt(self.__IO__['out'], self.data, fmt=format, delimiter='\t')
 
 # ------------------------------------------------------------------
   def data_append(self,
