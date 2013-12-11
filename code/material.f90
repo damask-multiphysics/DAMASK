@@ -339,7 +339,7 @@ subroutine material_parseHomogenization(myFile,myPart)
          end select
          homogenization_typeInstance(section) = &
                                           count(homogenization_type==homogenization_type(section))  ! count instances
-       case ('ngrains')
+       case ('nconstituents','ngrains')
          homogenization_Ngrains(section) = IO_intValue(line,positions,2_pInt)
      end select
    endif

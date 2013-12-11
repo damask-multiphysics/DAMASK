@@ -40,7 +40,7 @@ module homogenization_isostrain
  integer(pInt),        dimension(:),    allocatable,         private :: &
    homogenization_isostrain_Ngrains
  enum, bind(c) 
-   enumerator :: ncomponents, &
+   enumerator :: nconstituents, &
                  temperature, &
                  ipcoords, &
                  avgdefgrad, &
@@ -48,7 +48,7 @@ module homogenization_isostrain
    enumerator :: parallel, &
                  average
  end enum
- integer(kind(ncomponents)), dimension(:,:), allocatable, private :: &
+ integer(kind(nconstituents)), dimension(:,:), allocatable, private :: &
   homogenization_isostrain_outputID                                                                 !< ID of each post result output
  integer(kind(average)), dimension(:), allocatable, private :: &
   homogenization_isostrain_mapping                                                                  !< ID of each post result output
@@ -133,7 +133,7 @@ subroutine homogenization_isostrain_init(myUnit)
            output = output + 1_pInt
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(homogenization_isostrain_output(output,i))
-             case('ngrains','ncomponents')
+             case('nconstituents','ngrains')
                homogenization_isostrain_outputID(output,i) = ncomponents
              case('temperature')
                homogenization_isostrain_outputID(output,i) = temperature
@@ -146,7 +146,7 @@ subroutine homogenization_isostrain_init(myUnit)
              case default
                mySize = 0_pInt
              end select
-         case ('ngrains','ncomponents')
+         case ('nconstituents','ngrains')
                 homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
          case ('mapping')
            select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
