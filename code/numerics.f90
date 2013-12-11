@@ -137,7 +137,8 @@ subroutine numerics_init
    IO_floatValue, &
    IO_intValue, &
    IO_warning, &
-   IO_timeStamp
+   IO_timeStamp, &
+   IO_EOF
 
 #ifdef Spectral
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if not using MSC.Marc
@@ -170,14 +171,14 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
- fileExists: if(IO_open_file_stat(fileunit,numerics_configFile)) then 
+ fileExists: if(IO_open_file_stat(FILEUNIT,numerics_configFile)) then 
    write(6,'(a,/)') ' using values from config file'
     
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
    line = ''
-   do while (trim(line) /= '#EOF#')                                                                 ! read thru sections of phase part
-     line = IO_read(fileunit)
+   do while (trim(line) /= IO_EOF)                                                                  ! read thru sections of phase part
+     line = IO_read(FILEUNIT)
      do i=1,len(line)
        if(line(i:i) == '=') line(i:i) = ' '                                                         ! also allow keyword = value version
      enddo
@@ -335,7 +336,7 @@ subroutine numerics_init
          call IO_error(300_pInt,ext_msg=tag)
      endselect
    enddo
-   close(fileunit)
+   close(FILEUNIT)
 
  else fileExists
    write(6,'(a,/)') ' using standard values'

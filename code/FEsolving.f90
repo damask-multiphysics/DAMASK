@@ -95,7 +95,7 @@ subroutine FE_init
  implicit none
 #ifndef Spectral
  integer(pInt), parameter :: &
-   fileunit = 222_pInt, &
+   FILEUNIT = 222_pInt, &
    maxNchunks = 6_pInt
  integer(pInt) :: j
  character(len=64)   :: tag
@@ -117,19 +117,19 @@ subroutine FE_init
  endif
  restartRead = restartInc > 1_pInt                                                                  ! only read in if "true" restart requested
 #else
- call IO_open_inputFile(fileunit,modelName)
- rewind(fileunit)
+ call IO_open_inputFile(FILEUNIT,modelName)
+ rewind(FILEUNIT)
  do
-   read (fileunit,'(a1024)',END=100) line
+   read (FILEUNIT,'(a1024)',END=100) line
    positions = IO_stringPos(line,maxNchunks)
    tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                               ! extract key
    select case(tag)
      case ('solver')
-       read (fileunit,'(a1024)',END=100) line                                                       ! next line
+       read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
        positions = IO_stringPos(line,maxNchunks)
        symmetricSolver = (IO_intValue(line,positions,2_pInt) /= 1_pInt)
      case ('restart')
-       read (fileunit,'(a1024)',END=100) line                                                       ! next line
+       read (FILEUNIT,'(a1024)',END=100) line                                                       ! next line
        positions = IO_stringPos(line,maxNchunks)
        restartWrite = iand(IO_intValue(line,positions,1_pInt),1_pInt) > 0_pInt
        restartRead  = iand(IO_intValue(line,positions,1_pInt),2_pInt) > 0_pInt
@@ -145,14 +145,14 @@ subroutine FE_init
        endif
    end select
  enddo
- 100 close(fileunit)
+ 100 close(FILEUNIT)
 
  if (restartRead) then
 #ifdef Marc4DAMASK
-   call IO_open_logFile(fileunit)
-   rewind(fileunit)
+   call IO_open_logFile(FILEUNIT)
+   rewind(FILEUNIT)
    do
-     read (fileunit,'(a1024)',END=200) line
+     read (FILEUNIT,'(a1024)',END=200) line
      positions = IO_stringPos(line,maxNchunks)
      if ( IO_lc(IO_stringValue(line,positions,1_pInt)) == 'restart' .and. &
           IO_lc(IO_stringValue(line,positions,2_pInt)) == 'file' .and. &
@@ -161,19 +161,19 @@ subroutine FE_init
         modelName = IO_StringValue(line,positions,6_pInt)
    enddo
 #else
-   call IO_open_inputFile(fileunit,modelName)
-   rewind(fileunit)
+   call IO_open_inputFile(FILEUNIT,modelName)
+   rewind(FILEUNIT)
    do
-     read (fileunit,'(a1024)',END=200) line
+     read (FILEUNIT,'(a1024)',END=200) line
      positions = IO_stringPos(line,maxNchunks)
      if ( IO_lc(IO_stringValue(line,positions,1_pInt))=='*heading') then
-       read (fileunit,'(a1024)',END=200) line
+       read (FILEUNIT,'(a1024)',END=200) line
        positions = IO_stringPos(line,maxNchunks)
        modelName = IO_StringValue(line,positions,1_pInt)
      endif
    enddo
 #endif
- 200 close(fileunit)
+ 200 close(FILEUNIT)
  endif
 
 !--------------------------------------------------------------------------------------------------

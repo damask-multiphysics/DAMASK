@@ -740,7 +740,7 @@ subroutine lattice_init
    debug_levelBasic
 
  implicit none
- integer(pInt), parameter :: fileunit = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: Nsections
 
  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
@@ -748,11 +748,11 @@ subroutine lattice_init
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(fileunit,material_configFile)                                                  ! ... open material.config file
- Nsections = IO_countSections(fileunit,material_partPhase)
- lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(fileunit,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
- close(fileunit)
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ Nsections = IO_countSections(FILEUNIT,material_partPhase)
+ lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(FILEUNIT,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
+ close(FILEUNIT)
 
  if (iand(debug_level(debug_lattice),debug_levelBasic) /= 0_pInt) then
    write(6,'(a16,1x,i5)')   ' # phases:',Nsections

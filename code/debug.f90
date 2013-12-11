@@ -135,10 +135,11 @@ subroutine debug_init
    IO_lc, &
    IO_floatValue, &
    IO_intValue, &
-   IO_timeStamp
+   IO_timeStamp, &
+   IO_EOF
 
  implicit none
- integer(pInt), parameter                 :: fileunit    = 300_pInt  
+ integer(pInt), parameter                 :: FILEUNIT    = 300_pInt  
  integer(pInt), parameter                 :: maxNchunks  = 7_pInt  
  
  integer(pInt)                            :: i, what
@@ -176,9 +177,9 @@ subroutine debug_init
 ! try to open the config file
 
  line = ''
- fileExists: if(IO_open_file_stat(fileunit,debug_configFile)) then
-   do while (trim(line) /= '#EOF#')                                                                 ! read thru sections of phase part
-     line = IO_read(fileunit)
+ fileExists: if(IO_open_file_stat(FILEUNIT,debug_configFile)) then
+   do while (trim(line) /= IO_EOF)                                                                 ! read thru sections of phase part
+     line = IO_read(FILEUNIT)
      if (IO_isBlank(line)) cycle                                                                    ! skip empty lines
      positions = IO_stringPos(line,maxNchunks)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
@@ -247,7 +248,7 @@ subroutine debug_init
        enddo
       endif
    enddo
-   close(fileunit)
+   close(FILEUNIT)
  
    do i = 1_pInt, debug_maxNtype
      if (debug_level(i) == 0) &
