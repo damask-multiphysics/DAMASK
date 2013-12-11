@@ -691,7 +691,8 @@ module lattice
      20,20,20,20,20,20,  19,19,19,19,19,19,  18,18,18,18,18,18,  17,17,17,17,17,16  &
      ],pInt),[lattice_hex_Ntwin,lattice_hex_Ntwin],order=[2,1])                                     !< Twin--slip interaction types for hex (isotropic, 16 in total)
  enum, bind(c)
-   enumerator :: LATTICE_iso_ID, &
+   enumerator :: LATTICE_undefined_ID, &
+                 LATTICE_iso_ID, &
                  LATTICE_fcc_ID, &
                  LATTICE_bcc_ID, &
                  LATTICE_hex_ID, &
@@ -710,6 +711,7 @@ module lattice
   lattice_symmetryType, &
   lattice_symmetrizeC66, &
   lattice_configNchunks, &
+  LATTICE_undefined_ID, &
   LATTICE_iso_ID, &
   LATTICE_fcc_ID, &
   LATTICE_bcc_ID, &

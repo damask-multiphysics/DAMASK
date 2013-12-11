@@ -29,35 +29,35 @@ module constitutive_phenopowerlaw
    pReal,&
    pInt
  use lattice, only: &
-  LATTICE_iso_ID
+  LATTICE_undefined_ID
 
  implicit none
  private
- integer(pInt),     dimension(:),     allocatable,         public, protected :: &
+ integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
    constitutive_phenopowerlaw_sizeDotState, &
    constitutive_phenopowerlaw_sizeState, &
    constitutive_phenopowerlaw_sizePostResults, &                                                    !< cumulative size of post results
    constitutive_phenopowerlaw_structure
 
- integer(pInt),     dimension(:,:),   allocatable, target, public :: &
+ integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
    constitutive_phenopowerlaw_sizePostResult                                                        !< size of each post result output
 
- character(len=64), dimension(:,:),   allocatable, target, public :: & 
+ character(len=64),                   dimension(:,:),   allocatable, target, public :: & 
    constitutive_phenopowerlaw_output                                                                !< name of each post result output
  
- integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+ integer(kind(LATTICE_undefined_ID)), dimension(:),     allocatable,         public :: &
    constitutive_phenopowerlaw_structureID                                                           !< ID of the lattice structure
 
- integer(pInt),     dimension(:),      allocatable,        private :: &
+ integer(pInt),                       dimension(:),     allocatable,         private :: &
    constitutive_phenopowerlaw_Noutput, &                                                            !< number of outputs per instance of this constitution 
    constitutive_phenopowerlaw_totalNslip, &                                                         !< no. of slip system used in simulation
    constitutive_phenopowerlaw_totalNtwin                                                            !< no. of twin system used in simulation
 
- integer(pInt),     dimension(:,:),   allocatable,         private :: &
+ integer(pInt),                       dimension(:,:),   allocatable,         private :: &
    constitutive_phenopowerlaw_Nslip, &                                                              !< active number of slip systems per family (input parameter, per family)
    constitutive_phenopowerlaw_Ntwin                                                                 !< active number of twin systems per family (input parameter, per family)
 
- real(pReal),       dimension(:),     allocatable,         private :: &
+ real(pReal),                         dimension(:),     allocatable,         private :: &
    constitutive_phenopowerlaw_CoverA, &                                                             !< c/a of the crystal (input parameter)
    constitutive_phenopowerlaw_gdot0_slip, &                                                         !< reference shear strain rate for slip (input parameter)
    constitutive_phenopowerlaw_gdot0_twin, &                                                         !< reference shear strain rate for twin (input parameter)
@@ -78,7 +78,7 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_aTolShear, &
    constitutive_phenopowerlaw_aTolTwinfrac
 
- real(pReal),       dimension(:,:),   allocatable,          private :: &
+ real(pReal),                         dimension(:,:),   allocatable,          private :: &
    constitutive_phenopowerlaw_tau0_slip, &                                                          !< initial critical shear stress for slip (input parameter, per family)
    constitutive_phenopowerlaw_tau0_twin, &                                                          !< initial critical shear stress for twin (input parameter, per family)
    constitutive_phenopowerlaw_tausat_slip, &                                                        !< maximum critical shear stress for slip (input parameter, per family)
@@ -89,14 +89,15 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_interaction_TwinSlip, &                                               !< interaction factors twin - slip (input parameter)
    constitutive_phenopowerlaw_interaction_TwinTwin                                                  !< interaction factors twin - twin (input parameter)
 
- real(pReal),       dimension(:,:,:), allocatable,          private :: &
+ real(pReal),                         dimension(:,:,:), allocatable,          private :: &
    constitutive_phenopowerlaw_hardeningMatrix_SlipSlip, &
    constitutive_phenopowerlaw_hardeningMatrix_SlipTwin, &
    constitutive_phenopowerlaw_hardeningMatrix_TwinSlip, &
    constitutive_phenopowerlaw_hardeningMatrix_TwinTwin, &
    constitutive_phenopowerlaw_Cslip_66
  enum, bind(c) 
-   enumerator :: resistance_slip_ID, &
+   enumerator :: undefined_ID, &
+                 resistance_slip_ID, &
                  accumulatedshear_slip_ID, &
                  shearrate_slip_ID, &
                  resolvedstress_slip_ID, &
@@ -107,7 +108,7 @@ module constitutive_phenopowerlaw
                  resolvedstress_twin_ID, &
                  totalvolfrac_ID
  end enum
- integer(kind(resistance_slip_ID)), dimension(:,:),   allocatable, private :: & 
+ integer(kind(undefined_ID)),         dimension(:,:),   allocatable,          private :: & 
    constitutive_phenopowerlaw_outputID                                                              !< ID of each post result output
  
  public :: &
@@ -126,7 +127,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_phenopowerlaw_init(myFile)
+subroutine constitutive_phenopowerlaw_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: &
    tol_math_check
@@ -142,7 +143,7 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  use lattice
 
  implicit none
- integer(pInt), intent(in) :: myFile
+ integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
@@ -179,93 +180,63 @@ subroutine constitutive_phenopowerlaw_init(myFile)
  Nchunks_TwinTwin = lattice_maxNinteraction
  Nchunks_nonSchmid = lattice_maxNnonSchmid
  
- allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance))
-          constitutive_phenopowerlaw_sizeDotState         = 0_pInt
- allocate(constitutive_phenopowerlaw_sizeState(maxNinstance))
-          constitutive_phenopowerlaw_sizeState            = 0_pInt
- allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance))
-          constitutive_phenopowerlaw_sizePostResults      = 0_pInt
- allocate(constitutive_phenopowerlaw_sizePostResult(maxval(phase_Noutput),maxNinstance))
-          constitutive_phenopowerlaw_sizePostResult       = 0_pInt
+ allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance),                  source=0_pInt)
+ allocate(constitutive_phenopowerlaw_sizeState(maxNinstance),                     source=0_pInt)
+ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),               source=0_pInt)
+ allocate(constitutive_phenopowerlaw_sizePostResult(maxval(phase_Noutput),maxNinstance), &
+                                                                                  source=0_pInt)
  allocate(constitutive_phenopowerlaw_output(maxval(phase_Noutput),maxNinstance))
           constitutive_phenopowerlaw_output               = ''
- allocate(constitutive_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance))
-          constitutive_phenopowerlaw_outputID              = -1
- allocate(constitutive_phenopowerlaw_Noutput(maxNinstance))
-          constitutive_phenopowerlaw_Noutput              = 0_pInt
- allocate(constitutive_phenopowerlaw_structureID(maxNinstance))
-          constitutive_phenopowerlaw_structureID          = -1
- allocate(constitutive_phenopowerlaw_structure(maxNinstance))
-          constitutive_phenopowerlaw_structure            = 0_pInt
- allocate(constitutive_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance))
-          constitutive_phenopowerlaw_Nslip                = 0_pInt           
- allocate(constitutive_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance)) 
-          constitutive_phenopowerlaw_Ntwin                = 0_pInt
- allocate(constitutive_phenopowerlaw_totalNslip(maxNinstance))
-          constitutive_phenopowerlaw_totalNslip           = 0_pInt
- allocate(constitutive_phenopowerlaw_totalNtwin(maxNinstance))
-          constitutive_phenopowerlaw_totalNtwin           = 0_pInt
- allocate(constitutive_phenopowerlaw_CoverA(maxNinstance)) 
-          constitutive_phenopowerlaw_CoverA               = 0.0_pReal
- allocate(constitutive_phenopowerlaw_Cslip_66(6,6,maxNinstance))
-          constitutive_phenopowerlaw_Cslip_66             = 0.0_pReal
- allocate(constitutive_phenopowerlaw_gdot0_slip(maxNinstance))
-          constitutive_phenopowerlaw_gdot0_slip           = 0.0_pReal
- allocate(constitutive_phenopowerlaw_n_slip(maxNinstance))
-          constitutive_phenopowerlaw_n_slip               = 0.0_pReal
- allocate(constitutive_phenopowerlaw_tau0_slip(lattice_maxNslipFamily,maxNinstance))
-          constitutive_phenopowerlaw_tau0_slip            = 0.0_pReal
- allocate(constitutive_phenopowerlaw_tausat_slip(lattice_maxNslipFamily,maxNinstance))
-          constitutive_phenopowerlaw_tausat_slip          = 0.0_pReal
- allocate(constitutive_phenopowerlaw_gdot0_twin(maxNinstance))
-          constitutive_phenopowerlaw_gdot0_twin           = 0.0_pReal
- allocate(constitutive_phenopowerlaw_n_twin(maxNinstance))
-          constitutive_phenopowerlaw_n_twin               = 0.0_pReal
- allocate(constitutive_phenopowerlaw_tau0_twin(lattice_maxNtwinFamily,maxNinstance))
-          constitutive_phenopowerlaw_tau0_twin            = 0.0_pReal
- allocate(constitutive_phenopowerlaw_spr(maxNinstance))
-          constitutive_phenopowerlaw_spr                  = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinB(maxNinstance))
-          constitutive_phenopowerlaw_twinB                = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinC(maxNinstance))
-          constitutive_phenopowerlaw_twinC                = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinD(maxNinstance))
-          constitutive_phenopowerlaw_twinD                = 0.0_pReal
- allocate(constitutive_phenopowerlaw_twinE(maxNinstance))
-          constitutive_phenopowerlaw_twinE                = 0.0_pReal
- allocate(constitutive_phenopowerlaw_h0_SlipSlip(maxNinstance))
-          constitutive_phenopowerlaw_h0_SlipSlip          = 0.0_pReal
- allocate(constitutive_phenopowerlaw_h0_SlipTwin(maxNinstance))
-          constitutive_phenopowerlaw_h0_SlipTwin          = 0.0_pReal
- allocate(constitutive_phenopowerlaw_h0_TwinSlip(maxNinstance))  
-          constitutive_phenopowerlaw_h0_TwinSlip          = 0.0_pReal
- allocate(constitutive_phenopowerlaw_h0_TwinTwin(maxNinstance))  
-          constitutive_phenopowerlaw_h0_TwinTwin          = 0.0_pReal
- allocate(constitutive_phenopowerlaw_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance))
-          constitutive_phenopowerlaw_interaction_SlipSlip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance))
-          constitutive_phenopowerlaw_interaction_SlipTwin = 0.0_pReal
- allocate(constitutive_phenopowerlaw_interaction_TwinSlip(lattice_maxNinteraction,maxNinstance))
-          constitutive_phenopowerlaw_interaction_TwinSlip = 0.0_pReal
- allocate(constitutive_phenopowerlaw_interaction_TwinTwin(lattice_maxNinteraction,maxNinstance))
-          constitutive_phenopowerlaw_interaction_TwinTwin = 0.0_pReal
- allocate(constitutive_phenopowerlaw_a_slip(maxNinstance))
-          constitutive_phenopowerlaw_a_slip               = 0.0_pReal
- allocate(constitutive_phenopowerlaw_aTolResistance(maxNinstance))
-          constitutive_phenopowerlaw_aTolResistance       = 0.0_pReal
- allocate(constitutive_phenopowerlaw_aTolShear(maxNinstance))
-          constitutive_phenopowerlaw_aTolShear            = 0.0_pReal
- allocate(constitutive_phenopowerlaw_aTolTwinfrac(maxNinstance))
-          constitutive_phenopowerlaw_aTolTwinfrac         = 0.0_pReal
- allocate(constitutive_phenopowerlaw_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance))
-          constitutive_phenopowerlaw_nonSchmidCoeff = 0.0_pReal
+ allocate(constitutive_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance),source=undefined_ID)
+ allocate(constitutive_phenopowerlaw_Noutput(maxNinstance),                       source=0_pInt)
+ allocate(constitutive_phenopowerlaw_structureID(maxNinstance),                   source=LATTICE_undefined_ID)
+ allocate(constitutive_phenopowerlaw_structure(maxNinstance),                     source=0_pInt)
+ allocate(constitutive_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance),  source=0_pInt)
+ allocate(constitutive_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance),  source=0_pInt)
+ allocate(constitutive_phenopowerlaw_totalNslip(maxNinstance),                    source=0_pInt)
+ allocate(constitutive_phenopowerlaw_totalNtwin(maxNinstance),                    source=0_pInt)
+ allocate(constitutive_phenopowerlaw_CoverA(maxNinstance) ,                       source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_Cslip_66(6,6,maxNinstance),                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_gdot0_slip(maxNinstance),                    source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_n_slip(maxNinstance),                        source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_tau0_slip(lattice_maxNslipFamily,maxNinstance),  &
+                                                                                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_tausat_slip(lattice_maxNslipFamily,maxNinstance), &
+                                                                                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_gdot0_twin(maxNinstance),                    source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_n_twin(maxNinstance),                        source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_tau0_twin(lattice_maxNtwinFamily,maxNinstance), &
+                                                                                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_spr(maxNinstance),                           source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_twinB(maxNinstance),                         source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_twinC(maxNinstance),                         source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_twinD(maxNinstance),                         source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_twinE(maxNinstance),                         source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_h0_SlipSlip(maxNinstance),                   source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_h0_SlipTwin(maxNinstance),                   source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_h0_TwinSlip(maxNinstance),                   source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_h0_TwinTwin(maxNinstance),                   source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance), &
+                                                                                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance), &
+                                                                                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_interaction_TwinSlip(lattice_maxNinteraction,maxNinstance), &
+                                                                                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_interaction_TwinTwin(lattice_maxNinteraction,maxNinstance), &
+                                                                                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_a_slip(maxNinstance),                        source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_aTolResistance(maxNinstance),                source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_aTolShear(maxNinstance),                     source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_aTolTwinfrac(maxNinstance),                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance), &
+                                                                                  source=0.0_pReal)
 
- rewind(myFile)
+ rewind(fileUnit)
  do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
-   line = IO_read(myFile)
+   line = IO_read(fileUnit)
  enddo
  do while (trim(line) /= '#EOF#')                                                                   ! read through sections of phase part
-   line = IO_read(myFile)
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section

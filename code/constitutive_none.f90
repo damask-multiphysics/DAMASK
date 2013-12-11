@@ -28,22 +28,22 @@ module constitutive_none
    pReal, &
    pInt
  use lattice, only: &
-  LATTICE_iso_ID
+  LATTICE_undefined_ID
  
  implicit none
  private
- integer(pInt),     dimension(:),     allocatable,          public, protected :: &
+ integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
    constitutive_none_sizeDotState, &
    constitutive_none_sizeState, &
    constitutive_none_sizePostResults
 
- integer(pInt),     dimension(:,:),   allocatable, target,  public :: &
+ integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
    constitutive_none_sizePostResult                                                                 !< size of each post result output
 
- integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+ integer(kind(LATTICE_undefined_ID)), dimension(:),     allocatable,          public :: &
    constitutive_none_structureID                                                                !< ID of the lattice structure
 
- real(pReal),       dimension(:,:,:), allocatable,          private :: &
+ real(pReal),                         dimension(:,:,:), allocatable,          private :: &
    constitutive_none_Cslip_66
 
  public :: &
@@ -57,7 +57,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_none_init(myFile)
+subroutine constitutive_none_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_Mandel3333to66, &
@@ -71,7 +71,8 @@ subroutine constitutive_none_init(myFile)
    IO_stringValue, &
    IO_floatValue, &
    IO_error, &
-   IO_timeStamp
+   IO_timeStamp, &
+   IO_EOF
  use material
  use debug, only: &
    debug_level, &
@@ -80,7 +81,7 @@ subroutine constitutive_none_init(myFile)
  use lattice
 
  implicit none
- integer(pInt), intent(in) :: myFile
+ integer(pInt), intent(in) :: fileUnit
  
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
 
@@ -103,27 +104,24 @@ subroutine constitutive_none_init(myFile)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(constitutive_none_sizeDotState(maxNinstance))
-          constitutive_none_sizeDotState = 0_pInt
- allocate(constitutive_none_sizeState(maxNinstance))
-          constitutive_none_sizeState = 0_pInt
- allocate(constitutive_none_sizePostResults(maxNinstance))
-          constitutive_none_sizePostResults = 0_pInt
- allocate(constitutive_none_structureID(maxNinstance))
-          constitutive_none_structureID        = -1
- allocate(constitutive_none_Cslip_66(6,6,maxNinstance))
-          constitutive_none_Cslip_66 = 0.0_pReal
+ allocate(constitutive_none_sizeDotState(maxNinstance),    source=0_pInt)
+ allocate(constitutive_none_sizeState(maxNinstance),       source=0_pInt)
+ allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
+ allocate(constitutive_none_structureID(maxNinstance),     source=LATTICE_undefined_ID)
+ allocate(constitutive_none_Cslip_66(6,6,maxNinstance),    source=0.0_pReal)
  
- rewind(myFile)
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
-   line = IO_read(myFile)
+ rewind(fileUnit)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
+   line = IO_read(fileUnit)
  enddo
  
- do while (trim(line) /= '#EOF#')                                                                   ! read through sections of phase part
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of phase part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
      cycle

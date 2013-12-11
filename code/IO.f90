@@ -133,7 +133,7 @@ recursive function IO_read(fileUnit,reset) result(line)
 !--------------------------------------------------------------------------------------------------
 ! reset case
  if(present(reset)) then; if (reset .eqv. .true.) then                                              ! do not short circuit here
-   do while (stack > 0_pInt)                                                                        ! can go back to former file
+   do while (stack > 1_pInt)                                                                        ! can go back to former file
      close(unitOn(stack))
      stack = stack-1_pInt
    enddo

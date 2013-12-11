@@ -31,28 +31,28 @@ module constitutive_j2
    pReal,&
    pInt
  use lattice, only: &
-   LATTICE_iso_ID
+   LATTICE_undefined_ID
  
  implicit none
  private
- integer(pInt),     dimension(:),     allocatable,         public, protected :: &
+ integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
    constitutive_j2_sizeDotState, &                                                                  !< number of dotStates
    constitutive_j2_sizeState, &                                                                     !< total number of microstructural variables
    constitutive_j2_sizePostResults                                                                  !< cumulative size of post results
    
- integer(pInt),     dimension(:,:),   allocatable, target, public :: &
+ integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
    constitutive_j2_sizePostResult                                                                   !< size of each post result output
    
- character(len=64), dimension(:,:),   allocatable, target, public :: &
+ character(len=64),                   dimension(:,:),   allocatable, target, public :: &
    constitutive_j2_output                                                                           !< name of each post result output
  
- integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+ integer(kind(LATTICE_undefined_ID)), dimension(:),     allocatable,         public :: &
    constitutive_j2_structureID                                                                      !< ID of the lattice structure 
  
- integer(pInt),     dimension(:),     allocatable,         private :: &
+ integer(pInt),                       dimension(:),     allocatable,         private :: &
    constitutive_j2_Noutput                                                                          !< number of outputs per instance
    
- real(pReal),       dimension(:),     allocatable,         private :: &
+ real(pReal),                         dimension(:),     allocatable,         private :: &
    constitutive_j2_fTaylor, &                                                                       !< Taylor factor
    constitutive_j2_tau0, &                                                                          !< initial plastic stress
    constitutive_j2_gdot0, &                                                                         !< reference velocity
@@ -71,8 +71,15 @@ module constitutive_j2
    constitutive_j2_tausat_SinhFitC, &                                                               !< fitting parameter for normalized strain rate vs. stress function
    constitutive_j2_tausat_SinhFitD                                                                  !< fitting parameter for normalized strain rate vs. stress function
 
- real(pReal),       dimension(:,:,:), allocatable,          private :: &
+ real(pReal),                         dimension(:,:,:), allocatable,          private :: &
    constitutive_j2_Cslip_66
+ enum, bind(c) 
+   enumerator :: undefined_ID, &
+                 flowstress_ID, &
+                 strainrate_ID
+ end enum
+ integer(kind(undefined_ID)),         dimension(:,:),   allocatable,          private :: & 
+   constitutive_j2_outputID                                                                         !< ID of each post result output
 
  public  :: &
    constitutive_j2_init, &
@@ -90,7 +97,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_j2_init(myFile)
+subroutine constitutive_j2_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_Mandel3333to66, &
@@ -104,7 +111,8 @@ subroutine constitutive_j2_init(myFile)
    IO_stringValue, &
    IO_floatValue, &
    IO_error, &
-   IO_timeStamp
+   IO_timeStamp, &
+   IO_EOF
  use material
  use debug, only: &
    debug_level, &
@@ -113,7 +121,7 @@ subroutine constitutive_j2_init(myFile)
  use lattice  
 
  implicit none
- integer(pInt), intent(in) :: myFile
+ integer(pInt), intent(in) :: fileUnit
  
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  
@@ -136,58 +144,42 @@ subroutine constitutive_j2_init(myFile)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(constitutive_j2_sizeDotState(maxNinstance))
-          constitutive_j2_sizeDotState = 0_pInt
- allocate(constitutive_j2_sizeState(maxNinstance))
-          constitutive_j2_sizeState = 0_pInt
- allocate(constitutive_j2_sizePostResults(maxNinstance))
-          constitutive_j2_sizePostResults = 0_pInt
- allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance))
-          constitutive_j2_sizePostResult = 0_pInt
+ allocate(constitutive_j2_sizeDotState(maxNinstance),                         source=0_pInt)
+ allocate(constitutive_j2_sizeState(maxNinstance),                            source=0_pInt)
+ allocate(constitutive_j2_sizePostResults(maxNinstance),                      source=0_pInt)
+ allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance),source=0_pInt)
  allocate(constitutive_j2_output(maxval(phase_Noutput), maxNinstance))
           constitutive_j2_output = ''
- allocate(constitutive_j2_Noutput(maxNinstance))
-          constitutive_j2_Noutput = 0_pInt
- allocate(constitutive_j2_structureID(maxNinstance))
-          constitutive_j2_structureID        = -1
- allocate(constitutive_j2_Cslip_66(6,6,maxNinstance))
-          constitutive_j2_Cslip_66 = 0.0_pReal
- allocate(constitutive_j2_fTaylor(maxNinstance))
-          constitutive_j2_fTaylor = 0.0_pReal
- allocate(constitutive_j2_tau0(maxNinstance))
-          constitutive_j2_tau0 = 0.0_pReal
- allocate(constitutive_j2_gdot0(maxNinstance))
-          constitutive_j2_gdot0 = 0.0_pReal
- allocate(constitutive_j2_n(maxNinstance))
-          constitutive_j2_n = 0.0_pReal
- allocate(constitutive_j2_h0(maxNinstance))
-          constitutive_j2_h0 = 0.0_pReal
- allocate(constitutive_j2_h0_slopeLnRate(maxNinstance))
-          constitutive_j2_h0_slopeLnRate = 0.0_pReal
- allocate(constitutive_j2_tausat(maxNinstance))
-          constitutive_j2_tausat = 0.0_pReal
- allocate(constitutive_j2_a(maxNinstance))
-          constitutive_j2_a = 0.0_pReal
- allocate(constitutive_j2_aTolResistance(maxNinstance))
-          constitutive_j2_aTolResistance = 0.0_pReal
- allocate(constitutive_j2_tausat_SinhFitA(maxNinstance))
-          constitutive_j2_tausat_SinhFitA = 0.0_pReal
- allocate(constitutive_j2_tausat_SinhFitB(maxNinstance))
-          constitutive_j2_tausat_SinhFitB = 0.0_pReal
- allocate(constitutive_j2_tausat_SinhFitC(maxNinstance))
-          constitutive_j2_tausat_SinhFitC = 0.0_pReal
- allocate(constitutive_j2_tausat_SinhFitD(maxNinstance))
-          constitutive_j2_tausat_SinhFitD = 0.0_pReal
+ allocate(constitutive_j2_outputID(maxval(phase_Noutput),maxNinstance),       source=undefined_ID)
+ allocate(constitutive_j2_Noutput(maxNinstance),                              source=0_pInt)
+ allocate(constitutive_j2_structureID(maxNinstance),                          source=LATTICE_undefined_ID)
+ allocate(constitutive_j2_Cslip_66(6,6,maxNinstance),                         source=0.0_pReal)
+ allocate(constitutive_j2_fTaylor(maxNinstance),                              source=0.0_pReal)
+ allocate(constitutive_j2_tau0(maxNinstance),                                 source=0.0_pReal)
+ allocate(constitutive_j2_gdot0(maxNinstance),                                source=0.0_pReal)
+ allocate(constitutive_j2_n(maxNinstance),                                    source=0.0_pReal)
+ allocate(constitutive_j2_h0(maxNinstance),                                   source=0.0_pReal)
+ allocate(constitutive_j2_h0_slopeLnRate(maxNinstance),                       source=0.0_pReal)
+ allocate(constitutive_j2_tausat(maxNinstance),                               source=0.0_pReal)
+ allocate(constitutive_j2_a(maxNinstance),                                    source=0.0_pReal)
+ allocate(constitutive_j2_aTolResistance(maxNinstance),                       source=0.0_pReal)
+ allocate(constitutive_j2_tausat_SinhFitA(maxNinstance),                      source=0.0_pReal)
+ allocate(constitutive_j2_tausat_SinhFitB(maxNinstance),                      source=0.0_pReal)
+ allocate(constitutive_j2_tausat_SinhFitC(maxNinstance),                      source=0.0_pReal)
+ allocate(constitutive_j2_tausat_SinhFitD(maxNinstance),                      source=0.0_pReal)
  
- rewind(myFile)
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
-   line = IO_read(myFile)
+ rewind(fileUnit)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
+   line = IO_read(fileUnit)
  enddo
  
- do while (trim(line) /= '#EOF#')                                                                   ! read through sections of phase part
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of phase part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
      cycle                                                                                          ! skip to next line
@@ -203,7 +195,13 @@ subroutine constitutive_j2_init(myFile)
          case ('(output)')
            constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
            constitutive_j2_output(constitutive_j2_Noutput(i),i) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+                                              IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+             case ('flowstress')
+               constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = flowstress_ID
+             case ('strainrate')
+               constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = strainrate_ID
+           end select
          case ('lattice_structure')
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(structure(1:3))
@@ -288,10 +286,8 @@ subroutine constitutive_j2_init(myFile)
 
  instancesLoop: do i = 1_pInt,maxNinstance
    outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(i)
-     select case(constitutive_j2_output(o,i))
-       case('flowstress')
-         mySize = 1_pInt
-       case('strainrate')
+     select case(constitutive_j2_outputID(o,i))
+       case(flowstress_ID,strainrate_ID)
          mySize = 1_pInt
        case default
          call IO_error(212_pInt,ext_msg=constitutive_j2_output(o,i)//' ('//PLASTICITY_J2_label//')')
@@ -583,11 +579,11 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  constitutive_j2_postResults = 0.0_pReal
 
  outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
-   select case(constitutive_j2_output(o,matID))
-     case ('flowstress')
+   select case(constitutive_j2_outputID(o,matID))
+     case (flowstress_ID)
        constitutive_j2_postResults(c+1_pInt) = state(ipc,ip,el)%p(1)
        c = c + 1_pInt
-     case ('strainrate')
+     case (strainrate_ID)
        constitutive_j2_postResults(c+1_pInt) = &
                 constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
              / &!----------------------------------------------------------------------------------
