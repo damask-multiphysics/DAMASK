@@ -35,7 +35,7 @@ Filter rows according to condition and columns by either white or black listing.
 
 Examples:
 Every odd row if x coordinate is positive -- " #ip.x# >= 0.0 and #_row_#%2 == 1 ).
-All rows where label 'foo' equals 'bar' -- " #s#foo# == \"bar\" "
+All rows where label 'foo' equals 'bar' -- " #foo# == \"bar\" "
 """ + string.replace(scriptID,'\n','\\n')
 )
 
