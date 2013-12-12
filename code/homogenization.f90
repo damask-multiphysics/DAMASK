@@ -123,7 +123,7 @@ subroutine homogenization_init()
  use homogenization_RGC
 
  implicit none
- integer(pInt), parameter :: fileunit = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: e,i,p,myInstance
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
@@ -132,15 +132,15 @@ subroutine homogenization_init()
  
 !--------------------------------------------------------------------------------------------------
 ! parse homogenization from config file
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(fileunit,material_configFile)                                                  ! ... open material.config file
- call homogenization_isostrain_init(fileunit)
- call homogenization_RGC_init(fileunit)
- close(fileunit)
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call homogenization_isostrain_init(FILEUNIT)
+ call homogenization_RGC_init(FILEUNIT)
+ close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
 ! write description file for homogenization output
- call IO_write_jobFile(fileunit,'outputHomogenization')
+ call IO_write_jobFile(FILEUNIT,'outputHomogenization')
  do p = 1,material_Nhomogenization
    i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
    knownHomogenization = .true.                                                                     ! assume valid
@@ -156,16 +156,16 @@ subroutine homogenization_init()
      case default
        knownHomogenization = .false.
    end select   
-   write(fileunit,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
+   write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
    if (knownHomogenization) then
-     write(fileunit,'(a)') '(type)'//char(9)//trim(outputName)
-     write(fileunit,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
+     write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
+     write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
      do e = 1,homogenization_Noutput(p)
-       write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+       write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
      enddo
    endif  
  enddo
- close(fileunit)
+ close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables

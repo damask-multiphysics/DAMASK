@@ -1452,6 +1452,8 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'could not assemble input files'
  case (104_pInt)
    msg = '{input} recursion limit reached'
+ case (105_pInt)
+   msg = 'unknown output:'
  
 !--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
@@ -1493,8 +1495,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'unknown material parameter:'
  case (211_pInt)
    msg = 'material parameter out of bounds:'
- case (212_pInt)
-   msg = 'unknown plasticity output:'
  case (214_pInt)
    msg = 'stiffness parameter close to zero:'
 

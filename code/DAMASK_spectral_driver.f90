@@ -110,7 +110,7 @@ program DAMASK_spectral_Driver
  integer(pInt), parameter  :: maxNchunks       = (1_pInt + 9_pInt)*3_pInt + &                       ! deformation, rotation, and stress
                                                  (1_pInt + 1_pInt)*5_pInt + &                       ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                   1_pInt, &                                         ! dropguessing
-                              myUnit           = 234_pInt                                           !< file unit, DAMASK IO does not support newunit feature
+                              FILEUNIT           = 234_pInt                                           !< file unit, DAMASK IO does not support newunit feature
  integer(pInt), dimension(1_pInt + maxNchunks*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
  
  integer(pInt) :: &
@@ -165,10 +165,10 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
- call IO_open_file(myUnit,trim(loadCaseFile))
- rewind(myUnit)
+ call IO_open_file(FILEUNIT,trim(loadCaseFile))
+ rewind(FILEUNIT)
  do
-   line = IO_read(myUnit)
+   line = IO_read(FILEUNIT)
    if (trim(line) == '#EOF#') exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    positions = IO_stringPos(line,maxNchunks)
@@ -191,9 +191,9 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! reading the load case and assign values to the allocated data structure
- rewind(myUnit)
+ rewind(FILEUNIT)
  do
-   line = IO_read(myUnit)
+   line = IO_read(FILEUNIT)
    if (trim(line) == '#EOF#') exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
@@ -289,7 +289,7 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
      end select
  enddo; enddo
- close(myUnit)
+ close(FILEUNIT)
                                                                                                     ! reorder phase field data to remove redundant non-active fields 
  nActivePhaseFields = 0_pInt
  do i = 1, maxPhaseFields

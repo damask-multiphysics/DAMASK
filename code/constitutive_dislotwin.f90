@@ -318,16 +318,16 @@ subroutine constitutive_dislotwin_init(fileUnit)
    line = IO_read(fileUnit)
  enddo
  
- do while (trim(line) /= IO_EOF)                                                                     ! read thru sections of phase part
+ do while (trim(line) /= IO_EOF)                                                                     ! read through sections of phase part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                       ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                           ! stop at next part
-     line = IO_read(fileUnit, .true.)                                                                  ! reset IO_read
+     line = IO_read(fileUnit, .true.)                                                                ! reset IO_read
      exit                                                                                           
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                           ! next section
      section = section + 1_pInt                                                                      ! advance section counter
-     cycle
+     cycle                                                                                           ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                       ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      if (phase_plasticity(section) == PLASTICITY_DISLOTWIN_ID) then                                  ! one of my sections
@@ -378,6 +378,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
                constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(i),i) = sb_eigenvalues_ID
              case ('sb_eigenvectors')
                constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(i),i) = sb_eigenvectors_ID
+             case default
+               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_DISLOTWIN_label//')')
             end select
          case ('lattice_structure')
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -671,8 +673,6 @@ subroutine constitutive_dislotwin_init(fileUnit)
             mySize = 3_pInt  
          case(sb_eigenvectors_ID)
             mySize = 9_pInt  
-         case default
-            call IO_error(212_pInt,ext_msg=constitutive_dislotwin_output(o,i)//' ('//PLASTICITY_DISLOTWIN_label//')')
        end select
  
         if (mySize > 0_pInt) then  ! any meaningful output found

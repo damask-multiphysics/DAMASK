@@ -200,7 +200,7 @@ module constitutive_titanmod
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_titanmod_init(myFile)
+subroutine constitutive_titanmod_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                        ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_Mandel3333to66,&
@@ -215,7 +215,7 @@ subroutine constitutive_titanmod_init(myFile)
  use lattice
  
  implicit none
- integer(pInt), intent(in) :: myFile
+ integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
@@ -392,15 +392,18 @@ subroutine constitutive_titanmod_init(myFile)
  allocate(constitutive_titanmod_interactionTwinTwin(lattice_maxNinteraction,maxNinstance)) 
           constitutive_titanmod_interactionTwinTwin = 0.0_pReal
  
- rewind(myFile)
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
-   line = IO_read(myFile)
+ rewind(fileUnit)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
+   line = IO_read(fileUnit)
  enddo
  
- do while (trim(line) /= '#EOF#')                                                                   ! read through sections of phase part
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF)                                                                   ! read through sections of phase part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
      cycle                                                                                          ! skip to next line
@@ -843,7 +846,7 @@ subroutine constitutive_titanmod_init(myFile)
              'shear_total')
           mySize = 1_pInt
         case default
-          call IO_error(212_pInt,ext_msg=constitutive_titanmod_output(o,i)// &
+          call IO_error(105_pInt,ext_msg=constitutive_titanmod_output(o,i)// &
                                                             ' ('//PLASTICITY_TITANMOD_label//')')
       end select
 

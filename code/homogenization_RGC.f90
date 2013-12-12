@@ -75,7 +75,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_RGC_init(myUnit)
+subroutine homogenization_RGC_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
   debug_level, &
@@ -99,12 +99,13 @@ subroutine homogenization_RGC_init(myUnit)
  use material
 
  implicit none
- integer(pInt), intent(in) :: myUnit                                                                !< file pointer to material configuration
+ integer(pInt), intent(in) :: fileUnit                                                                !< file pointer to material configuration
  integer(pInt), parameter  :: MAXNCHUNKS = 4_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) ::section=0_pInt, maxNinstance, i,j,e, output=-1_pInt, mySize, myInstance
- character(len=65536) :: tag
- character(len=65536) :: line = ''
+ character(len=65536) :: &
+   tag = '', &
+   line = ''
  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -128,16 +129,18 @@ subroutine homogenization_RGC_init(myUnit)
  allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems))
    homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)          ! initialize to identity
  
- rewind(myUnit)
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
-   line = IO_read(myUnit)
+ rewind(fileUnit)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
+   line = IO_read(fileUnit)
  enddo
 
- do while (trim(line) /= '#EOF#')
-   line = IO_read(myUnit)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of homogenization part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter

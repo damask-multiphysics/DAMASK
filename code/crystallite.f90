@@ -32,37 +32,37 @@ module crystallite
 
  implicit none
  private
- character(len=64), dimension(:,:),          allocatable, private :: &
+ character(len=64),         dimension(:,:),          allocatable, private :: &
    crystallite_output                                                                               !< name of each post result output
- integer(pInt),                                           public, protected :: &
+ integer(pInt),                                                   public, protected :: &
    crystallite_maxSizePostResults                                                                   !< description not available
- integer(pInt),     dimension(:),            allocatable, public, protected :: &
+ integer(pInt),             dimension(:),            allocatable, public, protected :: &
    crystallite_sizePostResults                                                                      !< description not available
- integer(pInt),     dimension(:,:),          allocatable, private :: &
+ integer(pInt),             dimension(:,:),          allocatable, private :: &
    crystallite_sizePostResult                                                                       !< description not available
- integer(pInt),     dimension(:,:,:),        allocatable, private :: &
+ integer(pInt),             dimension(:,:,:),        allocatable, private :: &
    crystallite_symmetryID                                                                           !< crystallographic symmetry 1=cubic 2=hexagonal, needed in all orientation calcs     
  
- real(pReal),       dimension(:,:),          allocatable, public :: &
+ real(pReal),               dimension(:,:),          allocatable, public :: &
    crystallite_temperature                                                                          !< temperature (same on all components on one IP)
- real(pReal),       dimension(:,:,:),        allocatable, public, protected :: &
+ real(pReal),               dimension(:,:,:),        allocatable, public, protected :: &
    crystallite_heat                                                                                 !< heat source
- real(pReal),       dimension(:,:,:),        allocatable, public :: &
+ real(pReal),               dimension(:,:,:),        allocatable, public :: &
    crystallite_dt                                                                                   !< requested time increment of each grain
- real(pReal),       dimension(:,:,:),        allocatable, private :: &
+ real(pReal),               dimension(:,:,:),        allocatable, private :: &
    crystallite_subdt, &                                                                             !< substepped time increment of each grain
    crystallite_subFrac, &                                                                           !< already calculated fraction of increment
    crystallite_subStep                                                                              !< size of next integration step
- real(pReal),       dimension(:,:,:,:),      allocatable, public :: &
+ real(pReal),               dimension(:,:,:,:),      allocatable, public :: &
    crystallite_Tstar_v, &                                                                           !< current 2nd Piola-Kirchhoff stress vector (end of converged time step)
    crystallite_Tstar0_v, &                                                                          !< 2nd Piola-Kirchhoff stress vector at start of FE inc
    crystallite_partionedTstar0_v                                                                    !< 2nd Piola-Kirchhoff stress vector at start of homog inc
- real(pReal),       dimension(:,:,:,:),      allocatable, private :: &
+ real(pReal),               dimension(:,:,:,:),      allocatable, private :: &
    crystallite_subTstar0_v, &                                                                       !< 2nd Piola-Kirchhoff stress vector at start of crystallite inc
    crystallite_orientation, &                                                                       !< orientation as quaternion
    crystallite_orientation0, &                                                                      !< initial orientation as quaternion
    crystallite_rotation                                                                             !< grain rotation away from initial orientation as axis-angle (in degrees) in crystal reference frame 
- real(pReal),       dimension(:,:,:,:,:),    allocatable, public :: &
+ real(pReal),               dimension(:,:,:,:,:),    allocatable, public :: &
    crystallite_Fp, &                                                                                !< current plastic def grad (end of converged time step)
    crystallite_Fp0, &                                                                               !< plastic def grad at start of FE inc
    crystallite_partionedFp0,&                                                                       !< plastic def grad at start of homog inc
@@ -73,7 +73,7 @@ module crystallite
    crystallite_Lp0, &                                                                               !< plastic velocitiy grad at start of FE inc
    crystallite_partionedLp0,&                                                                       !< plastic velocity grad at start of homog inc
    crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
- real(pReal),       dimension(:,:,:,:,:),    allocatable, private :: &
+ real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
    crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_subFe0,&                                                                             !< "elastic" def grad at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
@@ -82,25 +82,54 @@ module crystallite
    crystallite_subF0, &                                                                             !< def grad at start of crystallite inc
    crystallite_subLp0,&                                                                             !< plastic velocity grad at start of crystallite inc
    crystallite_disorientation                                                                       !< disorientation between two neighboring ips (only calculated for single grain IPs)
- real(pReal),       dimension(:,:,:,:,:,:,:), allocatable, public :: &
+ real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public :: &
    crystallite_dPdF, &                                                                              !< current individual dPdF per grain (end of converged time step)
    crystallite_dPdF0, &                                                                             !< individual dPdF per grain at start of FE inc
    crystallite_partioneddPdF0                                                                       !< individual dPdF per grain at start of homog inc
- real(pReal),       dimension(:,:,:,:,:,:,:), allocatable, private :: &
+ real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, private :: &
    crystallite_fallbackdPdF                                                                         !< dPdF fallback for non-converged grains (elastic prediction)
- logical,           dimension(:,:,:),         allocatable, public :: &
+ logical,                    dimension(:,:,:),         allocatable, public :: &
    crystallite_requested                                                                            !< flag to request crystallite calculation
- logical,           dimension(:,:,:),         allocatable, public, protected :: &
+ logical,                    dimension(:,:,:),         allocatable, public, protected :: &
    crystallite_converged, &                                                                         !< convergence flag
    crystallite_localPlasticity                                                                      !< indicates this grain to have purely local constitutive law
- logical,           dimension(:,:,:),         allocatable, private :: &
+ logical,                    dimension(:,:,:),         allocatable, private :: &
    crystallite_todo                                                                                 !< flag to indicate need for further computation
- logical,           dimension(:,:),           allocatable, private :: &
+ logical,                    dimension(:,:),           allocatable, private :: &
    crystallite_clearToWindForward, &                                                                !< description not available
    crystallite_clearToCutback, &                                                                    !< description not available
    crystallite_syncSubFrac, &                                                                       !< description not available
    crystallite_syncSubFracCompleted, &                                                              !< description not available
    crystallite_neighborEnforcedCutback                                                              !< description not available
+
+ real(pReal),                dimension(:,:,:), allocatable,          private :: &
+   constitutive_j2_Cslip_66
+ enum, bind(c) 
+   enumerator :: undefined_ID, &
+                 phase_ID, &
+                 texture_ID, &
+                 volume_ID, &
+                 grainrotationx_ID, &
+                 grainrotationy_ID, &
+                 grainrotationz_ID, &
+                 heat_ID, &
+                 orientation_ID, &
+                 grainrotation_ID, &
+                 eulerangles_ID, &
+                 defgrad_ID, &
+                 fe_ID, &
+                 fp_ID, &
+                 lp_ID, &
+                 e_ID, &
+                 ee_ID, &
+                 p_ID, &
+                 s_ID, &
+                 elasmatrix_ID, &
+                 neighboringip_ID, &
+                 neighboringelement_ID
+ end enum
+ integer(kind(undefined_ID)),dimension(:,:),   allocatable,          private :: & 
+   crystallite_outputID                                                                             !< ID of each post result output
 
  public :: &
    crystallite_init, &
@@ -158,7 +187,8 @@ subroutine crystallite_init(temperature)
    IO_stringPos, &
    IO_stringValue, &
    IO_write_jobFile, &
-   IO_error
+   IO_error, &
+   IO_EOF
  use material
  use lattice, only: &
    lattice_symmetryType
@@ -176,7 +206,7 @@ subroutine crystallite_init(temperature)
  implicit none
  real(pReal),   intent(in) :: temperature
  integer(pInt), parameter :: &
-   MYUNIT = 200_pInt, &
+   FILEUNIT = 200_pInt, &
    MAXNCHUNKS = 2_pInt
  
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
@@ -189,7 +219,7 @@ subroutine crystallite_init(temperature)
    eMax, &                                                                                          !< maximum number of elements
    nMax, &                                                                                          !< maximum number of ip neighbors
    myNgrains, &                                                                                     !< number of grains in current IP
-   section, &
+   section = 0_pInt, &
    j, &
    p, &
    output, &
@@ -197,83 +227,86 @@ subroutine crystallite_init(temperature)
    myPhase, &
    myMat
  character(len=65536) :: &
-   tag, &
-   line
+   tag = '', &
+   line= ''
  
  write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-
- line = ''
- section = 0_pInt
  
  gMax = homogenization_maxNgrains
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
  nMax = mesh_maxNipNeighbors
  
- allocate(crystallite_temperature(iMax,eMax));                          crystallite_temperature = temperature
- allocate(crystallite_heat(gMax,iMax,eMax));                                   crystallite_heat = 0.0_pReal
- allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax));                         crystallite_Tstar0_v = 0.0_pReal
- allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax));       crystallite_partionedTstar0_v = 0.0_pReal
- allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax));                   crystallite_subTstar0_v = 0.0_pReal
- allocate(crystallite_Tstar_v(6,gMax,iMax,eMax));                           crystallite_Tstar_v = 0.0_pReal
- allocate(crystallite_P(3,3,gMax,iMax,eMax));                                     crystallite_P = 0.0_pReal
- allocate(crystallite_F0(3,3,gMax,iMax,eMax));                                   crystallite_F0 = 0.0_pReal
- allocate(crystallite_partionedF0(3,3,gMax,iMax,eMax));                 crystallite_partionedF0 = 0.0_pReal
- allocate(crystallite_partionedF(3,3,gMax,iMax,eMax));                   crystallite_partionedF = 0.0_pReal
- allocate(crystallite_subF0(3,3,gMax,iMax,eMax));                             crystallite_subF0 = 0.0_pReal
- allocate(crystallite_subF(3,3,gMax,iMax,eMax));                               crystallite_subF = 0.0_pReal
- allocate(crystallite_Fp0(3,3,gMax,iMax,eMax));                                 crystallite_Fp0 = 0.0_pReal
- allocate(crystallite_partionedFp0(3,3,gMax,iMax,eMax));               crystallite_partionedFp0 = 0.0_pReal
- allocate(crystallite_subFp0(3,3,gMax,iMax,eMax));                           crystallite_subFp0 = 0.0_pReal
- allocate(crystallite_Fp(3,3,gMax,iMax,eMax));                                   crystallite_Fp = 0.0_pReal
- allocate(crystallite_invFp(3,3,gMax,iMax,eMax));                             crystallite_invFp = 0.0_pReal
- allocate(crystallite_Fe(3,3,gMax,iMax,eMax));                                   crystallite_Fe = 0.0_pReal
- allocate(crystallite_subFe0(3,3,gMax,iMax,eMax));                           crystallite_subFe0 = 0.0_pReal
- allocate(crystallite_Lp0(3,3,gMax,iMax,eMax));                                 crystallite_Lp0 = 0.0_pReal
- allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax));               crystallite_partionedLp0 = 0.0_pReal
- allocate(crystallite_subLp0(3,3,gMax,iMax,eMax));                           crystallite_subLp0 = 0.0_pReal
- allocate(crystallite_Lp(3,3,gMax,iMax,eMax));                                   crystallite_Lp = 0.0_pReal
- allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax));                           crystallite_dPdF = 0.0_pReal
- allocate(crystallite_dPdF0(3,3,3,3,gMax,iMax,eMax));                         crystallite_dPdF0 = 0.0_pReal
- allocate(crystallite_partioneddPdF0(3,3,3,3,gMax,iMax,eMax));       crystallite_partioneddPdF0 = 0.0_pReal
- allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax));           crystallite_fallbackdPdF = 0.0_pReal
- allocate(crystallite_dt(gMax,iMax,eMax));                                       crystallite_dt = 0.0_pReal
- allocate(crystallite_subdt(gMax,iMax,eMax));                                 crystallite_subdt = 0.0_pReal
- allocate(crystallite_subFrac(gMax,iMax,eMax));                             crystallite_subFrac = 0.0_pReal
- allocate(crystallite_subStep(gMax,iMax,eMax));                             crystallite_subStep = 0.0_pReal
- allocate(crystallite_orientation(4,gMax,iMax,eMax));                   crystallite_orientation = 0.0_pReal
- allocate(crystallite_orientation0(4,gMax,iMax,eMax));                 crystallite_orientation0 = 0.0_pReal
- allocate(crystallite_rotation(4,gMax,iMax,eMax));                         crystallite_rotation = 0.0_pReal
- allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax));        crystallite_disorientation = 0.0_pReal
- allocate(crystallite_symmetryID(gMax,iMax,eMax));                       crystallite_symmetryID = 0_pInt
- allocate(crystallite_localPlasticity(gMax,iMax,eMax));             crystallite_localPlasticity = .true.
- allocate(crystallite_requested(gMax,iMax,eMax));                         crystallite_requested = .false.
- allocate(crystallite_todo(gMax,iMax,eMax));                                   crystallite_todo = .false.
- allocate(crystallite_converged(gMax,iMax,eMax));                         crystallite_converged = .true.
- allocate(crystallite_clearToWindForward(iMax,eMax));            crystallite_clearToWindForward = .true.
- allocate(crystallite_syncSubFrac(iMax,eMax));                          crystallite_syncSubFrac = .false.
- allocate(crystallite_syncSubFracCompleted(iMax,eMax));        crystallite_syncSubFracCompleted = .false.
- allocate(crystallite_clearToCutback(iMax,eMax));                    crystallite_clearToCutback = .true.
- allocate(crystallite_neighborEnforcedCutback(iMax,eMax));  crystallite_neighborEnforcedCutback = .false.
+ allocate(crystallite_temperature(iMax,eMax),                source=temperature)
+ allocate(crystallite_heat(gMax,iMax,eMax),                  source=0.0_pReal)
+ allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax),   source=0.0_pReal)
+ allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax),         source=0.0_pReal)
+ allocate(crystallite_Tstar_v(6,gMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_P(3,3,gMax,iMax,eMax),                 source=0.0_pReal)
+ allocate(crystallite_F0(3,3,gMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_partionedF0(3,3,gMax,iMax,eMax),       source=0.0_pReal)
+ allocate(crystallite_partionedF(3,3,gMax,iMax,eMax),        source=0.0_pReal)
+ allocate(crystallite_subF0(3,3,gMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_subF(3,3,gMax,iMax,eMax),              source=0.0_pReal)
+ allocate(crystallite_Fp0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedFp0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subFp0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Fp(3,3,gMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_invFp(3,3,gMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_Fe(3,3,gMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_subFe0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Lp0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subLp0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Lp(3,3,gMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax),          source=0.0_pReal)
+ allocate(crystallite_dPdF0(3,3,3,3,gMax,iMax,eMax),         source=0.0_pReal)
+ allocate(crystallite_partioneddPdF0(3,3,3,3,gMax,iMax,eMax),source=0.0_pReal)
+ allocate(crystallite_fallbackdPdF(3,3,3,3,gMax,iMax,eMax),  source=0.0_pReal)
+ allocate(crystallite_dt(gMax,iMax,eMax),                    source=0.0_pReal)
+ allocate(crystallite_subdt(gMax,iMax,eMax),                 source=0.0_pReal)
+ allocate(crystallite_subFrac(gMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_subStep(gMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_orientation(4,gMax,iMax,eMax),         source=0.0_pReal)
+ allocate(crystallite_orientation0(4,gMax,iMax,eMax),        source=0.0_pReal)
+ allocate(crystallite_rotation(4,gMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax), source=0.0_pReal)
+ allocate(crystallite_symmetryID(gMax,iMax,eMax),            source=0_pInt)
+ allocate(crystallite_localPlasticity(gMax,iMax,eMax),       source=.true.)
+ allocate(crystallite_requested(gMax,iMax,eMax),             source=.false.)
+ allocate(crystallite_todo(gMax,iMax,eMax),                  source=.false.)
+ allocate(crystallite_converged(gMax,iMax,eMax),             source=.true.)
+ allocate(crystallite_clearToWindForward(iMax,eMax),         source=.true.)
+ allocate(crystallite_syncSubFrac(iMax,eMax),                source=.false.)
+ allocate(crystallite_syncSubFracCompleted(iMax,eMax),       source=.false.)
+ allocate(crystallite_clearToCutback(iMax,eMax),             source=.true.)
+ allocate(crystallite_neighborEnforcedCutback(iMax,eMax),    source=.false.)
  allocate(crystallite_output(maxval(crystallite_Noutput), &
-                             material_Ncrystallite)) ;                       crystallite_output = ''
- allocate(crystallite_sizePostResults(material_Ncrystallite)) ;     crystallite_sizePostResults = 0_pInt
+                             material_Ncrystallite)) ;       crystallite_output = ''
+ allocate(crystallite_outputID(maxval(crystallite_Noutput), &
+                             material_Ncrystallite),         source=undefined_ID)
+ allocate(crystallite_sizePostResults(material_Ncrystallite),source=0_pInt)
  allocate(crystallite_sizePostResult(maxval(crystallite_Noutput), &
-                                     material_Ncrystallite)) ;       crystallite_sizePostResult = 0_pInt
+                                     material_Ncrystallite), source=0_pInt)
  
- if (.not. IO_open_jobFile_stat(myUnit,material_localFileExt)) &                                    ! no local material configuration present...
-   call IO_open_file(myUnit,material_configFile)                                                    ! ...open material.config file
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)  ! wind forward to <crystallite>
-   line = IO_read(myUnit)
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  !  no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
+ rewind(FILEUNIT)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partCrystallite)   ! wind forward to <crystallite>
+   line = IO_read(FILEUNIT)
  enddo
  
- do while (trim(line) /= '#EOF#')                                                                   ! read thru sections of phase part
-   line = IO_read(myUnit)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of crystallite part
+   line = IO_read(FILEUNIT)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(FILEUNIT, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter
@@ -285,26 +318,70 @@ subroutine crystallite_init(temperature)
        case ('(output)')
          output = output + 1_pInt
          crystallite_output(output,section) = IO_lc(IO_stringValue(line,positions,2_pInt))
+         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case ('phase')
+             crystallite_outputID = phase_ID
+           case ('texture')
+             crystallite_outputID = texture_ID
+           case ('volume')
+             crystallite_outputID = volume_ID
+           case ('grainrotationx')
+             crystallite_outputID = grainrotationx_ID
+           case ('grainrotationy')
+             crystallite_outputID = grainrotationy_ID
+           case ('grainrotationz')
+             crystallite_outputID = grainrotationx_ID
+           case ('heat')
+             crystallite_outputID = heat_ID
+           case ('orientation')
+             crystallite_outputID = orientation_ID
+           case ('grainrotation')
+             crystallite_outputID = grainrotation_ID
+           case ('eulerangles')
+             crystallite_outputID = eulerangles_ID
+           case ('defgrad','f')
+             crystallite_outputID = defgrad_ID
+           case ('fe')
+             crystallite_outputID = fe_ID
+           case ('fp')
+             crystallite_outputID = fp_ID
+           case ('e')
+             crystallite_outputID = e_ID
+           case ('ee')
+             crystallite_outputID = ee_ID
+           case ('p','firstpiola','1piola')
+             crystallite_outputID = p_ID
+           case ('s','tstar','secondpiola','2ndpiola')
+             crystallite_outputID = s_ID
+           case ('elasmatrix')
+             crystallite_outputID = elasmatrix_ID
+           case ('neighboringip')
+             crystallite_outputID = neighboringip_ID
+           case ('neighboringelement')
+             crystallite_outputID = neighboringelement_ID
+           case default
+             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' (Crystallite)')
+         end select
      end select
    endif
  enddo
  
- close(myUnit)
+ close(FILEUNIT)
  
  do i = 1_pInt,material_Ncrystallite
    do j = 1_pInt,crystallite_Noutput(i)
-     select case(crystallite_output(j,i))
-       case('phase','texture','volume','grainrotationx','grainrotationy','grainrotationz','heat')
+     select case(crystallite_outputID(j,i))
+       case(phase_ID,texture_ID,volume_ID,grainrotationx_ID,grainrotationy_ID,grainrotationz_ID,heat_ID)
          mySize = 1_pInt
-       case('orientation','grainrotation')                                                          ! orientation as quaternion, or deviation from initial grain orientation in axis-angle form (angle in degrees)
+       case(orientation_ID,grainrotation_ID)                                                          ! orientation as quaternion, or deviation from initial grain orientation in axis-angle form (angle in degrees)
          mySize = 4_pInt
-       case('eulerangles')
+       case(eulerangles_ID)
          mySize = 3_pInt
-       case('defgrad','f','fe','fp','lp','e','ee','p','firstpiola','1stpiola','s','tstar','secondpiola','2ndpiola')
+       case(defgrad_ID,fe_ID,fp_ID,lp_ID,e_ID,ee_ID,p_ID,s_ID)
          mySize = 9_pInt
-       case('elasmatrix')
+       case(elasmatrix_ID)
          mySize = 36_pInt     
-       case('neighboringip','neighboringelement')
+       case(neighboringip_ID,neighboringelement_ID)
          mySize = mesh_maxNipNeighbors
        case default
          mySize = 0_pInt     
@@ -326,16 +403,16 @@ subroutine crystallite_init(temperature)
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for crystallite output
- call IO_write_jobFile(myUnit,'outputCrystallite')
+ call IO_write_jobFile(FILEUNIT,'outputCrystallite')
   
  do p = 1_pInt,material_Ncrystallite
-   write(myUnit,'(/,a,/)') '['//trim(crystallite_name(p))//']'
+   write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(p))//']'
    do e = 1_pInt,crystallite_Noutput(p)
-     write(myUnit,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
+     write(FILEUNIT,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
    enddo
  enddo
  
- close(myUnit)
+ close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
 ! initialize
@@ -3422,42 +3499,42 @@ function crystallite_postResults(ipc, ip, el)
  
  do o = 1_pInt,crystallite_Noutput(crystID)
    mySize = 0_pInt
-   select case(crystallite_output(o,crystID))
-     case ('phase')
+   select case(crystallite_outputID(o,crystID))
+     case (phase_ID)
        mySize = 1_pInt
        crystallite_postResults(c+1) = real(material_phase(ipc,ip,el),pReal)                         ! phaseID of grain
-     case ('texture')
+     case (texture_ID)
        mySize = 1_pInt
        crystallite_postResults(c+1) = real(material_texture(ipc,ip,el),pReal)                       ! textureID of grain
-     case ('volume')
+     case (volume_ID)
        mySize = 1_pInt
        detF = math_det33(crystallite_partionedF(1:3,1:3,ipc,ip,el))                                 ! V_current = det(F) * V_reference
        crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) &
                                            / homogenization_Ngrains(mesh_element(3,el))             ! grain volume (not fraction but absolute)
-     case ('heat')
+     case (heat_ID)
        mySize = 1_pInt
        crystallite_postResults(c+1) = crystallite_heat(ipc,ip,el)                                   ! heat production
-     case ('orientation')
+     case (orientation_ID)
        mySize = 4_pInt
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,ipc,ip,el)               ! grain orientation as quaternion
-     case ('eulerangles')
+     case (eulerangles_ID)
        mySize = 3_pInt
        crystallite_postResults(c+1:c+mySize) = inDeg &
                                              * math_qToEuler(crystallite_orientation(1:4,ipc,ip,el)) ! grain orientation as Euler angles in degree
-     case ('grainrotation')
+     case (grainrotation_ID)
        mySize = 4_pInt
        crystallite_postResults(c+1:c+mySize) = &
            math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                              ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+4) = inDeg * crystallite_postResults(c+4)                          ! angle in degree
-     case ('grainrotationx')
+     case (grainrotationx_ID)
        mySize = 1_pInt
        rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(1) * rotation(4)                             ! angle in degree
-     case ('grainrotationy')
+     case (grainrotationy_ID)
        mySize = 1_pInt
        rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(2) * rotation(4)                             ! angle in degree
-     case ('grainrotationz')
+     case (grainrotationz_ID)
        mySize = 1_pInt
        rotation = math_qToEulerAxisAngle(crystallite_rotation(1:4,ipc,ip,el))                       ! grain rotation away from initial orientation as axis-angle in sample reference coordinates
        crystallite_postResults(c+1) = inDeg * rotation(3) * rotation(4)                             ! angle in degree
@@ -3465,49 +3542,49 @@ function crystallite_postResults(ipc, ip, el)
 ! remark: tensor output is of the form 11,12,13, 21,22,23, 31,32,33
 ! thus row index i is slow, while column index j is fast. reminder: "row is slow"
   
-     case ('defgrad','f')
+     case (defgrad_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_transpose33(crystallite_partionedF(1:3,1:3,ipc,ip,el)),[mySize])
-     case ('e')
+     case (e_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = 0.5_pReal * reshape((math_mul33x33( &
                                                math_transpose33(crystallite_partionedF(1:3,1:3,ipc,ip,el)), &
                                                crystallite_partionedF(1:3,1:3,ipc,ip,el)) - math_I3),[mySize])
-     case ('fe')
+     case (fe_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_transpose33(crystallite_Fe(1:3,1:3,ipc,ip,el)),[mySize])
-     case ('ee')
+     case (ee_ID)
        Ee = 0.5_pReal *(math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,ipc,ip,el)), &
                                                crystallite_Fe(1:3,1:3,ipc,ip,el)) - math_I3)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(Ee,[mySize])
-     case ('fp')
+     case (fp_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_transpose33(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
-     case ('lp')
+     case (lp_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_transpose33(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
-     case ('p','firstpiola','1stpiola')
+     case (p_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_transpose33(crystallite_P(1:3,1:3,ipc,ip,el)),[mySize])
-     case ('s','tstar','secondpiola','2ndpiola')
+     case (s_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_Mandel6to33(crystallite_Tstar_v(1:6,ipc,ip,el)),[mySize])
-     case ('elasmatrix')
+     case (elasmatrix_ID)
        mySize = 36_pInt
        crystallite_postResults(c+1:c+mySize) = reshape(constitutive_homogenizedC(ipc,ip,el),[mySize])
-     case('neighboringelement')
+     case(neighboringelement_ID)
        mySize = mesh_maxNipNeighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
        forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &
          crystallite_postResults(c+n) = real(mesh_ipNeighborhood(1,n,ip,el),pReal)
-     case('neighboringip')
+     case(neighboringip_ID)
        mySize = mesh_maxNipNeighbors
        crystallite_postResults(c+1:c+mySize) = 0.0_pReal
        forall (n = 1_pInt:FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,el))))) &

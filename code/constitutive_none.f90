@@ -124,7 +124,7 @@ subroutine constitutive_none_init(fileUnit)
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
-     cycle
+     cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
      if (phase_plasticity(section) == PLASTICITY_NONE_ID) then                                      ! one of my sections

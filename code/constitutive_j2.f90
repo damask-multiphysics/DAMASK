@@ -131,7 +131,7 @@ subroutine constitutive_j2_init(fileUnit)
    structure  = ''
  character(len=65536) :: &
    tag  = '', &
-   line = ''                                                                                        ! to start initialized
+   line = ''
 
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_J2_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -201,6 +201,8 @@ subroutine constitutive_j2_init(fileUnit)
                constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = flowstress_ID
              case ('strainrate')
                constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = strainrate_ID
+             case default
+               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_J2_label//')')
            end select
          case ('lattice_structure')
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -290,7 +292,6 @@ subroutine constitutive_j2_init(fileUnit)
        case(flowstress_ID,strainrate_ID)
          mySize = 1_pInt
        case default
-         call IO_error(212_pInt,ext_msg=constitutive_j2_output(o,i)//' ('//PLASTICITY_J2_label//')')
      end select
   
      if (mySize > 0_pInt) then                                                                      ! any meaningful output found

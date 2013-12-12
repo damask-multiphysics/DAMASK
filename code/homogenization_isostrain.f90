@@ -29,28 +29,31 @@ module homogenization_isostrain
  
  implicit none
  private
- integer(pInt),        dimension(:),    allocatable,         public, protected :: &
+ integer(pInt),               dimension(:),   allocatable,         public, protected :: &
    homogenization_isostrain_sizeState, &
    homogenization_isostrain_sizePostResults
- integer(pInt),        dimension(:,:),  allocatable, target, public :: &
+ integer(pInt),               dimension(:,:), allocatable, target, public :: &
    homogenization_isostrain_sizePostResult
  
- character(len=64), dimension(:,:), allocatable, target, public :: &
+ character(len=64),           dimension(:,:), allocatable, target, public :: &
   homogenization_isostrain_output                                                                   !< name of each post result output
- integer(pInt),        dimension(:),    allocatable,         private :: &
+ integer(pInt),               dimension(:),   allocatable,         private :: &
    homogenization_isostrain_Ngrains
  enum, bind(c) 
-   enumerator :: nconstituents, &
-                 temperature, &
-                 ipcoords, &
-                 avgdefgrad, &
-                 avgfirstpiola
-   enumerator :: parallel, &
-                 average
+   enumerator :: undefined_ID, &
+                 nconstituents_ID, &
+                 temperature_ID, &
+                 ipcoords_ID, &
+                 avgdefgrad_ID, &
+                 avgfirstpiola_ID
  end enum
- integer(kind(nconstituents)), dimension(:,:), allocatable, private :: &
+ enum, bind(c) 
+   enumerator :: parallel_ID, &
+                 average_ID
+ end enum
+ integer(kind(undefined_ID)), dimension(:,:), allocatable,         private :: &
   homogenization_isostrain_outputID                                                                 !< ID of each post result output
- integer(kind(average)), dimension(:), allocatable, private :: &
+ integer(kind(average_ID)),   dimension(:),   allocatable,         private :: &
   homogenization_isostrain_mapping                                                                  !< ID of each post result output
 
 
@@ -65,7 +68,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates all neccessary fields, reads information from material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine homogenization_isostrain_init(myUnit)
+subroutine homogenization_isostrain_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
    math_Mandel3333to66, &
@@ -74,16 +77,16 @@ subroutine homogenization_isostrain_init(myUnit)
  use material
  
  implicit none
- integer(pInt),                                      intent(in) :: myUnit
+ integer(pInt),                                      intent(in) :: fileUnit
  integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
  integer(pInt) :: &
-   section, i, j, output, mySize
+   section = 0_pInt, i, j, output, mySize
  integer :: &
    maxNinstance, k                                                                                  ! no pInt (stores a system dependen value from 'count'
  character(len=65536) :: &
    tag  = '', &
-   line = ''                                                                                        ! to start initialized
+   line = ''
  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -93,32 +96,29 @@ subroutine homogenization_isostrain_init(myUnit)
  maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
  if (maxNinstance == 0) return
 
- allocate(homogenization_isostrain_sizeState(maxNinstance))
-          homogenization_isostrain_sizeState = 0_pInt
- allocate(homogenization_isostrain_sizePostResults(maxNinstance))
-          homogenization_isostrain_sizePostResults = 0_pInt
- allocate(homogenization_isostrain_sizePostResult(maxval(homogenization_Noutput),maxNinstance))
-          homogenization_isostrain_sizePostResult = 0_pInt
- allocate(homogenization_isostrain_Ngrains(maxNinstance))
-          homogenization_isostrain_Ngrains = 0_pInt
- allocate(homogenization_isostrain_mapping(maxNinstance))
-          homogenization_isostrain_mapping = average
+ allocate(homogenization_isostrain_sizeState(maxNinstance),                source=0_pInt)
+ allocate(homogenization_isostrain_sizePostResults(maxNinstance),          source=0_pInt)
+ allocate(homogenization_isostrain_sizePostResult(maxval(homogenization_Noutput),maxNinstance), &
+                                                                           source=0_pInt)
+ allocate(homogenization_isostrain_Ngrains(maxNinstance),                  source=0_pInt)
+ allocate(homogenization_isostrain_mapping(maxNinstance),                  source=average_ID)
  allocate(homogenization_isostrain_output(maxval(homogenization_Noutput),maxNinstance))
           homogenization_isostrain_output = ''
- allocate(homogenization_isostrain_outputID(maxval(homogenization_Noutput),maxNinstance))
-          homogenization_isostrain_outputID = -1
+ allocate(homogenization_isostrain_outputID(maxval(homogenization_Noutput),maxNinstance), &
+                                                                           source=undefined_ID)
  
- rewind(myUnit)
- section = 0_pInt
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
-   line = IO_read(myUnit)
+ rewind(fileUnit)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
+   line = IO_read(fileUnit)
  enddo
 
- do while (trim(line) /= '#EOF#')
-   line = IO_read(myUnit)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of homogenization part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter
@@ -134,15 +134,15 @@ subroutine homogenization_isostrain_init(myUnit)
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(homogenization_isostrain_output(output,i))
              case('nconstituents','ngrains')
-               homogenization_isostrain_outputID(output,i) = nconstituents
+               homogenization_isostrain_outputID(output,i) = nconstituents_ID
              case('temperature')
-               homogenization_isostrain_outputID(output,i) = temperature
+               homogenization_isostrain_outputID(output,i) = nconstituents_ID
              case('ipcoords')
-               homogenization_isostrain_outputID(output,i) = ipcoords
+               homogenization_isostrain_outputID(output,i) = nconstituents_ID
              case('avgdefgrad','avgf')
-               homogenization_isostrain_outputID(output,i) = avgdefgrad
+               homogenization_isostrain_outputID(output,i) = nconstituents_ID
              case('avgp','avgfirstpiola','avg1stpiola')
-               homogenization_isostrain_outputID(output,i) = avgfirstpiola
+               homogenization_isostrain_outputID(output,i) = nconstituents_ID
              case default
                mySize = 0_pInt
              end select
@@ -151,11 +151,10 @@ subroutine homogenization_isostrain_init(myUnit)
          case ('mapping')
            select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
              case ('parallel','sum')
-               homogenization_isostrain_mapping(i) = parallel
+               homogenization_isostrain_mapping(i) = nconstituents_ID
              case ('average','mean','avg')
-               homogenization_isostrain_mapping(i) = average
+               homogenization_isostrain_mapping(i) = nconstituents_ID
              case default
-               print*, 'There should be an error here'
            end select
        end select
      endif
@@ -167,11 +166,11 @@ subroutine homogenization_isostrain_init(myUnit)
 
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_outputID(j,i))
-       case(nconstituents, temperature)
+       case(nconstituents_ID, temperature_ID)
          mySize = 1_pInt
-       case(ipcoords)
+       case(ipcoords_ID)
          mySize = 3_pInt
-       case(avgdefgrad, avgfirstpiola)
+       case(avgdefgrad_ID, avgfirstpiola_ID)
          mySize = 9_pInt
        case default
          mySize = 0_pInt
@@ -238,10 +237,10 @@ subroutine homogenization_isostrain_averageStressAndItsTangent(avgP,dAvgPdAvgF,P
  Ngrains = homogenization_Ngrains(mesh_element(3,el))
 
  select case (homogenization_isostrain_mapping(homID))
-   case (parallel)
+   case (parallel_ID)
      avgP       = sum(P,3)
      dAvgPdAvgF = sum(dPdF,5)
-   case (average)
+   case (average_ID)
      avgP       = sum(P,3)   /real(Ngrains,pReal)
      dAvgPdAvgF = sum(dPdF,5)/real(Ngrains,pReal)
  end select
@@ -285,19 +284,19 @@ pure function homogenization_isostrain_postResults(ip,el,avgP,avgF)
  
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_isostrain_outputID(o,homID))
-     case (nconstituents)
+     case (nconstituents_ID)
        homogenization_isostrain_postResults(c+1_pInt) = real(homogenization_isostrain_Ngrains(homID),pReal)
        c = c + 1_pInt
-     case (temperature)
+     case (temperature_ID)
        homogenization_isostrain_postResults(c+1_pInt) = crystallite_temperature(ip,el)
        c = c + 1_pInt
-     case (avgdefgrad)
+     case (avgdefgrad_ID)
        homogenization_isostrain_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
        c = c + 9_pInt
-     case (avgfirstpiola)
+     case (avgfirstpiola_ID)
        homogenization_isostrain_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
        c = c + 9_pInt
-     case (ipcoords)
+     case (ipcoords_ID)
        homogenization_isostrain_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)                       ! current ip coordinates
        c = c + 3_pInt
     end select

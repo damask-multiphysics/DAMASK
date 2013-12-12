@@ -130,7 +130,7 @@ subroutine constitutive_init
  use constitutive_nonlocal
 
  implicit none
- integer(pInt), parameter :: fileunit = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
   g, &                                                                                              !< grain number
   i, &                                                                                              !< integration point number
@@ -152,15 +152,15 @@ subroutine constitutive_init
  
 !--------------------------------------------------------------------------------------------------
 ! parse plasticities from config file
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(fileunit,material_configFile)                                                  ! ... open material.config file
- call constitutive_none_init(fileunit)
- call constitutive_j2_init(fileunit)
- call constitutive_phenopowerlaw_init(fileunit)
- call constitutive_titanmod_init(fileunit)
- call constitutive_dislotwin_init(fileunit)
- call constitutive_nonlocal_init(fileunit)  
- close(fileunit)
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ call constitutive_none_init(FILEUNIT)
+ call constitutive_j2_init(FILEUNIT)
+ call constitutive_phenopowerlaw_init(FILEUNIT)
+ call constitutive_titanmod_init(FILEUNIT)
+ call constitutive_dislotwin_init(FILEUNIT)
+ call constitutive_nonlocal_init(FILEUNIT)  
+ close(FILEUNIT)
  
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -169,7 +169,7 @@ subroutine constitutive_init
  
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
- call IO_write_jobFile(fileunit,'outputConstitutive') 
+ call IO_write_jobFile(FILEUNIT,'outputConstitutive') 
  do p = 1_pInt,material_Nphase
    i = phase_plasticityInstance(p)                                                                  ! which instance of a plasticity is present phase
    knownPlasticity = .true.                                                                         ! assume valid
@@ -201,15 +201,15 @@ subroutine constitutive_init
      case default
        knownPlasticity = .false.
    end select   
-   write(fileunit,'(/,a,/)') '['//trim(phase_name(p))//']'
+   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(p))//']'
    if (knownPlasticity) then
-     write(fileunit,'(a)') '(plasticity)'//char(9)//trim(outputName)
+     write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
      do e = 1_pInt,phase_Noutput(p)
-       write(fileunit,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+       write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
      enddo
    endif
  enddo
- close(fileunit)
+ close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
 ! allocation of states
@@ -217,7 +217,7 @@ subroutine constitutive_init
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
  
- allocate(constitutive_state0(cMax,iMax,eMax))
+ allocate(constitutive_state0(cMax,iMax,eMax))            
  allocate(constitutive_partionedState0(cMax,iMax,eMax))
  allocate(constitutive_subState0(cMax,iMax,eMax))
  allocate(constitutive_state(cMax,iMax,eMax))
@@ -226,9 +226,9 @@ subroutine constitutive_init
  allocate(constitutive_deltaState(cMax,iMax,eMax))
  allocate(constitutive_dotState_backup(cMax,iMax,eMax))
  allocate(constitutive_aTolState(cMax,iMax,eMax))
- allocate(constitutive_sizeDotState(cMax,iMax,eMax)) ;          constitutive_sizeDotState = 0_pInt
- allocate(constitutive_sizeState(cMax,iMax,eMax)) ;                constitutive_sizeState = 0_pInt
- allocate(constitutive_sizePostResults(cMax,iMax,eMax));     constitutive_sizePostResults = 0_pInt
+ allocate(constitutive_sizeDotState(cMax,iMax,eMax),    source=0_pInt)
+ allocate(constitutive_sizeState(cMax,iMax,eMax),       source=0_pInt)
+ allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt)
  if (any(numerics_integrator == 1_pInt)) then
    allocate(constitutive_previousDotState(cMax,iMax,eMax))
    allocate(constitutive_previousDotState2(cMax,iMax,eMax))

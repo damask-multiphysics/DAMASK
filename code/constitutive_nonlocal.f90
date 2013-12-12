@@ -630,6 +630,8 @@ do while (trim(line) /= IO_EOF)                                                 
               constitutive_nonlocal_outputID(Noutput(i),i) = accumulatedshear_ID
             case('dislocationstress')
               constitutive_nonlocal_outputID(Noutput(i),i) = dislocationstress_ID
+            case default
+              call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_NONLOCAL_label//')')
           end select
         case ('lattice_structure')
           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -1117,8 +1119,6 @@ instancesLoop: do i = 1,maxNmatIDs
       case(dislocationstress_ID)
         mySize = 6_pInt
       case default
-        call IO_error(212_pInt,ext_msg=constitutive_nonlocal_output(o,i)//&
-                                       '('//PLASTICITY_NONLOCAL_label//')')
     end select
 
     if (mySize > 0_pInt) then                                                                       ! any meaningful output found                               

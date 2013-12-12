@@ -46,14 +46,21 @@ module material
    HOMOGENIZATION_RGC_label       = 'rgc'
 
  enum, bind(c) 
-   enumerator :: ELASTICITY_hooke_ID
-   enumerator :: PLASTICITY_none_ID, &
+   enumerator :: ELASTICITY_undefined_ID, &
+                 ELASTICITY_hooke_ID
+ end enum
+ enum, bind(c)
+   enumerator :: PLASTICITY_undefined_ID, &
+                 PLASTICITY_none_ID, &
                  PLASTICITY_J2_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
                  PLASTICITY_dislotwin_ID, &
                  PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
-   enumerator :: HOMOGENIZATION_isostrain_ID, &
+ end enum
+ enum, bind(c)
+   enumerator :: HOMOGENIZATION_undefined_ID, &
+                 HOMOGENIZATION_isostrain_ID, &
                  HOMOGENIZATION_RGC_ID
  end enum
 
@@ -66,7 +73,7 @@ module material
    MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
    MATERIAL_partPhase          = 'phase'                                                            !< keyword for phase part
 
- integer(kind(ELASTICITY_hooke_ID)), dimension(:), allocatable, public, protected :: &
+ integer(kind(ELASTICITY_undefined_ID)), dimension(:), allocatable, public, protected :: &
    phase_elasticity, &                                                                              !< elasticity of each phase  
    phase_plasticity, &                                                                              !< plasticity of each phase  
    homogenization_type                                                                              !< type of each homogenization
@@ -149,13 +156,16 @@ module material
 
  public :: &
    material_init, &
-   ELASTICITY_hooke_ID ,&
+   ELASTICITY_undefined_ID, &
+   ELASTICITY_hooke_ID, &
+   PLASTICITY_undefined_ID, &
    PLASTICITY_none_ID, &
    PLASTICITY_J2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
+   HOMOGENIZATION_undefined_ID, &
    HOMOGENIZATION_isostrain_ID, &
    HOMOGENIZATION_RGC_ID
 
@@ -189,7 +199,7 @@ subroutine material_init
    debug_levelExtensive
  
  implicit none
- integer(pInt), parameter :: fileunit = 200_pInt
+ integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt)            :: m,c,h, myDebug
  myDebug = debug_level(debug_material)
  
@@ -198,19 +208,19 @@ subroutine material_init
  write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
 #include "compilation_info.f90"
 
- if (.not. IO_open_jobFile_stat(fileunit,material_localFileExt)) &                                  ! no local material configuration present...
-   call IO_open_file(fileunit,material_configFile)                                                  ! ...open material.config file
- call material_parseHomogenization(fileunit,material_partHomogenization)
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file
+ call material_parseHomogenization(FILEUNIT,material_partHomogenization)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Homogenization parsed'
- call material_parseMicrostructure(fileunit,material_partMicrostructure)
+ call material_parseMicrostructure(FILEUNIT,material_partMicrostructure)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Microstructure parsed'
- call material_parseCrystallite(fileunit,material_partCrystallite)
+ call material_parseCrystallite(FILEUNIT,material_partCrystallite)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Crystallite parsed'
- call material_parseTexture(fileunit,material_partTexture)
+ call material_parseTexture(FILEUNIT,material_partTexture)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Texture parsed'
- call material_parsePhase(fileunit,material_partPhase)
+ call material_parsePhase(FILEUNIT,material_partPhase)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'
- close(fileunit)
+ close(FILEUNIT)
 
  do m = 1_pInt,material_Nmicrostructure
    if(microstructure_crystallite(m) < 1_pInt .or. &
@@ -262,7 +272,7 @@ end subroutine material_init
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the homogenization part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseHomogenization(myFile,myPart)
+subroutine material_parseHomogenization(fileUnit,myPart)
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -274,25 +284,25 @@ subroutine material_parseHomogenization(myFile,myPart)
    IO_isBlank, &
    IO_stringValue, &
    IO_intValue, &
-   IO_stringPos
+   IO_stringPos, &
+   IO_EOF
  use mesh, only: &
    mesh_element
  
  implicit none
  character(len=*), intent(in) :: myPart
- integer(pInt),    intent(in) :: myFile
+ integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt),     parameter :: maxNchunks = 2_pInt
+ integer(pInt),     parameter :: MAXNCHUNKS = 2_pInt
  
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt)        :: Nsections, section, s
- character(len=65536) :: tag
- character(len=65536) :: line
+ character(len=65536) :: &
+   tag, line
  logical              :: echo
- 
- echo = IO_globalTagInPart(myFile,myPart,'/echo/')
- 
- Nsections = IO_countSections(myFile,myPart)
+
+ echo = IO_globalTagInPart(fileUnit,myPart,'/echo/') 
+ Nsections = IO_countSections(fileUnit,myPart)
  material_Nhomogenization = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
  
@@ -304,28 +314,31 @@ subroutine material_parseHomogenization(myFile,myPart)
  allocate(homogenization_active(Nsections));        homogenization_active = .false.
 
  forall (s = 1_pInt:Nsections) homogenization_active(s) = any(mesh_element(3,:) == s)               ! current homogenization used in model? Homogenization view, maximum operations depend on maximum number of homog schemes
-   homogenization_Noutput = IO_countTagInPart(myFile,myPart,'(output)',Nsections)
+   homogenization_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
  
- rewind(myFile)
- line = ''
- section = 0_pInt
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
-   line = IO_read(myFile)
+ rewind(fileUnit)
+ line        = ''                                                                                   ! to have it initialized
+ section     = 0_pInt                                                                               !  - " -
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+   line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
- do while (trim(line) /= '#EOF#')
-   line = IO_read(myFile)
+
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
-     homogenization_name(section) = IO_getTag(line,'[',']')
+     homogenization_name(section) = IO_getTag(line,'[',']') 
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('type')
@@ -353,7 +366,7 @@ end subroutine material_parseHomogenization
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the microstructure part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseMicrostructure(myFile,myPart)
+subroutine material_parseMicrostructure(fileUnit,myPart)
  use IO
  use mesh, only: &
    mesh_element, &
@@ -361,19 +374,19 @@ subroutine material_parseMicrostructure(myFile,myPart)
  
  implicit none
  character(len=*), intent(in) :: myPart
- integer(pInt),    intent(in) :: myFile
+ integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 7_pInt
+ integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  
- integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+ integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) :: Nsections, section, constituent, e, i
- character(len=65536) :: tag
- character(len=65536) :: line
+ character(len=65536) :: &
+   tag, line
  logical              :: echo
 
- echo = IO_globalTagInPart(myFile,myPart,'/echo/')
+ echo = IO_globalTagInPart(fileUnit,myPart,'/echo/')
 
- Nsections = IO_countSections(myFile,myPart)
+ Nsections = IO_countSections(fileUnit,myPart)
  material_Nmicrostructure = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
@@ -385,9 +398,9 @@ subroutine material_parseMicrostructure(myFile,myPart)
 
  forall (e = 1_pInt:mesh_NcpElems) microstructure_active(mesh_element(4,e)) = .true.                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
   
- microstructure_Nconstituents = IO_countTagInPart(myFile,myPart,'(constituent)',Nsections)
+ microstructure_Nconstituents = IO_countTagInPart(fileUnit,myPart,'(constituent)',Nsections)
  microstructure_maxNconstituents = maxval(microstructure_Nconstituents)
- microstructure_elemhomo = IO_spotTagInPart(myFile,myPart,'/elementhomogeneous/',Nsections)
+ microstructure_elemhomo = IO_spotTagInPart(fileUnit,myPart,'/elementhomogeneous/',Nsections)
 
  allocate(microstructure_phase   (microstructure_maxNconstituents,Nsections))
    microstructure_phase    = 0_pInt
@@ -396,20 +409,22 @@ subroutine material_parseMicrostructure(myFile,myPart)
  allocate(microstructure_fraction(microstructure_maxNconstituents,Nsections))
    microstructure_fraction = 0.0_pReal
  
- rewind(myFile)
+ rewind(fileUnit)
  line        = ''                                                                                   ! to have it initialized
  section     = 0_pInt                                                                               !  - " -
  constituent = 0_pInt                                                                               !  - " -
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+   line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
- do while (trim(line) /= '#EOF#')
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
@@ -417,7 +432,7 @@ subroutine material_parseMicrostructure(myFile,myPart)
      microstructure_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('crystallite')
@@ -445,7 +460,7 @@ end subroutine material_parseMicrostructure
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the crystallite part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseCrystallite(myFile,myPart)
+subroutine material_parseCrystallite(fileUnit,myPart)
  use IO, only: &
    IO_read, &
    IO_countSections, &
@@ -454,41 +469,44 @@ subroutine material_parseCrystallite(myFile,myPart)
    IO_globalTagInPart, &
    IO_getTag, &
    IO_lc, &
-   IO_isBlank
+   IO_isBlank, &
+   IO_EOF
 
  implicit none
  character(len=*), intent(in) :: myPart
- integer(pInt),    intent(in) :: myFile
+ integer(pInt),    intent(in) :: fileUnit
  
  integer(pInt)        :: Nsections, &
                          section
  character(len=65536) :: line
  logical              :: echo
 
- echo = IO_globalTagInPart(myFile,myPart,'/echo/')
+ echo = IO_globalTagInPart(fileUnit,myPart,'/echo/')
  
- Nsections = IO_countSections(myFile,myPart)
+ Nsections = IO_countSections(fileUnit,myPart)
  material_Ncrystallite = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
  allocate(crystallite_name(Nsections));       crystallite_name = ''
  allocate(crystallite_Noutput(Nsections));    crystallite_Noutput = 0_pInt
 
- crystallite_Noutput = IO_countTagInPart(myFile,myPart,'(output)',Nsections)
+ crystallite_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
  
- rewind(myFile)
- line = ''
- section = 0_pInt
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
-   line = IO_read(myFile)
+ rewind(fileUnit)
+ line        = ''                                                                                   ! to have it initialized
+ section     = 0_pInt                                                                               !  - " -
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+   line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
- do while (trim(line) /= '#EOF#')
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
@@ -502,7 +520,7 @@ end subroutine material_parseCrystallite
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the phase part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parsePhase(myFile,myPart)
+subroutine material_parsePhase(fileUnit,myPart)
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -514,23 +532,24 @@ subroutine material_parsePhase(myFile,myPart)
    IO_lc, &
    IO_isBlank, &
    IO_stringValue, &
-   IO_stringPos
+   IO_stringPos, &
+   IO_EOF
 
  implicit none
  character(len=*), intent(in) :: myPart
- integer(pInt),    intent(in) :: myFile
+ integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt), parameter :: maxNchunks = 2_pInt
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
  
- integer(pInt), dimension(1+2*maxNchunks) :: positions
- integer(pInt) Nsections, section
- character(len=65536) :: tag
- character(len=65536) :: line
+ integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt) :: Nsections, section
+ character(len=65536) :: &
+  tag,line
  logical              :: echo
 
- echo = IO_globalTagInPart(myFile,myPart,'/echo/')
+ echo = IO_globalTagInPart(fileUnit,myPart,'/echo/')
  
- Nsections = IO_countSections(myFile,myPart)
+ Nsections = IO_countSections(fileUnit,myPart)
  material_Nphase = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
@@ -542,29 +561,31 @@ subroutine material_parsePhase(myFile,myPart)
  allocate(phase_Noutput(Nsections));             phase_Noutput = 0_pInt
  allocate(phase_localPlasticity(Nsections));     phase_localPlasticity = .false.
 
- phase_Noutput = IO_countTagInPart(myFile,myPart,'(output)',Nsections)
- phase_localPlasticity = .not. IO_spotTagInPart(myFile,myPart,'/nonlocal/',Nsections)
+ phase_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
+ phase_localPlasticity = .not. IO_spotTagInPart(fileUnit,myPart,'/nonlocal/',Nsections)
  
- rewind(myFile)
- line = ''
- section = 0_pInt
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
-   line = IO_read(myFile)
+ rewind(fileUnit)
+ line        = ''                                                                                   ! to have it initialized
+ section     = 0_pInt                                                                               !  - " -
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+   line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
- do while (trim(line) /= '#EOF#')
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      phase_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('elasticity')
@@ -603,7 +624,7 @@ end subroutine material_parsePhase
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the texture part in the material configuration file
 !--------------------------------------------------------------------------------------------------
-subroutine material_parseTexture(myFile,myPart)
+subroutine material_parseTexture(fileUnit,myPart)
  use IO, only: &
    IO_read, &
    IO_globalTagInPart, &
@@ -616,7 +637,8 @@ subroutine material_parseTexture(myFile,myPart)
    IO_isBlank, &
    IO_floatValue, &
    IO_stringValue, &
-   IO_stringPos
+   IO_stringPos, &
+   IO_EOF
  use math, only: &
    inRad, &
    math_sampleRandomOri, &
@@ -625,19 +647,19 @@ subroutine material_parseTexture(myFile,myPart)
  
  implicit none
  character(len=*), intent(in) :: myPart
- integer(pInt),    intent(in) :: myFile
+ integer(pInt),    intent(in) :: fileUnit
  
- integer(pInt), parameter     :: maxNchunks = 13_pInt
+ integer(pInt), parameter     :: MAXNCHUNKS = 13_pInt
  
- integer(pInt), dimension(1+2*maxNchunks) :: positions
+ integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: Nsections, section, gauss, fiber, j
  character(len=65536) :: tag
  character(len=65536) :: line
  logical              :: echo
 
- echo = IO_globalTagInPart(myFile,myPart,'/echo/')
+ echo = IO_globalTagInPart(fileUnit,myPart,'/echo/')
  
- Nsections = IO_countSections(myFile,myPart)
+ Nsections = IO_countSections(fileUnit,myPart)
  material_Ntexture = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
@@ -647,9 +669,9 @@ subroutine material_parseTexture(myFile,myPart)
  allocate(texture_Ngauss(Nsections));   texture_Ngauss = 0_pInt
  allocate(texture_Nfiber(Nsections));   texture_Nfiber = 0_pInt
 
- texture_Ngauss = IO_countTagInPart(myFile,myPart,'(gauss)', Nsections) + &
-                  IO_countTagInPart(myFile,myPart,'(random)',Nsections)
- texture_Nfiber = IO_countTagInPart(myFile,myPart,'(fiber)', Nsections)
+ texture_Ngauss = IO_countTagInPart(fileUnit,myPart,'(gauss)', Nsections) + &
+                  IO_countTagInPart(fileUnit,myPart,'(random)',Nsections)
+ texture_Nfiber = IO_countTagInPart(fileUnit,myPart,'(fiber)', Nsections)
  texture_maxNgauss = maxval(texture_Ngauss)
  texture_maxNfiber = maxval(texture_Nfiber)
  allocate(texture_Gauss   (5,texture_maxNgauss,Nsections)); texture_Gauss    = 0.0_pReal
@@ -659,21 +681,23 @@ subroutine material_parseTexture(myFile,myPart)
    texture_transformation(1:3,1:3,j) = math_I3
  enddo
  
- rewind(myFile)
+ rewind(fileUnit)
  line    = ''                                                                                       ! to have in initialized
  section = 0_pInt                                                                                   ! - " -
  gauss   = 0_pInt                                                                                   ! - " - 
  fiber   = 0_pInt                                                                                   ! - " - 
- 
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
+   line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
 
- do while (trim(line) /= '#EOF#')
-   line = IO_read(myFile)
+ do while (trim(line) /= IO_EOF)
+   line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
@@ -682,7 +706,7 @@ subroutine material_parseTexture(myFile,myPart)
      texture_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
-     positions = IO_stringPos(line,maxNchunks)
+     positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      textureType: select case(tag)
 

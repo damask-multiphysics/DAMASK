@@ -232,13 +232,17 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
                                                                                   source=0.0_pReal)
 
  rewind(fileUnit)
- do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                   ! wind forward to <phase>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
    line = IO_read(fileUnit)
  enddo
- do while (trim(line) /= '#EOF#')                                                                   ! read through sections of phase part
+
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of phase part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
      cycle                                                                                          ! skip to next line
@@ -276,6 +280,8 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
                constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resolvedstress_twin_ID
              case ('totalvolfrac')
                constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalvolfrac_ID
+             case default
+               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
            end select
          case ('lattice_structure')
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -484,20 +490,16 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
 ! allocation of variables whose size depends on the total number of active slip systems
  allocate(constitutive_phenopowerlaw_hardeningMatrix_SlipSlip(maxval(constitutive_phenopowerlaw_totalNslip),&   ! slip resistance from slip activity
                                                               maxval(constitutive_phenopowerlaw_totalNslip),&
-                                                              maxNinstance))
+                                                              maxNinstance), source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_hardeningMatrix_SlipTwin(maxval(constitutive_phenopowerlaw_totalNslip),&   ! slip resistance from twin activity
                                                               maxval(constitutive_phenopowerlaw_totalNtwin),&
-                                                              maxNinstance))
+                                                              maxNinstance), source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_hardeningMatrix_TwinSlip(maxval(constitutive_phenopowerlaw_totalNtwin),&   ! twin resistance from slip activity
                                                               maxval(constitutive_phenopowerlaw_totalNslip),&
-                                                              maxNinstance))
+                                                              maxNinstance), source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_hardeningMatrix_TwinTwin(maxval(constitutive_phenopowerlaw_totalNtwin),&   ! twin resistance from twin activity
                                                               maxval(constitutive_phenopowerlaw_totalNtwin),&
-                                                              maxNinstance))
- constitutive_phenopowerlaw_hardeningMatrix_SlipSlip = 0.0_pReal
- constitutive_phenopowerlaw_hardeningMatrix_SlipTwin = 0.0_pReal
- constitutive_phenopowerlaw_hardeningMatrix_TwinSlip = 0.0_pReal
- constitutive_phenopowerlaw_hardeningMatrix_TwinTwin = 0.0_pReal
+                                                              maxNinstance), source=0.0_pReal)
 
  instancesLoop: do i = 1_pInt,maxNinstance
    outputsLoop: do o = 1_pInt,constitutive_phenopowerlaw_Noutput(i)
@@ -519,7 +521,6 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
             )
          mySize = 1_pInt
        case default
-         call IO_error(212_pInt,ext_msg=constitutive_phenopowerlaw_output(o,i)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
      end select
 
      outputFound: if (mySize > 0_pInt) then
