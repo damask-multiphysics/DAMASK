@@ -134,7 +134,7 @@ subroutine homogenization_isostrain_init(myUnit)
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(homogenization_isostrain_output(output,i))
              case('nconstituents','ngrains')
-               homogenization_isostrain_outputID(output,i) = ncomponents
+               homogenization_isostrain_outputID(output,i) = nconstituents
              case('temperature')
                homogenization_isostrain_outputID(output,i) = temperature
              case('ipcoords')
@@ -167,7 +167,7 @@ subroutine homogenization_isostrain_init(myUnit)
 
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_outputID(j,i))
-       case(ncomponents, temperature)
+       case(nconstituents, temperature)
          mySize = 1_pInt
        case(ipcoords)
          mySize = 3_pInt
@@ -285,7 +285,7 @@ pure function homogenization_isostrain_postResults(ip,el,avgP,avgF)
  
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_isostrain_outputID(o,homID))
-     case (ncomponents)
+     case (nconstituents)
        homogenization_isostrain_postResults(c+1_pInt) = real(homogenization_isostrain_Ngrains(homID),pReal)
        c = c + 1_pInt
      case (temperature)
