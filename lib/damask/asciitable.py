@@ -40,11 +40,18 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def output_write(self,
                    what):
-    if isinstance(what,list):
-      for item in what: self.output_write(item)
+    '''
+       aggregate a single row (string) or list of (possibly containing further lists of) rows into output
+    '''
+    if not isinstance(what, (str, unicode)):
+      try:
+        for item in what: self.output_write(item)
+      except:
+        self.__IO__['output'] += [str(what)]
     else:
-      self.__IO__['output'] += [str(what)]
-      return self.__IO__['buffered'] or self.output_flush()
+      self.__IO__['output'] += [what]
+
+    return self.__IO__['buffered'] or self.output_flush()
 
 # ------------------------------------------------------------------
   def output_flush(self,
@@ -118,9 +125,13 @@ class ASCIItable():
     '''
        add item or list to existing set of labels
     '''
-    if isinstance(what,list):
-      for item in what: self.labels_append(item)
-    else:               self.labels += [str(what)]
+    if not isinstance(what, (str, unicode)):
+      try:
+        for item in what: self.labels_append(item)
+      except:
+        self.labels += [str(what)]
+    else:
+      self.labels += [what]
 
     self.__IO__['labels'] = True                                        # switch on processing (in particular writing) of labels
 
@@ -161,9 +172,13 @@ class ASCIItable():
     '''
        add item or list to existing set of infos
     '''
-    if isinstance(what,list):
-      for item in what: self.info_append(item)
-    else:               self.info += [str(what)]
+    if not isinstance(what, (str, unicode)):
+      try:
+        for item in what: self.info_append(item)
+      except:
+        self.info += [str(what)]
+    else:
+      self.info += [what]
 
 # ------------------------------------------------------------------
   def info_clear(self):
@@ -200,10 +215,11 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_write(self):
     if len(self.data) == 0: return
+    
     if isinstance(self.data[0],list):
-      return self.output_write (['\t'.join(map(str,items)) for items in self.data])
+      return self.output_write(['\t'.join(map(str,items)) for items in self.data])
     else:
-      return self.output_write ('\t'.join(map(str,self.data)))
+      return self.output_write('\t'.join(map(str,self.data)))
 
 # ------------------------------------------------------------------
   def data_writeArray(self,format='%g'):
@@ -216,10 +232,13 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_append(self,
                   what):
-    if isinstance(what,list):
-      for item in what: self.data_append(item)
+    if not isinstance(what, (str, unicode)):
+      try:
+        for item in what: self.data_append(item)
+      except:
+        self.data += [str(what)]
     else:
-      self.data += [str(what)]
+      self.data += [what]
 
 # ------------------------------------------------------------------
   def data_set(self,
