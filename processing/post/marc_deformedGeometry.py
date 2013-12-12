@@ -13,7 +13,7 @@ from optparse import OptionParser
 # --- input parsing
 
 parser = OptionParser(usage='%prog [options] resultfile', description = """
-Extract data from a .t16 (MSC.Marc) results file. 
+Create vtk files for the (deformed) geometry that belongs to a .t16 (MSC.Marc) results file.
 """ + string.replace('$Id$','\n','\\n')
 )
 
