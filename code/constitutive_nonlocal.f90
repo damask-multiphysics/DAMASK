@@ -30,7 +30,7 @@ use prec, only: &
   pInt, &
   p_vec
 use lattice, only: &
-  LATTICE_iso_ID
+  LATTICE_undefined_ID
 
 implicit none
 private
@@ -94,7 +94,7 @@ iV, &                                                                !< state in
 iD                                                                   !< state indices for stable dipole height
 
 
-integer(kind(LATTICE_iso_ID)), dimension(:), allocatable, public :: &
+integer(kind(LATTICE_undefined_ID)), dimension(:), allocatable, public :: &
 constitutive_nonlocal_structureID                                    !< ID of the lattice structure
 
 integer(pInt), dimension(:), allocatable, public :: &
@@ -187,7 +187,8 @@ shortRangeStressCorrection, &                                        !< flag ind
 probabilisticMultiplication
 
 enum, bind(c) 
-  enumerator :: rho_ID, &
+  enumerator :: undefined_ID, &
+                rho_ID, &
                 delta_ID, &
                 rho_edge_ID, &
                 rho_screw_ID, &
@@ -270,7 +271,7 @@ enum, bind(c)
                 accumulatedshear_ID, &
                 dislocationstress_ID
 end enum
-integer(kind(rho_ID)), dimension(:,:),   allocatable, private :: & 
+integer(kind(undefined_ID)), dimension(:,:),   allocatable, private :: & 
   constitutive_nonlocal_outputID                                                              !< ID of each post result output
 
 public :: &
@@ -296,7 +297,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_nonlocal_init(myFile)
+subroutine constitutive_nonlocal_init(fileUnit)
 use, intrinsic :: iso_fortran_env                                          ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
 use math,     only: math_Mandel3333to66, & 
                     math_Voigt66to3333, & 
@@ -312,7 +313,8 @@ use IO,       only: IO_read, &
                     IO_intValue, &
                     IO_error, &
                     IO_warning, &
-                    IO_timeStamp
+                    IO_timeStamp, &
+                    IO_EOF
 use debug,    only: debug_level, &
                     debug_constitutive, &
                     debug_levelBasic
@@ -327,7 +329,7 @@ use material, only: homogenization_maxNgrains, &
                     PLASTICITY_NONLOCAL_ID
 use lattice
 
-integer(pInt), intent(in) ::                myFile
+integer(pInt), intent(in) ::                fileUnit
 
 !*** local variables
  integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
@@ -372,137 +374,82 @@ integer(pInt)          ::                   section = 0_pInt, &
 
 !*** memory allocation for global variables
 
-allocate(constitutive_nonlocal_sizeDotState(maxNmatIDs))
-allocate(constitutive_nonlocal_sizeDependentState(maxNmatIDs))
-allocate(constitutive_nonlocal_sizeState(maxNmatIDs))
-allocate(constitutive_nonlocal_sizePostResults(maxNmatIDs))
-allocate(constitutive_nonlocal_sizePostResult(maxval(phase_Noutput), maxNmatIDs))
+allocate(constitutive_nonlocal_sizeDotState(maxNmatIDs),                          source=0_pInt)
+allocate(constitutive_nonlocal_sizeDependentState(maxNmatIDs),                    source=0_pInt)
+allocate(constitutive_nonlocal_sizeState(maxNmatIDs),                             source=0_pInt)
+allocate(constitutive_nonlocal_sizePostResults(maxNmatIDs),                       source=0_pInt)
+allocate(constitutive_nonlocal_sizePostResult(maxval(phase_Noutput), maxNmatIDs), source=0_pInt)
+allocate(Noutput(maxNmatIDs),                                                     source=0_pInt)
 allocate(constitutive_nonlocal_output(maxval(phase_Noutput), maxNmatIDs))
-allocate(Noutput(maxNmatIDs))
-constitutive_nonlocal_sizeDotState = 0_pInt
-constitutive_nonlocal_sizeDependentState = 0_pInt
-constitutive_nonlocal_sizeState = 0_pInt
-constitutive_nonlocal_sizePostResults = 0_pInt
-constitutive_nonlocal_sizePostResult = 0_pInt
-constitutive_nonlocal_output = ''
-Noutput = 0_pInt
+         constitutive_nonlocal_output = ''
 
-allocate(constitutive_nonlocal_structureID(maxNmatIDs))
-allocate(constitutive_nonlocal_structure(maxNmatIDs))
-allocate(Nslip(lattice_maxNslipFamily, maxNmatIDs))
-allocate(slipFamily(lattice_maxNslip, maxNmatIDs))
-allocate(slipSystemLattice(lattice_maxNslip, maxNmatIDs))
-allocate(totalNslip(maxNmatIDs))
-constitutive_nonlocal_structureID = -1
-constitutive_nonlocal_structure = 0_pInt
-Nslip = 0_pInt
-slipFamily = 0_pInt
-slipSystemLattice = 0_pInt
-totalNslip = 0_pInt
+allocate(constitutive_nonlocal_structureID(maxNmatIDs),  source=LATTICE_undefined_ID)
+allocate(constitutive_nonlocal_structure(maxNmatIDs),    source=0_pInt)
+allocate(Nslip(lattice_maxNslipFamily,maxNmatIDs),       source=0_pInt)
+allocate(slipFamily(lattice_maxNslip,maxNmatIDs),        source=0_pInt)
+allocate(slipSystemLattice(lattice_maxNslip,maxNmatIDs), source=0_pInt)
+allocate(totalNslip(maxNmatIDs),                         source=0_pInt)
+allocate(CoverA(maxNmatIDs),                             source=0.0_pReal)
+allocate(mu(maxNmatIDs),                                 source=0.0_pReal)
+allocate(nu(maxNmatIDs),                                 source=0.0_pReal)
+allocate(atomicVolume(maxNmatIDs),                       source=0.0_pReal)
+allocate(Dsd0(maxNmatIDs),                               source=-1.0_pReal)
+allocate(selfDiffusionEnergy(maxNmatIDs),                source=0.0_pReal)
+allocate(aTolRho(maxNmatIDs),                            source=0.0_pReal)
+allocate(aTolShear(maxNmatIDs),                          source=0.0_pReal)
+allocate(significantRho(maxNmatIDs),                     source=0.0_pReal)
+allocate(significantN(maxNmatIDs),                       source=0.0_pReal)
+allocate(Cslip66(6,6,maxNmatIDs),                        source=0.0_pReal)
+allocate(Cslip3333(3,3,3,3,maxNmatIDs),                  source=0.0_pReal)
+allocate(cutoffRadius(maxNmatIDs),                       source=-1.0_pReal)
+allocate(doublekinkwidth(maxNmatIDs),                    source=0.0_pReal)
+allocate(solidSolutionEnergy(maxNmatIDs),                source=0.0_pReal)
+allocate(solidSolutionSize(maxNmatIDs),                  source=0.0_pReal)
+allocate(solidSolutionConcentration(maxNmatIDs),         source=0.0_pReal)
+allocate(pParam(maxNmatIDs),                             source=1.0_pReal)
+allocate(qParam(maxNmatIDs),                             source=1.0_pReal)
+allocate(viscosity(maxNmatIDs),                          source=0.0_pReal)
+allocate(fattack(maxNmatIDs),                            source=0.0_pReal)
+allocate(rhoSglScatter(maxNmatIDs),                      source=0.0_pReal)
+allocate(rhoSglRandom(maxNmatIDs),                       source=0.0_pReal)
+allocate(rhoSglRandomBinning(maxNmatIDs),                source=1.0_pReal)
+allocate(surfaceTransmissivity(maxNmatIDs),              source=1.0_pReal)
+allocate(grainboundaryTransmissivity(maxNmatIDs),        source=-1.0_pReal)
+allocate(CFLfactor(maxNmatIDs),                          source=2.0_pReal)
+allocate(fEdgeMultiplication(maxNmatIDs),                source=0.0_pReal)
+allocate(linetensionEffect(maxNmatIDs),                  source=0.0_pReal)
+allocate(edgeJogFactor(maxNmatIDs),                      source=1.0_pReal)
+allocate(shortRangeStressCorrection(maxNmatIDs),         source=.false.)
+allocate(probabilisticMultiplication(maxNmatIDs),        source=.false.)
 
-allocate(CoverA(maxNmatIDs))
-allocate(mu(maxNmatIDs))
-allocate(nu(maxNmatIDs))
-allocate(atomicVolume(maxNmatIDs))
-allocate(Dsd0(maxNmatIDs))
-allocate(selfDiffusionEnergy(maxNmatIDs))
-allocate(aTolRho(maxNmatIDs))
-allocate(aTolShear(maxNmatIDs))
-allocate(significantRho(maxNmatIDs))
-allocate(significantN(maxNmatIDs))
-allocate(Cslip66(6,6,maxNmatIDs))
-allocate(Cslip3333(3,3,3,3,maxNmatIDs))
-allocate(cutoffRadius(maxNmatIDs))
-allocate(doublekinkwidth(maxNmatIDs))
-allocate(solidSolutionEnergy(maxNmatIDs))
-allocate(solidSolutionSize(maxNmatIDs))
-allocate(solidSolutionConcentration(maxNmatIDs))
-allocate(pParam(maxNmatIDs))
-allocate(qParam(maxNmatIDs))
-allocate(viscosity(maxNmatIDs))
-allocate(fattack(maxNmatIDs))
-allocate(rhoSglScatter(maxNmatIDs))
-allocate(rhoSglRandom(maxNmatIDs))
-allocate(rhoSglRandomBinning(maxNmatIDs))
-allocate(surfaceTransmissivity(maxNmatIDs))
-allocate(grainboundaryTransmissivity(maxNmatIDs))
-allocate(shortRangeStressCorrection(maxNmatIDs))
-allocate(probabilisticMultiplication(maxNmatIDs))
-allocate(CFLfactor(maxNmatIDs))
-allocate(fEdgeMultiplication(maxNmatIDs))
-allocate(linetensionEffect(maxNmatIDs))
-allocate(edgeJogFactor(maxNmatIDs))
-CoverA = 0.0_pReal 
-mu = 0.0_pReal
-atomicVolume = 0.0_pReal
-Dsd0 = -1.0_pReal
-selfDiffusionEnergy = 0.0_pReal
-aTolRho = 0.0_pReal
-aTolShear = 0.0_pReal
-significantRho = 0.0_pReal
-significantN = 0.0_pReal
-nu = 0.0_pReal
-Cslip66 = 0.0_pReal
-Cslip3333 = 0.0_pReal
-cutoffRadius = -1.0_pReal
-doublekinkwidth = 0.0_pReal
-solidSolutionEnergy = 0.0_pReal
-solidSolutionSize = 0.0_pReal
-solidSolutionConcentration = 0.0_pReal
-pParam = 1.0_pReal
-qParam = 1.0_pReal
-viscosity = 0.0_pReal
-fattack = 0.0_pReal
-rhoSglScatter = 0.0_pReal
-rhoSglRandom = 0.0_pReal
-rhoSglRandomBinning = 1.0_pReal
-surfaceTransmissivity = 1.0_pReal
-grainboundaryTransmissivity = -1.0_pReal
-CFLfactor = 2.0_pReal
-fEdgeMultiplication = 0.0_pReal
-linetensionEffect = 0.0_pReal
-edgeJogFactor = 1.0_pReal
-shortRangeStressCorrection = .false.
-probabilisticMultiplication = .false.
+allocate(rhoSglEdgePos0(lattice_maxNslipFamily,maxNmatIDs),                 source=-1.0_pReal)
+allocate(rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNmatIDs),                 source=-1.0_pReal)
+allocate(rhoSglScrewPos0(lattice_maxNslipFamily,maxNmatIDs),                source=-1.0_pReal)
+allocate(rhoSglScrewNeg0(lattice_maxNslipFamily,maxNmatIDs),                source=-1.0_pReal)
+allocate(rhoDipEdge0(lattice_maxNslipFamily,maxNmatIDs),                    source=-1.0_pReal)
+allocate(rhoDipScrew0(lattice_maxNslipFamily,maxNmatIDs),                   source=-1.0_pReal)
+allocate(burgersPerSlipFamily(lattice_maxNslipFamily,maxNmatIDs),           source=0.0_pReal)
+allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNmatIDs),           source=0.0_pReal)
+allocate(interactionSlipSlip(lattice_maxNinteraction,maxNmatIDs),           source=0.0_pReal)
+allocate(minDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNmatIDs), source=-1.0_pReal)
+allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNmatIDs),   source=0.0_pReal)
+allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNmatIDs),                  source=0.0_pReal)
 
-allocate(rhoSglEdgePos0(lattice_maxNslipFamily,maxNmatIDs))
-allocate(rhoSglEdgeNeg0(lattice_maxNslipFamily,maxNmatIDs))
-allocate(rhoSglScrewPos0(lattice_maxNslipFamily,maxNmatIDs))
-allocate(rhoSglScrewNeg0(lattice_maxNslipFamily,maxNmatIDs))
-allocate(rhoDipEdge0(lattice_maxNslipFamily,maxNmatIDs))
-allocate(rhoDipScrew0(lattice_maxNslipFamily,maxNmatIDs))
-allocate(burgersPerSlipFamily(lattice_maxNslipFamily,maxNmatIDs))
-allocate(lambda0PerSlipFamily(lattice_maxNslipFamily,maxNmatIDs))
-allocate(interactionSlipSlip(lattice_maxNinteraction,maxNmatIDs))
-rhoSglEdgePos0 = -1.0_pReal
-rhoSglEdgeNeg0 = -1.0_pReal
-rhoSglScrewPos0 = -1.0_pReal
-rhoSglScrewNeg0 = -1.0_pReal
-rhoDipEdge0 = -1.0_pReal
-rhoDipScrew0 = -1.0_pReal
-burgersPerSlipFamily = 0.0_pReal
-lambda0PerSlipFamily = 0.0_pReal
-interactionSlipSlip = 0.0_pReal
-
-allocate(minDipoleHeightPerSlipFamily(lattice_maxNslipFamily,2,maxNmatIDs))
-allocate(peierlsStressPerSlipFamily(lattice_maxNslipFamily,2,maxNmatIDs))
-minDipoleHeightPerSlipFamily = -1.0_pReal
-peierlsStressPerSlipFamily = 0.0_pReal
-
-allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNmatIDs))
-nonSchmidCoeff = 0.0_pReal
 
 !*** readout data from material.config file
 
-rewind(myFile)
-do while (trim(line) /= '#EOF#' .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
-  line = IO_read(myFile)
+rewind(fileUnit)
+do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                     ! wind forward to <phase>
+  line = IO_read(fileUnit)
 enddo
  
-do while (trim(line) /= '#EOF#')                                                                    ! read thru sections of phase part
-  line = IO_read(myFile)
+do while (trim(line) /= IO_EOF)                                                                     ! read thru sections of phase part
+  line = IO_read(fileUnit)
   if (IO_isBlank(line)) cycle                                                                       ! skip empty lines
-  if (IO_getTag(line,'<','>') /= '') exit                                                           ! stop at next part
+  if (IO_getTag(line,'<','>') /= '')  then
+    line = IO_read(fileUnit, .true.)                                                                ! reset IO_read
+    exit
+  endif
   if (IO_getTag(line,'[',']') /= '') then                                                           ! next section
     section = section + 1_pInt                                                                      ! advance section counter
     cycle
@@ -687,16 +634,16 @@ do while (trim(line) /= '#EOF#')                                                
         case ('lattice_structure')
           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
           select case(structure(1:3))
-          case(LATTICE_iso_label)
-            constitutive_nonlocal_structureID(i) = LATTICE_iso_ID
-          case(LATTICE_fcc_label)
-            constitutive_nonlocal_structureID(i) = LATTICE_fcc_ID
-          case(LATTICE_bcc_label)
-            constitutive_nonlocal_structureID(i) = LATTICE_bcc_ID
-          case(LATTICE_hex_label)
-            constitutive_nonlocal_structureID(i) = LATTICE_hex_ID
-          case(LATTICE_ort_label)
-            constitutive_nonlocal_structureID(i) = LATTICE_ort_ID
+            case(LATTICE_iso_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_iso_ID
+            case(LATTICE_fcc_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_fcc_ID
+            case(LATTICE_bcc_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_bcc_ID
+            case(LATTICE_hex_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_hex_ID
+            case(LATTICE_ort_label)
+              constitutive_nonlocal_structureID(i) = LATTICE_ort_ID
           end select
           configNchunks = lattice_configNchunks(constitutive_nonlocal_structureID(i))
           Nchunks_SlipFamilies = configNchunks(1)
@@ -963,73 +910,44 @@ enddo
 
 maxTotalNslip = maxval(totalNslip)
 
-allocate(iRhoU(maxTotalNslip,4,maxNmatIDs))
-allocate(iRhoB(maxTotalNslip,4,maxNmatIDs))
-allocate(iRhoD(maxTotalNslip,2,maxNmatIDs))
-allocate(iV(maxTotalNslip,4,maxNmatIDs))
-allocate(iD(maxTotalNslip,2,maxNmatIDs))
-allocate(iGamma(maxTotalNslip,maxNmatIDs))
-allocate(iRhoF(maxTotalNslip,maxNmatIDs))
-allocate(iTauF(maxTotalNslip,maxNmatIDs))
-allocate(iTauB(maxTotalNslip,maxNmatIDs))
-iRhoU = 0_pInt
-iRhoB = 0_pInt
-iRhoD = 0_pInt
-iV = 0_pInt
-iD = 0_pInt
-iGamma = 0_pInt
-iRhoF = 0_pInt
-iTauF = 0_pInt
-iTauB = 0_pInt
+allocate(iRhoU(maxTotalNslip,4,maxNmatIDs), source=0_pInt)
+allocate(iRhoB(maxTotalNslip,4,maxNmatIDs), source=0_pInt)
+allocate(iRhoD(maxTotalNslip,2,maxNmatIDs), source=0_pInt)
+allocate(iV(maxTotalNslip,4,maxNmatIDs),    source=0_pInt)
+allocate(iD(maxTotalNslip,2,maxNmatIDs),    source=0_pInt)
+allocate(iGamma(maxTotalNslip,maxNmatIDs),  source=0_pInt)
+allocate(iRhoF(maxTotalNslip,maxNmatIDs),   source=0_pInt)
+allocate(iTauF(maxTotalNslip,maxNmatIDs),   source=0_pInt)
+allocate(iTauB(maxTotalNslip,maxNmatIDs),   source=0_pInt)
 
-allocate(burgers(maxTotalNslip,maxNmatIDs))
-burgers = 0.0_pReal
+allocate(burgers(maxTotalNslip,maxNmatIDs),                                        source=0.0_pReal)
+allocate(lambda0(maxTotalNslip,maxNmatIDs),                                        source=0.0_pReal)
+allocate(minDipoleHeight(maxTotalNslip,2,maxNmatIDs),                              source=-1.0_pReal)
+allocate(forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNmatIDs),             source=0.0_pReal)
+allocate(forestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNmatIDs),            source=0.0_pReal)
+allocate(interactionMatrixSlipSlip(maxTotalNslip,maxTotalNslip,maxNmatIDs),        source=0.0_pReal)
+allocate(lattice2slip(1:3, 1:3, maxTotalNslip,maxNmatIDs),                         source=0.0_pReal)
+allocate(sourceProbability(maxTotalNslip,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=2.0_pReal)
 
-allocate(lambda0(maxTotalNslip,maxNmatIDs))
-lambda0 = 0.0_pReal
+allocate(rhoDotFluxOutput(maxTotalNslip,8,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=0.0_pReal)
+allocate(rhoDotMultiplicationOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=0.0_pReal)
+allocate(rhoDotSingle2DipoleGlideOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=0.0_pReal)
+allocate(rhoDotAthermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=0.0_pReal)
+allocate(rhoDotThermalAnnihilationOutput(maxTotalNslip,2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=0.0_pReal)
+allocate(rhoDotEdgeJogsOutput(maxTotalNslip,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=0.0_pReal)
 
-allocate(minDipoleHeight(maxTotalNslip,2,maxNmatIDs))
-minDipoleHeight = -1.0_pReal
-
-allocate(forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNmatIDs))
-forestProjectionEdge = 0.0_pReal
-
-allocate(forestProjectionScrew(maxTotalNslip,maxTotalNslip,maxNmatIDs))
-forestProjectionScrew = 0.0_pReal
-
-allocate(interactionMatrixSlipSlip(maxTotalNslip,maxTotalNslip,maxNmatIDs))
-interactionMatrixSlipSlip = 0.0_pReal
-
-allocate(lattice2slip(1:3, 1:3, maxTotalNslip, maxNmatIDs))
-lattice2slip = 0.0_pReal
-
-allocate(sourceProbability(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-sourceProbability = 2.0_pReal
-
-allocate(rhoDotFluxOutput(maxTotalNslip, 8, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-allocate(rhoDotMultiplicationOutput(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-allocate(rhoDotSingle2DipoleGlideOutput(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-allocate(rhoDotAthermalAnnihilationOutput(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-allocate(rhoDotThermalAnnihilationOutput(maxTotalNslip, 2, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-allocate(rhoDotEdgeJogsOutput(maxTotalNslip, homogenization_maxNgrains, mesh_maxNips, mesh_NcpElems))
-rhoDotFluxOutput = 0.0_pReal
-rhoDotMultiplicationOutput = 0.0_pReal
-rhoDotSingle2DipoleGlideOutput = 0.0_pReal
-rhoDotAthermalAnnihilationOutput = 0.0_pReal
-rhoDotThermalAnnihilationOutput = 0.0_pReal
-rhoDotEdgeJogsOutput = 0.0_pReal
-
-allocate(compatibility(2,maxTotalNslip, maxTotalNslip, mesh_maxNipNeighbors, mesh_maxNips, mesh_NcpElems))
-compatibility = 0.0_pReal
-
-allocate(peierlsStress(maxTotalNslip,2,maxNmatIDs))
-peierlsStress = 0.0_pReal
-
-allocate(colinearSystem(maxTotalNslip,maxNmatIDs))
-colinearSystem = 0_pInt
-
-allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNmatIDs))
-nonSchmidProjection = 0.0_pReal
+allocate(compatibility(2,maxTotalNslip,maxTotalNslip,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), &
+                                                                                   source=0.0_pReal)
+allocate(peierlsStress(maxTotalNslip,2,maxNmatIDs),                                source=0.0_pReal)
+allocate(colinearSystem(maxTotalNslip,maxNmatIDs),                                 source=0_pInt)
+allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNmatIDs),                      source=0.0_pReal)
                                             
 
 instancesLoop: do i = 1,maxNmatIDs
