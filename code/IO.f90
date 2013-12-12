@@ -118,7 +118,7 @@ end subroutine IO_init
 recursive function IO_read(fileUnit,reset) result(line)
  
  implicit none
- integer(pInt), intent(in)           :: fileUnit                                                      !< file unit
+ integer(pInt), intent(in)           :: fileUnit                                                    !< file unit
  logical,       intent(in), optional :: reset
 
  integer(pInt), dimension(10) :: unitOn = 0_pInt                                                    ! save the stack of recursive file units
@@ -209,7 +209,7 @@ subroutine IO_open_file(fileUnit,relPath)
    getSolverWorkingDirectoryName
  
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                           !< file unit
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: relPath                                                          !< relative path from working directory
 
  integer(pInt)                  :: myStat
@@ -232,7 +232,7 @@ logical function IO_open_file_stat(fileUnit,relPath)
    getSolverWorkingDirectoryName
  
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                           !< file unit
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: relPath                                                          !< relative path from working directory
 
  integer(pInt)                  :: myStat
@@ -257,7 +257,7 @@ subroutine IO_open_jobFile(fileUnit,ext)
    getSolverJobName
 
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                           !< file unit
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: ext                                                              !< extension of file
 
  integer(pInt)                  :: myStat
@@ -282,7 +282,7 @@ logical function IO_open_jobFile_stat(fileUnit,ext)
    getSolverJobName
 
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                           !< file unit
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: ext                                                              !< extension of file
 
  integer(pInt)                  :: myStat
@@ -306,7 +306,7 @@ subroutine IO_open_inputFile(fileUnit,modelName)
    inputFileExtension
 
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                           !< file unit
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: modelName                                                        !< model name, in case of restart not solver job name
 
  integer(pInt)                  :: myStat
@@ -327,7 +327,7 @@ subroutine IO_open_inputFile(fileUnit,modelName)
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)//'_assembly'
  open(fileUnit,iostat=myStat,file=path)
  if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
-    if (.not.abaqus_assembleInputFile(fileUnit,myUnit+1_pInt)) call IO_error(103_pInt)                ! strip comments and concatenate any "include"s
+    if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1_pInt)) call IO_error(103_pInt)            ! strip comments and concatenate any "include"s
  close(fileUnit+1_pInt) 
 #endif
 #ifdef Marc4DAMASK
@@ -373,7 +373,7 @@ subroutine IO_write_jobFile(fileUnit,ext)
    getSolverJobName
  
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                           !< file unit
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file unit
  character(len=*),   intent(in) :: ext                                                              !< extension of file
 
  integer(pInt)                  :: myStat
@@ -396,7 +396,7 @@ subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
    getSolverJobName
  
  implicit none
- integer(pInt),      intent(in)           :: fileUnit                                                 !< file unit
+ integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext                                                    !< extension of file
  integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
 
@@ -427,7 +427,7 @@ subroutine IO_write_jobIntFile(fileUnit,ext,recMultiplier)
    getSolverJobName
  
  implicit none
- integer(pInt),      intent(in)           :: fileUnit                                                 !< file unit
+ integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext                                                    !< extension of file
  integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
 
@@ -457,7 +457,7 @@ subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
    getSolverWorkingDirectoryName
  
  implicit none
- integer(pInt),      intent(in)           :: fileUnit                                                 !< file unit
+ integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext, &                                                 !< extension of file       
                                              modelName                                              !< model name, in case of restart not solver job name
  integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
@@ -487,7 +487,7 @@ subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
    getSolverWorkingDirectoryName
  
  implicit none
- integer(pInt),      intent(in)           :: fileUnit                                                 !< file unit
+ integer(pInt),      intent(in)           :: fileUnit                                               !< file unit
  character(len=*),   intent(in)           :: ext, &                                                 !< extension of file       
                                              modelName                                              !< model name, in case of restart not solver job name
  integer(pInt),      intent(in), optional :: recMultiplier                                          !< record length (multiple of pReal Numbers, if not given set to one)
@@ -691,7 +691,7 @@ end function IO_hybridIA
 logical pure function IO_isBlank(string)
 
  implicit none
- character(len=*), intent(in) :: string                                                               !< string to check for content
+ character(len=*), intent(in) :: string                                                             !< string to check for content
 
  character(len=*),  parameter :: blankChar = achar(32)//achar(9)//achar(10)//achar(13)              ! whitespaces
  character(len=*),  parameter :: comment = achar(35)                                                ! comment id '#'
@@ -725,7 +725,7 @@ pure function IO_getTag(string,openChar,closeChar)
  left = scan(string,openChar)
  right = scan(string,closeChar)
  
- if (left == verify(string,SEP) .and. right > left) &                                                 ! openChar is first and closeChar occurs
+ if (left == verify(string,SEP) .and. right > left) &                                               ! openChar is first and closeChar occurs
    IO_getTag = string(left+1:right-1)
 
 end function IO_getTag
@@ -737,7 +737,7 @@ end function IO_getTag
 integer(pInt) function IO_countSections(fileUnit,part)
 
  implicit none
- integer(pInt),      intent(in) :: fileUnit                                                           !< file handle 
+ integer(pInt),      intent(in) :: fileUnit                                                         !< file handle 
  character(len=*),   intent(in) :: part                                                             !< part name in which sections are counted
 
  character(len=65536)           :: line
@@ -769,7 +769,7 @@ function IO_countTagInPart(fileUnit,part,tag,Nsections)
  implicit none
  integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
  integer(pInt),   dimension(Nsections)      :: IO_countTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                               !< file handle 
+ integer(pInt),   intent(in)                :: fileUnit                                             !< file handle 
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
@@ -814,7 +814,7 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
  implicit none
  integer(pInt),   intent(in)                :: Nsections                                            !< maximum number of sections in which tag is searched for
  logical,         dimension(Nsections)      :: IO_spotTagInPart
- integer(pInt),   intent(in)                :: fileUnit                                               !< file handle 
+ integer(pInt),   intent(in)                :: fileUnit                                             !< file handle 
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
@@ -854,7 +854,7 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
 logical function IO_globalTagInPart(fileUnit,part,tag)
 
  implicit none
- integer(pInt),   intent(in)                :: fileUnit                                               !< file handle 
+ integer(pInt),   intent(in)                :: fileUnit                                             !< file handle 
  character(len=*),intent(in)                :: part, &                                              !< part in which tag is searched for
                                                tag                                                  !< tag to search for
 
@@ -1060,7 +1060,7 @@ integer(pInt) function IO_intValue(string,ends,myPos)
 
  IO_intValue = 0_pInt
 
- if (myPos > ends(1) .or. myPos < 1_pInt) then                                               ! trying to access non-present value
+ if (myPos > ends(1) .or. myPos < 1_pInt) then                                                    ! trying to access non-present value
    call IO_warning(201,el=myPos,ext_msg=MYNAME//trim(string))
  else
    IO_intValue = IO_verifyIntValue(string(ends(myPos*2):ends(myPos*2+1)),&
@@ -1143,7 +1143,7 @@ end subroutine IO_lcInplace
 subroutine IO_skipChunks(fileUnit,N)
 
  implicit none
- integer(pInt), intent(in)                :: fileUnit, &                                              !< file handle 
+ integer(pInt), intent(in)                :: fileUnit, &                                            !< file handle 
                                              N                                                      !< minimum number of chunks to skip 
 
  integer(pInt), parameter                 :: MAXNCHUNKS = 64_pInt
@@ -1191,7 +1191,7 @@ end function IO_extractValue
 integer(pInt) function IO_countDataLines(fileUnit)
 
  implicit none
- integer(pInt), intent(in)                :: fileUnit                                                 !< file handle 
+ integer(pInt), intent(in)                :: fileUnit                                               !< file handle 
  
  integer(pInt), parameter                 :: MAXNCHUNKS = 1_pInt
 
@@ -1262,11 +1262,11 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
 #else
  c = IO_countDataLines(fileUnit)
  do l = 1_pInt,c
-   backspace(fileUnit)                                                                                ! ToDo: substitute by rewind?
+   backspace(fileUnit)                                                                              ! ToDo: substitute by rewind?
  enddo
  
  l = 1_pInt
- do while (trim(line) /= IO_EOF .and. l <= c)                                                     ! ToDo: is this correct
+ do while (trim(line) /= IO_EOF .and. l <= c)                                                       ! ToDo: is this correct
    l = l + 1_pInt
    line = IO_read(fileUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
