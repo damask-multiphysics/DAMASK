@@ -74,8 +74,10 @@ module material
    MATERIAL_partPhase          = 'phase'                                                            !< keyword for phase part
 
  integer(kind(ELASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
-   phase_elasticity, &                                                                              !< elasticity of each phase  
-   phase_plasticity, &                                                                              !< plasticity of each phase  
+   phase_elasticity                                                                                 !< elasticity of each phase  
+ integer(kind(PLASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
+   phase_plasticity                                                                                 !< plasticity of each phase  
+ integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
 
  character(len=64),                      dimension(:),       allocatable, public, protected :: &

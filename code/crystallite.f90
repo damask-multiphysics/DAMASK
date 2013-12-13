@@ -220,7 +220,7 @@ subroutine crystallite_init(temperature)
    section = 0_pInt, &
    j, &
    p, &
-   output, &
+   output = 0_pInt, &
    mySize, &
    myPhase, &
    myMat
@@ -316,7 +316,7 @@ subroutine crystallite_init(temperature)
        case ('(output)')
          output = output + 1_pInt
          crystallite_output(output,section) = IO_lc(IO_stringValue(line,positions,2_pInt))
-         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+         select case(crystallite_output(output,section))
            case ('phase')
              crystallite_outputID(output,section) = phase_ID
            case ('texture')
