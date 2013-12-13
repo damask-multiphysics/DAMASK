@@ -102,8 +102,6 @@ module crystallite
    crystallite_syncSubFracCompleted, &                                                              !< description not available
    crystallite_neighborEnforcedCutback                                                              !< description not available
 
- real(pReal),                dimension(:,:,:), allocatable,          private :: &
-   constitutive_j2_Cslip_66
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  phase_ID, &
@@ -320,45 +318,45 @@ subroutine crystallite_init(temperature)
          crystallite_output(output,section) = IO_lc(IO_stringValue(line,positions,2_pInt))
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('phase')
-             crystallite_outputID = phase_ID
+             crystallite_outputID(output,section) = phase_ID
            case ('texture')
-             crystallite_outputID = texture_ID
+             crystallite_outputID(output,section) = texture_ID
            case ('volume')
-             crystallite_outputID = volume_ID
+             crystallite_outputID(output,section) = volume_ID
            case ('grainrotationx')
-             crystallite_outputID = grainrotationx_ID
+             crystallite_outputID(output,section) = grainrotationx_ID
            case ('grainrotationy')
-             crystallite_outputID = grainrotationy_ID
+             crystallite_outputID(output,section) = grainrotationy_ID
            case ('grainrotationz')
-             crystallite_outputID = grainrotationx_ID
+             crystallite_outputID(output,section) = grainrotationx_ID
            case ('heat')
-             crystallite_outputID = heat_ID
+             crystallite_outputID(output,section) = heat_ID
            case ('orientation')
-             crystallite_outputID = orientation_ID
+             crystallite_outputID(output,section) = orientation_ID
            case ('grainrotation')
-             crystallite_outputID = grainrotation_ID
+             crystallite_outputID(output,section) = grainrotation_ID
            case ('eulerangles')
-             crystallite_outputID = eulerangles_ID
+             crystallite_outputID(output,section) = eulerangles_ID
            case ('defgrad','f')
-             crystallite_outputID = defgrad_ID
+             crystallite_outputID(output,section) = defgrad_ID
            case ('fe')
-             crystallite_outputID = fe_ID
+             crystallite_outputID(output,section) = fe_ID
            case ('fp')
-             crystallite_outputID = fp_ID
+             crystallite_outputID(output,section) = fp_ID
            case ('e')
-             crystallite_outputID = e_ID
+             crystallite_outputID(output,section) = e_ID
            case ('ee')
-             crystallite_outputID = ee_ID
+             crystallite_outputID(output,section) = ee_ID
            case ('p','firstpiola','1piola')
-             crystallite_outputID = p_ID
+             crystallite_outputID(output,section) = p_ID
            case ('s','tstar','secondpiola','2ndpiola')
-             crystallite_outputID = s_ID
+             crystallite_outputID(output,section) = s_ID
            case ('elasmatrix')
-             crystallite_outputID = elasmatrix_ID
+             crystallite_outputID(output,section) = elasmatrix_ID
            case ('neighboringip')
-             crystallite_outputID = neighboringip_ID
+             crystallite_outputID(output,section) = neighboringip_ID
            case ('neighboringelement')
-             crystallite_outputID = neighboringelement_ID
+             crystallite_outputID(output,section) = neighboringelement_ID
            case default
              call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' (Crystallite)')
          end select

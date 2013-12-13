@@ -136,13 +136,13 @@ subroutine homogenization_isostrain_init(fileUnit)
              case('nconstituents','ngrains')
                homogenization_isostrain_outputID(output,i) = nconstituents_ID
              case('temperature')
-               homogenization_isostrain_outputID(output,i) = nconstituents_ID
+               homogenization_isostrain_outputID(output,i) = temperature_ID
              case('ipcoords')
-               homogenization_isostrain_outputID(output,i) = nconstituents_ID
+               homogenization_isostrain_outputID(output,i) = ipcoords_ID
              case('avgdefgrad','avgf')
-               homogenization_isostrain_outputID(output,i) = nconstituents_ID
+               homogenization_isostrain_outputID(output,i) = avgdefgrad_ID
              case('avgp','avgfirstpiola','avg1stpiola')
-               homogenization_isostrain_outputID(output,i) = nconstituents_ID
+               homogenization_isostrain_outputID(output,i) = avgfirstpiola_ID
              case default
                mySize = 0_pInt
              end select
@@ -151,9 +151,9 @@ subroutine homogenization_isostrain_init(fileUnit)
          case ('mapping')
            select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
              case ('parallel','sum')
-               homogenization_isostrain_mapping(i) = nconstituents_ID
+               homogenization_isostrain_mapping(i) = parallel_ID
              case ('average','mean','avg')
-               homogenization_isostrain_mapping(i) = nconstituents_ID
+               homogenization_isostrain_mapping(i) = average_ID
              case default
            end select
        end select
