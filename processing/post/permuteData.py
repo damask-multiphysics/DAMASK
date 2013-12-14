@@ -97,9 +97,9 @@ for file in files:
 # ------------------------------------------ process data ---------------------------------------  
 
   permutation = {}
-  theColumns = table.data_asArray([column['scalar'][label] for label in active['scalar']])
+  table.data_readArray([column['scalar'][label] for label in active['scalar']])
   for i,label in enumerate(active['scalar']):
-    unique = list(set(theColumns[:,i]))
+    unique = list(set(table.data[:,i]))
     permutated = numpy.random.permutation(unique)
     permutation[label] = dict(zip(unique,permutated))
 

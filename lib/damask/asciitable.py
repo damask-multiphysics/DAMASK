@@ -198,8 +198,7 @@ class ASCIItable():
     line = self.__IO__['in'].readline()                                               # get next data row
     if self.__IO__['labels']:
       items = line.split()[:self.__IO__['validReadSize']]                             # use up to valid size (label count)
-      self.data = {False:   [],
-                    True: items}[len(items) == self.__IO__['validReadSize']]          # take if correct number of entries
+      self.data = items if len(items) == self.__IO__['validReadSize'] else []         # take if correct number of entries
     else:
       self.data = line.split()                                                        # take all
       
@@ -211,6 +210,23 @@ class ASCIItable():
     for i in range(line-1):
       self.__IO__['in'].readline()
     self.data_read()
+
+# ------------------------------------------------------------------
+  def data_readArray(self,
+                     labels = []):
+    import numpy
+    '''
+       read whole data of all (given) labels as numpy array
+    '''
+
+    if labels == []: indices = range(self.__IO__['validReadSize'])              # use all columns
+    else: indices = self.labels_index(labels)                                   # use specified columns
+
+    self.data_rewind()
+    self.data = numpy.loadtxt(self.__IO__['in'], usecols=indices)
+    if len(self.data.shape) < 2:                                                 # single column
+      self.data = self.data.reshape(self.data.shape[0],1)
+    return self.data.shape
     
 # ------------------------------------------------------------------
   def data_write(self):
@@ -261,20 +277,3 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_asFloat(self):
     return map(self._transliterateToFloat,self.data)
-
-# ------------------------------------------------------------------
-  def data_asArray(self,
-                   labels = []):
-    import numpy
-    '''
-       read whole data of all (given) labels as numpy array
-    '''
-
-    if labels == []: indices = range(self.__IO__['validReadSize'])              # use all columns
-    else: indices = self.labels_index(labels)                                   # use specified columns
-
-    self.data_rewind()
-    theArray = numpy.loadtxt(self.__IO__['in'], usecols=indices)
-    if len(theArray.shape) < 2:                                                 # single column
-      theArray = theArray.reshape(theArray.shape[0],1)
-    return theArray

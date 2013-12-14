@@ -161,12 +161,12 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------   
   
-  structure = table.data_asArray(['ip.x','ip.y','ip.z',options.id])
+  table.data_readArray(['ip.x','ip.y','ip.z',options.id])
 
   grid = [{},{},{}]
-  for i in xrange(len(structure)):
+  for i in xrange(len(table.data)):
     for j in xrange(3):
-      grid[j][str(structure[i,j])] = True
+      grid[j][str(table.data[i,j])] = True
 
   resolution = numpy.array(map(len,grid),'i')
   unitlength = 0.0
@@ -175,7 +175,7 @@ for file in files:
 
   neighborhood = neighborhoods[options.neighborhood]
   convoluted = numpy.empty([len(neighborhood)]+list(resolution+2),'i')
-  microstructure = periodic_3Dpad(numpy.array(structure[:,3].reshape(resolution),'i'))
+  microstructure = periodic_3Dpad(numpy.array(table.data[:,3].reshape(resolution),'i'))
   
   for i,p in enumerate(neighborhood):
     stencil = numpy.zeros((3,3,3),'i')
