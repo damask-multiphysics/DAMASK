@@ -47,6 +47,7 @@ bin_link = { \
                 'addDivergence.py',
                 'addEhkl.py',
                 'addEuclideanDistance.py',
+                'addGrainID.py',
                 'addMises.py',
                 'addNorm.py',
                 'addOrientations.py',
@@ -62,6 +63,7 @@ bin_link = { \
                 'deleteColumn.py',
                 'deleteInfo.py',
                 'filterTable.py',
+                'sortTable.py',
                 'marc_deformedGeometry.py',
                 'marc_extractData.py',
                 'mentat_colorMap.py',
@@ -73,7 +75,9 @@ bin_link = { \
                 'vtk2ang.py',
                 'vtk_addData.py',
                 'vtk_pointcloud.py',
-                'vtk_addPointcloudData.py'
+                'vtk_addPointcloudData.py',
+                'vtk_voxelcloud.py',
+                'vtk_addVoxelcloudData.py',
                 ],
             }
             
