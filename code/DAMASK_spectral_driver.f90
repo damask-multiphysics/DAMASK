@@ -52,7 +52,8 @@ program DAMASK_spectral_Driver
    IO_lc, &
    IO_intOut, &
    IO_warning, &
-   IO_timeStamp
+   IO_timeStamp, &
+   IO_EOF
  use debug, only: &
    debug_level, &
    debug_spectral, &
@@ -110,7 +111,7 @@ program DAMASK_spectral_Driver
  integer(pInt), parameter  :: maxNchunks       = (1_pInt + 9_pInt)*3_pInt + &                       ! deformation, rotation, and stress
                                                  (1_pInt + 1_pInt)*5_pInt + &                       ! time, (log)incs, temp, restartfrequency, and outputfrequency
                                                   1_pInt, &                                         ! dropguessing
-                              FILEUNIT           = 234_pInt                                           !< file unit, DAMASK IO does not support newunit feature
+                              FILEUNIT           = 234_pInt                                         !< file unit, DAMASK IO does not support newunit feature
  integer(pInt), dimension(1_pInt + maxNchunks*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
  
  integer(pInt) :: &
@@ -169,7 +170,7 @@ program DAMASK_spectral_Driver
  rewind(FILEUNIT)
  do
    line = IO_read(FILEUNIT)
-   if (trim(line) == '#EOF#') exit
+   if (trim(line) == IO_EOF) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    positions = IO_stringPos(line,maxNchunks)
    do i = 1_pInt, positions(1)                                                                      ! reading compulsory parameters for loadcase
@@ -194,7 +195,7 @@ program DAMASK_spectral_Driver
  rewind(FILEUNIT)
  do
    line = IO_read(FILEUNIT)
-   if (trim(line) == '#EOF#') exit
+   if (trim(line) == IO_EOF) exit
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    currentLoadCase = currentLoadCase + 1_pInt
    positions = IO_stringPos(line,maxNchunks)

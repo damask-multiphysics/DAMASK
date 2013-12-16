@@ -172,39 +172,24 @@ subroutine homogenization_init()
  allocate(homogenization_state0(mesh_maxNips,mesh_NcpElems))
  allocate(homogenization_subState0(mesh_maxNips,mesh_NcpElems))
  allocate(homogenization_state(mesh_maxNips,mesh_NcpElems))
- allocate(homogenization_sizeState(mesh_maxNips,mesh_NcpElems))
-          homogenization_sizeState                                    = 0_pInt
- allocate(homogenization_sizePostResults(mesh_maxNips,mesh_NcpElems))
-          homogenization_sizePostResults                              = 0_pInt
- allocate(materialpoint_heat(mesh_maxNips,mesh_NcpElems))
-          materialpoint_heat                                          = 0.0_pReal
- allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems))
-          materialpoint_dPdF                                          = 0.0_pReal
- allocate(materialpoint_F0(3,3,mesh_maxNips,mesh_NcpElems))
- allocate(materialpoint_F(3,3,mesh_maxNips,mesh_NcpElems))
-          materialpoint_F                                             = 0.0_pReal
- allocate(materialpoint_subF0(3,3,mesh_maxNips,mesh_NcpElems))
-          materialpoint_subF0                                         = 0.0_pReal
- allocate(materialpoint_subF(3,3,mesh_maxNips,mesh_NcpElems))
-          materialpoint_subF                                          = 0.0_pReal
- allocate(materialpoint_P(3,3,mesh_maxNips,mesh_NcpElems))
-          materialpoint_P                                             = 0.0_pReal
- allocate(materialpoint_subFrac(mesh_maxNips,mesh_NcpElems))
-          materialpoint_subFrac                                       = 0.0_pReal
- allocate(materialpoint_subStep(mesh_maxNips,mesh_NcpElems))
-          materialpoint_subStep                                       = 0.0_pReal
- allocate(materialpoint_subdt(mesh_maxNips,mesh_NcpElems))
-          materialpoint_subdt                                         = 0.0_pReal
- allocate(materialpoint_requested(mesh_maxNips,mesh_NcpElems))
-          materialpoint_requested                                     = .false.
- allocate(materialpoint_converged(mesh_maxNips,mesh_NcpElems))
-          materialpoint_converged                                     = .true.
- allocate(materialpoint_doneAndHappy(2,mesh_maxNips,mesh_NcpElems))
-          materialpoint_doneAndHappy                                  = .true.
-
+ allocate(homogenization_sizeState(mesh_maxNips,mesh_NcpElems),         source=0_pInt)
+ allocate(homogenization_sizePostResults(mesh_maxNips,mesh_NcpElems),   source=0_pInt)
+ allocate(materialpoint_heat(mesh_maxNips,mesh_NcpElems),               source=0.0_pReal)
+ allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
+ allocate(materialpoint_F0(3,3,mesh_maxNips,mesh_NcpElems),             source=0.0_pReal)
  materialpoint_F0 = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)                          ! initialize to identity
- materialpoint_F  = materialpoint_F0
- 
+ allocate(materialpoint_F(3,3,mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
+ materialpoint_F = materialpoint_F0                                                                 ! initialize to identity
+ allocate(materialpoint_subF0(3,3,mesh_maxNips,mesh_NcpElems),          source=0.0_pReal)
+ allocate(materialpoint_subF(3,3,mesh_maxNips,mesh_NcpElems),           source=0.0_pReal)
+ allocate(materialpoint_P(3,3,mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
+ allocate(materialpoint_subFrac(mesh_maxNips,mesh_NcpElems),            source=0.0_pReal)
+ allocate(materialpoint_subStep(mesh_maxNips,mesh_NcpElems),            source=0.0_pReal)
+ allocate(materialpoint_subdt(mesh_maxNips,mesh_NcpElems),              source=0.0_pReal)
+ allocate(materialpoint_requested(mesh_maxNips,mesh_NcpElems),          source=.false.)
+ allocate(materialpoint_converged(mesh_maxNips,mesh_NcpElems),          source=.true.)
+ allocate(materialpoint_doneAndHappy(2,mesh_maxNips,mesh_NcpElems),     source=.true.)
+
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global state and postresutls variables
  elementLooping: do e = 1,mesh_NcpElems

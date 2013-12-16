@@ -247,11 +247,11 @@ subroutine utilities_init()
 ! allocation
  allocate (xi(3,grid1Red,grid(2),grid(3)),source = 0.0_pReal)                                       ! frequencies, only half the size for first dimension
  tensorField = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3)*9_pInt,C_SIZE_T))                    ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
- phaseFieldFFT = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3),C_SIZE_T))                    ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
+ phaseFieldFFT = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3),C_SIZE_T))                         ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, field_real, [grid(1)+2_pInt-mod(grid(1),2_pInt),grid(2),grid(3),3,3])! place a pointer for a real representation on tensorField
  call c_f_pointer(tensorField, field_fourier,[grid1Red,                        grid(2),grid(3),3,3])! place a pointer for a complex representation on tensorField
  call c_f_pointer(phaseFieldFFT,phaseField_real,[grid(1)+2_pInt-mod(grid(1),2_pInt),grid(2),grid(3)])! place a pointer for a real representation on tensorField
- call c_f_pointer(phaseFieldFFT,phaseField_fourier,[grid1Red,grid(2),grid(3)])! place a pointer for a complex representation on tensorField
+ call c_f_pointer(phaseFieldFFT,phaseField_fourier,[grid1Red,grid(2),grid(3)])                      ! place a pointer for a complex representation on tensorField
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
@@ -308,7 +308,7 @@ subroutine utilities_init()
  endif
 
  if (debugFFTW) then
-   scalarField_realC    = fftw_alloc_complex(int(product(grid),C_SIZE_T))                           ! allocate data for real representation (no in place transform)
+   scalarField_realC    = fftw_alloc_complex(int(product(grid),C_SIZE_T))                           ! allllocate data for real representation (no in place transform)
    scalarField_fourierC = fftw_alloc_complex(int(product(grid),C_SIZE_T))                           ! allocate data for fourier representation (no in place transform)
    call c_f_pointer(scalarField_realC,    scalarField_real,    grid)                                ! place a pointer for a real representation
    call c_f_pointer(scalarField_fourierC, scalarField_fourier, grid)                                ! place a pointer for a fourier representation
