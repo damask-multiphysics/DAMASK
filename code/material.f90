@@ -34,7 +34,7 @@ module material
 
  implicit none
  private
- character(len=*),                                           parameter,     public :: &
+ character(len=*),                         parameter,            public :: &
    ELASTICITY_HOOKE_label         = 'hooke', &
    PLASTICITY_NONE_label          = 'none', &
    PLASTICITY_J2_label            = 'j2', &
@@ -64,11 +64,11 @@ module material
                  HOMOGENIZATION_RGC_ID
  end enum
 
- character(len=*),                                           parameter,   public  :: &
+ character(len=*), parameter, public  :: &
    MATERIAL_configFile         = 'material.config', &                                               !< generic name for material configuration file 
    MATERIAL_localFileExt       = 'materialConfig'                                                   !< extension of solver job name depending material configuration file  
    
- character(len=*),                                           parameter,   public  :: &
+ character(len=*), parameter, public  :: &
    MATERIAL_partHomogenization = 'homogenization', &                                                !< keyword for homogenization part
    MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
    MATERIAL_partPhase          = 'phase'                                                            !< keyword for phase part
@@ -80,7 +80,7 @@ module material
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
 
- character(len=64),                      dimension(:),       allocatable, public, protected :: &
+ character(len=64), dimension(:), allocatable, public, protected :: &
    phase_name, &                                                                                    !< name of each phase
    homogenization_name, &                                                                           !< name of each homogenization
    crystallite_name                                                                                 !< name of each crystallite setting
@@ -92,7 +92,7 @@ module material
    material_Nmicrostructure, &                                                                      !< number of microstructures
    material_Ncrystallite                                                                            !< number of crystallite settings
  
- integer(pInt),                          dimension(:),       allocatable, public, protected :: &
+ integer(pInt), dimension(:), allocatable, public, protected :: &
    homogenization_Ngrains, &                                                                        !< number of grains in each homogenization
    homogenization_Noutput, &                                                                        !< number of '(output)' items per homogenization
    phase_Noutput, &                                                                                 !< number of '(output)' items per phase
@@ -102,72 +102,69 @@ module material
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
 
- integer(pInt),                          dimension(:,:,:),   allocatable, public:: &
+ integer(pInt), dimension(:,:,:), allocatable, public:: &
    material_phase                                                                                   !< phase   (index) of each grain,IP,element
- integer(pInt),                          dimension(:,:,:),   allocatable, public, protected :: &
+ integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
    material_texture                                                                                 !< texture (index) of each grain,IP,element
  
- real(pReal),                            dimension(:,:,:,:), allocatable, public, protected :: &
+ real(pReal), dimension(:,:,:,:), allocatable, public, protected :: &
    material_EulerAngles                                                                             !< initial orientation of each grain,IP,element
  
- logical,                                dimension(:),       allocatable, public, protected :: &
+ logical, dimension(:), allocatable, public, protected :: &
    microstructure_active, & 
    microstructure_elemhomo, &                                                                       !< flag to indicate homogeneous microstructure distribution over element's IPs
    phase_localPlasticity                                                                            !< flags phases with local constitutive law
 
 
- character(len=*),                                           parameter,   private :: &
+ character(len=*), parameter, private :: &
    MATERIAL_partMicrostructure = 'microstructure', &                                                !< keyword for microstructure part
    MATERIAL_partTexture        = 'texture'                                                          !< keyword for texture part
    
- character(len=64),                      dimension(:),       allocatable, private :: &
+ character(len=64), dimension(:), allocatable, private :: &
    microstructure_name, &                                                                           !< name of each microstructure
    texture_name                                                                                     !< name of each texture
      
- character(len=256),                     dimension(:),       allocatable, private :: &
+ character(len=256), dimension(:), allocatable, private :: &
    texture_ODFfile                                                                                  !< name of each ODF file         
 
- integer(pInt),                                                           private :: &
+ integer(pInt), private :: &
    material_Ntexture, &                                                                             !< number of textures
    microstructure_maxNconstituents, &                                                               !< max number of constituents in any phase
    texture_maxNgauss, &                                                                             !< max number of Gauss components in any texture
    texture_maxNfiber                                                                                !< max number of Fiber components in any texture
 
- integer(pInt),                          dimension(:),       allocatable, private :: &
+ integer(pInt), dimension(:), allocatable, private :: &
    microstructure_Nconstituents, &                                                                  !< number of constituents in each microstructure
    texture_symmetry, &                                                                              !< number of symmetric orientations per texture
    texture_Ngauss, &                                                                                !< number of Gauss components per texture
    texture_Nfiber                                                                                   !< number of Fiber components per texture
  
- integer(pInt),                          dimension(:,:),     allocatable, private :: &
+ integer(pInt), dimension(:,:), allocatable, private :: &
    microstructure_phase, &                                                                          !< phase IDs of each microstructure
    microstructure_texture                                                                           !< texture IDs of each microstructure
  
- real(pReal),                            dimension(:,:),     allocatable, private :: &
+ real(pReal), dimension(:,:), allocatable, private :: &
    microstructure_fraction                                                                          !< vol fraction of each constituent in microstructure
  
- real(pReal),                            dimension(:,:,:),   allocatable, private :: &
+ real(pReal), dimension(:,:,:), allocatable, private :: &
    material_volume, &                                                                               !< volume of each grain,IP,element
    texture_Gauss, &                                                                                 !< data of each Gauss component
    texture_Fiber, &                                                                                 !< data of each Fiber component
    texture_transformation                                                                           !< transformation for each texture
  
- logical,                                dimension(:),       allocatable, private :: &
+ logical, dimension(:), allocatable, private :: &
    homogenization_active
 
 
  public :: &
    material_init, &
-   ELASTICITY_undefined_ID, &
-   ELASTICITY_hooke_ID, &
-   PLASTICITY_undefined_ID, &
+   ELASTICITY_hooke_ID ,&
    PLASTICITY_none_ID, &
    PLASTICITY_J2_ID, &
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
-   HOMOGENIZATION_undefined_ID, &
    HOMOGENIZATION_isostrain_ID, &
    HOMOGENIZATION_RGC_ID
 
@@ -302,13 +299,13 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  character(len=65536) :: &
    tag, line
  logical              :: echo
-
+ 
  echo = IO_globalTagInPart(fileUnit,myPart,'/echo/') 
  Nsections = IO_countSections(fileUnit,myPart)
  material_Nhomogenization = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
  
- allocate(homogenization_name(Nsections)); homogenization_name = ''
+ allocate(homogenization_name(Nsections));          homogenization_name = ''
  allocate(homogenization_type(Nsections),                source=HOMOGENIZATION_undefined_ID)
  allocate(homogenization_typeInstance(Nsections),        source=0_pInt)
  allocate(homogenization_Ngrains(Nsections),             source=0_pInt)
@@ -336,7 +333,7 @@ subroutine material_parseHomogenization(fileUnit,myPart)
    if (echo) write(6,'(2x,a)') trim(line)                                                           ! echo back read lines
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
-     homogenization_name(section) = IO_getTag(line,'[',']') 
+     homogenization_name(section) = IO_getTag(line,'[',']')
    endif
    if (section > 0_pInt) then
      positions = IO_stringPos(line,MAXNCHUNKS)
@@ -391,7 +388,7 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  material_Nmicrostructure = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
- allocate(microstructure_name(Nsections));  microstructure_name = ''
+ allocate(microstructure_name(Nsections));            microstructure_name = ''
  allocate(microstructure_crystallite(Nsections),          source=0_pInt)
  allocate(microstructure_Nconstituents(Nsections),        source=0_pInt)
  allocate(microstructure_active(Nsections),               source=.false.)
@@ -406,11 +403,12 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  allocate(microstructure_phase   (microstructure_maxNconstituents,Nsections),source=0_pInt)
  allocate(microstructure_texture (microstructure_maxNconstituents,Nsections),source=0_pInt)
  allocate(microstructure_fraction(microstructure_maxNconstituents,Nsections),source=0.0_pReal)
-
+ 
  rewind(fileUnit)
  line        = ''                                                                                   ! to have it initialized
  section     = 0_pInt                                                                               !  - " -
  constituent = 0_pInt                                                                               !  - " -
+ 
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
    line = IO_read(fileUnit)
  enddo
@@ -485,7 +483,7 @@ subroutine material_parseCrystallite(fileUnit,myPart)
  material_Ncrystallite = Nsections
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
 
- allocate(crystallite_name(Nsections));   crystallite_name=''
+ allocate(crystallite_name(Nsections));       crystallite_name = ''
  allocate(crystallite_Noutput(Nsections),           source=0_pInt)
 
  crystallite_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
@@ -663,7 +661,7 @@ subroutine material_parseTexture(fileUnit,myPart)
 
  allocate(texture_name(Nsections));        texture_name=''
  allocate(texture_ODFfile(Nsections));  texture_ODFfile=''
- allocate(texture_symmetry(Nsections),           source=0_pInt)          
+ allocate(texture_symmetry(Nsections),           source=1_pInt)          
  allocate(texture_Ngauss(Nsections),             source=0_pInt)
  allocate(texture_Nfiber(Nsections),             source=0_pInt)
 
@@ -676,12 +674,13 @@ subroutine material_parseTexture(fileUnit,myPart)
  allocate(texture_Fiber (6,texture_maxNfiber,Nsections), source=0.0_pReal)
  allocate(texture_transformation(3,3,Nsections),         source=0.0_pReal)            
  texture_transformation = spread(math_I3,3,Nsections)
-
+ 
  rewind(fileUnit)
  line    = ''                                                                                       ! to have in initialized
  section = 0_pInt                                                                                   ! - " -
  gauss   = 0_pInt                                                                                   ! - " - 
  fiber   = 0_pInt                                                                                   ! - " - 
+ 
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
    line = IO_read(fileUnit)
  enddo
@@ -711,17 +710,17 @@ subroutine material_parseTexture(fileUnit,myPart)
            tag = IO_lc(IO_stringValue(line,positions,j+1_pInt))
            select case (tag)
              case('x', '+x')
-               texture_transformation(j,1:3,section) = (/ 1.0_pReal, 0.0_pReal, 0.0_pReal/)               ! original axis is now +x-axis
+               texture_transformation(j,1:3,section) = [ 1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now +x-axis
              case('-x')
-               texture_transformation(j,1:3,section) = (/-1.0_pReal, 0.0_pReal, 0.0_pReal/)               ! original axis is now -x-axis
+               texture_transformation(j,1:3,section) = [-1.0_pReal, 0.0_pReal, 0.0_pReal]           ! original axis is now -x-axis
              case('y', '+y')
-               texture_transformation(j,1:3,section) = (/ 0.0_pReal, 1.0_pReal, 0.0_pReal/)               ! original axis is now +y-axis
+               texture_transformation(j,1:3,section) = [ 0.0_pReal, 1.0_pReal, 0.0_pReal]           ! original axis is now +y-axis
              case('-y')
-               texture_transformation(j,1:3,section) = (/ 0.0_pReal,-1.0_pReal, 0.0_pReal/)               ! original axis is now -y-axis
+               texture_transformation(j,1:3,section) = [ 0.0_pReal,-1.0_pReal, 0.0_pReal]           ! original axis is now -y-axis
              case('z', '+z')
-               texture_transformation(j,1:3,section) = (/ 0.0_pReal, 0.0_pReal, 1.0_pReal/)               ! original axis is now +z-axis
+               texture_transformation(j,1:3,section) = [ 0.0_pReal, 0.0_pReal, 1.0_pReal]           ! original axis is now +z-axis
              case('-z')
-               texture_transformation(j,1:3,section) = (/ 0.0_pReal, 0.0_pReal,-1.0_pReal/)               ! original axis is now -z-axis
+               texture_transformation(j,1:3,section) = [ 0.0_pReal, 0.0_pReal,-1.0_pReal]           ! original axis is now -z-axis
              case default
                call IO_error(157_pInt,section)
            end select
