@@ -106,7 +106,7 @@ module DAMASK_spectral_solverPolarisation
    DMDestroy, &
    DMDACreate3D, &
    DMCreateGlobalVector, &
-   DMDASetLocalFunction, &
+   DMDASNESSetFunctionLocal, &
    PETScFinalize, &
    SNESDestroy, &
    SNESGetNumberFunctionEvals, &
@@ -158,6 +158,7 @@ subroutine Polarisation_init(temperature)
    temperature
 #include <finclude/petscdmda.h90>
 #include <finclude/petscsnes.h90>
+#include <finclude/petscvec.h>
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
@@ -194,7 +195,8 @@ subroutine Polarisation_init(temperature)
            18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
  CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
- call DMDASetLocalFunction(da,Polarisation_formResidual,ierr); CHKERRQ(ierr)
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,Polarisation_formResidual,dummy,ierr)
+ CHKERRQ(ierr)
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,Polarisation_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)

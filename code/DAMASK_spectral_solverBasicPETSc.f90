@@ -103,7 +103,7 @@ module DAMASK_spectral_SolverBasicPETSc
    DMDestroy, &
    DMDACreate3D, &
    DMCreateGlobalVector, &
-   DMDASetLocalFunction, &
+   DMDASNESSetFunctionLocal, &
    PETScFinalize, &
    SNESDestroy, &
    SNESGetNumberFunctionEvals, &
@@ -196,8 +196,8 @@ subroutine basicPETSc_init(temperature,nActivePhaseFields,phaseFieldData)
         9+nActivePhaseFields,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
    CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
- !call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr); CHKERRQ(ierr)     ! needed for newer versions of petsc
- call DMDASetLocalFunction(da,BasicPETSC_formResidual,ierr); CHKERRQ(ierr)
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr)
+ CHKERRQ(ierr) 
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
