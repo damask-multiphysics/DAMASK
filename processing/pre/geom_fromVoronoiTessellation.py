@@ -247,7 +247,7 @@ for file in files:
 # --- write microstructure information ------------------------------------------------------------
     formatwidth = 1+int(math.log10(newInfo['microstructures']))
     theTable.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
-    theTable.data_writeArray('%%%ii'%(formatwidth))
+    theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
     
 #--- output finalization --------------------------------------------------------------------------
 

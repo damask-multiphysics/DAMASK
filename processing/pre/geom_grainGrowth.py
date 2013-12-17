@@ -222,7 +222,7 @@ for file in files:
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
   theTable.data = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].reshape(numpy.prod(info['grid']),order='F').transpose()
-  theTable.data_writeArray('%%%ii'%(formatwidth))
+  theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':

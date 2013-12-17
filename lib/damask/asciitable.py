@@ -229,21 +229,21 @@ class ASCIItable():
     return self.data.shape
     
 # ------------------------------------------------------------------
-  def data_write(self):
+  def data_write(self, delimiter='\t'):
     if len(self.data) == 0: return
     
     if isinstance(self.data[0],list):
-      return self.output_write(['\t'.join(map(str,items)) for items in self.data])
+      return self.output_write([delimiter.join(map(str,items)) for items in self.data])
     else:
-      return self.output_write('\t'.join(map(str,self.data)))
+      return self.output_write(delimiter.join(map(str,self.data)))
 
 # ------------------------------------------------------------------
-  def data_writeArray(self,format='%g'):
+  def data_writeArray(self,format='%g',delimiter = '\t'):
     import numpy
     '''
        write whole numpy array data
     '''
-    return numpy.savetxt(self.__IO__['out'], self.data, fmt=format, delimiter='\t')
+    return numpy.savetxt(self.__IO__['out'], self.data, fmt=format, delimiter=delimiter)
 
 # ------------------------------------------------------------------
   def data_append(self,

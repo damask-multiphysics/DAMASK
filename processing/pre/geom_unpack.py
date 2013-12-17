@@ -159,7 +159,7 @@ for file in files:
     theTable.data = microstructure
   else:
     theTable.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  theTable.data_writeArray('%%%ii'%(formatwidth))
+  theTable.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':

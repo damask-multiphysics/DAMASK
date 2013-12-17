@@ -132,7 +132,7 @@ for file in files:
   theTable.head_write()
   theTable.output_flush()
   
-# --- write packed microstructure information ------------------------------------------------------------
+# --- write packed microstructure information -----------------------------------------------------
   type = ''
   former = -1
   start = -1
@@ -161,8 +161,7 @@ for file in files:
                          'to': ['%i to %i'%(former-reps+1,former)],
                          'of': ['%i of %i'%(reps,former)],
                         }[type]
-        theTable.data_write()
-#        file['output'].write(output)
+        theTable.data_write(delimiter=' ')
         type = '.'
         start = current
         reps = 1
@@ -173,9 +172,8 @@ for file in files:
                    'to': ['%i to %i'%(former-reps+1,former)],
                    'of': ['%i of %i'%(reps,former)],
                   }[type]
-  theTable.data_write()
+  theTable.data_write(delimiter=' ')
   theTable.output_flush()
-#  file['output'].write(output+'\n')
 
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
