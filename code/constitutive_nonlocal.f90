@@ -382,7 +382,7 @@ allocate(constitutive_nonlocal_sizePostResult(maxval(phase_Noutput), maxNmatIDs)
 allocate(Noutput(maxNmatIDs),                                                     source=0_pInt)
 allocate(constitutive_nonlocal_output(maxval(phase_Noutput), maxNmatIDs))
          constitutive_nonlocal_output = ''
-
+allocate(constitutive_nonlocal_outputID(maxval(phase_Noutput), maxNmatIDs),       source=undefined_ID)
 allocate(constitutive_nonlocal_structureID(maxNmatIDs),  source=LATTICE_undefined_ID)
 allocate(constitutive_nonlocal_structure(maxNmatIDs),    source=0_pInt)
 allocate(Nslip(lattice_maxNslipFamily,maxNmatIDs),       source=0_pInt)
