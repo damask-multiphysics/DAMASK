@@ -458,10 +458,7 @@ program DAMASK_spectral_Driver
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  rotation_BC        = loadCases(currentLoadCase)%rotation)
 #endif
-         end select 
-
-          end select
-         enddo
+         end select
            
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
