@@ -54,7 +54,7 @@ module homogenization_isostrain
  integer(kind(undefined_ID)), dimension(:,:), allocatable,         private :: &
   homogenization_isostrain_outputID                                                                 !< ID of each post result output
  integer(kind(average_ID)),   dimension(:),   allocatable,         private :: &
-  homogenization_isostrain_mapping                                                                  !< ID of each post result output
+  homogenization_isostrain_mapping                                                                  !< mapping type
 
 
  public :: &
@@ -144,8 +144,9 @@ subroutine homogenization_isostrain_init(fileUnit)
              case('avgp','avgfirstpiola','avg1stpiola')
                homogenization_isostrain_outputID(output,i) = avgfirstpiola_ID
              case default
-               mySize = 0_pInt
-             end select
+               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//&
+                                                        ' ('//HOMOGENIZATION_isostrain_label//')')
+           end select
          case ('nconstituents','ngrains')
                 homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
          case ('mapping')
@@ -156,6 +157,8 @@ subroutine homogenization_isostrain_init(fileUnit)
                homogenization_isostrain_mapping(i) = average_ID
              case default
            end select
+         case default
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
        end select
      endif
    endif

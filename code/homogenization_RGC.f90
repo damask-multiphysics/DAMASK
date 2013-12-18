@@ -32,24 +32,40 @@ module homogenization_RGC
 
  implicit none
  private
- integer(pInt),     dimension(:),       allocatable,        public :: &
+ integer(pInt),              dimension(:),       allocatable,        public :: &
    homogenization_RGC_sizeState, &
    homogenization_RGC_sizePostResults
- integer(pInt),     dimension(:,:),     allocatable,target, public :: &
+ integer(pInt),              dimension(:,:),     allocatable,target, public :: &
    homogenization_RGC_sizePostResult
- character(len=64), dimension(:,:),     allocatable,target, public :: &
+ character(len=64),          dimension(:,:),     allocatable,target, public :: &
    homogenization_RGC_output                                                                        ! name of each post result output
 
- integer(pInt),     dimension(:,:),     allocatable,        private :: &
+ integer(pInt),              dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_Ngrains
- real(pReal),       dimension(:,:),     allocatable,        private :: &
+ real(pReal),                dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_dAlpha, &
    homogenization_RGC_angles
- real(pReal),       dimension(:,:,:,:), allocatable,        private :: &
+ real(pReal),                dimension(:,:,:,:), allocatable,        private :: &
    homogenization_RGC_orientation
- real(pReal),       dimension(:),       allocatable,        private :: &
+ real(pReal),                dimension(:),       allocatable,        private :: &
    homogenization_RGC_xiAlpha, &
    homogenization_RGC_ciAlpha
+ enum, bind(c) 
+   enumerator :: undefined_ID, &
+                 temperature_ID, &
+                 constitutivework_ID, &
+                 penaltyenergy_ID, &
+                 volumediscrepancy_ID, &
+                 averagerelaxrate_ID,&
+                 maximumrelaxrate_ID,&
+                 ipcoords_ID,&
+                 magnitudemismatch_ID,&
+                 avgdefgrad_ID,&
+                 avgfirstpiola_ID
+ end enum
+ integer(kind(undefined_ID)), dimension(:,:),     allocatable,       private :: &
+  homogenization_RGC_outputID                                                                 !< ID of each post result output
+
  public :: &
    homogenization_RGC_init, &
    homogenization_RGC_partitionDeformation, &
@@ -115,22 +131,23 @@ subroutine homogenization_RGC_init(fileUnit)
  maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
- allocate(homogenization_RGC_sizeState(maxNinstance));       homogenization_RGC_sizeState = 0_pInt
- allocate(homogenization_RGC_sizePostResults(maxNinstance)); homogenization_RGC_sizePostResults = 0_pInt
- allocate(homogenization_RGC_Ngrains(3,maxNinstance));       homogenization_RGC_Ngrains = 0_pInt
- allocate(homogenization_RGC_ciAlpha(maxNinstance));         homogenization_RGC_ciAlpha = 0.0_pReal
- allocate(homogenization_RGC_xiAlpha(maxNinstance));         homogenization_RGC_xiAlpha = 0.0_pReal
- allocate(homogenization_RGC_dAlpha(3,maxNinstance));        homogenization_RGC_dAlpha = 0.0_pReal
- allocate(homogenization_RGC_angles(3,maxNinstance));        homogenization_RGC_angles = 400.0_pReal
+ allocate(homogenization_RGC_sizeState(maxNinstance),                            source=0_pInt)
+ allocate(homogenization_RGC_sizePostResults(maxNinstance),                      source=0_pInt)
+ allocate(homogenization_RGC_Ngrains(3,maxNinstance),                            source=0_pInt)
+ allocate(homogenization_RGC_ciAlpha(maxNinstance),                              source=0.0_pReal)
+ allocate(homogenization_RGC_xiAlpha(maxNinstance),                              source=0.0_pReal)
+ allocate(homogenization_RGC_dAlpha(3,maxNinstance),                             source=0.0_pReal)
+ allocate(homogenization_RGC_angles(3,maxNinstance),                             source=400.0_pReal)
  allocate(homogenization_RGC_output(maxval(homogenization_Noutput),maxNinstance))
-   homogenization_RGC_output = ''
- allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),maxNinstance))
-   homogenization_RGC_sizePostResult = 0_pInt
- allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems))
+                                                              homogenization_RGC_output=''
+ allocate(homogenization_RGC_outputID(maxval(homogenization_Noutput),maxNinstance),source=undefined_ID)
+ allocate(homogenization_RGC_sizePostResult(maxval(homogenization_Noutput),maxNinstance),&
+                                                                                 source=0_pInt)
+ allocate(homogenization_RGC_orientation(3,3,mesh_maxNips,mesh_NcpElems),        source=0.0_pReal)
    homogenization_RGC_orientation = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)          ! initialize to identity
  
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>'))/=material_partHomogenization) ! wind forward to <homogenization>
    line = IO_read(fileUnit)
  enddo
 
@@ -154,6 +171,31 @@ subroutine homogenization_RGC_init(fileUnit)
          case ('(output)')
            output = output + 1_pInt
            homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           select case(homogenization_RGC_output(output,i))
+             case('constitutivework')
+               homogenization_RGC_outputID(output,i) = constitutivework_ID
+             case('penaltyenergy')
+               homogenization_RGC_outputID(output,i) = penaltyenergy_ID
+             case('volumediscrepancy')
+               homogenization_RGC_outputID(output,i) = volumediscrepancy_ID
+             case('averagerelaxrate')
+               homogenization_RGC_outputID(output,i) = averagerelaxrate_ID
+             case('maximumrelaxrate')
+               homogenization_RGC_outputID(output,i) = maximumrelaxrate_ID
+             case('magnitudemismatch')
+               homogenization_RGC_outputID(output,i) = magnitudemismatch_ID
+             case('temperature')
+               homogenization_RGC_outputID(output,i) = temperature_ID
+             case('ipcoords')
+               homogenization_RGC_outputID(output,i) = ipcoords_ID
+             case('avgdefgrad','avgf')
+               homogenization_RGC_outputID(output,i) = avgdefgrad_ID
+             case('avgp','avgfirstpiola','avg1stpiola')
+               homogenization_RGC_outputID(output,i) = avgfirstpiola_ID
+             case default
+               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//&
+                                                        ' ('//HOMOGENIZATION_RGC_label//')')
+           end select
          case ('clustersize')
            homogenization_RGC_Ngrains(1,i) = IO_intValue(line,positions,2_pInt)
            homogenization_RGC_Ngrains(2,i) = IO_intValue(line,positions,3_pInt)
@@ -170,6 +212,8 @@ subroutine homogenization_RGC_init(fileUnit)
            homogenization_RGC_angles(1,i) = IO_floatValue(line,positions,2_pInt)
            homogenization_RGC_angles(2,i) = IO_floatValue(line,positions,3_pInt)
            homogenization_RGC_angles(3,i) = IO_floatValue(line,positions,4_pInt)
+         case default
+           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
        end select
      endif  
    endif
@@ -180,7 +224,7 @@ subroutine homogenization_RGC_init(fileUnit)
  elementLooping: do e = 1_pInt,mesh_NcpElems
    if (homogenization_type(mesh_element(3,e)) == HOMOGENIZATION_RGC_ID) then
      myInstance = homogenization_typeInstance(mesh_element(3,e))
-     if (all (homogenization_RGC_angles(:,myInstance) >= 399.9_pReal)) then
+     if (all (homogenization_RGC_angles(1:3,myInstance) >= 399.9_pReal)) then
        homogenization_RGC_orientation(1:3,1:3,1,e) = math_EulerToR(math_sampleRandomOri())
        do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
          if (microstructure_elemhomo(mesh_element(4,e))) then
@@ -211,13 +255,13 @@ subroutine homogenization_RGC_init(fileUnit)
  
  do i = 1_pInt,maxNinstance
    do j = 1_pInt,maxval(homogenization_Noutput)
-     select case(homogenization_RGC_output(j,i))
-       case('temperature','constitutivework','penaltyenergy','volumediscrepancy', &
-            'averagerelaxrate','maximumrelaxrate')
+     select case(homogenization_RGC_outputID(j,i))
+       case(temperature_ID,constitutivework_ID,penaltyenergy_ID,volumediscrepancy_ID, &
+            averagerelaxrate_ID,maximumrelaxrate_ID)
          mySize = 1_pInt
-       case('ipcoords','magnitudemismatch')
+       case(ipcoords_ID,magnitudemismatch_ID)
          mySize = 3_pInt
-       case('avgdefgrad','avgf','avgp','avgfirstpiola','avg1stpiola')
+       case(avgdefgrad_ID,avgfirstpiola_ID)
          mySize = 9_pInt
        case default
          mySize = 0_pInt
@@ -271,7 +315,7 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,state,ip,el)
  real(pReal),   dimension (3) :: aVect,nVect
  integer(pInt), dimension (4) :: intFace
  integer(pInt), dimension (3) :: iGrain3
- integer(pInt) homID, iGrain,iFace,i,j
+ integer(pInt) :: homID, iGrain,iFace,i,j
  integer(pInt),                                            parameter  :: nFace = 6_pInt
  
 !--------------------------------------------------------------------------------------------------
@@ -373,8 +417,8 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
  integer(pInt) homID,iNum,i,j,nIntFaceTot,iGrN,iGrP,iMun,iFace,k,l,ipert,iGrain,nGrain
  real(pReal), dimension (3,3,homogenization_maxNgrains) :: R,pF,pR,D,pD
  real(pReal), dimension (3,homogenization_maxNgrains)   :: NN,pNN
- real(pReal), dimension (3)   :: normP,normN,mornP,mornN
- real(pReal) residMax,stresMax,constitutiveWork,penaltyEnergy,volDiscrep
+ real(pReal), dimension (3)                             :: normP,normN,mornP,mornN
+ real(pReal) :: residMax,stresMax,constitutiveWork,penaltyEnergy,volDiscrep
  logical error
 
  integer(pInt), parameter :: nFace = 6_pInt
@@ -397,11 +441,10 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
 
 !--------------------------------------------------------------------------------------------------
 ! allocate the size of the global relaxation arrays/jacobian matrices depending on the size of the cluster
- allocate(resid(3_pInt*nIntFaceTot));  resid = 0.0_pReal
- allocate(tract(nIntFaceTot,3));  tract = 0.0_pReal
- allocate(relax(3_pInt*nIntFaceTot));  relax = state%p(1:3_pInt*nIntFaceTot)
- allocate(drelax(3_pInt*nIntFaceTot))
-   drelax = state%p(1:3_pInt*nIntFaceTot) - state0%p(1:3_pInt*nIntFaceTot)
+ allocate(resid(3_pInt*nIntFaceTot),   source=0.0_pReal)
+ allocate(tract(nIntFaceTot,3),        source=0.0_pReal)
+ allocate(relax(3_pInt*nIntFaceTot));   relax=state%p(1:3_pInt*nIntFaceTot)
+ allocate(drelax(3_pInt*nIntFaceTot)); drelax=state%p(1:3_pInt*nIntFaceTot)-state0%p(1:3_pInt*nIntFaceTot)
 
 !--------------------------------------------------------------------------------------------------
 ! debugging the obtained state
@@ -484,7 +527,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
    endif
  enddo
 
-!!!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! convergence check for stress residual
  stresMax = maxval(abs(P))                                                                          ! get the maximum of first Piola-Kirchhoff (material) stress
  stresLoc = int(maxloc(abs(P)),pInt)                                                                ! get the location of the maximum stress
@@ -520,7 +563,6 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
      flush(6)
      !$OMP END CRITICAL (write2out)
    endif
-!    write(6,'(1x,a,1x,i3,1x,a6,1x,i3,1x,a12)')'RGC_updateState: ip',ip,'| el',el,'converged :)'
 
 !--------------------------------------------------------------------------------------------------
 ! compute/update the state for postResult, i.e., all energy densities computed by time-integration
@@ -593,7 +635,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
 
 !--------------------------------------------------------------------------------------------------
 ! ... of the constitutive stress tangent, assembled from dPdF or material constitutive model "smatrix"
- allocate(smatrix(3*nIntFaceTot,3*nIntFaceTot)); smatrix = 0.0_pReal
+ allocate(smatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
  do iNum = 1_pInt,nIntFaceTot
    faceID = homogenization_RGC_interface1to4(iNum,homID)                                            ! assembling of local dPdF into global Jacobian matrix
    
@@ -607,7 +649,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
      intFaceN = homogenization_RGC_getInterface(iFace,iGr3N)                                        ! identifying all interfaces that influence relaxation of the above interface
      mornN = homogenization_RGC_interfaceNormal(intFaceN,ip,el)                                     ! get normal of the interfaces
      iMun = homogenization_RGC_interface4to1(intFaceN,homID)                                        ! translate the interfaces ID into local 4-dimensional index
-     if (iMun > 0) then                                                                          ! get the corresponding tangent
+     if (iMun > 0) then                                                                             ! get the corresponding tangent
        do i=1_pInt,3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
          smatrix(3*(iNum-1)+i,3*(iMun-1)+j) = smatrix(3*(iNum-1)+i,3*(iMun-1)+j) + dPdF(i,k,j,l,iGrN)*normN(k)*mornN(l)
        enddo;enddo;enddo;enddo
@@ -651,9 +693,9 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
 !--------------------------------------------------------------------------------------------------
 ! ... of the stress penalty tangent (mismatch penalty and volume penalty, computed using numerical 
 ! perturbation method) "pmatrix"
- allocate(pmatrix(3*nIntFaceTot,3*nIntFaceTot)); pmatrix = 0.0_pReal
- allocate(p_relax(3*nIntFaceTot));               p_relax = 0.0_pReal
- allocate(p_resid(3*nIntFaceTot));               p_resid = 0.0_pReal
+ allocate(pmatrix(3*nIntFaceTot,3*nIntFaceTot), source=0.0_pReal)
+ allocate(p_relax(3*nIntFaceTot),               source=0.0_pReal)
+ allocate(p_resid(3*nIntFaceTot),               source=0.0_pReal)
  do ipert = 1_pInt,3_pInt*nIntFaceTot
    p_relax = relax
    p_relax(ipert) = relax(ipert) + pPert_RGC                                                        ! perturb the relaxation vector
@@ -711,7 +753,7 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
  
 !--------------------------------------------------------------------------------------------------
 ! ... of the numerical viscosity traction "rmatrix"
- allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot)); rmatrix = 0.0_pReal
+ allocate(rmatrix(3*nIntFaceTot,3*nIntFaceTot),source=0.0_pReal)
  forall (i=1_pInt:3_pInt*nIntFaceTot) &
    rmatrix(i,i) = viscModus_RGC*viscPower_RGC/(refRelaxRate_RGC*dt)* &                              ! tangent due to numerical viscosity traction appears
                   (abs(drelax(i))/(refRelaxRate_RGC*dt))**(viscPower_RGC - 1.0_pReal)               ! only in the main diagonal term 
@@ -746,9 +788,9 @@ function homogenization_RGC_updateState( state, state0,P,F,F0,avgF,dt,dPdF,ip,el
    !$OMP END CRITICAL (write2out)
  endif
 
-!!!------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! computing the update of the state variable (relaxation vectors) using the Jacobian matrix
- allocate(jnverse(3_pInt*nIntFaceTot,3_pInt*nIntFaceTot)); jnverse = 0.0_pReal
+ allocate(jnverse(3_pInt*nIntFaceTot,3_pInt*nIntFaceTot),source=0.0_pReal)
  call math_invert(size(jmatrix,1),jmatrix,jnverse,error)                                            ! Compute the inverse of the overall Jacobian matrix
  
 !--------------------------------------------------------------------------------------------------
@@ -886,37 +928,37 @@ pure function homogenization_RGC_postResults(state,ip,el,avgP,avgF)
  c = 0_pInt
  homogenization_RGC_postResults = 0.0_pReal
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
-   select case(homogenization_RGC_output(o,homID))
-     case ('temperature')
+   select case(homogenization_RGC_outputID(o,homID))
+     case (temperature_ID)
        homogenization_RGC_postResults(c+1_pInt) = crystallite_temperature(ip,el)
        c = c + 1_pInt
-     case ('avgdefgrad','avgf')
+     case (avgdefgrad_ID)
        homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
        c = c + 9_pInt
-     case ('avgp','avgfirstpiola','avg1stpiola')
+     case (avgfirstpiola_ID)
        homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgP,[9])
        c = c + 9_pInt
-     case ('ipcoords')
+     case (ipcoords_ID)
        homogenization_RGC_postResults(c+1_pInt:c+3_pInt) = mesh_ipCoordinates(1:3,ip,el)             ! current ip coordinates
        c = c + 3_pInt
-     case('constitutivework')
+     case (constitutivework_ID)
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+1)
        c = c + 1_pInt
-     case('magnitudemismatch')
+     case (magnitudemismatch_ID)
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+2)
        homogenization_RGC_postResults(c+2) = state%p(3*nIntFaceTot+3)
        homogenization_RGC_postResults(c+3) = state%p(3*nIntFaceTot+4)
        c = c + 3_pInt
-     case('penaltyenergy')
+     case (penaltyenergy_ID)
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+5)
        c = c + 1_pInt
-     case('volumediscrepancy')
+     case (volumediscrepancy_ID)
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+6)
        c = c + 1_pInt
-     case('averagerelaxrate')
+     case (averagerelaxrate_ID)
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+7)
        c = c + 1_pInt
-     case('maximumrelaxrate')
+     case (maximumrelaxrate_ID)
        homogenization_RGC_postResults(c+1) = state%p(3*nIntFaceTot+8)
        c = c + 1_pInt
    end select
@@ -960,7 +1002,7 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,homID)
  real(pReal),   dimension (3)   :: nVect,surfCorr
  real(pReal),   dimension (2)   :: Gmoduli
  integer(pInt) :: homID,iGrain,iGNghb,iFace,i,j,k,l
- real(pReal) :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
+ real(pReal)   :: muGrain,muGNghb,nDefNorm,bgGrain,bgGNghb
  
  integer(pInt),                                             parameter  :: nFace = 6_pInt
  real(pReal),                                               parameter  :: nDefToler = 1.0e-10_pReal

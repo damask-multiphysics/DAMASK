@@ -183,7 +183,7 @@ subroutine constitutive_init
        thisOutput => constitutive_j2_output
        thisSize   => constitutive_j2_sizePostResult
      case (PLASTICITY_PHENOPOWERLAW_ID)
-       outputName = 'phenopowerlaw'
+       outputName = PLASTICITY_PHENOPOWERLAW_label
        thisOutput => constitutive_phenopowerlaw_output
        thisSize   => constitutive_phenopowerlaw_sizePostResult
      case (PLASTICITY_DISLOTWIN_ID)
