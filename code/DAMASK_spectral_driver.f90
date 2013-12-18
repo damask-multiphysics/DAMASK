@@ -433,6 +433,37 @@ program DAMASK_spectral_Driver
          stepFraction = stepFraction + 1_pInt 
          remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
 !--------------------------------------------------------------------------------------------------
+! forward solution 
+         select case(myspectralsolver)
+           case (DAMASK_spectral_SolverBasic_label)
+#ifdef PETSc
+           case (DAMASK_spectral_SolverBasicPETSC_label)
+             call BasicPETSC_forward (&
+                 guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                 P_BC               = loadCases(currentLoadCase)%P, &
+                 F_BC               = loadCases(currentLoadCase)%deformation, &
+                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+           
+           case (DAMASK_spectral_SolverAL_label)
+             call AL_forward (&
+                 guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                 P_BC               = loadCases(currentLoadCase)%P, &
+                 F_BC               = loadCases(currentLoadCase)%deformation, &
+                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+           
+           case (DAMASK_spectral_SolverPolarisation_label)
+             call Polarisation_forward (&
+                 guess,timeinc,timeIncOld,remainingLoadCaseTime, &
+                 P_BC               = loadCases(currentLoadCase)%P, &
+                 F_BC               = loadCases(currentLoadCase)%deformation, &
+                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+#endif
+         end select 
+
+          end select
+         enddo
+           
+!--------------------------------------------------------------------------------------------------
 ! report begin of new increment
          write(6,'(/,a)') ' ###########################################################################'
          write(6,'(1x,a,es12.5'//&

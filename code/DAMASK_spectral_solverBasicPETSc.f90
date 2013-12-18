@@ -86,7 +86,8 @@ module DAMASK_spectral_SolverBasicPETSc
 
  public :: &
    basicPETSc_init, &
-   basicPETSc_solution ,&
+   basicPETSc_solution, &
+   BasicPETSc_forward, &
    basicPETSc_destroy
  external :: &
    VecDestroy, &
@@ -249,23 +250,13 @@ type(tSolutionState) function basicPETSc_solution( &
  use numerics, only: &
    update_gamma, &
    itmax
- use math, only: &
-   math_mul33x33 ,&
-   math_rotate_backward33
- use mesh, only: &
-   mesh_ipCoordinates,&
-   mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobRealFile
  use DAMASK_spectral_Utilities, only: &
    grid, &
-   geomSize, &
    tBoundaryCondition, &
-   Utilities_forwardField, &
-   Utilities_calculateRate, &
    Utilities_maskedCompliance, &
-   Utilities_updateGamma, &
-   cutBack
+   Utilities_updateGamma
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
@@ -282,14 +273,14 @@ type(tSolutionState) function basicPETSc_solution( &
    loadCaseTime, &                                                                                  !< remaining time of current load case
    temperature_bc, &
    density
- logical, intent(in) :: &
-   guess
  type(tBoundaryCondition),      intent(in) :: &
    P_BC, &
    F_BC
  character(len=*), intent(in) :: &
    incInfoIn
  real(pReal), dimension(3,3), intent(in) :: rotation_BC
+ logical, intent(in) :: &
+   guess
  
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
@@ -298,9 +289,9 @@ type(tSolutionState) function basicPETSc_solution( &
  SNESConvergedReason :: reason
  incInfo = incInfoIn
 
- call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
+ call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
  if (restartWrite) then
    write(6,'(/,a)') ' writing converged results for restart'
    flush(6)
@@ -323,42 +314,9 @@ type(tSolutionState) function basicPETSc_solution( &
    write (777,rec=1) C_volAvgLastInc
    close(777)
  endif 
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                             F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
- if (cutBack) then 
-   F_aim = F_aim_lastInc
-   F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)]) 
-   C_volAvg = C_volAvgLastInc
- else
-   C_volAvgLastInc = C_volAvg
-
-
-!--------------------------------------------------------------------------------------------------
-! calculate rate for aim
-   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
-     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
-   elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
-     f_aimDot = F_BC%maskFloat * F_BC%values
-   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
-     f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
-  endif
-   if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
-   F_aim_lastInc = F_aim
-
-!--------------------------------------------------------------------------------------------------
-! update coordinates and rate and forward last inc
-   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
-   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,params%rotation_BC), &
-                                 timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
-   F_lastInc2 = F_lastInc
-   F_lastInc = reshape(F,[3,3,grid(1),grid(2),grid(3)])
- endif
- F_aim = F_aim + f_aimDot * timeinc
-
- F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot,math_rotate_backward33(F_aim, &
-                                                            rotation_BC)),[9,grid(1),grid(2),grid(3)])
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+ 
+ BasicPETSc_solution%converged =.false.
   
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -607,6 +565,78 @@ subroutine BasicPETSc_convergedKSP(ksp_local,PETScIter,fnorm,reason,dummy,ierr)
  
 end subroutine BasicPETSc_convergedKSP
 
+!--------------------------------------------------------------------------------------------------
+!> @brief forwarding routine
+!--------------------------------------------------------------------------------------------------
+subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_BC)
+ use math, only: &
+   math_mul33x33 ,&
+   math_rotate_backward33
+ use DAMASK_spectral_Utilities, only: &
+   grid, &
+   geomSize, &
+   Utilities_calculateRate, &
+   Utilities_forwardField, &
+   tBoundaryCondition, &
+   cutBack
+ use mesh, only: &
+   mesh_ipCoordinates,&
+   mesh_deformedCoordsFFT
+
+ implicit none
+#include <finclude/petscdmda.h90>
+ real(pReal), intent(in) :: &
+   timeinc_old, &
+   timeinc, &
+   loadCaseTime                                                                                     !< remaining time of current load case
+ type(tBoundaryCondition),      intent(in) :: &
+   P_BC, &
+   F_BC
+ real(pReal), dimension(3,3), intent(in) :: rotation_BC
+ logical, intent(in) :: &
+   guess
+ PetscScalar, pointer :: F(:,:,:,:)
+ PetscErrorCode :: ierr
+
+!--------------------------------------------------------------------------------------------------
+! update coordinates and rate and forward last inc
+ call DMDAVecGetArrayF90(da,solution_vec,F,ierr)
+ if (cutBack) then 
+   F_aim = F_aim_lastInc
+   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
+   C_volAvg = C_volAvgLastInc
+ else
+   C_volAvgLastInc = C_volAvg
+!--------------------------------------------------------------------------------------------------
+! calculate rate for aim
+   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
+     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
+   elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
+     f_aimDot = F_BC%maskFloat * F_BC%values
+   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
+     f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
+   endif
+   if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
+   F_aim_lastInc = F_aim
+
+!--------------------------------------------------------------------------------------------------
+! update coordinates and rate and forward last inc
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
+   F_lastInc2 = F_lastInc
+   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
+ endif
+ F_aim = F_aim + f_aimDot * timeinc
+
+!--------------------------------------------------------------------------------------------------
+! update local deformation gradient
+ F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                      ! ensure that it matches rotated F_aim
+                               math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid(3)])
+ call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)
+
+end subroutine BasicPETSc_forward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief destroy routine

@@ -100,6 +100,7 @@ module DAMASK_spectral_solverAL
  public :: &
    AL_init, &
    AL_solution, &
+   AL_forward, &
    AL_destroy
  external :: &
    VecDestroy, &
@@ -277,25 +278,15 @@ type(tSolutionState) function &
  use numerics, only: &
    update_gamma
  use math, only: &
-   math_mul33x33 ,&
-   math_mul3333xx33, &
-   math_rotate_backward33, &
-   math_invSym3333, &
-   math_transpose33
-use mesh, only: &
-   mesh_ipCoordinates, &
-   mesh_deformedCoordsFFT
+   math_invSym3333
  use IO, only: &
    IO_write_jobRealFile
  use DAMASK_spectral_Utilities, only: &
    grid, &
    geomSize, &
    tBoundaryCondition, &
-   Utilities_forwardField, &
-   Utilities_calculateRate, &
    Utilities_maskedCompliance, &
-   Utilities_updateGamma, &
-   cutBack
+   Utilities_updateGamma
  use FEsolving, only: &
    restartWrite, &
    terminallyIll
@@ -327,16 +318,13 @@ use mesh, only: &
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
 
- integer(pInt) :: i, j, k
- real(pReal), dimension(3,3) :: F_lambda33
-
  incInfo = incInfoIn
- call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
- F => xx_psc(0:8,:,:,:)
- F_lambda => xx_psc(9:17,:,:,:)
  
 !--------------------------------------------------------------------------------------------------
 ! restart information for spectral solver
+ call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
+ F => xx_psc(0:8,:,:,:)
+ F_lambda => xx_psc(9:17,:,:,:)
  if (restartWrite) then
    write(6,'(/,a)') ' writing converged results for restart'
    flush(6)
@@ -365,60 +353,9 @@ use mesh, only: &
    write (777,rec=1) C_volAvgLastInc
    close(777)
  endif 
+ call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
+ 
  AL_solution%converged =.false.
-
- if (cutBack) then 
-   F_aim = F_aim_lastInc
-   F_lambda= reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid(3)]) 
-   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
-   C_volAvg = C_volAvgLastInc
- else
-   C_volAvgLastInc = C_volAvg
-!--------------------------------------------------------------------------------------------------
-! calculate rate for aim
-   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
-     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
-   elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
-     f_aimDot = F_BC%maskFloat * F_BC%values
-   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
-     f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
-  endif
-   if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
-   F_aim_lastInc = F_aim
-
-!--------------------------------------------------------------------------------------------------
-! update coordinates and rate and forward last inc
-   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
-   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
-   F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)]))  
-   F_lastInc2 = F_lastInc                
-   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
-   F_lambda_lastInc = reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)])
- endif
- F_aim = F_aim + f_aimDot * timeinc
-
-!--------------------------------------------------------------------------------------------------
-! update local deformation gradient
- F     = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
-                               math_rotate_backward33(F_aim,rotation_BC)),[9,grid(1),grid(2),grid(3)])
- F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &
-                                                                       [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
- if (.not. guess) then                                                                              ! large strain forwarding
-   do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-      F_lambda33 = reshape(F_lambda(:,i,j,k),[3,3])
-      F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
-                                  math_mul3333xx33(C_scale,&
-                                                   math_mul33x33(math_transpose33(F_lambda33),&
-                                                                 F_lambda33) -math_I3))*0.5_pReal)&
-                              + math_I3
-      F_lambda(:,i,j,k) = reshape(F_lambda33,[9])
-   enddo; enddo; enddo
- endif
- call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr)
- CHKERRQ(ierr)
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -695,6 +632,101 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
  flush(6) 
 
 end subroutine AL_converged
+
+!--------------------------------------------------------------------------------------------------
+!> @brief forwarding routine
+!--------------------------------------------------------------------------------------------------
+subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_BC)
+ use math, only: &
+   math_mul33x33, &
+   math_mul3333xx33, &
+   math_transpose33, &
+   math_rotate_backward33
+ use DAMASK_spectral_Utilities, only: &
+   grid, &
+   geomSize, &
+   Utilities_calculateRate, &
+   Utilities_forwardField, &
+   tBoundaryCondition, &
+   cutBack
+ use mesh, only: &
+   mesh_ipCoordinates,&
+   mesh_deformedCoordsFFT
+
+ implicit none
+#include <finclude/petscdmda.h90>
+ real(pReal), intent(in) :: &
+   timeinc_old, &
+   timeinc, &
+   loadCaseTime                                                                                     !< remaining time of current load case
+ type(tBoundaryCondition),      intent(in) :: &
+   P_BC, &
+   F_BC
+ real(pReal), dimension(3,3), intent(in) :: rotation_BC
+ logical, intent(in) :: &
+   guess
+ PetscErrorCode :: ierr
+ PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_lambda
+ integer(pInt) :: i, j, k
+ real(pReal), dimension(3,3) :: F_lambda33
+
+!--------------------------------------------------------------------------------------------------
+! update coordinates and rate and forward last inc
+ call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
+ F => xx_psc(0:8,:,:,:)
+ F_lambda => xx_psc(9:17,:,:,:) 
+ if (cutBack) then 
+   F_aim = F_aim_lastInc
+   F_lambda= reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid(3)]) 
+   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
+   C_volAvg = C_volAvgLastInc
+ else
+!--------------------------------------------------------------------------------------------------
+! calculate rate for aim
+   C_volAvgLastInc = C_volAvg
+   if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
+     f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
+   elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
+     f_aimDot = F_BC%maskFloat * F_BC%values
+   elseif(F_BC%myType=='f') then                                                                    ! aim at end of load case is prescribed
+     f_aimDot = F_BC%maskFloat * (F_BC%values -F_aim)/loadCaseTime
+   endif
+   if (guess) f_aimDot  = f_aimDot + P_BC%maskFloat * (F_aim - F_aim_lastInc)/timeinc_old
+   F_aim_lastInc = F_aim
+
+!--------------------------------------------------------------------------------------------------
+! update coordinates and rate and forward last inc
+   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+   Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
+   F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
+                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)]))  
+   F_lastInc2 = F_lastInc                
+   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
+   F_lambda_lastInc = reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)])
+ endif
+
+ F_aim = F_aim + f_aimDot * timeinc
+ F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
+                                    math_rotate_backward33(F_aim,rotation_BC)), &
+             [9,grid(1),grid(2),grid(3)])
+ F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &
+                    [9,grid(1),grid(2),grid(3)])                                                 ! does not have any average value as boundary condition
+ if (.not. guess) then                                                                              ! large strain forwarding
+   do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
+      F_lambda33 = reshape(F_lambda(:,i,j,k),[3,3])
+      F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
+                                  math_mul3333xx33(C_scale,&
+                                                   math_mul33x33(math_transpose33(F_lambda33),&
+                                                                 F_lambda33) -math_I3))*0.5_pReal)&
+                              + math_I3
+      F_lambda(:,i,j,k) = reshape(F_lambda33,[9])
+   enddo; enddo; enddo
+ endif
+ call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
+
+end subroutine AL_forward
 
 !--------------------------------------------------------------------------------------------------
 !> @brief destroy routine
