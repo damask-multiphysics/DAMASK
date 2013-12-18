@@ -76,9 +76,7 @@ program DAMASK_spectral_Driver
    geomSize, &
    tBoundaryCondition, &
    tSolutionState, &
-   phaseFieldDataBin, &
-   cutBack, &
-   maxPhaseFields
+   cutBack
  use DAMASK_spectral_SolverBasic
 #ifdef PETSc
  use DAMASK_spectral_SolverBasicPETSC
@@ -91,17 +89,14 @@ program DAMASK_spectral_Driver
    real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
    type(tBoundaryCondition) ::     P, &                                                             !< stress BC
                                    deformation                                                      !< deformation BC (Fdot or L)
-   type(phaseFieldDataBin)  ::     phaseFieldData(maxPhaseFields)
    real(pReal) ::                  time                   = 0.0_pReal, &                            !< length of increment
-                                   temperature            = 300.0_pReal, &                          !< isothermal starting condition
+                                   temperature            = 300.0_pReal, &                          !< isothermal starting conditions
                                    density                = 0.0_pReal                               !< density
    integer(pInt) ::                incs                   = 0_pInt, &                               !< number of increments
                                    outputfrequency        = 1_pInt, &                               !< frequency of result writes
                                    restartfrequency       = 0_pInt, &                               !< frequency of restart writes
                                    logscale               = 0_pInt                                  !< linear/logarithmic time inc flag
-   logical ::                      followFormerTrajectory = .true., &                               !< follow trajectory of former loadcase
-                                   thermal_active         = .false., &                              !< activate thermal phase field
-                                   fracture_active        = .false.                                 !< activate fracture phase field
+   logical ::                      followFormerTrajectory = .true.                                  !< follow trajectory of former loadcase 
  end type tLoadCase
 
 !--------------------------------------------------------------------------------------------------
@@ -117,8 +112,7 @@ program DAMASK_spectral_Driver
  integer(pInt) :: &
    N_t    = 0_pInt, &                                                                               !< # of time indicators found in load case file 
    N_n    = 0_pInt, &                                                                               !< # of increment specifiers found in load case file
-   N_def = 0_pInt, &                                                                                !< # of rate of deformation specifiers found in load case file
-   nActivePhaseFields
+   N_def = 0_pInt                                                                                   !< # of rate of deformation specifiers found in load case file
  character(len=65536) :: &
    line
 
@@ -236,22 +230,8 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%P%values      = math_plain9to33(temp_valueVector)
        case('t','time','delta')                                                                     ! increment time
          loadCases(currentLoadCase)%time = IO_floatValue(line,positions,i+1_pInt)
-       case('temperature')
+       case('temp','temperature')                                                                   ! starting temperature
          loadCases(currentLoadCase)%temperature = IO_floatValue(line,positions,i+1_pInt)
-       case('thermal')                                                                              ! starting temperature, conductivity and mobility
-         loadCases(:)%phaseFieldData(1)%label = 'thermal' 
-         loadCases(:)%phaseFieldData(1)%active = .true.                          
-         loadCases(:)%phaseFieldData(1)%phaseField0 = 300.0_pReal                                   ! initialize to meaningful value if not defined
-         loadCases(currentLoadCase)%phaseFieldData(1)%phaseField0 = IO_floatValue(line,positions,i+1_pInt)
-         loadCases(currentLoadCase)%phaseFieldData(1)%diffusion = IO_floatValue(line,positions,i+2_pInt)
-         loadCases(currentLoadCase)%phaseFieldData(1)%mobility = IO_floatValue(line,positions,i+3_pInt)
-       case('fracture')                                                                             ! starting damage, diffusion and mobility
-         loadCases(:)%phaseFieldData(2)%label = 'fracture'
-         loadCases(:)%phaseFieldData(2)%active = .true.
-         loadCases(:)%phaseFieldData(2)%phaseField0 = 1.0_pReal                                     ! initialize to meaningful value if not defined
-         loadCases(currentLoadCase)%phaseFieldData(2)%phaseField0 = IO_floatValue(line,positions,i+1_pInt)
-         loadCases(currentLoadCase)%phaseFieldData(2)%diffusion = IO_floatValue(line,positions,i+2_pInt)
-         loadCases(currentLoadCase)%phaseFieldData(2)%mobility = IO_floatValue(line,positions,i+3_pInt)
        case('den','density')                                                                        ! starting density
          loadCases(currentLoadCase)%density     = IO_floatValue(line,positions,i+1_pInt)
        case('n','incs','increments','steps')                                                        ! number of increments
@@ -290,15 +270,7 @@ program DAMASK_spectral_Driver
          loadCases(currentLoadCase)%rotation = math_plain9to33(temp_valueVector)
      end select
  enddo; enddo
- close(FILEUNIT)
-                                                                                                    ! reorder phase field data to remove redundant non-active fields 
- nActivePhaseFields = 0_pInt
- do i = 1, maxPhaseFields
-   if (loadCases(1)%phaseFieldData(i)%active) then
-     nActivePhaseFields = nActivePhaseFields + 1_pInt
-     loadCases(:)%phaseFieldData(nActivePhaseFields) = loadCases(:)%phaseFieldData(i)
-   endif  
- enddo   
+ close(FILEUNIT) 
 
 !--------------------------------------------------------------------------------------------------
 ! consistency checks and output of load case
@@ -364,7 +336,7 @@ program DAMASK_spectral_Driver
      call basic_init(loadCases(1)%temperature)
 #ifdef PETSc
    case (DAMASK_spectral_SolverBasicPETSc_label)
-     call basicPETSc_init(loadCases(1)%temperature,nActivePhaseFields,loadCases(1)%phaseFieldData(1:nActivePhaseFields))
+     call basicPETSc_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverAL_label)
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
@@ -495,9 +467,7 @@ program DAMASK_spectral_Driver
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
                  rotation_BC        = loadCases(currentLoadCase)%rotation, &
-                 density            = loadCases(currentLoadCase)%density, &
-                 nActivePhaseFields = nActivePhaseFields, &
-                 phaseFieldData     = loadCases(1)%phaseFieldData(1:nActivePhaseFields))
+                 density            = loadCases(currentLoadCase)%density)
            case (DAMASK_spectral_SolverAL_label)
              solres = AL_solution (&
                  incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &

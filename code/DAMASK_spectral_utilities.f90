@@ -48,8 +48,6 @@ module DAMASK_spectral_utilities
  integer(pInt), public                                         :: grid1Red                          !< grid(1)/2
  real(pReal),   public,  dimension(:,:,:,:,:),     pointer     :: field_real                        !< real representation (some stress or deformation) of field_fourier
  complex(pReal),public,  dimension(:,:,:,:,:),     pointer     :: field_fourier                     !< field on which the Fourier transform operates
- real(pReal),   public,  dimension(:,:,:),         pointer     :: phaseField_real                   !< real representation (some stress or deformation) of field_fourier
- complex(pReal),public,  dimension(:,:,:),         pointer     :: phaseField_fourier                !< field on which the Fourier transform operates
  real(pReal),   private, dimension(:,:,:,:,:,:,:), allocatable :: gamma_hat                         !< gamma operator (field) for spectral method
  real(pReal),   private, dimension(:,:,:,:),       allocatable :: xi                                !< wave vector field for divergence and for gamma operator
  real(pReal),   private, dimension(3,3,3,3)                    :: C_ref                             !< reference stiffness
@@ -70,8 +68,6 @@ module DAMASK_spectral_utilities
  type(C_PTR),   private :: &
    planForth, &                                                                                     !< FFTW plan P(x) to P(k)
    planBack, &                                                                                      !< FFTW plan F(k) to F(x)
-   planPhaseFieldForth, &                                                                           !< FFTW plan P(x) to P(k)
-   planPhaseFieldBack, &                                                                            !< FFTW plan F(k) to F(x)
    planDebugForth, &                                                                                !< FFTW plan for scalar field (proof that order of usual transform is correct)
    planDebugBack, &                                                                                 !< FFTW plan for scalar field inverse (proof that order of usual transform is correct)
    planDiv                                                                                          !< plan for FFTW in case of debugging divergence calculation
@@ -114,11 +110,8 @@ module DAMASK_spectral_utilities
    utilities_updateGamma, &
    utilities_FFTforward, &
    utilities_FFTbackward, &
-   utilities_scalarFFTforward, &
-   utilities_scalarFFTbackward, &
    utilities_fourierConvolution, &
    utilities_inverseLaplace, &
-   utilities_diffusion, &
    utilities_divergenceRMS, &
    utilities_curlRMS, &
    utilities_maskedCompliance, &
@@ -184,7 +177,6 @@ subroutine utilities_init()
  integer(pInt), parameter    :: fileUnit = 228_pInt
  integer(pInt), dimension(3) :: k_s
  type(C_PTR) :: &
-   phaseFieldFFT, &
    tensorField, &                                                                                   !< field cotaining data for FFTW in real and fourier space (in place)
    scalarField_realC, &                                                                             !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
    scalarField_fourierC, &                                                                          !< field cotaining data for FFTW in fourier space when debugging FFTW (no in place)
@@ -247,11 +239,8 @@ subroutine utilities_init()
 ! allocation
  allocate (xi(3,grid1Red,grid(2),grid(3)),source = 0.0_pReal)                                       ! frequencies, only half the size for first dimension
  tensorField = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3)*9_pInt,C_SIZE_T))                    ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
- phaseFieldFFT = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3),C_SIZE_T))                         ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, field_real, [grid(1)+2_pInt-mod(grid(1),2_pInt),grid(2),grid(3),3,3])! place a pointer for a real representation on tensorField
  call c_f_pointer(tensorField, field_fourier,[grid1Red,                        grid(2),grid(3),3,3])! place a pointer for a complex representation on tensorField
- call c_f_pointer(phaseFieldFFT,phaseField_real,[grid(1)+2_pInt-mod(grid(1),2_pInt),grid(2),grid(3)])! place a pointer for a real representation on tensorField
- call c_f_pointer(phaseFieldFFT,phaseField_fourier,[grid1Red,grid(2),grid(3)])                      ! place a pointer for a complex representation on tensorField
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
@@ -279,21 +268,6 @@ subroutine utilities_init()
                                                                        fftw_planner_flag)           ! planner precision
 
 !--------------------------------------------------------------------------------------------------
-! creating plans for the convolution
- planPhaseFieldForth =  fftw_plan_many_dft_r2c(3,[grid(3),grid(2) ,grid(1)], 1, &                             ! dimensions,  logical length in each dimension in reversed order,  no. of transforms
-                         phaseField_real,[grid(3),grid(2) ,grid(1)+2_pInt-mod(grid(1),2_pInt)], &     ! input data,  physical length in each dimension in reversed order
-                                     1, grid(3)*grid(2)*(grid(1)+2_pInt-mod(grid(1),2_pInt)), &     ! striding,    product of physical length in the 3 dimensions
-                         phaseField_fourier,[grid(3),grid(2) ,grid1Red], &                               ! output data, physical length in each dimension in reversed order
-                                     1, grid(3)*grid(2)* grid1Red,       fftw_planner_flag)         ! striding,    product of physical length in the 3 dimensions,      planner precision
-
- planPhaseFieldBack  =  fftw_plan_many_dft_c2r(3,[grid(3),grid(2) ,grid(1)], 1, &                             ! dimensions,  logical length in each dimension in reversed order,  no. of transforms
-                         phaseField_fourier,[grid(3),grid(2) ,grid1Red], &                               ! input data,  physical length in each dimension in reversed order
-                                     1, grid(3)*grid(2)* grid1Red, &                                ! striding,    product of physical length in the 3 dimensions
-                            phaseField_real,[grid(3),grid(2) ,grid(1)+2_pInt-mod(grid(1),2_pInt)], &     ! output data, physical length in each dimension in reversed order
-                                     1, grid(3)*grid(2)*(grid(1)+2_pInt-mod(grid(1),2_pInt)), &     ! striding,    product of physical length in the 3 dimensions
-                                                                       fftw_planner_flag)           ! planner precision
-
-!--------------------------------------------------------------------------------------------------
 ! depending on debug options, allocate more memory and create additional plans 
  if (debugDivergence) then
    div = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3)*3_pInt,C_SIZE_T))
@@ -308,7 +282,7 @@ subroutine utilities_init()
  endif
 
  if (debugFFTW) then
-   scalarField_realC    = fftw_alloc_complex(int(product(grid),C_SIZE_T))                           ! allllocate data for real representation (no in place transform)
+   scalarField_realC    = fftw_alloc_complex(int(product(grid),C_SIZE_T))                           ! allocate data for real representation (no in place transform)
    scalarField_fourierC = fftw_alloc_complex(int(product(grid),C_SIZE_T))                           ! allocate data for fourier representation (no in place transform)
    call c_f_pointer(scalarField_realC,    scalarField_real,    grid)                                ! place a pointer for a real representation
    call c_f_pointer(scalarField_fourierC, scalarField_fourier, grid)                                ! place a pointer for a fourier representation
@@ -522,59 +496,6 @@ end subroutine utilities_FFTbackward
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief forward FFT of data in field_real to field_fourier with highest freqs. removed
-!> @details Does an unweighted FFT transform from real to complex.
-!> In case of debugging the FFT, also one component of the tensor (specified by row and column)
-!> is independetly transformed complex to complex and compared to the whole tensor transform
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_scalarFFTforward()
- use math
-
- implicit none
- integer(pInt), dimension(2:3,2) :: Nyquist                                                         ! highest frequencies to be removed (1 if even, 2 if odd)
-
-!--------------------------------------------------------------------------------------------------
-! doing the FFT
- call fftw_execute_dft_r2c(planPhaseFieldForth,phaseField_real,phaseField_fourier)
-
-!--------------------------------------------------------------------------------------------------
-! removing highest frequencies
- Nyquist(2,1:2) = [grid(2)/2_pInt + 1_pInt, grid(2)/2_pInt + 1_pInt + mod(grid(2),2_pInt)]
- Nyquist(3,1:2) = [grid(3)/2_pInt + 1_pInt, grid(3)/2_pInt + 1_pInt + mod(grid(3),2_pInt)]
-
- if(grid(1)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
-   phaseField_fourier (grid1Red,  1:grid(2),                1:grid(3)) &
-                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(grid(2)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
-   phaseField_fourier (1:grid1Red,Nyquist(2,1):Nyquist(2,2),1:grid(3)) & 
-                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
- if(grid(3)/=1_pInt) &                                                                               ! do not delete the whole slice in case of 2D calculation
-   phaseField_fourier (1:grid1Red,1:grid(2),Nyquist(3,1):Nyquist(3,2)) &
-                                                     = cmplx(0.0_pReal,0.0_pReal,pReal)
-end subroutine utilities_scalarFFTforward
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief backward FFT of data in field_fourier to field_real
-!> @details Does an inverse FFT transform from complex to real
-!> In case of debugging the FFT, also one component of the tensor (specified by row and column)
-!> is independetly transformed complex to complex and compared to the whole tensor transform
-!> results is weighted by number of points stored in wgt
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_scalarFFTbackward()
- use math                                                                                           !< must use the whole module for use of FFTW
-
- implicit none
- 
-!--------------------------------------------------------------------------------------------------
-! doing the iFFT
- call fftw_execute_dft_c2r(planPhaseFieldBack,phaseField_fourier,phaseField_real)                   ! back transform of fluct deformation gradient
- phaseField_real = phaseField_real * wgt                                                                      ! normalize the result by number of elements
-
-end subroutine utilities_scalarFFTbackward
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief doing convolution with inverse laplace kernel
 !--------------------------------------------------------------------------------------------------
 subroutine utilities_inverseLaplace()
@@ -607,36 +528,6 @@ enddo; enddo; enddo
 field_fourier(1,1,1,1:3,1:3) = cmplx(0.0_pReal,0.0_pReal,pReal)
 
 end subroutine utilities_inverseLaplace
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief doing convolution with inverse laplace kernel
-!--------------------------------------------------------------------------------------------------
-subroutine utilities_diffusion(coefficient,timeinc)
- use math, only: &
-   PI
-
- implicit none  
- real(pReal),intent(in) :: timeinc, coefficient
- integer(pInt) :: i, j, k
- integer(pInt), dimension(3) :: k_s
- 
-!--------------------------------------------------------------------------------------------------
-! do the actual spectral method calculation (mechanical equilibrium)
- do k = 1_pInt, grid(3)
-  k_s(3) = k - 1_pInt
-  if(k > grid(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - grid(3)                                        ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-  do j = 1_pInt, grid(2)
-    k_s(2) = j - 1_pInt
-    if(j > grid(2)/2_pInt + 1_pInt) k_s(2) = k_s(2) - grid(2)                                      ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
-    do i = 1_pInt, grid1Red
-      k_s(1) = i - 1_pInt  
-      phaseField_fourier(i,j,k) =  phaseField_fourier(i,j,k)* &
-          cmplx(exp(-sum((2.0_pReal*PI*real(k_s,pReal)/geomSize)*(2.0_pReal*PI*real(k_s,pReal)/geomSize))* &
-                coefficient*timeinc),0.0_pReal,pReal)                                     ! symmetry, junst running from 0,1,...,N/2,N/2+1
-enddo; enddo; enddo
-
-end subroutine utilities_diffusion
  
 
 !--------------------------------------------------------------------------------------------------
