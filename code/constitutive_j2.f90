@@ -99,6 +99,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_j2_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use debug, only: &
+   debug_level, &
+   debug_constitutive, &
+   debug_levelBasic
  use math, only: &
    math_Mandel3333to66, &
    math_Voigt66to3333
@@ -113,11 +117,14 @@ subroutine constitutive_j2_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
- use material
- use debug, only: &
-   debug_level, &
-   debug_constitutive, &
-   debug_levelBasic
+ use material, only: &
+   homogenization_maxNgrains, &
+   phase_plasticity, &
+   phase_plasticityInstance, &
+   phase_Noutput, &
+   PLASTICITY_J2_label, &
+   PLASTICITY_J2_ID, &
+   MATERIAL_partPhase
  use lattice  
 
  implicit none
@@ -169,7 +176,7 @@ subroutine constitutive_j2_init(fileUnit)
  allocate(constitutive_j2_tausat_SinhFitD(maxNinstance),                      source=0.0_pReal)
  
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <phase>
    line = IO_read(fileUnit)
  enddo
  

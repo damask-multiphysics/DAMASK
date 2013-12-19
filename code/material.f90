@@ -318,7 +318,7 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  rewind(fileUnit)
  line        = ''                                                                                   ! to have it initialized
  section     = 0_pInt                                                                               !  - " -
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <homogenization>
    line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
@@ -409,7 +409,7 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  section     = 0_pInt                                                                               !  - " -
  constituent = 0_pInt                                                                               !  - " -
  
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <microstructure>
    line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
@@ -491,7 +491,7 @@ subroutine material_parseCrystallite(fileUnit,myPart)
  rewind(fileUnit)
  line        = ''                                                                                   ! to have it initialized
  section     = 0_pInt                                                                               !  - " -
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <Crystallite>
    line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
@@ -563,7 +563,7 @@ subroutine material_parsePhase(fileUnit,myPart)
  rewind(fileUnit)
  line        = ''                                                                                   ! to have it initialized
  section     = 0_pInt                                                                               !  - " -
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to myPart
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <Phase>
    line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header
@@ -680,8 +680,7 @@ subroutine material_parseTexture(fileUnit,myPart)
  section = 0_pInt                                                                                   ! - " -
  gauss   = 0_pInt                                                                                   ! - " - 
  fiber   = 0_pInt                                                                                   ! - " - 
- 
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                    ! wind forward to myPart
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= myPart)                     ! wind forward to <texture>
    line = IO_read(fileUnit)
  enddo
  if (echo) write(6,'(/,1x,a)') trim(line)                                                           ! echo part header

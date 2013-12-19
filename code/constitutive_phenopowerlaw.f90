@@ -131,15 +131,34 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec, only: &
    tol_math_check
- use math, only: &
-   math_Mandel3333to66, &
-   math_Voigt66to3333
- use IO
- use material
  use debug, only: &
    debug_level, &
    debug_constitutive,&
    debug_levelBasic
+ use math, only: &
+   math_Mandel3333to66, &
+   math_Voigt66to3333
+ use IO, only: &
+   IO_read, &
+   IO_lc, &
+   IO_getTag, &
+   IO_isBlank, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_floatValue, &
+   IO_intValue, &
+   IO_warning, &
+   IO_error, &
+   IO_timeStamp, &
+   IO_EOF
+ use material, only: &
+   homogenization_maxNgrains, &
+   phase_plasticity, &
+   phase_plasticityInstance, &
+   phase_Noutput, &
+   PLASTICITY_PHENOPOWERLAW_label, &
+   PLASTICITY_PHENOPOWERLAW_ID, &
+   MATERIAL_partPhase
  use lattice
 
  implicit none
@@ -232,7 +251,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
                                                                                   source=0.0_pReal)
 
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <phase>
    line = IO_read(fileUnit)
  enddo
 

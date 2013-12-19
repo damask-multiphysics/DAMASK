@@ -42,11 +42,11 @@ SHELL = /bin/sh
 #any values will be overwritten by configure.py
 FFTWROOT ?= /usr/local
 IMKLROOT ?= 
-ACMLROOT ?= 
+ACMLROOT ?= /opt/acml5.3.0
 LAPACKROOT ?= /usr
 HDF5ROOT ?=
 
-F90 ?= ifort
+F90 ?= gfortran
 ########################################################################################
 
 COMPILERNAME ?= $(F90)
@@ -163,13 +163,13 @@ COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
                            -warn interfaces\
                            -warn ignore_loc\
                            -warn alignments\
-                           -warn unused\
-                           -warn errors
+                           -warn unused
 endif
 ###################################################################################################
 #COMPILE SWITCHES
 #-fpp:                     preprocessor
 #-ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
+#-assume byterecl          record length is given in bytes (also set by -standard-semantics)
 #-fimplicit-none:          assume "implicit-none" even if not present in source
 #-diag-disable:            disables warnings, where                           
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
@@ -181,7 +181,6 @@ endif
 #   ignore_loc:              %LOC is stripped from an actual argument
 #   alignments:              data that is not naturally aligned
 #   unused:                  declared variables that are never used
-#   errors:                  warnings are changed to errors
 #   stderrors:               warnings about Fortran standard violations are changed to errors (STANDARD_CHECK)
 #
 ###################################################################################################
@@ -197,7 +196,8 @@ DEBUG_OPTIONS_ifort      :=-g\
                            -gen-interfaces\
                            -fp-stack-check\
                            -check bounds,format,output_conversion,pointers,uninit\
-                           -fpe-all0
+                           -fpe-all0\
+                           -warn errors
 ###################################################################################################
 #COMPILE SWITCHES FOR RUNTIME DEBUGGING
 #-g:                       Generate symbolic debugging information in the object file
@@ -211,6 +211,8 @@ DEBUG_OPTIONS_ifort      :=-g\
 #   pointers:                Checking for certain disassociated or uninitialized pointers or unallocated allocatable objects.
 #   uninit:                  Checking for uninitialized variables.
 #-fpe-all0                capture all floating-point exceptions, sets -ftz automatically
+#-warn:                    enables warnings, where
+#   errors:                  warnings are changed to errors
 # information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
 ###################################################################################################
 #MORE OPTIONS FOR RUNTIME DEBUGGING
@@ -247,7 +249,8 @@ endif
 #-Wimplicit-procedure
 #-Wall:                        sets the following Fortran options:
 #  -Waliasing:                   warn about possible aliasing of dummy arguments. Specifically, it warns if the same actual argument is associated with a dummy argument with "INTENT(IN)" and a dummy argument with "INTENT(OUT)" in a call with an explicit interface.
-#  -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line#-Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
+#  -Wampersand:                  checks if a character expression is continued proberly by an ampersand at the end of the line and at the beginning of the new line
+#  -Warray-bounds:               checks if array reference is out of bounds at compile time. use -fcheck-bounds to also check during runtime
 #  -Wconversion:                 warn about implicit conversions between different type
 #  -Wsurprising:                 warn when "suspicious" code constructs are encountered. While technically legal these usually indicate that an error has been made.
 #  -Wc-binding-type:

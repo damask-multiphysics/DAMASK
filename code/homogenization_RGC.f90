@@ -161,6 +161,7 @@ subroutine homogenization_RGC_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter
+     cycle
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
      if (homogenization_type(section) == HOMOGENIZATION_RGC_ID) then                                ! one of my sections
@@ -168,6 +169,8 @@ subroutine homogenization_RGC_init(fileUnit)
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
+         case ('type')
+           cycle
          case ('(output)')
            output = output + 1_pInt
            homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))

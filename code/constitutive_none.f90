@@ -59,6 +59,10 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_none_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use debug, only: &
+   debug_level, &
+   debug_constitutive, &
+   debug_levelBasic
  use math, only: &
    math_Mandel3333to66, &
    math_Voigt66to3333
@@ -73,11 +77,15 @@ subroutine constitutive_none_init(fileUnit)
    IO_error, &
    IO_timeStamp, &
    IO_EOF
- use material
- use debug, only: &
-   debug_level, &
-   debug_constitutive, &
-   debug_levelBasic
+ use material, only: &
+   homogenization_maxNgrains, &
+   phase_plasticity, &
+   phase_plasticityInstance, &
+   phase_Noutput, &
+   PLASTICITY_NONE_label, &
+   PLASTICITY_NONE_ID, &
+   MATERIAL_partPhase
+
  use lattice
 
  implicit none
@@ -111,7 +119,7 @@ subroutine constitutive_none_init(fileUnit)
  allocate(constitutive_none_Cslip_66(6,6,maxNinstance),    source=0.0_pReal)
  
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                    ! wind forward to <phase>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)          ! wind forward to <phase>
    line = IO_read(fileUnit)
  enddo
  

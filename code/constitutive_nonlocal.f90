@@ -311,8 +311,8 @@ use IO,       only: IO_read, &
                     IO_stringValue, &
                     IO_floatValue, &
                     IO_intValue, &
-                    IO_error, &
                     IO_warning, &
+                    IO_error, &
                     IO_timeStamp, &
                     IO_EOF
 use debug,    only: debug_level, &
@@ -326,7 +326,8 @@ use material, only: homogenization_maxNgrains, &
                     phase_plasticityInstance, &
                     phase_Noutput, &
                     PLASTICITY_NONLOCAL_label, &
-                    PLASTICITY_NONLOCAL_ID
+                    PLASTICITY_NONLOCAL_ID, &
+                    MATERIAL_partPhase
 use lattice
 
 integer(pInt), intent(in) ::                fileUnit
@@ -439,7 +440,7 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNmatIDs),                  sour
 !*** readout data from material.config file
 
 rewind(fileUnit)
-do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                     ! wind forward to <phase>
+do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)          ! wind forward to <phase>
   line = IO_read(fileUnit)
 enddo
  

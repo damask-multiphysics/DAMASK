@@ -204,8 +204,27 @@ subroutine constitutive_dislotwin_init(fileUnit)
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems
- use IO
- use material
+ use IO, only: &
+  IO_read, &
+  IO_lc, &
+  IO_getTag, &
+  IO_isBlank, &
+  IO_stringPos, &
+  IO_stringValue, &
+  IO_floatValue, &
+  IO_intValue, &
+  IO_warning, &
+  IO_error, &
+  IO_timeStamp, &
+  IO_EOF
+ use material, only: &
+   homogenization_maxNgrains, &
+   phase_plasticity, &
+   phase_plasticityInstance, &
+   phase_Noutput, &
+   PLASTICITY_DISLOTWIN_label, &
+   PLASTICITY_DISLOTWIN_ID, &
+   MATERIAL_partPhase
  use lattice
  
  implicit none
@@ -314,7 +333,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
  
 
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= 'phase')                     ! wind forward to <phase>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= MATERIAL_partPhase)          ! wind forward to <phase>
    line = IO_read(fileUnit)
  enddo
  

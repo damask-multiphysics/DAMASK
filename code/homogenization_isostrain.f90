@@ -108,7 +108,7 @@ subroutine homogenization_isostrain_init(fileUnit)
                                                                            source=undefined_ID)
  
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization) ! wind forward to <homogenization>
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)! wind forward to <homogenization>
    line = IO_read(fileUnit)
  enddo
 
@@ -122,6 +122,7 @@ subroutine homogenization_isostrain_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter
+     cycle
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
      if (homogenization_type(section) == HOMOGENIZATION_ISOSTRAIN_ID) then                          ! one of my sections
@@ -129,6 +130,8 @@ subroutine homogenization_isostrain_init(fileUnit)
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
+         case('type')
+           cycle
          case ('(output)')
            output = output + 1_pInt
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -148,7 +151,7 @@ subroutine homogenization_isostrain_init(fileUnit)
                                                         ' ('//HOMOGENIZATION_isostrain_label//')')
            end select
          case ('nconstituents','ngrains')
-                homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
+           homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
          case ('mapping')
            select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
              case ('parallel','sum')
