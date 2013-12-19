@@ -1,0 +1,5 @@
+#!/bin/sh
+# This script opens a window running an editor.
+# The command to invoke the editor is specified during DAMASK installation
+
+%EDITOR% $*

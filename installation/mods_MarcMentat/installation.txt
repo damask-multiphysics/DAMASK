@@ -1,16 +1,16 @@
-Install MPIE modifications to use DAMASK_marc2010/11/12
+Install MPIE modifications to use DAMASK_marc2010/11/12/13
 
 Refer to http://damask.mpie.de for complete installation instructions.
 
 Usually you will need to be root for this to work!
 
-This is for the Linux64 version of Marc/Mentat2010(.2)/11/12/13.
+This is for the Linux64 version of Marc/Mentat2010(.2)/11/12/13(.1).
 See Marc and Mentat Release Guide for List of Build and Supported Platforms!
 
-The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1(_18)! The 2011/2012/2013 release of Marc/Mentat relies on Intel Fortran 12.0! Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly, refer to the Intel installation guide for instructions on how to do this.
+The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1(_18)! The 2011/2012/2013 releases of Marc/Mentat relies on Intel Fortran 12.0! Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly, refer to the Intel installation guide for instructions on how to do this.
 
 The AMD Core Math Library or an other BLAS implementation (currently IMKL and LAPACK are supported) needs to be installed! 
-Add acml path to LD_LIBRARY_PATH, to do so either use the script setup_shellrc.py in the installstion folder or for a systemwide setup edit /etc/csh.cshrc.local and/or /etc/bash.bashrc.local.
+Add acml path to LD_LIBRARY_PATH, to do so either use the script setup_shellrc.py in the installation folder or for a system wide setup edit /etc/csh.cshrc.local and/or /etc/bash.bashrc.local.
 Assuming ACML is installed in path ACMLDIR the path should read: /ACMLDIR/ifort64_mp/lib (this is the version using paralllization, ie openmp):
  for bash: LD_LIBRARY_PATH="/ACMLDIR/ifort64_mp/lib:${LD_LIBRARY_PATH}"; export LD_LIBRARY_PATH
  for csh:  setenv LD_LIBRARY_PATH /ACMLDIR/ifort64_mp/lib:${LD_LIBRARY_PATH}

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DEFAULT_VERSION='2013'
+DEFAULT_VERSION='2013.1'
 
 WORKINGDIR=`dirname $0`
 
