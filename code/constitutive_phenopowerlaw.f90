@@ -273,7 +273,6 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case ('plasticity','elasticity')
-           cycle
          case ('(output)')
            constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
            constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(i),i) = &
@@ -305,16 +304,16 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
          case ('lattice_structure')
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(structure(1:3))
-           case(LATTICE_iso_label)
-             constitutive_phenopowerlaw_structureID(i) = LATTICE_iso_ID
-           case(LATTICE_fcc_label)
-             constitutive_phenopowerlaw_structureID(i) = LATTICE_fcc_ID
-           case(LATTICE_bcc_label)
-             constitutive_phenopowerlaw_structureID(i) = LATTICE_bcc_ID
-           case(LATTICE_hex_label)
-             constitutive_phenopowerlaw_structureID(i) = LATTICE_hex_ID
-           case(LATTICE_ort_label)
-             constitutive_phenopowerlaw_structureID(i) = LATTICE_ort_ID
+             case(LATTICE_iso_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_iso_ID
+             case(LATTICE_fcc_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_fcc_ID
+             case(LATTICE_bcc_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_bcc_ID
+             case(LATTICE_hex_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_hex_ID
+             case(LATTICE_ort_label)
+               constitutive_phenopowerlaw_structureID(i) = LATTICE_ort_ID
            end select
            configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureID(i))
            Nchunks_SlipFamilies = configNchunks(1)

@@ -308,6 +308,7 @@ subroutine crystallite_init(temperature)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
      output = 0_pInt                                                                                ! reset output counter
+     cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt) then
      positions = IO_stringPos(line,maxNchunks)
@@ -343,6 +344,8 @@ subroutine crystallite_init(temperature)
              crystallite_outputID(output,section) = fe_ID
            case ('fp')
              crystallite_outputID(output,section) = fp_ID
+           case ('lp')
+             crystallite_outputID(output,section) = lp_ID
            case ('e')
              crystallite_outputID(output,section) = e_ID
            case ('ee')
