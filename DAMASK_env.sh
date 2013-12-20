@@ -1,5 +1,5 @@
 # sets up an environment for DAMASK on bash
-# usage:  source damask_env.sh
+# usage:  source DAMASK_env.sh
 export DAMASK_ROOT=$HOME/DAMASK                                                                     
 export DAMASK_BIN=$DAMASK_ROOT/bin
 export PYTHONPATH=${PYTHONPATH}:${DAMASK_ROOT}/lib
@@ -9,7 +9,7 @@ ulimit -c 0
 ulimit -v unlimited
 ulimit -m unlimited
 
-# dissable output in case of scp
+# disable output in case of scp
 [ -z "$PS1" ] && return
 echo
 echo Düsseldorf Advanced Materials Simulation Kit - DAMASK

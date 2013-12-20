@@ -1,5 +1,5 @@
 # sets up an environment for DAMASK on csh
-# usage:  source damask_env.sh
+# usage:  source DAMASK_env.csh
 setenv DAMASK_ROOT $HOME/DAMASK                                                                     
 setenv DAMASK_BIN $DAMASK_ROOT/bin
 setenv PYTHONPATH ${PYTHONPATH}:${DAMASK_ROOT}/lib

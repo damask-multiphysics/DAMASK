@@ -1,4 +1,4 @@
-:: sets up an environment for DAMASK on windows
+:: sets up an environment for DAMASK on Windows
 :: usage:  ????
 @echo off
 chcp 1252
@@ -19,5 +19,3 @@ echo.
 echo Preparing environment ...
 echo DAMASK_ROOT=%DAMASK_ROOT%
 echo DAMASK_NUM_THREADS=%DAMASK_NUM_THREADS%
-
-
