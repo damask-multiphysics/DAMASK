@@ -42,11 +42,11 @@ SHELL = /bin/sh
 #any values will be overwritten by configure.py
 FFTWROOT ?= /usr/local
 IMKLROOT ?= 
-ACMLROOT ?= /opt/acml5.3.0
+ACMLROOT ?= 
 LAPACKROOT ?= /usr
 HDF5ROOT ?=
 
-F90 ?= gfortran
+F90 ?= ifort
 ########################################################################################
 
 COMPILERNAME ?= $(F90)
