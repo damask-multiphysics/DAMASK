@@ -2680,7 +2680,7 @@ subroutine crystallite_integrateStateFPI()
      if (crystallite_todo(g,i,e)) then
        mySizeDotState = constitutive_sizeDotState(g,i,e)
        constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
-                                                     + constitutive_dotState(g,i,e)%p &
+                                                     + constitutive_dotState(g,i,e)%p(1:mySizeDotState) &
                                                      * crystallite_subdt(g,i,e)
      endif
    enddo; enddo; enddo
@@ -2789,8 +2789,8 @@ subroutine crystallite_integrateStateFPI()
          mySizeDotState = constitutive_sizeDotState(g,i,e)
          stateResiduum(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:mySizeDotState) &
                                          - constitutive_subState0(g,i,e)%p(1:mySizeDotState) &
-                                         - (constitutive_dotState(g,i,e)%p * statedamper &
-                                         + constitutive_previousDotState(g,i,e)%p &
+                                         - (constitutive_dotState(g,i,e)%p(1:mySizeDotState) * statedamper &
+                                         + constitutive_previousDotState(g,i,e)%p(1:mySizeDotState) &
                                          * (1.0_pReal - statedamper)) * crystallite_subdt(g,i,e)
          
          ! --- correct state with residuum ---
