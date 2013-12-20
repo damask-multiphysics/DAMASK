@@ -279,11 +279,7 @@ type(tSolutionState) function &
    update_gamma
  use math, only: &
    math_invSym3333
- use IO, only: &
-   IO_write_jobRealFile
  use DAMASK_spectral_Utilities, only: &
-   grid, &
-   geomSize, &
    tBoundaryCondition, &
    Utilities_maskedCompliance, &
    Utilities_updateGamma
@@ -292,8 +288,6 @@ type(tSolutionState) function &
    terminallyIll
  
  implicit none
-#include <finclude/petscdmda.h90>
-#include <finclude/petscsnes.h90>
 
 !--------------------------------------------------------------------------------------------------
 ! input data for solution
@@ -314,48 +308,10 @@ type(tSolutionState) function &
  
 !--------------------------------------------------------------------------------------------------
 ! PETSc Data
- PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_lambda
  PetscErrorCode :: ierr   
  SNESConvergedReason :: reason
 
  incInfo = incInfoIn
- 
-!--------------------------------------------------------------------------------------------------
-! restart information for spectral solver
- call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
- F => xx_psc(0:8,:,:,:)
- F_lambda => xx_psc(9:17,:,:,:)
- if (restartWrite) then
-   write(6,'(/,a)') ' writing converged results for restart'
-   flush(6)
-   call IO_write_jobRealFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
-   write (777,rec=1) F
-   close (777)
-   call IO_write_jobRealFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
-   write (777,rec=1) F_lastInc
-   close (777)
-   call IO_write_jobRealFile(777,'F_lastInc2',size(F_lastInc2))                                   ! writing F_lastInc field to file
-   write (777,rec=1) F_lastInc2
-   close (777)
-   call IO_write_jobRealFile(777,'F_lambda',size(F_lambda))                                       ! writing deformation gradient field to file
-   write (777,rec=1) F_lambda
-   close (777)
-   call IO_write_jobRealFile(777,'F_lambda_lastInc',size(F_lambda_lastInc))                       ! writing F_lastInc field to file
-   write (777,rec=1) F_lambda_lastInc
-   close (777)
-   call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
-   write (777,rec=1) F_aimDot
-   close(777)
-   call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
-   write (777,rec=1) C_volAvg
-   close(777)
-   call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
-   write (777,rec=1) C_volAvgLastInc
-   close(777)
- endif 
- call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
- 
- AL_solution%converged =.false.
 
 !--------------------------------------------------------------------------------------------------
 ! update stiffness (and gamma operator)
@@ -367,6 +323,10 @@ type(tSolutionState) function &
  endif  
  
  ForwardData = .True.
+ AL_solution%converged =.false.
+  
+!--------------------------------------------------------------------------------------------------
+! set module wide availabe data 
  mask_stress = P_BC%maskFloat
  params%P_BC = P_BC%values
  params%rotation_BC = rotation_BC
@@ -652,6 +612,10 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  use mesh, only: &
    mesh_ipCoordinates,&
    mesh_deformedCoordsFFT
+ use IO, only: &
+   IO_write_JobRealFile
+ use FEsolving, only: &
+   restartWrite
 
  implicit none
 #include <finclude/petscdmda.h90>
@@ -675,6 +639,37 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
  F => xx_psc(0:8,:,:,:)
  F_lambda => xx_psc(9:17,:,:,:) 
+ if (restartWrite) then
+   write(6,'(/,a)') ' writing converged results for restart'
+   flush(6)
+   call IO_write_jobRealFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
+   write (777,rec=1) F
+   close (777)
+   call IO_write_jobRealFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
+   write (777,rec=1) F_lastInc
+   close (777)
+   call IO_write_jobRealFile(777,'F_lastInc2',size(F_lastInc2))                                   ! writing F_lastInc field to file
+   write (777,rec=1) F_lastInc2
+   close (777)
+   call IO_write_jobRealFile(777,'F_lambda',size(F_lambda))                                       ! writing deformation gradient field to file
+   write (777,rec=1) F_lambda
+   close (777)
+   call IO_write_jobRealFile(777,'F_lambda_lastInc',size(F_lambda_lastInc))                       ! writing F_lastInc field to file
+   write (777,rec=1) F_lambda_lastInc
+   close (777)
+   call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
+   write (777,rec=1) F_aimDot
+   close(777)
+   call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
+   write (777,rec=1) C_volAvg
+   close(777)
+   call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
+   write (777,rec=1) C_volAvgLastInc
+   close(777)
+ endif 
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                                             F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+
  if (cutBack) then 
    F_aim = F_aim_lastInc
    F_lambda= reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid(3)]) 
