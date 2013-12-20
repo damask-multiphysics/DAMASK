@@ -131,7 +131,6 @@ subroutine homogenization_isostrain_init(fileUnit)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case('type')
-           cycle
          case ('(output)')
            output = output + 1_pInt
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -159,6 +158,7 @@ subroutine homogenization_isostrain_init(fileUnit)
              case ('average','mean','avg')
                homogenization_isostrain_mapping(i) = average_ID
              case default
+               call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
            end select
          case default
            call IO_error(210_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')

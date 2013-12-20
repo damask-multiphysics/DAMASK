@@ -118,7 +118,7 @@ subroutine homogenization_RGC_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit                                                                !< file pointer to material configuration
  integer(pInt), parameter  :: MAXNCHUNKS = 4_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
- integer(pInt) ::section=0_pInt, maxNinstance, i,j,e, output=-1_pInt, mySize, myInstance
+ integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, output=-1_pInt, mySize, myInstance
  character(len=65536) :: &
    tag = '', &
    line = ''
@@ -169,8 +169,7 @@ subroutine homogenization_RGC_init(fileUnit)
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
-         case ('type')
-           cycle
+         case ('nconstituents','ngrains','type')
          case ('(output)')
            output = output + 1_pInt
            homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -203,6 +202,8 @@ subroutine homogenization_RGC_init(fileUnit)
            homogenization_RGC_Ngrains(1,i) = IO_intValue(line,positions,2_pInt)
            homogenization_RGC_Ngrains(2,i) = IO_intValue(line,positions,3_pInt)
            homogenization_RGC_Ngrains(3,i) = IO_intValue(line,positions,4_pInt)
+           if (homogenization_Ngrains(section) /= product(homogenization_RGC_Ngrains(1:3,i))) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
          case ('scalingparameter')
            homogenization_RGC_xiAlpha(i) = IO_floatValue(line,positions,2_pInt)
          case ('overproportionality')
@@ -1148,11 +1149,11 @@ subroutine homogenization_RGC_volumePenalty(vPen,vDiscrep,fDef,fAvg,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! compute the volumes of grains and of cluster
- vDiscrep = math_det33(fAvg)                                           ! compute the volume of the cluster
+ vDiscrep = math_det33(fAvg)                                                                        ! compute the volume of the cluster
  do iGrain = 1_pInt,nGrain
-   gVol(iGrain) = math_det33(fDef(1:3,1:3,iGrain))                         ! compute the volume of individual grains
-   vDiscrep     = vDiscrep - gVol(iGrain)/real(nGrain,pReal)                  ! calculate the difference/dicrepancy between
-                                                                        ! the volume of the cluster and the the total volume of grains
+   gVol(iGrain) = math_det33(fDef(1:3,1:3,iGrain))                                                  ! compute the volume of individual grains
+   vDiscrep     = vDiscrep - gVol(iGrain)/real(nGrain,pReal)                                        ! calculate the difference/dicrepancy between
+                                                                                                    ! the volume of the cluster and the the total volume of grains
  enddo
 
 !--------------------------------------------------------------------------------------------------

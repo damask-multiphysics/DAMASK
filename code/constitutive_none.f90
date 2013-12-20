@@ -112,8 +112,8 @@ subroutine constitutive_none_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(constitutive_none_sizeDotState(maxNinstance),    source=0_pInt)
- allocate(constitutive_none_sizeState(maxNinstance),       source=0_pInt)
+ allocate(constitutive_none_sizeDotState(maxNinstance),    source=1_pInt)
+ allocate(constitutive_none_sizeState(maxNinstance),       source=1_pInt)
  allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
  allocate(constitutive_none_structureID(maxNinstance),     source=LATTICE_undefined_ID)
  allocate(constitutive_none_Cslip_66(6,6,maxNinstance),    source=0.0_pReal)
@@ -141,7 +141,6 @@ subroutine constitutive_none_init(fileUnit)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case ('plasticity','elasticity')
-           cycle
          case ('lattice_structure')
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(structure(1:3))
@@ -182,14 +181,10 @@ subroutine constitutive_none_init(fileUnit)
  enddo
 
  instancesLoop: do i = 1_pInt,maxNinstance
-   constitutive_none_sizeDotState(i)    = 1_pInt
-   constitutive_none_sizeState(i)       = 1_pInt
-
-   constitutive_none_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(constitutive_none_structureID(i),&
-                                                           constitutive_none_Cslip_66(1:6,1:6,i))
    constitutive_none_Cslip_66(1:6,1:6,i) = &
+     lattice_symmetrizeC66(constitutive_none_structureID(i),constitutive_none_Cslip_66(1:6,1:6,i))
+   constitutive_none_Cslip_66(1:6,1:6,i) = &                                                        ! Literature data is Voigt, DAMASK uses Mandel
      math_Mandel3333to66(math_Voigt66to3333(constitutive_none_Cslip_66(1:6,1:6,i)))
-
  enddo instancesLoop
 
 end subroutine constitutive_none_init

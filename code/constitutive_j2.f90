@@ -151,8 +151,8 @@ subroutine constitutive_j2_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(constitutive_j2_sizeDotState(maxNinstance),                         source=0_pInt)
- allocate(constitutive_j2_sizeState(maxNinstance),                            source=0_pInt)
+ allocate(constitutive_j2_sizeDotState(maxNinstance),                         source=1_pInt)
+ allocate(constitutive_j2_sizeState(maxNinstance),                            source=1_pInt)
  allocate(constitutive_j2_sizePostResults(maxNinstance),                      source=0_pInt)
  allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance),source=0_pInt)
  allocate(constitutive_j2_output(maxval(phase_Noutput), maxNinstance))
@@ -198,7 +198,6 @@ subroutine constitutive_j2_init(fileUnit)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case ('plasticity','elasticity')
-           cycle
          case ('(output)')
            constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
            constitutive_j2_output(constitutive_j2_Noutput(i),i) = &
@@ -245,16 +244,24 @@ subroutine constitutive_j2_init(fileUnit)
            constitutive_j2_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
          case ('tau0')
            constitutive_j2_tau0(i)         = IO_floatValue(line,positions,2_pInt)
+           if (constitutive_j2_tau0(i) < 0.0_pReal) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
          case ('gdot0')
            constitutive_j2_gdot0(i)        = IO_floatValue(line,positions,2_pInt)
+           if (constitutive_j2_gdot0(i) <= 0.0_pReal) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
          case ('n')
            constitutive_j2_n(i)            = IO_floatValue(line,positions,2_pInt)
+           if (constitutive_j2_n(i) <= 0.0_pReal) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
          case ('h0')
            constitutive_j2_h0(i)           = IO_floatValue(line,positions,2_pInt)
          case ('h0_slope','slopelnrate')
            constitutive_j2_h0_slopeLnRate(i)  = IO_floatValue(line,positions,2_pInt)
          case ('tausat')
            constitutive_j2_tausat(i)          = IO_floatValue(line,positions,2_pInt)
+           if (constitutive_j2_tausat(i) <= 0.0_pReal) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
          case ('tausat_sinhfita')
            constitutive_j2_tausat_SinhFitA(i) = IO_floatValue(line,positions,2_pInt)
          case ('tausat_sinhfitb')
@@ -265,33 +272,22 @@ subroutine constitutive_j2_init(fileUnit)
            constitutive_j2_tausat_SinhFitD(i) = IO_floatValue(line,positions,2_pInt)
          case ('a', 'w0')
            constitutive_j2_a(i)               = IO_floatValue(line,positions,2_pInt)
+           if (constitutive_j2_a(i) <= 0.0_pReal) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
          case ('taylorfactor')
            constitutive_j2_fTaylor(i)         = IO_floatValue(line,positions,2_pInt)
+           if (constitutive_j2_fTaylor(i) <= 0.0_pReal) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
          case ('atol_resistance')
            constitutive_j2_aTolResistance(i)  = IO_floatValue(line,positions,2_pInt)
+           if (constitutive_j2_aTolResistance(i) <= 0.0_pReal) &
+             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
          case default
            call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        end select
      endif
    endif
  enddo
-
- sanityChecks: do i = 1_pInt,maxNinstance
-   if (constitutive_j2_tau0(i) < 0.0_pReal)            call IO_error(211_pInt,ext_msg='tau0 (' &
-                                                            //PLASTICITY_J2_label//')')
-   if (constitutive_j2_gdot0(i) <= 0.0_pReal)          call IO_error(211_pInt,ext_msg='gdot0 (' &
-                                                            //PLASTICITY_J2_label//')')
-   if (constitutive_j2_n(i) <= 0.0_pReal)              call IO_error(211_pInt,ext_msg='n (' &
-                                                            //PLASTICITY_J2_label//')')
-   if (constitutive_j2_tausat(i) <= 0.0_pReal)         call IO_error(211_pInt,ext_msg='tausat (' &
-                                                            //PLASTICITY_J2_label//')')
-   if (constitutive_j2_a(i) <= 0.0_pReal)              call IO_error(211_pInt,ext_msg='a (' &
-                                                            //PLASTICITY_J2_label//')')
-   if (constitutive_j2_fTaylor(i) <= 0.0_pReal)        call IO_error(211_pInt,ext_msg='taylorfactor (' &
-                                                            //PLASTICITY_J2_label//')')
-   if (constitutive_j2_aTolResistance(i) <= 0.0_pReal) call IO_error(211_pInt,ext_msg='aTol_resistance (' &
-                                                            //PLASTICITY_J2_label//')')
- enddo sanityChecks
 
  instancesLoop: do i = 1_pInt,maxNinstance
    outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(i)
@@ -308,14 +304,10 @@ subroutine constitutive_j2_init(fileUnit)
      endif
    enddo outputsLoop 
 
-   constitutive_j2_sizeDotState(i) = 1_pInt
-   constitutive_j2_sizeState(i)    = 1_pInt
-   
-   constitutive_j2_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(constitutive_j2_structureID(i),&
-                                                      constitutive_j2_Cslip_66(1:6,1:6,i)) 
    constitutive_j2_Cslip_66(1:6,1:6,i) = &
-     math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))                   ! Literature data is Voigt, DAMASK uses Mandel
-
+     lattice_symmetrizeC66(constitutive_j2_structureID(i),constitutive_j2_Cslip_66(1:6,1:6,i))
+   constitutive_j2_Cslip_66(1:6,1:6,i) = &                                                          ! Literature data is Voigt, DAMASK uses Mandel
+     math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))
  enddo instancesLoop
 
 end subroutine constitutive_j2_init
