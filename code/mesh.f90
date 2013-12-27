@@ -87,19 +87,22 @@ module mesh
  integer(pInt), dimension(2), private :: &
    mesh_maxValStateVar = 0_pInt
              
+#ifndef Spectral
  character(len=64), dimension(:), allocatable, private :: &
    mesh_nameElemSet, &                                                                              !< names of elementSet
    mesh_nameMaterial, &                                                                             !< names of material in solid section
    mesh_mapMaterial                                                                                 !< name of elementSet for material
-     
+
  integer(pInt), dimension(:,:), allocatable, private :: &
-   mesh_cellnodeParent, &                                                                           !< cellnode's parent element ID, cellnode's intra-element ID
    mesh_mapElemSet                                                                                  !< list of elements in elementSet
-     
+#endif
+ integer(pInt), dimension(:,:), allocatable, private :: &
+   mesh_cellnodeParent                                                                              !< cellnode's parent element ID, cellnode's intra-element ID
+
  integer(pInt), dimension(:,:), allocatable, target, private :: &
    mesh_mapFEtoCPelem, &                                                                            !< [sorted FEid, corresponding CPid]
    mesh_mapFEtoCPnode                                                                               !< [sorted FEid, corresponding CPid]
-   
+
  integer(pInt),dimension(:,:,:), allocatable, private :: &
    mesh_cell                                                                                        !< cell connectivity for each element,ip/cell
 
@@ -3697,8 +3700,8 @@ subroutine mesh_build_ipAreas
  real(pReal), dimension (3,FE_maxNcellnodesPerCellface) :: nodePos, normals
  real(pReal), dimension(3) :: normal
 
- allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems));              mesh_ipArea       = 0.0_pReal
- allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems)); mesh_ipAreaNormal = 0.0_pReal
+ allocate(mesh_ipArea(mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
+ allocate(mesh_ipAreaNormal(3_pInt,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems), source=0.0_pReal)
 
  !$OMP PARALLEL DO PRIVATE(t,g,c,nodePos,normal,normals)
    do e = 1_pInt,mesh_NcpElems                                                                      ! loop over cpElems
@@ -3898,7 +3901,7 @@ end subroutine mesh_build_sharedElems
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief  build up of IP neighborhood, allocate globals '_ipNeighborhood'
+!> @brief build up of IP neighborhood, allocate globals '_ipNeighborhood'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_build_ipNeighborhood
  use math, only: &
@@ -5125,14 +5128,18 @@ subroutine mesh_write_cellGeom
        title=trim(getSolverJobName())//' cell mesh', &
        filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &
        mesh_topology = 'UNSTRUCTURED_GRID')
+ !ToDo: check error here
  error=VTK_geo(NN = int(mesh_Ncellnodes,I4P), &
        X = mesh_cellnode(1,1:mesh_Ncellnodes), &
        Y = mesh_cellnode(2,1:mesh_Ncellnodes), &
        Z = mesh_cellnode(3,1:mesh_Ncellnodes))
+ !ToDo: check error here
  error=VTK_con(NC = int(mesh_Ncells,I4P), &
        connect = cellconnection(1:j), &
+ !ToDo: check error here
        cell_type = celltype)
  error=VTK_end()
+ !ToDo: check error here
 
 end subroutine mesh_write_cellGeom
 
@@ -5173,14 +5180,18 @@ subroutine mesh_write_elemGeom
        title=trim(getSolverJobName())//' element mesh', &
        filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_nodebased.vtk', &
        mesh_topology = 'UNSTRUCTURED_GRID')
+ !ToDo: check error here
  error=VTK_geo(NN = int(mesh_Nnodes,I4P), &
        X = mesh_node0(1,1:mesh_Nnodes), &
        Y = mesh_node0(2,1:mesh_Nnodes), &
        Z = mesh_node0(3,1:mesh_Nnodes))
+ !ToDo: check error here
  error=VTK_con(NC = int(mesh_Nelems,I4P), &
        connect = elementconnection(1:i), &
        cell_type = elemtype)
+ !ToDo: check error here
  error =VTK_end()
+ !ToDo: check error here
 
 end subroutine mesh_write_elemGeom
 

@@ -91,9 +91,6 @@ module IO
    abaqus_assembleInputFile
 #endif
 
- external :: &
-   quit
-
 contains
 
 
@@ -364,8 +361,8 @@ end subroutine IO_open_logFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief opens FEM log file for writing to given unit. File is named after solver job name and 
-!!        located in current working directory 
+!> @brief opens ASCII file to given unit for writing. File is named after solver job name plus 
+!!        given extension and located in current working directory
 !--------------------------------------------------------------------------------------------------
 subroutine IO_write_jobFile(fileUnit,ext)
  use DAMASK_interface,  only: &
@@ -1395,6 +1392,7 @@ function IO_continuousIntValues(fileUnit,maxN,lookupName,lookupMap,lookupMaxN)
 !> @brief returns format string for integer values without leading zeros
 !--------------------------------------------------------------------------------------------------
 pure function IO_intOut(intToPrint)
+
   implicit none
   character(len=16) :: N_Digits
   character(len=34) :: IO_intOut
@@ -1410,6 +1408,7 @@ end function IO_intOut
 !> @brief returns time stamp
 !--------------------------------------------------------------------------------------------------
 function IO_timeStamp()
+
   implicit none
   character(len=10) :: IO_timeStamp
   integer(pInt), dimension(8) :: values
@@ -1425,11 +1424,13 @@ end function IO_timeStamp
 !> in ABAQUS either time step is reduced or execution terminated
 !--------------------------------------------------------------------------------------------------
 subroutine IO_error(error_ID,el,ip,g,ext_msg)
+
  implicit none
  integer(pInt),              intent(in) :: error_ID
  integer(pInt),    optional, intent(in) :: el,ip,g
  character(len=*), optional, intent(in) :: ext_msg
  
+ external                               :: quit
  character(len=1024)                    :: msg
  character(len=1024)                    :: formatString
  

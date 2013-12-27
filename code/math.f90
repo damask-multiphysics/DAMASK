@@ -446,7 +446,7 @@ pure function math_range(N)
  integer(pInt) :: i
  integer(pInt), dimension(N) :: math_range
 
- forall (i=1_pInt:N) math_range(i) = i
+ math_range = [(i,i=1_pInt,N)]
 
 end function math_range
 

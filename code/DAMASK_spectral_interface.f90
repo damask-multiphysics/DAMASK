@@ -353,7 +353,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
    cwd
  integer :: posExt, posSep
  character :: pathSep
- 
+
  getLoadCaseFile = loadcaseParameter
  pathSep = getPathSep()
  posExt = scan(getLoadCaseFile,'.',back=.true.)
