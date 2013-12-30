@@ -18,7 +18,7 @@ ulimit -s unlimited
 ulimit -c 0
 ulimit -v unlimited
 ulimit -m unlimited
-export DAMASK_BIN=${DAMASK_ROOT}:bin
+export DAMASK_BIN=${DAMASK_ROOT}/bin
 export PATH=${PATH}:${DAMASK_BIN}
 export PYTHONPATH=${PYTHONPATH}:${DAMASK_ROOT}/lib
 export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
