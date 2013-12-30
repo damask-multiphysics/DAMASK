@@ -118,8 +118,9 @@ module mesh
  integer(pInt), dimension(:,:,:,:), allocatable, private :: &
    FE_subNodeOnIPFace
        
- 
+#ifdef Abaqus
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
+#endif
 
 #ifdef Spectral
  include 'fftw3.f03'
@@ -709,9 +710,9 @@ subroutine mesh_build_cellconnectivity
    localCellnodeID
  
 
- allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems)) ; mesh_cell = 0_pInt
- allocate(matchingNode2cellnode(mesh_Nnodes)) ; matchingNode2cellnode = 0_pInt
- allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems)) ; cellnodeParent = 0_pInt
+ allocate(mesh_cell(FE_maxNcellnodesPerCell,mesh_maxNips,mesh_NcpElems), source=0_pInt)
+ allocate(matchingNode2cellnode(mesh_Nnodes),                            source=0_pInt)
+ allocate(cellnodeParent(2_pInt,mesh_maxNcellnodes*mesh_NcpElems),       source=0_pInt)
  
 !--------------------------------------------------------------------------------------------------
 ! Count cell nodes (including duplicates) and generate cell connectivity list
