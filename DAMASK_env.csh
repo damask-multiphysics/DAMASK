@@ -20,7 +20,7 @@ ulimit -s unlimited
 ulimit -c 0
 ulimit -v unlimited
 ulimit -m unlimited
-setenv DAMASK_BIN ${DAMASK_ROOT}:bin
+setenv DAMASK_BIN ${DAMASK_ROOT}/bin
 setenv PATH ${PATH}:${DAMASK_BIN}
 setenv PYTHONPATH ${PYTHONPATH}:${DAMASK_ROOT}/lib
 setenv LD_LIBRARY_PATH ${LD_LIBRARY_PATH}
