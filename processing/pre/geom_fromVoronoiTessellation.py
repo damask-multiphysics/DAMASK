@@ -88,7 +88,7 @@ parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
                                    
 parser.set_defaults(grid = [0,0,0])
-parser.set_defaults(size  = [0.0,0.0,0.0])
+parser.set_defaults(size = [0.0,0.0,0.0])
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = 1)
 parser.set_defaults(crystallite    = 1)
@@ -99,18 +99,18 @@ parser.set_defaults(config = False)
 #--- setup file handles ---------------------------------------------------------------------------  
 files = []
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
+  files.append({'name':   'STDIN',
+                'input':  sys.stdin,
+                'output': sys.stdout,
+                'croak':  sys.stderr,
                })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
+      files.append({'name':   name,
+                    'input':  open(name),
+                    'output': open(name+'_tmp','w'),
+                    'croak':  sys.stdout,
                     })
 
 
@@ -121,16 +121,31 @@ for file in files:
 
   theTable = damask.ASCIItable(file['input'],file['output'])
   theTable.head_read()
-  
-  coords = theTable.data_asArray(['x','y','z'])
-  if numpy.all(theTable.labels_index(['phi1','Phi','phi2']) != -1):
-    eulers = theTable.data_asArray(['phi1','Phi','phi2'])
-  if theTable.labels_index('microstructure') != -1:
-    grain = theTable.data_asArray(['microstructure'])
-    grainIDs = numpy.unique(grain).astype('i')
+
+  labels = ['x','y','z']
+  index = 0
+  if numpy.all(theTable.labels_index(['phi1','Phi','phi2'])) != -1:
+    hasEulers = True
+    labels += ['phi1','Phi','phi2']
+    index += 3
   else:
-    grain = 1+numpy.arange(len(eulers))
-    grainIDs = grain
+    hasEulers = False
+  eulerCol = index
+
+  if theTable.labels_index('microstructure') != -1:
+    hasGrains = True
+    labels += ['microstructure']
+    index += 1
+  else:
+    hasGrains = False
+  grainCol = index
+
+  theTable.data_readArray(labels)
+  coords = theTable.data[:,0:3]
+  eulers = theTable.data[:,eulerCol:eulerCol+3] if hasEulers else numpy.zeros(3*len(coords))
+  grain = theTable.data[:,grainCol] if hasGrains else 1+numpy.arange(len(eulers))
+  grainIDs = numpy.unique(grain).astype('i')
+
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
