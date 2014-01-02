@@ -67,7 +67,7 @@ parser.add_option("-s","--shell", type="string",
                   dest = "shell", \
                   help = "type of shell, e.g. "+', '.join(validShell.keys())+" [%default]")
 
-parser.set_defaults(shell = 'windows' if platform.system() == 'Windos' else 'bash')
+parser.set_defaults(shell = 'windows' if platform.system() == 'Windows' else 'bash')
 (options, args) = parser.parse_args()
 
 pathInfo = {}
