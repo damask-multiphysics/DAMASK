@@ -229,6 +229,7 @@ enum, bind(c)
                 resistance_ID, &
                 rho_dot_ID, &
                 rho_dot_sgl_ID, &
+                rho_dot_sgl_mobile_ID, &
                 rho_dot_dip_ID, &
                 rho_dot_gen_ID, &
                 rho_dot_gen_edge_ID, &
@@ -242,6 +243,7 @@ enum, bind(c)
                 rho_dot_ann_the_screw_ID, &
                 rho_dot_edgejogs_ID, &
                 rho_dot_flux_ID, &
+                rho_dot_flux_mobile_ID, &
                 rho_dot_flux_edge_ID, &
                 rho_dot_flux_screw_ID, &
                 velocity_edge_pos_ID, &
@@ -549,6 +551,8 @@ do while (trim(line) /= IO_EOF)                                                 
               constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_ID
             case('rho_dot_sgl')
               constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_sgl_ID
+            case('rho_dot_sgl_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_sgl_mobile_ID
             case('rho_dot_dip')
               constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_dip_ID
             case('rho_dot_gen')
@@ -575,6 +579,8 @@ do while (trim(line) /= IO_EOF)                                                 
               constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_edgejogs_ID
             case('rho_dot_flux')
               constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_flux_ID
+            case('rho_dot_flux_mobile')
+              constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_flux_mobile_ID
             case('rho_dot_flux_edge')
               constitutive_nonlocal_outputID(Noutput(i),i) = rho_dot_flux_edge_ID
             case('rho_dot_flux_screw')
@@ -1076,6 +1082,7 @@ instancesLoop: do i = 1,maxNmatIDs
             resistance_ID, &
             rho_dot_ID, &
             rho_dot_sgl_ID, &
+            rho_dot_sgl_mobile_ID, &
             rho_dot_dip_ID, &
             rho_dot_gen_ID, &
             rho_dot_gen_edge_ID, &
@@ -1089,6 +1096,7 @@ instancesLoop: do i = 1,maxNmatIDs
             rho_dot_ann_the_screw_ID, &
             rho_dot_edgejogs_ID, &
             rho_dot_flux_ID, &
+            rho_dot_flux_mobile_ID, &
             rho_dot_flux_edge_ID, &
             rho_dot_flux_screw_ID, &
             velocity_edge_pos_ID, &
@@ -3711,11 +3719,18 @@ outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
       cs = cs + ns
     
     case (rho_dot_ID)
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl,2) + sum(rhoDotDip,2)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
+                                                         + sum(rhoDotSgl(1:ns,5:8)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2) &
+                                                         + sum(rhoDotDip,2)
       cs = cs + ns
       
     case (rho_dot_sgl_ID)
-      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl,2)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2) &
+                                                         + sum(rhoDotSgl(1:ns,5:8)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2)
+      cs = cs + ns
+      
+    case (rho_dot_sgl_mobile_ID)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotSgl(1:ns,1:4),2)
       cs = cs + ns
       
     case (rho_dot_dip_ID)
@@ -3770,19 +3785,23 @@ outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = rhoDotEdgeJogsOutput(1:ns,ipc,ip,el)
       cs = cs + ns
 
+    case (rho_dot_flux_mobile_ID)
+      constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:4,ipc,ip,el),2)
+      cs = cs + ns
+    
     case (rho_dot_flux_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:4,ipc,ip,el),2) &
-                                                      + sum(abs(rhoDotFluxOutput(1:ns,5:8,ipc,ip,el)),2)
+                          + sum(rhoDotFluxOutput(1:ns,5:8,ipc,ip,el)*sign(1.0_pReal,rhoSgl(1:ns,5:8)),2)
       cs = cs + ns
     
     case (rho_dot_flux_edge_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,1:2,ipc,ip,el),2) &
-                                                      + sum(abs(rhoDotFluxOutput(1:ns,5:6,ipc,ip,el)),2)
+                          + sum(rhoDotFluxOutput(1:ns,5:6,ipc,ip,el)*sign(1.0_pReal,rhoSgl(1:ns,5:6)),2)
       cs = cs + ns
       
     case (rho_dot_flux_screw_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(rhoDotFluxOutput(1:ns,3:4,ipc,ip,el),2) &
-                                                      + sum(abs(rhoDotFluxOutput(1:ns,7:8,ipc,ip,el)),2)
+                          + sum(rhoDotFluxOutput(1:ns,7:8,ipc,ip,el)*sign(1.0_pReal,rhoSgl(1:ns,7:8)),2)
       cs = cs + ns
             
     case (velocity_edge_pos_ID)
