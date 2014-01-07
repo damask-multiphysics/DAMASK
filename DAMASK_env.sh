@@ -1,6 +1,7 @@
 # sets up an environment for DAMASK on bash
 # usage:  source DAMASK_env.sh
-LOCATION=$(readlink -f "`dirname $BASH_SOURCE`")
+STAT=$(stat "`dirname $BASH_SOURCE`")
+LOCATION=${STAT##* }
 export DAMASK_ROOT=${LOCATION}
 export DAMASK_NUM_THREADS=2
 # disable output in case of scp
