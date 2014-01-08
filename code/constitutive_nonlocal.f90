@@ -2669,7 +2669,7 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
           c = (t + 1_pInt) / 2
           topp = t + mod(t,2_pInt) - mod(t+1_pInt,2_pInt)
           if (neighbor_v(s,t) * math_mul3x3(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &           ! flux from my neighbor to me == entering flux for me
-              .and. v(s,t) * neighbor_v(s,t) > 0.0_pReal ) then                                    ! ... only if no sign change in flux density  
+              .and. v(s,t) * neighbor_v(s,t) >= 0.0_pReal ) then                                    ! ... only if no sign change in flux density  
             lineLength = neighbor_rhoSgl(s,t) * neighbor_v(s,t) &
                        * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                         ! positive line length that wants to enter through this interface
             where (compatibility(c,1_pInt:ns,s,n,ip,el) > 0.0_pReal) &                              ! positive compatibility...
@@ -2731,7 +2731,7 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
         do t = 1_pInt,4_pInt
           c = (t + 1_pInt) / 2_pInt
           if (my_v(s,t) * math_mul3x3(m(1:3,s,t), normal_me2neighbor) > 0.0_pReal ) then            ! flux from me to my neighbor == leaving flux for me (might also be a pure flux from my mobile density to dead density if interface not at all transmissive)
-            if (my_v(s,t) * neighbor_v(s,t) > 0.0_pReal) then                                       ! no sign change in flux density
+            if (my_v(s,t) * neighbor_v(s,t) >= 0.0_pReal) then                                      ! no sign change in flux density
               transmissivity = sum(compatibility(c,1_pInt:ns,s,n,ip,el)**2.0_pReal)                 ! overall transmissivity from this slip system to my neighbor
             else                                                                                    ! sign change in flux density means sign change in stress which does not allow for dislocations to arive at the neighbor
               transmissivity = 0.0_pReal
