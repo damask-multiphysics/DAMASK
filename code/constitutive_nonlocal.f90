@@ -2356,8 +2356,7 @@ integer(pInt)                               matID, &                  !< current
                                             t, &                      !< type of dislocation
                                             topp, &                   !< type of dislocation with opposite sign to t
                                             s, &                      !< index of my current slip system
-                                            sLattice, &               !< index of my current slip system according to lattice order
-                                            deads
+                                            sLattice                  !< index of my current slip system according to lattice order
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el))),10) :: &
                                             rhoDot, &                     !< density evolution
                                             rhoDotMultiplication, &       !< density evolution by multiplication
@@ -2649,18 +2648,15 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
         forall (s = 1:ns, t = 1_pInt:4_pInt)
           neighbor_v(s,t) = state0(ipc,neighbor_ip,neighbor_el)%p(iV(s,t,neighbor_matID))
           neighbor_rhoSgl(s,t) = max(state0(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,t,neighbor_matID)), 0.0_pReal)
-          neighbor_rhoSgl(s,t+4_pInt) = state0(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,t,neighbor_matID))
         endforall
       else
         forall (s = 1:ns, t = 1_pInt:4_pInt)
           neighbor_v(s,t) = state(ipc,neighbor_ip,neighbor_el)%p(iV(s,t,neighbor_matID))
           neighbor_rhoSgl(s,t) = max(state(ipc,neighbor_ip,neighbor_el)%p(iRhoU(s,t,neighbor_matID)), 0.0_pReal)
-          neighbor_rhoSgl(s,t+4_pInt) = state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,t,neighbor_matID))
         endforall
       endif
-      where (abs(neighbor_rhoSgl) * mesh_ipVolume(neighbor_ip,neighbor_el) ** 0.667_pReal &
-             < significantN(matID) &
-        .or. abs(neighbor_rhoSgl) < significantRho(matID)) &
+      where (neighbor_rhoSgl * mesh_ipVolume(neighbor_ip,neighbor_el) ** 0.667_pReal < significantN(matID) &
+        .or. neighbor_rhoSgl < significantRho(matID)) &
         neighbor_rhoSgl = 0.0_pReal
       normal_neighbor2me_defConf = math_det33(Favg) * math_mul33x3(math_inv33(transpose(Favg)), &
                                    mesh_ipAreaNormal(1:3,neighbor_n,neighbor_ip,neighbor_el))       ! calculate the normal of the interface in (average) deformed configuration (now pointing from my neighbor to me!!!)
@@ -2673,19 +2669,17 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
           c = (t + 1_pInt) / 2
           topp = t + mod(t,2_pInt) - mod(t+1_pInt,2_pInt)
           if (neighbor_v(s,t) * math_mul3x3(m(1:3,s,t), normal_neighbor2me) > 0.0_pReal &           ! flux from my neighbor to me == entering flux for me
-              .and. v(s,t) * neighbor_v(s,t) > 0.0_pReal ) then                                     ! ... only if no sign change in flux density  
-            do deads = 0_pInt,4_pInt,4_pInt
-              lineLength = abs(neighbor_rhoSgl(s,t+deads)) * neighbor_v(s,t) &
-                         * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                       ! positive line length that wants to enter through this interface
-              where (compatibility(c,1_pInt:ns,s,n,ip,el) > 0.0_pReal) &                            ! positive compatibility...
-                rhoDotFlux(1_pInt:ns,t) = rhoDotFlux(1_pInt:ns,t) &
-                                        + lineLength / mesh_ipVolume(ip,el) &                       ! ... transferring to equally signed mobile dislocation type
-                                        * compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
-              where (compatibility(c,1_pInt:ns,s,n,ip,el) < 0.0_pReal) &                            ! ..negative compatibility...
-                rhoDotFlux(1_pInt:ns,topp) = rhoDotFlux(1_pInt:ns,topp) &
-                                           + lineLength / mesh_ipVolume(ip,el) &                    ! ... transferring to opposite signed mobile dislocation type
-                                           * compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
-            enddo
+              .and. v(s,t) * neighbor_v(s,t) > 0.0_pReal ) then                                    ! ... only if no sign change in flux density  
+            lineLength = neighbor_rhoSgl(s,t) * neighbor_v(s,t) &
+                       * math_mul3x3(m(1:3,s,t), normal_neighbor2me) * area                         ! positive line length that wants to enter through this interface
+            where (compatibility(c,1_pInt:ns,s,n,ip,el) > 0.0_pReal) &                              ! positive compatibility...
+              rhoDotFlux(1_pInt:ns,t) = rhoDotFlux(1_pInt:ns,t) &
+                                      + lineLength / mesh_ipVolume(ip,el) &                         ! ... transferring to equally signed mobile dislocation type
+                                      * compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
+            where (compatibility(c,1_pInt:ns,s,n,ip,el) < 0.0_pReal) &                              ! ..negative compatibility...
+              rhoDotFlux(1_pInt:ns,topp) = rhoDotFlux(1_pInt:ns,topp) &
+                                         + lineLength / mesh_ipVolume(ip,el) &                      ! ... transferring to opposite signed mobile dislocation type
+                                         * compatibility(c,1_pInt:ns,s,n,ip,el) ** 2.0_pReal
           endif
         enddo
       enddo
@@ -2748,10 +2742,6 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
             rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) &
                                    + lineLength / mesh_ipVolume(ip,el) * (1.0_pReal - transmissivity) &
                                    * sign(1.0_pReal, my_v(s,t))                                     ! dislocation flux that is not able to leave through interface (because of low transmissivity) will remain as immobile single density at the material point
-            lineLength = my_rhoSgl(s,t+4_pInt) * my_v(s,t) &
-                       * math_mul3x3(m(1:3,s,t), normal_me2neighbor) * area                         ! positive line length of deads that wants to leave through this interface
-            rhoDotFlux(s,t+4_pInt) = rhoDotFlux(s,t+4_pInt) &
-                                   - lineLength / mesh_ipVolume(ip,el) * transmissivity             ! dead dislocations leaving through this interface
           endif
         enddo
       enddo
