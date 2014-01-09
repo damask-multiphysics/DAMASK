@@ -7,7 +7,7 @@ from .config      import Material         # will be extended to debug and numeri
 from .colormaps   import Colormap, Color
 from .orientation import Quaternion, Rodrigues, Symmetry, Orientation
 #from .block       import Block           # only one class
-from .result      import Result           # one class with subclasses
+from .result      import Result           # only one class 
 from .geometry    import Geometry         # one class with subclasses
 from .solver      import Solver           # one class with subclasses
 from .test        import Test
