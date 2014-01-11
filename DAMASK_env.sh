@@ -4,6 +4,7 @@ FFTWROOT=/usr/local
 LAPACKROOT=/usr
 ACMLROOT=
 IMKLROOT=
+DAMASKFORTRAN=gfortran
 
 if [ "$OSTYPE" == "linux-gnu" ]
   then LOCATION=$(readlink -f "`dirname $BASH_SOURCE`")
@@ -27,6 +28,10 @@ if [ "x$IMKLROOT" != "x" ]
   then export IMKLROOT=${IMKLROOT}
 fi
 
+if [ "x$DAMASKFORTRAN" != "x" ] 
+  then export F90=$DAMASKFORTRAN
+fi
+
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
   echo
@@ -37,6 +42,7 @@ if [ ! -z "$PS1" ]; then
   echo Preparing environment ...
   echo "DAMASK_ROOT=$DAMASK_ROOT"
   echo "DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
+  echo "F90=$F90"
   echo "prepending to LD_LIBRARY_PATH: $LD_NEW"
 fi
 ulimit -s unlimited

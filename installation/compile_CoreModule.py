@@ -39,16 +39,28 @@ Sets up the pre and post processing tools of DAMASK
 
 compilers = ['ifort','gfortran']
 
-parser.add_option('F90',          dest='compiler', type='string', \
-                                  help='name of F90 [%default]')
-parser.add_option('LAPACKROOT',   dest='lapackroot', type='string', \
-                                  help='name of F90 [%default]')
-parser.add_option('ACMLROOT',     dest='acmlroot', type='string', \
-                                  help='name of F90 [%default]')
-parser.add_option('IMKLROOT',     dest='imklroot', type='string', \
-                                  help='name of F90 [%default]')
-parser.add_option('FFTWROOT',     dest='fftwroot', type='string', \
-                                  help='name of F90 [%default]')
+parser.add_option('--F90',          dest='compiler', type='string', \
+                                    help='name of F90 [%default]')
+parser.add_option('--FFTWROOT',     dest='fftwroot', type='string', \
+                                    help='root location of FFTW [%default]')
+parser.add_option('--LAPACKROOT',   dest='lapackroot', type='string', \
+                                    help='root location of LAPACK [%default]')
+parser.add_option('--ACMLROOT',     dest='acmlroot', type='string', \
+                                    help='root location of ACML [%default]')
+parser.add_option('--IMKLROOT',     dest='imklroot', type='string', \
+                                    help='root location of IMKL [%default]')
+
+parser.set_defaults(compiler   = {True:os.getenv('F90'),False:''}\
+                                  [os.getenv('F90')!=None])
+parser.set_defaults(fftwroot   = {True:os.getenv('FFTWROOT'),False:''}\
+                                  [os.getenv('FFTWROOT')!=None])
+parser.set_defaults(lapackroot = {True:os.getenv('LAPACKROOT'),False:''}\
+                                  [os.getenv('LAPACKROOT')!=None])
+parser.set_defaults(acmlroot   = {True:os.getenv('ACMLROOT'),False:''}\
+                                  [os.getenv('ACMLROOT')!=None])
+parser.set_defaults(imklroot   = {True:os.getenv('IMKLROOT'),False:''}\
+                                  [os.getenv('IMKLROOT')!=None])
+
 (options,filenames) = parser.parse_args()
 
 if options.compiler not in compilers:
@@ -63,10 +75,10 @@ damaskEnv = Environment()
 baseDir = damaskEnv.relPath('installation/')
 codeDir = damaskEnv.relPath('code/')
 
-if   options.imklroot= '' and options.compiler != 'gfortran':
+if   options.imklroot != '' and options.compiler != 'gfortran':
   lib_lapack = '-L%s/lib/intel64 -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lpthread -lm'%(options.imklroot)
-elif options.acmlroot= '':
-  lib_lapack = '-L%s/%s64/lib -lacml'%(options.acmlroot,compiler)
+elif options.acmlroot != '':
+  lib_lapack = '-L%s/%s64/lib -lacml'%(options.acmlroot,options.compiler)
 elif options.lapackroot != '':
   lib_lapack = '-L%s -llapack'%(options.lapack)                                                     # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 

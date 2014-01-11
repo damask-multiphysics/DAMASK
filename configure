@@ -1,16 +1,49 @@
 #!/usr/bin/env python
 import os,re,subprocess,sys
 import damask
+########################################################
+# MAIN
+########################################################
 
-damaskEnv = damask.Environment()          # script location relative to root
-baseDir = damaskEnv.relPath('code/')
+parser = OptionParser(option_class=extendableOption, usage='%prog options', description = """
+Sets up the pre and post processing tools of DAMASK
 
-# basic idea: try to get the specific locations from:
-# 1) command line option
-# 2) envinronment variable
-# 3) for F90: autodetect
+""" + string.replace('$Id$','\n','\\n')
+)
 
-# then call the respective scripts with their options
+compilers = ['ifort','gfortran']
+
+parser.add_option('--F90',          dest='compiler', type='string', \
+                                    help='name of F90 [%default]')
+parser.add_option('--FFTWROOT',     dest='fftwroot', type='string', \
+                                    help='root location of FFTW [%default]')
+parser.add_option('--LAPACKROOT',   dest='lapackroot', type='string', \
+                                    help='root location of LAPACK [%default]')
+parser.add_option('--ACMLROOT',     dest='acmlroot', type='string', \
+                                    help='root location of ACML [%default]')
+parser.add_option('--IMKLROOT',     dest='imklroot', type='string', \
+                                    help='root location of IMKL [%default]')
+
+parser.set_defaults(compiler   = {True:os.getenv('F90'),False:''}\
+                                  [os.getenv('F90')!=None])
+parser.set_defaults(fftwroot   = {True:os.getenv('FFTWROOT'),False:''}\
+                                  [os.getenv('FFTWROOT')!=None])
+parser.set_defaults(lapackroot = {True:os.getenv('LAPACKROOT'),False:''}\
+                                  [os.getenv('LAPACKROOT')!=None])
+parser.set_defaults(acmlroot   = {True:os.getenv('ACMLROOT'),False:''}\
+                                  [os.getenv('ACMLROOT')!=None])
+parser.set_defaults(imklroot   = {True:os.getenv('IMKLROOT'),False:''}\
+                                  [os.getenv('IMKLROOT')!=None])
+
+(options,filenames) = parser.parse_args()
+
+if options.compiler not in compilers:
+  parser.error('compiler switch "F90" has to be one out of: %s'%(', '.join(compilers)))
+
+f2py_compiler = {
+                  'gfortran': 'gnu95   --f90flags="-fPIC -fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics -DSpectral -fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4 -I${DAMASK_ROOT}/lib"',
+                  'ifort':    'intelem --f90flags="-fPIC -fpp -stand f08 -diag-disable 5268 -assume byterecl -DSpectral -real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4 -I${DAMASK_ROOT}/lib"',
+                }[options.compiler]
 
 # changing dirs and compiler in makefile
 compiler ={True:'ifort',False:'gfortran'}[\
