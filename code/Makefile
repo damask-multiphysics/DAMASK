@@ -12,15 +12,12 @@ SHELL = /bin/sh
 #   ./configure --enable-threads --enable-sse2 --enable-shared
 #   make
 #   make install
-# + specify in the "pathinfo:FFTW" where FFTW was installed.
-#   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3",
-#   so you can copy those, for instance,
-#   into DAMASK_ROOT/lib/fftw/lib/ and specify "./fftw/" as pathinfo:FFTW
+# + set FFTWROOT in your envinronment
+#   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3", 
 # Uses linux threads to parallelize fftw3
 #
 # Instead of the AMD Core Math Library or the Intel Kernel Math Library 
 # a standard "lib(64)/liblapack.a/dylib/etc." can be used.
-# leave pathinfo:ACML and pathinfo:IKML blank, but specify as pathinfo:LAPACK where the library folder is located
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
@@ -29,25 +26,16 @@ SHELL = /bin/sh
 # PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
-# FFTWROOT       = pathinfo:FFTW   (will be adjusted by setup_code.py - required in pathinfo)
-# IMKLROOT       = pathinfo:IMKL   (will be adjusted by setup_code.py if present in pathinfo)
-# ACMLROOT       = pathinfo:ACML   (will be adjusted by setup_code.py if present in pathinfo)
-# LAPACKROOT     = pathinfo:LAPACK (will be adjusted by setup_code.py if present in pathinfo)
+# FFTWROOT       = root path
+# IMKLROOT       = root path
+# ACMLROOT       = root path
+# LAPACKROOT     = root path
 # PREFIX         = arbitrary prefix (before compilername)
 # OPTION         = arbitrary option (just before file to compile)
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-
-#any values will be overwritten by configure.py
-FFTWROOT ?= /usr/local
-IMKLROOT ?= 
-ACMLROOT ?= 
-LAPACKROOT ?= /usr
-HDF5ROOT ?=
-
-F90 ?= ifort
-########################################################################################
+include ../installation/options
 
 COMPILERNAME ?= $(F90)
 
@@ -88,11 +76,11 @@ PORTABLE_SWITCH =-msse3
 endif
 
 
-ifdef ACMLROOT
+ifneq  "x$(ACMLROOT)" "x"
 LIB_DIRS  +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
-ifdef LAPACKROOT
+ifneq  "x$(LAPACKROOT)" "x"
 LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
 LIBRARIES +=-llapack
 endif
@@ -100,7 +88,7 @@ endif
 
 COMPILE_OPTIONS_ifort :=
 ifeq "$(F90)" "ifort"
-ifdef IMKLROOT
+ifneq  "x$(IMKLROOT)" "x"
 COMPILE_OPTIONS_ifort +=-I$(IMKLROOT)/include -mkl=sequential
 LIBRARIES :=-lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lm
 LIB_DIRS  :=-L$(IMKLROOT)/lib/intel64
@@ -484,7 +472,3 @@ clean:
 	@rm -rf *.o
 	@rm -rf *.mod
 	@rm -rf *.exe
-
-install:
-	@./setup/symlink_Code.py
-
