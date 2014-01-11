@@ -1,11 +1,6 @@
 # sets up an environment for DAMASK on bash
 # usage:  source DAMASK_env.sh
-FFTWROOT=/usr/local
-LAPACKROOT=/usr
-ACMLROOT=
-IMKLROOT=
-DAMASKFORTRAN=gfortran
-
+source ./installation/options
 if [ "$OSTYPE" == "linux-gnu" ]
   then LOCATION=$(readlink -f "`dirname $BASH_SOURCE`")
 else
