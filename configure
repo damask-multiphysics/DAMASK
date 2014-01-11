@@ -1,0 +1,18 @@
+#!/usr/bin/env python
+import os,re,subprocess,sys
+import damask
+
+damaskEnv = damask.Environment()          # script location relative to root
+baseDir = damaskEnv.relPath('code/')
+
+# basic idea: try to get the specific locations from:
+# 1) command line option
+# 2) envinronment variable
+# 3) for F90: autodetect
+
+# then call the respective scripts with their options
+
+# changing dirs and compiler in makefile
+compiler ={True:'ifort',False:'gfortran'}[\
+           subprocess.call(['which', 'ifort'],\
+           stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
