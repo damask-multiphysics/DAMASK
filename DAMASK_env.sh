@@ -1,6 +1,6 @@
 # sets up an environment for DAMASK on bash
 # usage:  source DAMASK_env.sh
-source ./installation/options
+
 if [ "$OSTYPE" == "linux-gnu" ]
   then LOCATION=$(readlink -f "`dirname $BASH_SOURCE`")
 else
@@ -9,6 +9,7 @@ else
 fi
 export DAMASK_ROOT=${LOCATION}
 export DAMASK_NUM_THREADS=2
+source $DAMASK_ROOT/installation/options
 export FFTWROOT=${FFTWROOT}
 LD_NEW=$FFTWROOT/lib
 if [ "x$LAPACKROOT" != "x" ] 
@@ -23,8 +24,8 @@ if [ "x$IMKLROOT" != "x" ]
   then export IMKLROOT=${IMKLROOT}
 fi
 
-if [ "x$DAMASKFORTRAN" != "x" ] 
-  then export F90=$DAMASKFORTRAN
+if [ "x$F90" != "x" ] 
+  then export F90=$F90
 fi
 
 # disable output in case of scp
