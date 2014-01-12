@@ -13,3 +13,4 @@ LAPACKROOT=/usr
 ACMLROOT=
 IMKLROOT=
 F90=gfortran
+MSCROOT=/msc

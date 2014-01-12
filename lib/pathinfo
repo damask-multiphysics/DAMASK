@@ -10,8 +10,8 @@
 #  of the base installation path---this will be done automatically
 # Out of IMKL, ACML, LAPACK the first defined value is used to access BLAS functionality
 
-#IMKL    /opt/intel/composerxe/mkl
-#ACML    /opt/acml4.4.0
+IMKL
+ACML    /opt/acml5.3.0
 LAPACK  /usr
 FFTW    /usr/local
-MSC     /msc
+#MSC     /msc

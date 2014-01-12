@@ -4,6 +4,8 @@ DEFAULT_VERSION='2013.1'
 
 WORKINGDIR=`dirname $0`
 
+source ../options
+
 while [ ! -d "$WORKINGDIR/$VERSION" ] || [ -z "$VERSION" ]
 do
   echo "Input version of MARC/MENTAT installation: [${DEFAULT_VERSION}]"
@@ -14,9 +16,8 @@ do
 done
 echo "MSC version: $VERSION"
 
-INSTALLDIR=''
-if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  INSTALLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i msc | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
+if [ "x$MSCROOT" != "x" ] 
+  then INSTALLDIR=$MSCROOT
 fi
 
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
@@ -30,20 +31,17 @@ echo "MSC installation path: $INSTALLDIR"
 
 BLASDIR=''
 BLASTYPE=''
-if [ -f $WORKINGDIR/../../lib/pathinfo ]; then
-  IMKLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i imkl | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  ACMLDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i acml | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  LAPACKDIR=`grep -vE "^[[:space:]]*#|^$" $WORKINGDIR/../../lib/pathinfo | grep -i lapack | head -n1 | awk 'BEGIN { FS = "[ \t]+" } ; { print $2 }'`
-  if [ -d "$IMKLDIR" ]; then
-    BLASDIR=$IMKLDIR
-    BLASTYPE='IMKL'
-  elif [ -d "$ACMLDIR" ]; then
-    BLASDIR=$ACMLDIR
-    BLASTYPE='ACML'
-  elif [ -d "$LAPACKDIR" ]; then
-    BLASDIR=$LAPACKDIR
-    BLASTYPE='LAPACK'
-  fi
+if [ "x$LAPACKROOT" != "x" ] 
+  BLASDIR=$LAPACKROOT
+  BLASTYPE='LAPACK'
+fi
+if [ "x$ACMLROOT" != "x" ] 
+  BLASDIR=$ACMLROOT
+  BLASTYPE='ACML'
+fi
+if [ "x$IMKLROOT" != "x" ] 
+  BLASDIR=$IMKLROOT
+  BLASTYPE='IMKL'
 fi
 
 while [ ! -d "$BLASDIR" ] || [ -z "$BLASDIR" ]

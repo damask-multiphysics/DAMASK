@@ -59,7 +59,6 @@ elif lapackroot != '':
 
 execute = { \
           'coreModule' : [ 
-                        'make tidy',
                         # The following command is used to compile the fortran files and make the functions defined
                         # in damask.core.pyf available for python in the module core.so
                         # It uses the fortran wrapper f2py that is included in the numpy package to construct the
