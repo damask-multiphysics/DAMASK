@@ -8,8 +8,10 @@ else
   LOCATION=${STAT##* }
 fi
 export DAMASK_ROOT=${LOCATION}
-export DAMASK_NUM_THREADS=2
 source $DAMASK_ROOT/installation/options
+if [ "x$DAMASK_NUM_THREADS" != "x" ] 
+  then export DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS
+fi
 export FFTWROOT=${FFTWROOT}
 LD_NEW=$FFTWROOT/lib
 if [ "x$LAPACKROOT" != "x" ] 
