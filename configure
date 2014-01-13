@@ -1,6 +1,28 @@
 #!/usr/bin/env python
-import os,re,subprocess,sys
-import damask
+import os,re,sys,string,subprocess
+
+from optparse import OptionParser, Option
+
+# -----------------------------
+class extendableOption(Option):
+# -----------------------------
+# used for definition of new option parser action 'extend', which enables to take multiple option arguments
+# taken from online tutorial http://docs.python.org/library/optparse.html
+  
+  ACTIONS = Option.ACTIONS + ("extend",)
+  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
+  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
+  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+
+  def take_action(self, action, dest, opt, value, values, parser):
+    if action == "extend":
+      lvalue = value.split(",")
+      values.ensure_value(dest, []).extend(lvalue)
+    else:
+      Option.take_action(self, action, dest, opt, value, values, parser)
+
+
+
 ########################################################
 # MAIN
 ########################################################
@@ -13,19 +35,51 @@ Sets up the pre and post processing tools of DAMASK
 
 compilers = ['ifort','gfortran']
 
-parser.add_option('--with-fc',                  dest='compiler', type='string', \
-                                                help='name of F90 [%default]')
-parser.add_option('--with-blas-lapack-dir',     dest='fftwroot', type='string', \
-                                    help='root location of FFTW [%default]')
-parser.add_option('--with-blas-lapack-type',   dest='lapackroot', type='string', \
-                                    help='root location of LAPACK [%default]')
-parser.add_option('--with-spectral-options',   dest='lapackroot', type='string', \
-                                    help='root location of LAPACK [%default]')
+parser.add_option('--with-fc',               dest='compiler', type='string', \
+                                             help='name of F90 [%default]')
+parser.add_option('--with-fftw-dir',         dest='fftwroot', type='string', \
+                                             help='root location of FFTW [%default]')
+parser.add_option('--with-blas-lapack-dir',  dest='blasdir', type='string', \
+                                             help='root location of lapack [%default]')
+parser.add_option('--with-marc-dir',         dest='marcdir', type='string', \
+                                             help='root location of MSC.Marc [%default]')
+parser.add_option('--with-blas-type',        dest='blastype', type='string', \
+                                             help='root location of LAPACK [%default]')
+parser.add_option('--with-spectral-options',   dest='spectraloptions', type='string', \
+                                             help='root location of LAPACK [%default]')
 
+compiler = os.getenv('F90')
+if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
+                                subprocess.call(['which', 'ifort'],\
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
+parser.set_defaults(compiler=compiler)
+parser.set_defaults(blastype='LAPACK')
+parser.set_defaults(fftwroot="/usr/local")
+parser.set_defaults(blasdir="/usr")
+parser.set_defaults(marcdir="/msc")
 (options,filenames) = parser.parse_args()
+options.blastype=options.blastype.upper()
+options.compiler=options.compiler.lower()
+blastypes=['LAPACK','ACML','IMKL']
+compilers=['gfortran','ifort']
+if options.blastype not in blastypes: print('Unknown BLAS type selected')
+if options.compiler not in compilers: print('Unknown compiler type selected')
 
-
-# changing dirs and compiler in makefile
-compiler ={True:'ifort',False:'gfortran'}[\
-           subprocess.call(['which', 'ifort'],\
-           stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
+f=open('installation/options','r')
+f2=open('installation/options.tmp','w')
+for line in f.readlines():
+  if line[0:8]=='FFTWROOT': line='FFTWROOT='+options.fftwroot+'\n'
+  if line[0:3]=='MSC':      line='MSC='+options.marcdir+'\n'
+  if line[0:3]=='F90':      line='F90='+options.compiler+'\n'
+  if options.blastype == 'LAPACK':
+    if line[0:10]=='LAPACKROOT': line='LAPACKROOT='+options.blasdir+'\n'
+  if options.blastype == 'ACML':
+    if line[0:8]=='ACMLROOT': line='ACMLROOT='+options.blasdir+'\n'
+  if options.blastype == 'IMKL':
+    if line[0:8]=='IMKLROOT': line='IMKLROOT='+options.blasdir+'\n'
+  f2.write(line)
+for spectralOption in options.spectraloptions.split():
+  f2.write(spectralOption+'\n')
+f.close()
+f2.close()
+os.rename('installation/options.tmp','installation/options')  
