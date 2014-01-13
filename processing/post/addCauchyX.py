@@ -62,25 +62,22 @@ for name in filenames:
 
 # ------------------------------------------ loop over input files ------------------------------------  
 
-match=re.compile("increment[0-9]*")
 for myFile in files:
   print(myFile['name'])
 
-# ------------------------------------------ loop over increments --------------------------------------- 
-  increments = [incs+"/"+options.output for incs in filter(match.search, myFile['file'].keys())]
-  for inc in increments:
-    print("Current Group: "+inc)
-    for instance in myFile['file'][inc].keys():
-      path = inc+"/"+instance
-      dsets = myFile['file'][path].keys()
+# ------------------------------------------ loop over increments -------------------------------------
+  for inc in myFile['file']['increments'].keys():
+    print("Current Increment: "+inc)
+    for instance in myFile['file']['increments/'+inc].keys():
+      dsets = myFile['file']['increments/'+inc].keys()
       if (options.defgrad in dsets and options.stress in dsets):
-        defgrad = myFile['file'][path+"/"+options.defgrad]
-        stress = myFile['file'][path+"/"+options.stress]
+        defgrad = myFile['file']['increments/'+inc+'/'+options.defgrad]
+        stress = myFile['file']['increments/'+inc+'/'+options.stress]
         cauchy=np.zeros(np.shape(stress),'f')
         for p in range(stress.shape[0]):
           cauchy[p,...] = 1.0/np.linalg.det(defgrad[p,...])*np.dot(stress[p,...],defgrad[p,...].T)  # [Cauchy] = (1/det(F)) * [P].[F_transpose]
-        cauchyFile = myFile['file'][path].create_dataset("cauchy", data=cauchy)
-        cauchyFile.attrs['units'] = "Pa"
+        cauchyFile = myFile['file']['increments/'+inc].create_dataset('cauchy', data=cauchy)
+        cauchyFile.attrs['units'] = 'Pa'
 
   
 
