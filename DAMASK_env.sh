@@ -1,7 +1,7 @@
 # sets up an environment for DAMASK on bash
 # usage:  source DAMASK_env.sh
 
-if [ "$OSTYPE" == "linux-gnu" ]
+if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]
   then LOCATION=$(readlink -f "`dirname $BASH_SOURCE`")
 else
   STAT=$(stat "`dirname $BASH_SOURCE`")
