@@ -9,12 +9,12 @@ spectral:
 
 .PHONY : marc
 marc:
-	@./installation/mods_Marc/apply_DAMASK_modifcation.py
+	@./installation/mods_Marc/apply_DAMASK_modifcation.py ${MAKEFLAGS}
 
 .PHONY : processing
 processing:
 	@$(MAKE) tidy -C code >/dev/null
-	@./installation/compile_CoreModule.py
+	@./installation/compile_CoreModule.py ${MAKEFLAGS}
 
 .PHONY : tidy
 tidy: 
@@ -26,6 +26,6 @@ clean:
 
 .PHONY : install
 install:
-	@./installation/symlink_Code.py
-	@./installation/symlink_Processing.py
+	@./installation/symlink_Code.py ${MAKEFLAGS}
+	@./installation/symlink_Processing.py ${MAKEFLAGS}
 
