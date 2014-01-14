@@ -35,8 +35,8 @@ if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
   lib_lapack = '-L%s/lib/intel64 -I%s/include -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lm'%(options['IMKL_ROOT'],options['IMKL_ROOT'])
 elif options['ACML_ROOT'] != '':
   lib_lapack = '-L%s/%s64/lib -lacml'%(options['ACML_ROOT'],options['F90'])
-elif lapackroot != '':
-  lib_lapack = '-L%s -llapack'%(options['LAPACK_ROOT'])                                                     
+elif options['LAPACK_ROOT'] != '':
+  lib_lapack = '-L%s/lib -L%s/lib64-llapack'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])                                                     
 
 os.chdir(codeDir)                                                                           # needed for compilation with gfortran and f2py
 try:
@@ -55,7 +55,6 @@ except OSError, e:                                                              
 #' --overwrite-signature --no-lower prec.f90 DAMASK_spectral_interface.f90 math.f90 mesh.f90,...'
  ###########################################################################
 cmd = 'f2py damask.core.pyf' +\
-      ' --build-dir %s'%codeDir +\
       ' -c --no-lower --fcompiler=%s'%(compileCommand) +\
       ' prec.f90'+\
       ' DAMASK_spectral_interface.f90'+\
@@ -78,7 +77,10 @@ except subprocess.CalledProcessError:
 except OSError:
   print ('f2py not found')
 
-os.rename(os.path.join(codeDir,'core.so'), os.path.join(damaskEnv.relPath('lib/damask'),'core.so'))
+try:
+  os.rename(os.path.join(codeDir,'core.so'), os.path.join(damaskEnv.relPath('lib/damask'),'core.so'))
+except:
+  pass
 
 modules = glob.glob('*.mod')
 for module in modules:

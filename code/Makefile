@@ -12,7 +12,7 @@ SHELL = /bin/sh
 #   ./configure --enable-threads --enable-sse2 --enable-shared
 #   make
 #   make install
-# + set FFTWROOT in your envinronment
+# + set FFTW_ROOT in your envinronment
 #   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3", 
 # Uses linux threads to parallelize fftw3
 #
@@ -26,10 +26,10 @@ SHELL = /bin/sh
 # PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
-# FFTWROOT       = root path
-# IMKLROOT       = root path
-# ACMLROOT       = root path
-# LAPACKROOT     = root path
+# FFTW_ROOT       = root path
+# IMKL_ROOT       = root path
+# ACML_ROOT       = root path
+# LAPACK_ROOT     = root path
 # PREFIX         = arbitrary prefix (before compilername)
 # OPTION         = arbitrary option (just before file to compile)
 # SUFFIX         = arbitrary suffix (after file to compile)

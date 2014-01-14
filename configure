@@ -77,7 +77,7 @@ with open('installation/options','r') as f:
     if items[0] == 'FFTW_ROOT': line = '%s=%s\n'%(items[0],options.fftwdir)
     if items[0] == 'MSC_ROOT':  line = '%s=%s\n'%(items[0],options.marcdir)
     for blastype in blastypes:
-      if options.blastype == blastype and items[0] == '%sROOT_'%type:
+      if options.blastype == blastype and items[0] == '%s_ROOT'%blastype:
         line = '%s=%s\n'%(items[0],options.blasdir)
     for spectralOption in options.spectraloptions:
       [key,value] = re.split('[= ]',spectralOption)[0:2]
