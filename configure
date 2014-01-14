@@ -46,8 +46,8 @@ parser.add_option('--with-blas-lapack-dir',  dest='blasdir', type='string',
                                              help='root directory of LAPACK [%default]')
 parser.add_option('--with-blas-type',        dest='blastype', type='string',
                                              help='type of BLAS/LAPACK library [%default]')
-parser.add_option('--with-spectral-options', dest='spectraloptions', type='string',
-                                             help='options for spectral solver [%default]')
+parser.add_option('--with-spectral-options', dest='spectraloptions', type='string', action='extend',
+                                             help='options for spectral solver %default')
 
 compiler = os.getenv('F90')
 if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
@@ -55,9 +55,10 @@ if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
 parser.set_defaults(compiler = compiler)
 parser.set_defaults(blastype = 'LAPACK')
-parser.set_defaults(fftwdir = "/usr/local")
-parser.set_defaults(blasdir = "/usr")
-parser.set_defaults(marcdir = "/msc")
+parser.set_defaults(fftwdir =  '/usr/local')
+parser.set_defaults(blasdir =  '/usr')
+parser.set_defaults(marcdir =  '/msc')
+parser.set_defaults(spectraloptions = [])
 
 (options,filenames) = parser.parse_args()
 
@@ -73,13 +74,20 @@ with open('installation/options','r') as f:
     items = re.split('[= ]',line)
     
     if items[0] == 'F90':      line = '%s=%s\n'%(items[0],options.compiler)
-    if items[0] == 'FFTWROOT': line = '%s=%s\n'%(items[0],options.fftwdir)
-    if items[0] == 'MSCROOT':  line = '%s=%s\n'%(items[0],options.marcdir)
-    for type in blastypes:
-      if options.blastype == type and items[0] == '%sROOT'%type:
+    if items[0] == 'FFTW_ROOT': line = '%s=%s\n'%(items[0],options.fftwdir)
+    if items[0] == 'MSC_ROOT':  line = '%s=%s\n'%(items[0],options.marcdir)
+    for blastype in blastypes:
+      if options.blastype == blastype and items[0] == '%sROOT_'%type:
         line = '%s=%s\n'%(items[0],options.blasdir)
+    for spectralOption in options.spectraloptions:
+      [key,value] = re.split('[= ]',spectralOption)[0:2]
+      if key == items[0]:
+        line = '%s=%s\n'%(items[0],value)
+        options.spectraloptions.remove(spectralOption)
 
     output.append(line)
+for spectralOption in options.spectraloptions:
+  output.append(spectralOption+'\n')
 
 with open('installation/options','w') as f:
   for line in output:

@@ -467,8 +467,11 @@ endif
 tidy: 
 	@rm -rf *.o
 	@rm -rf *.mod
+	@rm -rf src*
+
 
 clean: 
 	@rm -rf *.o
 	@rm -rf *.mod
 	@rm -rf *.exe
+	@rm -rf src* 

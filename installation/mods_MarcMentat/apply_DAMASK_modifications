@@ -16,8 +16,8 @@ do
 done
 echo "MSC version: $VERSION"
 
-if [ "x$MSCROOT" != "x" ] 
-  then INSTALLDIR=$MSCROOT
+if [ "x$MSC_ROOT" != "x" ] 
+  then INSTALLDIR=$MSC_ROOT
 fi
 
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
@@ -31,16 +31,16 @@ echo "MSC installation path: $INSTALLDIR"
 
 BLASDIR=''
 BLASTYPE=''
-if [ "x$LAPACKROOT" != "x" ] 
-  BLASDIR=$LAPACKROOT
+if [ "x$LAPACK_ROOT" != "x" ] 
+  BLASDIR=$LAPACK_ROOT
   BLASTYPE='LAPACK'
 fi
-if [ "x$ACMLROOT" != "x" ] 
-  BLASDIR=$ACMLROOT
+if [ "x$ACML_ROOT" != "x" ] 
+  BLASDIR=$ACML_ROOT
   BLASTYPE='ACML'
 fi
-if [ "x$IMKLROOT" != "x" ] 
-  BLASDIR=$IMKLROOT
+if [ "x$IMKL_ROOT" != "x" ] 
+  BLASDIR=$IMKL_ROOT
   BLASTYPE='IMKL'
 fi
 

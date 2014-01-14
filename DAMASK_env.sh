@@ -12,18 +12,16 @@ source $DAMASK_ROOT/installation/options
 if [ "x$DAMASK_NUM_THREADS" != "x" ] 
   then export DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS
 fi
-export FFTWROOT=${FFTWROOT}
-LD_NEW=$FFTWROOT/lib
-if [ "x$LAPACKROOT" != "x" ] 
-  then export LAPACKROOT=$LAPACKROOT
-  LD_NEW=$LD_NEW:$LAPACKROOT/lib:$LAPACKROOT/lib64
+export FFTW_ROOT=$FFTW_ROOT
+LD_NEW=$FFTW_ROOT/lib
+if [ "x$LAPACK_ROOT" != "x" ] 
+  then LD_NEW=$LD_NEW:$LAPACK_ROOT/lib:$LAPACK_ROOT/lib64
 fi
-if [ "x$ACMLROOT" != "x" ] 
-  then export ACMLROOT=$ACMLROOT
-  LD_NEW=$LD_NEW:$ACMLROOT/ifort64_mp/lib:$ACMLROOT/ifort64/lib:$ACMLROOT/gfortran64_mp/lib:$ACMLROOT/gfortran64/lib
+if [ "x$ACML_ROOT" != "x" ] 
+  then LD_NEW=$LD_NEW:$ACML_ROOT/ifort64_mp/lib:$ACML_ROOT/ifort64/lib:$ACML_ROOT/gfortran64_mp/lib:$ACML_ROOT/gfortran64/lib
 fi
-if [ "x$IMKLROOT" != "x" ] 
-  then export IMKLROOT=${IMKLROOT}
+if [ "x$IMKL_ROOT" != "x" ] 
+  then LD_NEW=$LD_NEW:$IMKL_ROOT/lib/intel64
 fi
 
 if [ "x$F90" != "x" ] 
