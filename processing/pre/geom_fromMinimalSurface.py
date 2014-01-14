@@ -101,7 +101,7 @@ if numpy.any(info['size'] <= 0.0):
   sys.exit()
 
 #--- write header ---------------------------------------------------------------------------------
-header = [scriptID+'\n']
+header = [scriptID,' ' + ' '.join(sys.argv[1:])+'\n']
 header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
 header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
 header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
