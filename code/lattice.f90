@@ -426,7 +426,7 @@ module lattice
 !--------------------------------------------------------------------------------------------------
 ! hex (3+)
  integer(pInt), dimension(lattice_maxNslipFamily), parameter, public :: &
-   lattice_hex_NslipSystem = int([ 3, 3, 6, 12, 6, 3],pInt)                                         !< # of slip systems per family for hex
+   lattice_hex_NslipSystem = int([ 3, 3, 3, 6, 12, 6],pInt)                                         !< # of slip systems per family for hex
    
  integer(pInt), dimension(lattice_maxNtwinFamily), parameter, public :: &
    lattice_hex_NtwinSystem = int([ 6, 6, 6, 6],pInt)                                                !< # of slip systems per family for hex 
