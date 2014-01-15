@@ -78,7 +78,8 @@ except OSError:
   print ('f2py not found')
 
 try:
-  os.rename(os.path.join(codeDir,'core.so'), os.path.join(damaskEnv.relPath('lib/damask'),'core.so'))
+  os.rename(os.path.join(codeDir,'core.so'),\
+            os.path.join(damaskEnv.relPath('lib/damask'),'core.so'))
 except:
   pass
 

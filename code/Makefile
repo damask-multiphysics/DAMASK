@@ -464,14 +464,13 @@ endif
 %.o : %.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
 
-tidy: 
+.PHONY : tidy 
 	@rm -rf *.o
 	@rm -rf *.mod
-	@rm -rf src*
 
 
-clean: 
+.PHONY : clean
 	@rm -rf *.o
 	@rm -rf *.mod
 	@rm -rf *.exe
-	@rm -rf src* 
+
