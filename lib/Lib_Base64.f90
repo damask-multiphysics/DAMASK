@@ -749,7 +749,7 @@ contains
 
   !---------------------------------------------------------------------------------------------------------------------------------
   c = 1_I8P
-  do e=1_I8P,size(bits,dim=1),3_I8P ! loop over array elements: 3 bytes (24 bits) scanning
+  do e=1_I8P,size(bits,dim=1,kind=I8P),3_I8P ! loop over array elements: 3 bytes (24 bits) scanning
     sixb = 0_I1P
     call mvbits(bits(e  ),2,6,sixb(1),0)
     call mvbits(bits(e  ),0,2,sixb(2),4) ; call mvbits(bits(e+1),4,4,sixb(2),0)

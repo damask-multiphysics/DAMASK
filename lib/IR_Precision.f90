@@ -388,7 +388,7 @@ contains
   !---------------------------------------------------------------------------------------------------------------------------------
 
   !---------------------------------------------------------------------------------------------------------------------------------
-  bits = size(transfer(c,mold),dim=1,kind=I1P)*8_I4P
+  bits = size(transfer(c,mold),dim=1,kind=I4P)*8_I4P
   return
   !---------------------------------------------------------------------------------------------------------------------------------
   endfunction bit_size_chr
@@ -1159,10 +1159,14 @@ contains
   ! checking the bit ordering architecture
   call check_endian
   ! computing the bits/bytes sizes of real variables
-  BIR16P = bit_size(r=MaxR16P) ; BYR16P = BIR16P/8_I2P
   BIR8P  = bit_size(r=MaxR8P)  ; BYR8P  = BIR8P/8_I1P
   BIR4P  = bit_size(r=MaxR4P)  ; BYR4P  = BIR4P/8_I1P
   BIR_P  = bit_size(r=MaxR_P)  ; BYR_P  = BIR_P/8_I1P
+#ifdef r16p
+  BIR16P = bit_size(r=MaxR16P) ; BYR16P = BIR16P/8_I2P
+#else
+  BIR16P = int(BIR8P,kind=I2P) ; BYR16P = BIR16P/8_I2P
+#endif
   ir_initialized = .true.
   return
   !---------------------------------------------------------------------------------------------------------------------------------
