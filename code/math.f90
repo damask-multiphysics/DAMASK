@@ -1418,7 +1418,7 @@ pure function math_RtoEuler(R)
 
  math_RtoEuler(2) = acos(myVal)
 
- if(math_RtoEuler(2) < 1.0e-8_pReal) then
+ if((math_RtoEuler(2) < 1.0e-8_pReal) .or. (pi-math_RtoEuler(2) < 1.0e-8_pReal)) then
 ! calculate phi2
      math_RtoEuler(3) = 0.0_pReal
 ! calculate phi1
