@@ -803,14 +803,18 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
        nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)*&
                                            lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,structID)
      enddo
-     gdot_slip_pos(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(matID)* &
-                    ((abs(tau_slip_pos(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*&
-                                                                    sign(1.0_pReal,tau_slip_pos(j))
-     gdot_slip_neg(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(matID)* &
-                    ((abs(tau_slip_neg(j))/state(ipc,ip,el)%p(j))**constitutive_phenopowerlaw_n_slip(matID))*&
-                                                                    sign(1.0_pReal,tau_slip_neg(j))
-     Lp = Lp + (1.0_pReal-state(ipc,ip,el)%p(index_F))*&                     ! 1-F
-               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,structID)
+     gdot_slip_pos(j) = 0.5_pReal * (1.0_pReal - state(ipc,ip,el)%p(index_F)) &                     ! 1-F
+                      * constitutive_phenopowerlaw_gdot0_slip(matID) &
+                      * (abs(tau_slip_pos(j)) / state(ipc,ip,el)%p(j)) &
+                        **constitutive_phenopowerlaw_n_slip(matID) &
+                      * sign(1.0_pReal,tau_slip_pos(j))
+     gdot_slip_neg(j) = 0.5_pReal * (1.0_pReal - state(ipc,ip,el)%p(index_F)) &                     ! 1-F
+                      * constitutive_phenopowerlaw_gdot0_slip(matID) &
+                      * (abs(tau_slip_neg(j)) / state(ipc,ip,el)%p(j)) &
+                        **constitutive_phenopowerlaw_n_slip(matID) &
+                      * sign(1.0_pReal,tau_slip_neg(j))
+     Lp = Lp + (gdot_slip_pos(j) + gdot_slip_neg(j)) &
+             * lattice_Sslip(1:3,1:3,1,index_myFamily+i,structID)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
@@ -841,11 +845,12 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
 !--------------------------------------------------------------------------------------------------
 ! Calculation of Lp
      tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,structID)) 
-     gdot_twin(j) = (1.0_pReal-state(ipc,ip,el)%p(index_F))*&                                       ! 1-F
-                    constitutive_phenopowerlaw_gdot0_twin(matID)*&
-                    (abs(tau_twin(j))/state(ipc,ip,el)%p(nSlip+j))**&
-                    constitutive_phenopowerlaw_n_twin(matID)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
-     Lp = Lp + gdot_twin(j)*lattice_Stwin(1:3,1:3,index_myFamily+i,structID)
+     gdot_twin(j) = (1.0_pReal - state(ipc,ip,el)%p(index_F)) &                                       ! 1-F
+                  * constitutive_phenopowerlaw_gdot0_twin(matID) &
+                  * (abs(tau_twin(j)) / state(ipc,ip,el)%p(nSlip+j)) &
+                    **constitutive_phenopowerlaw_n_twin(matID) &
+                  * max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
+     Lp = Lp + gdot_twin(j) * lattice_Stwin(1:3,1:3,index_myFamily+i,structID)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
