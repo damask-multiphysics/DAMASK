@@ -426,9 +426,9 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    Lp = 0.0_pReal
    dLp_dTstar99 = 0.0_pReal
  else
-   gamma_dot = constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
-             / &!----------------------------------------------------------------------------------
-               (constitutive_j2_fTaylor(matID) * state(ipc,ip,el)%p(1)) ) **constitutive_j2_n(matID)
+   gamma_dot = constitutive_j2_gdot0(matID) &
+             * (sqrt(1.5_pReal) * norm_Tstar_dev & 
+                / constitutive_j2_fTaylor(matID) / state(ipc,ip,el)%p(1)) **constitutive_j2_n(matID)
 
    Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/constitutive_j2_fTaylor(matID)
 
@@ -439,6 +439,8 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
                                       Tstar_dev_33(k,l)*Tstar_dev_33(m,n) / squarenorm_Tstar_dev
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
      dLp_dTstar_3333(k,l,k,l) = dLp_dTstar_3333(k,l,k,l) + 1.0_pReal
+   forall (k=1_pInt:3_pInt,m=1_pInt:3_pInt) &
+     dLp_dTstar_3333(k,k,m,m) = dLp_dTstar_3333(k,k,m,m) - 1.0_pReal/3.0_pReal
    dLp_dTstar99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(matID) * &
                                       dLp_dTstar_3333 / norm_Tstar_dev)
  end if
