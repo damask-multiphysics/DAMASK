@@ -3131,8 +3131,6 @@ logical function crystallite_integrateStress(&
    Fe = math_mul33x33(A,B)                                                    ! current elastic deformation tensor
    call constitutive_TandItsTangent(Tstar, dT_dFe3333, Fe, g,i,e)             ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
    Tstar_v = math_Mandel33to6(Tstar)
-   p_hydro = sum(Tstar_v(1:3)) / 3.0_pReal
-   forall(n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) - p_hydro                  ! get deviatoric stress tensor
     
    
    !* calculate plastic velocity gradient and its tangent from constitutive law
@@ -3197,7 +3195,7 @@ logical function crystallite_integrateStress(&
    if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
      dFe_dLp3333 = 0.0_pReal
      do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-       dFe_dLp3333(p,o,1:3,p) = A(o,1:3)                                                            ! dFe_dLp(i,j,k,l) = -dt * A(i,k) delta(j,l)
+       dFe_dLp3333(p,o,1:3,p) = A(o,1:3)                                                            ! dFe_dLp(i,j,k,l) = -dt * A(i,k) delta(l,j)
      enddo; enddo
      dFe_dLp3333 = -dt * dFe_dLp3333
      dFe_dLp = math_Plain3333to99(dFe_dLp3333)
@@ -3262,9 +3260,8 @@ logical function crystallite_integrateStress(&
  Fe_new = math_mul33x33(Fg_new,invFp_new)                             ! calc resulting Fe
  
  
- !* add volumetric component to 2nd Piola-Kirchhoff stress and calculate 1st Piola-Kirchhoff stress
+ !* calculate 1st Piola-Kirchhoff stress
  
- forall (n=1_pInt:3_pInt) Tstar_v(n) = Tstar_v(n) + p_hydro
  crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_new, math_mul33x33(math_Mandel6to33(Tstar_v), &
                                               math_transpose33(invFp_new)))
   
