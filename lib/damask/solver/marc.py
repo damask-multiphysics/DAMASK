@@ -25,7 +25,7 @@ class Marc(Solver):
 #--------------------------
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).pathInfo['MSC_ROOT']
+    MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
     
     for release,subdirs in sorted(self.releases.items(),reverse=True):
       for subdir in subdirs:
@@ -41,7 +41,7 @@ class Marc(Solver):
 #--------------------------
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).pathInfo['MSC_ROOT']
+    MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
     
     if len(releases) == 0: releases = self.releases.keys()
     if type(releases) is not list: releases = [releases]
@@ -60,7 +60,7 @@ class Marc(Solver):
 #--------------------------
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).pathInfo['MSC_ROOT']
+    MSCpath = damask.environment.Environment(rootRelation).options['MSC_ROOT']
     
     if len(release) == 0: release = self.version(rootRelation)
     path = '%s/marc%s/tools'%(MSCpath,release)
