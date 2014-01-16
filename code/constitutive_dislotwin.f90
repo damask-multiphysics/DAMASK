@@ -1224,8 +1224,9 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
         constitutive_dislotwin_v0PerSlipSystem(j,matID)
  
       !* Shear rates due to slip
-      gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1-StressRatio_p)**constitutive_dislotwin_q(matID))*&
-                     sign(1.0_pReal,tau_slip(j))
+      gdot_slip(j) = (1.0_pReal - sumf) * DotGamma0 &
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislotwin_q(matID)) &
+                   * sign(1.0_pReal,tau_slip(j))
  
       !* Derivatives of shear rates
       dgdot_dtauslip(j) = &
@@ -1234,7 +1235,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
         StressRatio_pminus1*(1-StressRatio_p)**(constitutive_dislotwin_q(matID)-1.0_pReal)
  
       !* Plastic velocity gradient for dislocation glide
-      Lp = Lp + (1.0_pReal - sumf)*gdot_slip(j)*lattice_Sslip(:,:,1,index_myFamily+i,structID)
+      Lp = Lp + gdot_slip(j)*lattice_Sslip(:,:,1,index_myFamily+i,structID)
  
       !* Calculation of the tangent of Lp
       forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
