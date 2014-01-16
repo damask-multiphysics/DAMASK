@@ -74,11 +74,11 @@ with open('installation/options','r') as f:
     items = re.split('[= ]',line)
     
     if items[0] == 'F90':      line = '%s=%s\n'%(items[0],options.compiler)
-    if items[0] == 'FFTW_ROOT': line = '%s=%s\n'%(items[0],options.fftwdir)
-    if items[0] == 'MSC_ROOT':  line = '%s=%s\n'%(items[0],options.marcdir)
+    if items[0] == 'FFTW_ROOT': line = '%s=%s\n'%(items[0],options.fftwdir.rstrip('/'))
+    if items[0] == 'MSC_ROOT':  line = '%s=%s\n'%(items[0],options.marcdir.rstrip('/'))
     for blastype in blastypes:
       if options.blastype == blastype and items[0] == '%s_ROOT'%blastype:
-        line = '%s=%s\n'%(items[0],options.blasdir)
+        line = '%s=%s\n'%(items[0],options.blasdir.rstrip('/'))
     for spectralOption in options.spectraloptions:
       [key,value] = re.split('[= ]',spectralOption)[0:2]
       if key == items[0]:
