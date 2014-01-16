@@ -720,7 +720,8 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
    p_vec
  use math, only: &
    math_Plain3333to99, &
-   math_Mandel6to33
+   math_Mandel6to33, &
+   math_mul33xx33
  use lattice, only: &
    lattice_Sslip, &
    lattice_Sslip_v, &
@@ -789,20 +790,18 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
      
 !--------------------------------------------------------------------------------------------------
 ! Calculation of Lp
-     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,structID))
-     tau_slip_neg(j)  = tau_slip_pos(j)
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,structID)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
      do k = 1,lattice_NnonSchmid(structID) 
-       tau_slip_pos(j) = tau_slip_pos(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,structID))
-       tau_slip_neg(j) = tau_slip_neg(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,structID))
-       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)*&
-                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,structID)
-       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID)*&
-                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,structID)
+       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) &
+                                   + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID) &
+                                     * lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,structID)
+       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) &
+                                   + constitutive_phenopowerlaw_nonSchmidCoeff(k,matID) &
+                                     * lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,structID)
      enddo
+     tau_slip_pos(j) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmid_tensor(1:3,1:3,1))
+     tau_slip_neg(j) = math_mul33xx33(math_Mandel6to33(Tstar_v), nonSchmid_tensor(1:3,1:3,2))
      gdot_slip_pos(j) = 0.5_pReal * (1.0_pReal - state(ipc,ip,el)%p(index_F)) &                     ! 1-F
                       * constitutive_phenopowerlaw_gdot0_slip(matID) &
                       * (abs(tau_slip_pos(j)) / state(ipc,ip,el)%p(j)) &
