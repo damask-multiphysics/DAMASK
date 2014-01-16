@@ -25,7 +25,7 @@ class Marc(Solver):
 #--------------------------
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).pathInfo['msc']
+    MSCpath = damask.environment.Environment(rootRelation).pathInfo['MSC_ROOT']
     
     for release,subdirs in sorted(self.releases.items(),reverse=True):
       for subdir in subdirs:
@@ -41,7 +41,7 @@ class Marc(Solver):
 #--------------------------
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).pathInfo['msc']
+    MSCpath = damask.environment.Environment(rootRelation).pathInfo['MSC_ROOT']
     
     if len(releases) == 0: releases = self.releases.keys()
     if type(releases) is not list: releases = [releases]
@@ -60,7 +60,7 @@ class Marc(Solver):
 #--------------------------
     import os,damask.environment
 
-    MSCpath = damask.environment.Environment(rootRelation).pathInfo['msc']
+    MSCpath = damask.environment.Environment(rootRelation).pathInfo['MSC_ROOT']
     
     if len(release) == 0: release = self.version(rootRelation)
     path = '%s/marc%s/tools'%(MSCpath,release)
@@ -91,7 +91,7 @@ class Marc(Solver):
     user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
-    if int(release)>=2013:
+    if int(release) >= 2013:
        script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
        script =  script+'%s%s'%({False:'',True:optimization}[optimization!=''],{False:'',True:'mp'}[openMP])
     else:
@@ -125,5 +125,5 @@ class Marc(Solver):
         substr = ln[string.find(ln,'Exit number'):len(ln)]
         exitnumber = int(substr[12:16])
 
-    fid_out.close()            
+    fid_out.close()
     return exitnumber
