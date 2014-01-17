@@ -618,16 +618,16 @@ subroutine mesh_init(ip,el)
  call mesh_write_elemGeom
 
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
-   call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK-elements
+   call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
  if (debug_e < 1 .or. debug_e > mesh_NcpElems) &
    call IO_error(602_pInt,ext_msg='element')                                                        ! selected element does not exist
  if (debug_i < 1 .or. debug_i > FE_Nips(FE_geomtype(mesh_element(2_pInt,debug_e)))) &
    call IO_error(602_pInt,ext_msg='IP')                                                             ! selected element does not have requested IP
  
- FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]
+ FEsolving_execElem = [ 1_pInt,mesh_NcpElems ]                                                      ! parallel loop bounds set to comprise all DAMASK elements
  if (allocated(FEsolving_execIP)) deallocate(FEsolving_execIP)
- allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt
- forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))
+ allocate(FEsolving_execIP(2_pInt,mesh_NcpElems)); FEsolving_execIP = 1_pInt                        ! parallel loop bounds set to comprise from first IP...
+ forall (j = 1_pInt:mesh_NcpElems) FEsolving_execIP(2,j) = FE_Nips(FE_geomtype(mesh_element(2,j)))  ! ...up to own IP count for each element
  
  if (allocated(calcMode)) deallocate(calcMode)
  allocate(calcMode(mesh_maxNips,mesh_NcpElems))
