@@ -5,7 +5,7 @@ import os,sys,string,re,subprocess,shlex
 class Environment():
   __slots__ = [ \
                 'rootRelation',
-                'pathInfo',
+                'options',
               ]
 
   def __init__(self,rootRelation = '.'):
