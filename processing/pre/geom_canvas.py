@@ -52,11 +52,11 @@ Changes the (three-dimensional) canvas of a spectral geometry description.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, \
+parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, metavar='int int int ', \
                   help='a,b,c grid of hexahedral box [unchanged]')
-parser.add_option('-o', '--offset', dest='offset', type='int', nargs = 3, \
+parser.add_option('-o', '--offset', dest='offset', type='int', nargs = 3, metavar='int int int', \
                   help='a,b,c offset from old to new origin of grid %default')
-parser.add_option('-f', '--fill', dest='fill', type='int', \
+parser.add_option('-f', '--fill', dest='fill', type='int', metavar = 'int', \
                   help='(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
 
 parser.set_defaults(grid = ['0','0','0'])
@@ -199,7 +199,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    scriptID,
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2],),

@@ -74,15 +74,15 @@ Generate geometry description and material configuration by standard Voronoi tes
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int', \
                   help='a,b,c grid of hexahedral box [from seeds file]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, \
+parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar = 'float float float', \
                   help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
-parser.add_option('--homogenization', dest='homogenization', type='int', \
+parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int', \
                   help='homogenization index to be used [%default]')
-parser.add_option('--phase', dest='phase', type='int', \
+parser.add_option('--phase', dest='phase', type='int', metavar = 'int', \
                   help='phase index to be used [%default]')
-parser.add_option('--crystallite', dest='crystallite', type='int', \
+parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'int', \
                   help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
@@ -249,7 +249,7 @@ for file in files:
     theTable.labels_clear()
     theTable.info_clear()
     theTable.info_append(extra_header+[
-      scriptID,
+      scriptID + ' ' + ' '.join(sys.argv[1:]),
       "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
       "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
       "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),

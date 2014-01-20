@@ -43,19 +43,19 @@ Generate a geometry file of a bicontinuous structure of given type.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-t','--type', dest='type', choices=minimal_surfaces, \
+parser.add_option('-t','--type', dest='type', choices=minimal_surfaces, metavar='string', \
                   help='type of minimal surface (%s) [primitive]' %(','.join(minimal_surfaces)))
-parser.add_option('-f','--threshold', dest='threshold', type='float', \
+parser.add_option('-f','--threshold', dest='threshold', type='float', metavar='float', \
                   help='threshold value defining minimal surface [%default]')
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs=3, \
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs=3, metavar='int int int', \
                   help='a,b,c grid of hexahedral box %default')
-parser.add_option('-s', '--size', dest='size', type='float', nargs=3, \
+parser.add_option('-s', '--size', dest='size', type='float', nargs=3, metavar='float float float', \
                   help='x,y,z size of hexahedral box %default')
-parser.add_option('-p', '--periods', dest='periods', type='int', \
+parser.add_option('-p', '--periods', dest='periods', type='int', metavar= 'int', \
                   help='number of repetitions of unit cell [%default]')
-parser.add_option('--homogenization', dest='homogenization', type='int', \
+parser.add_option('--homogenization', dest='homogenization', type='int', metavar= 'int', \
                   help='homogenization index to be used [%default]')
-parser.add_option('--m', dest='microstructure', type='int', nargs = 2, \
+parser.add_option('--m', dest='microstructure', type='int', nargs = 2, metavar= 'int int', \
                   help='two microstructure indices to be used %default')
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
@@ -101,7 +101,7 @@ if numpy.any(info['size'] <= 0.0):
   sys.exit()
 
 #--- write header ---------------------------------------------------------------------------------
-header = [scriptID,' ' + ' '.join(sys.argv[1:])+'\n']
+header = [scriptID + ' ' + ' '.join(sys.argv[1:])+'\n']
 header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
 header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
 header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

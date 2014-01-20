@@ -54,9 +54,9 @@ i.e. within the region close to a grain/phase boundary.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-v', '--vicinity', dest='vicinity', type='int', \
+parser.add_option('-v', '--vicinity', dest='vicinity', type='int', metavar='int', \
                   help='voxel distance checked for presence of other microstructure [%default]')
-parser.add_option('-m', '--microstructureoffset', dest='offset', type='int', \
+parser.add_option('-m', '--microstructureoffset', dest='offset', type='int', metavar='int', \
                   help='offset (positive or negative) for tagged microstructure. '+
                        '"0" selects maximum microstructure index [%default]')
 
@@ -164,7 +164,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    scriptID,
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),

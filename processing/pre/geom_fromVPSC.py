@@ -36,15 +36,15 @@ Generate geometry description and material configuration from input files used b
 )
 
 
-parser.add_option('--column',          dest='column', type='int', \
+parser.add_option('--column',          dest='column', type='int', metavar = 'int', \
                   help='data column to discriminate phase 1 from 2 [%default]')
-parser.add_option('-t','--treshold',  dest='threshold', type='float', \
+parser.add_option('-t','--treshold',  dest='threshold', type='float', metavar = 'float', \
                   help='threshold value to discriminate phase 1 from 2 [%default]')
-parser.add_option('--homogenization', dest='homogenization', type='int', \
+parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int', \
                   help='homogenization index to be used [%default]')
-parser.add_option('--phase', dest='phase', type='int', nargs = 2, \
+parser.add_option('--phase', dest='phase', type='int', nargs = 2, metavar = 'int int', \
                   help='two phase indices to be used %default')
-parser.add_option('--crystallite', dest='crystallite', type='int', \
+parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'int', \
                   help='crystallite index to be used [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
@@ -132,7 +132,7 @@ for file in files:
     file['output'].write('\n'.join(microstructure) + \
                          '\n'.join(texture))
   else:
-    header = [scriptID,' ' + ' '.join(sys.argv[1:])+'\n']
+    header = [scriptID + ' ' + ' '.join(sys.argv[1:])+'\n']
     header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
     header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
     header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

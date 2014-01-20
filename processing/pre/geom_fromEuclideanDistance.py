@@ -117,9 +117,9 @@ boundaries, triple lines, and quadruple points.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-t','--type',        dest='type', action='extend', type='string', \
-                  help='feature type (%s)'%(', '.join(map(lambda x:', '.join(x['names']),features))))
-parser.add_option('-n','--neighborhood',  dest='neigborhood', choices=neighborhoods.keys(), \
+parser.add_option('-t','--type',        dest='type', action='extend', type='string', metavar = '<string LIST>', \
+                  help='feature type (%s) '%(', '.join(map(lambda x:', '.join(x['names']),features))) )
+parser.add_option('-n','--neighborhood',  dest='neigborhood', choices=neighborhoods.keys(), metavar = 'string',  \
                   help='type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
 parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
                   help='output geom file with two-dimensional data arrangement [%default]')
@@ -214,7 +214,7 @@ for file in files:
     file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
-  new_header.append(scriptID,' '+ ' '.join(sys.argv[1:]) + '\n')
+  new_header.append(scriptID + ' ' + ' '.join(sys.argv[1:]) + '\n')
   new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
   new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
   new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

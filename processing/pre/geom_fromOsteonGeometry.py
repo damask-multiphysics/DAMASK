@@ -36,25 +36,25 @@ Its fiber orientation is oscillating by +/- amplitude within one period.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs=2, \
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs=2, metavar = 'int int', \
                   help='a,b grid of hexahedral box %default')
-parser.add_option('-s', '--size', dest='size', type='float', nargs=2, \
+parser.add_option('-s', '--size', dest='size', type='float', nargs=2, metavar = 'float float', \
                   help='x,y size of hexahedral box %default')
-parser.add_option('-c', '--canal',  dest='canal', type='float', \
+parser.add_option('-c', '--canal',  dest='canal', type='float', metavar = 'float', \
                   help='Haversian canal radius [%default]')
-parser.add_option('-o', '--osteon', dest='osteon', type='float', \
+parser.add_option('-o', '--osteon', dest='osteon', type='float', metavar = 'float', \
                   help='osteon radius (horizontal) [%default]')
-parser.add_option('-l', '--lamella', dest='period', type='float', \
+parser.add_option('-l', '--lamella', dest='period', type='float', metavar = 'float', \
                   help='lamella width [%default]')
-parser.add_option('-a', '--amplitude', dest='amplitude', type='float', \
+parser.add_option('-a', '--amplitude', dest='amplitude', type='float', metavar = 'float', \
                   help='amplitude of twisted plywood wiggle in deg [%default]')
-parser.add_option(      '--aspect', dest='aspect', type='float', \
+parser.add_option(      '--aspect', dest='aspect', type='float', metavar = 'float', \
                   help='osteon aspect ratio (vert/horiz) [%default]')
-parser.add_option('-w', '--omega',  dest='omega', type='float', \
+parser.add_option('-w', '--omega',  dest='omega', type='float', metavar = 'float', \
                   help='rotation angle (around normal) of osteon [%default]')
-parser.add_option('--homogenization', dest='homogenization', type='int', \
+parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int', \
                   help='homogenization index to be used [%default]')
-parser.add_option('--crystallite',  dest='crystallite', type='int', \
+parser.add_option('--crystallite',  dest='crystallite', type='int', metavar = 'int', \
                   help='crystallite index to be used [%default]')
 parser.add_option('--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
@@ -175,7 +175,7 @@ if options.config:
                                   betaOfGrain[i]))
   
 else:
-  header = [scriptID,' ' + ' '.join(sys.argv[1:])+'\n']
+  header = [scriptID + ' ' + ' '.join(sys.argv[1:])+'\n']
   header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
   header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
   header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))

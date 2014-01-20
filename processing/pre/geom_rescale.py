@@ -53,13 +53,13 @@ Either absolute values or relative factors (like "0.25x") can be used.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, \
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int', \
                   help='a,b,c grid of hexahedral box [unchanged]')
-parser.add_option('-s', '--size', dest='size', type='string', nargs = 3, \
+parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar = 'float float float', \
                   help='x,y,z size of hexahedral box [unchanged]')
 
-parser.set_defaults(grid = ['0','0','0'])
-parser.set_defaults(size  = ['0.0','0.0','0.0'])
+parser.set_defaults(grid = [0,0,0])
+parser.set_defaults(size = [0.0,0.0,0.0])
 
 (options, filenames) = parser.parse_args()
 
@@ -191,7 +191,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    scriptID,
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),

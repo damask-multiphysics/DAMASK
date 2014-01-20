@@ -143,7 +143,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    scriptID,
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %e\ty %e\tz %e"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %e\ty %e\tz %e"%(info['origin'][0],info['origin'][1],info['origin'][2],),

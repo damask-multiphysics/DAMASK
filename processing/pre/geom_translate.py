@@ -52,11 +52,11 @@ translate microstructure indices (shift or substitute) and/or geometry origin.
 )
 
 parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3, \
-                  help='offset from old to new origin of grid', metavar='<x y z>')
+                  help='offset from old to new origin of grid', metavar='float float float')
 parser.add_option('-m', '--microstructure', dest='microstructure', type='int', \
-                  help='offset from old to new microstructure indices', metavar='<int>')
+                  help='offset from old to new microstructure indices', metavar='int')
 parser.add_option('-s', '--substitute', action='extend', dest='substitute', type='string', \
-                  help='substitutions of microstructure indices from,to,from,to,...', metavar='<list>')
+                  help='substitutions of microstructure indices from,to,from,to,...', metavar='<string LIST>')
 
 parser.set_defaults(origin = [0.0,0.0,0.0])
 parser.set_defaults(microstructure = 0)
@@ -154,11 +154,8 @@ for file in files:
 
 #--- do work ------------------------------------------------------------------------------------
   substituted = numpy.copy(microstructure)
-  for k, v in sub.iteritems(): substituted[microstructure==k] = v                                   # substitute microstructure indices
+  for k, v in sub.iteritems(): substituted[microstructure==k] = v                                    # substitute microstructure indices
 
-#  for i in xrange(N):
-#    if microstructure[i] in sub: microstructure[i] = sub[microstructure[i]]                         # substitute microstructure indices
-    
   substituted += options.microstructure                                                              # shift microstructure indices
 
   newInfo['origin'] = info['origin'] + options.origin
@@ -174,7 +171,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    scriptID,
+    scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(newInfo['origin'][0],newInfo['origin'][1],newInfo['origin'][2],),

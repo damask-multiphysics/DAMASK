@@ -57,21 +57,16 @@ The final geometry is assembled by selecting at each voxel that grain index for 
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-d', '--distance', dest='d', type='int', \
-                  help='diffusion distance in voxels [%default]', metavar='float')
-parser.add_option('-N', '--smooth', dest='N', type='int', \
+parser.add_option('-d', '--distance', dest='d', type='int', metavar='int', \
+                  help='diffusion distance in voxels [%default]')
+parser.add_option('-N', '--smooth', dest='N', type='int', metavar='int', \
                  help='N for curvature flow [%default]')
-parser.add_option('-b', '--black', dest='black', action='extend', type='string', \
-                 help='indices of stationary microstructures', metavar='<LIST>')
 
 parser.set_defaults(d = 1)
 parser.set_defaults(N = 1)
-parser.set_defaults(p = [1,1,1])
-parser.set_defaults(black = [])
-
 (options, filenames) = parser.parse_args()
 
-options.black = map(int,options.black)
+
 
 #--- setup file handles --------------------------------------------------------------------------   
 files = []
@@ -162,8 +157,7 @@ for file in files:
   microstructure = microstructure.reshape([2 if i == 1 else i for i in info['grid']],order='F')
 
 #--- domain decomposition -------------------------------------------------------------------------  
-  numProc = int(options.p[0]*options.p[1]*options.p[2])
-  stride = numpy.array([2 if i == 1 else i for i in info['grid']],'i')/options.p
+  stride = numpy.array([2 if i == 1 else i for i in info['grid']],'i')
   if numpy.any(numpy.floor(stride) != stride): 
     file['croak'].write('invalid domain decomposition.\n')
     continue
@@ -209,7 +203,7 @@ for file in files:
   theTable.labels_clear()
   theTable.info_clear()
   theTable.info_append(extra_header+[
-    scriptID,
+    scriptID+ ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
     "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
