@@ -1260,12 +1260,16 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
 
            ! --- PERTURB EITHER FORWARD OR BACKWARD ---
 
-           crystallite_subF = F_backup
-           crystallite_subF(k,l,:,:,:) = crystallite_subF(k,l,:,:,:) + myPert
-           
-           crystallite_converged = convergenceFlag_backup
-           crystallite_todo = crystallite_requested .and. crystallite_converged
-           where (crystallite_todo) crystallite_converged = .false.                                    ! start out non-converged
+           do e = FEsolving_execElem(1),FEsolving_execElem(2)
+             myNgrains = homogenization_Ngrains(mesh_element(3,e))
+             do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+               do g = 1,myNgrains
+                 crystallite_subF(1:3,1:3,g,i,e) = F_backup(1:3,1:3,g,i,e)
+                 crystallite_subF(k,l,g,i,e) = crystallite_subF(k,l,g,i,e) + myPert
+                 crystallite_todo(g,i,e) = crystallite_requested(g,i,e) &
+                                          .and. convergenceFlag_backup(g,i,e)
+                 if (crystallite_todo(g,i,e)) crystallite_converged(g,i,e) = .false.                               ! start out non-converged
+           enddo; enddo; enddo
 
            select case(numerics_integrator(numerics_integrationMode))
              case(1_pInt)
@@ -3035,8 +3039,7 @@ logical function crystallite_integrateStress(&
                                      dR_dLp2                                                         ! working copy of dRdLp
  real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
                                      dFe_dLp3333                                                     ! partial derivative of elastic deformation gradient
- real(pReal)                         p_hydro, &                                                      ! volumetric part of 2nd Piola-Kirchhoff Stress
-                                     det, &                                                          ! determinant
+ real(pReal)                         det, &                                                          ! determinant
                                      steplength0, & 
                                      steplength, & 
                                      dt, &                                                           ! time increment
