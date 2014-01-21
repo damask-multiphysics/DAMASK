@@ -1336,16 +1336,16 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
            constitutive_state_backup(g,i,e)%p(1:constitutive_sizeState(g,i,e))
          constitutive_dotState(g,i,e)%p(1:constitutive_sizeDotState(g,i,e)) = &
            constitutive_dotState_backup(g,i,e)%p(1:constitutive_sizeDotState(g,i,e))
+         crystallite_subF(1:3,1:3,g,i,e)  = F_backup(1:3,1:3,g,i,e)
+         crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e)
+         crystallite_invFp(1:3,1:3,g,i,e) = InvFp_backup(1:3,1:3,g,i,e)
+         crystallite_Fe(1:3,1:3,g,i,e)    = Fe_backup(1:3,1:3,g,i,e)
+         crystallite_Lp(1:3,1:3,g,i,e)    = Lp_backup(1:3,1:3,g,i,e)
+         crystallite_Tstar_v(1:6,g,i,e)   = Tstar_v_backup(1:6,g,i,e)
+         crystallite_P(1:3,1:3,g,i,e)     = P_backup(1:3,1:3,g,i,e)
+         crystallite_converged(g,i,e)     = convergenceFlag_backup(g,i,e)
        endforall
      enddo elementLooping10
-     crystallite_subF        = F_backup
-     crystallite_Fp          = Fp_backup 
-     crystallite_invFp       = InvFp_backup
-     crystallite_Fe          = Fe_backup
-     crystallite_Lp          = Lp_backup
-     crystallite_Tstar_v     = Tstar_v_backup
-     crystallite_P           = P_backup
-     crystallite_converged   = convergenceFlag_backup
    endif jacobianMethod
 
 
