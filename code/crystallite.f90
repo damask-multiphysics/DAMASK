@@ -2634,7 +2634,8 @@ subroutine crystallite_integrateStateFPI()
    stateResiduum, &
    tempState
  logical :: &
-   singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
+   singleRun, &                                                                                     ! flag indicating computation for single (g,i,e) triple
+   doneWithIntegration
  
  eIter = FEsolving_execElem(1:2)
  do e = eIter(1),eIter(2)
@@ -2699,8 +2700,8 @@ subroutine crystallite_integrateStateFPI()
  ! --+>> STATE LOOP <<+--
  
  NiterationState = 0_pInt
- crystalliteLooping: do while (any(crystallite_todo .and. .not. crystallite_converged) &
-                               .and. NiterationState < nState)
+ doneWithIntegration = .false.
+ crystalliteLooping: do while (.not. doneWithIntegration .and. NiterationState < nState)
    NiterationState = NiterationState + 1_pInt
    
    !$OMP PARALLEL
@@ -2888,6 +2889,18 @@ subroutine crystallite_integrateStateFPI()
      !$OMP END CRITICAL(write2out)
    endif
    
+   ! --- CHECK IF DONE WITH INTEGRATION ---
+
+   doneWithIntegration = .true.
+   elemLoop: do e = eIter(1),eIter(2)
+     do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+         doneWithIntegration = .false.
+         exit elemLoop
+       endif
+     enddo; enddo
+   enddo elemLoop
+
  enddo crystalliteLooping
  
 end subroutine crystallite_integrateStateFPI
