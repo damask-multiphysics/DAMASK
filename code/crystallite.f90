@@ -1195,19 +1195,19 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
        myNgrains = homogenization_Ngrains(mesh_element(3,e))
        forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
          constitutive_state_backup(g,i,e)%p(1:constitutive_sizeState(g,i,e)) = &
-           constitutive_state(g,i,e)%p(1:constitutive_sizeState(g,i,e))    ! remember unperturbed, converged state, ...
+           constitutive_state(g,i,e)%p(1:constitutive_sizeState(g,i,e))                             ! remember unperturbed, converged state, ...
          constitutive_dotState_backup(g,i,e)%p(1:constitutive_sizeDotState(g,i,e)) = &
-           constitutive_dotState(g,i,e)%p(1:constitutive_sizeDotState(g,i,e)) ! ... dotStates, ...
+           constitutive_dotState(g,i,e)%p(1:constitutive_sizeDotState(g,i,e))                       ! ... dotStates, ...
+         F_backup(1:3,1:3,g,i,e)       = crystallite_subF(1:3,1:3,g,i,e)                            ! ... and kinematics
+         Fp_backup(1:3,1:3,g,i,e)      = crystallite_Fp(1:3,1:3,g,i,e)
+         InvFp_backup(1:3,1:3,g,i,e)   = crystallite_invFp(1:3,1:3,g,i,e)
+         Fe_backup(1:3,1:3,g,i,e)      = crystallite_Fe(1:3,1:3,g,i,e)
+         Lp_backup(1:3,1:3,g,i,e)      = crystallite_Lp(1:3,1:3,g,i,e)
+         Tstar_v_backup(1:6,g,i,e)     = crystallite_Tstar_v(1:6,g,i,e)
+         P_backup(1:3,1:3,g,i,e)       = crystallite_P(1:3,1:3,g,i,e)
+         convergenceFlag_backup(g,i,e) = crystallite_converged(g,i,e)
        endforall
      enddo elementLooping7
-     F_backup               = crystallite_subF                                                             ! ... and kinematics
-     Fp_backup              = crystallite_Fp
-     InvFp_backup           = crystallite_invFp
-     Fe_backup              = crystallite_Fe
-     Lp_backup              = crystallite_Lp
-     Tstar_v_backup         = crystallite_Tstar_v
-     P_backup               = crystallite_P
-     convergenceFlag_backup = crystallite_converged
     
      ! --- CALCULATE STATE AND STRESS FOR PERTURBATION ---
 
@@ -1234,13 +1234,13 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
                      constitutive_state_backup(g,i,e)%p(1:constitutive_sizeState(g,i,e))
                    constitutive_dotState(g,i,e)%p(1:constitutive_sizeDotState(g,i,e)) = &
                      constitutive_dotState_backup(g,i,e)%p(1:constitutive_sizeDotState(g,i,e))
+                   crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e) 
+                   crystallite_invFp(1:3,1:3,g,i,e) = InvFp_backup(1:3,1:3,g,i,e)
+                   crystallite_Fe(1:3,1:3,g,i,e)    = Fe_backup(1:3,1:3,g,i,e)
+                   crystallite_Lp(1:3,1:3,g,i,e)    = Lp_backup(1:3,1:3,g,i,e)
+                   crystallite_Tstar_v(1:6,g,i,e)   = Tstar_v_backup(1:6,g,i,e)
                  endforall
                enddo
-               crystallite_Fp          = Fp_backup 
-               crystallite_invFp       = InvFp_backup
-               crystallite_Fe          = Fe_backup
-               crystallite_Lp          = Lp_backup
-               crystallite_Tstar_v     = Tstar_v_backup
              case(2_pInt,3_pInt)                                                                       ! explicit Euler methods: nothing to restore (except for F), since we are only doing a stress integration step
              case(4_pInt,5_pInt)                                                                       ! explicit Runge-Kutta methods: restore to start of subinc, since we are doing a full integration of state and stress
                do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -1250,12 +1250,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
                      constitutive_subState0(g,i,e)%p(1:constitutive_sizeState(g,i,e))
                    constitutive_dotState(g,i,e)%p(1:constitutive_sizeDotState(g,i,e)) = & 
                      constitutive_dotState_backup(g,i,e)%p(1:constitutive_sizeDotState(g,i,e))
+                   crystallite_Fp(1:3,1:3,g,i,e)    = crystallite_subFp0(1:3,1:3,g,i,e) 
+                   crystallite_Fe(1:3,1:3,g,i,e)    = crystallite_subFe0(1:3,1:3,g,i,e)
+                   crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)
+                   crystallite_Tstar_v(1:6,g,i,e)   = crystallite_subTstar0_v(1:6,g,i,e)
                  endforall
                enddo
-               crystallite_Fp          = crystallite_subFp0
-               crystallite_Fe          = crystallite_subFe0
-               crystallite_Lp          = crystallite_subLp0
-               crystallite_Tstar_v     = crystallite_subTstar0_v
            end select
 
            ! --- PERTURB EITHER FORWARD OR BACKWARD ---
