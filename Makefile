@@ -9,7 +9,7 @@ spectral:
 
 .PHONY : marc
 marc:
-	@./installation/mods_Marc/apply_DAMASK_modifcations.sh ${MAKEFLAGS}
+	@./installation/mods_MarcMentat/apply_DAMASK_modifications.sh ${MAKEFLAGS}
 
 .PHONY : processing
 processing:

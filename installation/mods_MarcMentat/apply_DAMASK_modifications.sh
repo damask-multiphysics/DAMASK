@@ -2,9 +2,9 @@
 
 DEFAULT_VERSION='2013.1'
 
-WORKINGDIR=`dirname $0`
+WORKINGDIR="$( cd "$( dirname "$0" )" && pwd )"
 
-source ../options
+source $WORKINGDIR/../options
 
 while [ ! -d "$WORKINGDIR/$VERSION" ] || [ -z "$VERSION" ]
 do
@@ -16,8 +16,8 @@ do
 done
 echo "MSC version: $VERSION"
 
-if [ "x$MSC_ROOT" != "x" ] 
-  then INSTALLDIR=$MSC_ROOT
+if [ "x$MSC_ROOT" != "x" ]; then
+ INSTALLDIR=$MSC_ROOT
 fi
 
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
@@ -31,15 +31,15 @@ echo "MSC installation path: $INSTALLDIR"
 
 BLASDIR=''
 BLASTYPE=''
-if [ "x$LAPACK_ROOT" != "x" ] 
+if [ "x$LAPACK_ROOT" != "x" ]; then
   BLASDIR=$LAPACK_ROOT
   BLASTYPE='LAPACK'
 fi
-if [ "x$ACML_ROOT" != "x" ] 
+if [ "x$ACML_ROOT" != "x" ]; then
   BLASDIR=$ACML_ROOT
   BLASTYPE='ACML'
 fi
-if [ "x$IMKL_ROOT" != "x" ] 
+if [ "x$IMKL_ROOT" != "x" ]; then
   BLASDIR=$IMKL_ROOT
   BLASTYPE='IMKL'
 fi
