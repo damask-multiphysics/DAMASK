@@ -32,7 +32,7 @@ compileCommand = {
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
-  lib_lapack = '-L%s/lib/intel64 -I%s/include -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lm'%(options['IMKL_ROOT'],options['IMKL_ROOT'])
+  lib_lapack = '-L%s/lib/intel64 -I%s/include -lmkl_intel_lp64 -lmkl_sequential -lmkl_core -liomp5 -lm'%(options['IMKL_ROOT'],options['IMKL_ROOT'])
 elif options['ACML_ROOT'] != '':
   lib_lapack = '-L%s/%s64/lib -lacml'%(options['ACML_ROOT'],options['F90'])
 elif options['LAPACK_ROOT'] != '':
