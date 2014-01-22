@@ -1169,7 +1169,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
            do g = 1_pInt,myNgrains
              dFedF = 0.0_pReal
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dFedF(p,o,o,1:3) = crystallite_invFp(1:3,p,g,i,e)                                       ! dFe^T_ij/dF_kl = delta_jk * (Fp current^-1)_li
+               dFedF(o,p,o,1:3) = crystallite_invFp(1:3,p,g,i,e)                                       ! dFe^T_ij/dF_kl = delta_jk * (Fp current^-1)_li
              call constitutive_TandItsTangent(junk,dSdFe,crystallite_subFe0(1:3,1:3,g,i,e),g,i,e)      ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
              dSdF = math_mul3333xx3333(dSdFe,dFedF)                                                    ! dS/dF = dS/dFe * dFe/dF
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
