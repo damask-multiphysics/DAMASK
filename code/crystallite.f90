@@ -1182,6 +1182,45 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
        enddo elementLooping6
      !$OMP END PARALLEL DO
 
+     rateSensitivity: if (rate_sensitivity) then
+     !$OMP PARALLEL DO PRIVATE(dFedFdot,dSdFdot,dSdFe,Fpinv_rate,FDot_inv,counter,dFp_invdFdot,myNgrains)
+       elementLooping11: do e = FEsolving_execElem(1),FEsolving_execElem(2)
+         myNgrains = homogenization_Ngrains(mesh_element(3,e))
+         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
+           do g = 1_pInt,myNgrains
+             Fpinv_rate = math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e))    ! dFp^-1 = dFp^-1/dt *dt... dFp may overshoot dF by small ammount as 
+             FDot_inv = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)
+             counter = 0.0_pReal
+             do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
+               if (abs(FDot_inv(o,p)) < relevantStrain) then
+                 FDot_inv(o,p) = 0.0_pReal
+               else  
+                 counter = counter + 1.0_pReal
+                 FDot_inv(o,p) = crystallite_dt(g,i,e)/FDot_inv(o,p)
+               endif 
+             enddo; enddo
+             if (counter > 0.0_pReal) FDot_inv = FDot_inv/counter
+             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+               dFp_invdFdot(o,p,1:3,1:3) = Fpinv_rate(o,p)*FDot_inv
+             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+               dFedFdot(1:3,1:3,o,p) = math_transpose33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
+                                       dFp_invdFdot(1:3,1:3,o,p)))
+             call constitutive_TandItsTangent(junk,dSdFe,crystallite_subFe0(1:3,1:3,g,i,e),g,i,e)            ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
+             dSdFdot = math_mul3333xx3333(dSdFe,dFedFdot)
+             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+               crystallite_dPdF(1:3,1:3,o,p,g,i,e) = crystallite_dPdF(1:3,1:3,o,p,g,i,e) - &
+                      (math_mul33x33(math_mul33x33(dFedFdot(1:3,1:3,o,p), &
+                      math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))),math_transpose33( &
+                      crystallite_invFp(1:3,1:3,g,i,e))) + &                                                  ! dP/dFdot = dFe/dFdot * S * Fp^-T...
+                      math_mul33x33(math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
+                      math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))),math_transpose33(dFp_invdFdot(1:3,1:3,o,p))) &   !            + Fe * S * dFp^-T/dFdot...
+                      + math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
+                      math_mul33x33(dSdFdot(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))) !           + Fe * dS/dFdot * Fp^-T         
+         enddo; enddo; 
+       enddo elementLooping11
+     !$OMP END PARALLEL DO
+     endif rateSensitivity
+
 
    else jacobianMethod
      
@@ -1346,47 +1385,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
          crystallite_converged(g,i,e)     = convergenceFlag_backup(g,i,e)
        endforall
      enddo elementLooping10
+
    endif jacobianMethod
-
-
-   rateSensitivity: if (rate_sensitivity) then
-   !$OMP PARALLEL DO PRIVATE(dFedFdot,dSdFdot,dSdFe,Fpinv_rate,FDot_inv,counter,dFp_invdFdot,myNgrains)
-     elementLooping11: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-       myNgrains = homogenization_Ngrains(mesh_element(3,e))
-       do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
-         do g = 1_pInt,myNgrains
-           Fpinv_rate = math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e))    ! dFp^-1 = dFp^-1/dt *dt... dFp may overshoot dF by small ammount as 
-           FDot_inv = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)
-           counter = 0.0_pReal
-           do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
-             if (abs(FDot_inv(o,p)) < relevantStrain) then
-               FDot_inv(o,p) = 0.0_pReal
-             else  
-               counter = counter + 1.0_pReal
-               FDot_inv(o,p) = crystallite_dt(g,i,e)/FDot_inv(o,p)
-             endif 
-           enddo; enddo
-           if (counter > 0.0_pReal) FDot_inv = FDot_inv/counter
-           forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-             dFp_invdFdot(o,p,1:3,1:3) = Fpinv_rate(o,p)*FDot_inv
-           forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-             dFedFdot(1:3,1:3,o,p) = math_transpose33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
-                                     dFp_invdFdot(1:3,1:3,o,p)))
-           call constitutive_TandItsTangent(junk,dSdFe,crystallite_subFe0(1:3,1:3,g,i,e),g,i,e)            ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
-           dSdFdot = math_mul3333xx3333(dSdFe,dFedFdot)
-           forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-             crystallite_dPdF(1:3,1:3,o,p,g,i,e) = crystallite_dPdF(1:3,1:3,o,p,g,i,e) - &
-                    (math_mul33x33(math_mul33x33(dFedFdot(1:3,1:3,o,p), &
-                    math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))),math_transpose33( &
-                    crystallite_invFp(1:3,1:3,g,i,e))) + &                                                  ! dP/dFdot = dFe/dFdot * S * Fp^-T...
-                    math_mul33x33(math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
-                    math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))),math_transpose33(dFp_invdFdot(1:3,1:3,o,p))) &   !            + Fe * S * dFp^-T/dFdot...
-                    + math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
-                    math_mul33x33(dSdFdot(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))) !           + Fe * dS/dFdot * Fp^-T         
-       enddo; enddo; 
-     enddo elementLooping11
-   !$OMP END PARALLEL DO
-   endif rateSensitivity
  endif computeJacobian
 
  elementLooping12: do e = FEsolving_execElem(1),FEsolving_execElem(2)
