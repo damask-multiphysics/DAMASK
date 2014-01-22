@@ -658,6 +658,7 @@ end subroutine constitutive_TandItsTangent
 !--------------------------------------------------------------------------------------------------
 pure subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
 use math, only : &
+  math_mul3x3, &
   math_mul33x33, &
   math_mul3333xx33, &
   math_Mandel66to3333, &
@@ -676,7 +677,7 @@ use math, only : &
  real(pReal),   intent(out), dimension(3,3,3,3) :: & 
    dT_dFe                                                                                           !< dT/dFe
  
- integer(pInt) :: o, p
+ integer(pInt) :: i, j, k, l
  real(pReal), dimension(3,3)     :: FeT
  real(pReal), dimension(3,3,3,3) :: C
 
@@ -684,9 +685,11 @@ use math, only : &
  C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
 
  FeT = math_transpose33(Fe)
- T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(FeT,Fe)-MATH_I3)
+ T = 0.5_pReal * math_mul3333xx33(C, math_mul33x33(FeT,Fe)-MATH_I3)
 
- forall (o=1_pInt:3_pInt, p=1_pInt:3_pInt) dT_dFe(o,p,1:3,1:3) = math_mul33x33(C(o,p,1:3,1:3), FeT) ! dT*_ij/dFe_kl
+ dT_dFe = 0.0_pReal
+ forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
+   dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3))                                            ! dT*_ij/dFe_kl
 
 end subroutine constitutive_hooke_TandItsTangent
 

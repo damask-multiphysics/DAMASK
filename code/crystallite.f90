@@ -3211,7 +3211,7 @@ logical function crystallite_integrateStress(&
    if (mod(jacoCounter, iJacoLpresiduum) == 0_pInt) then
      dFe_dLp3333 = 0.0_pReal
      do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-       dFe_dLp3333(p,o,1:3,p) = A(o,1:3)                                                            ! dFe_dLp(i,j,k,l) = -dt * A(i,k) delta(l,j)
+       dFe_dLp3333(o,p,1:3,p) = A(o,1:3)                                                            ! dFe_dLp(i,j,k,l) = -dt * A(i,k) delta(l,j)
      enddo; enddo
      dFe_dLp3333 = -dt * dFe_dLp3333
      dFe_dLp = math_Plain3333to99(dFe_dLp3333)
