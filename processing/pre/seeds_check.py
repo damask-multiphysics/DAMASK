@@ -47,8 +47,8 @@ mappings = {
           }
 
 
-parser = OptionParser(option_class=extendedOption, usage='%prog [geomfile[s]]', description = """
-Produce VTK point mesh from seed file
+parser = OptionParser(option_class=extendedOption, usage='%prog [seedsfile[s]]', description = """
+Produce VTK point mesh from seeds file
 
 """ + string.replace(scriptID,'\n','\\n')
 )
