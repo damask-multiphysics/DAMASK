@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import os,re,sys,string,subprocess
+import os,re,sys,string,subprocess,shutil
 
 from optparse import OptionParser, Option
 
@@ -28,67 +28,225 @@ class extendableOption(Option):
 ########################################################
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options', description = """
-Sets up the pre and post processing tools of DAMASK
+Configures the compilation and installation of DAMASK
 
 """ + string.replace('$Id$','\n','\\n')
 )
 
-compilers = ['ifort','gfortran']
-blastypes = ['LAPACK','ACML','IMKL']
-
-parser.add_option('--with-fc',               dest='compiler', type='string',
-                                             help='F90 compiler [%default]')
-parser.add_option('--with-marc-dir',         dest='marcdir', type='string',
-                                             help='root directory of MSC.Marc [%default]')
-parser.add_option('--with-fftw-dir',         dest='fftwdir', type='string',
-                                             help='root directory of FFTW [%default]')
-parser.add_option('--with-blas-lapack-dir',  dest='blasdir', type='string',
-                                             help='root directory of LAPACK [%default]')
-parser.add_option('--with-blas-type',        dest='blastype', type='string',
-                                             help='type of BLAS/LAPACK library [%default]')
-parser.add_option('--with-spectral-options', dest='spectraloptions', type='string', action='extend',
-                                             help='options for spectral solver %default')
-
+#--- determine default compiler ----------------------------------------------------------------------
 compiler = os.getenv('F90')
 if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
                                 subprocess.call(['which', 'ifort'],\
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
-parser.set_defaults(compiler = compiler)
-parser.set_defaults(blastype = 'LAPACK')
-parser.set_defaults(fftwdir =  '/usr/local')
-parser.set_defaults(blasdir =  '/usr')
-parser.set_defaults(marcdir =  '/msc')
+
+#--- default option values  --------------------------------------------------------------------------
+defaults={'F90':compiler,\
+          'FFTW_ROOT':'/usr/local',\
+          'MARC_ROOT':'/msc',\
+          'HDF5_ROOT':'/usr/local',\
+          'DAMASK_NUM_THREADS':4,\
+          'blasType':'LAPACK',\
+          'blasRoot':{'LAPACK':'/usr',\
+                      'ACML'  :'/opt/acml5.3.1',\
+                      'IMKL'  :{True:'/opt/intel/composerxe/mkl',False:os.getenv('MKLROOT')}\
+                               [os.getenv('MKLROOT')==None]},\
+          'spectralOptions':{}}
+
+#--- if local config file exists, read, otherwise assume global config file  ------------------------
+if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')):
+  configFile = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
+else:
+  configFile = '/etc/damask.conf'
+
+#--- set default values according to read in values  ------------------------------------------------
+try:
+  with open(configFile,'r') as f:
+    print('\n-----\n reading default values from %s\n-----'%configFile)
+    for line in f:
+      items = re.split('[= ]',line)
+    
+      if (not line.strip() or items[0].startswith('#')):
+        pass
+      elif items[0] == 'F90':
+        defaults['F90']=items[1].rstrip()
+      elif items[0] == 'FFTW_ROOT': 
+        defaults['FFTW_ROOT']=items[1].rstrip()
+      elif items[0] == 'MARC_ROOT': 
+        defaults['MARC_ROOT']=items[1].rstrip()
+      elif items[0] == 'HDF5_ROOT': 
+        defaults['HDF5_ROOT']=items[1].rstrip()
+      elif items[0] == 'DAMASK_NUM_THREADS': 
+        defaults['DAMASK_NUM_THREADS']=int(items[1])
+      elif items[0] in [name+'_ROOT' for name in defaults['blasRoot']]:
+        defaults['blasType']=items[0][:-5]
+        defaults['blasRoot'][items[0][:-5]] =items[1].rstrip()
+      else:
+        defaults['spectralOptions'][items[0]]=items[1].rstrip()
+except IOError:
+  pass
+
+
+parser.add_option('--with-fc',               dest='compiler', type='string', metavar='string', \
+                                             help='F90 compiler [%default]')
+parser.add_option('--with-fftw-dir',         dest='fftwRoot', type='string', metavar='string', \
+                                             help='root directory of FFTW [%default]')
+parser.add_option('--with-marc-dir',         dest='marcRoot', type='string', metavar='string', \
+                                             help='root directory of MSC.Marc [%default]')
+parser.add_option('--with-HDF5-dir',         dest='hdf5Root', type='string', metavar='string', \
+                                             help='root directory of HDF5 [%default]')
+parser.add_option('--with-OMP-threads',      dest='threads', type='int', metavar='int',\
+                                             help='number of openMP threads [%default]')
+parser.add_option('--with-blas-type',        dest='blasType', type='string', metavar='string', \
+                                             help='type of BLAS/LAPACK library [%default]')
+parser.add_option('--with-blas-dir',         dest='blasRoot', type='string', metavar='string', \
+                                             help='root directory of BLAS/LAPACK library [%default]')
+parser.add_option('--with-spectral-options', dest='spectraloptions', type='string', action='extend', metavar='<string LIST>', \
+                                             help='options for compilation of spectral solver')
+
+parser.set_defaults(compiler = defaults['F90'])
+parser.set_defaults(fftwRoot = defaults['FFTW_ROOT'])
+parser.set_defaults(marcRoot = defaults['MARC_ROOT'])
+parser.set_defaults(hdf5Root = defaults['HDF5_ROOT'])
+parser.set_defaults(threads  = defaults['DAMASK_NUM_THREADS'])
+parser.set_defaults(blasType = defaults['blasType'])
+
+#--- set default for blasRoot depending on current option (or default) for blasType  --------------------
+
+blasType = defaults['blasType'].upper()
+for i, arg in enumerate(sys.argv):
+  if arg.startswith('--with-blas-type'):
+    if arg.endswith('--with-blas-type'): 
+      blasType = sys.argv[i+1].upper()
+    else:
+      blasType = sys.argv[i][17:].upper()
+if blasType not in ['LAPACK','ACML','IMKL']:
+  blasType='LAPACK'
+
+parser.set_defaults(blasRoot = [defaults['blasRoot'][blasType]][0])
 parser.set_defaults(spectraloptions = [])
 
 (options,filenames) = parser.parse_args()
 
-options.blastype = options.blastype.upper()
-options.compiler = options.compiler.lower()
+#--- consistency checks --------------------------------------------------------------------------------
+options.compiler=options.compiler.lower()
+options.blasType=options.blasType.upper() 
+options.fftwRoot=options.fftwRoot.rstrip('/')
+options.marcRoot=options.marcRoot.rstrip('/')
+options.hdf5Root=options.hdf5Root.rstrip('/') 
+options.blasRoot=options.blasRoot.rstrip('/') 
 
-if options.blastype not in blastypes: print('Unknown BLAS type selected')
-if options.compiler not in compilers: print('Unknown compiler type selected')
+if options.compiler not in ['ifort','gfortran']: 
+  print('Error: Unknown compiler option: %s'%options.compiler)
+  sys.exit(1)
 
+if not subprocess.call(['which', options.compiler],stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
+  print('Compiler Warning: executable %s not found!'%options.compiler)
+
+for lib in ['libfftw3.a','libfftw3.a']:
+  if not os.path.isfile(os.path.join(options.fftwRoot,'lib/%s'%lib)):
+    print('FFTW Warning: %s not found in %s!'%(lib,os.path.join(options.fftwRoot,'lib')))
+
+if not os.path.isdir(options.marcRoot):
+  print('MSC.Marc Warning: Root directory %s not found!'%options.marcRoot)
+
+if options.blasType == 'LAPACK':
+  if os.path.isdir(os.path.join(options.blasRoot,'lib64')): 
+    blasLocation = os.path.join(options.blasRoot,'lib64')
+  else:
+    blasLocation=os.path.join(options.blasRoot,'lib')
+  for lib in ['liblapack.a','liblapack.a']:
+    if not os.path.isfile(os.path.join(blasLocation,lib)): 
+      print('LAPACK Warning: %s not found in %s!'%(lib,blasLocation))
+elif options.blasType == 'ACML':
+  blasLocationSerial=os.path.join(options.blasRoot,'%s64/lib'%options.compiler)
+  for lib in ['libacml.a','libacml.a']:
+    if not os.path.isfile(os.path.join(blasLocationSerial,lib)): 
+      print('ACML Warning: %s not found in %s!'%(lib,blasLocationSerial))
+  blasLocationParallel=os.path.join(options.blasRoot,'%s64_mp/lib'%options.compiler)
+  for lib in ['libacml_mp.a','libacml_mp.a']:
+    if not os.path.isfile(os.path.join(blasLocationParallel,lib)): 
+      print('ACML Warning: %s not found in %s!'%(lib,blasLocationParallel))
+elif options.blasType == 'IMKL':
+  if options.compiler == 'gfortran':
+    print('Error: IMKL does not support gfortran')
+    sys.exit(1)
+  blasLocation=os.path.join(options.blasRoot,'lib/intel64')
+  for lib in ['libmkl_core.so','libmkl_core.a',\
+              'libmkl_sequential.so','libmkl_sequential.a',\
+              'libmkl_intel_lp64.so','libmkl_intel_lp64.a']:
+    if not os.path.isfile(os.path.join(blasLocation,lib)): 
+      print('IMKL Warning: %s not found in %s!'%(lib,blasLocation))
+else:
+  print('Error: Unknown BLAS/LAPACK library: %s'%options.blasType)
+  sys.exit(1)
+
+
+#--- try to read config file (to keep comments and order) ----------------------------------------------
 output = []
-with open('installation/options','r') as f:
-  for line in f:
-    items = re.split('[= ]',line)
+try: 
+  with open(configFile,'r') as f:
+    for line in f:
+      items = re.split('[= ]',line)
     
-    if items[0] == 'F90':      line = '%s=%s\n'%(items[0],options.compiler)
-    if items[0] == 'FFTW_ROOT': line = '%s=%s\n'%(items[0],options.fftwdir.rstrip('/'))
-    if items[0] == 'MSC_ROOT':  line = '%s=%s\n'%(items[0],options.marcdir.rstrip('/'))
-    for blastype in blastypes:
-      if options.blastype == blastype and items[0] == '%s_ROOT'%blastype:
-        line = '%s=%s\n'%(items[0],options.blasdir.rstrip('/'))
-    for spectralOption in options.spectraloptions:
-      [key,value] = re.split('[= ]',spectralOption)[0:2]
-      if key == items[0]:
-        line = '%s=%s\n'%(items[0],value)
-        options.spectraloptions.remove(spectralOption)
+      if (not line.strip() or items[0].startswith('#')):
+        pass
+      if items[0] == 'F90':
+        line = '%s=%s\n'%(items[0],options.compiler)
+        options.compiler =''
+      if items[0] == 'FFTW_ROOT':
+        line = '%s=%s\n'%(items[0],options.fftwRoot)
+        options.fftwRoot =''
+      if items[0] == 'MARC_ROOT':
+        line = '%s=%s\n'%(items[0],options.marcRoot)
+        options.marcRoot =''
+      if items[0] == 'HDF5_ROOT':
+        line = '%s=%s\n'%(items[0],options.hdf5Root)
+        options.hdf5Root =''
+      if items[0] == 'DAMASK_NUM_THREADS':
+        line = '%s=%s\n'%(items[0],options.threads)
+        options.threads =''
+      for blasType in defaults['blasRoot'].keys():
+        if items[0] == '%s_ROOT'%blasType and items[0] == '%s_ROOT'%options.blasType:
+          line = '%s=%s\n'%(items[0],options.blasRoot)
+          options.blasType=''
+        elif items[0] == '%s_ROOT'%blasType: line = '#'+line
+      for spectralOption in options.spectraloptions:
+        [key,value] = re.split('[= ]',spectralOption)[0:2]
+        if key == items[0]:
+          line = '%s=%s\n'%(items[0],value)
+          options.spectraloptions.remove(spectralOption)
+      output.append(line)
+except IOError:
+  pass
 
-    output.append(line)
+#--- write remaining options --------------------------------------------------------------------------
+for opt, value in options.__dict__.items():
+  if opt == 'compiler' and value !='':
+    output.append('F90=%s\n'%value)
+  if opt == 'fftwRoot' and value !='':
+    output.append('FFTW_ROOT=%s\n'%value)
+  if opt == 'marcRoot' and value !='':
+    output.append('MARC_ROOT=%s\n'%value)
+  if opt == 'hdf5Root' and value !='':
+    output.append('HDF5_ROOT=%s\n'%value)
+  if opt == 'threads' and value !='':
+    output.append('DAMASK_NUM_THREADS=%s\n'%value)
+  if opt == 'blasType' and value !='':
+    output.append('%s_ROOT=%s\n'%(blasType,options.blasRoot))
+
 for spectralOption in options.spectraloptions:
   output.append(spectralOption+'\n')
 
-with open('installation/options','w') as f:
+#--- decide where do save the data ----------------------------------------------------------------------
+root=os.access('/etc/', os.W_OK)
+if root:
+  configFileNew = '/etc/damask.conf'
+else:
+  configFileNew = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
+  if not os.path.isdir(os.path.join(os.getenv('HOME'),'.damask')):
+    os.mkdir(os.path.join(os.getenv('HOME'),'.damask'))
+
+print('\n-----\n writing values to %s\n-----'%configFileNew)
+with open(configFileNew,'w') as f:
   for line in output:
     f.write(line)

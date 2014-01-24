@@ -5,7 +5,7 @@ import os
 from damask import Environment
 
 damaskEnv = Environment()
-baseDir = damaskEnv.relPath('processing/')
+baseDir = damaskEnv.relPath('installation/')
 codeDir = damaskEnv.relPath('code/')
 
 #define ToDo list
@@ -81,14 +81,22 @@ bin_link = { \
                 'vtk_addVoxelcloudData.py',
                 ],
             }
+
+root=os.access('/usr/local/bin', os.W_OK)
+if root:
+  binDir = '/usr/local/bin'
+else:
+  binDir = os.path.join(os.getenv('HOME'),'bin')
+  if not os.path.isdir(binDir):
+    os.mkdir(binDir)
             
 for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(baseDir,dir,file))
     if (file == ''):
-      sym_link = os.path.abspath(os.path.join(damaskEnv.binDir(),dir))
+      sym_link = os.path.abspath(os.path.join(binDir,dir))
     else:
-      sym_link = os.path.abspath(os.path.join(damaskEnv.binDir(),os.path.splitext(file)[0]))
+      sym_link = os.path.abspath(os.path.join(binDir,os.path.splitext(file)[0]))
     print sym_link,'-->',src
     if os.path.lexists(sym_link):
       os.remove(sym_link)    

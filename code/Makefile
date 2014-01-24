@@ -35,11 +35,18 @@ SHELL = /bin/sh
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-include ../installation/options
+ifeq ($(wildcard "${HOME}/.damask/damask.conf"),)
+	include ${HOME}/.damask/damask.conf
+else
+	include /etc/damask.conf
+endif  
+
 
 COMPILERNAME ?= $(F90)
 
-INCLUDE_DIRS +=-I$(DAMASK_ROOT)/lib
+INCLUDE_DIRS :=-I../lib
+LIBRARIES :=-lfftw3
+LIB_DIRS  :=-L$(FFTWROOT)/lib
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -75,7 +82,22 @@ ifeq  "$(PORTABLE)" "FALSE"
 PORTABLE_SWITCH =-msse3
 endif
 
+# settings for multicore support
+ifeq "$(OPENMP)" "ON"
+OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
+OPENMP_FLAG_gfortran =-fopenmp
+ACML_ARCH =_mp
+IMKL_ARCH =_intel_thread
+LIBRARIES +=-lfftw3_threads -lpthread
+else
+IMKL_ARCH =_sequential
+endif
 
+ifneq  "x$(IMKLROOT)" "x"
+LIB_DIRS  :=-L$(IMKLROOT)/lib/intel64
+INCLUDE_DIRS +=-I$(IMKLROOT)/include
+LIBRARIES +=-lmkl_intel_lp64 -lmkl_core -lmkl$(ACML_ARCH) -lm -lpthread -liomp5
+else
 ifneq  "x$(ACMLROOT)" "x"
 LIB_DIRS  +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
@@ -85,26 +107,10 @@ LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
 LIBRARIES +=-llapack
 endif
 endif
-
-COMPILE_OPTIONS_ifort :=
-ifeq "$(F90)" "ifort"
-ifneq  "x$(IMKLROOT)" "x"
-COMPILE_OPTIONS_ifort +=-I$(IMKLROOT)/include -mkl=sequential
-LIBRARIES :=-lmkl_intel_lp64 -lmkl_sequential -lmkl_core -lm
-LIB_DIRS  :=-L$(IMKLROOT)/lib/intel64
-endif
 endif
 
-# settings for multicore support
-ifeq "$(OPENMP)" "ON"
-OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
-OPENMP_FLAG_gfortran =-fopenmp
-ACML_ARCH =_mp
-LIBRARIES +=-lfftw3_threads -lpthread
-endif
 
-LIBRARIES +=-lfftw3
-LIB_DIRS  +=-L$(FFTWROOT)/lib
+
 
 #hdf5
 ifeq "$(HDF5)" "ON"
@@ -139,7 +145,7 @@ OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
-COMPILE_OPTIONS_ifort    +=-fpp\
+COMPILE_OPTIONS_ifort    :=-fpp\
                            -ftz\
                            -assume byterecl
 ifneq "$(FASTBUILD)" "YES"
@@ -464,12 +470,14 @@ endif
 %.o : %.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
 
-.PHONY : tidy 
+.PHONY: tidy
+tidy:
 	@rm -rf *.o
 	@rm -rf *.mod
 
 
-.PHONY : clean
+.PHONY: clean
+clean:
 	@rm -rf *.o
 	@rm -rf *.mod
 	@rm -rf *.exe

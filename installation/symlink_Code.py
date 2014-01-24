@@ -10,14 +10,21 @@ bin_link = { \
 
 MarcReleases =[2011,2012,2013,2013.1]
 
-damaskEnv = damask.Environment('../../')          # script location relative to root
-baseDir = damaskEnv.relPath('code/')
+baseDir = damask.Environment('../../').relPath('code/')
+
+root=os.access('/usr/local/bin', os.W_OK)
+if root:
+  binDir = '/usr/local/bin'
+else:
+  binDir = os.path.join(os.getenv('HOME'),'bin')
+  if not os.path.isdir(binDir):
+    os.mkdir(binDir)
 
 for dir in bin_link:
   for file in bin_link[dir]:
     src = os.path.abspath(os.path.join(baseDir,dir,file))
     if os.path.exists(src): 
-      sym_link = os.path.abspath(os.path.join(damaskEnv.binDir(),\
+      sym_link = os.path.abspath(os.path.join(binDir,\
                                               {True: dir,
                                                False:os.path.splitext(file)[0]}[file == '']))
       if os.path.lexists(sym_link): os.remove(sym_link)

@@ -17,21 +17,8 @@ class Environment():
     return os.path.join(self.rootDir(),relative)
 
   def rootDir(self):
-    damask_root = os.getenv('DAMASK_ROOT')
-    if damask_root == '' or damask_root == None:            # env not set
-      if sys.argv[0] == '':                                 # no caller path
-        cwd = os.getcwd()
-      else:
-        cwd = sys.argv[0] if os.path.isdir(sys.argv[0]) else os.path.dirname(sys.argv[0])
+    return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
 
-      damask_root = os.path.normpath(os.path.join(os.path.realpath(cwd),self.rootRelation))
-
-    return damask_root
-
-  def binDir(self):
-    damask_bin  = os.getenv('DAMASK_BIN')
-    if damask_bin == '' or damask_bin  == None: damask_bin = self.relPath('bin/')
-    return damask_bin
 
   def get_options(self):
     with open(self.relPath('installation/options')) as file:
