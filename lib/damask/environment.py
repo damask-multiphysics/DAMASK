@@ -19,9 +19,12 @@ class Environment():
   def rootDir(self):
     return os.path.normpath(os.path.join(os.path.realpath(__file__),'../../../'))
 
-
   def get_options(self):
-    with open(self.relPath('installation/options')) as file:
+    if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')):
+      configFile = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
+    else:
+      configFile = '/etc/damask.conf'
+    with open(self.relPath(configFile)) as file:
       for line in file:
         l = line.strip()
         if not (l.startswith('#') or l == ''):

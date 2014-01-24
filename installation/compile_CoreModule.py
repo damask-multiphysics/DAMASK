@@ -22,7 +22,7 @@ for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
 compilers = ['ifort','gfortran']
 if options['F90'] not in compilers:
   sys.exit('compiler "F90" (in installation/options or as Shell variable) has to be one out of: %s'%(', '.join(compilers)))
-print 'Argument List:', str(sys.argv)
+
 compileCommand = {
                   'gfortran': 'gnu95 --f90flags="-fPIC -fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics'+\
                           ' -DSpectral -fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4 -I%s/lib"'%damaskEnv.rootDir(),
