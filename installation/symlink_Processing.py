@@ -5,7 +5,7 @@ import os
 from damask import Environment
 
 damaskEnv = Environment()
-baseDir = damaskEnv.relPath('installation/')
+baseDir = damaskEnv.relPath('processing/')
 codeDir = damaskEnv.relPath('code/')
 
 #define ToDo list
