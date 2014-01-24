@@ -4,7 +4,7 @@ DEFAULT_VERSION='2013.1'
 
 WORKINGDIR="$( cd "$( dirname "$0" )" && pwd )"
 
-if [ -f $HOME/.damask/damask.conf ] then
+if [ -f $HOME/.damask/damask.conf ]; then
    source $HOME/.damask/damask.conf
 else
    source /etc/damask.conf

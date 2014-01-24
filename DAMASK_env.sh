@@ -8,6 +8,12 @@ else
   DAMASK_ROOT=${STAT##* }
 fi
 
+if [ -f $HOME/.damask/damask.conf ]; then
+   source $HOME/.damask/damask.conf
+else
+   source /etc/damask.conf
+fi
+
 if [ "x$DAMASK_NUM_THREADS" != "x" ] 
   then export DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS
 fi
