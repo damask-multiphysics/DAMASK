@@ -46,7 +46,7 @@ COMPILERNAME ?= $(F90)
 
 INCLUDE_DIRS :=-I../lib
 LIBRARIES :=-lfftw3
-LIB_DIRS  :=-L$(FFTWROOT)/lib
+LIB_DIRS  :=-L$(FFTW_ROOT)/lib
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -93,17 +93,17 @@ else
 IMKL_ARCH =_sequential
 endif
 
-ifneq  "x$(IMKLROOT)" "x"
-LIB_DIRS  :=-L$(IMKLROOT)/lib/intel64
-INCLUDE_DIRS +=-I$(IMKLROOT)/include
+ifneq  "x$(IMKL_ROOT)" "x"
+LIB_DIRS  :=-L$(IMKL_ROOT)/lib/intel64
+INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
 LIBRARIES +=-lmkl_intel_lp64 -lmkl_core -lmkl$(ACML_ARCH) -lm -lpthread -liomp5
 else
-ifneq  "x$(ACMLROOT)" "x"
-LIB_DIRS  +=-L$(ACMLROOT)/$(F90)64$(ACML_ARCH)/lib
+ifneq  "x$(ACML_ROOT)" "x"
+LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
-ifneq  "x$(LAPACKROOT)" "x"
-LIB_DIRS  +=-L$(LAPACKROOT)/lib64 -L$(LAPACKROOT)/lib
+ifneq  "x$(LAPACK_ROOT)" "x"
+LIB_DIRS  +=-L$(LAPACK_ROOT)/lib64 -L$(LAPACK_ROOT)/lib
 LIBRARIES +=-llapack
 endif
 endif
