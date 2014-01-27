@@ -232,7 +232,7 @@ for opt, value in options.__dict__.items():
   if opt == 'threads' and value !='':
     output.append('DAMASK_NUM_THREADS=%s\n'%value)
   if opt == 'blasType' and value !='':
-    output.append('%s_ROOT=%s\n'%(blasType,options.blasRoot))
+    output.append('%s_ROOT=%s\n'%(options.blasType,options.blasRoot))
 
 for spectralOption in options.spectraloptions:
   output.append(spectralOption+'\n')

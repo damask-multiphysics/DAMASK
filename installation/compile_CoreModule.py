@@ -32,11 +32,11 @@ compileCommand = {
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
-  lib_lapack = '-L%s/lib/intel64 -I%s/include -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'%(options['IMKL_ROOT'],options['IMKL_ROOT'])
+  lib_lapack = '-L$IMKL_ROOT/lib/intel64 -I%s/include -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'%options['IMKL_ROOT']
 elif options['ACML_ROOT'] != '':
-  lib_lapack = '-L%s/%s64/lib -lacml'%(options['ACML_ROOT'],options['F90'])
+  lib_lapack = '-L$ACML/%s64/lib -lacml'%options['F90']
 elif options['LAPACK_ROOT'] != '':
-  lib_lapack = '-L%s/lib -L%s/lib64 -llapack'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])                                                     
+  lib_lapack = '-L$LAPACK_ROOT/lib -L$LAPACK_ROOT/lib64 -llapack'                                                   
 
 os.chdir(codeDir)                                                                           # needed for compilation with gfortran and f2py
 try:
@@ -66,7 +66,7 @@ cmd = 'f2py damask.core.pyf' +\
       ' FEsolving.f90'+\
       ' mesh.f90'+\
       ' core_quit.f90'+\
-      ' -L%s/lib -lfftw3'%(options['FFTW_ROOT'])+\
+      ' -L$FFTW_ROOT/lib -lfftw3'+\
       ' %s'%lib_lapack
 
 print('Executing: '+cmd)

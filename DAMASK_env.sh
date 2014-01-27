@@ -6,20 +6,13 @@ if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]
 else
   STAT=$(stat "`dirname $BASH_SOURCE`")
   DAMASK_ROOT=${STAT##* }
+  unset STAT
 fi
 
 if [ -f $HOME/.damask/damask.conf ]; then
    source $HOME/.damask/damask.conf
 else
    source /etc/damask.conf
-fi
-
-if [ "x$DAMASK_NUM_THREADS" != "x" ] 
-  then export DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS
-fi
-
-if [ "x$F90" != "x" ] 
-  then export F90=$F90
 fi
 
 # disable output in case of scp
@@ -29,13 +22,27 @@ if [ ! -z "$PS1" ]; then
   echo Max-Planck-Institut für Eisenforschung, Düsseldorf
   echo http://damask.mpie.de
   echo
-  echo Preparing environment ...
+  echo Using environment with ...
   echo "DAMASK installation in $DAMASK_ROOT"
   echo "DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   echo "F90=$F90"
+  echo "FFTW_ROOT=$FFTW_ROOT"
+  if [ "x$LAPACK_ROOT" != "x" ]; then
+      echo "LAPACK_ROOT=$LAPACK_ROOT"
+  fi
+  if [ "x$ACML_ROOT" != "x" ]; then
+      echo "ACML_ROOT=$ACML_ROOT"
+  fi
+  if [ "x$IMKL_ROOT" != "x" ]; then
+      echo "IMKL_ROOT=$IMKL_ROOT"
+  fi
+  echo "MARC_ROOT=$MARC_ROOT"
+  echo "HDF5_ROOT=$HDF5_ROOT (future use)"
 fi
 ulimit -s unlimited
 ulimit -c 0
 ulimit -v unlimited
 ulimit -m unlimited
 export PYTHONPATH=$PYTHONPATH:$DAMASK_ROOT/lib
+unset DAMASK_ROOT
+
