@@ -19,14 +19,17 @@ for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
     if value is None: value = ''           # env not set
   options[option]=value
 
-for arg in enumerate(sys.argv):
+for i, arg in enumerate(sys.argv):
   for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
-  if arg.startswith(option):
-    if arg.endswith(option): 
-      options[option] = sys.argv[i+1].upper()
-    else:
-      options[option] = sys.argv[i][17:].upper()
+    print arg,option
+    if arg.startswith(option):
+      print arg
+      if arg.endswith(option): 
+        options[option] = sys.argv[i+1]
+      else:
+        options[option] = sys.argv[i][4:]
 
+print options
 compilers = ['ifort','gfortran']
 if options['F90'] not in compilers:
   sys.exit('compiler "F90" (in installation/options or as Shell variable) has to be one out of: %s'%(', '.join(compilers)))
@@ -42,7 +45,9 @@ compiler       = {
 compileOptions =' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
 # this saves the path of libraries during runtime
-LDFLAGS ='-Wl,-rpath,%s/lib'%(options['FFTW_ROOT'])
+
+LDFLAGS ='-shared -Wl,-rpath,/lib -Wl,-rpath,/usr/lib -Wl,-rpath,%s/lib'%(options['FFTW_ROOT'])
+
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
@@ -53,7 +58,12 @@ elif options['ACML_ROOT'] != '':
   LDFLAGS +=' -Wl,-rpath,%s/%s64/lib'%(options['ACML_ROOT'],options['F90'])
 elif options['LAPACK_ROOT'] != '':
   lib_lapack = '-L%s/lib -L%s/lib64  -llapack'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
-  LDFLAGS +=' -Wl,-rpath,%s/lib -Wl,-rpath,%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])                                     
+  LDFLAGS +=' -Wl,-rpath,%s/lib -Wl,-rpath,%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
+
+# f2py does not (yet) support setting of special flags for the linker, hence they must be set via 
+# environment variable
+my_env = os.environ
+my_env["LDFLAGS"] = LDFLAGS                                    
 
 os.chdir(codeDir)                                                                           # needed for compilation with gfortran and f2py
 try:
@@ -87,10 +97,6 @@ cmd = 'f2py damask.core.pyf' +\
       ' -L%s/lib -lfftw3'%(options['FFTW_ROOT'])+\
       ' %s'%lib_lapack
 
-# f2py does not (yet) support setting of special flags for the linker, hence they must be set via 
-# environment variable
-my_env = os.environ
-my_env["LDFLAGS"] = LDFLAGS
 print('Executing: '+cmd)
 try:
   subprocess.call(shlex.split(cmd),env=my_env)
