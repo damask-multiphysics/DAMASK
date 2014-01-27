@@ -51,7 +51,7 @@ datainfo = {                                                               # lis
            }
 
 if not os.path.exists(options.vtk):
-  options.error('VTK file does not exist'); sys.exit()
+  parser.error('VTK file does not exist')
 
 reader = vtk.vtkXMLUnstructuredGridReader()
 reader.SetFileName(options.vtk)
