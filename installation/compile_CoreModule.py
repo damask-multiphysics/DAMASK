@@ -12,6 +12,7 @@ codeDir = damaskEnv.relPath('code/')
 options={}
 keywords=['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']
 
+# getting options from damask.conf or, if not present, from envinronment
 for option in keywords:
   try:
     value = damaskEnv.options[option]
@@ -20,34 +21,28 @@ for option in keywords:
     if value is None: value = ''           # env not set
   options[option]=value
 
+# overwrite default options with keyword=value pair from argument list to mimic make behavior
 for i, arg in enumerate(sys.argv):
   for option in keywords:
-    print arg,option
     if arg.startswith(option):
-      print arg
-      if arg.endswith(option): 
-        options[option] = sys.argv[i+1]
-      else:
-        options[option] = sys.argv[i][len(option)+1:]
+      options[option] = sys.argv[i][len(option)+1:]
 
-print options
 compilers = ['ifort','gfortran']
 if options['F90'] not in compilers:
   sys.exit('compiler "F90" (in installation/options or as Shell variable) has to be one out of: %s'%(', '.join(compilers)))
 
-compiler       = {
-                  'gfortran': '--fcompiler=gnu95 --f90flags="-fPIC -fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics'+\
-                              ' -fdefault-real-8 -fdefault-double-8"',
-                  'ifort':    '--fcompiler=intelem --f90flags="-fPIC -fpp -stand f08 -diag-disable 5268 -assume byterecl'+\
-                              ' -real-size 64 -integer-size 32"',
-                  }[options['F90']]
+compiler = {
+            'gfortran': '--fcompiler=gnu95 --f90flags="-fPIC -fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics'+\
+                        ' -fdefault-real-8 -fdefault-double-8"',
+            'ifort':    '--fcompiler=intelem --f90flags="-fPIC -fpp -stand f08 -diag-disable 5268 -assume byterecl'+\
+                        ' -real-size 64 -integer-size 32"',
+            }[options['F90']]
 
 # option not depending on compiler
 compileOptions =' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
 # this saves the path of libraries during runtime
-
-LDFLAGS ='-shared -Wl,-rpath,/lib -Wl,-rpath,/usr/lib -Wl,-rpath,%s/lib'%(options['FFTW_ROOT'])
+LDFLAGS ='-shared -Wl,-rpath=/lib -Wl,-rpath=/usr/lib -Wl,-rpath=%s/lib'%(options['FFTW_ROOT'])
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
