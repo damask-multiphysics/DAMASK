@@ -288,7 +288,6 @@ type(tSolutionState) function basicPETSc_solution( &
  S = Utilities_maskedCompliance(rotation_BC,P_BC%maskLogical,C_volAvg)
  if (update_gamma) call Utilities_updateGamma(C_minmaxAvg,restartWrite)
  
- ForwardData = .True.
  BasicPETSc_solution%converged =.false.
  
 !--------------------------------------------------------------------------------------------------
@@ -600,6 +599,7 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
    F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
    C_volAvg = C_volAvgLastInc
  else
+   ForwardData = .True.
    C_volAvgLastInc = C_volAvg
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim

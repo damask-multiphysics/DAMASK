@@ -325,7 +325,6 @@ type(tSolutionState) function &
 
 !--------------------------------------------------------------------------------------------------
 ! set module wide availabe data  
- ForwardData = .True.
  mask_stress = P_BC%maskFloat
  params%P_BC = P_BC%values
  params%rotation_BC = rotation_BC
@@ -674,6 +673,7 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC
    F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
    C_volAvg = C_volAvgLastInc
  else
+   ForwardData = .True.
    C_volAvgLastInc = C_volAvg
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim

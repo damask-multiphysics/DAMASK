@@ -322,7 +322,6 @@ type(tSolutionState) function &
    S_scale = math_invSym3333(C_minMaxAvg)
  endif  
  
- ForwardData = .True.
  AL_solution%converged =.false.
   
 !--------------------------------------------------------------------------------------------------
@@ -676,6 +675,7 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
    F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
    C_volAvg = C_volAvgLastInc
  else
+   ForwardData = .True.
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
    C_volAvgLastInc = C_volAvg
