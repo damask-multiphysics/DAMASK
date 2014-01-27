@@ -10,8 +10,9 @@ baseDir = damaskEnv.relPath('installation/')
 codeDir = damaskEnv.relPath('code/')
 
 options={}
+keywords=['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']
 
-for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
+for option in keywords:
   try:
     value = damaskEnv.options[option]
   except:
@@ -20,14 +21,14 @@ for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
   options[option]=value
 
 for i, arg in enumerate(sys.argv):
-  for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
+  for option in keywords:
     print arg,option
     if arg.startswith(option):
       print arg
       if arg.endswith(option): 
         options[option] = sys.argv[i+1]
       else:
-        options[option] = sys.argv[i][4:]
+        options[option] = sys.argv[i][len(option)+1:]
 
 print options
 compilers = ['ifort','gfortran']
@@ -48,17 +49,16 @@ compileOptions =' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
 LDFLAGS ='-shared -Wl,-rpath,/lib -Wl,-rpath,/usr/lib -Wl,-rpath,%s/lib'%(options['FFTW_ROOT'])
 
-
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
   lib_lapack = '-L%s/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'%options['IMKL_ROOT']
-  LDFLAGS +=' -Wl,-rpath,%s/lib/intel64'%(options['IMKL_ROOT'])
+  LDFLAGS +=' -Wl,-rpath=%s/lib/intel64'%(options['IMKL_ROOT'])
 elif options['ACML_ROOT'] != '':
   lib_lapack = '-L%s/%s64/lib  -lacml'%(options['ACML_ROOT'],options['F90'])
-  LDFLAGS +=' -Wl,-rpath,%s/%s64/lib'%(options['ACML_ROOT'],options['F90'])
+  LDFLAGS +=' -Wl,-rpath=%s/%s64/lib'%(options['ACML_ROOT'],options['F90'])
 elif options['LAPACK_ROOT'] != '':
   lib_lapack = '-L%s/lib -L%s/lib64  -llapack'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
-  LDFLAGS +=' -Wl,-rpath,%s/lib -Wl,-rpath,%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
+  LDFLAGS +=' -Wl,-rpath=%s/lib -Wl,-rpath=%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
 
 # f2py does not (yet) support setting of special flags for the linker, hence they must be set via 
 # environment variable
