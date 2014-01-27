@@ -25,24 +25,25 @@ if [ ! -z "$PS1" ]; then
   echo Using environment with ...
   echo "DAMASK installation in $DAMASK_ROOT"
   echo "DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
-  echo "F90=$F90"
-  echo "FFTW_ROOT=$FFTW_ROOT"
+  echo "Compiler: F90=$F90"
   if [ "x$LAPACK_ROOT" != "x" ]; then
-      echo "LAPACK_ROOT=$LAPACK_ROOT"
+    echo "LAPACK libaries located in $LAPACK_ROOT"
   fi
   if [ "x$ACML_ROOT" != "x" ]; then
-      echo "ACML_ROOT=$ACML_ROOT"
+    echo "ACML libaries located in $ACML_ROOT"
   fi
   if [ "x$IMKL_ROOT" != "x" ]; then
-      echo "IMKL_ROOT=$IMKL_ROOT"
+    echo "IMKL libaries located in $IMKL_ROOT"
   fi
-  echo "MARC_ROOT=$MARC_ROOT"
-  echo "HDF5_ROOT=$HDF5_ROOT (future use)"
+  echo "MSC.Marc root $MARC_ROOT"
+  echo "FFTW libaries located in $FFTW_ROOT"
+  echo "HDF5 libaries located in $HDF5_ROOT (future use)"
 fi
 ulimit -s unlimited
 ulimit -c 0
 ulimit -v unlimited
 ulimit -m unlimited
 export PYTHONPATH=$PYTHONPATH:$DAMASK_ROOT/lib
-unset DAMASK_ROOT
+unset DAMASK_ROOT LAPACK_ROOT ACML_ROOT IMKL_ROOT MARC_ROOT FFTW_ROOT HDF5_ROOT
+
 

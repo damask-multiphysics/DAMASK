@@ -41,12 +41,12 @@ else
 	include /etc/damask.conf
 endif  
 
-
 COMPILERNAME ?= $(F90)
 
 INCLUDE_DIRS :=-I../lib
 LIBRARIES :=-lfftw3
-LIB_DIRS  :=-L$$FFTW_ROOT/lib
+LIB_DIRS  :=-L$(FFTW_ROOT)/lib
+RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -94,29 +94,30 @@ IMKL_ARCH =_sequential
 endif
 
 ifneq  "x$(IMKL_ROOT)" "x"
-LIB_DIRS  :=-L$$IMKL_ROOT/lib/intel64
+LIB_DIRS  :=-L$(IMKL_ROOT)/lib/intel64
+RUN_PATH  +=$(RUNPATH) -Wl,-rpath,$(IMKL_ROOT)/lib/intel64
 INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
 LIBRARIES +=-lmkl_intel_lp64 -lmkl_core -lmkl$(ACML_ARCH) -lm -lpthread -liomp5
 else
 ifneq  "x$(ACML_ROOT)" "x"
-LIB_DIRS  +=-L$$ACML_ROOT/$(F90)64$(ACML_ARCH)/lib
+LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
+RUN_PATH  +=$(RUNPATH) -Wl,-rpath,$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifneq  "x$(LAPACK_ROOT)" "x"
-LIB_DIRS  +=-L$$LAPACK_ROOT/lib64 -L$$LAPACK_ROOT/lib
+LIB_DIRS  +=-L$(LAPACK_ROOT)/lib64 -L$(LAPACK_ROOT)/lib
+RUN_PATH  +=$(RUN_PATH) -Wl,-rpath,$(LAPACK_ROOT)/lib64 -Wl,-rpath,$(LAPACK_ROOT)/lib
 LIBRARIES +=-llapack
 endif
 endif
 endif
 
-
-
-
 #hdf5
 ifeq "$(HDF5)" "ON"
 LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
-LIB_DIRS  +=-L$$HDF5ROOT/lib
-INCLUDE_DIRS +=-I$(HDF5ROOT)/include -DHDF
+LIB_DIRS  +=-L$(HDF5_ROOT)/lib
+RUN_PATH  +=$(RUNPATH) -Wl,-rpath,$(HDF5_ROOT)/lib
+INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
 ifdef PETSC_DIR
@@ -360,7 +361,7 @@ endif
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(SUFFIX)
+  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(RUN_PATH) $(SUFFIX)
 
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)

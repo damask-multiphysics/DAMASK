@@ -2,6 +2,13 @@ SHELL = /bin/sh
 ########################################################################################
 # Makefile for the installation of DAMASK
 ########################################################################################
+.PHONY: all
+all:
+	spectral
+	marc
+	processing
+	install
+
 .PHONY: spectral
 spectral:
 	@$(MAKE) clean -C code >/dev/null

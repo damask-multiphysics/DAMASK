@@ -60,13 +60,13 @@ BLASDIR=${BLASDIR%/}               # remove trailing slash
 
 case $BLASTYPE in
     IMKL | imkl) 
-    BLAS=" -mkl"
+    BLAS=" -mkl=sequential -lpthread -lm -rpath=$BLASDIR/lib/intel64" #rpoath
     ;;
     ACML | acml) 
-    BLAS=" -L$BLASDIR/ifort64_mp/lib -lacml_mp"
+    BLAS=" -L$BLASDIR/ifort64/lib -lacml -rpath=$BLASDIR/ifort64/lib"
     ;;
     LAPACK | lapack) 
-    BLAS=" -L$BLASDIR/lib64 -L$BLASDIR/lib -llapack"
+    BLAS=" -L$BLASDIR/lib64 -L$BLASDIR/lib -llapack -rpath=$BLASDIR/lib64 -rpath$BLASDIR/lib"
     ;;
     *)
     echo "error, BLAS type must be IMKL, ACML, or LAPACK"

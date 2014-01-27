@@ -23,20 +23,29 @@ compilers = ['ifort','gfortran']
 if options['F90'] not in compilers:
   sys.exit('compiler "F90" (in installation/options or as Shell variable) has to be one out of: %s'%(', '.join(compilers)))
 
-compileCommand = {
-                  'gfortran': 'gnu95 --f90flags="-fPIC -fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics'+\
-                          ' -DSpectral -fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4 -I%s/lib"'%damaskEnv.rootDir(),
-                  'ifort':    'intelem --f90flags="-fPIC -fpp -stand f08 -diag-disable 5268 -assume byterecl'+\
-                          ' -DSpectral -real-size 64 -integer-size 32 -DFLOAT=8 -DINT=4 -I%s/lib"'%damaskEnv.rootDir(),
+compiler       = {
+                  'gfortran': '--fcompiler=gnu95 --f90flags="-fPIC -fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics'+\
+                              ' -fdefault-real-8 -fdefault-double-8"',
+                  'ifort':    '--fcompiler=intelem --f90flags="-fPIC -fpp -stand f08 -diag-disable 5268 -assume byterecl'+\
+                              ' -real-size 64 -integer-size 32"',
                   }[options['F90']]
+
+# option not depending on compiler
+compileOptions =' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
+
+# this saves the path of libraries during runtime
+LDFLAGS ='-Wl,-rpath,%s/lib'%(options['FFTW_ROOT'])
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
-  lib_lapack = '-L$IMKL_ROOT/lib/intel64 -I%s/include -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'%options['IMKL_ROOT']
+  lib_lapack = '-L%s/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'%options['IMKL_ROOT']
+  LDFLAGS +=' -Wl,-rpath,%s/lib/intel64'%(options['IMKL_ROOT'])
 elif options['ACML_ROOT'] != '':
-  lib_lapack = '-L$ACML/%s64/lib -lacml'%options['F90']
+  lib_lapack = '-L%s/%s64/lib  -lacml'%(options['ACML_ROOT'],options['F90'])
+  LDFLAGS +=' -Wl,-rpath,%s/%s64/lib'%(options['ACML_ROOT'],options['F90'])
 elif options['LAPACK_ROOT'] != '':
-  lib_lapack = '-L$LAPACK_ROOT/lib -L$LAPACK_ROOT/lib64 -llapack'                                                   
+  lib_lapack = '-L%s/lib -L%s/lib64  -llapack'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
+  LDFLAGS +=' -Wl,-rpath,%s/lib -Wl,-rpath,%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])                                     
 
 os.chdir(codeDir)                                                                           # needed for compilation with gfortran and f2py
 try:
@@ -55,7 +64,8 @@ except OSError, e:                                                              
 #' --overwrite-signature --no-lower prec.f90 DAMASK_spectral_interface.f90 math.f90 mesh.f90,...'
  ###########################################################################
 cmd = 'f2py damask.core.pyf' +\
-      ' -c --no-lower --fcompiler=%s'%(compileCommand) +\
+      ' -c --no-lower %s'%(compiler) +\
+      compileOptions+\
       ' prec.f90'+\
       ' DAMASK_spectral_interface.f90'+\
       ' IO.f90'+\
@@ -66,12 +76,16 @@ cmd = 'f2py damask.core.pyf' +\
       ' FEsolving.f90'+\
       ' mesh.f90'+\
       ' core_quit.f90'+\
-      ' -L$FFTW_ROOT/lib -lfftw3'+\
+      ' -L%s/lib -lfftw3'%(options['FFTW_ROOT'])+\
       ' %s'%lib_lapack
 
+# f2py does not (yet) support setting of special flags for the linker, hence they must be set via 
+# environment variable
+my_env = os.environ
+my_env["LDFLAGS"] = LDFLAGS
 print('Executing: '+cmd)
 try:
-  subprocess.call(shlex.split(cmd))
+  subprocess.call(shlex.split(cmd),env=my_env)
 except subprocess.CalledProcessError:
   print('build failed')
 except OSError:
