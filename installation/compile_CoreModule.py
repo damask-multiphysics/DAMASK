@@ -19,6 +19,14 @@ for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
     if value is None: value = ''           # env not set
   options[option]=value
 
+for arg in enumerate(sys.argv):
+  for option in ['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']:
+  if arg.startswith(option):
+    if arg.endswith(option): 
+      options[option] = sys.argv[i+1].upper()
+    else:
+      options[option] = sys.argv[i][17:].upper()
+
 compilers = ['ifort','gfortran']
 if options['F90'] not in compilers:
   sys.exit('compiler "F90" (in installation/options or as Shell variable) has to be one out of: %s'%(', '.join(compilers)))
