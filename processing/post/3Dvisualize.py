@@ -544,6 +544,8 @@ for filename in args:
              'quadruple': 4,\
             }
 
+  structure = vtk.vtkIntArray()
+  structure.SetName('Microstructures')
   for datatype in fields.keys():
     print '\n%s:'%datatype,
     fields[datatype]['_order_'] = []

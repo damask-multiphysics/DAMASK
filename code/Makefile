@@ -46,7 +46,7 @@ COMPILERNAME ?= $(F90)
 INCLUDE_DIRS :=-I../lib
 LIBRARIES :=-lfftw3
 LIB_DIRS  :=-L$(FFTW_ROOT)/lib
-RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib
+RUN_PATH  :=-Wl,-rpath=$(FFTW_ROOT)/lib
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -95,18 +95,18 @@ endif
 
 ifneq  "x$(IMKL_ROOT)" "x"
 LIB_DIRS  :=-L$(IMKL_ROOT)/lib/intel64
-RUN_PATH  +=$(RUNPATH) -Wl,-rpath,$(IMKL_ROOT)/lib/intel64
+RUN_PATH  +=$(RUNPATH) -Wl,-rpath=$(IMKL_ROOT)/lib/intel64
 INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
-LIBRARIES +=-lmkl_intel_lp64 -lmkl_core -lmkl$(ACML_ARCH) -lm -lpthread -liomp5
+LIBRARIES +=-lmkl_intel_lp64 -lmkl_core -lmkl$(IMKL_ARCH) -lm -lpthread -liomp5
 else
 ifneq  "x$(ACML_ROOT)" "x"
 LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
-RUN_PATH  +=$(RUNPATH) -Wl,-rpath,$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
+RUN_PATH  +=$(RUNPATH) -Wl,-rpath=$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifneq  "x$(LAPACK_ROOT)" "x"
 LIB_DIRS  +=-L$(LAPACK_ROOT)/lib64 -L$(LAPACK_ROOT)/lib
-RUN_PATH  +=$(RUN_PATH) -Wl,-rpath,$(LAPACK_ROOT)/lib64 -Wl,-rpath,$(LAPACK_ROOT)/lib
+RUN_PATH  +=$(RUN_PATH) -Wl,-rpath=$(LAPACK_ROOT)/lib64 -Wl,-rpath=$(LAPACK_ROOT)/lib
 LIBRARIES +=-llapack
 endif
 endif
@@ -116,7 +116,7 @@ endif
 ifeq "$(HDF5)" "ON"
 LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
 LIB_DIRS  +=-L$(HDF5_ROOT)/lib
-RUN_PATH  +=$(RUNPATH) -Wl,-rpath,$(HDF5_ROOT)/lib
+RUN_PATH  +=$(RUNPATH) -Wl,-rpath=$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
@@ -142,7 +142,7 @@ OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
 OPTIMIZATION_OFF_gfortran        :=-O0
 OPTIMIZATION_DEFENSIVE_ifort     :=-O2
 OPTIMIZATION_DEFENSIVE_gfortran  :=-O2
-OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model fast=2 -ipo #-static causes trouble at the moment
+OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model fast=2 -ipo
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 

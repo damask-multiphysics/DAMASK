@@ -1,18 +1,20 @@
 #!/usr/bin/env python
-
-# compiles fortran code for Python
+# -*- coding: UTF-8 no BOM -*-
 
 import os,sys,glob,string,subprocess,shlex
 from damask import Environment
+
+# compiles fortran code for Python
+scriptID = '$Id$'
 
 damaskEnv = Environment()
 baseDir = damaskEnv.relPath('installation/')
 codeDir = damaskEnv.relPath('code/')
 
-options={}
 keywords=['IMKL_ROOT','ACML_ROOT','LAPACK_ROOT','FFTW_ROOT','F90']
+options={}
 
-# getting options from damask.conf or, if not present, from envinronment
+#--- getting options from damask.conf or, if not present, from envinronment -----------------------
 for option in keywords:
   try:
     value = damaskEnv.options[option]
@@ -21,12 +23,13 @@ for option in keywords:
     if value is None: value = ''           # env not set
   options[option]=value
 
-# overwrite default options with keyword=value pair from argument list to mimic make behavior
+#--- overwrite default options with keyword=value pair from argument list to mimic make behavior --
 for i, arg in enumerate(sys.argv):
   for option in keywords:
     if arg.startswith(option):
       options[option] = sys.argv[i][len(option)+1:]
 
+#--- check for valid compiler and set options -----------------------------------------------------
 compilers = ['ifort','gfortran']
 if options['F90'] not in compilers:
   sys.exit('compiler "F90" (in installation/options or as Shell variable) has to be one out of: %s'%(', '.join(compilers)))
@@ -38,11 +41,11 @@ compiler = {
                         ' -real-size 64 -integer-size 32"',
             }[options['F90']]
 
-# option not depending on compiler
+#--- option not depending on compiler -------------------------------------------------------------
 compileOptions =' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
-# this saves the path of libraries during runtime
-LDFLAGS ='-shared -Wl,-rpath=/lib -Wl,-rpath=/usr/lib -Wl,-rpath=%s/lib'%(options['FFTW_ROOT'])
+#--- this saves the path of libraries to core.so, hence it is known during runtime ----------------
+LDFLAGS ='-shared -Wl,-rpath=%s/lib'%(options['FFTW_ROOT'])
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
@@ -55,15 +58,16 @@ elif options['LAPACK_ROOT'] != '':
   lib_lapack = '-L%s/lib -L%s/lib64  -llapack'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
   LDFLAGS +=' -Wl,-rpath=%s/lib -Wl,-rpath=%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
 
+#--------------------------------------------------------------------------------------------------
 # f2py does not (yet) support setting of special flags for the linker, hence they must be set via 
-# environment variable
+# environment variable ----------------------------------------------------------------------------
 my_env = os.environ
 my_env["LDFLAGS"] = LDFLAGS                                    
 
-os.chdir(codeDir)                                                                           # needed for compilation with gfortran and f2py
+#--- delete old file ------------------------------------------------------------------------------
 try:
   os.remove(os.path.join(damaskEnv.relPath('lib/damask'),'core.so'))
-except OSError, e:                                                                          ## if failed, report it back to the user ##
+except OSError, e:
   print ("Error when deleting: %s - %s." % (e.filename,e.strerror))
 
 
@@ -76,6 +80,7 @@ except OSError, e:                                                              
 #'f2py -h damask.core.pyf' +\
 #' --overwrite-signature --no-lower prec.f90 DAMASK_spectral_interface.f90 math.f90 mesh.f90,...'
  ###########################################################################
+os.chdir(codeDir)
 cmd = 'f2py damask.core.pyf' +\
       ' -c --no-lower %s'%(compiler) +\
       compileOptions+\
@@ -111,7 +116,7 @@ for module in modules:
   print 'removing', module
   os.remove(module)
 
-#check if compilation of core module was successful
+#--- check if compilation of core module was successful -------------------------------------------
 try:
   with open(damaskEnv.relPath('lib/damask/core.so')) as f: pass
 except IOError as e:
