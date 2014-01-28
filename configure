@@ -42,7 +42,7 @@ if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
 #--- default option values  --------------------------------------------------------------------------
 defaults={'F90':compiler,\
           'FFTW_ROOT':'/usr/local',\
-          'MARC_ROOT':'/msc',\
+          'MSC_ROOT' :'/msc',\
           'HDF5_ROOT':'/usr/local',\
           'DAMASK_NUM_THREADS':4,\
           'blasType':'LAPACK',\
@@ -71,8 +71,8 @@ try:
         defaults['F90']=items[1].rstrip()
       elif items[0] == 'FFTW_ROOT': 
         defaults['FFTW_ROOT']=items[1].rstrip()
-      elif items[0] == 'MARC_ROOT': 
-        defaults['MARC_ROOT']=items[1].rstrip()
+      elif items[0] == 'MSC_ROOT': 
+        defaults['MSC_ROOT']=items[1].rstrip()
       elif items[0] == 'HDF5_ROOT': 
         defaults['HDF5_ROOT']=items[1].rstrip()
       elif items[0] == 'DAMASK_NUM_THREADS': 
@@ -90,8 +90,8 @@ parser.add_option('--with-fc',               dest='compiler', type='string', met
                                              help='F90 compiler [%default]')
 parser.add_option('--with-fftw-dir',         dest='fftwRoot', type='string', metavar='string', \
                                              help='root directory of FFTW [%default]')
-parser.add_option('--with-marc-dir',         dest='marcRoot', type='string', metavar='string', \
-                                             help='root directory of MSC.Marc [%default]')
+parser.add_option('--with-msc-dir',          dest='mscRoot', type='string', metavar='string', \
+                                             help='root directory of MSC.Marc/Mentat [%default]')
 parser.add_option('--with-HDF5-dir',         dest='hdf5Root', type='string', metavar='string', \
                                              help='root directory of HDF5 [%default]')
 parser.add_option('--with-OMP-threads',      dest='threads', type='int', metavar='int',\
@@ -105,7 +105,7 @@ parser.add_option('--with-spectral-options', dest='spectraloptions', type='strin
 
 parser.set_defaults(compiler = defaults['F90'])
 parser.set_defaults(fftwRoot = defaults['FFTW_ROOT'])
-parser.set_defaults(marcRoot = defaults['MARC_ROOT'])
+parser.set_defaults(mscRoot  = defaults['MSC_ROOT'])
 parser.set_defaults(hdf5Root = defaults['HDF5_ROOT'])
 parser.set_defaults(threads  = defaults['DAMASK_NUM_THREADS'])
 parser.set_defaults(blasType = defaults['blasType'])
@@ -131,7 +131,7 @@ parser.set_defaults(spectraloptions = [])
 options.compiler=options.compiler.lower()
 options.blasType=options.blasType.upper() 
 options.fftwRoot=options.fftwRoot.rstrip('/')
-options.marcRoot=options.marcRoot.rstrip('/')
+options.mscRoot =options.mscRoot.rstrip('/')
 options.hdf5Root=options.hdf5Root.rstrip('/') 
 options.blasRoot=options.blasRoot.rstrip('/') 
 
@@ -146,8 +146,8 @@ for lib in ['libfftw3.so','libfftw3.a']:
   if not os.path.isfile(os.path.join(options.fftwRoot,'lib/%s'%lib)):
     print('FFTW Warning: %s not found in %s!'%(lib,os.path.join(options.fftwRoot,'lib')))
 
-if not os.path.isdir(options.marcRoot):
-  print('MSC.Marc Warning: Root directory %s not found!'%options.marcRoot)
+if not os.path.isdir(options.mscRoot):
+  print('MSC.Marc/Mentat Warning: Root directory %s not found!'%options.mscRoot)
 
 if options.blasType == 'LAPACK':
   if os.path.isdir(os.path.join(options.blasRoot,'lib64')): 
@@ -197,9 +197,9 @@ try:
       if items[0] == 'FFTW_ROOT':
         line = '%s=%s\n'%(items[0],options.fftwRoot)
         options.fftwRoot =''
-      if items[0] == 'MARC_ROOT':
-        line = '%s=%s\n'%(items[0],options.marcRoot)
-        options.marcRoot =''
+      if items[0] == 'MSC_ROOT':
+        line = '%s=%s\n'%(items[0],options.mscRoot)
+        options.mscRoot =''
       if items[0] == 'HDF5_ROOT':
         line = '%s=%s\n'%(items[0],options.hdf5Root)
         options.hdf5Root =''
@@ -226,8 +226,8 @@ for opt, value in options.__dict__.items():
     output.append('F90=%s\n'%value)
   if opt == 'fftwRoot' and value !='':
     output.append('FFTW_ROOT=%s\n'%value)
-  if opt == 'marcRoot' and value !='':
-    output.append('MARC_ROOT=%s\n'%value)
+  if opt == 'mscRoot' and value !='':
+    output.append('MSC_ROOT=%s\n'%value)
   if opt == 'hdf5Root' and value !='':
     output.append('HDF5_ROOT=%s\n'%value)
   if opt == 'threads' and value !='':
