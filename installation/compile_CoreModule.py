@@ -45,18 +45,23 @@ compiler = {
 compileOptions =' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
 #--- this saves the path of libraries to core.so, hence it is known during runtime ----------------
-LDFLAGS ='-shared -Wl,-rpath=%s/lib'%(options['FFTW_ROOT'])
+LDFLAGS ='-shared -Wl,-rpath=%s/lib,-rpath=%s/lib64'%(options['FFTW_ROOT'],options['FFTW_ROOT'])
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
-if   options['IMKL_ROOT'] != '' and options['F90'] != 'gfortran':
-  lib_lapack = '-L%s/lib/intel64 -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'%options['IMKL_ROOT']
-  LDFLAGS +=' -Wl,-rpath=%s/lib/intel64'%(options['IMKL_ROOT'])
+if options['IMKL_ROOT']:
+  if options['F90'] == 'gfortran':
+    arch = 'gf'
+  elif options['F90'] == 'ifort':
+    arch = 'intel'
+  lib_lapack = '-L%s/lib/intel64 -lmkl_%s_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'\
+                                                                      %(options['IMKL_ROOT'],arch)
+  LDFLAGS +=',-rpath=%s/lib/intel64'%(options['IMKL_ROOT'])
 elif options['ACML_ROOT'] != '':
   lib_lapack = '-L%s/%s64/lib  -lacml'%(options['ACML_ROOT'],options['F90'])
-  LDFLAGS +=' -Wl,-rpath=%s/%s64/lib'%(options['ACML_ROOT'],options['F90'])
+  LDFLAGS +=',-rpath=%s/%s64/lib'%(options['ACML_ROOT'],options['F90'])
 elif options['LAPACK_ROOT'] != '':
   lib_lapack = '-L%s/lib -L%s/lib64  -llapack'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
-  LDFLAGS +=' -Wl,-rpath=%s/lib -Wl,-rpath=%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
+  LDFLAGS +=',-rpath=%s/lib,-rpath=%s/lib64'%(options['LAPACK_ROOT'],options['LAPACK_ROOT'])
 
 #--------------------------------------------------------------------------------------------------
 # f2py does not (yet) support setting of special flags for the linker, hence they must be set via 

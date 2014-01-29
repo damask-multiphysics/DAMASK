@@ -142,9 +142,16 @@ if options.compiler not in ['ifort','gfortran']:
 if not subprocess.call(['which', options.compiler],stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
   print('Compiler Warning: executable %s not found!'%options.compiler)
 
-for lib in ['libfftw3.so','libfftw3.a']:
-  if not os.path.isfile(os.path.join(options.fftwRoot,'lib/%s'%lib)):
-    print('FFTW Warning: %s not found in %s!'%(lib,os.path.join(options.fftwRoot,'lib')))
+
+if os.path.isdir(os.path.join(options.fftwRoot,'lib64')):
+  fftwLocation = os.path.join(options.fftwRoot,'lib64')
+else:
+  fftwLocation = os.path.join(options.fftwRoot,'lib')
+
+for lib in ['libfftw3.so','libfftw3.a',\
+            'libfftw3_threads.so','libfftw3_threads.a']:
+  if not os.path.isfile(os.path.join(fftwLocation,lib)):
+    print('FFTW Warning: %s not found in %s!'%(lib,os.path.join(fftwLocation,lib)))
 
 if not os.path.isdir(options.mscRoot):
   print('MSC.Marc/Mentat Warning: Root directory %s not found!'%options.mscRoot)
@@ -167,14 +174,13 @@ elif options.blasType == 'ACML':
     if not os.path.isfile(os.path.join(blasLocationParallel,lib)): 
       print('ACML Warning: %s not found in %s!'%(lib,blasLocationParallel))
 elif options.blasType == 'IMKL':
-  if options.compiler == 'gfortran':
-    print('Error: IMKL does not support gfortran')
-    sys.exit(1)
   blasLocation=os.path.join(options.blasRoot,'lib/intel64')
   for lib in ['libmkl_core.so','libmkl_core.a',\
               'libmkl_sequential.so','libmkl_sequential.a',\
               'libmkl_intel_thread.so','libmkl_intel_thread.a',\
-              'libmkl_intel_lp64.so','libmkl_intel_lp64.a']:
+              'libmkl_intel_lp64.so','libmkl_intel_lp64.a,'\
+              'libmkl_gnu_thread.so','libmkl_gnu_thread.a',\
+              'libmkl_gf_lp64.so','libmkl_gf_lp64.a']:
     if not os.path.isfile(os.path.join(blasLocation,lib)): 
       print('IMKL Warning: %s not found in %s!'%(lib,blasLocation))
 else:
@@ -182,7 +188,7 @@ else:
   sys.exit(1)
 
 
-#--- try to read config file (to keep comments and order) ----------------------------------------------
+#--- read config file if present to keep comments and order ---------------------------------------
 output = []
 try: 
   with open(configFile,'r') as f:
@@ -209,6 +215,9 @@ try:
       for blasType in defaults['blasRoot'].keys():
         if items[0] == '%s_ROOT'%blasType and items[0] == '%s_ROOT'%options.blasType:
           line = '%s=%s\n'%(items[0],options.blasRoot)
+          options.blasType=''
+        elif items[0] == '#%s_ROOT'%blasType and items[0] == '#%s_ROOT'%options.blasType:
+          line = '%s=%s\n'%(items[0][1:],options.blasRoot)
           options.blasType=''
         elif items[0] == '%s_ROOT'%blasType: line = '#'+line
       for spectralOption in options.spectraloptions:
@@ -250,4 +259,5 @@ else:
 print('\n-----\n writing values to %s\n-----'%configFileNew)
 with open(configFileNew,'w') as f:
   for line in output:
+    print(line.rstrip('\n'))
     f.write(line)

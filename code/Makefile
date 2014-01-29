@@ -82,31 +82,37 @@ ifeq  "$(PORTABLE)" "FALSE"
 PORTABLE_SWITCH =-msse3
 endif
 
+# names for linking IMKL
+IMKL_COMPILER_ifort :=intel
+IMKL_COMPILER_gfortran :=gf
+IMKL_COMPILER2_ifort :=intel
+IMKL_COMPILER2_gfortran :=gnu
+
 # settings for multicore support
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
 OPENMP_FLAG_gfortran =-fopenmp
 ACML_ARCH =_mp
-IMKL_ARCH =_intel_thread
+IMKL_ARCH =$(IMKL_COMPILER2_$(F90))_thread
 LIBRARIES +=-lfftw3_threads -lpthread
 else
-IMKL_ARCH =_sequential
+IMKL_ARCH =$(IMKL_COMPILER2_$(F90))_sequential
 endif
 
 ifneq  "x$(IMKL_ROOT)" "x"
 LIB_DIRS  :=-L$(IMKL_ROOT)/lib/intel64
-RUN_PATH  +=$(RUNPATH) -Wl,-rpath=$(IMKL_ROOT)/lib/intel64
+RUN_PATH  +=$(RUNPATH),-rpath=$(IMKL_ROOT)/lib/intel64
 INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
-LIBRARIES +=-lmkl_intel_lp64 -lmkl_core -lmkl$(IMKL_ARCH) -lm -lpthread -liomp5
+LIBRARIES +=-lmkl_$(IMKL_COMPILER_$(F90))_lp64 -lmkl_core -lmkl_$(IMKL_ARCH) -lm -lpthread -liomp5
 else
 ifneq  "x$(ACML_ROOT)" "x"
 LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
-RUN_PATH  +=$(RUNPATH) -Wl,-rpath=$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
+RUN_PATH  +=$(RUNPATH),-rpath=$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifneq  "x$(LAPACK_ROOT)" "x"
 LIB_DIRS  +=-L$(LAPACK_ROOT)/lib64 -L$(LAPACK_ROOT)/lib
-RUN_PATH  +=$(RUN_PATH) -Wl,-rpath=$(LAPACK_ROOT)/lib64 -Wl,-rpath=$(LAPACK_ROOT)/lib
+RUN_PATH  +=$(RUN_PATH),-rpath=$(LAPACK_ROOT)/lib64,-rpath=$(LAPACK_ROOT)/lib
 LIBRARIES +=-llapack
 endif
 endif
@@ -116,7 +122,7 @@ endif
 ifeq "$(HDF5)" "ON"
 LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
 LIB_DIRS  +=-L$(HDF5_ROOT)/lib
-RUN_PATH  +=$(RUNPATH) -Wl,-rpath=$(HDF5_ROOT)/lib
+RUN_PATH  +=$(RUNPATH),-rpath=$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
