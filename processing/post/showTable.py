@@ -48,9 +48,12 @@ for file in files:
   table.head_read()                                                         # read ASCII header info
   if options.head or options.info:   file['output'].write('\n'.join(table.info)+'\n')
   if options.head or options.labels: file['output'].write({True:'\n',False:'\t'}[options.col].join(table.labels)+'\n')
-  if options.data:
-#    table.data_rewind()
-    while table.data_read(): table.data_write()
+
+# ------------------------------------------ output data ---------------------------------------  
+
+  outputAlive = options.data
+  while outputAlive and table.data_read():                                  # read next data line of ASCII table
+    outputAlive = table.data_write()                                        # output line
 
   table.output_flush()
 
