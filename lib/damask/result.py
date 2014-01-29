@@ -1,11 +1,12 @@
 # $Id$
 
 import numpy as np
+import sys
 
 try:
   import h5py
 except:
-  print('Could not import h5py.') 
+  sys.stderr.write('Could not import h5py.\n') 
 
 class Result():
   '''
