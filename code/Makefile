@@ -101,13 +101,13 @@ endif
 
 ifneq  "x$(IMKL_ROOT)" "x"
 LIB_DIRS  :=-L$(IMKL_ROOT)/lib/intel64
-RUN_PATH  +=$(RUNPATH),-rpath=$(IMKL_ROOT)/lib/intel64
+RUN_PATH  +=$(RUN_PATH),-rpath=$(IMKL_ROOT)/lib/intel64
 INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
 LIBRARIES +=-lmkl_$(IMKL_COMPILER_$(F90))_lp64 -lmkl_core -lmkl_$(IMKL_ARCH) -lm -lpthread -liomp5
 else
 ifneq  "x$(ACML_ROOT)" "x"
 LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
-RUN_PATH  +=$(RUNPATH),-rpath=$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
+RUN_PATH  +=$(RUN_PATH),-rpath=$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifneq  "x$(LAPACK_ROOT)" "x"
@@ -122,7 +122,7 @@ endif
 ifeq "$(HDF5)" "ON"
 LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
 LIB_DIRS  +=-L$(HDF5_ROOT)/lib
-RUN_PATH  +=$(RUNPATH),-rpath=$(HDF5_ROOT)/lib
+RUN_PATH  +=$(RUN_PATH),-rpath=$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
