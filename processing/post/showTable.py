@@ -55,7 +55,7 @@ for file in files:
   while outputAlive and table.data_read():                                  # read next data line of ASCII table
     outputAlive = table.data_write()                                        # output line
 
-  table.output_flush()
+  outputAlive and table.output_flush()
 
   if file['name'] != 'STDIN':
     file['input'].close()
