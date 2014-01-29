@@ -49,7 +49,7 @@ for file in files:
   if options.head or options.info:   file['output'].write('\n'.join(table.info)+'\n')
   if options.head or options.labels: file['output'].write({True:'\n',False:'\t'}[options.col].join(table.labels)+'\n')
   if options.data:
-    table.data_rewind()
+#    table.data_rewind()
     while table.data_read(): table.data_write()
 
   table.output_flush()
