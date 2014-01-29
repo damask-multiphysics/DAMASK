@@ -230,7 +230,7 @@ class Test():
       max_loc=numpy.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
       curArray = curArray[curArray.nonzero()]
-      print(' ********\n * maximum relative error %f for %i and %i\n ********'
+      print(' ********\n * maximum relative error %f for %f and %f\n ********'
                   %(max_err, refArrayNonZero[max_loc],curArray[max_loc]))
       return max_err
     else:
