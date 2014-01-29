@@ -43,7 +43,7 @@ ulimit -s unlimited
 ulimit -c 0
 ulimit -v unlimited
 ulimit -m unlimited
-export PYTHONPATH=$PYTHONPATH:$DAMASK_ROOT/lib
+export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 unset DAMASK_ROOT LAPACK_ROOT ACML_ROOT IMKL_ROOT MARC_ROOT FFTW_ROOT HDF5_ROOT
 
 
