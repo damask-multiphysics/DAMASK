@@ -35,7 +35,7 @@ if [ ! -z "$PS1" ]; then
   if [ "x$IMKL_ROOT" != "x" ]; then
     echo "IMKL libaries located in $IMKL_ROOT"
   fi
-  echo "MSC.Marc root $MARC_ROOT"
+  echo "MSC.Marc/Mentat root $MSC_ROOT"
   echo "FFTW libaries located in $FFTW_ROOT"
   echo "HDF5 libaries located in $HDF5_ROOT (future use)"
 fi
