@@ -96,7 +96,7 @@ ACML_ARCH =_mp
 IMKL_ARCH =$(IMKL_COMPILER2_$(F90))_thread
 LIBRARIES +=-lfftw3_threads -lpthread
 else
-IMKL_ARCH =$(IMKL_COMPILER2_$(F90))_sequential
+IMKL_ARCH =sequential
 endif
 
 ifneq  "x$(IMKL_ROOT)" "x"
