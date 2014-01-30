@@ -45,8 +45,10 @@ compiler = {
 compileOptions = ' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
 #--- this saves the path of libraries to core.so, hence it is known during runtime ----------------
-LDFLAGS =  ' -undefined dynamic_lookup'     # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
-LDFLAGS += ' -shared -Wl,-rpath,%s/lib,-rpath,%s/lib64'%(options['FFTW_ROOT'],options['FFTW_ROOT'])
+LDFLAGS = '-Wl,-rpath,%s/lib,-rpath,%s/lib64'%(options['FFTW_ROOT'],options['FFTW_ROOT'])
+if options['F90'] == 'gfortran':
+  LDFLAGS += ' -shared -Wl,-undefined,dynamic_lookup'     # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
+
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if options['IMKL_ROOT']:
