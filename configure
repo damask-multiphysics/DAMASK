@@ -178,7 +178,7 @@ elif options.blasType == 'IMKL':
   for lib in ['libmkl_core.so','libmkl_core.a',\
               'libmkl_sequential.so','libmkl_sequential.a',\
               'libmkl_intel_thread.so','libmkl_intel_thread.a',\
-              'libmkl_intel_lp64.so','libmkl_intel_lp64.a,'\
+              'libmkl_intel_lp64.so','libmkl_intel_lp64.a',\
               'libmkl_gnu_thread.so','libmkl_gnu_thread.a',\
               'libmkl_gf_lp64.so','libmkl_gf_lp64.a']:
     if not os.path.isfile(os.path.join(blasLocation,lib)): 
