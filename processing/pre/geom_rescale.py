@@ -53,13 +53,13 @@ Either absolute values or relative factors (like "0.25x") can be used.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int', \
+parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, metavar = 'string string string', \
                   help='a,b,c grid of hexahedral box [unchanged]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar = 'float float float', \
+parser.add_option('-s', '--size', dest='size', type='string', nargs = 3, metavar = 'string string string', \
                   help='x,y,z size of hexahedral box [unchanged]')
 
-parser.set_defaults(grid = [0,0,0])
-parser.set_defaults(size = [0.0,0.0,0.0])
+parser.set_defaults(grid = ['0','0','0'])
+parser.set_defaults(size  = ['0.0','0.0','0.0'])
 
 (options, filenames) = parser.parse_args()
 
