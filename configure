@@ -142,28 +142,22 @@ if options.compiler not in ['ifort','gfortran']:
 if not subprocess.call(['which', options.compiler],stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
   print('Compiler Warning: executable %s not found!'%options.compiler)
 
-
-if os.path.isdir(os.path.join(options.fftwRoot,'lib64')):
-  fftwLocation = os.path.join(options.fftwRoot,'lib64')
-else:
-  fftwLocation = os.path.join(options.fftwRoot,'lib')
-
+fftwLocations =[os.path.join(options.fftwRoot,'lib'),os.path.join(options.fftwRoot,'lib64')]
 for lib in ['libfftw3.so','libfftw3.a',\
             'libfftw3_threads.so','libfftw3_threads.a']:
-  if not os.path.isfile(os.path.join(fftwLocation,lib)):
-    print('FFTW Warning: %s not found in %s!'%(lib,os.path.join(fftwLocation,lib)))
+  if (not os.path.isfile(os.path.join(fftwLocations[0],lib))) and \
+     (not os.path.isfile(os.path.join(fftwLocations[1],lib))):
+    print('FFTW Warning: %s not found in %s or %s!'%(lib,fftwLocations[0],fftwLocations[1]))
 
 if not os.path.isdir(options.mscRoot):
   print('MSC.Marc/Mentat Warning: Root directory %s not found!'%options.mscRoot)
 
 if options.blasType == 'LAPACK':
-  if os.path.isdir(os.path.join(options.blasRoot,'lib64')): 
-    blasLocation = os.path.join(options.blasRoot,'lib64')
-  else:
-    blasLocation=os.path.join(options.blasRoot,'lib')
+  lapackLocations =[os.path.join(options.blasRoot,'lib'),os.path.join(options.blasRoot,'lib64')]
   for lib in ['liblapack.so','liblapack.a']:
-    if not os.path.isfile(os.path.join(blasLocation,lib)): 
-      print('LAPACK Warning: %s not found in %s!'%(lib,blasLocation))
+    if (not os.path.isfile(os.path.join(lapackLocations[0],lib))) and \
+       (not os.path.isfile(os.path.join(lapackLocations[1],lib))):
+      print('LAPACK Warning: %s not found in %s or %s!'%(lib,lapackLocations[0],lapackLocations[1]))
 elif options.blasType == 'ACML':
   blasLocationSerial=os.path.join(options.blasRoot,'%s64/lib'%options.compiler)
   for lib in ['libacml.so','libacml.a']:
