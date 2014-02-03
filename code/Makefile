@@ -138,7 +138,7 @@ STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
 endif
 
 ifneq "$(FASTBUILD)" "YES"
-STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics -warn stderrors
+STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics
 STANDARD_CHECK_gfortran ?=-std=f2008 -pedantic-errors
 endif
 #-std=f2008ts:      for newer gfortran
@@ -157,7 +157,7 @@ COMPILE_OPTIONS_ifort    :=-fpp\
                            -assume byterecl
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
-                           -diag-disable 5268\
+                           -diag-disable 5268,7346\
                            -warn declarations\
                            -warn general\
                            -warn usage\
@@ -174,6 +174,7 @@ endif
 #-fimplicit-none:          assume "implicit-none" even if not present in source
 #-diag-disable:            disables warnings, where                           
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
+#   warning ID 7346:       The CHARACTER* form of a CHARACTER declaration is an obsolescent feature in Fortran 2008 (in openmpi, disable does not work)
 #-warn:                    enables warnings, where
 #   declarations:            any undeclared names (alternative name: -implicitnone)
 #   general:                 warning messages and informational messages are issued by the compiler
@@ -198,7 +199,9 @@ DEBUG_OPTIONS_ifort      :=-g\
                            -fp-stack-check\
                            -check bounds,format,output_conversion,pointers,uninit\
                            -fpe-all0\
-                           -warn errors
+                           -warn errors\
+                           -warn stderrors
+
 ###################################################################################################
 #COMPILE SWITCHES FOR RUNTIME DEBUGGING
 #-g:                       Generate symbolic debugging information in the object file
@@ -214,6 +217,7 @@ DEBUG_OPTIONS_ifort      :=-g\
 #-fpe-all0                capture all floating-point exceptions, sets -ftz automatically
 #-warn:                    enables warnings, where
 #   errors:                  warnings are changed to errors
+#   stderrors:               warnings about Fortran standard violations are changed to errors
 # information on http://software.intel.com/en-us/articles/determining-root-cause-of-sigsegv-or-sigbus-errors/
 ###################################################################################################
 #MORE OPTIONS FOR RUNTIME DEBUGGING
