@@ -230,7 +230,7 @@ class Test():
       max_loc=numpy.argmax(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
       refArrayNonZero = refArrayNonZero[curArray.nonzero()]
       curArray = curArray[curArray.nonzero()]
-      print(' ********\n * maximum relative error %f for %f and %f\n ********'
+      print(' ********\n * maximum relative error %e for %e and %e\n ********'
                   %(max_err, refArrayNonZero[max_loc],curArray[max_loc]))
       return max_err
     else:
@@ -253,7 +253,7 @@ class Test():
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
     
     import numpy
-    print('comparing ASCII Tables\n' + file0 + '\n' + file1)
+    print('comparing ASCII Tables\n %s \n %s'%(file0,file1))
     if normHeadings == '': normHeadings = headings0
 
     if len(headings0) == len(headings1) == len(normHeadings):                                         #check if comparison is possible and determine lenght of columns
@@ -272,7 +272,7 @@ class Test():
 
       for i in xrange(dataLength):
         if headings0[i]['shape'] != headings1[i]['shape']: 
-          raise Exception('shape mismatch when comparing ', headings0[i]['label'], ' with ', headings1[i]['label'])
+          raise Exception('shape mismatch when comparing %s with %s '%(headings0[i]['label'],headings1[i]['label']))
         shape[i] = headings0[i]['shape']
         for j in xrange(numpy.shape(shape[i])[0]):
           length[i] *= shape[i][j]
@@ -280,7 +280,7 @@ class Test():
         for j in xrange(numpy.shape(normShape[i])[0]):
           normLength[i] *= normShape[i][j]
     else:
-      raise Exception('trying to compare ', len(headings0), ' with ', len(headings1), ' normed by ', len(normHeadings),' data sets')
+      raise Exception('trying to compare %i with %i normed by %i data sets'%(len(headings0),len(headings1),len(normHeadings)))
 
     table0 = damask.ASCIItable(open(file0))
     table0.head_read()
@@ -327,9 +327,9 @@ class Test():
         norm[i] = [1.0 for j in xrange(line0-len(skipLines))]
         absTol[i] = True
         if perLine:
-          print('At least one norm of',headings0[i]['label'],'in 1. table is 0.0, using absolute tolerance')
+          print('At least one norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
         else:
-          print('Maximum norm of',headings0[i]['label'],'in 1. table is 0.0, using absolute tolerance')
+          print('Maximum norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
 
     line1 = 0
     while table1.data_read():                                                     # read next data line of ASCII table
@@ -341,14 +341,14 @@ class Test():
                                                                                    norm[i][line1-len(skipLines)])
       line1 +=1
 
-    if (line0 != line1): raise Exception('found ', line0, ' lines in 1. table and ', line1, ' in 2. table')
+    if (line0 != line1): raise Exception('found %s lines in 1. table and %s in 2. table'%(line0,line1))
 
     print(' ********')
     for i in xrange(dataLength):
       if absTol[i]:
-        print(' * maximum absolute error %f for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
+        print(' * maximum absolute error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
       else:
-        print(' * maximum relative error %f for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
+        print(' * maximum relative error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
     print(' ********')
     return maxError
     

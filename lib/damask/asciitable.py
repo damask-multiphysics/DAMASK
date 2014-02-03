@@ -138,6 +138,7 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def labels_clear(self):
     self.labels = []
+    self.__IO__['labels'] = False
 
 # ------------------------------------------------------------------
   def labels_index(self,

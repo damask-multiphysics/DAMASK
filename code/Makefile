@@ -157,7 +157,7 @@ COMPILE_OPTIONS_ifort    :=-fpp\
                            -assume byterecl
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
-                           -diag-disable 5268,7346\
+                           -diag-disable 5268\
                            -warn declarations\
                            -warn general\
                            -warn usage\
@@ -174,7 +174,6 @@ endif
 #-fimplicit-none:          assume "implicit-none" even if not present in source
 #-diag-disable:            disables warnings, where                           
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
-#   warning ID 7346:       The CHARACTER* form of a CHARACTER declaration is an obsolescent feature in Fortran 2008 (in openmpi, disable does not work)
 #-warn:                    enables warnings, where
 #   declarations:            any undeclared names (alternative name: -implicitnone)
 #   general:                 warning messages and informational messages are issued by the compiler
