@@ -152,8 +152,6 @@ subroutine basicPETSc_init(temperature)
  PetscObject    :: dummy
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
- real(pReal), dimension(3,3,3,3) :: &
-   temp3333_Real = 0.0_pReal
  KSP :: ksp
 
  call Utilities_init()
@@ -200,7 +198,7 @@ subroutine basicPETSc_init(temperature)
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-     'reading values of increment', restartInc - 1_pInt, 'from file'
+     'reading deformation gradients of increment', restartInc - 1_pInt, 'from file'
    flush(6)
    call IO_read_realFile(777,'F',trim(getSolverJobName()),size(F))
    read (777,rec=1) F
@@ -211,9 +209,24 @@ subroutine basicPETSc_init(temperature)
    call IO_read_realFile(777,'F_lastInc2',trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
    close (777)
+ endif
+
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+ call Utilities_constitutiveResponse(&
+    reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]),&
+    reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]),&
+    temperature,0.0_pReal,P,C_volAvg,C_minmaxAvg,temp33_Real,.false.,math_I3)
+ call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back into PETSc
+
+ if (restartInc > 1_pInt) then                                                                      ! using old values from file                                                      
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
 
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+     write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+     'reading more values of increment', restartInc - 1_pInt, 'from file'
+   flush(6)
    call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
@@ -223,22 +236,12 @@ subroutine basicPETSc_init(temperature)
    call IO_read_realFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
    read (777,rec=1) C_volAvgLastInc
    close (777)
-   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
-   read (777,rec=1) temp3333_Real
+   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minmaxAvg))
+   read (777,rec=1) C_minmaxAvg
    close (777)
- endif
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
- call Utilities_constitutiveResponse(&
-    reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]),&
-    reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]),&
-    temperature,0.0_pReal,P,C_volAvg,C_minmaxAvg,temp33_Real,.false.,math_I3)
- call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back into PETSc
- if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
-   temp3333_Real = C_minMaxAvg
  endif 
    
- call Utilities_updateGamma(temp3333_Real,.True.)
+ call Utilities_updateGamma(C_minmaxAvg,.True.)
 
 end subroutine basicPETSc_init
   
