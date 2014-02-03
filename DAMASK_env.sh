@@ -37,6 +37,7 @@ ulimit -c 0         2>/dev/null
 ulimit -v unlimited 2>/dev/null
 ulimit -m unlimited 2>/dev/null
 
+export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 
 for var in DAMASK IMKL ACML LAPACK MSC FFTW HDF5; do
