@@ -663,6 +663,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
                                            math_transpose33(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
      write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp0', &
                                            math_transpose33(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
+     write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F  ', &
+                                           math_transpose33(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
    !$OMP END CRITICAL (write2out)
  endif
 
