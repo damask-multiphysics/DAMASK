@@ -81,7 +81,7 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
+  theTable = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
   theTable.head_read()
 
 
@@ -126,8 +126,8 @@ for file in files:
 #--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'].prod(),'i')
   i = 0
-  theTable.data_rewind()
-  while theTable.data_read():
+
+  while theTable.data_read():                                  # read next data line of ASCII table
     items = theTable.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
@@ -151,7 +151,6 @@ for file in files:
     "microstructures\t%i"%(info['microstructures']),
     ])
   theTable.head_write()
-  theTable.output_flush()
   
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
@@ -163,6 +162,6 @@ for file in files:
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    file['input'].close()
-    file['output'].close()
-    os.rename(file['name']+'_tmp',file['name'])
+    file['input'].close()                                                   # close input ASCII table
+    file['output'].close()                                                  # close input ASCII table
+    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new

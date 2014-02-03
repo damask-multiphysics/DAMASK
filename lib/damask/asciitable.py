@@ -15,14 +15,15 @@ class ASCIItable():
   def __init__(self,
                fileIn = sys.stdin,
                fileOut = sys.stdout,
-               buffered = True,
-               labels = True):
+               buffered = False,                            # flush writes
+               labels = True):                              # assume table has labels
     self.__IO__ = {'in': fileIn,
                    'out':fileOut,
                    'output':[],
                    'buffered':buffered,
                    'labels':labels,
                    'validReadSize': 0,
+                   'readBuffer': [],                        # buffer to hold non-advancing reads
                    'dataStart': 0,
                   }
     self.info = []
@@ -100,7 +101,8 @@ class ASCIItable():
       pass
 
     if self.__IO__['validReadSize'] == 0:                                                           # in case no valid data length is known
-      self.__IO__['validReadSize'] = len(self.__IO__['in'].readline().split())                      # assume constant data width from first line
+      self.data_read(advance = False)
+      self.__IO__['validReadSize'] = len(self.data)                                                 # assume constant data width from first line
 
 # ------------------------------------------------------------------
   def head_write(self):
@@ -123,7 +125,7 @@ class ASCIItable():
   def labels_append(self,
                     what):
     '''
-       add item or list to existing set of labels
+       add item or list to existing set of labels (and switch on labeling)
     '''
     if not isinstance(what, (str, unicode)):
       try:
@@ -137,6 +139,9 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def labels_clear(self):
+    '''
+       delete existing labels and switch to no labeling
+    '''
     self.labels = []
     self.__IO__['labels'] = False
 
@@ -183,6 +188,9 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def info_clear(self):
+    '''
+       delete any info block
+    '''
     self.info = []
 
 # ------------------------------------------------------------------
@@ -190,13 +198,28 @@ class ASCIItable():
     self.__IO__['in'].seek(self.__IO__['dataStart'])
     
 # ------------------------------------------------------------------
-  def data_skipLines(self,lines):
-    for i in range(lines):
-      self.__IO__['in'].readline()
+  def data_skipLines(self,count):
+    '''
+       wind forward by count number of lines
+    '''
+    for i in xrange(count):
+      alive = self.data_read()
+
+    return alive
 
 # ------------------------------------------------------------------
-  def data_read(self):
-    line = self.__IO__['in'].readline()                                               # get next data row
+  def data_read(self,advance = True):
+    '''
+       read next line (possibly buffered) and parse it into data array
+    '''
+    if len(self.__IO__['readBuffer']) > 0:
+      line = self.__IO__['readBuffer'].pop(0)                                         # take buffered content
+    else:
+      line = self.__IO__['in'].readline()                                             # get next data row from file
+    
+    if not advance:
+      self.__IO__['readBuffer'].append(line)                                          # keep line just read in buffer
+
     if self.__IO__['labels']:
       items = line.split()[:self.__IO__['validReadSize']]                             # use up to valid size (label count)
       self.data = items if len(items) == self.__IO__['validReadSize'] else []         # take if correct number of entries
@@ -207,8 +230,11 @@ class ASCIItable():
     
 # ------------------------------------------------------------------
   def data_readLine(self,line):
+    '''
+       seek beginning of data and wind forward to selected line
+    '''
     self.__IO__['in'].seek(self.__IO__['dataStart'])
-    for i in range(line-1):
+    for i in xrange(line-1):
       self.__IO__['in'].readline()
     self.data_read()
 
@@ -223,15 +249,21 @@ class ASCIItable():
     if labels == []: indices = range(self.__IO__['validReadSize'])              # use all columns
     else: indices = self.labels_index(labels)                                   # use specified columns
 
-    self.data_rewind()
+    try:
+      self.data_rewind()                                                        # try to wind back to start of data
+    except:
+      pass                                                                      # assume/hope we are at data start already...
     self.data = numpy.loadtxt(self.__IO__['in'], usecols=indices)
-    if len(self.data.shape) < 2:                                                 # single column
+    if len(self.data.shape) < 2:                                                # single column
       self.data = self.data.reshape(self.data.shape[0],1)
     return self.data.shape
     
 # ------------------------------------------------------------------
-  def data_write(self, delimiter='\t'):
-    if len(self.data) == 0: return
+  def data_write(self,delimiter = '\t'):
+    '''
+       write current data array and report alive output back
+    '''
+    if len(self.data) == 0: return True
     
     if isinstance(self.data[0],list):
       return self.output_write([delimiter.join(map(str,items)) for items in self.data])
@@ -239,12 +271,12 @@ class ASCIItable():
       return self.output_write(delimiter.join(map(str,self.data)))
 
 # ------------------------------------------------------------------
-  def data_writeArray(self,format='%g',delimiter = '\t'):
+  def data_writeArray(self,format = '%g',delimiter = '\t'):
     import numpy
     '''
        write whole numpy array data
     '''
-    return numpy.savetxt(self.__IO__['out'], self.data, fmt=format, delimiter=delimiter)
+    return numpy.savetxt(self.__IO__['out'],self.data,fmt = format,delimiter = delimiter)
 
 # ------------------------------------------------------------------
   def data_append(self,

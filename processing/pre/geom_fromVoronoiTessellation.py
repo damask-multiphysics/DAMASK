@@ -119,25 +119,25 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'])
+  theTable = damask.ASCIItable(file['input'],file['output'],buffered = False)
   theTable.head_read()
 
   labels = ['x','y','z']
   index = 0
-  if numpy.all(theTable.labels_index(['phi1','Phi','phi2'])) != -1:
-    hasEulers = True
+
+  hasEulers = numpy.all(theTable.labels_index(['phi1','Phi','phi2'])) != -1
+  hasGrains = theTable.labels_index('microstructure') != -1
+
+  if hasEulers:
     labels += ['phi1','Phi','phi2']
     index += 3
-  else:
-    hasEulers = False
+
   eulerCol = index
 
-  if theTable.labels_index('microstructure') != -1:
-    hasGrains = True
+  if hasGrains:
     labels += ['microstructure']
     index += 1
-  else:
-    hasGrains = False
+
   grainCol = index
 
   theTable.data_readArray(labels)
@@ -257,7 +257,6 @@ for file in files:
       "microstructures\t%i"%(newInfo['microstructures']),
       ])
     theTable.head_write()
-    theTable.output_flush()
     
 # --- write microstructure information ------------------------------------------------------------
     formatwidth = 1+int(math.log10(newInfo['microstructures']))

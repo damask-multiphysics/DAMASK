@@ -90,7 +90,7 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
+  theTable = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
   theTable.head_read()
 
 #--- interpret header ----------------------------------------------------------------------------
@@ -137,8 +137,8 @@ for file in files:
 #--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(numpy.prod([2 if i == 1 else i for i in info['grid']]),'i')              # 2D structures do not work
   i = 0
-  theTable.data_rewind()
-  while theTable.data_read():
+
+  while theTable.data_read():                                  # read next data line of ASCII table
     items = theTable.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
@@ -179,15 +179,15 @@ for file in files:
     for i in range(3):
       for j in range(3):
         for k in range(3):
-          boundary = numpy.maximum(boundary,\
-                                   interfacialEnergy(microstructure,microExt[i:microstructure.shape[0]+i,\
-                                                                         j:microstructure.shape[1]+j,\
-                                                                         k:microstructure.shape[2]+k]))
-    index = ndimage.morphology.distance_transform_edt(boundary == 0.,return_distances=False,return_indices=True)
-    boundary = numpy.fft.irfftn(numpy.fft.rfftn(numpy.where(ndimage.morphology.binary_dilation(boundary!=0.,\
-                                                                                             structure=struc,\
-                                                                                             iterations=2*options.d-1),\
-                                                          boundary[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape),\
+          boundary = numpy.maximum(boundary,
+                                   interfacialEnergy(microstructure,microExt[i:microstructure.shape[0]+i,
+                                                                             j:microstructure.shape[1]+j,
+                                                                             k:microstructure.shape[2]+k]))
+    index = ndimage.morphology.distance_transform_edt(boundary == 0.,return_distances = False,return_indices = True)
+    boundary = numpy.fft.irfftn(numpy.fft.rfftn(numpy.where(ndimage.morphology.binary_dilation(boundary != 0.,
+                                                                                               structure = struc,
+                                                                                               iterations = 2*options.d-1),
+                                                          boundary[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape),
                                                           0.))*gauss)                                          
     index = ndimage.morphology.distance_transform_edt(boundary >= 0.5,return_distances=False,return_indices=True)
     microstructure = microstructure[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape)
@@ -211,7 +211,6 @@ for file in files:
     "microstructures\t%i"%(newInfo['microstructures']),
     ])
   theTable.head_write()
-  theTable.output_flush()
   
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
