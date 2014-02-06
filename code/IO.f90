@@ -985,7 +985,8 @@ real(pReal) function IO_floatValue (string,positions,myPos)
  if (myPos > positions(1) .or. myPos < 1_pInt) then                                               ! trying to access non-present value
    call IO_warning(201,el=myPos,ext_msg=MYNAME//trim(string))
  else
-   IO_floatValue = IO_verifyFloatValue(string(positions(myPos*2):positions(myPos*2+1)),&
+   IO_floatValue = &
+               IO_verifyFloatValue(trim(adjustl(string(positions(myPos*2):positions(myPos*2+1)))),&
                                        VALIDCHARACTERS,MYNAME)
  endif
 
@@ -1004,7 +1005,8 @@ real(pReal) function IO_fixedFloatValue (string,ends,myPos)
  character(len=20),              parameter  :: MYNAME = 'IO_fixedFloatValue: '
  character(len=17),              parameter  :: VALIDCHARACTERS = '0123456789eEdD.+-'
 
- IO_fixedFloatValue = IO_verifyFloatValue(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)),&
+ IO_fixedFloatValue = &
+                  IO_verifyFloatValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)))),&
                                           VALIDCHARACTERS,MYNAME)
 
 end function IO_fixedFloatValue
@@ -1029,12 +1031,12 @@ real(pReal) function IO_fixedNoEFloatValue (string,ends,myPos)
  
  pos_exp = scan(string(ends(myPos)+1:ends(myPos+1)),'+-',back=.true.)
  if (pos_exp > 1) then
-   base  = IO_verifyFloatValue(string(ends(myPos)+1_pInt:ends(myPos)+pos_exp-1_pInt),&
+   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos)+pos_exp-1_pInt))),&
                                VALIDBASE,MYNAME//'(base): ')
-   expon = IO_verifyIntValue(string(ends(myPos)+pos_exp:ends(myPos+1_pInt)),&
-                             VALIDEXP,MYNAME//'(exp): ')
+   expon = IO_verifyIntValue(trim(adjustl(string(ends(myPos)+pos_exp:ends(myPos+1_pInt)))),&
+                               VALIDEXP,MYNAME//'(exp): ')
  else
-   base  = IO_verifyFloatValue(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)),&
+   base  = IO_verifyFloatValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)))),&
                                VALIDBASE,MYNAME//'(base): ')
    expon = 0_pInt
  endif
@@ -1060,7 +1062,7 @@ integer(pInt) function IO_intValue(string,ends,myPos)
  if (myPos > ends(1) .or. myPos < 1_pInt) then                                                    ! trying to access non-present value
    call IO_warning(201,el=myPos,ext_msg=MYNAME//trim(string))
  else
-   IO_intValue = IO_verifyIntValue(string(ends(myPos*2):ends(myPos*2+1)),&
+   IO_intValue = IO_verifyIntValue(trim(adjustl(string(ends(myPos*2):ends(myPos*2+1)))),&
                                    VALIDCHARACTERS,MYNAME)
  endif
 
@@ -1079,8 +1081,8 @@ integer(pInt) function IO_fixedIntValue(string,ends,myPos)
  character(len=20),              parameter  :: MYNAME = 'IO_fixedIntValue: '
  character(len=12),              parameter  :: VALIDCHARACTERS = '0123456789+-'
 
- IO_fixedIntValue = IO_verifyIntValue(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)),&
-                                          VALIDCHARACTERS,MYNAME)
+ IO_fixedIntValue = IO_verifyIntValue(trim(adjustl(string(ends(myPos)+1_pInt:ends(myPos+1_pInt)))),&
+                                      VALIDCHARACTERS,MYNAME)
 
 end function IO_fixedIntValue
 
@@ -1757,25 +1759,24 @@ end subroutine IO_warning
 integer(pInt) function IO_verifyIntValue (string,validChars,myName)
  
  implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to float value 
+ character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces! 
                                  validChars, &                                                        !< valid characters in string
                                  myName                                                               !< name of caller function (for debugging)
  integer(pInt)                :: readStatus, invalidWhere
- character(len=len(trim(adjustl(string)))) :: trimmed
+ !character(len=len(trim(string))) :: trimmed does not work with ifort 14.0.1
  
- trimmed = trim(adjustl(string))
  IO_verifyIntValue = 0_pInt
 
- invalidWhere = verify(trimmed,validChars)
+ invalidWhere = verify(string,validChars)
  if (invalidWhere == 0_pInt) then
-   read(UNIT=trimmed,iostat=readStatus,FMT=*) IO_verifyIntValue                                       ! no offending chars found
+   read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyIntValue                                        ! no offending chars found
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//trimmed//'"')
+     call IO_warning(203,ext_msg=myName//'"'//string//'"')
  else
-   call IO_warning(202,ext_msg=myName//'"'//trimmed//'"')                                             ! complain about offending characters
-   read(UNIT=trimmed(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue           ! interpret remaining string
+   call IO_warning(202,ext_msg=myName//'"'//string//'"')                                              ! complain about offending characters
+   read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyIntValue            ! interpret remaining string
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//trimmed(1_pInt:invalidWhere-1_pInt)//'"')
+     call IO_warning(203,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
  endif
   
 end function IO_verifyIntValue
@@ -1787,26 +1788,25 @@ end function IO_verifyIntValue
 real(pReal) function IO_verifyFloatValue (string,validChars,myName)
  
  implicit none
- character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value 
+ character(len=*), intent(in) :: string, &                                                            !< string for conversion to int value. Must not contain spaces! 
                                  validChars, &                                                        !< valid characters in string
                                  myName                                                               !< name of caller function (for debugging)
 
  integer(pInt)                :: readStatus, invalidWhere
- character(len=len(trim(adjustl(string)))) :: trimmed
+ !character(len=len(trim(string))) :: trimmed does not work with ifort 14.0.1
  
- trimmed = trim(adjustl(string))
  IO_verifyFloatValue = 0.0_pReal
 
- invalidWhere = verify(trimmed,validChars)
+ invalidWhere = verify(string,validChars)
  if (invalidWhere == 0_pInt) then
-   read(UNIT=trimmed,iostat=readStatus,FMT=*) IO_verifyFloatValue                                     ! no offending chars found
+   read(UNIT=string,iostat=readStatus,FMT=*) IO_verifyFloatValue                                      ! no offending chars found
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//trimmed//'"')
+     call IO_warning(203,ext_msg=myName//'"'//string//'"')
  else
-   call IO_warning(202,ext_msg=myName//'"'//trimmed//'"')                                             ! complain about offending characters
-   read(UNIT=trimmed(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyFloatValue         ! interpret remaining string
+   call IO_warning(202,ext_msg=myName//'"'//string//'"')                                              ! complain about offending characters
+   read(UNIT=string(1_pInt:invalidWhere-1_pInt),iostat=readStatus,FMT=*) IO_verifyFloatValue          ! interpret remaining string
    if (readStatus /= 0_pInt) &                                                                        ! error during string to float conversion
-     call IO_warning(203,ext_msg=myName//'"'//trimmed(1_pInt:invalidWhere-1_pInt)//'"')
+     call IO_warning(203,ext_msg=myName//'"'//string(1_pInt:invalidWhere-1_pInt)//'"')
  endif
   
 end function IO_verifyFloatValue
