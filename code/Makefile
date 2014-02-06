@@ -3,21 +3,6 @@ SHELL = /bin/sh
 # Makefile to compile the Material subroutine for BVP solution using spectral method
 ########################################################################################
 # Be sure to remove all files compiled with different options by using "make clean"
-# 
-# Uses OpenMP to parallelize the material subroutines
-# (set number of threads with "export DAMASK_NUM_THREADS=n" to n)
-#
-# Install fftw3 (v3.3 is tested):
-# + execute
-#   ./configure --enable-threads --enable-sse2 --enable-shared
-#   make
-#   make install
-# + set FFTW_ROOT in your envinronment
-#   We essentially look for two library files "lib/libfftw3_threads" and "lib/libfftw3", 
-# Uses linux threads to parallelize fftw3
-#
-# Instead of the AMD Core Math Library or the Intel Kernel Math Library 
-# a standard "lib(64)/liblapack.a/dylib/etc." can be used.
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
@@ -26,10 +11,10 @@ SHELL = /bin/sh
 # PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
-# FFTW_ROOT       = root path
-# IMKL_ROOT       = root path
-# ACML_ROOT       = root path
-# LAPACK_ROOT     = root path
+# FFTW_ROOT      = root path FFTW, needed
+# IMKL_ROOT      = root path IMKL, first option for BLAS/LAPACK funtionality
+# ACML_ROOT      = root path ACML, second option for BLAS/LAPACK funtionality
+# LAPACK_ROOT    = root path LAPACK, third option for BLAS/LAPACK funtionality
 # PREFIX         = arbitrary prefix (before compilername)
 # OPTION         = arbitrary option (just before file to compile)
 # SUFFIX         = arbitrary suffix (after file to compile)
@@ -100,19 +85,19 @@ IMKL_ARCH =sequential
 endif
 
 ifneq  "x$(IMKL_ROOT)" "x"
-LIB_DIRS  :=-L$(IMKL_ROOT)/lib/intel64
-RUN_PATH  +=$(RUN_PATH),-rpath,$(IMKL_ROOT)/lib/intel64
+LIB_DIRS  +=-L$(IMKL_ROOT)/lib/intel64
+RUN_PATH  :=$(RUN_PATH),-rpath,$(IMKL_ROOT)/lib/intel64
 INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
-LIBRARIES +=-lmkl_$(IMKL_COMPILER_$(F90))_lp64 -lmkl_core -lmkl_$(IMKL_ARCH) -lm -lpthread -liomp5
+LIBRARIES +=-lmkl_$(IMKL_COMPILER_$(F90))_lp64 -lmkl_core -lmkl_$(IMKL_ARCH) -lpthread -lm
 else
 ifneq  "x$(ACML_ROOT)" "x"
 LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
-RUN_PATH  +=$(RUN_PATH),-rpath,$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
+RUN_PATH  :=$(RUN_PATH),-rpath,$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
 LIBRARIES +=-lacml$(ACML_ARCH)
 else
 ifneq  "x$(LAPACK_ROOT)" "x"
 LIB_DIRS  +=-L$(LAPACK_ROOT)/lib64 -L$(LAPACK_ROOT)/lib
-RUN_PATH  +=$(RUN_PATH),-rpath,$(LAPACK_ROOT)/lib64,-rpath,$(LAPACK_ROOT)/lib
+RUN_PATH  :=$(RUN_PATH),-rpath,$(LAPACK_ROOT)/lib64,-rpath,$(LAPACK_ROOT)/lib
 LIBRARIES +=-llapack
 endif
 endif
@@ -122,7 +107,7 @@ endif
 ifeq "$(HDF5)" "ON"
 LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
 LIB_DIRS  +=-L$(HDF5_ROOT)/lib
-RUN_PATH  +=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib
+RUN_PATH  :=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
@@ -199,7 +184,8 @@ DEBUG_OPTIONS_ifort      :=-g\
                            -check bounds,format,output_conversion,pointers,uninit\
                            -fpe-all0\
                            -warn errors\
-                           -warn stderrors
+                           -warn stderrors\
+                           -debug-parameters all
 
 ###################################################################################################
 #COMPILE SWITCHES FOR RUNTIME DEBUGGING
