@@ -195,7 +195,8 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def data_rewind(self):
-    self.__IO__['in'].seek(self.__IO__['dataStart'])
+    self.__IO__['in'].seek(self.__IO__['dataStart'])                                  # position file to start of data section
+    self.__IO__['readBuffer'] = []                                                    # delete any non-advancing data reads
     
 # ------------------------------------------------------------------
   def data_skipLines(self,count):
