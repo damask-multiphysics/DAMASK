@@ -1232,7 +1232,10 @@ function homogenization_RGC_equivalentModuli(grainID,ip,el)
    el                                                                                               !< element number
  real(pReal), dimension (6,6) :: elasTens
  real(pReal), dimension(2)    :: homogenization_RGC_equivalentModuli
- real(pReal) :: cEquiv_11,cEquiv_12,cEquiv_44
+ real(pReal) :: &
+   cEquiv_11, &
+   cEquiv_12, &
+   cEquiv_44
 
  elasTens = constitutive_homogenizedC(grainID,ip,el)
 
@@ -1259,11 +1262,12 @@ function homogenization_RGC_relaxationVector(intFace,state,homID)
    p_vec
 
  implicit none
- real(pReal), dimension (3)               :: homogenization_RGC_relaxationVector
+ real(pReal),   dimension (3)             :: homogenization_RGC_relaxationVector
  integer(pInt), dimension (4), intent(in) :: intFace                                                !< set of interface ID in 4D array (normal and position)
- type(p_vec), intent(in)      :: state                                                              !< set of global relaxation vectors
- integer(pInt), dimension (3) :: nGDim
- integer(pInt) iNum, &
+ type(p_vec),                  intent(in) :: state                                                              !< set of global relaxation vectors
+ integer(pInt), dimension (3) ::             nGDim
+ integer(pInt) :: &
+   iNum, &
    homID                                                                                            !< homogenization ID
 
 !--------------------------------------------------------------------------------------------------
@@ -1271,7 +1275,7 @@ function homogenization_RGC_relaxationVector(intFace,state,homID)
  homogenization_RGC_relaxationVector = 0.0_pReal
  nGDim = homogenization_RGC_Ngrains(1:3,homID)
  iNum = homogenization_RGC_interface4to1(intFace,homID)                                             ! identify the position of the interface in global state array
- if (iNum .gt. 0_pInt) homogenization_RGC_relaxationVector = state%p((3*iNum-2):(3*iNum))           ! get the corresponding entries
+ if (iNum > 0_pInt) homogenization_RGC_relaxationVector = state%p((3*iNum-2):(3*iNum))              ! get the corresponding entries
 
 end function homogenization_RGC_relaxationVector
 
@@ -1290,12 +1294,12 @@ function homogenization_RGC_interfaceNormal(intFace,ip,el)
    math_mul33x3
  
  implicit none
- real(pReal), dimension (3)               :: homogenization_RGC_interfaceNormal
+ real(pReal),   dimension (3)  ::            homogenization_RGC_interfaceNormal
  integer(pInt), dimension (4), intent(in) :: intFace                                                !< interface ID in 4D array (normal and position)
- integer(pInt), intent(in)                :: &
+ integer(pInt),                intent(in) :: &
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- integer(pInt) nPos
+ integer(pInt) ::                            nPos
 
 !--------------------------------------------------------------------------------------------------
 ! get the normal of the interface, identified from the value of intFace(1)
@@ -1316,10 +1320,10 @@ end function homogenization_RGC_interfaceNormal
 function homogenization_RGC_getInterface(iFace,iGrain3)
 
  implicit none
- integer(pInt), dimension (4) :: homogenization_RGC_getInterface
- integer(pInt), dimension (3), intent(in)    :: iGrain3                                             !< grain ID in 3D array
- integer(pInt), intent(in) :: iFace                                                                 !< face index (1..6) mapped like (-e1,-e2,-e3,+e1,+e2,+e3) or iDir = (-1,-2,-3,1,2,3)
- integer(pInt) iDir
+ integer(pInt), dimension (4) ::             homogenization_RGC_getInterface
+ integer(pInt), dimension (3), intent(in) :: iGrain3                                                !< grain ID in 3D array
+ integer(pInt),                intent(in) :: iFace                                                  !< face index (1..6) mapped like (-e1,-e2,-e3,+e1,+e2,+e3) or iDir = (-1,-2,-3,1,2,3)
+ integer(pInt) ::                            iDir
  
 !* Direction of interface normal
  iDir = (int(real(iFace-1_pInt,pReal)/2.0_pReal,pInt)+1_pInt)*(-1_pInt)**iFace
@@ -1339,11 +1343,11 @@ end function homogenization_RGC_getInterface
 function homogenization_RGC_grain1to3(grain1,homID)
  
  implicit none
- integer(pInt), intent(in)    :: &
+ integer(pInt), dimension (3) ::            homogenization_RGC_grain1to3
+ integer(pInt),               intent(in) :: &
    grain1,&                                                                                         !< grain ID in 1D array
    homID                                                                                            !< homogenization ID
- integer(pInt), dimension (3) :: homogenization_RGC_grain1to3
- integer(pInt), dimension (3) :: nGDim
+ integer(pInt), dimension (3) ::            nGDim
 
 !--------------------------------------------------------------------------------------------------
 ! get the grain position
