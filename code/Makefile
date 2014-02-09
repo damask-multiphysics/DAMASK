@@ -33,6 +33,12 @@ LIBRARIES :=-lfftw3
 LIB_DIRS  :=-L$(FFTW_ROOT)/lib
 RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib
 
+ifdef PETSC_DIR
+include ${PETSC_DIR}/conf/variables
+INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSc
+LIBRARIES  +=${PETSC_WITH_EXTERNAL_LIB}
+endif
+
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
 OPTIMIZATION := OFF
@@ -111,12 +117,6 @@ RUN_PATH  :=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
-ifdef PETSC_DIR
-include ${PETSC_DIR}/conf/variables
-INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSc
-LIBRARIES    +=${PETSC_WITH_EXTERNAL_LIB}
-endif
-
 ifdef STANDARD_CHECK
 STANDARD_CHECK_ifort =$(STANDARD_CHECK)
 STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
@@ -182,6 +182,7 @@ DEBUG_OPTIONS_ifort      :=-g\
                            -gen-interfaces\
                            -fp-stack-check\
                            -check bounds,format,output_conversion,pointers,uninit\
+                           -ftrapuv\
                            -fpe-all0\
                            -warn errors\
                            -warn stderrors\
@@ -193,6 +194,7 @@ DEBUG_OPTIONS_ifort      :=-g\
 #-traceback:               Generate extra information in the object file to provide source file traceback information when a severe error occurs at run time.
 #-gen-interfaces:          Generate an interface block for each routine. http://software.intel.com/en-us/blogs/2012/01/05/doctor-fortran-gets-explicit-again/  
 #-fp-stack-check:          Generate extra code after every function call to ensure that the floating-point (FP) stack is in the expected state.
+#-ftrapuv                  Trap uninitalized variables
 #-check:                   checks at runtime, where  
 #   bounds:                  check if an array index is too small (<1) or too large!
 #   format:                  Checking for the data type of an item being formatted for output.
@@ -356,7 +358,7 @@ endif
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(RUN_PATH) $(SUFFIX)
+  $(COMPILED_FILES) $(LIBRARIES) $(RUN_PATH) $(LIB_DIRS) $(SUFFIX)
 
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
@@ -415,6 +417,9 @@ constitutive_j2.o:             constitutive_j2.f90 \
                                lattice.o
 
 constitutive_none.o:           constitutive_none.f90 \
+                               lattice.o
+
+material.o:                    material.f90 \
                                lattice.o
 
 lattice.o:                     lattice.f90 \
