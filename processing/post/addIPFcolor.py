@@ -31,25 +31,28 @@ Add RGB color value corresponding to TSL-OIM scheme for inverse pole figures.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-p', '--pole', dest='pole', type='float', nargs=3,\
+parser.add_option('-p', '--pole', dest='pole', type='float', nargs=3, metavar='X Y Z',
                   help = 'lab frame direction for inverse pole figure %default')
-parser.add_option('-s', '--symmetry', dest='symmetry', type='string', \
+parser.add_option('-s', '--symmetry', dest='symmetry', type='string',
                   help = 'crystal symmetry [%default]')
-parser.add_option('-e', '--eulers',   dest='eulers', type='string', \
+parser.add_option('-e', '--eulers',   dest='eulers', type='string', metavar='LABEL',
                   help = 'Euler angles label')
-parser.add_option('-m', '--matrix',   dest='matrix', type='string', \
+parser.add_option('-d', '--degrees',   dest='degrees', action='store_true',
+                  help = 'Euler angles are given in degrees [%default]')
+parser.add_option('-m', '--matrix',   dest='matrix', type='string', metavar='LABEL',
                   help = 'orientation matrix label')
-parser.add_option('-a',               dest='a', type='string', \
+parser.add_option('-a',               dest='a', type='string', metavar='LABEL',
                   help = 'crystal frame a vector label')
-parser.add_option('-b',               dest='b', type='string', \
+parser.add_option('-b',               dest='b', type='string', metavar='LABEL',
                   help = 'crystal frame b vector label')
-parser.add_option('-c',               dest='c', type='string', \
+parser.add_option('-c',               dest='c', type='string', metavar='LABEL',
                   help = 'crystal frame c vector label')
-parser.add_option('-q', '--quaternion', dest='quaternion', type='string', \
+parser.add_option('-q', '--quaternion', dest='quaternion', type='string', metavar='LABEL',
                   help = 'quaternion label')
 
 parser.set_defaults(pole = [0.0,0.0,1.0])
 parser.set_defaults(symmetry = 'cubic')
+parser.set_defaults(degrees = False)
 
 (options, filenames) = parser.parse_args()
 
@@ -69,6 +72,7 @@ if options.a          != None and \
 if options.matrix     != None:  datainfo['tensor']['label'] += [options.matrix];                input = 'matrix'
 if options.quaternion != None:  datainfo['quaternion']['label'] += [options.quaternion];        input = 'quaternion'
 
+toRadians = math.pi/180.0 if options.degrees else 1.0                                                                               # rescale degrees to radians
 pole = numpy.array(options.pole)
 pole /= numpy.linalg.norm(pole)
 
@@ -94,7 +98,6 @@ for file in files:
 # --------------- figure out columns to process
   active = {}
   column = {}
-  head = []
 
   for datatype,info in datainfo.items():
     for label in info['label']:
@@ -121,8 +124,8 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
 
     if input == 'eulers':
-      o = damask.Orientation(Eulers=numpy.array(map(float,table.data[column['vector'][options.eulers]:\
-                                                                      column['vector'][options.eulers]+datainfo['vector']['len']])),
+      o = damask.Orientation(Eulers=toRadians*numpy.array(map(float,table.data[column['vector'][options.eulers]:\
+                                                                               column['vector'][options.eulers]+datainfo['vector']['len']])),
                              symmetry=options.symmetry).reduced()
     elif input == 'matrix':
       o = damask.Orientation(matrix=numpy.array([map(float,table.data[column['tensor'][options.matrix]:\
