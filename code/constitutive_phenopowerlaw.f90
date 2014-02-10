@@ -28,8 +28,6 @@ module constitutive_phenopowerlaw
  use prec, only: &
    pReal,&
    pInt
- use lattice, only: &
-  LATTICE_undefined_ID
 
  implicit none
  private
@@ -44,9 +42,6 @@ module constitutive_phenopowerlaw
 
  character(len=64),                   dimension(:,:),   allocatable, target, public :: & 
    constitutive_phenopowerlaw_output                                                                !< name of each post result output
- 
- integer(kind(LATTICE_undefined_ID)), dimension(:),     allocatable,         public :: &
-   constitutive_phenopowerlaw_structureID                                                           !< ID of the lattice structure
 
  integer(pInt),                       dimension(:),     allocatable,         private :: &
    constitutive_phenopowerlaw_Noutput, &                                                            !< number of outputs per instance of this constitution 
@@ -208,7 +203,6 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
           constitutive_phenopowerlaw_output               = ''
  allocate(constitutive_phenopowerlaw_outputID(maxval(phase_Noutput),maxNinstance),source=undefined_ID)
  allocate(constitutive_phenopowerlaw_Noutput(maxNinstance),                       source=0_pInt)
- allocate(constitutive_phenopowerlaw_structureID(maxNinstance),                   source=LATTICE_undefined_ID)
  allocate(constitutive_phenopowerlaw_structure(maxNinstance),                     source=0_pInt)
  allocate(constitutive_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance),  source=0_pInt)
  allocate(constitutive_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance),  source=0_pInt)
@@ -264,205 +258,154 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
+     if (phase_plasticity(section) == PLASTICITY_PHENOPOWERLAW_ID) then
+       i = phase_plasticityInstance(section)
+       constitutive_phenopowerlaw_Cslip_66(1:6,1:6,i)  = lattice_Cslip_66(1:6,1:6,section)
+       constitutive_phenopowerlaw_structure(i)  = lattice_structure(section)
+       configNchunks = lattice_configNchunks(lattice_structureID(section))
+       Nchunks_SlipFamilies = configNchunks(1)
+       Nchunks_TwinFamilies = configNchunks(2)
+       Nchunks_SlipSlip =     configNchunks(3)
+       Nchunks_SlipTwin =     configNchunks(4)
+       Nchunks_TwinSlip =     configNchunks(5)
+       Nchunks_TwinTwin =     configNchunks(6)
+       Nchunks_nonSchmid =    configNchunks(7)
+     endif
      cycle                                                                                          ! skip to next line
    endif
-   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (phase_plasticity(section) == PLASTICITY_PHENOPOWERLAW_ID) then                             ! one of my sections
-       i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
-       positions = IO_stringPos(line,MAXNCHUNKS)
-       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
-       select case(tag)
-         case ('plasticity','elasticity')
-         case ('(output)')
-           constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
-           constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(i),i) = &
-                                                         IO_lc(IO_stringValue(line,positions,2_pInt))
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
-             case ('resistance_slip')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resistance_slip_ID
-             case ('accumulatedshear_slip')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = accumulatedshear_slip_ID
-             case ('shearrate_slip')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = shearrate_slip_ID
-             case ('resolvedstress_slip')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resolvedstress_slip_ID
-             case ('totalshear')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalshear_ID
-             case ('resistance_twin')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resistance_twin_ID
-             case ('accumulatedshear_twin')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = accumulatedshear_twin_ID
-             case ('shearrate_twin')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = shearrate_twin_ID
-             case ('resolvedstress_twin')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resolvedstress_twin_ID
-             case ('totalvolfrac')
-               constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalvolfrac_ID
-             case default
-               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           end select
-         case ('lattice_structure')
-           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
-           select case(structure(1:3))
-             case(LATTICE_iso_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_iso_ID
-             case(LATTICE_fcc_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_fcc_ID
-             case(LATTICE_bcc_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_bcc_ID
-             case(LATTICE_hex_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_hex_ID
-             case(LATTICE_ort_label)
-               constitutive_phenopowerlaw_structureID(i) = LATTICE_ort_ID
-           end select
-           configNchunks = lattice_configNchunks(constitutive_phenopowerlaw_structureID(i))
-           Nchunks_SlipFamilies = configNchunks(1)
-           Nchunks_TwinFamilies = configNchunks(2)
-           Nchunks_SlipSlip =     configNchunks(3)
-           Nchunks_SlipTwin =     configNchunks(4)
-           Nchunks_TwinSlip =     configNchunks(5)
-           Nchunks_TwinTwin =     configNchunks(6)
-           Nchunks_nonSchmid =    configNchunks(7)
-         case ('covera_ratio')
-           constitutive_phenopowerlaw_CoverA(i) = IO_floatValue(line,positions,2_pInt)
-         case ('c11')
-           constitutive_phenopowerlaw_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(1,1,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c12')
-           constitutive_phenopowerlaw_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(1,2,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c13')
-           constitutive_phenopowerlaw_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(1,3,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c22')
-           constitutive_phenopowerlaw_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(2,2,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c23')
-           constitutive_phenopowerlaw_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(2,3,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c33')
-           constitutive_phenopowerlaw_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(3,3,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c44')
-           constitutive_phenopowerlaw_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(4,4,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c55')
-           constitutive_phenopowerlaw_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(5,5,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('c66')
-           constitutive_phenopowerlaw_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
-           if (abs(constitutive_phenopowerlaw_Cslip_66(6,6,i)) < tol_math_check) &
-             call IO_error(214_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('nslip')
-           if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
-             call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           Nchunks_SlipFamilies = positions(1) - 1_pInt
-           do j = 1_pInt, Nchunks_SlipFamilies
-              constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
-           enddo
-         case ('gdot0_slip')
-           constitutive_phenopowerlaw_gdot0_slip(i) = IO_floatValue(line,positions,2_pInt)
-         case ('n_slip')
-           constitutive_phenopowerlaw_n_slip(i) = IO_floatValue(line,positions,2_pInt)
-         case ('tau0_slip')
-           do j = 1_pInt,Nchunks_SlipFamilies
-             constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case ('tausat_slip')
-           do j = 1_pInt, Nchunks_SlipFamilies
-             constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case ('a_slip', 'w0_slip')
-           constitutive_phenopowerlaw_a_slip(i) = IO_floatValue(line,positions,2_pInt)
-         case ('ntwin')
-           if (positions(1) < 1_pInt + Nchunks_TwinFamilies) &
-             call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           Nchunks_TwinFamilies = positions(1) - 1_pInt
-           do j = 1_pInt, Nchunks_TwinFamilies
-             constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
-           enddo
-         case ('gdot0_twin')
-           constitutive_phenopowerlaw_gdot0_twin(i) = IO_floatValue(line,positions,2_pInt)
-         case ('n_twin')
-           constitutive_phenopowerlaw_n_twin(i) = IO_floatValue(line,positions,2_pInt)
-         case ('tau0_twin')
-           do j = 1_pInt, Nchunks_TwinFamilies
-             constitutive_phenopowerlaw_tau0_twin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case ('s_pr')
-           constitutive_phenopowerlaw_spr(i) = IO_floatValue(line,positions,2_pInt)
-         case ('twin_b')
-           constitutive_phenopowerlaw_twinB(i) = IO_floatValue(line,positions,2_pInt)
-         case ('twin_c')
-           constitutive_phenopowerlaw_twinC(i) = IO_floatValue(line,positions,2_pInt)
-         case ('twin_d')
-           constitutive_phenopowerlaw_twinD(i) = IO_floatValue(line,positions,2_pInt)
-         case ('twin_e')
-           constitutive_phenopowerlaw_twinE(i) = IO_floatValue(line,positions,2_pInt)
-         case ('h0_slipslip')
-           constitutive_phenopowerlaw_h0_SlipSlip(i) = IO_floatValue(line,positions,2_pInt)
-         case ('h0_sliptwin')
-           constitutive_phenopowerlaw_h0_SlipTwin(i) = IO_floatValue(line,positions,2_pInt)
-           call IO_warning(42_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         case ('h0_twinslip')
-           constitutive_phenopowerlaw_h0_TwinSlip(i) = IO_floatValue(line,positions,2_pInt)
-         case ('h0_twintwin')
-           constitutive_phenopowerlaw_h0_TwinTwin(i) = IO_floatValue(line,positions,2_pInt)
-         case ('atol_resistance')
-           constitutive_phenopowerlaw_aTolResistance(i) = IO_floatValue(line,positions,2_pInt)
-         case ('atol_shear')
-           constitutive_phenopowerlaw_aTolShear(i)      = IO_floatValue(line,positions,2_pInt)
-         case ('atol_twinfrac')
-           constitutive_phenopowerlaw_aTolTwinfrac(i)   = IO_floatValue(line,positions,2_pInt)
-         case ('interaction_slipslip')
-           if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           do j = 1_pInt, Nchunks_SlipSlip
-             constitutive_phenopowerlaw_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case ('interaction_sliptwin')
-           if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           do j = 1_pInt, Nchunks_SlipTwin
-             constitutive_phenopowerlaw_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case ('interaction_twinslip')
-           if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           do j = 1_pInt, Nchunks_TwinSlip
-             constitutive_phenopowerlaw_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case ('interaction_twintwin')
-           if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           do j = 1_pInt, Nchunks_TwinTwin
-             constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case ('nonschmid_coefficients')
-           if (positions(1) < 1_pInt + Nchunks_nonSchmid) &
-             call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-           do j = 1_pInt,Nchunks_nonSchmid
-             constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
-           enddo
-         case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-       end select
-     endif
-   endif
+   if (section > 0_pInt ) then; if (phase_plasticity(section) == PLASTICITY_PHENOPOWERLAW_ID) then  ! one of my sections. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
+     i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
+     positions = IO_stringPos(line,MAXNCHUNKS)
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     select case(tag)
+       case ('plasticity','elasticity','lattice_structure',&
+             'c11','c12','c13','c22','c23','c33','c44','c55','c66')
+       case ('(output)')
+         constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt
+         constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(i),i) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case ('resistance_slip')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resistance_slip_ID
+           case ('accumulatedshear_slip')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = accumulatedshear_slip_ID
+           case ('shearrate_slip')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = shearrate_slip_ID
+           case ('resolvedstress_slip')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resolvedstress_slip_ID
+           case ('totalshear')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalshear_ID
+           case ('resistance_twin')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resistance_twin_ID
+           case ('accumulatedshear_twin')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = accumulatedshear_twin_ID
+           case ('shearrate_twin')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = shearrate_twin_ID
+           case ('resolvedstress_twin')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = resolvedstress_twin_ID
+           case ('totalvolfrac')
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(i),i) = totalvolfrac_ID
+           case default
+             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         end select
+       case ('nslip')
+         if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
+           call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         Nchunks_SlipFamilies = positions(1) - 1_pInt
+         do j = 1_pInt, Nchunks_SlipFamilies
+            constitutive_phenopowerlaw_Nslip(j,i) = IO_intValue(line,positions,1_pInt+j)
+         enddo
+       case ('gdot0_slip')
+         constitutive_phenopowerlaw_gdot0_slip(i) = IO_floatValue(line,positions,2_pInt)
+       case ('n_slip')
+         constitutive_phenopowerlaw_n_slip(i) = IO_floatValue(line,positions,2_pInt)
+       case ('tau0_slip')
+         do j = 1_pInt,Nchunks_SlipFamilies
+           constitutive_phenopowerlaw_tau0_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('tausat_slip')
+         do j = 1_pInt, Nchunks_SlipFamilies
+           constitutive_phenopowerlaw_tausat_slip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('a_slip', 'w0_slip')
+         constitutive_phenopowerlaw_a_slip(i) = IO_floatValue(line,positions,2_pInt)
+       case ('ntwin')
+         if (positions(1) < 1_pInt + Nchunks_TwinFamilies) &
+           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         Nchunks_TwinFamilies = positions(1) - 1_pInt
+         do j = 1_pInt, Nchunks_TwinFamilies
+           constitutive_phenopowerlaw_Ntwin(j,i) = IO_intValue(line,positions,1_pInt+j)
+         enddo
+       case ('gdot0_twin')
+         constitutive_phenopowerlaw_gdot0_twin(i) = IO_floatValue(line,positions,2_pInt)
+       case ('n_twin')
+         constitutive_phenopowerlaw_n_twin(i) = IO_floatValue(line,positions,2_pInt)
+       case ('tau0_twin')
+         do j = 1_pInt, Nchunks_TwinFamilies
+           constitutive_phenopowerlaw_tau0_twin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('s_pr')
+         constitutive_phenopowerlaw_spr(i) = IO_floatValue(line,positions,2_pInt)
+       case ('twin_b')
+         constitutive_phenopowerlaw_twinB(i) = IO_floatValue(line,positions,2_pInt)
+       case ('twin_c')
+         constitutive_phenopowerlaw_twinC(i) = IO_floatValue(line,positions,2_pInt)
+       case ('twin_d')
+         constitutive_phenopowerlaw_twinD(i) = IO_floatValue(line,positions,2_pInt)
+       case ('twin_e')
+         constitutive_phenopowerlaw_twinE(i) = IO_floatValue(line,positions,2_pInt)
+       case ('h0_slipslip')
+         constitutive_phenopowerlaw_h0_SlipSlip(i) = IO_floatValue(line,positions,2_pInt)
+       case ('h0_sliptwin')
+         constitutive_phenopowerlaw_h0_SlipTwin(i) = IO_floatValue(line,positions,2_pInt)
+         call IO_warning(42_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+       case ('h0_twinslip')
+         constitutive_phenopowerlaw_h0_TwinSlip(i) = IO_floatValue(line,positions,2_pInt)
+       case ('h0_twintwin')
+         constitutive_phenopowerlaw_h0_TwinTwin(i) = IO_floatValue(line,positions,2_pInt)
+       case ('atol_resistance')
+         constitutive_phenopowerlaw_aTolResistance(i) = IO_floatValue(line,positions,2_pInt)
+       case ('atol_shear')
+         constitutive_phenopowerlaw_aTolShear(i)      = IO_floatValue(line,positions,2_pInt)
+       case ('atol_twinfrac')
+         constitutive_phenopowerlaw_aTolTwinfrac(i)   = IO_floatValue(line,positions,2_pInt)
+       case ('interaction_slipslip')
+         if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         do j = 1_pInt, Nchunks_SlipSlip
+           constitutive_phenopowerlaw_interaction_SlipSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('interaction_sliptwin')
+         if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         do j = 1_pInt, Nchunks_SlipTwin
+           constitutive_phenopowerlaw_interaction_SlipTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('interaction_twinslip')
+         if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         do j = 1_pInt, Nchunks_TwinSlip
+           constitutive_phenopowerlaw_interaction_TwinSlip(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('interaction_twintwin')
+         if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         do j = 1_pInt, Nchunks_TwinTwin
+           constitutive_phenopowerlaw_interaction_TwinTwin(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('nonschmid_coefficients')
+         if (positions(1) < 1_pInt + Nchunks_nonSchmid) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         do j = 1_pInt,Nchunks_nonSchmid
+           constitutive_phenopowerlaw_nonSchmidCoeff(j,i) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case default
+         call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+     end select
+   endif; endif
  enddo
 
- sanityChecks: do i = 1_pInt,maxNinstance
-   constitutive_phenopowerlaw_structure(i) = &
-     lattice_initializeStructure(constitutive_phenopowerlaw_structureID(i), constitutive_phenopowerlaw_CoverA(i))   ! get structure
-                                                                         
+ sanityChecks: do i = 1_pInt,maxNinstance           
    constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i) = &
      min(lattice_NslipSystem(1:lattice_maxNslipFamily,constitutive_phenopowerlaw_structure(i)),& ! limit active slip systems per family to min of available and requested
                                   constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,i))
@@ -472,7 +415,6 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    constitutive_phenopowerlaw_totalNslip(i) = sum(constitutive_phenopowerlaw_Nslip(:,i))            ! how many slip systems altogether
    constitutive_phenopowerlaw_totalNtwin(i) = sum(constitutive_phenopowerlaw_Ntwin(:,i))            ! how many twin systems altogether
 
-   if (constitutive_phenopowerlaw_structure(i) < 1 )          call IO_error(205_pInt,el=i)
    if (any(constitutive_phenopowerlaw_tau0_slip(:,i) < 0.0_pReal .and. &
            constitutive_phenopowerlaw_Nslip(:,i) > 0))        call IO_error(211_pInt,el=i,ext_msg='tau0_slip (' &
                                                                  //PLASTICITY_PHENOPOWERLAW_label//')')
@@ -555,13 +497,6 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    constitutive_phenopowerlaw_sizeState(i)    = constitutive_phenopowerlaw_sizeDotState(i)
 
    structID = constitutive_phenopowerlaw_structure(i)
-
-   constitutive_phenopowerlaw_Cslip_66(1:6,1:6,i) = &
-     lattice_symmetrizeC66(constitutive_phenopowerlaw_structureID(i),&
-                                constitutive_phenopowerlaw_Cslip_66(:,:,i))     ! assign elasticity tensor
-                                                                                                  
-   constitutive_phenopowerlaw_Cslip_66(1:6,1:6,i) = &
-     math_Mandel3333to66(math_Voigt66to3333(constitutive_phenopowerlaw_Cslip_66(:,:,i)))
 
    do f = 1_pInt,lattice_maxNslipFamily                                                             ! >>> interaction slip -- X
      index_myFamily = sum(constitutive_phenopowerlaw_Nslip(1:f-1_pInt,i))

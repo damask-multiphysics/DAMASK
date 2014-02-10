@@ -30,8 +30,6 @@ module constitutive_j2
  use prec, only: &
    pReal,&
    pInt
- use lattice, only: &
-   LATTICE_undefined_ID
  
  implicit none
  private
@@ -45,9 +43,6 @@ module constitutive_j2
    
  character(len=64),                   dimension(:,:),   allocatable, target, public :: &
    constitutive_j2_output                                                                           !< name of each post result output
- 
- integer(kind(LATTICE_undefined_ID)), dimension(:),     allocatable,         public :: &
-   constitutive_j2_structureID                                                                      !< ID of the lattice structure 
  
  integer(pInt),                       dimension(:),     allocatable,         private :: &
    constitutive_j2_Noutput                                                                          !< number of outputs per instance
@@ -134,8 +129,6 @@ subroutine constitutive_j2_init(fileUnit)
  
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
  integer(pInt) :: section = 0_pInt, maxNinstance, i,o, mySize
- character(len=32) :: &
-   structure  = ''
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -159,7 +152,6 @@ subroutine constitutive_j2_init(fileUnit)
           constitutive_j2_output = ''
  allocate(constitutive_j2_outputID(maxval(phase_Noutput),maxNinstance),       source=undefined_ID)
  allocate(constitutive_j2_Noutput(maxNinstance),                              source=0_pInt)
- allocate(constitutive_j2_structureID(maxNinstance),                          source=LATTICE_undefined_ID)
  allocate(constitutive_j2_Cslip_66(6,6,maxNinstance),                         source=0.0_pReal)
  allocate(constitutive_j2_fTaylor(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_j2_tau0(maxNinstance),                                 source=0.0_pReal)
@@ -189,104 +181,75 @@ subroutine constitutive_j2_init(fileUnit)
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
+     if (phase_plasticity(section) == PLASTICITY_J2_ID) then
+       i = phase_plasticityInstance(section)
+       constitutive_j2_Cslip_66(1:6,1:6,i)  = lattice_Cslip_66(1:6,1:6,section)
+     endif
      cycle                                                                                          ! skip to next line
    endif
-   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
-     if (phase_plasticity(section) == PLASTICITY_J2_ID) then                                        ! one of my sections
-       i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
-       positions = IO_stringPos(line,MAXNCHUNKS)
-       tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
-       select case(tag)
-         case ('plasticity','elasticity')
-         case ('(output)')
-           constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
-           constitutive_j2_output(constitutive_j2_Noutput(i),i) = &
-                                              IO_lc(IO_stringValue(line,positions,2_pInt))
-           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
-             case ('flowstress')
-               constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = flowstress_ID
-             case ('strainrate')
-               constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = strainrate_ID
-             case default
-               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_J2_label//')')
-           end select
-         case ('lattice_structure')
-           structure = IO_lc(IO_stringValue(line,positions,2_pInt))
-           select case(structure(1:3))
-             case(LATTICE_iso_label)
-               constitutive_j2_structureID(i) = LATTICE_iso_ID
-             case(LATTICE_fcc_label)
-               constitutive_j2_structureID(i) = LATTICE_fcc_ID
-             case(LATTICE_bcc_label)
-               constitutive_j2_structureID(i) = LATTICE_bcc_ID
-             case(LATTICE_hex_label)
-               constitutive_j2_structureID(i) = LATTICE_hex_ID
-             case(LATTICE_ort_label)
-               constitutive_j2_structureID(i) = LATTICE_ort_ID
-           end select
-         case ('c11')
-           constitutive_j2_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c12')
-           constitutive_j2_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c13')
-           constitutive_j2_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c22')
-           constitutive_j2_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c23')
-           constitutive_j2_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c33')
-           constitutive_j2_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c44')
-           constitutive_j2_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c55')
-           constitutive_j2_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
-         case ('c66')
-           constitutive_j2_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
-         case ('tau0')
-           constitutive_j2_tau0(i)         = IO_floatValue(line,positions,2_pInt)
-           if (constitutive_j2_tau0(i) < 0.0_pReal) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-         case ('gdot0')
-           constitutive_j2_gdot0(i)        = IO_floatValue(line,positions,2_pInt)
-           if (constitutive_j2_gdot0(i) <= 0.0_pReal) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-         case ('n')
-           constitutive_j2_n(i)            = IO_floatValue(line,positions,2_pInt)
-           if (constitutive_j2_n(i) <= 0.0_pReal) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-         case ('h0')
-           constitutive_j2_h0(i)           = IO_floatValue(line,positions,2_pInt)
-         case ('h0_slope','slopelnrate')
-           constitutive_j2_h0_slopeLnRate(i)  = IO_floatValue(line,positions,2_pInt)
-         case ('tausat')
-           constitutive_j2_tausat(i)          = IO_floatValue(line,positions,2_pInt)
-           if (constitutive_j2_tausat(i) <= 0.0_pReal) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-         case ('tausat_sinhfita')
-           constitutive_j2_tausat_SinhFitA(i) = IO_floatValue(line,positions,2_pInt)
-         case ('tausat_sinhfitb')
-           constitutive_j2_tausat_SinhFitB(i) = IO_floatValue(line,positions,2_pInt)
-         case ('tausat_sinhfitc')
-           constitutive_j2_tausat_SinhFitC(i) = IO_floatValue(line,positions,2_pInt)
-         case ('tausat_sinhfitd')
-           constitutive_j2_tausat_SinhFitD(i) = IO_floatValue(line,positions,2_pInt)
-         case ('a', 'w0')
-           constitutive_j2_a(i)               = IO_floatValue(line,positions,2_pInt)
-           if (constitutive_j2_a(i) <= 0.0_pReal) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-         case ('taylorfactor')
-           constitutive_j2_fTaylor(i)         = IO_floatValue(line,positions,2_pInt)
-           if (constitutive_j2_fTaylor(i) <= 0.0_pReal) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-         case ('atol_resistance')
-           constitutive_j2_aTolResistance(i)  = IO_floatValue(line,positions,2_pInt)
-           if (constitutive_j2_aTolResistance(i) <= 0.0_pReal) &
-             call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-         case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
-       end select
-     endif
-   endif
+   if (section > 0_pInt ) then; if (phase_plasticity(section) == PLASTICITY_J2_ID) then             ! one of my sections. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
+     i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
+     positions = IO_stringPos(line,MAXNCHUNKS) 
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     select case(tag)
+       case ('plasticity','elasticity','lattice_structure',&
+             'c11','c12','c13','c22','c23','c33','c44','c55','c66')
+       case ('(output)')
+         constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
+         constitutive_j2_output(constitutive_j2_Noutput(i),i) = &
+                                            IO_lc(IO_stringValue(line,positions,2_pInt))
+         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case ('flowstress')
+             constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = flowstress_ID
+           case ('strainrate')
+             constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = strainrate_ID
+           case default
+             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_J2_label//')')
+         end select
+       case ('tau0')
+         constitutive_j2_tau0(i)         = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_tau0(i) < 0.0_pReal) &
+           call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case ('gdot0')
+         constitutive_j2_gdot0(i)        = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_gdot0(i) <= 0.0_pReal) &
+           call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case ('n')
+         constitutive_j2_n(i)            = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_n(i) <= 0.0_pReal) &
+           call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case ('h0')
+         constitutive_j2_h0(i)           = IO_floatValue(line,positions,2_pInt)
+       case ('h0_slope','slopelnrate')
+         constitutive_j2_h0_slopeLnRate(i)  = IO_floatValue(line,positions,2_pInt)
+       case ('tausat')
+         constitutive_j2_tausat(i)          = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_tausat(i) <= 0.0_pReal) &
+           call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case ('tausat_sinhfita')
+         constitutive_j2_tausat_SinhFitA(i) = IO_floatValue(line,positions,2_pInt)
+       case ('tausat_sinhfitb')
+         constitutive_j2_tausat_SinhFitB(i) = IO_floatValue(line,positions,2_pInt)
+       case ('tausat_sinhfitc')
+         constitutive_j2_tausat_SinhFitC(i) = IO_floatValue(line,positions,2_pInt)
+       case ('tausat_sinhfitd')
+         constitutive_j2_tausat_SinhFitD(i) = IO_floatValue(line,positions,2_pInt)
+       case ('a', 'w0')
+         constitutive_j2_a(i)               = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_a(i) <= 0.0_pReal) &
+           call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case ('taylorfactor')
+         constitutive_j2_fTaylor(i)         = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_fTaylor(i) <= 0.0_pReal) &
+           call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case ('atol_resistance')
+         constitutive_j2_aTolResistance(i)  = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_aTolResistance(i) <= 0.0_pReal) &
+           call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case default
+         call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+     end select
+   endif; endif
  enddo
 
  instancesLoop: do i = 1_pInt,maxNinstance
@@ -302,12 +265,7 @@ subroutine constitutive_j2_init(fileUnit)
        constitutive_j2_sizePostResults(i) = &
        constitutive_j2_sizePostResults(i) + mySize
      endif
-   enddo outputsLoop 
-
-   constitutive_j2_Cslip_66(1:6,1:6,i) = &
-     lattice_symmetrizeC66(constitutive_j2_structureID(i),constitutive_j2_Cslip_66(1:6,1:6,i))
-   constitutive_j2_Cslip_66(1:6,1:6,i) = &                                                          ! Literature data is Voigt, DAMASK uses Mandel
-     math_Mandel3333to66(math_Voigt66to3333(constitutive_j2_Cslip_66(1:6,1:6,i)))
+   enddo outputsLoop
  enddo instancesLoop
 
 end subroutine constitutive_j2_init
@@ -321,7 +279,7 @@ pure function constitutive_j2_stateInit(matID)
   
  implicit none
  real(pReal),   dimension(1)            :: constitutive_j2_stateInit
- integer(pInt),              intent(in) :: matID                                               !< number specifying the instance of the plasticity
+ integer(pInt),              intent(in) :: matID                                                    !< number specifying the instance of the plasticity
  
  constitutive_j2_stateInit = constitutive_j2_tau0(matID)
 
@@ -334,7 +292,7 @@ end function constitutive_j2_stateInit
 pure function constitutive_j2_aTolState(matID)
 
  implicit none
- integer(pInt), intent(in) :: matID                                                           !< number specifying the instance of the plasticity
+ integer(pInt), intent(in) :: matID                                                                 !< number specifying the instance of the plasticity
 
  real(pReal), dimension(constitutive_j2_sizeState(matID)) :: &
                               constitutive_j2_aTolState
@@ -394,7 +352,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
  real(pReal), dimension(3,3),                                                  intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
  real(pReal), dimension(9,9),                                                  intent(out) :: &
-   dLp_dTstar99                                                                                    !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
+   dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  real(pReal), dimension(6),                                                    intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation

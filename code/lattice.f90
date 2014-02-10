@@ -698,6 +698,12 @@ module lattice
                  LATTICE_hex_ID, &
                  LATTICE_ort_ID
  end enum
+ integer(pInt),                              dimension(:),       allocatable, public, protected :: &
+   lattice_structure
+ integer(kind(LATTICE_undefined_ID)),        dimension(:),       allocatable, public, protected :: &
+   lattice_structureID
+ real(pReal),                                dimension(:,:,:),   allocatable, public, protected :: &
+   lattice_Cslip_66
  character(len=*),                         parameter,            public :: &
    LATTICE_iso_label         = 'iso', &
    LATTICE_fcc_label         = 'fcc', &
@@ -725,13 +731,25 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine lattice_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: &
+   tol_math_check
  use IO, only: &
    IO_open_file,&
    IO_open_jobFile_stat, &
    IO_countSections, &
    IO_countTagInPart, &
    IO_error, &
-   IO_timeStamp
+   IO_timeStamp, &
+   IO_stringPos, &
+   IO_EOF, &
+   IO_read, &
+   IO_lc, &
+   IO_getTag, &
+   IO_isBlank, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_floatValue, &
+   IO_EOF
  use material, only: &
    material_configfile, &
    material_localFileExt, &
@@ -740,10 +758,23 @@ subroutine lattice_init
    debug_level, &
    debug_lattice, &
    debug_levelBasic
+ use math, only: &
+   math_Mandel3333to66, &
+   math_Voigt66to3333
+   
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: Nsections
+ character(len=32) :: &
+   structure  = ''
+ character(len=65536) :: &
+   tag  = '', &
+   line = ''
+ integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
+ integer(pInt) :: section = 0_pInt,i
+ real(pReal),                          dimension(:), allocatable :: CoverA
 
  write(6,'(/,a)') ' <<<+-  lattice init  -+>>>'
  write(6,'(a)')   ' $Id$'
@@ -754,40 +785,129 @@ subroutine lattice_init
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  Nsections = IO_countSections(FILEUNIT,material_partPhase)
  lattice_Nstructure = 2_pInt + sum(IO_countTagInPart(FILEUNIT,material_partPhase,'covera_ratio',Nsections)) ! fcc + bcc + all hex
- close(FILEUNIT)
+ 
+ allocate(lattice_structure(Nsections),   source=0_pInt)
+ allocate(lattice_structureID(Nsections), source=LATTICE_undefined_ID)
+ allocate(lattice_Cslip_66(6,6,Nsections),source=0.0_pReal)
+ allocate(CoverA(Nsections),              source=0.0_pReal)
+
+
+ rewind(fileUnit)
+ line        = ''                                                                                   ! to have it initialized
+ section     = 0_pInt                                                                               !  - " -
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <Phase>
+   line = IO_read(fileUnit)
+ enddo
+
+ do while (trim(line) /= IO_EOF)                                                                    ! read through sections of material part
+   line = IO_read(fileUnit)
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
+   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
+     section = section + 1_pInt
+   endif
+   if (section > 0_pInt) then
+     positions = IO_stringPos(line,MAXNCHUNKS)
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
+     select case(tag)
+       case ('lattice_structure')
+         structure = IO_lc(IO_stringValue(line,positions,2_pInt))
+         select case(structure(1:3))
+           case(LATTICE_iso_label)
+             lattice_structureID(section) = LATTICE_iso_ID
+           case(LATTICE_fcc_label)
+             lattice_structureID(section) = LATTICE_fcc_ID
+           case(LATTICE_bcc_label)
+             lattice_structureID(section) = LATTICE_bcc_ID
+           case(LATTICE_hex_label)
+             lattice_structureID(section) = LATTICE_hex_ID
+           case(LATTICE_ort_label)
+             lattice_structureID(section) = LATTICE_ort_ID
+           case default
+             !there should be an error here
+           end select
+       case ('c11')
+         lattice_Cslip_66(1,1,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C11)')
+       case ('c12')
+         lattice_Cslip_66(1,2,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C12)')
+       case ('c13')
+         lattice_Cslip_66(1,3,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C13)')
+       case ('c22')
+         lattice_Cslip_66(2,2,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C22)')
+       case ('c23')
+         lattice_Cslip_66(2,3,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C23)')
+       case ('c33')
+         lattice_Cslip_66(3,3,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C33)')
+       case ('c44')
+         lattice_Cslip_66(4,4,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C44)')
+       case ('c55')
+         lattice_Cslip_66(5,5,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C55)')
+       case ('c66')
+         lattice_Cslip_66(6,6,section) = IO_floatValue(line,positions,2_pInt)
+         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
+           call IO_error(214_pInt,ext_msg=trim(tag)//' (C66)')
+       case ('covera_ratio')
+         CoverA(section) = IO_floatValue(line,positions,2_pInt)
+       end select
+   endif
+ enddo
 
  if (iand(debug_level(debug_lattice),debug_levelBasic) /= 0_pInt) then
    write(6,'(a16,1x,i5)')   ' # phases:',Nsections
    write(6,'(a16,1x,i5,/)') ' # structures:',lattice_Nstructure
  endif
 
- allocate(lattice_NnonSchmid(lattice_Nstructure));                 lattice_NnonSchmid = 0_pInt
- allocate(lattice_Sslip(3,3,1+2*lattice_maxNnonSchmid,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip   = 0.0_pReal
- allocate(lattice_Sslip_v(6,1+2*lattice_maxNnonSchmid,lattice_maxNslip,lattice_Nstructure)); lattice_Sslip_v = 0.0_pReal
- allocate(lattice_sd(3,lattice_maxNslip,lattice_Nstructure));      lattice_sd      = 0.0_pReal
- allocate(lattice_st(3,lattice_maxNslip,lattice_Nstructure));      lattice_st      = 0.0_pReal
- allocate(lattice_sn(3,lattice_maxNslip,lattice_Nstructure));      lattice_sn      = 0.0_pReal
+ allocate(lattice_NnonSchmid(lattice_Nstructure), source=0_pInt)
+ allocate(lattice_Sslip(3,3,1+2*lattice_maxNnonSchmid,lattice_maxNslip,lattice_Nstructure),source= 0.0_pReal)
+ allocate(lattice_Sslip_v(6,1+2*lattice_maxNnonSchmid,lattice_maxNslip,lattice_Nstructure),source = 0.0_pReal)
+ allocate(lattice_sd(3,lattice_maxNslip,lattice_Nstructure),source=0.0_pReal)
+ allocate(lattice_st(3,lattice_maxNslip,lattice_Nstructure),source=0.0_pReal)
+ allocate(lattice_sn(3,lattice_maxNslip,lattice_Nstructure),source=0.0_pReal)
 
- allocate(lattice_Qtwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Qtwin   = 0.0_pReal
- allocate(lattice_Stwin(3,3,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin   = 0.0_pReal
- allocate(lattice_Stwin_v(6,lattice_maxNtwin,lattice_Nstructure)); lattice_Stwin_v = 0.0_pReal
- allocate(lattice_td(3,lattice_maxNtwin,lattice_Nstructure));      lattice_td      = 0.0_pReal
- allocate(lattice_tt(3,lattice_maxNtwin,lattice_Nstructure));      lattice_tt      = 0.0_pReal
- allocate(lattice_tn(3,lattice_maxNtwin,lattice_Nstructure));      lattice_tn      = 0.0_pReal
+ allocate(lattice_Qtwin(3,3,lattice_maxNtwin,lattice_Nstructure),source= 0.0_pReal)
+ allocate(lattice_Stwin(3,3,lattice_maxNtwin,lattice_Nstructure),source= 0.0_pReal)
+ allocate(lattice_Stwin_v(6,lattice_maxNtwin,lattice_Nstructure),source= 0.0_pReal)
+ allocate(lattice_td(3,lattice_maxNtwin,lattice_Nstructure),source= 0.0_pReal)
+ allocate(lattice_tt(3,lattice_maxNtwin,lattice_Nstructure),source= 0.0_pReal)
+ allocate(lattice_tn(3,lattice_maxNtwin,lattice_Nstructure),source= 0.0_pReal)
 
- allocate(lattice_shearTwin(lattice_maxNtwin,lattice_Nstructure)); lattice_shearTwin = 0.0_pReal
+ allocate(lattice_shearTwin(lattice_maxNtwin,lattice_Nstructure),source= 0.0_pReal)
 
- allocate(lattice_NslipSystem(lattice_maxNslipFamily,lattice_Nstructure)); lattice_NslipSystem = 0_pInt
- allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,lattice_Nstructure)); lattice_NtwinSystem = 0_pInt
+ allocate(lattice_NslipSystem(lattice_maxNslipFamily,lattice_Nstructure), source=0_pInt)
+ allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,lattice_Nstructure), source=0_pInt)
 
- allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure))
-          lattice_interactionSlipSlip = 0_pInt ! other:me
- allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure))
-          lattice_interactionSlipTwin = 0_pInt ! other:me
- allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure))
-          lattice_interactionTwinSlip = 0_pInt ! other:me
- allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure))
-          lattice_interactionTwinTwin = 0_pInt ! other:me
+ allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,lattice_Nstructure), source=0_pInt)! other:me
+ allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,lattice_Nstructure), source=0_pInt)! other:me
+ allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,lattice_Nstructure), source=0_pInt)! other:me
+ allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,lattice_Nstructure), source=0_pInt)! other:me
+ 
+ do i = 1_pInt,Nsections
+   lattice_structure(i) = lattice_initializeStructure(lattice_structureID(i), CoverA(i))                ! get structure
+   if (lattice_structure(i) < 1_pInt) call IO_error(205_pInt,el=i)
+   lattice_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(lattice_structure(i),lattice_Cslip_66(1:6,1:6,i))
+   lattice_Cslip_66(1:6,1:6,i) = math_Mandel3333to66(math_Voigt66to3333(lattice_Cslip_66(1:6,1:6,i)))   ! Literature data is Voigt, DAMASK uses Mandel
+ enddo
+
+ deallocate(CoverA)
 
 end subroutine lattice_init
 

@@ -39,7 +39,7 @@ module constitutive_dislotwin
    constitutive_dislotwin_sizePostResults                                                           !< cumulative size of post results
 
  integer(kind(LATTICE_undefined_ID)), dimension(:),           allocatable,         public :: &
-  constitutive_dislotwin_structureID                                                                 !< ID of the lattice structure                                                         !< name of the lattice structure
+  constitutive_dislotwin_structureID                                                                !< ID of the lattice structure
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
    constitutive_dislotwin_sizePostResult                                                            !< size of each post result output
@@ -171,7 +171,7 @@ module constitutive_dislotwin
                  sb_eigenvectors_ID
  end enum
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   constitutive_dislotwin_outputID                                                                         !< ID of each post result output
+   constitutive_dislotwin_outputID                                                                 !< ID of each post result output
 
 
  public :: &
@@ -205,18 +205,18 @@ subroutine constitutive_dislotwin_init(fileUnit)
    mesh_maxNips, &
    mesh_NcpElems
  use IO, only: &
-  IO_read, &
-  IO_lc, &
-  IO_getTag, &
-  IO_isBlank, &
-  IO_stringPos, &
-  IO_stringValue, &
-  IO_floatValue, &
-  IO_intValue, &
-  IO_warning, &
-  IO_error, &
-  IO_timeStamp, &
-  IO_EOF
+   IO_read, &
+   IO_lc, &
+   IO_getTag, &
+   IO_isBlank, &
+   IO_stringPos, &
+   IO_stringValue, &
+   IO_floatValue, &
+   IO_intValue, &
+   IO_warning, &
+   IO_error, &
+   IO_timeStamp, &
+   IO_EOF
  use material, only: &
    homogenization_maxNgrains, &
    phase_plasticity, &

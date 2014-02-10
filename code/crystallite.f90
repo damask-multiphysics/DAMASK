@@ -189,11 +189,10 @@ subroutine crystallite_init(temperature)
    IO_EOF
  use material
  use lattice, only: &
-   lattice_symmetryType
+   lattice_symmetryType, &
+   lattice_structureID
  use constitutive, only: &
    constitutive_microstructure
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_structureID
  use constitutive_dislotwin, only: &   
    constitutive_dislotwin_structureID
  use constitutive_titanmod, only: &
@@ -445,8 +444,7 @@ subroutine crystallite_init(temperature)
        myMat   = phase_plasticityInstance(myPhase)
        select case (phase_plasticity(myPhase))
          case (PLASTICITY_PHENOPOWERLAW_ID)
-           crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_phenopowerlaw_structureID(myMat))
+           crystallite_symmetryID(g,i,e) = lattice_symmetryType(lattice_structureID(myPhase))
          case (PLASTICITY_TITANMOD_ID)
            crystallite_symmetryID(g,i,e) = &
              lattice_symmetryType(constitutive_titanmod_structureID(myMat))
