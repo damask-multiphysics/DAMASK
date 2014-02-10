@@ -53,7 +53,6 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_Ntwin                                                                 !< active number of twin systems per family (input parameter, per family)
 
  real(pReal),                         dimension(:),     allocatable,         private :: &
-   constitutive_phenopowerlaw_CoverA, &                                                             !< c/a of the crystal (input parameter)
    constitutive_phenopowerlaw_gdot0_slip, &                                                         !< reference shear strain rate for slip (input parameter)
    constitutive_phenopowerlaw_gdot0_twin, &                                                         !< reference shear strain rate for twin (input parameter)
    constitutive_phenopowerlaw_n_slip, &                                                             !< stress exponent for slip (input parameter)
@@ -208,7 +207,6 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  allocate(constitutive_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance),  source=0_pInt)
  allocate(constitutive_phenopowerlaw_totalNslip(maxNinstance),                    source=0_pInt)
  allocate(constitutive_phenopowerlaw_totalNtwin(maxNinstance),                    source=0_pInt)
- allocate(constitutive_phenopowerlaw_CoverA(maxNinstance) ,                       source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_Cslip_66(6,6,maxNinstance),                  source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_gdot0_slip(maxNinstance),                    source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_n_slip(maxNinstance),                        source=0.0_pReal)
@@ -278,7 +276,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
-       case ('plasticity','elasticity','lattice_structure',&
+       case ('plasticity','elasticity','lattice_structure','covera_ratio',&
              'c11','c12','c13','c22','c23','c33','c44','c55','c66')
        case ('(output)')
          constitutive_phenopowerlaw_Noutput(i) = constitutive_phenopowerlaw_Noutput(i) + 1_pInt

@@ -192,7 +192,7 @@ subroutine constitutive_j2_init(fileUnit)
      positions = IO_stringPos(line,MAXNCHUNKS) 
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
-       case ('plasticity','elasticity','lattice_structure',&
+       case ('plasticity','elasticity','lattice_structure','covera_ratio',&
              'c11','c12','c13','c22','c23','c33','c44','c55','c66')
        case ('(output)')
          constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
