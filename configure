@@ -40,6 +40,8 @@ if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
 
 #--- default option values  --------------------------------------------------------------------------
+BLAS_order = ['IMKL','ACML','LAPACK']
+
 defaults={'F90':compiler,\
           'FFTW_ROOT':'/usr/local',\
           'MSC_ROOT' :'/msc',\
@@ -52,6 +54,8 @@ defaults={'F90':compiler,\
                                [os.getenv('MKLROOT')==None]},\
           'spectralOptions':{}}
 
+print 'defaults at start',defaults
+
 #--- if local config file exists, read, otherwise assume global config file  ------------------------
 if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')):
   configFile = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
@@ -63,25 +67,21 @@ try:
   with open(configFile,'r') as f:
     print('\n-----\n reading default values from %s\n-----'%configFile)
     for line in f:
-      items = re.split('[= ]',line)
-    
-      if (not line.strip() or items[0].startswith('#')):
+      [key,value] = (re.split('[= ]',line)+[None,None])[:2]
+      value = value.rstrip()
+
+      if (not line.strip() or key.startswith('#')):
         pass
-      elif items[0] == 'F90':
-        defaults['F90']=items[1].rstrip()
-      elif items[0] == 'FFTW_ROOT': 
-        defaults['FFTW_ROOT']=items[1].rstrip()
-      elif items[0] == 'MSC_ROOT': 
-        defaults['MSC_ROOT']=items[1].rstrip()
-      elif items[0] == 'HDF5_ROOT': 
-        defaults['HDF5_ROOT']=items[1].rstrip()
-      elif items[0] == 'DAMASK_NUM_THREADS': 
-        defaults['DAMASK_NUM_THREADS']=int(items[1])
-      elif items[0] in [name+'_ROOT' for name in defaults['blasRoot']]:
-        defaults['blasType']=items[0][:-5]
-        defaults['blasRoot'][items[0][:-5]] =items[1].rstrip()
-      else:
-        defaults['spectralOptions'][items[0]]=items[1].rstrip()
+      if key == 'DAMASK_NUM_THREADS':
+        defaults['DAMASK_NUM_THREADS'] = int(value)
+
+      for theKey in ['F90','FFTW_ROOT','HDF5_ROOT','MSC_ROOT','spectralOptions']:
+        if key == theKey:
+          defaults[key] = value
+      for theKey in reversed(BLAS_order):
+        if key == theKey+'_ROOT' and (value != None or value != ''):
+          defaults['blasType'] = key
+          defaults['blasRoot'][key] = value
 except IOError:
   pass
 
@@ -119,8 +119,8 @@ for i, arg in enumerate(sys.argv):
       blasType = sys.argv[i+1].upper()
     else:
       blasType = sys.argv[i][17:].upper()
-if blasType not in ['LAPACK','ACML','IMKL']:
-  blasType='LAPACK'
+if blasType not in BLAS_order:
+  blasType = 'LAPACK'
 
 parser.set_defaults(blasRoot = [defaults['blasRoot'][blasType]][0])
 parser.set_defaults(spectraloptions = [])
