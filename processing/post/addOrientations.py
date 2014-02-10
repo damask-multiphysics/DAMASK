@@ -26,32 +26,35 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """\
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
 Orientation is given by quaternion, Euler angles,
 rotation matrix, or crystal frame coordinates (i.e. component vectors of rotation matrix).
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-o', '--orientations', dest='output', action='append', \
-                  help = 'list of output orientation formats')
-parser.add_option('-s', '--symmetry', dest='symmetry', type='string', \
+parser.add_option('-o', '--orientations', dest='output', action='append', metavar='<LIST>',
+                  help = 'output orientation formats')
+parser.add_option('-s', '--symmetry', dest='symmetry', type='string',
                   help = 'crystal symmetry [%default]')
-parser.add_option('-e', '--eulers',   dest='eulers', type='string', \
-                  help = 'Euler angles label')
-parser.add_option('-m', '--matrix',   dest='matrix', type='string', \
-                  help = 'orientation matrix label')
-parser.add_option('-a',               dest='a', type='string', \
-                  help = 'crystal frame a vector label')
-parser.add_option('-b',               dest='b', type='string', \
-                  help = 'crystal frame b vector label')
-parser.add_option('-c',               dest='c', type='string', \
-                  help = 'crystal frame c vector label')
-parser.add_option('-q', '--quaternion', dest='quaternion', type='string', \
-                  help = 'quaternion label')
+parser.add_option('-e', '--eulers',   dest='eulers', type='string', metavar='LABEL',
+                  help = 'Euler angles')
+parser.add_option('-d', '--degrees',   dest='degrees', action='store_true',
+                  help = 'Euler angles are given in degrees [%default]')
+parser.add_option('-m', '--matrix',   dest='matrix', type='string', metavar='LABEL',
+                  help = 'orientation matrix')
+parser.add_option('-a',               dest='a', type='string', metavar='LABEL',
+                  help = 'crystal frame a vector')
+parser.add_option('-b',               dest='b', type='string', metavar='LABEL',
+                  help = 'crystal frame b vector')
+parser.add_option('-c',               dest='c', type='string', metavar='LABEL',
+                  help = 'crystal frame c vector')
+parser.add_option('-q', '--quaternion', dest='quaternion', type='string', metavar='LABEL',
+                  help = 'quaternion')
 
 parser.set_defaults(output = [])
 parser.set_defaults(symmetry = 'cubic')
+parser.set_defaults(degrees = False)
 
 (options, filenames) = parser.parse_args()
 
@@ -71,6 +74,7 @@ if options.a          != None and \
 if options.matrix     != None:  datainfo['tensor']['label'] += [options.matrix];                input = 'matrix'
 if options.quaternion != None:  datainfo['quaternion']['label'] += [options.quaternion];        input = 'quaternion'
 
+toRadians = math.pi/180.0 if options.degrees else 1.0                                                                               # rescale degrees to radians
 options.output = map(lambda x: x.lower(), options.output)
 
 # ------------------------------------------ setup file handles ---------------------------------------  
@@ -88,7 +92,7 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],buffered = False)  # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
@@ -126,8 +130,8 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
 
     if input == 'eulers':
-      o = damask.Orientation(Eulers=numpy.array(map(float,table.data[column['vector'][options.eulers]:\
-                                                                     column['vector'][options.eulers]+datainfo['vector']['len']])),
+      o = damask.Orientation(Eulers=toRadians*numpy.array(map(float,table.data[column['vector'][options.eulers]:\
+                                                                               column['vector'][options.eulers]+datainfo['vector']['len']])),
                              symmetry=options.symmetry).reduced()
     elif input == 'matrix':
       o = damask.Orientation(matrix=numpy.array([map(float,table.data[column['tensor'][options.matrix]:\
