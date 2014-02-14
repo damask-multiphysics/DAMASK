@@ -34,7 +34,7 @@ Converts ang files (EBSD Data) from hexagonal grid to a pixel grid
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-x', dest='columnX', action='store', type='int', \
+parser.add_option('-x', dest='columnX', action='store', type='int', metavar='int', \
                         help='column containing x coordinates [%default]')
 
 parser.set_defaults(columnX = 3)

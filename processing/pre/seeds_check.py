@@ -53,9 +53,9 @@ Produce VTK point mesh from seeds file
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, \
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar='int int int', \
                   help='a,b,c grid of hexahedral box [from seeds file]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, \
+parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar='float float float',\
                   help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
 
 parser.set_defaults(grid = [0,0,0])

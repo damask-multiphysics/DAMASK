@@ -57,7 +57,10 @@ parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, metavar
                   help='a,b,c grid of hexahedral box [unchanged]')
 parser.add_option('-s', '--size', dest='size', type='string', nargs = 3, metavar = 'string string string', \
                   help='x,y,z size of hexahedral box [unchanged]')
+parser.add_option('-r', '--renumber', dest='renumber', action='store_true', \
+                  help='renumber microstructure indices from 1...N [%default]')
 
+parser.set_defaults(renumber = False)
 parser.set_defaults(grid = ['0','0','0'])
 parser.set_defaults(size  = ['0.0','0.0','0.0'])
 
@@ -169,6 +172,14 @@ for file in files:
                    numpy.repeat(microstructure,multiplicity[0], axis=0),
                                                multiplicity[1], axis=1),
                                                multiplicity[2], axis=2)
+# --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
+#  http://stackoverflow.com/questions/10741346/numpy-frequency-counts-for-unique-values-in-an-array  
+  if options.renumber:
+    newID=0
+    for microstructureID,count in enumerate(numpy.bincount(microstructure.reshape(info['grid'].prod()))):
+      if count != 0:
+        newID+=1
+        microstructure=numpy.where(microstructure==microstructureID,newID,microstructure).reshape(microstructure.shape)
 
   newInfo['microstructures'] = microstructure.max()
 

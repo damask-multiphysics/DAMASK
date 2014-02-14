@@ -43,11 +43,11 @@ Reports positions with random crystal orientations in seeds file format to STDOU
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-N', dest='N', type='int', \
+parser.add_option('-N', dest='N', type='int', metavar='int', \
                   help='number of seed points to distribute [%default]')
-parser.add_option('-g','--grid', dest='grid', type='int', nargs=3, \
+parser.add_option('-g','--grid', dest='grid', type='int', nargs=3, metavar='int int int', \
                   help='min a,b,c grid of hexahedral box %default')
-parser.add_option('-r', '--rnd', dest='randomSeed', type='int', \
+parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
                   help='seed of random number generator [%default]')
 
 parser.set_defaults(randomSeed = 0)

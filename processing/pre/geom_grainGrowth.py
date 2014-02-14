@@ -61,9 +61,12 @@ parser.add_option('-d', '--distance', dest='d', type='int', metavar='int', \
                   help='diffusion distance in voxels [%default]')
 parser.add_option('-N', '--smooth', dest='N', type='int', metavar='int', \
                  help='N for curvature flow [%default]')
+parser.add_option('-r', '--renumber', dest='renumber', action='store_true', \
+                  help='renumber microstructure indices from 1...N [%default]')
 
 parser.set_defaults(d = 1)
 parser.set_defaults(N = 1)
+parser.set_defaults(renumber = False)
 (options, filenames) = parser.parse_args()
 
 
@@ -192,7 +195,15 @@ for file in files:
     index = ndimage.morphology.distance_transform_edt(boundary >= 0.5,return_distances=False,return_indices=True)
     microstructure = microstructure[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape)
 
- # --- assemble header -----------------------------------------------------------------------------
+# --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
+#  http://stackoverflow.com/questions/10741346/numpy-frequency-counts-for-unique-values-in-an-array  
+  if options.renumber:
+    newID=0
+    for microstructureID,count in enumerate(numpy.bincount(microstructure.reshape(info['grid'].prod()))):
+      if count != 0:
+        newID+=1
+        microstructure=numpy.where(microstructure==microstructureID,newID,microstructure).reshape(microstructure.shape)
+# --- assemble header -----------------------------------------------------------------------------
   newInfo['microstructures'] = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].max()
 
 #--- report ---------------------------------------------------------------------------------------
