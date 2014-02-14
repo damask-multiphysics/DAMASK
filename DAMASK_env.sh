@@ -32,10 +32,12 @@ if [ ! -z "$PS1" ]; then
   echo
 fi
 
-ulimit -s unlimited 2>/dev/null
-ulimit -c 0         2>/dev/null
-ulimit -v unlimited 2>/dev/null
-ulimit -m unlimited 2>/dev/null
+# http://superuser.com/questions/220059/what-parameters-has-ulimit
+ulimit -s unlimited   2>/dev/null # maximum stack size (kB)
+ulimit -h unlimited   2>/dev/null # maximum heap size (kB)
+ulimit -c 0           2>/dev/null # core  file size (512-byte blocks)
+ulimit -v unlimited   2>/dev/null # maximum virtual memory size
+ulimit -m unlimited   2>/dev/null # maximum physical memory size
 
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
