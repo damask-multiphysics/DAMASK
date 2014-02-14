@@ -234,6 +234,9 @@ end subroutine DAMASK_interface_init
 !> @todo  change working directory with call chdir(storeWorkingDirectory)?
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryArg)
+#ifdef __INTEL_COMPILER
+ use IFPORT
+#endif
 
  implicit none
  character(len=*),  intent(in) :: workingDirectoryArg                                               !< working directory argument
@@ -242,13 +245,14 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
  character                     :: pathSep
  logical                       :: dirExists
  external                      :: quit
+ integer                       :: error
 
  pathSep = getPathSep()
  if (len(workingDirectoryArg)>0) then                                                               ! got working directory as input
    if (workingDirectoryArg(1:1) == pathSep) then                                                    ! absolute path given as command line argument
      storeWorkingDirectory = workingDirectoryArg
    else
-     call getcwd(cwd)                                                                               ! relative path given as command line argument
+     error = getcwd(cwd)                                                                            ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//workingDirectoryArg
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
@@ -262,7 +266,7 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    if (geometryArg(1:1) == pathSep) then                                                            ! absolute path given as command line argument
      storeWorkingDirectory = geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    else
-     call getcwd(cwd)                                                                               ! relative path given as command line argument
+     error = getcwd(cwd)                                                                            ! relative path given as command line argument
      storeWorkingDirectory = trim(cwd)//pathSep//&
                               geometryArg(1:scan(geometryArg,pathSep,back=.true.))
    endif
@@ -314,6 +318,9 @@ end function getSolverJobName
 !> @brief basename of geometry file with extension from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getGeometryFile(geometryParameter)
+#ifdef __INTEL_COMPILER
+ use IFPORT
+#endif
 
  implicit none
  character(len=1024), intent(in) :: &
@@ -322,6 +329,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
    cwd
  integer :: posExt, posSep
  character :: pathSep
+ integer :: error
 
  getGeometryFile = geometryParameter
  pathSep = getPathSep()
@@ -330,7 +338,7 @@ character(len=1024) function getGeometryFile(geometryParameter)
 
  if (posExt <= posSep) getGeometryFile = trim(getGeometryFile)//('.geom')                           ! no extension present
  if (scan(getGeometryFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   call getcwd(cwd)
+   error = getcwd(cwd)
    getGeometryFile = rectifyPath(trim(cwd)//pathSep//getGeometryFile)
  else
    getGeometryFile = rectifyPath(getGeometryFile)
@@ -345,13 +353,16 @@ end function getGeometryFile
 !> @brief relative path of loadcase from command line arguments
 !--------------------------------------------------------------------------------------------------
 character(len=1024) function getLoadCaseFile(loadCaseParameter)
+#ifdef __INTEL_COMPILER
+ use IFPORT
+#endif
 
  implicit none
  character(len=1024), intent(in) :: &
    loadCaseParameter
  character(len=1024) :: &
    cwd
- integer :: posExt, posSep
+ integer :: posExt, posSep, error
  character :: pathSep
 
  getLoadCaseFile = loadcaseParameter
@@ -361,7 +372,7 @@ character(len=1024) function getLoadCaseFile(loadCaseParameter)
 
  if (posExt <= posSep) getLoadCaseFile = trim(getLoadCaseFile)//('.load')                           ! no extension present
  if (scan(getLoadCaseFile,pathSep) /= 1) then                                                       ! relative path given as command line argument
-   call getcwd(cwd)
+   error = getcwd(cwd)
    getLoadCaseFile = rectifyPath(trim(cwd)//pathSep//getLoadCaseFile)
  else
    getLoadCaseFile = rectifyPath(getLoadCaseFile)
