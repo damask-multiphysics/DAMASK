@@ -828,46 +828,29 @@ subroutine lattice_init
              lattice_structureID(section) = LATTICE_ort_ID
            case default
              !there should be an error here
-           end select
-       case ('c11')
-         lattice_Cslip_66(1,1,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C11)')
-       case ('c12')
-         lattice_Cslip_66(1,2,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C12)')
-       case ('c13')
-         lattice_Cslip_66(1,3,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C13)')
-       case ('c22')
-         lattice_Cslip_66(2,2,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C22)')
-       case ('c23')
-         lattice_Cslip_66(2,3,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C23)')
-       case ('c33')
-         lattice_Cslip_66(3,3,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C33)')
-       case ('c44')
-         lattice_Cslip_66(4,4,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C44)')
-       case ('c55')
-         lattice_Cslip_66(5,5,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C55)')
-       case ('c66')
-         lattice_Cslip_66(6,6,section) = IO_floatValue(line,positions,2_pInt)
-         if (abs(lattice_Cslip_66(1,1,section)) < tol_math_check) &
-           call IO_error(214_pInt,ext_msg=trim(tag)//' (C66)')
-       case ('covera_ratio')
-         CoverA(section) = IO_floatValue(line,positions,2_pInt)
-       end select
+         end select
+     case ('c11')
+
+       lattice_Cslip_66(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c12')
+       lattice_Cslip_66(1,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c13')
+       lattice_Cslip_66(1,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c22')
+       lattice_Cslip_66(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c23')
+       lattice_Cslip_66(2,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c33')
+       lattice_Cslip_66(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c44')
+       lattice_Cslip_66(4,4,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c55')
+       lattice_Cslip_66(5,5,section) = IO_floatValue(line,positions,2_pInt)
+     case ('c66')
+       lattice_Cslip_66(6,6,section) = IO_floatValue(line,positions,2_pInt)
+     case ('covera_ratio')
+       CoverA(section) = IO_floatValue(line,positions,2_pInt)
+     end select
    endif
  enddo
 
@@ -902,10 +885,9 @@ subroutine lattice_init
  
  do i = 1_pInt,Nsections
    lattice_structure(i) = lattice_initializeStructure(lattice_structureID(i), CoverA(i))                ! get structure
-   if (lattice_structure(i) < 1_pInt) call IO_error(205_pInt,el=i)
-   lattice_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(lattice_structure(i),lattice_Cslip_66(1:6,1:6,i))
+   lattice_Cslip_66(1:6,1:6,i) = lattice_symmetrizeC66(lattice_structureID(i),lattice_Cslip_66(1:6,1:6,i))
    lattice_Cslip_66(1:6,1:6,i) = math_Mandel3333to66(math_Voigt66to3333(lattice_Cslip_66(1:6,1:6,i)))   ! Literature data is Voigt, DAMASK uses Mandel
- enddo
+enddo
 
  deallocate(CoverA)
 
@@ -1068,6 +1050,9 @@ integer(pInt) function lattice_initializeStructure(struct_ID,CoverA)
      interactionSlipTwin => lattice_hex_interactionSlipTwin
      interactionTwinSlip => lattice_hex_interactionTwinSlip
      interactionTwinTwin => lattice_hex_interactionTwinTwin
+   case default
+     processMe = .false.
+     myStructure = 0_pInt
  end select
 
  if (processMe) then
