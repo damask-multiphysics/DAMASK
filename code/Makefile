@@ -20,7 +20,7 @@ SHELL = /bin/sh
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-ifeq ($(wildcard "${HOME}/.damask/damask.conf"),)
+ifneq ("","$(wildcard ${HOME}/.damask/damask.conf)")
 	include ${HOME}/.damask/damask.conf
 else
 	include /etc/damask.conf
