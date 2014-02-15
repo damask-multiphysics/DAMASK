@@ -176,7 +176,7 @@ for file in files:
 #  http://stackoverflow.com/questions/10741346/numpy-frequency-counts-for-unique-values-in-an-array  
   if options.renumber:
     newID=0
-    for microstructureID,count in enumerate(numpy.bincount(microstructure.reshape(info['grid'].prod()))):
+    for microstructureID,count in enumerate(numpy.bincount(microstructure.reshape(newInfo['grid'].prod()))):
       if count != 0:
         newID+=1
         microstructure=numpy.where(microstructure==microstructureID,newID,microstructure).reshape(microstructure.shape)
