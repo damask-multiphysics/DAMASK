@@ -913,7 +913,7 @@ integer(pInt) function lattice_initializeStructure(struct_ID,CoverA)
  
  implicit none
  integer(kind(LATTICE_fcc_ID)), intent(in) :: struct_ID
- real(pReal) :: CoverA
+ real(pReal), intent(in) :: CoverA
  real(pReal), dimension(3) :: sdU = 0.0_pReal, &
                               snU = 0.0_pReal, &
                               np = 0.0_pReal, &
