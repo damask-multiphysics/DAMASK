@@ -140,7 +140,7 @@ subroutine constitutive_none_init(fileUnit)
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
-         case ('plasticity','elasticity')
+         case ('plasticity','elasticity','covera_ratio')
          case ('lattice_structure')
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(structure(1:3))
