@@ -53,12 +53,22 @@ datainfo = {                                                               # lis
 if not os.path.exists(options.vtk):
   parser.error('VTK file does not exist')
 
-reader = vtk.vtkXMLUnstructuredGridReader()
-reader.SetFileName(options.vtk)
-reader.Update()
-Npoints = reader.GetNumberOfPoints()
-Ncells = reader.GetNumberOfCells()
-uGrid = reader.GetOutput()
+if os.path.splitext(options.vtk)[1] == '.vtu':
+  reader = vtk.vtkXMLUnstructuredGridReader()
+  reader.SetFileName(options.vtk)
+  reader.Update()
+  uGrid = reader.GetOutput()
+elif os.path.splitext(options.vtk)[1] == '.vtk':
+  reader = vtk.vtkGenericDataObjectReader()
+  reader.SetFileName(options.vtk)
+  reader.Update()
+  uGrid = reader.GetUnstructuredGridOutput()
+else:
+  parser.error('unsupported VTK file type extension')
+
+
+Npoints = uGrid.GetNumberOfPoints()
+Ncells  = uGrid.GetNumberOfCells()
 
 #if Npoints != Ncells or Npoints != Nvertices:
 #  parser.error('Number of points, cells, and vertices in VTK differ from each other'); sys.exit()
