@@ -257,7 +257,11 @@ character(len=1024) function storeWorkingDirectory(workingDirectoryArg,geometryA
    endif
    if (storeWorkingDirectory(len(trim(storeWorkingDirectory)):len(trim(storeWorkingDirectory))) &   ! if path seperator is not given, append it
       /= pathSep) storeWorkingDirectory = trim(storeWorkingDirectory)//pathSep
-   inquire(file = trim(storeWorkingDirectory)//'.', exist=dirExists)
+#ifdef __INTEL_COMPILER
+   inquire(directory = trim(storeWorkingDirectory)//'.', exist=dirExists)
+#else
+   inquire(file = trim(storeWorkingDirectory), exist=dirExists)
+#endif
    if(.not. dirExists) then                                                                         ! check if the directory exists
      write(6,'(a20,a,a16)') ' working directory "',trim(storeWorkingDirectory),'" does not exist'
      call quit(1_pInt)
