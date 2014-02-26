@@ -419,9 +419,6 @@ constitutive_j2.o:             constitutive_j2.f90 \
 constitutive_none.o:           constitutive_none.f90 \
                                lattice.o
 
-material.o:                    material.f90 \
-                               lattice.o
-
 lattice.o:                     lattice.f90 \
                                material.o
 
