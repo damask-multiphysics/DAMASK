@@ -39,9 +39,9 @@ deformation gradient and first Piola--Kirchhoff stress.
 )
 
 
-parser.add_option('-f','--defgrad',     dest='defgrad', type='string', \
+parser.add_option('-f','--defgrad',     dest='defgrad', type='string', metavar='string', \
                                         help='heading of columns containing deformation gradient [%default]')
-parser.add_option('-p','--stress',      dest='stress', type='string', \
+parser.add_option('-p','--stress',      dest='stress', type='string', metavar='string', \
                                         help='heading of columns containing first Piola--Kirchhoff stress [%default]')
 
 parser.set_defaults(defgrad = 'f')
@@ -87,7 +87,7 @@ for file in files:
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
   active = defaultdict(list)
-  column = defalutdict(dict)
+  column = defaultdict(dict)
   missingColumns = False
   
   for datatype,info in datainfo.items():
