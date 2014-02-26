@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 
 import os,re,sys,math,numpy,string,damask
+from collections import defaultdict
 from optparse import OptionParser, Option
+
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
 
 # -----------------------------
 class extendableOption(Option):
@@ -31,7 +35,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog options [file[
 Add column(s) containing Cauchy stress based on given column(s) of
 deformation gradient and first Piola--Kirchhoff stress.
 
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 
@@ -49,9 +53,11 @@ if options.defgrad == None or options.stress == None:
   parser.error('missing data column...')
 
 datainfo = {                                                               # list of requested labels per datatype
-             'defgrad':    {'len':9,
+             'defgrad':    {'mandatory': True,
+                            'len':9,
                             'label':[]},
-             'stress':     {'len':9,
+             'stress':     {'mandatory': True,
+                            'len':9,
                             'label':[]},
            }
 
@@ -60,52 +66,55 @@ datainfo['defgrad']['label'].append(options.defgrad)
 datainfo['stress']['label'].append(options.stress)
 
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+# ------------------------------------------ setup file handles ---------------------------------------
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------  
+# ------------------------------------------ loop over input files ---------------------------------------
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
-  active = {}
-  column = {}
-  head = []
-
+  active = defaultdict(list)
+  column = defalutdict(dict)
+  missingColumns = False
+  
   for datatype,info in datainfo.items():
     for label in info['label']:
       key = {True :'1_%s',
              False:'%s'   }[info['len']>1]%label
       if key not in table.labels:
-        sys.stderr.write('column %s not found...\n'%key)
+        file['croak'].write('column %s not found...\n'%key)
+        missingColumns |= info['mandatory']                                 # break if label is mandatory
       else:
-        if datatype not in active: active[datatype] = []
-        if datatype not in column: column[datatype] = {}
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
 
+  if missingColumns:
+    continue
+    
   table.labels_append(['%i_Cauchy'%(i+1) 
-                      for i in xrange(datainfo['defgrad']['len'])])         # extend ASCII header with new labels
+                      for i in xrange(datainfo['stress']['len'])])          # extend ASCII header with new labels
 
-# ------------------------------------------ assemble header ---------------------------------------  
+# ------------------------------------------ assemble header ---------------------------------------
 
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ---------------------------------------
 
-  while table.data_read():                                                  # read next data line of ASCII table
+  outputAlive = True
+  while outoutAlive and table.data_read():                                  # read next data line of ASCII table
   
     F = numpy.array(map(float,table.data[column['defgrad'][active['defgrad'][0]]:
                                          column['defgrad'][active['defgrad'][0]]+datainfo['defgrad']['len']]),'d').reshape(3,3)
@@ -113,9 +122,9 @@ for file in files:
                                          column['stress'][active['stress'][0]]+datainfo['stress']['len']]),'d').reshape(3,3)
 
     table.data_append(list(1.0/numpy.linalg.det(F)*numpy.dot(P,F.T).reshape(9)))  # [Cauchy] = (1/det(F)) * [P].[F_transpose]
-    table.data_write()                                                      # output processed line
+    outputAlive = table.data_write()                                        # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result ---------------------------------------
 
   table.output_flush()                                                      # just in case of buffered ASCII table
 
