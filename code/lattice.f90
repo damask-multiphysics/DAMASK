@@ -139,20 +139,7 @@ module lattice
      ],pReal),[ 3_pInt + 3_pInt ,lattice_fcc_Ntwin])                                                !< Twin system <112>{111} directions. Sorted according to Eisenlohr & Hantcherli
 
  real(pReal), dimension(lattice_fcc_Ntwin), parameter, private :: &
-   lattice_fcc_shearTwin = reshape([&
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal  &
-     ],[lattice_fcc_Ntwin])                                                                         !< Twin system <112>{111} ??? Sorted according to Eisenlohr & Hantcherli
+   lattice_fcc_shearTwin = 0.5_pReal*sqrt(2.0_pReal)                                                !< Twin system <112>{111} ??? Sorted according to Eisenlohr & Hantcherli
 
  integer(pInt), dimension(2_pInt,lattice_fcc_Ntwin), parameter, public :: &
    lattice_fcc_corellationTwinSlip = reshape(int( [&
@@ -320,20 +307,7 @@ module lattice
      ],pReal),[ 3_pInt + 3_pInt,lattice_bcc_Ntwin])
 
  real(pReal), dimension(lattice_bcc_Ntwin), parameter, private :: &
-   lattice_bcc_shearTwin = reshape([&
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal, &
-     0.7071067812_pReal  &
-     ],[lattice_bcc_Ntwin])
+   lattice_bcc_shearTwin = 0.5_pReal*sqrt(2.0_pReal)
 
  integer(pInt), dimension(lattice_bcc_Nslip,lattice_bcc_Nslip), target, public :: &
    lattice_bcc_interactionSlipSlip = reshape(int( [&
@@ -781,6 +755,34 @@ subroutine lattice_init
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
+!--------------------------------------------------------------------------------------------------
+! consistency checks
+ if (LATTICE_maxNslip /= maxval([lattice_fcc_Nslip,lattice_bcc_Nslip,lattice_hex_Nslip])) &
+   call IO_error(0_pInt,ext_msg = 'LATTICE_maxNslip')
+ if (LATTICE_maxNtwin /= maxval([lattice_fcc_Ntwin,lattice_bcc_Ntwin,lattice_hex_Ntwin])) &
+   call IO_error(0_pInt,ext_msg = 'LATTICE_maxNtwin')
+ if (LATTICE_maxNnonSchmid /= maxval([lattice_fcc_NnonSchmid,lattice_bcc_NnonSchmid,&
+   lattice_hex_NnonSchmid])) call IO_error(0_pInt,ext_msg = 'LATTICE_maxNnonSchmid')
+ if (LATTICE_maxNinteraction /= max(&
+   maxval(lattice_fcc_interactionSlipSlip), &
+   maxval(lattice_bcc_interactionSlipSlip), &
+   maxval(lattice_hex_interactionSlipSlip), &
+   !
+   maxval(lattice_fcc_interactionSlipTwin), &
+   maxval(lattice_bcc_interactionSlipTwin), &
+   maxval(lattice_hex_interactionSlipTwin), &
+   !
+   maxval(lattice_fcc_interactionTwinSlip), &
+   maxval(lattice_bcc_interactionTwinSlip), &
+   maxval(lattice_hex_interactionTwinSlip), &
+   !
+   maxval(lattice_fcc_interactionTwinTwin), &
+   maxval(lattice_bcc_interactionTwinTwin), &
+   maxval(lattice_hex_interactionTwinTwin))) &
+   call IO_error(0_pInt,ext_msg = 'LATTICE_maxNinteraction')
+
+!--------------------------------------------------------------------------------------------------
+! read from material configuration file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  Nsections = IO_countSections(FILEUNIT,material_partPhase)
