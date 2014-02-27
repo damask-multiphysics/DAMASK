@@ -44,7 +44,7 @@ class Environment():
       if licenses[0]-licenses[1] >= Nneeded:
         return 0
       else:
-        print(licenses[1] + Nneeded - licenses[0], 'missing licenses for %s'%software)
+        print('%s missing licenses for %s'%(software,licenses[1] + Nneeded - licenses[0]))
         return licenses[1] + Nneeded - licenses[0]
     except IndexError:
       print('Could not retrieve license information for %s'%software)
