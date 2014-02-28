@@ -131,7 +131,7 @@ for file in files:
 #--- read microstructure information --------------------------------------------------------------
   structure = vtk.vtkIntArray()
   structure.SetName('Microstructures')
-  theTable.data_rewind()
+
   while theTable.data_read():
     items = theTable.data
     if len(items) > 2:
