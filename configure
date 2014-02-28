@@ -42,7 +42,8 @@ if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
 #--- default option values  --------------------------------------------------------------------------
 BLAS_order = ['IMKL','ACML','LAPACK']
 
-defaults={'F90':compiler,
+defaults={'DAMASK_BIN':'depending on access rights',
+          'F90':compiler,
           'FFTW_ROOT':'/usr/local',
           'MSC_ROOT' :'/msc',
           'HDF5_ROOT':'/usr/local',
@@ -53,6 +54,8 @@ defaults={'F90':compiler,
                       'IMKL'  :{True:os.getenv('MKLROOT'), False:'/opt/intel/composerxe/mkl'}\
                                     [os.getenv('MKLROOT') != None]},
           'spectralOptions':{}}
+
+
 
 #--- if local config file exists, read, otherwise assume global config file  ------------------------
 if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')):
@@ -67,23 +70,25 @@ try:
     for line in f:
       [key,value] = (re.split('[= ]',line)+[None,None])[:2]
       value = value.rstrip()
-
+    
       if (not line.strip() or key.startswith('#')):
         pass
       if key == 'DAMASK_NUM_THREADS':
         defaults['DAMASK_NUM_THREADS'] = int(value)
-
+      if key == 'DAMASK_BIN':
+        defaults['DAMASK_BIN'] = value
       for theKey in ['F90','FFTW_ROOT','HDF5_ROOT','MSC_ROOT','spectralOptions']:
         if key == theKey:
           defaults[key] = value
       for theKey in reversed(BLAS_order):
         if key == theKey+'_ROOT' and (value != None or value != ''):
-          defaults['blasType'] = key
-          defaults['blasRoot'][key] = value
+          defaults['blasType'] = theKey
+          defaults['blasRoot'][theKey] = value
 except IOError:
   pass
 
-
+parser.add_option('--prefix',                dest='prefix', type='string', metavar='string',
+                                             help='location of (links to) DAMASK executables [%default]')
 parser.add_option('--with-fc',               dest='compiler', type='string', metavar='string',
                                              help='F90 compiler [%default]')
 parser.add_option('--with-fftw-dir',         dest='fftwRoot', type='string', metavar='string',
@@ -101,6 +106,7 @@ parser.add_option('--with-blas-dir',         dest='blasRoot', type='string', met
 parser.add_option('--with-spectral-options', dest='spectraloptions', type='string', action='extend', metavar='<string LIST>',
                                              help='options for compilation of spectral solver')
 
+parser.set_defaults(prefix   = defaults['DAMASK_BIN'])
 parser.set_defaults(compiler = defaults['F90'])
 parser.set_defaults(fftwRoot = defaults['FFTW_ROOT'])
 parser.set_defaults(mscRoot  = defaults['MSC_ROOT'])
@@ -109,7 +115,6 @@ parser.set_defaults(threads  = defaults['DAMASK_NUM_THREADS'])
 parser.set_defaults(blasType = defaults['blasType'])
 
 #--- set default for blasRoot depending on current option (or default) for blasType  --------------------
-
 blasType = defaults['blasType'].upper()
 for i, arg in enumerate(sys.argv):
   if arg.startswith('--with-blas-type'):
@@ -118,7 +123,7 @@ for i, arg in enumerate(sys.argv):
     else:
       blasType = sys.argv[i][17:].upper()
 if blasType not in BLAS_order:
-  blasType = 'LAPACK'
+  blasType='LAPACK'
 
 parser.set_defaults(blasRoot = [defaults['blasRoot'][blasType]][0])
 parser.set_defaults(spectraloptions = [])
@@ -180,7 +185,6 @@ else:
   print('Error: Unknown BLAS/LAPACK library: %s'%options.blasType)
   sys.exit(1)
 
-
 #--- read config file if present to keep comments and order ---------------------------------------
 output = []
 try: 
@@ -190,6 +194,9 @@ try:
     
       if (not line.strip() or items[0].startswith('#')):
         pass
+      if items[0] == 'DAMASK_BIN':
+        line = '%s=%s\n'%(items[0],options.prefix)
+        options.prefix ='depending on access rights'
       if items[0] == 'F90':
         line = '%s=%s\n'%(items[0],options.compiler)
         options.compiler =''
@@ -224,6 +231,8 @@ except IOError:
 
 #--- write remaining options --------------------------------------------------------------------------
 for opt, value in options.__dict__.items():
+  if opt == 'prefix' and value !='depending on access rights':
+    output.append('DAMASK_BIN=%s\n'%value)
   if opt == 'compiler' and value !='':
     output.append('F90=%s\n'%value)
   if opt == 'fftwRoot' and value !='':
@@ -240,14 +249,12 @@ for opt, value in options.__dict__.items():
 for spectralOption in options.spectraloptions:
   output.append(spectralOption+'\n')
 
-#--- decide where do save the data ----------------------------------------------------------------------
-root=os.access('/etc/', os.W_OK)
-if root:
-  configFileNew = '/etc/damask.conf'
-else:
-  configFileNew = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
-  if not os.path.isdir(os.path.join(os.getenv('HOME'),'.damask')):
-    os.mkdir(os.path.join(os.getenv('HOME'),'.damask'))
+#--- decide where do save the data -------------------------------------------------------------------
+if os.access('/etc/', os.W_OK):                                                                       # super user (no home)
+  configDir = '/etc'
+else:                                                                                                 # normal user
+  configDir = os.path.join(os.getenv('HOME'),'.damask')
+configFileNew = os.path.join(configDir,'damask.conf')
 
 print('\n-----\n writing values to %s\n-----'%configFileNew)
 with open(configFileNew,'w') as f:

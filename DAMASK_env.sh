@@ -11,6 +11,20 @@ fi
 
 [[ -f $HOME/.damask/damask.conf ]] && source $HOME/.damask/damask.conf || source /etc/damask.conf
 
+# if DAMASK_BIN is present and not in $PATH, add it
+if [[ "x$DAMASK_BIN" != "x" && ! `echo ":$PATH:" | grep $DAMASK_BIN:` ]]; then
+  export PATH=$DAMASK_BIN:$PATH
+fi
+
+SOLVER=`which DAMASK_spectral`
+if [ "x$SOLVER" == "x" ]; then
+  export SOLVER='Not found!'
+fi
+PROCESSING=`which postResults`
+if [ "x$PROCESSING" == "x" ]; then
+  export PROCESSING='Not found!'
+fi
+  echo "DAMASK_spectral  `which DAMASK_spectral`"
 
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
@@ -21,6 +35,8 @@ if [ ! -z "$PS1" ]; then
   echo
   echo Using environment with ...
   echo "DAMASK           $DAMASK_ROOT"
+  ([[ "x$SOLVER"       != "x" ]] && echo "Spectral Solver  $SOLVER") 
+  ([[ "x$PROCESSING"   != "x" ]] && echo "Post Processing  $PROCESSING")
   echo "Multithreading   DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   echo "Compiler         F90=$F90"
   ([[ "x$IMKL_ROOT"   != "x" ]] && echo "IMKL             $IMKL_ROOT") || \
@@ -30,8 +46,7 @@ if [ ! -z "$PS1" ]; then
   echo "FFTW             $FFTW_ROOT"
   echo "HDF5             $HDF5_ROOT (for future use)"
   echo
-fi
-
+  fi
 # http://superuser.com/questions/220059/what-parameters-has-ulimit
 ulimit -s unlimited   2>/dev/null # maximum stack size (kB)
 ulimit -h unlimited   2>/dev/null # maximum heap size (kB)

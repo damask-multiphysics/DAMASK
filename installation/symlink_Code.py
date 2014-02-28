@@ -12,13 +12,17 @@ MarcReleases =[2011,2012,2013,2013.1]
 
 baseDir = damask.Environment('../../').relPath('code/')
 
-root=os.access('/usr/local/bin', os.W_OK)
-if root:
-  binDir = '/usr/local/bin'
-else:
-  binDir = os.path.join(os.getenv('HOME'),'bin')
-  if not os.path.isdir(binDir):
-    os.mkdir(binDir)
+try:
+  binDir = damask.Environment().options['DAMASK_BIN']
+except:
+  root=os.access('/usr/local/bin', os.W_OK)
+  if root:
+    binDir = '/usr/local/bin'
+  else:
+    binDir = os.path.join(os.getenv('HOME'),'bin')
+
+if not os.path.isdir(binDir):
+  os.mkdir(binDir)
 
 for dir in bin_link:
   for file in bin_link[dir]:
