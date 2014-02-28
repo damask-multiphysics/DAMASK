@@ -56,7 +56,7 @@ def colorMap(colors,baseIdx=32):
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
-parser = OptionParser(usage="%prog [options] configured scheme | (lower_h,s,l upper_h,s,l)", description = """
+parser = OptionParser(usage="%prog [options] predefinedScheme | (lower_h,s,l upper_h,s,l)", description = """
 Changes the color map in MSC.Mentat. 
 
 Interpolates colors between "lower_hsl" and "upper_hsl". 
@@ -84,7 +84,7 @@ parser.add_option("-n", "--colorcount", type = "int",\
                   help = "number of colors [%default]")
 parser.add_option("-v", "--verbose", action="store_true",\
                   dest = "verbose",\
-                  help = "write Mentat command stream also to stdout [%default]")
+                  help = "write Mentat command stream also to STDOUT [%default]")
 
 parser.set_defaults(port = 40007)
 parser.set_defaults(baseIdx = 32)
@@ -98,16 +98,19 @@ msg = []
 
 (options, colors) = parser.parse_args()
 
-if len(colors) > 0 and colors[0] in damask.Colormap.__predefined__:
-  theMap = damask.Colormap().usePredefined(colors[0])
+if len(colors) == 0:
+  parser.error('missing color information')
+  
+elif len(colors) == 1:
+  theMap = damask.Colormap(predefined = colors[0])
+
+elif len(colors) == 2:
+  theMap = damask.Colormap(damask.Color('HSL',map(float, colors[0].split(','))),
+                           damask.Color('HSL',map(float, colors[1].split(','))) )
+
 else:
-  if len(colors) == 2:
-    left  = map(float, colors[0].split(','))
-    right = map(float, colors[1].split(','))
-  else:
-    left   = [0.0,0.0,1.0]
-    right  = [0.0,0.0,0.0]
-  theMap = damask.Colormap(damask.Color('HSL',left),damask.Color('HSL',right))
+  theMap = damask.Colormap()
+
 if options.inverse:
   theMap = theMap.invert()
 
@@ -117,7 +120,7 @@ elif options.palette:
   for theColor in theMap.export(format='list',steps=options.colorcount):
     print '\t'.join(map(lambda x: str(int(255*x)),theColor))
 else:  
-### connect to mentat and change colorMap
+### connect to Mentat and change colorMap
   sys.path.append(damask.solver.Marc().libraryPath('../../'))
   try:
     from py_mentat import *

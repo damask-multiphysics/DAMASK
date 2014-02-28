@@ -313,8 +313,14 @@ class Colormap():
                left  = Color('RGB',[1,1,1]),
                right = Color('RGB',[0,0,0]),
                interpolate = 'perceptualuniform',
+               predefined = None
                ):
-    
+
+    if str(predefined).lower() in self.__predefined__:
+      left = self.__predefined__[predefined.lower()]['left']
+      right= self.__predefined__[predefined.lower()]['right']
+      interpolate = self.__predefined__[predefined.lower()]['interpolate']
+
     if left.__class__.__name__ != 'Color':
       left = Color()
     if right.__class__.__name__ != 'Color':
@@ -326,27 +332,20 @@ class Colormap():
   
   
   # ------------------------------------------------------------------
+  def __repr__(self):
+    return 'Left: %s Right: %s'%(self.left,self.right)
+  
+  
+  # ------------------------------------------------------------------
   def invert(self):
-    temp = self.left
-    self.left = self.right
-    self.right = temp
+    (self.left, self.right) = (self.right, self.left)
     return self
   
-
-  # ------------------------------------------------------------------
-  def usePredefined(self,name='bluered'):
-    if name.lower() not in self.__predefined__:
-      raise KeyError('colormap "%s" is not defined, use one of "%s"'%(name,'" "'.join(self.__predefined__.keys())))
-    self.left = self.__predefined__[name.lower()]['left']
-    self.right= self.__predefined__[name.lower()]['right']
-    self.interpolate = self.__predefined__[name.lower()]['interpolate']
-    return self
-
   
   # ------------------------------------------------------------------  
   def export(self,name = 'uniformPerceptualColorMap',\
                   format = 'paraview',\
-                  steps = 10,\
+                  steps = 2,\
                   crop = [-1.0,1.0],
                   model = 'RGB'):
     ''' 
@@ -354,19 +353,18 @@ class Colormap():
     arguments: name, format, steps, crop.
     format is one of (paraview, gmsh, raw, list).
     crop selects a (sub)range in [-1.0,1.0].
-    generates
-      sequential map if one limiting color is either white or black,
-      diverging map otherwise.
+    generates sequential map if one limiting color is either white or black,
+    diverging map otherwise.
     '''
     
     import copy,numpy,math
     
-    def interpolate_Msh(lo,hi,frac,model='RGB'):
+    def interpolate_Msh(lo, hi, frac):
 
       def rad_diff(a,b):
         return abs(a[2]-b[2])
 
-      def adjust_hue(Msh_sat,Msh_unsat):                                                                                              # if saturation of one of the two colors is too less than the other, hue of the less
+      def adjust_hue(Msh_sat, Msh_unsat):                                                                                              # if saturation of one of the two colors is too less than the other, hue of the less
         if Msh_sat[0] >= Msh_unsat[0]:
           return Msh_sat[2]
         else:
@@ -381,23 +379,28 @@ class Colormap():
         M_mid = max(Msh1[0],Msh2[0],88.0)
         if frac < 0.5:
           Msh2 = numpy.array([M_mid,0.0,0.0],'d')
-          frac = 2.0*frac
+          frac *= 2.0
         else:
           Msh1 = numpy.array([M_mid,0.0,0.0],'d')
           frac = 2.0*frac - 1.0
       if   Msh1[1] < 0.05 and Msh2[1] > 0.05: Msh1[2] = adjust_hue(Msh2,Msh1)
       elif Msh1[1] > 0.05 and Msh2[1] < 0.05: Msh2[2] = adjust_hue(Msh1,Msh2)
-      Msh = (1.0-frac)*Msh1 + frac*Msh2
-      return Color('MSH',Msh).convertTo(model)
+      Msh = (1.0 - frac) * Msh1 + frac * Msh2
 
-    def linearInterpolate(lo,hi,frac,model='RGB'):
-      color1 = numpy.array(lo.color[:])
-      color2 = numpy.array(hi.expressAs(lo.model).color[:])
-      color = (1.0 - frac) * color1 + frac * color2
-      return Color(lo.model,color).convertTo(model)
+      return Color('MSH',Msh)
+
+    def interpolate_linear(lo, hi, frac):
+      '''
+      linearly interpolate color at given fraction between lower and higher color in model of lower color
+      '''
+
+      interpolation = (1.0 - frac) * numpy.array(lo.color[:]) \
+                           + frac  * numpy.array(hi.expressAs(lo.model).color[:])
+
+      return Color(lo.model,interpolation)
 
     def write_paraview(RGB_vector):
-      colormap ='<ColorMap name="'+str(name)+'" space="RGB">\n'
+      colormap ='<ColorMap name="'+str(name)+'" space="Diverging">\n'
       for i in range(len(RGB_vector)):
         colormap+='<Point x="'+str(i)+'" o="1" r="'+str(RGB_vector[i][0])+'" g="'+str(RGB_vector[i][1])+'" b="'+str(RGB_vector[i][2])+'"/>\n'
       colormap+='</ColorMap>'
@@ -418,23 +421,25 @@ class Colormap():
       
       
     colors = []
-    totalSteps = int(2.0*steps/(crop[1] - crop[0]))
+    frac = (numpy.array(crop) + 1.0)/2.0
 
-    for i in range(totalSteps):
-      if self.interpolate == 'perceptualuniform':
-        color = interpolate_Msh(self.left.expressAs('MSH').color,self.right.expressAs('MSH').color,float(i)/(totalSteps-1),model)
-      elif self.interpolate == 'linear':
-        color = linearInterpolate(self.left,self.right,float(i)/(totalSteps-1),model)
-      else:
-        raise NameError('unknown interpolation method')
-      colors.append(color.color)
+    if self.interpolate == 'perceptualuniform':
+      for i in range(steps):
+        colors.append(interpolate_Msh(self.left.expressAs('MSH').color,
+                                      self.right.expressAs('MSH').color,
+                                      float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]))
+    elif self.interpolate == 'linear':
+      for i in range(steps):
+        colors.append(interpolate_linear(self.left,
+                                         self.right,
+                                         float(i)/(steps-1)*(frac[1]-frac[0])+frac[0]))
+    else:
+      raise NameError('unknown interpolation method')
 
-    leftIndex  = int(round((crop[0]-(-1.0))/(2.0/(totalSteps-1))))
-    rightIndex = leftIndex + steps
     return {\
             'paraview': write_paraview,
             'gmsh':     write_gmsh,
             'gom':      write_GOM,
             'raw':      write_raw,
             'list':     lambda x: x,
-    }[format.lower()](colors[max(leftIndex,0):min(rightIndex,totalSteps)])
+    }[format.lower()](map(lambda x:x.expressAs(model).color,colors))
