@@ -94,7 +94,7 @@ subroutine constitutive_none_init(fileUnit)
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
 
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
- integer(pInt) :: section = 0_pInt, maxNinstance, i
+ integer(pInt) :: section = 0_pInt, maxNinstance, instance
  character(len=32) :: &
    structure  = ''
  character(len=65536) :: &
@@ -136,7 +136,7 @@ subroutine constitutive_none_init(fileUnit)
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
      if (phase_plasticity(section) == PLASTICITY_NONE_ID) then                                      ! one of my sections
-       i = phase_plasticityInstance(section)                                                        ! which instance of my plasticity is present phase
+       instance = phase_plasticityInstance(section)                                                 ! which instance of my plasticity is present phase
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
@@ -145,34 +145,34 @@ subroutine constitutive_none_init(fileUnit)
            structure = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(structure(1:3))
              case(LATTICE_iso_label)
-               constitutive_none_structureID(i) = LATTICE_iso_ID
+               constitutive_none_structureID(instance) = LATTICE_iso_ID
              case(LATTICE_fcc_label)
-               constitutive_none_structureID(i) = LATTICE_fcc_ID
+               constitutive_none_structureID(instance) = LATTICE_fcc_ID
              case(LATTICE_bcc_label)
-               constitutive_none_structureID(i) = LATTICE_bcc_ID
+               constitutive_none_structureID(instance) = LATTICE_bcc_ID
              case(LATTICE_hex_label)
-               constitutive_none_structureID(i) = LATTICE_hex_ID
+               constitutive_none_structureID(instance) = LATTICE_hex_ID
              case(LATTICE_ort_label)
-               constitutive_none_structureID(i) = LATTICE_ort_ID
+               constitutive_none_structureID(instance) = LATTICE_ort_ID
            end select
          case ('c11')
-           constitutive_none_Cslip_66(1,1,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(1,1,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c12')
-           constitutive_none_Cslip_66(1,2,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(1,2,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c13')
-           constitutive_none_Cslip_66(1,3,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(1,3,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c22')
-           constitutive_none_Cslip_66(2,2,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(2,2,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c23')
-           constitutive_none_Cslip_66(2,3,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(2,3,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c33')
-           constitutive_none_Cslip_66(3,3,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(3,3,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c44')
-           constitutive_none_Cslip_66(4,4,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(4,4,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c55')
-           constitutive_none_Cslip_66(5,5,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(5,5,instance) = IO_floatValue(line,positions,2_pInt)
          case ('c66')
-           constitutive_none_Cslip_66(6,6,i) = IO_floatValue(line,positions,2_pInt)
+           constitutive_none_Cslip_66(6,6,instance) = IO_floatValue(line,positions,2_pInt)
          case default
            call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONE_label//')')
        end select
@@ -180,11 +180,11 @@ subroutine constitutive_none_init(fileUnit)
    endif
  enddo
 
- instancesLoop: do i = 1_pInt,maxNinstance
-   constitutive_none_Cslip_66(1:6,1:6,i) = &
-     lattice_symmetrizeC66(constitutive_none_structureID(i),constitutive_none_Cslip_66(1:6,1:6,i))
-   constitutive_none_Cslip_66(1:6,1:6,i) = &                                                        ! Literature data is Voigt, DAMASK uses Mandel
-     math_Mandel3333to66(math_Voigt66to3333(constitutive_none_Cslip_66(1:6,1:6,i)))
+ instancesLoop: do instance = 1_pInt,maxNinstance
+   constitutive_none_Cslip_66(1:6,1:6,instance) = &
+     lattice_symmetrizeC66(constitutive_none_structureID(instance),constitutive_none_Cslip_66(1:6,1:6,instance))
+   constitutive_none_Cslip_66(1:6,1:6,instance) = &                                                 ! Literature data is Voigt, DAMASK uses Mandel
+     math_Mandel3333to66(math_Voigt66to3333(constitutive_none_Cslip_66(1:6,1:6,instance)))
  enddo instancesLoop
 
 end subroutine constitutive_none_init

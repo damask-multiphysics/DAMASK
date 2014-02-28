@@ -128,7 +128,7 @@ subroutine constitutive_j2_init(fileUnit)
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
- integer(pInt) :: section = 0_pInt, maxNinstance, i,o, mySize
+ integer(pInt) :: section = 0_pInt, maxNinstance, instance,o, mySize
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -182,69 +182,69 @@ subroutine constitutive_j2_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt                                                                     ! advance section counter
      if (phase_plasticity(section) == PLASTICITY_J2_ID) then
-       i = phase_plasticityInstance(section)
-       constitutive_j2_Cslip_66(1:6,1:6,i)  = lattice_Cslip_66(1:6,1:6,section)
+       instance = phase_plasticityInstance(section)
+       constitutive_j2_Cslip_66(1:6,1:6,instance)  = lattice_Cslip_66(1:6,1:6,section)
      endif
      cycle                                                                                          ! skip to next line
    endif
    if (section > 0_pInt ) then; if (phase_plasticity(section) == PLASTICITY_J2_ID) then             ! one of my sections. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
-     i = phase_plasticityInstance(section)                                                          ! which instance of my plasticity is present phase
+     instance = phase_plasticityInstance(section)                                                   ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,MAXNCHUNKS) 
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('plasticity','elasticity','lattice_structure','covera_ratio',&
              'c11','c12','c13','c22','c23','c33','c44','c55','c66')
        case ('(output)')
-         constitutive_j2_Noutput(i) = constitutive_j2_Noutput(i) + 1_pInt
-         constitutive_j2_output(constitutive_j2_Noutput(i),i) = &
+         constitutive_j2_Noutput(instance) = constitutive_j2_Noutput(instance) + 1_pInt
+         constitutive_j2_output(constitutive_j2_Noutput(instance),instance) = &
                                             IO_lc(IO_stringValue(line,positions,2_pInt))
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('flowstress')
-             constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = flowstress_ID
+             constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = flowstress_ID
            case ('strainrate')
-             constitutive_j2_outputID(constitutive_j2_Noutput(i),i) = strainrate_ID
+             constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = strainrate_ID
            case default
              call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_J2_label//')')
          end select
        case ('tau0')
-         constitutive_j2_tau0(i)         = IO_floatValue(line,positions,2_pInt)
-         if (constitutive_j2_tau0(i) < 0.0_pReal) &
+         constitutive_j2_tau0(instance)         = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_tau0(instance) < 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('gdot0')
-         constitutive_j2_gdot0(i)        = IO_floatValue(line,positions,2_pInt)
-         if (constitutive_j2_gdot0(i) <= 0.0_pReal) &
+         constitutive_j2_gdot0(instance)        = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_gdot0(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('n')
-         constitutive_j2_n(i)            = IO_floatValue(line,positions,2_pInt)
-         if (constitutive_j2_n(i) <= 0.0_pReal) &
+         constitutive_j2_n(instance)            = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_n(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('h0')
-         constitutive_j2_h0(i)           = IO_floatValue(line,positions,2_pInt)
+         constitutive_j2_h0(instance)           = IO_floatValue(line,positions,2_pInt)
        case ('h0_slope','slopelnrate')
-         constitutive_j2_h0_slopeLnRate(i)  = IO_floatValue(line,positions,2_pInt)
+         constitutive_j2_h0_slopeLnRate(instance)  = IO_floatValue(line,positions,2_pInt)
        case ('tausat')
-         constitutive_j2_tausat(i)          = IO_floatValue(line,positions,2_pInt)
-         if (constitutive_j2_tausat(i) <= 0.0_pReal) &
+         constitutive_j2_tausat(instance)          = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_tausat(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('tausat_sinhfita')
-         constitutive_j2_tausat_SinhFitA(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_j2_tausat_SinhFitA(instance) = IO_floatValue(line,positions,2_pInt)
        case ('tausat_sinhfitb')
-         constitutive_j2_tausat_SinhFitB(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_j2_tausat_SinhFitB(instance) = IO_floatValue(line,positions,2_pInt)
        case ('tausat_sinhfitc')
-         constitutive_j2_tausat_SinhFitC(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_j2_tausat_SinhFitC(instance) = IO_floatValue(line,positions,2_pInt)
        case ('tausat_sinhfitd')
-         constitutive_j2_tausat_SinhFitD(i) = IO_floatValue(line,positions,2_pInt)
+         constitutive_j2_tausat_SinhFitD(instance) = IO_floatValue(line,positions,2_pInt)
        case ('a', 'w0')
-         constitutive_j2_a(i)               = IO_floatValue(line,positions,2_pInt)
-         if (constitutive_j2_a(i) <= 0.0_pReal) &
+         constitutive_j2_a(instance)               = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_a(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('taylorfactor')
-         constitutive_j2_fTaylor(i)         = IO_floatValue(line,positions,2_pInt)
-         if (constitutive_j2_fTaylor(i) <= 0.0_pReal) &
+         constitutive_j2_fTaylor(instance)         = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_fTaylor(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case ('atol_resistance')
-         constitutive_j2_aTolResistance(i)  = IO_floatValue(line,positions,2_pInt)
-         if (constitutive_j2_aTolResistance(i) <= 0.0_pReal) &
+         constitutive_j2_aTolResistance(instance)  = IO_floatValue(line,positions,2_pInt)
+         if (constitutive_j2_aTolResistance(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case default
          call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
@@ -252,18 +252,18 @@ subroutine constitutive_j2_init(fileUnit)
    endif; endif
  enddo
 
- instancesLoop: do i = 1_pInt,maxNinstance
-   outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(i)
-     select case(constitutive_j2_outputID(o,i))
+ instancesLoop: do instance = 1_pInt,maxNinstance
+   outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(instance)
+     select case(constitutive_j2_outputID(o,instance))
        case(flowstress_ID,strainrate_ID)
          mySize = 1_pInt
        case default
      end select
   
      if (mySize > 0_pInt) then                                                                      ! any meaningful output found
-       constitutive_j2_sizePostResult(o,i) = mySize
-       constitutive_j2_sizePostResults(i) = &
-       constitutive_j2_sizePostResults(i) + mySize
+       constitutive_j2_sizePostResult(o,instance) = mySize
+       constitutive_j2_sizePostResults(instance) = &
+       constitutive_j2_sizePostResults(instance) + mySize
      endif
    enddo outputsLoop
  enddo instancesLoop
@@ -275,13 +275,13 @@ end subroutine constitutive_j2_init
 !> @brief sets the initial microstructural state for a given instance of this plasticity
 !> @details initial microstructural state is set to the value specified by tau0
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_stateInit(matID)
+pure function constitutive_j2_stateInit(instance)
   
  implicit none
  real(pReal),   dimension(1)            :: constitutive_j2_stateInit
- integer(pInt),              intent(in) :: matID                                                    !< number specifying the instance of the plasticity
+ integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the plasticity
  
- constitutive_j2_stateInit = constitutive_j2_tau0(matID)
+ constitutive_j2_stateInit = constitutive_j2_tau0(instance)
 
 end function constitutive_j2_stateInit
 
@@ -289,15 +289,15 @@ end function constitutive_j2_stateInit
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant state values for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_aTolState(matID)
+pure function constitutive_j2_aTolState(instance)
 
  implicit none
- integer(pInt), intent(in) :: matID                                                                 !< number specifying the instance of the plasticity
+ integer(pInt), intent(in) :: instance                                                              !< number specifying the instance of the plasticity
 
- real(pReal), dimension(constitutive_j2_sizeState(matID)) :: &
+ real(pReal), dimension(constitutive_j2_sizeState(instance)) :: &
                               constitutive_j2_aTolState
 
- constitutive_j2_aTolState = constitutive_j2_aTolResistance(matID)
+ constitutive_j2_aTolState = constitutive_j2_aTolResistance(instance)
 
 end function constitutive_j2_aTolState
 
@@ -372,10 +372,10 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    norm_Tstar_dev, &                                                                                !< euclidean norm of Tstar_dev
    squarenorm_Tstar_dev                                                                             !< square of the euclidean norm of Tstar_dev
  integer(pInt) :: &
-   matID, &
+   instance, &
    k, l, m, n
 
- matID = phase_plasticityInstance(material_phase(ipc,ip,el))
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  Tstar_dev_33 = math_deviatoric33(math_Mandel6to33(Tstar_v))                                        ! deviatoric part of 2nd Piola-Kirchhoff stress
  squarenorm_Tstar_dev = math_mul33xx33(Tstar_dev_33,Tstar_dev_33)
  norm_Tstar_dev = sqrt(squarenorm_Tstar_dev) 
@@ -384,22 +384,22 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    Lp = 0.0_pReal
    dLp_dTstar99 = 0.0_pReal
  else
-   gamma_dot = constitutive_j2_gdot0(matID) &
-             * (sqrt(1.5_pReal) * norm_Tstar_dev & 
-                / constitutive_j2_fTaylor(matID) / state(ipc,ip,el)%p(1)) **constitutive_j2_n(matID)
+   gamma_dot = constitutive_j2_gdot0(instance) &
+             * (sqrt(1.5_pReal) * norm_Tstar_dev / constitutive_j2_fTaylor(instance) / state(ipc,ip,el)%p(1)) &
+                                                  **constitutive_j2_n(instance)
 
-   Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/constitutive_j2_fTaylor(matID)
+   Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/constitutive_j2_fTaylor(instance)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
-     dLp_dTstar_3333(k,l,m,n) = (constitutive_j2_n(matID)-1.0_pReal) * &
+     dLp_dTstar_3333(k,l,m,n) = (constitutive_j2_n(instance)-1.0_pReal) * &
                                       Tstar_dev_33(k,l)*Tstar_dev_33(m,n) / squarenorm_Tstar_dev
    forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
      dLp_dTstar_3333(k,l,k,l) = dLp_dTstar_3333(k,l,k,l) + 1.0_pReal
    forall (k=1_pInt:3_pInt,m=1_pInt:3_pInt) &
      dLp_dTstar_3333(k,k,m,m) = dLp_dTstar_3333(k,k,m,m) - 1.0_pReal/3.0_pReal
-   dLp_dTstar99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(matID) * &
+   dLp_dTstar99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(instance) * &
                                       dLp_dTstar_3333 / norm_Tstar_dev)
  end if
 
@@ -442,9 +442,9 @@ pure function constitutive_j2_dotState(Tstar_v,state,ipc,ip,el)
    saturation, &                                                                                    !< saturation resistance
    norm_Tstar_dev                                                                                   !< euclidean norm of Tstar_dev
  integer(pInt) :: &
-   matID
+   instance
 
- matID = phase_plasticityInstance(material_phase(ipc,ip,el))
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
 !--------------------------------------------------------------------------------------------------
 ! norm of deviatoric part of 2nd Piola-Kirchhoff stress
  Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
@@ -453,31 +453,31 @@ pure function constitutive_j2_dotState(Tstar_v,state,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! strain rate 
- gamma_dot = constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
+ gamma_dot = constitutive_j2_gdot0(instance) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
             / &!-----------------------------------------------------------------------------------
-              (constitutive_j2_fTaylor(matID) * state(ipc,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
+              (constitutive_j2_fTaylor(instance) * state(ipc,ip,el)%p(1)) ) ** constitutive_j2_n(instance)
  
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
-   if (constitutive_j2_tausat_SinhFitA(matID) == 0.0_pReal) then
-     saturation = constitutive_j2_tausat(matID)
+   if (constitutive_j2_tausat_SinhFitA(instance) == 0.0_pReal) then
+     saturation = constitutive_j2_tausat(instance)
    else
-     saturation = (  constitutive_j2_tausat(matID) &
-                   + ( log(  ( gamma_dot / constitutive_j2_tausat_SinhFitA(matID)&
-                               )**(1.0_pReal / constitutive_j2_tausat_SinhFitD(matID))&
-                            + sqrt(  ( gamma_dot / constitutive_j2_tausat_SinhFitA(matID) &
-                                      )**(2.0_pReal / constitutive_j2_tausat_SinhFitD(matID)) &
+     saturation = (  constitutive_j2_tausat(instance) &
+                   + ( log(  ( gamma_dot / constitutive_j2_tausat_SinhFitA(instance)&
+                               )**(1.0_pReal / constitutive_j2_tausat_SinhFitD(instance))&
+                            + sqrt(  ( gamma_dot / constitutive_j2_tausat_SinhFitA(instance) &
+                                      )**(2.0_pReal / constitutive_j2_tausat_SinhFitD(instance)) &
                                    + 1.0_pReal ) &
                             ) & ! asinh(K) = ln(K + sqrt(K^2 +1))
-                       )**(1.0_pReal / constitutive_j2_tausat_SinhFitC(matID)) &
-                   / (  constitutive_j2_tausat_SinhFitB(matID) &
-                      * (gamma_dot / constitutive_j2_gdot0(matID))**(1.0_pReal / constitutive_j2_n(matID)) &
+                       )**(1.0_pReal / constitutive_j2_tausat_SinhFitC(instance)) &
+                   / (  constitutive_j2_tausat_SinhFitB(instance) &
+                      * (gamma_dot / constitutive_j2_gdot0(instance))**(1.0_pReal / constitutive_j2_n(instance)) &
                       ) &
                    )
    endif
-   hardening = ( constitutive_j2_h0(matID) + constitutive_j2_h0_slopeLnRate(matID) * log(gamma_dot) ) &
-               * abs( 1.0_pReal - state(ipc,ip,el)%p(1)/saturation )**constitutive_j2_a(matID) &
+   hardening = ( constitutive_j2_h0(instance) + constitutive_j2_h0_slopeLnRate(instance) * log(gamma_dot) ) &
+               * abs( 1.0_pReal - state(ipc,ip,el)%p(1)/saturation )**constitutive_j2_a(instance) &
                * sign(1.0_pReal, 1.0_pReal - state(ipc,ip,el)%p(1)/saturation)
  else
    hardening = 0.0_pReal
@@ -523,11 +523,11 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  real(pReal) :: &
    norm_Tstar_dev                                                                                   ! euclidean norm of Tstar_dev
  integer(pInt) :: &
-   matID, &
+   instance, &
    o, &
    c
  
- matID = phase_plasticityInstance(material_phase(ipc,ip,el))
+ instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  
 !--------------------------------------------------------------------------------------------------
 ! calculate deviatoric part of 2nd Piola-Kirchhoff stress and its norm
@@ -539,15 +539,15 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  constitutive_j2_postResults = 0.0_pReal
 
  outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
-   select case(constitutive_j2_outputID(o,matID))
+   select case(constitutive_j2_outputID(o,instance))
      case (flowstress_ID)
        constitutive_j2_postResults(c+1_pInt) = state(ipc,ip,el)%p(1)
        c = c + 1_pInt
      case (strainrate_ID)
        constitutive_j2_postResults(c+1_pInt) = &
-                constitutive_j2_gdot0(matID) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
+                constitutive_j2_gdot0(instance) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
              / &!----------------------------------------------------------------------------------
-              (constitutive_j2_fTaylor(matID) * state(ipc,ip,el)%p(1)) ) ** constitutive_j2_n(matID)
+              (constitutive_j2_fTaylor(instance) * state(ipc,ip,el)%p(1)) ) ** constitutive_j2_n(instance)
        c = c + 1_pInt
    end select
  enddo outputsLoop

@@ -138,9 +138,9 @@ subroutine constitutive_init
   cMax, &                                                                                           !< maximum number of grains
   iMax, &                                                                                           !< maximum number of integration points
   eMax, &                                                                                           !< maximum number of elements
-  p, &
+  phase, &
   s, &
-  matID,& 
+  instance,& 
   myNgrains
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
@@ -170,10 +170,10 @@ subroutine constitutive_init
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
  call IO_write_jobFile(FILEUNIT,'outputConstitutive') 
- do p = 1_pInt,material_Nphase
-   i = phase_plasticityInstance(p)                                                                  ! which instance of a plasticity is present phase
+ do phase = 1_pInt,material_Nphase
+   instance = phase_plasticityInstance(phase)                                                       ! which instance of a plasticity is present phase
    knownPlasticity = .true.                                                                         ! assume valid
-   select case(phase_plasticity(p))                                                                 ! split per constititution
+   select case(phase_plasticity(phase))                                                             ! split per constititution
      case (PLASTICITY_NONE_ID)
        outputName = PLASTICITY_NONE_label
        thisOutput => NULL()                                                                         ! constitutive_none_output
@@ -201,11 +201,11 @@ subroutine constitutive_init
      case default
        knownPlasticity = .false.
    end select   
-   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(p))//']'
+   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
    if (knownPlasticity) then
      write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-     do e = 1_pInt,phase_Noutput(p)
-       write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+     do e = 1_pInt,phase_Noutput(instance)
+       write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
      enddo
    endif
  enddo
@@ -247,28 +247,28 @@ subroutine constitutive_init
        select case(phase_elasticity(material_phase(g,i,e)))                                            
          case default                                                                               ! so far no output for elasticity
        end select
-       matID = phase_plasticityInstance(material_phase(g,i,e))
+       instance = phase_plasticityInstance(material_phase(g,i,e))
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_none_sizeState(matID)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_none_sizeState(matID)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_none_sizeState(matID)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_none_sizeState(matID)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_none_sizeState(matID)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_none_sizeState(matID)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_none_sizeDotState(matID)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_none_sizeDotState(matID)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_none_sizeDotState(matID)))
+           allocate(constitutive_state0(g,i,e)%p(constitutive_none_sizeState(instance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_none_sizeState(instance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_none_sizeState(instance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_none_sizeState(instance)))
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_none_sizeState(instance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_none_sizeState(instance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_none_sizeDotState(instance)))
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_none_sizeDotState(instance)))
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_none_sizeDotState(instance)))
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_none_sizeDotState(matID)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_none_sizeDotState(matID)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_none_sizeDotState(instance)))
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_none_sizeDotState(instance)))
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_none_sizeDotState(matID))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_none_sizeDotState(instance))) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_none_sizeDotState(matID))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_none_sizeDotState(instance))) 
              enddo
            endif
            constitutive_state0(g,i,e)%p =           0.0_pReal
@@ -277,141 +277,141 @@ subroutine constitutive_init
            constitutive_sizeDotState(g,i,e) =       0_pInt
            constitutive_sizePostResults(g,i,e) =    0_pInt
          case (PLASTICITY_J2_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(matID)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(matID)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(matID)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_j2_sizeState(matID)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_j2_sizeState(matID)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_j2_sizeState(matID)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(matID)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_j2_sizeDotState(matID)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_j2_sizeDotState(matID)))
+           allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(instance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_j2_sizeState(instance)))
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_j2_sizeState(instance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_j2_sizeState(instance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_j2_sizeDotState(matID)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_j2_sizeDotState(matID)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_j2_sizeDotState(matID))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_j2_sizeDotState(instance))) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_j2_sizeDotState(matID))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_j2_sizeDotState(instance))) 
              enddo
            endif
-           constitutive_state0(g,i,e)%p =           constitutive_j2_stateInit(matID)
-           constitutive_aTolState(g,i,e)%p =        constitutive_j2_aTolState(matID)
-           constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(matID)
-           constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(matID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(matID)
+           constitutive_state0(g,i,e)%p =           constitutive_j2_stateInit(instance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_j2_aTolState(instance)
+           constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(instance)
+           constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(instance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(instance)
          case (PLASTICITY_PHENOPOWERLAW_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(matID)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(matID)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(matID)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(matID)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeState(matID)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(matID)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(matID)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(matID)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(matID)))
+           allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(matID)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(matID)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(matID))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance))) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(matID))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance))) 
              enddo
            endif
-           constitutive_state0(g,i,e)%p =           constitutive_phenopowerlaw_stateInit(matID)
-           constitutive_aTolState(g,i,e)%p =        constitutive_phenopowerlaw_aTolState(matID)
-           constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(matID)
-           constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(matID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(matID)
+           constitutive_state0(g,i,e)%p =           constitutive_phenopowerlaw_stateInit(instance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_phenopowerlaw_aTolState(instance)
+           constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(instance)
+           constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(instance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(instance)
          case (PLASTICITY_DISLOTWIN_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(matID)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislotwin_sizeState(matID)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(matID)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(matID)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_dislotwin_sizeState(matID)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(matID)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(matID)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_dislotwin_sizeDotState(matID)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(matID)))
+           allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(matID)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(matID)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(matID))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance))) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(matID))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(instance))) 
              enddo
            endif
-           constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(matID)
-           constitutive_aTolState(g,i,e)%p =        constitutive_dislotwin_aTolState(matID)
-           constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(matID)
-           constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(matID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(matID)
+           constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(instance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_dislotwin_aTolState(instance)
+           constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(instance)
+           constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(instance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(instance)
          case (PLASTICITY_TITANMOD_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_titanmod_sizeState(matID)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_titanmod_sizeState(matID)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_titanmod_sizeState(matID)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_titanmod_sizeState(matID)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_titanmod_sizeState(matID)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_titanmod_sizeState(matID)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(matID)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_titanmod_sizeDotState(matID)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_titanmod_sizeDotState(matID)))
+           allocate(constitutive_state0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_titanmod_sizeDotState(matID)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_titanmod_sizeDotState(matID)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(matID))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance))) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_titanmod_sizeDotState(matID))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_titanmod_sizeDotState(instance))) 
              enddo
            endif
-           constitutive_state0(g,i,e)%p =           constitutive_titanmod_stateInit(matID)
-           constitutive_aTolState(g,i,e)%p =        constitutive_titanmod_aTolState(matID)
-           constitutive_sizeState(g,i,e) =          constitutive_titanmod_sizeState(matID)
-           constitutive_sizeDotState(g,i,e) =       constitutive_titanmod_sizeDotState(matID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_titanmod_sizePostResults(matID)
+           constitutive_state0(g,i,e)%p =           constitutive_titanmod_stateInit(instance)
+           constitutive_aTolState(g,i,e)%p =        constitutive_titanmod_aTolState(instance)
+           constitutive_sizeState(g,i,e) =          constitutive_titanmod_sizeState(instance)
+           constitutive_sizeDotState(g,i,e) =       constitutive_titanmod_sizeDotState(instance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_titanmod_sizePostResults(instance)
          case (PLASTICITY_NONLOCAL_ID)
            nonlocalConstitutionPresent = .true.
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(matID)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(matID)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(matID)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_nonlocal_sizeState(matID)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_nonlocal_sizeState(matID)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_nonlocal_sizeState(matID)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(matID)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_nonlocal_sizeDotState(matID)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_nonlocal_sizeDotState(matID)))
+           allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
+           allocate(constitutive_state(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(matID)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_nonlocal_sizeDotState(matID)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(matID))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance))) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_nonlocal_sizeDotState(matID))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_nonlocal_sizeDotState(instance))) 
              enddo
            endif
-           constitutive_aTolState(g,i,e)%p =        constitutive_nonlocal_aTolState(matID)
-           constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(matID)
-           constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(matID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(matID)
+           constitutive_aTolState(g,i,e)%p =        constitutive_nonlocal_aTolState(instance)
+           constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(instance)
+           constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(instance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
        end select
      enddo
    enddo
