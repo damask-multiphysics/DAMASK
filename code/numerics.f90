@@ -163,11 +163,14 @@ subroutine numerics_init
 #include "compilation_info.f90"
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
-!$ if(gotDAMASK_NUM_THREADS /= 0) & 
+!$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
 !$   call IO_warning(35_pInt,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
-!$ read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                        ! ...convert it to integer...
-!$ if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                           ! ...ensure that its at least one...
-!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! ...and use it as number of threads for parallel execution
+!$   DAMASK_NumThreadsInt = 1
+!$ else
+!$   read(DAMASK_NumThreadsString,'(i6)') DAMASK_NumThreadsInt                                      ! read as integer
+!$   if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                         ! in case of string conversion fails, set it to one
+!$ endif
+!$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
 
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
