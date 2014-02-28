@@ -414,27 +414,27 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    constitutive_phenopowerlaw_totalNtwin(instance) = sum(constitutive_phenopowerlaw_Ntwin(:,instance))            ! how many twin systems altogether
 
    if (any(constitutive_phenopowerlaw_tau0_slip(:,instance) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,instance) > 0))        call IO_error(211_pInt,el=instance,ext_msg='tau0_slip (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
-   if (constitutive_phenopowerlaw_gdot0_slip(instance) <= 0.0_pReal) call IO_error(211_pInt,el=instance,ext_msg='gdot0_slip (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
-   if (constitutive_phenopowerlaw_n_slip(instance) <= 0.0_pReal)     call IO_error(211_pInt,el=instance,ext_msg='n_slip (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
+           constitutive_phenopowerlaw_Nslip(:,instance) > 0)) &
+     call IO_error(211_pInt,el=instance,ext_msg='tau0_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
+   if (constitutive_phenopowerlaw_gdot0_slip(instance) <= 0.0_pReal) &
+     call IO_error(211_pInt,el=instance,ext_msg='gdot0_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
+   if (constitutive_phenopowerlaw_n_slip(instance) <= 0.0_pReal) &
+     call IO_error(211_pInt,el=instance,ext_msg='n_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_tausat_slip(:,instance) <= 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,instance) > 0))        call IO_error(211_pInt,el=instance,ext_msg='tausat_slip (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
+           constitutive_phenopowerlaw_Nslip(:,instance) > 0)) &
+     call IO_error(211_pInt,el=instance,ext_msg='tausat_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_a_slip(instance) == 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Nslip(:,instance) > 0))        call IO_error(211_pInt,el=instance,ext_msg='a_slip (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
+           constitutive_phenopowerlaw_Nslip(:,instance) > 0)) &
+     call IO_error(211_pInt,el=instance,ext_msg='a_slip ('//PLASTICITY_PHENOPOWERLAW_label//')')
    if (any(constitutive_phenopowerlaw_tau0_twin(:,instance) < 0.0_pReal .and. &
-           constitutive_phenopowerlaw_Ntwin(:,instance) > 0))        call IO_error(211_pInt,el=instance,ext_msg='tau0_twin (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
+           constitutive_phenopowerlaw_Ntwin(:,instance) > 0)) &
+     call IO_error(211_pInt,el=instance,ext_msg='tau0_twin ('//PLASTICITY_PHENOPOWERLAW_label//')')
    if (    constitutive_phenopowerlaw_gdot0_twin(instance) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,instance) > 0))        call IO_error(211_pInt,el=instance,ext_msg='gdot0_twin (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
+       any(constitutive_phenopowerlaw_Ntwin(:,instance) > 0)) &
+     call IO_error(211_pInt,el=instance,ext_msg='gdot0_twin ('//PLASTICITY_PHENOPOWERLAW_label//')')
    if (    constitutive_phenopowerlaw_n_twin(instance) <= 0.0_pReal .and. &
-       any(constitutive_phenopowerlaw_Ntwin(:,instance) > 0))        call IO_error(211_pInt,el=instance,ext_msg='n_twin (' &
-                                                                 //PLASTICITY_PHENOPOWERLAW_label//')')
+       any(constitutive_phenopowerlaw_Ntwin(:,instance) > 0)) &
+     call IO_error(211_pInt,el=instance,ext_msg='n_twin ('//PLASTICITY_PHENOPOWERLAW_label//')')
    if (constitutive_phenopowerlaw_aTolResistance(instance) <= 0.0_pReal) &
      constitutive_phenopowerlaw_aTolResistance(instance) = 1.0_pReal                                       ! default absolute tolerance 1 Pa
    if (constitutive_phenopowerlaw_aTolShear(instance) <= 0.0_pReal) &
