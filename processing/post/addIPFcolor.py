@@ -2,6 +2,7 @@
 
 import os,sys,string,re,math,numpy
 import damask
+from collections import defaultdict
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID = '$Id$'
@@ -96,8 +97,8 @@ for file in files:
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out columns to process
-  active = {}
-  column = {}
+  active = defaultdict(list)
+  column = defaultdict(dict)
 
   for datatype,info in datainfo.items():
     for label in info['label']:
@@ -105,8 +106,6 @@ for file in files:
       for key in ['1_'+label,label]:
         if key in table.labels:
           foundIt = True
-          if datatype not in active: active[datatype] = []
-          if datatype not in column: column[datatype] = {}
           active[datatype].append(label)
           column[datatype][label] = table.labels.index(key)                 # remember columns of requested data
       if not foundIt:
