@@ -3324,7 +3324,6 @@ subroutine crystallite_orientations
  use math, only: &
    math_pDecomposition, &
    math_RtoQ, &
-   math_qDisorientation, &
    math_qConj
  use FEsolving, only: &
    FEsolving_execElem, & 
@@ -3342,9 +3341,12 @@ subroutine crystallite_orientations
    FE_NipNeighbors, &
    FE_geomtype, &
    FE_celltype
+ use lattice, only: &
+   lattice_qDisorientation
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_structure, &
    constitutive_nonlocal_updateCompatibility
+
  
  implicit none
  integer(pInt) &
@@ -3384,7 +3386,7 @@ subroutine crystallite_orientations
          else
            orientation = math_RtoQ(transpose(R))
          endif
-         crystallite_rotation(1:4,g,i,e) = math_qDisorientation(crystallite_orientation0(1:4,g,i,e), &  ! active rotation from ori0
+         crystallite_rotation(1:4,g,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,g,i,e), &  ! active rotation from ori0
                                                                 orientation, &                          ! to current orientation
                                                                 0_pInt )                                ! we don't want symmetry here  
          crystallite_orientation(1:4,g,i,e) = orientation
@@ -3419,7 +3421,7 @@ subroutine crystallite_orientations
                neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure
                if (myStructure == neighboringStructure) then                                               ! if my neighbor has same crystal structure like me
                  crystallite_disorientation(:,n,1,i,e) = &
-                   math_qDisorientation( crystallite_orientation(1:4,1,i,e), &
+                   lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
                                                   crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
                                                   crystallite_symmetryID(1,i,e))                           ! calculate disorientation
                else                                                                                        ! for neighbor with different phase

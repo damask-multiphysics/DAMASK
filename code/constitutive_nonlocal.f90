@@ -2887,8 +2887,7 @@ end function constitutive_nonlocal_dotState
 subroutine constitutive_nonlocal_updateCompatibility(orientation,i,e)
 
 use math, only:       math_mul3x3, &
-                      math_qRot, &
-                      math_qDisorientation
+                      math_qRot
 use material, only:   material_phase, &
                       material_texture, &
                       phase_localPlasticity, &
@@ -2902,7 +2901,8 @@ use mesh, only:       mesh_element, &
                       FE_geomtype, &
                       FE_celltype
 use lattice, only:    lattice_sn, &
-                      lattice_sd
+                      lattice_sd, &
+                      lattice_qDisorientation
 
 implicit none
 
@@ -3017,7 +3017,7 @@ do n = 1_pInt,Nneighbors
   !* Finally the smallest my_compatibility value is decreased until the sum is exactly equal to one. 
   !* All values below the threshold are set to zero.
   else
-    absoluteMisorientation = math_qDisorientation(orientation(1:4,1,i,e), &
+    absoluteMisorientation = lattice_qDisorientation(orientation(1:4,1,i,e), &
                                                   orientation(1:4,1,neighbor_i,neighbor_e), &
                                                   0_pInt)      ! no symmetry
     do s1 = 1_pInt,ns    ! my slip systems

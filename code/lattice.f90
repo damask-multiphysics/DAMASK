@@ -678,6 +678,117 @@ module lattice
    lattice_structureID
  real(pReal),                                dimension(:,:,:),   allocatable, public, protected :: &
    lattice_Cslip_66
+
+
+integer(pInt), dimension(2), parameter, private :: &
+   lattice_NsymOperations = [24_pInt,12_pInt]       
+
+real(pReal), dimension(4,36), parameter, private :: &
+  lattice_symOperations = reshape([&
+     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! cubic symmetry operations
+     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal, &       !     2-fold symmetry
+     0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
+     0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal, &
+     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal, &
+     0.0_pReal,                -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
+     0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal,  0.0_pReal, &
+     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &                      !     3-fold symmetry
+    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
+     0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
+    -0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
+     0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
+    -0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
+     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
+    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
+     0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &                      !     4-fold symmetry
+     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &
+    -0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &
+     0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
+     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
+    -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
+     0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
+     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal, &
+    -0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
+     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! hexagonal symmetry operations
+     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      !     2-fold symmetry
+     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
+     0.0_pReal,                 0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
+     0.0_pReal,                -0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
+     0.0_pReal,                 0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
+     0.0_pReal,                -0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
+     0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &                      !     6-fold symmetry
+    -0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &
+     0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
+    -0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
+     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
+     ],[4,36])  !< Symmetry operations as quaternions 24 for cubic, 12 for hexagonal = 36
+
+ ! use this later on to substitute the matrix above
+ !   if self.lattice == 'cubic':
+ !     symQuats =  [
+ !                   [ 1.0,0.0,0.0,0.0 ],
+ !                   [ 0.0,1.0,0.0,0.0 ],
+ !                   [ 0.0,0.0,1.0,0.0 ],
+ !                   [ 0.0,0.0,0.0,1.0 ],
+ !                   [ 0.0, 0.0, 0.5*math.sqrt(2), 0.5*math.sqrt(2) ],
+ !                   [ 0.0, 0.0, 0.5*math.sqrt(2),-0.5*math.sqrt(2) ],
+ !                   [ 0.0, 0.5*math.sqrt(2), 0.0, 0.5*math.sqrt(2) ],
+ !                   [ 0.0, 0.5*math.sqrt(2), 0.0,-0.5*math.sqrt(2) ],
+ !                   [ 0.0, 0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0 ],
+ !                   [ 0.0,-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0 ],
+ !                   [ 0.5, 0.5, 0.5, 0.5 ],
+ !                   [-0.5, 0.5, 0.5, 0.5 ],
+ !                   [-0.5, 0.5, 0.5,-0.5 ],
+ !                   [-0.5, 0.5,-0.5, 0.5 ],
+ !                   [-0.5,-0.5, 0.5, 0.5 ],
+ !                   [-0.5,-0.5, 0.5,-0.5 ],
+ !                   [-0.5,-0.5,-0.5, 0.5 ],
+ !                   [-0.5, 0.5,-0.5,-0.5 ],
+ !                   [-0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
+ !                   [ 0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
+ !                   [-0.5*math.sqrt(2), 0.0, 0.5*math.sqrt(2), 0.0 ],
+ !                   [-0.5*math.sqrt(2), 0.0,-0.5*math.sqrt(2), 0.0 ],
+ !                   [-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0, 0.0 ],
+ !                   [-0.5*math.sqrt(2),-0.5*math.sqrt(2), 0.0, 0.0 ],
+ !                 ]
+ !   elif self.lattice == 'hexagonal':
+ !     symQuats =  [
+ !                   [ 1.0,0.0,0.0,0.0 ],
+ !                   [ 0.0,1.0,0.0,0.0 ],
+ !                   [ 0.0,0.0,1.0,0.0 ],
+ !                   [ 0.0,0.0,0.0,1.0 ],
+ !                   [-0.5*math.sqrt(3), 0.0, 0.0, 0.5 ],
+ !                   [-0.5*math.sqrt(3), 0.0, 0.0,-0.5 ],
+ !                   [ 0.0, 0.5*math.sqrt(3), 0.5, 0.0 ],
+ !                   [ 0.0,-0.5*math.sqrt(3), 0.5, 0.0 ],
+ !                   [ 0.0, 0.5,-0.5*math.sqrt(3), 0.0 ],
+ !                   [ 0.0,-0.5,-0.5*math.sqrt(3), 0.0 ],
+ !                   [ 0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
+ !                   [-0.5, 0.0, 0.0, 0.5*math.sqrt(3) ],
+ !                 ]
+ !   elif self.lattice == 'tetragonal':
+ !     symQuats =  [
+ !                   [ 1.0,0.0,0.0,0.0 ],
+ !                   [ 0.0,1.0,0.0,0.0 ],
+ !                   [ 0.0,0.0,1.0,0.0 ],
+ !                   [ 0.0,0.0,0.0,1.0 ],
+ !                   [ 0.0, 0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
+ !                   [ 0.0,-0.5*math.sqrt(2), 0.5*math.sqrt(2), 0.0 ],
+ !                   [ 0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
+ !                   [-0.5*math.sqrt(2), 0.0, 0.0, 0.5*math.sqrt(2) ],
+ !                 ]
+ !   elif self.lattice == 'orthorhombic':
+ !     symQuats =  [
+ !                   [ 1.0,0.0,0.0,0.0 ],
+ !                   [ 0.0,1.0,0.0,0.0 ],
+ !                   [ 0.0,0.0,1.0,0.0 ],
+ !                   [ 0.0,0.0,0.0,1.0 ],
+ !                 ]
+ !   else:
+ !     symQuats =  [
+ !                   [ 1.0,0.0,0.0,0.0 ],
+ !                 ]
+
  character(len=*),                         parameter,            public :: &
    LATTICE_iso_label         = 'iso', &
    LATTICE_fcc_label         = 'fcc', &
@@ -691,6 +802,7 @@ module lattice
   lattice_symmetryType, &
   lattice_symmetrizeC66, &
   lattice_configNchunks, &
+  lattice_qDisorientation, &
   LATTICE_undefined_ID, &
   LATTICE_iso_ID, &
   LATTICE_fcc_ID, &
@@ -1182,6 +1294,89 @@ pure function lattice_symmetrizeC66(struct_ID,C66)
   end select
   
  end function lattice_symmetrizeC66
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief figures whether unit quat falls into stereographic standard triangle
+!--------------------------------------------------------------------------------------------------
+logical pure function lattice_qInSST(Q, symmetryType)
+ use math, only: &
+   math_qToRodrig
+
+ implicit none
+ real(pReal), dimension(4), intent(in) ::      Q                           ! orientation
+ integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
+ real(pReal), dimension(3) ::                  Rodrig                      ! Rodrigues vector of Q
+
+ Rodrig = math_qToRodrig(Q)
+ if (any(Rodrig/=Rodrig)) then
+   lattice_qInSST = .false.
+ else
+   select case (symmetryType)
+     case (1_pInt)
+       lattice_qInSST = Rodrig(1) > Rodrig(2) .and. &
+                        Rodrig(2) > Rodrig(3) .and. &
+                        Rodrig(3) > 0.0_pReal
+     case (2_pInt)
+       lattice_qInSST = Rodrig(1) > sqrt(3.0_pReal)*Rodrig(2) .and. &
+                        Rodrig(2) > 0.0_pReal .and. &
+                        Rodrig(3) > 0.0_pReal
+     case default
+       lattice_qInSST = .true.
+   end select
+ endif
+
+end function lattice_qInSST
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates the disorientation for 2 unit quaternions
+!--------------------------------------------------------------------------------------------------
+function lattice_qDisorientation(Q1, Q2, symmetryType)
+ use prec, only: &
+  tol_math_check
+ use math, only: &
+   math_qMul, &
+   math_qConj
+
+ real(pReal), dimension(4) ::                  lattice_qDisorientation
+ real(pReal), dimension(4), intent(in) ::      Q1, &                                                ! 1st orientation
+                                               Q2                                                   ! 2nd orientation
+ integer(pInt), intent(in) ::                  symmetryType                                         ! Type of crystal symmetry; 1:cubic, 2:hexagonal
+
+! integer(kind(LATTICE_undefined_ID)), optional, intent(in) :: &                                     ! if given, symmetries between the two orientation will be considered
+!   struct
+
+ real(pReal), dimension(4) ::                  dQ,dQsymA,mis
+ integer(pInt)    ::                           i,j,k,s
+
+
+
+ dQ = math_qMul(math_qConj(Q1),Q2)
+ lattice_qDisorientation = dQ
+
+ select case (symmetryType)
+   case (0_pInt)
+     if (lattice_qDisorientation(1) < 0.0_pReal) &
+        lattice_qDisorientation = -lattice_qDisorientation                                          ! keep omega within 0 to 180 deg
+
+    case (1_pInt,2_pInt)
+      s = sum(lattice_NsymOperations(1:symmetryType-1_pInt))
+      do i = 1_pInt,2_pInt
+        dQ = math_qConj(dQ)                                                                         ! switch order of "from -- to"
+        do j = 1_pInt,lattice_NsymOperations(symmetryType)                                          ! run through first crystal's symmetries
+          dQsymA = math_qMul(lattice_symOperations(1:4,s+j),dQ)                                     ! apply sym
+          do k = 1_pInt,lattice_NsymOperations(symmetryType)                                        ! run through 2nd crystal's symmetries
+            mis = math_qMul(dQsymA,lattice_symOperations(1:4,s+k))                                  ! apply sym
+            if (mis(1) < 0.0_pReal) &                                                               ! want positive angle
+              mis = -mis
+            if (mis(1)-lattice_qDisorientation(1) > -tol_math_check .and. &
+                lattice_qInSST(mis,symmetryType)) &
+              lattice_qDisorientation = mis                                                         ! found better one
+      enddo; enddo; enddo
+  end select
+
+end function lattice_qDisorientation
 
 
 !--------------------------------------------------------------------------------------------------

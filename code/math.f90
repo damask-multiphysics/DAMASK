@@ -91,49 +91,6 @@ module math
      3_pInt,3_pInt  &
      ],[2,9])                                                                                       !< arrangement in Plain notation
 
-integer(pInt), dimension(2), parameter, private :: &
-   math_NsymOperations = [24_pInt,12_pInt]                                                          !< Symmetry operations as quaternions 24 for cubic, 12 for hexagonal = 36
-
-real(pReal), dimension(4,36), parameter, private :: &
-  math_symOperations = reshape([&
-     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! cubic symmetry operations
-     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal, &       !     2-fold symmetry
-     0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
-     0.0_pReal,                 0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal, &
-     0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal, &
-     0.0_pReal,                -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal, &
-     0.0_pReal,                 0.7071067811865476_pReal, -0.7071067811865476_pReal,  0.0_pReal, &
-     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &                      !     3-fold symmetry
-    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
-     0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
-    -0.5_pReal,                -0.5_pReal,                 0.5_pReal,                 0.5_pReal, &
-     0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
-    -0.5_pReal,                 0.5_pReal,                -0.5_pReal,                 0.5_pReal, &
-     0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
-    -0.5_pReal,                 0.5_pReal,                 0.5_pReal,                -0.5_pReal, &
-     0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &                      !     4-fold symmetry
-     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &
-    -0.7071067811865476_pReal,  0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal, &
-     0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
-     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
-    -0.7071067811865476_pReal,  0.0_pReal,                 0.7071067811865476_pReal,  0.0_pReal, &
-     0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
-     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal, &
-    -0.7071067811865476_pReal,  0.0_pReal,                 0.0_pReal,                 0.7071067811865476_pReal, &
-     1.0_pReal,                 0.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      ! hexagonal symmetry operations
-     0.0_pReal,                 1.0_pReal,                 0.0_pReal,                 0.0_pReal, &                      !     2-fold symmetry
-     0.0_pReal,                 0.0_pReal,                 1.0_pReal,                 0.0_pReal, &
-     0.0_pReal,                 0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
-     0.0_pReal,                -0.5_pReal,                 0.866025403784439_pReal,   0.0_pReal, &
-     0.0_pReal,                 0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
-     0.0_pReal,                -0.866025403784439_pReal,   0.5_pReal,                 0.0_pReal, &
-     0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &                      !     6-fold symmetry
-    -0.866025403784439_pReal,   0.0_pReal,                 0.0_pReal,                 0.5_pReal, &
-     0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
-    -0.5_pReal,                 0.0_pReal,                 0.0_pReal,                 0.866025403784439_pReal, &
-     0.0_pReal,                 0.0_pReal,                 0.0_pReal,                 1.0_pReal &
-     ],[4,36])
-  
 #ifdef Spectral
  include 'fftw3.f03'
 #endif 
@@ -206,8 +163,6 @@ real(pReal), dimension(4,36), parameter, private :: &
    math_qToAxisAngle, &
    math_qToR, &
    math_EulerMisorientation, &
-   math_qInSST, &
-   math_qDisorientation, &
    math_sampleRandomOri, &
    math_sampleGaussOri, &
    math_sampleFiberOri, &
@@ -742,7 +697,6 @@ end function math_mul66x6
 pure function math_exp33(A,n)
 
  implicit none
-
  integer(pInt) :: i,order
  integer(pInt), intent(in), optional :: n
  real(pReal), dimension(3,3), intent(in) ::  A
@@ -828,7 +782,6 @@ pure subroutine math_invert33(A, InvA, DetA, error)
 !   error  = logical
 
  implicit none
-
  logical, intent(out) :: error
  real(pReal),dimension(3,3),intent(in)  :: A
  real(pReal),dimension(3,3),intent(out) :: InvA
@@ -863,8 +816,8 @@ end subroutine math_invert33
 !> @brief Inversion of symmetriced 3x3x3x3 tensor.
 !--------------------------------------------------------------------------------------------------
 function math_invSym3333(A)
-
- use IO, only: IO_error
+ use IO, only: &
+   IO_error
 
  implicit none
  real(pReal),dimension(3,3,3,3)            :: math_invSym3333
@@ -899,7 +852,6 @@ end function math_invSym3333
 subroutine math_invert(myDim,A, InvA, error)
 
  implicit none
-
  integer(pInt), intent(in)  :: myDim
  real(pReal), dimension(myDim,myDim), intent(in)  :: A
 
@@ -934,7 +886,6 @@ end subroutine math_invert
 function math_symmetric33(m)
 
  implicit none
-
  real(pReal), dimension(3,3) :: math_symmetric33
  real(pReal), dimension(3,3), intent(in) :: m
  integer(pInt) :: i,j
@@ -950,7 +901,6 @@ end function math_symmetric33
 pure function math_symmetric66(m)
 
  implicit none
-
  integer(pInt) :: i,j
  real(pReal), dimension(6,6), intent(in) :: m
  real(pReal), dimension(6,6) :: math_symmetric66
@@ -966,7 +916,6 @@ end function math_symmetric66
 pure function math_skew33(m)
 
  implicit none
-
  real(pReal), dimension(3,3) :: math_skew33
  real(pReal), dimension(3,3), intent(in) :: m
  integer(pInt) :: i,j
@@ -982,7 +931,6 @@ end function math_skew33
 pure function math_deviatoric33(m)
 
  implicit none
-
  real(pReal), dimension(3,3) :: math_deviatoric33
  real(pReal), dimension(3,3), intent(in) :: m
  integer(pInt) :: i
@@ -1125,7 +1073,6 @@ end function math_Mandel33to6
 pure function math_Mandel6to33(v6)
 
  implicit none
-
  real(pReal), dimension(6), intent(in) :: v6
  real(pReal), dimension(3,3) :: math_Mandel6to33
  integer(pInt) :: i
@@ -1144,7 +1091,6 @@ end function math_Mandel6to33
 pure function math_Plain3333to99(m3333)
 
  implicit none
-
  real(pReal), dimension(3,3,3,3), intent(in) :: m3333
  real(pReal), dimension(9,9) :: math_Plain3333to99
  integer(pInt) :: i,j
@@ -1160,7 +1106,6 @@ end function math_Plain3333to99
 pure function math_Plain99to3333(m99)
 
  implicit none
-
  real(pReal), dimension(9,9), intent(in) :: m99
  real(pReal), dimension(3,3,3,3) :: math_Plain99to3333
  integer(pInt) :: i,j
@@ -1177,7 +1122,6 @@ end function math_Plain99to3333
 pure function math_Mandel66toPlain66(m66)
 
  implicit none
-
  real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(6,6) :: math_Mandel66toPlain66
  integer(pInt) :: i,j
@@ -1194,7 +1138,6 @@ end function math_Mandel66toPlain66
 pure function math_Plain66toMandel66(m66)
 
  implicit none
-
  real(pReal), dimension(6,6), intent(in) :: m66
  real(pReal), dimension(6,6) :: math_Plain66toMandel66
  integer(pInt) i,j
@@ -1402,7 +1345,6 @@ end function math_qRot
 pure function math_RtoEuler(R)
 
  implicit none
-
  real(pReal), dimension (3,3), intent(in) :: R
  real(pReal), dimension(3) :: math_RtoEuler
  real(pReal) :: sqhkl, squvw, sqhk, myVal
@@ -1455,7 +1397,6 @@ end function math_RtoEuler
 pure function math_RtoQ(R)
 
  implicit none
-
  real(pReal), dimension(3,3), intent(in) :: R
  real(pReal), dimension(4)   :: absQ, math_RtoQ
  real(pReal) :: max_absQ
@@ -1513,7 +1454,6 @@ end function math_RtoQ
 pure function math_EulerToR(Euler)
 
  implicit none
-
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_EulerToR
  real(pReal) c1, c, c2, s1, s, s2
@@ -1550,7 +1490,6 @@ end function math_EulerToR
 pure function math_EulerToQ(eulerangles)
 
  implicit none
-
  real(pReal), dimension(3), intent(in) :: eulerangles
  real(pReal), dimension(4) :: math_EulerToQ
  real(pReal), dimension(3) :: halfangles
@@ -1685,7 +1624,6 @@ end function math_axisAngleToQ
 pure function math_qToR(q)
 
  implicit none
-
  real(pReal), dimension(4), intent(in) :: q
  real(pReal), dimension(3,3) :: math_qToR, T,S
  integer(pInt) :: i, j
@@ -1712,7 +1650,6 @@ end function math_qToR
 pure function math_qToEuler(qPassive)
 
  implicit none
-
  real(pReal), dimension(4), intent(in) :: qPassive
  real(pReal), dimension(4) :: q
  real(pReal), dimension(3) :: math_qToEuler
@@ -1753,7 +1690,6 @@ end function math_qToEuler
 pure function math_qToAxisAngle(Q)
 
  implicit none
-
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal) :: halfAngle, sinHalfAngle
  real(pReal), dimension(4) :: math_qToAxisAngle
@@ -1779,7 +1715,6 @@ end function math_qToAxisAngle
 pure function math_qToEulerAxisAngle(qPassive)
 
  implicit none
-
  real(pReal), dimension(4), intent(in) :: qPassive
  real(pReal), dimension(4) :: q
  real(pReal), dimension(4) :: math_qToEulerAxisAngle
@@ -1794,10 +1729,10 @@ end function math_qToEulerAxisAngle
 !> @brief Rodrigues vector (x, y, z) from unit quaternion (w+ix+jy+kz)
 !--------------------------------------------------------------------------------------------------
 pure function math_qToRodrig(Q)
+ use prec, only: &
+   DAMASK_NaN
 
- use prec, only: DAMASK_NaN
  implicit none
-
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_qToRodrig
 
@@ -1829,93 +1764,11 @@ end function math_EulerMisorientation
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief figures whether unit quat falls into stereographic standard triangle
-!--------------------------------------------------------------------------------------------------
-logical pure function math_qInSST(Q, symmetryType)
-
- implicit none
- real(pReal), dimension(4), intent(in) ::      Q                           ! orientation
- integer(pInt), intent(in) ::                  symmetryType                ! Type of crystal symmetry; 1:cubic, 2:hexagonal
- real(pReal), dimension(3) ::                  Rodrig                      ! Rodrigues vector of Q
-
- Rodrig = math_qToRodrig(Q)
- if (any(Rodrig/=Rodrig)) then
-   math_qInSST = .false.
- else
-   select case (symmetryType)
-     case (1_pInt)
-       math_qInSST = Rodrig(1) > Rodrig(2) .and. &
-                     Rodrig(2) > Rodrig(3) .and. &
-                     Rodrig(3) > 0.0_pReal
-     case (2_pInt)
-       math_qInSST = Rodrig(1) > sqrt(3.0_pReal)*Rodrig(2) .and. &
-                     Rodrig(2) > 0.0_pReal .and. &
-                     Rodrig(3) > 0.0_pReal
-     case default
-       math_qInSST = .true.
-   end select
- endif
-
-end function math_qInSST
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates the disorientation for 2 unit quaternions
-!--------------------------------------------------------------------------------------------------
-function math_qDisorientation(Q1, Q2, symmetryType)
-
-  use IO,   only: IO_error
-  implicit none
-
-  !*** input variables
-  real(pReal), dimension(4), intent(in) ::      Q1, &                                              ! 1st orientation
-                                                Q2                                                 ! 2nd orientation
-  integer(pInt), intent(in) ::                  symmetryType                                       ! Type of crystal symmetry; 1:cubic, 2:hexagonal
-
-  !*** output variables
-  real(pReal), dimension(4) ::                  math_qDisorientation                               ! disorientation
-
-  !*** local variables
-  real(pReal), dimension(4) ::                  dQ,dQsymA,mis
-  integer(pInt)    ::                           i,j,k,s
-
-  dQ = math_qMul(math_qConj(Q1),Q2)
-  math_qDisorientation = dQ
-
-  select case (symmetryType)
-    case (0_pInt)
-      if (math_qDisorientation(1) < 0.0_pReal) &
-        math_qDisorientation = -math_qDisorientation                                              ! keep omega within 0 to 180 deg
-
-    case (1_pInt,2_pInt)
-      s = sum(math_NsymOperations(1:symmetryType-1_pInt))
-      do i = 1_pInt,2_pInt
-        dQ = math_qConj(dQ)                                                                       ! switch order of "from -- to"
-        do j = 1_pInt,math_NsymOperations(symmetryType)                                           ! run through first crystal's symmetries
-          dQsymA = math_qMul(math_symOperations(1:4,s+j),dQ)                                      ! apply sym
-          do k = 1_pInt,math_NsymOperations(symmetryType)                                         ! run through 2nd crystal's symmetries
-            mis = math_qMul(dQsymA,math_symOperations(1:4,s+k))                                   ! apply sym
-            if (mis(1) < 0.0_pReal) &                                                             ! want positive angle
-              mis = -mis
-            if (mis(1)-math_qDisorientation(1) > -1e-8_pReal .and. &
-                math_qInSST(mis,symmetryType)) &
-              math_qDisorientation = mis                                                          ! found better one
-      enddo; enddo; enddo
-
-    case default
-      call IO_error(450_pInt,symmetryType)                                                        ! complain about unknown symmetry
-  end select
-
-end function math_qDisorientation
-
-
-!--------------------------------------------------------------------------------------------------
 !> @brief draw a random sample from Euler space
 !--------------------------------------------------------------------------------------------------
 function math_sampleRandomOri()
 
  implicit none
-
  real(pReal), dimension(3) :: math_sampleRandomOri, rnd
 
  call halton(3_pInt,rnd)
@@ -1932,17 +1785,16 @@ end function math_sampleRandomOri
 function math_sampleGaussOri(center,noise)
 
  implicit none
-
  real(pReal), dimension(3) :: math_sampleGaussOri, center, disturb
- real(pReal), dimension(3), parameter :: origin = (/0.0_pReal,0.0_pReal,0.0_pReal/)
+ real(pReal), dimension(3), parameter :: ORIGIN = [0.0_pReal,0.0_pReal,0.0_pReal]
  real(pReal), dimension(5) :: rnd
  real(pReal) :: noise,scatter,cosScatter
  integer(pInt) i
 
-if (noise==0.0_pReal) then
-    math_sampleGaussOri = center
-    return
-endif
+ if (noise==0.0_pReal) then
+   math_sampleGaussOri = center
+   return
+ endif
 
 ! Helming uses different distribution with Bessel functions
 ! therefore the gauss scatter width has to be scaled differently
@@ -1955,7 +1807,7 @@ endif
    disturb(1) = scatter * rnd(1)                                                      ! phi1
    disturb(2) = sign(1.0_pReal,rnd(2))*acos(cosScatter+(1.0_pReal-cosScatter)*rnd(4)) ! Phi
    disturb(3) = scatter * rnd(2)                                                      ! phi2
-   if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(origin,disturb)/scatter)**2_pReal)) exit
+   if (rnd(5) <= exp(-1.0_pReal*(math_EulerMisorientation(ORIGIN,disturb)/scatter)**2_pReal)) exit
  enddo
 
  math_sampleGaussOri = math_RtoEuler(math_mul33x33(math_EulerToR(disturb),math_EulerToR(center)))
@@ -1969,15 +1821,14 @@ end function math_sampleGaussOri
 function math_sampleFiberOri(alpha,beta,noise)
 
  implicit none
-
  real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
  real(pReal), dimension(2), intent(in) :: alpha,beta
  real(pReal), dimension(6) :: rnd
  real(pReal), dimension(3,3) :: oRot,fRot,pRot
  real(pReal) :: noise, scatter, cos2Scatter, angle
- integer(pInt), dimension(2,3), parameter :: rotMap = reshape((/2_pInt,3_pInt,&
+ integer(pInt), dimension(2,3), parameter :: rotMap = reshape([2_pInt,3_pInt,&
                                                                 3_pInt,1_pInt,&
-                                                                1_pInt,2_pInt/),(/2,3/))
+                                                                1_pInt,2_pInt],[2,3])
  integer(pInt) :: i
 
 ! Helming uses different distribution with Bessel functions
@@ -2083,7 +1934,6 @@ end function math_sampleGaussVar
 pure function math_symmetricEulers(sym,Euler)
 
  implicit none
-
  integer(pInt), intent(in) :: sym
  real(pReal), dimension(3), intent(in) :: Euler
  real(pReal), dimension(3,3) :: math_symmetricEulers
@@ -2267,7 +2117,6 @@ end subroutine math_pDecomposition
 function math_eigenvalues33(M)
 
  implicit none
-
  real(pReal), intent(in), dimension(3,3) :: M
  real(pReal), dimension(3,3) :: EB1 = 0.0_pReal, EB2 = 0.0_pReal, EB3 = 0.0_pReal
  real(pReal), dimension(3) :: math_eigenvalues33
@@ -2363,8 +2212,8 @@ end subroutine halton
 !> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 subroutine halton_memory (action_halton, name_halton, ndim, value_halton)
- implicit none
 
+ implicit none
  character(len = *), intent(in) :: & 
    action_halton, &                                                                                 !< desired action: GET the value of a particular quantity, SET the value of a particular quantity, INC the value of a particular quantity (only for SEED)
    name_halton                                                                                      !< name of the quantity: BASE: Halton base(s), NDIM: spatial dimension, SEED: current Halton seed
@@ -2447,8 +2296,8 @@ end subroutine halton_memory
 !> @author John Burkardt
 !--------------------------------------------------------------------------------------------------
 subroutine halton_ndim_set (ndim)
- implicit none
 
+ implicit none
  integer(pInt), intent(in) :: ndim                                                                  !< dimension of the Halton vectors
  integer(pInt) :: value_halton(1)
 
@@ -2782,7 +2631,6 @@ end function math_rotate_forward33
 pure function math_rotate_backward33(tensor,rot_tensor)
 
  implicit none
-
  real(pReal), dimension(3,3) ::  math_rotate_backward33
  real(pReal), dimension(3,3), intent(in) :: tensor, rot_tensor
 
@@ -2798,7 +2646,6 @@ end function math_rotate_backward33
 pure function math_rotate_forward3333(tensor,rot_tensor)
 
  implicit none
-
  real(pReal), dimension(3,3,3,3) ::  math_rotate_forward3333
  real(pReal), dimension(3,3), intent(in) :: rot_tensor
  real(pReal), dimension(3,3,3,3), intent(in) :: tensor
@@ -3393,6 +3240,7 @@ function math_periodicNearestNeighborDistances(geomdim, Favg, querySet, domainSe
  use kdtree2_module
  use IO, only: &
    IO_error
+
  implicit none
  real(pReal),   dimension(3),            intent(in) :: geomdim
  real(pReal),   dimension(3,3),          intent(in) :: Favg
