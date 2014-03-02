@@ -256,6 +256,9 @@ else:                                                                           
   configDir = os.path.join(os.getenv('HOME'),'.damask')
 configFileNew = os.path.join(configDir,'damask.conf')
 
+if not os.path.isdir(configDir):
+  os.mkdir(configDir)
+
 print('\n-----\n writing values to %s\n-----'%configFileNew)
 with open(configFileNew,'w') as f:
   for line in output:
