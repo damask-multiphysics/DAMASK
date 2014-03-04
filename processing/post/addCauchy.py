@@ -114,7 +114,7 @@ for file in files:
 # ------------------------------------------ process data ---------------------------------------
 
   outputAlive = True
-  while outoutAlive and table.data_read():                                  # read next data line of ASCII table
+  while outputAlive and table.data_read():                                  # read next data line of ASCII table
   
     F = numpy.array(map(float,table.data[column['defgrad'][active['defgrad'][0]]:
                                          column['defgrad'][active['defgrad'][0]]+datainfo['defgrad']['len']]),'d').reshape(3,3)
