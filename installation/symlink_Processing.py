@@ -36,6 +36,7 @@ bin_link = { \
                 'geom_fromMinimalSurface.py',
                 'geom_fromVoronoiTessellation.py',
                 'geom_fromOsteonGeometry.py',
+                'geom_addPrimitive.py',
                 'geom_canvas.py',
                 'geom_check.py',
                 'geom_rescale.py',
@@ -90,6 +91,10 @@ bin_link = { \
                 'vtk_addPointcloudData.py',
                 'vtk_voxelcloud.py',
                 'vtk_addVoxelcloudData.py',
+                ],
+        'misc' : [
+                'gwyddion_filter.py',
+                'vtk_fromGwyddion.py',
                 ],
             }
             
