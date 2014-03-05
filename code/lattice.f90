@@ -1334,11 +1334,14 @@ end function lattice_qInSST
 !--------------------------------------------------------------------------------------------------
 function lattice_qDisorientation(Q1, Q2, symmetryType)
  use prec, only: &
-  tol_math_check
+   tol_math_check
+ use IO, only: &
+   IO_error
  use math, only: &
    math_qMul, &
    math_qConj
 
+ implicit none
  real(pReal), dimension(4) ::                  lattice_qDisorientation
  real(pReal), dimension(4), intent(in) ::      Q1, &                                                ! 1st orientation
                                                Q2                                                   ! 2nd orientation
@@ -1374,6 +1377,8 @@ function lattice_qDisorientation(Q1, Q2, symmetryType)
                 lattice_qInSST(mis,symmetryType)) &
               lattice_qDisorientation = mis                                                         ! found better one
       enddo; enddo; enddo
+    case default
+      call IO_error(450_pInt,symmetryType)                                                          ! complain about unknown symmetry
   end select
 
 end function lattice_qDisorientation

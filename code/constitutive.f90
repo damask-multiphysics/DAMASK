@@ -204,7 +204,7 @@ subroutine constitutive_init
    write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
    if (knownPlasticity) then
      write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-     do e = 1_pInt,phase_Noutput(instance)
+     do e = 1_pInt,phase_Noutput(phase)
        write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
      enddo
    endif
