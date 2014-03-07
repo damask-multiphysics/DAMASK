@@ -10,6 +10,8 @@ class Marc(Solver):
 #--------------------------
     self.solver = 'Marc'
     self.releases = { \
+              '2013.1':['linux64',''],
+              '2013':  ['linux64',''],
               '2012':  ['linux64',''],
               '2011':  ['linux64',''],
               '2010.2':['linux64',''],
