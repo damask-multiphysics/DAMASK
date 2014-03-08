@@ -1033,7 +1033,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
          tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)
          ts(i)     = lattice_fcc_shearTwin(i)
        enddo
-      print*, shape(lattice_NslipSystem),shape(lattice_fcc_NslipSystem)
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase) = lattice_fcc_NslipSystem
      lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase) = lattice_fcc_NtwinSystem
      lattice_NnonSchmid(myPhase)                           = lattice_fcc_NnonSchmid
@@ -1175,25 +1174,6 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    if (abs(math_trace33(lattice_Stwin(1:3,1:3,i,myPhase))) > tol_math_check) &
      call IO_error(301_pInt,myPhase,ext_msg = 'dilatational twin Schmid matrix')
  enddo
- 
- print*, lattice_Stwin
- print*, lattice_C66
- print*, lattice_C3333
- print*, lattice_mu
- print*, lattice_nu
- print*, lattice_sd
-  print*, lattice_sn
-   print*, lattice_st
-    print*, lattice_sslip
-  print*, lattice_td
-  print*, lattice_tn
-   print*, lattice_tt
-    print*, lattice_sd
-  print*, lattice_sn
-   print*, lattice_stwin
-      print*, lattice_qtwin
-   print*, lattice_qtwin
-      print*, lattice_sheartwin
       
 end subroutine lattice_initializeStructure
 
