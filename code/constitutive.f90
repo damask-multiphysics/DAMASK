@@ -154,12 +154,12 @@ subroutine constitutive_init
 ! parse plasticities from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- call constitutive_none_init(FILEUNIT)
- call constitutive_j2_init(FILEUNIT)
- call constitutive_phenopowerlaw_init(FILEUNIT)
- call constitutive_titanmod_init(FILEUNIT)
- call constitutive_dislotwin_init(FILEUNIT)
- call constitutive_nonlocal_init(FILEUNIT)  
+ if (any(phase_plasticity == PLASTICITY_NONE_ID))          call constitutive_none_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_J2_ID))            call constitutive_j2_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call constitutive_titanmod_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))       call constitutive_nonlocal_init(FILEUNIT)  
  close(FILEUNIT)
  
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
@@ -352,7 +352,7 @@ subroutine constitutive_init
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(instance))) 
              enddo
            endif
-           constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(instance)
+           constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(instance,material_phase(g,i,e))
            constitutive_aTolState(g,i,e)%p =        constitutive_dislotwin_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(instance)
@@ -379,11 +379,11 @@ subroutine constitutive_init
                allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_titanmod_sizeDotState(instance))) 
              enddo
            endif
-           constitutive_state0(g,i,e)%p =           constitutive_titanmod_stateInit(instance)
-           constitutive_aTolState(g,i,e)%p =        constitutive_titanmod_aTolState(instance)
-           constitutive_sizeState(g,i,e) =          constitutive_titanmod_sizeState(instance)
-           constitutive_sizeDotState(g,i,e) =       constitutive_titanmod_sizeDotState(instance)
-           constitutive_sizePostResults(g,i,e) =    constitutive_titanmod_sizePostResults(instance)
+           constitutive_state0(g,i,e)%p =          constitutive_titanmod_stateInit(instance,material_phase(g,i,e))
+           constitutive_aTolState(g,i,e)%p =       constitutive_titanmod_aTolState(instance)
+           constitutive_sizeState(g,i,e) =         constitutive_titanmod_sizeState(instance)
+           constitutive_sizeDotState(g,i,e) =      constitutive_titanmod_sizeDotState(instance)
+           constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
          case (PLASTICITY_NONLOCAL_ID)
            nonlocalConstitutionPresent = .true.
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
@@ -465,25 +465,15 @@ pure function constitutive_homogenizedC(ipc,ip,el)
  use material, only: &
    phase_plasticity, &
    material_phase, &
-   PLASTICITY_NONE_ID, &
-   PLASTICITY_J2_ID, &
-   PLASTICITY_PHENOPOWERLAW_ID, &
-   PLASTICITY_DISLOTWIN_ID, &
    PLASTICITY_TITANMOD_ID, &
-   PLASTICITY_NONLOCAL_ID
- use constitutive_none, only: &
-   constitutive_none_homogenizedC
- use constitutive_j2, only: &
-   constitutive_j2_homogenizedC
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_homogenizedC
+   PLASTICITY_DISLOTWIN_ID
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_homogenizedC
  use constitutive_titanmod, only: &
    constitutive_titanmod_homogenizedC
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_homogenizedC
- 
+ use lattice, only: &
+   lattice_C66
+
  implicit none
  real(pReal), dimension(6,6) :: constitutive_homogenizedC
  integer(pInt), intent(in) :: &
@@ -493,23 +483,14 @@ pure function constitutive_homogenizedC(ipc,ip,el)
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
-   case (PLASTICITY_NONE_ID)
-     constitutive_homogenizedC = constitutive_none_homogenizedC(ipc,ip,el)
-     
-   case (PLASTICITY_J2_ID)
-     constitutive_homogenizedC = constitutive_j2_homogenizedC(ipc,ip,el)
-     
-   case (PLASTICITY_PHENOPOWERLAW_ID)
-     constitutive_homogenizedC = constitutive_phenopowerlaw_homogenizedC(ipc,ip,el)
-
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(constitutive_state,ipc,ip,el) 
     
    case (PLASTICITY_TITANMOD_ID)
      constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state,ipc,ip,el)
  
-   case (PLASTICITY_NONLOCAL_ID)
-     constitutive_homogenizedC = constitutive_nonlocal_homogenizedC(ipc,ip,el)
+   case default
+     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phase(ipc,ip,el))
      
  end select
 

@@ -40,8 +40,6 @@ module crystallite
    crystallite_sizePostResults                                                                      !< description not available
  integer(pInt),             dimension(:,:),          allocatable, private :: &
    crystallite_sizePostResult                                                                       !< description not available
- integer(pInt),             dimension(:,:,:),        allocatable, private :: &
-   crystallite_symmetryID                                                                           !< crystallographic symmetry 1=cubic 2=hexagonal, needed in all orientation calcs     
  
  real(pReal),               dimension(:,:),          allocatable, public :: &
    crystallite_temperature                                                                          !< temperature (same on all components on one IP)
@@ -189,16 +187,9 @@ subroutine crystallite_init(temperature)
    IO_EOF
  use material
  use lattice, only: &
-   lattice_symmetryType, &
-   lattice_structureID
+   lattice_structure
  use constitutive, only: &
    constitutive_microstructure
- use constitutive_dislotwin, only: &   
-   constitutive_dislotwin_structureID
- use constitutive_titanmod, only: &
-   constitutive_titanmod_structureID
- use constitutive_nonlocal, only: &    
-   constitutive_nonlocal_structureID
   
  implicit none
  real(pReal),   intent(in) :: temperature
@@ -220,9 +211,8 @@ subroutine crystallite_init(temperature)
    j, &
    p, &
    output = 0_pInt, &
-   mySize, &
-   myPhase, &
-   myMat
+   mySize
+
  character(len=65536) :: &
    tag = '', &
    line= ''
@@ -272,7 +262,6 @@ subroutine crystallite_init(temperature)
  allocate(crystallite_orientation0(4,gMax,iMax,eMax),        source=0.0_pReal)
  allocate(crystallite_rotation(4,gMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_disorientation(4,nMax,gMax,iMax,eMax), source=0.0_pReal)
- allocate(crystallite_symmetryID(gMax,iMax,eMax),            source=0_pInt)
  allocate(crystallite_localPlasticity(gMax,iMax,eMax),       source=.true.)
  allocate(crystallite_requested(gMax,iMax,eMax),             source=.false.)
  allocate(crystallite_todo(gMax,iMax,eMax),                  source=.false.)
@@ -434,33 +423,6 @@ subroutine crystallite_init(temperature)
  crystallite_partionedF0 = crystallite_F0
  crystallite_partionedF = crystallite_F0
  
-!--------------------------------------------------------------------------------------------------
-! Initialize crystallite_symmetryID
- do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   myNgrains = homogenization_Ngrains(mesh_element(3,e))
-   do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-     do g = 1_pInt,myNgrains
-       myPhase = material_phase(g,i,e)
-       myMat   = phase_plasticityInstance(myPhase)
-       select case (phase_plasticity(myPhase))
-         case (PLASTICITY_PHENOPOWERLAW_ID)
-           crystallite_symmetryID(g,i,e) = lattice_symmetryType(lattice_structureID(myPhase))
-         case (PLASTICITY_TITANMOD_ID)
-           crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_titanmod_structureID(myMat))
-         case (PLASTICITY_DISLOTWIN_ID)
-           crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_dislotwin_structureID(myMat))
-         case (PLASTICITY_NONLOCAL_ID)
-           crystallite_symmetryID(g,i,e) = &
-             lattice_symmetryType(constitutive_nonlocal_structureID(myMat))
-         case default
-           crystallite_symmetryID(g,i,e) = 0_pInt                                                   !< @ToDo: does this happen for j2 material?
-       end select
-     enddo
-   enddo
- enddo
- 
  call crystallite_orientations()
  crystallite_orientation0 = crystallite_orientation                                                 ! store initial orientations for calculation of grain rotations
 
@@ -496,7 +458,6 @@ subroutine crystallite_init(temperature)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedFp0:          ', shape(crystallite_partionedFp0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF:                  ', shape(crystallite_subF)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_symmetryID:            ', shape(crystallite_symmetryID)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFe0:                ', shape(crystallite_subFe0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
@@ -3060,7 +3021,6 @@ logical function crystallite_integrateStress(&
  logical                             error                                                           ! flag indicating an error
  integer(pInt)                       NiterationStress, &                                             ! number of stress integrations
                                      ierr, &                                                         ! error indicator for LAPACK
-                                     n, &
                                      o, &
                                      p, &
                                      jacoCounter                                                     ! counter to check for Jacobian update
@@ -3342,7 +3302,8 @@ subroutine crystallite_orientations
    FE_geomtype, &
    FE_celltype
  use lattice, only: &
-   lattice_qDisorientation
+   lattice_qDisorientation, &
+   lattice_structure
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_structure, &
    constitutive_nonlocal_updateCompatibility
@@ -3387,8 +3348,7 @@ subroutine crystallite_orientations
            orientation = math_RtoQ(transpose(R))
          endif
          crystallite_rotation(1:4,g,i,e) = lattice_qDisorientation(crystallite_orientation0(1:4,g,i,e), &  ! active rotation from ori0
-                                                                orientation, &                          ! to current orientation
-                                                                0_pInt )                                ! we don't want symmetry here  
+                                                                orientation)                               ! to current orientation (with no symmetry)
          crystallite_orientation(1:4,g,i,e) = orientation
        enddo
      enddo
@@ -3406,9 +3366,7 @@ subroutine crystallite_orientations
        myPhase = material_phase(1,i,e)                                                                     ! get my phase
        if (.not. phase_localPlasticity(myPhase)) then                                                      ! if nonlocal model
          myInstance = phase_plasticityInstance(myPhase)
-         myStructure = constitutive_nonlocal_structure(myInstance)                                         ! get my crystal structure
  
-         
          ! --- calculate disorientation between me and my neighbor ---
          
          do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                        ! loop through my neighbors
@@ -3423,7 +3381,7 @@ subroutine crystallite_orientations
                  crystallite_disorientation(:,n,1,i,e) = &
                    lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
                                                   crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
-                                                  crystallite_symmetryID(1,i,e))                           ! calculate disorientation
+                                                  lattice_structure(myPhase))                              ! calculate disorientation for given symmetry
                else                                                                                        ! for neighbor with different phase
                  crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]      ! 180 degree rotation about 100 axis
                endif

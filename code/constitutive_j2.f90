@@ -66,8 +66,6 @@ module constitutive_j2
    constitutive_j2_tausat_SinhFitC, &                                                               !< fitting parameter for normalized strain rate vs. stress function
    constitutive_j2_tausat_SinhFitD                                                                  !< fitting parameter for normalized strain rate vs. stress function
 
- real(pReal),                         dimension(:,:,:), allocatable,          private :: &
-   constitutive_j2_Cslip_66
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  flowstress_ID, &
@@ -80,7 +78,6 @@ module constitutive_j2
    constitutive_j2_init, &
    constitutive_j2_stateInit, &
    constitutive_j2_aTolState, &
-   constitutive_j2_homogenizedC, &
    constitutive_j2_LpAndItsTangent, &
    constitutive_j2_dotState, &
    constitutive_j2_postResults
@@ -128,7 +125,7 @@ subroutine constitutive_j2_init(fileUnit)
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
- integer(pInt) :: section = 0_pInt, maxNinstance, instance,o, mySize
+ integer(pInt) :: phase, maxNinstance, instance,o, mySize
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -152,7 +149,6 @@ subroutine constitutive_j2_init(fileUnit)
           constitutive_j2_output = ''
  allocate(constitutive_j2_outputID(maxval(phase_Noutput),maxNinstance),       source=undefined_ID)
  allocate(constitutive_j2_Noutput(maxNinstance),                              source=0_pInt)
- allocate(constitutive_j2_Cslip_66(6,6,maxNinstance),                         source=0.0_pReal)
  allocate(constitutive_j2_fTaylor(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_j2_tau0(maxNinstance),                                 source=0.0_pReal)
  allocate(constitutive_j2_gdot0(maxNinstance),                                source=0.0_pReal)
@@ -168,11 +164,12 @@ subroutine constitutive_j2_init(fileUnit)
  allocate(constitutive_j2_tausat_SinhFitD(maxNinstance),                      source=0.0_pReal)
  
  rewind(fileUnit)
+ phase = 0_pInt
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partPhase)         ! wind forward to <phase>
    line = IO_read(fileUnit)
  enddo
  
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of phase part
+ parsingFile: do while (trim(line) /= IO_EOF)                                                        ! read through sections of phase part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
@@ -180,19 +177,19 @@ subroutine constitutive_j2_init(fileUnit)
      exit                                                                                           
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     section = section + 1_pInt                                                                     ! advance section counter
-     if (phase_plasticity(section) == PLASTICITY_J2_ID) then
-       instance = phase_plasticityInstance(section)
-       constitutive_j2_Cslip_66(1:6,1:6,instance)  = lattice_Cslip_66(1:6,1:6,section)
+     phase = phase + 1_pInt                                                                         ! advance section counter
+     if (phase_plasticity(phase) == PLASTICITY_J2_ID) then
+       instance = phase_plasticityInstance(phase)
      endif
      cycle                                                                                          ! skip to next line
    endif
-   if (section > 0_pInt ) then; if (phase_plasticity(section) == PLASTICITY_J2_ID) then             ! one of my sections. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
-     instance = phase_plasticityInstance(section)                                                   ! which instance of my plasticity is present phase
+   if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_J2_ID) then                 ! one of my sections. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
+     instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,MAXNCHUNKS) 
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
-       case ('plasticity','elasticity','lattice_structure','covera_ratio',&
+       case ('plasticity','elasticity','lattice_structure', &
+             'covera_ratio','c/a_ratio','c/a', &
              'c11','c12','c13','c22','c23','c33','c44','c55','c66')
        case ('(output)')
          constitutive_j2_Noutput(instance) = constitutive_j2_Noutput(instance) + 1_pInt
@@ -250,7 +247,7 @@ subroutine constitutive_j2_init(fileUnit)
          call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
      end select
    endif; endif
- enddo
+ enddo parsingFile
 
  instancesLoop: do instance = 1_pInt,maxNinstance
    outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(instance)
@@ -292,40 +289,13 @@ end function constitutive_j2_stateInit
 pure function constitutive_j2_aTolState(instance)
 
  implicit none
- integer(pInt), intent(in) :: instance                                                              !< number specifying the instance of the plasticity
+ real(pReal),   dimension(1)            :: constitutive_j2_aTolState
+ integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the plasticity
 
- real(pReal), dimension(constitutive_j2_sizeState(instance)) :: &
-                              constitutive_j2_aTolState
 
  constitutive_j2_aTolState = constitutive_j2_aTolResistance(instance)
 
 end function constitutive_j2_aTolState
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns the homogenized elasticity matrix
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_homogenizedC(ipc,ip,el)
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
- use material, only: &
-   homogenization_maxNgrains,&
-   material_phase, &
-   phase_plasticityInstance
- 
- implicit none
- real(pReal), dimension(6,6) :: &
-   constitutive_j2_homogenizedC
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
-
- constitutive_j2_homogenizedC = constitutive_j2_Cslip_66(1:6,1:6,&
-                                               phase_plasticityInstance(material_phase(ipc,ip,el)))
-
-end function constitutive_j2_homogenizedC
 
 
 !--------------------------------------------------------------------------------------------------
