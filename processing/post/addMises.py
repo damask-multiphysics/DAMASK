@@ -3,6 +3,9 @@
 import os,re,sys,math,numpy,string,damask
 from optparse import OptionParser, Option
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 # -----------------------------
 class extendableOption(Option):
 # -----------------------------
@@ -25,14 +28,13 @@ class extendableOption(Option):
 
 def Mises(what,tensor):
 
-	dev = tensor - numpy.trace(tensor)/3.0*numpy.eye(3)
-	symdev = 0.5*(dev+dev.T)
-	return math.sqrt(numpy.sum(symdev*symdev.T)*
- 	       {
-	        'stress': 3.0/2.0,
-	        'strain': 2.0/3.0,
-	       }[what.lower()])
-	
+  dev = tensor - numpy.trace(tensor)/3.0*numpy.eye(3)
+  symdev = 0.5*(dev+dev.T)
+  return math.sqrt(numpy.sum(symdev*symdev.T)*
+        {
+         'stress': 3.0/2.0,
+         'strain': 2.0/3.0,
+         }[what.lower()])
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -41,7 +43,7 @@ def Mises(what,tensor):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add vonMises equivalent values for symmetric part of requested strains and/or stresses.
 
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 
@@ -69,26 +71,25 @@ datainfo = {                                                               # lis
 if options.strain != None:    datainfo['strain']['label'] += options.strain
 if options.stress != None:    datainfo['stress']['label'] += options.stress
 
-
-# ------------------------------------------ setup file handles ---------------------------------------  
+# ------------------------------------------ setup file handles ---------------------------------------
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
   active = {}
   column = {}
