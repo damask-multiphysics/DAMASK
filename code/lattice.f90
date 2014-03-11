@@ -185,7 +185,7 @@ module lattice
                                                                                                     !< 2: screw trace between slip system and twin habit plane (easy cross slip)
                                                                                                     !< 3: other interaction
  integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Nslip), parameter, public :: &
-   lattice_fcc_interactionTwinSlip = 0_pInt                                                         !< Twin--Slip interaction types for fcc
+   lattice_fcc_interactionTwinSlip = 1_pInt                                                         !< Twin--Slip interaction types for fcc
 
  integer(pInt), dimension(lattice_fcc_Ntwin,lattice_fcc_Ntwin), parameter,public :: &
    lattice_fcc_interactionTwinTwin = reshape(int( [&
@@ -360,7 +360,7 @@ module lattice
                                                                                                     !< 2: screw trace between slip system and twin habit plane (easy cross slip)
                                                                                                     !< 3: other interaction
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Nslip), parameter, public :: &
-   lattice_bcc_interactionTwinSlip = 0_pInt                                                         !< Twin--slip interaction types for bcc @todo not implemented yet
+   lattice_bcc_interactionTwinSlip = 1_pInt                                                         !< Twin--slip interaction types for bcc @todo not implemented yet
 
  integer(pInt), dimension(lattice_bcc_Ntwin,lattice_bcc_Ntwin), parameter, public :: &
    lattice_bcc_interactionTwinTwin = reshape(int( [&
@@ -1032,17 +1032,17 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
          td(1:3,i) = lattice_fcc_systemTwin(1:3,i)
          tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)
          ts(i)     = lattice_fcc_shearTwin(i)
-       enddo
+     enddo
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase) = lattice_fcc_NslipSystem
      lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase) = lattice_fcc_NtwinSystem
      lattice_NnonSchmid(myPhase)                           = lattice_fcc_NnonSchmid
-     lattice_interactionSlipSlip(1:lattice_fcc_Nslip,1:lattice_fcc_Nslip,myPhase) = &
+     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase) = &
                                                              lattice_fcc_interactionSlipSlip
-     lattice_interactionSlipTwin(1:lattice_fcc_Nslip,1:lattice_fcc_Ntwin,myPhase) = &
+     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase) = &
                                                              lattice_fcc_interactionSlipTwin
-     lattice_interactionTwinSlip(1:lattice_fcc_Ntwin,1:lattice_fcc_Nslip,myPhase) = &
+     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase) = &
                                                              lattice_fcc_interactionTwinSlip
-     lattice_interactionTwinTwin(1:lattice_fcc_Ntwin,1:lattice_fcc_Ntwin,myPhase) = &
+     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase) = &
                                                              lattice_fcc_interactionTwinTwin
      
 !--------------------------------------------------------------------------------------------------

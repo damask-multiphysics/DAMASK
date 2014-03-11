@@ -159,7 +159,7 @@ subroutine constitutive_init
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call constitutive_titanmod_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))       call constitutive_nonlocal_init(FILEUNIT)  
+ if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call constitutive_nonlocal_init(FILEUNIT)  
  close(FILEUNIT)
  
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'

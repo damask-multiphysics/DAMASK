@@ -326,7 +326,7 @@ integer(pInt), intent(in) ::                fileUnit
  integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
 integer(pInt), &
     dimension(1_pInt+2_pInt*MAXNCHUNKS) ::  positions
-integer(pInt)          ::                   phase = 0_pInt, &
+integer(pInt)          ::                   phase, &
                                             maxNinstances, &
                                             maxTotalNslip, &
                                             f, &                ! index of my slip family
@@ -891,9 +891,9 @@ allocate(peierlsStress(maxTotalNslip,2,maxNinstances),                          
 allocate(colinearSystem(maxTotalNslip,maxNinstances),                                 source=0_pInt)
 allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                      source=0.0_pReal)
                                             
-
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then
+     instance = phase_plasticityInstance(phase)
      !*** Inverse lookup of my slip system family and the slip system in lattice
      
      l = 0_pInt
@@ -1128,10 +1128,10 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
          nonSchmidProjection(1:3,1:3,2,s,instance) = nonSchmidProjection(1:3,1:3,2,s,instance) &
              + nonSchmidCoeff(l,instance) * lattice_Sslip(1:3,1:3,2*l+1,slipSystemLattice(s,instance),phase)
        enddo
-       nonSchmidProjection(1:3,1:3,3,s,instance) = -nonSchmidProjection(1:3,1:3,2,s,phase)
-       nonSchmidProjection(1:3,1:3,4,s,instance) = -nonSchmidProjection(1:3,1:3,1,s,phase)
-       forall (t = 1:4) &
-         nonSchmidProjection(1:3,1:3,t,s,instance) = nonSchmidProjection(1:3,1:3,t,s,phase) &
+    nonSchmidProjection(1:3,1:3,3,s,instance) = -nonSchmidProjection(1:3,1:3,2,s,instance)
+    nonSchmidProjection(1:3,1:3,4,s,instance) = -nonSchmidProjection(1:3,1:3,1,s,instance)
+    forall (t = 1:4) &
+      nonSchmidProjection(1:3,1:3,t,s,instance) = nonSchmidProjection(1:3,1:3,t,s,instance) &
              + lattice_Sslip(1:3,1:3,1,slipSystemLattice(s,instance),phase)
      enddo
    endif     
@@ -1194,6 +1194,8 @@ maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
 do e = 1_pInt,mesh_NcpElems
   do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
     if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e))) &
+              write(6,*) shape(state(1,i,e)%p)
+              flush(6)
       state(1,i,e)%p = 0.0_pReal
   enddo
 enddo
@@ -1207,7 +1209,7 @@ do instance = 1_pInt,maxNinstances
 
     ! get the total volume of the instance
 
-    minimumIpVolume = 1e99_pReal
+    minimumIpVolume = 1e99_pReal !use huge here?
     totalVolume = 0.0_pReal
     do e = 1_pInt,mesh_NcpElems
       do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
