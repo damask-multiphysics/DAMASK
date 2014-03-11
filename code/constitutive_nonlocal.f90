@@ -91,9 +91,6 @@ iRhoD, &                                                             !< state in
 iV, &                                                                !< state indices for dislcation velocities
 iD                                                                   !< state indices for stable dipole height
 
-integer(pInt), dimension(:), allocatable, public :: &
-constitutive_nonlocal_structure                                      !< number representing the kind of lattice structure
-
 integer(pInt), dimension(:), allocatable, private :: &
 totalNslip                                                           !< total number of active slip systems for each instance
 
@@ -752,6 +749,7 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
 
  sanityChecks: do phase = 1_pInt, size(phase_plasticity)
    myPhase: if (phase_plasticity(phase) == PLASTICITY_NONLOCAL_ID) then
+    instance = phase_plasticityInstance(phase) 
     if (sum(Nslip(:,instance)) <= 0_pInt) &
       call IO_error(211_pInt,ext_msg='Nslip ('//PLASTICITY_NONLOCAL_label//')')
     do o = 1_pInt,maxval(phase_Noutput)
@@ -842,7 +840,7 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
     
     !*** determine total number of active slip systems
     Nslip(1:lattice_maxNslipFamily,instance) = min(lattice_NslipSystem(1:lattice_maxNslipFamily,phase), &
-                                            Nslip(1:lattice_maxNslipFamily,instance) )              ! we can't use more slip systems per family than specified in lattice 
+                                            Nslip(1:lattice_maxNslipFamily,instance) )              ! we can't use more slip systems per family than specified in lattice
     totalNslip(instance) = sum(Nslip(1:lattice_maxNslipFamily,instance))
   endif myPhase 
 enddo sanityChecks
@@ -1194,8 +1192,6 @@ maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
 do e = 1_pInt,mesh_NcpElems
   do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
     if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e))) &
-              write(6,*) shape(state(1,i,e)%p)
-              flush(6)
       state(1,i,e)%p = 0.0_pReal
   enddo
 enddo
@@ -2111,6 +2107,45 @@ dLower = minDipoleHeight(1:ns,1:2,instance)
 dUpper(1:ns,1) = lattice_mu(phase) * burgers(1:ns,instance) &
                / (8.0_pReal * pi * (1.0_pReal - lattice_nu(phase)) * abs(tau))
 dUpper(1:ns,2) = lattice_mu(phase) * burgers(1:ns,instance) / (4.0_pReal * pi * abs(tau))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+!in the test there is an FPE exception. Divistion by zero?
 forall (c = 1_pInt:2_pInt) &
   dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &

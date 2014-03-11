@@ -3293,8 +3293,7 @@ subroutine crystallite_orientations
  use material, only: &
    material_phase, &
    homogenization_Ngrains, &
-   phase_localPlasticity, &
-   phase_plasticityInstance
+   phase_localPlasticity
  use mesh, only: &
    mesh_element, &
    mesh_ipNeighborhood, &
@@ -3305,7 +3304,6 @@ subroutine crystallite_orientations
    lattice_qDisorientation, &
    lattice_structure
  use constitutive_nonlocal, only: &
-   constitutive_nonlocal_structure, &
    constitutive_nonlocal_updateCompatibility
 
  
@@ -3318,11 +3316,7 @@ subroutine crystallite_orientations
    neighboring_e, &              ! element index of my neighbor
    neighboring_i, &              ! integration point index of my neighbor
    myPhase, &                    ! phase
-   neighboringPhase, &
-   myInstance, &                 ! instance of plasticity
-   neighboringInstance, &
-   myStructure, &                ! lattice structure
-   neighboringStructure
+   neighboringPhase
  real(pReal), dimension(3,3) :: &
    U, &
    R
@@ -3357,16 +3351,13 @@ subroutine crystallite_orientations
  
  
  ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
- ! --- we use crystallite_orientation from above, so need a seperate loop
+ ! --- we use crystallite_orientation from above, so need a separate loop
  
- !$OMP PARALLEL DO PRIVATE(myPhase,myInstance,myStructure,neighboring_e,neighboring_i,neighboringPhase,&
- !$OMP neighboringInstance,neighboringStructure)
+ !$OMP PARALLEL DO PRIVATE(myPhase,lattice_structure,neighboring_e,neighboring_i,neighboringPhase)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        myPhase = material_phase(1,i,e)                                                                     ! get my phase
        if (.not. phase_localPlasticity(myPhase)) then                                                      ! if nonlocal model
-         myInstance = phase_plasticityInstance(myPhase)
- 
          ! --- calculate disorientation between me and my neighbor ---
          
          do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                        ! loop through my neighbors
@@ -3375,13 +3366,11 @@ subroutine crystallite_orientations
            if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                         ! if neighbor exists
              neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
              if (.not. phase_localPlasticity(neighboringPhase)) then                                       ! neighbor got also nonlocal plasticity
-               neighboringInstance = phase_plasticityInstance(neighboringPhase)        
-               neighboringStructure = constitutive_nonlocal_structure(neighboringInstance)                 ! get my neighbor's crystal structure
-               if (myStructure == neighboringStructure) then                                               ! if my neighbor has same crystal structure like me
+               if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then                 ! if my neighbor has same crystal structure like me
                  crystallite_disorientation(:,n,1,i,e) = &
                    lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
-                                                  crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
-                                                  lattice_structure(myPhase))                              ! calculate disorientation for given symmetry
+                                            crystallite_orientation(1:4,1,neighboring_i,neighboring_e), & 
+                                            lattice_structure(myPhase))                              ! calculate disorientation for given symmetry
                else                                                                                        ! for neighbor with different phase
                  crystallite_disorientation(:,n,1,i,e) = [0.0_pReal, 1.0_pReal, 0.0_pReal, 0.0_pReal]      ! 180 degree rotation about 100 axis
                endif

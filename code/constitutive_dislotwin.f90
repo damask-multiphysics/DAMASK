@@ -77,10 +77,9 @@ module constitutive_dislotwin
    constitutive_dislotwin_D0, &                                                                     !< prefactor for self-diffusion coefficient
    constitutive_dislotwin_Qsd, &                                                                    !< activation energy for dislocation climb
    constitutive_dislotwin_GrainSize, &                                                              !< grain size
-   constitutive_dislotwin_p, &                                                                      !< p-exponent in glide velocity
-   constitutive_dislotwin_q, &                                                                      !< q-exponent in glide velocity
+   constitutive_dislotwin_pShearBand, &                                                             !< p-exponent in shearband velocity
+   constitutive_dislotwin_qShearBand, &                                                             !< q-exponent in shearband velocity
    constitutive_dislotwin_MaxTwinFraction, &                                                        !< maximum allowed total twin volume fraction
-   constitutive_dislotwin_r, &                                                                      !< r-exponent in twin nucleation rate
    constitutive_dislotwin_CEdgeDipMinDistance, &                                                    !<
    constitutive_dislotwin_Cmfptwin, &                                                               !<
    constitutive_dislotwin_Cthresholdtwin, &                                                         !<
@@ -97,11 +96,9 @@ module constitutive_dislotwin
    constitutive_dislotwin_aTolTwinFrac                                                              !< absolute tolerance for integration of twin volume fraction
 
  real(pReal),                         dimension(:,:,:,:),     allocatable,         private :: &
-   constitutive_dislotwin_Ctwin_66                                                                  !< twin elasticity matrix in Mandel notation for each instance
-
+   constitutive_dislotwin_Ctwin66                                                                  !< twin elasticity matrix in Mandel notation for each instance
  real(pReal),                         dimension(:,:,:,:,:,:), allocatable,         private :: &
-   constitutive_dislotwin_Ctwin_3333                                                                !< twin elasticity matrix for each instance
-
+   constitutive_dislotwin_Ctwin3333                                                                !< twin elasticity matrix for each instance
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
    constitutive_dislotwin_rhoEdge0, &                                                               !< initial edge dislocation density per slip system for each family and instance
    constitutive_dislotwin_rhoEdgeDip0, &                                                            !< initial edge dipole density per slip system for each family and instance
@@ -113,6 +110,7 @@ module constitutive_dislotwin
    constitutive_dislotwin_QedgePerSlipSystem, &                                                     !< activation energy for glide [J] for each slip system and instance
    constitutive_dislotwin_v0PerSlipFamily, &                                                        !< dislocation velocity prefactor [m/s] for each family and instance
    constitutive_dislotwin_v0PerSlipSystem, &                                                        !< dislocation velocity prefactor [m/s] for each slip system and instance
+   constitutive_dislotwin_tau_peierlsPerSlipFamily, &                                               !< Peierls stress [Pa] for each family and instance
    constitutive_dislotwin_Ndot0PerTwinFamily, &                                                     !< twin nucleation rate [1/m³s] for each twin family and instance
    constitutive_dislotwin_Ndot0PerTwinSystem, &                                                     !< twin nucleation rate [1/m³s] for each twin system and instance
    constitutive_dislotwin_tau_r, &                                                                  !< stress to bring partial close together for each twin system and instance
@@ -123,7 +121,10 @@ module constitutive_dislotwin
    constitutive_dislotwin_interaction_SlipSlip, &                                                   !< coefficients for slip-slip interaction for each interaction type and instance
    constitutive_dislotwin_interaction_SlipTwin, &                                                   !< coefficients for slip-twin interaction for each interaction type and instance
    constitutive_dislotwin_interaction_TwinSlip, &                                                   !< coefficients for twin-slip interaction for each interaction type and instance
-   constitutive_dislotwin_interaction_TwinTwin                                                      !< coefficients for twin-twin interaction for each interaction type and instance
+   constitutive_dislotwin_interaction_TwinTwin, &                                                   !< coefficients for twin-twin interaction for each interaction type and instance
+   constitutive_dislotwin_pPerSlipFamily, &                                                         !< p-exponent in glide velocity
+   constitutive_dislotwin_qPerSlipFamily, &                                                         !< q-exponent in glide velocity
+   constitutive_dislotwin_rPerTwinFamily                                                            !< r-exponent in twin nucleation rate
  real(pReal),                         dimension(:,:,:),       allocatable,         private :: &
    constitutive_dislotwin_interactionMatrix_SlipSlip, &                                             !< interaction matrix of the different slip systems for each instance
    constitutive_dislotwin_interactionMatrix_SlipTwin, &                                             !< interaction matrix of slip systems with twin systems for each instance
@@ -225,6 +226,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
  character(len=65536) :: &
    tag  = '', &
    line = ''
+ real(pReal), dimension(:), allocatable :: tempPerSlip, tempPerTwin
   
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -253,10 +255,9 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_D0(maxNinstance),                                  source=0.0_pReal)
  allocate(constitutive_dislotwin_Qsd(maxNinstance),                                 source=0.0_pReal)
  allocate(constitutive_dislotwin_GrainSize(maxNinstance),                           source=0.0_pReal)
- allocate(constitutive_dislotwin_p(maxNinstance),                                   source=0.0_pReal)
- allocate(constitutive_dislotwin_q(maxNinstance),                                   source=0.0_pReal)
+ allocate(constitutive_dislotwin_pShearBand(maxNinstance),                          source=0.0_pReal)
+ allocate(constitutive_dislotwin_qShearBand(maxNinstance),                          source=0.0_pReal)
  allocate(constitutive_dislotwin_MaxTwinFraction(maxNinstance),                     source=0.0_pReal)
- allocate(constitutive_dislotwin_r(maxNinstance),                                   source=0.0_pReal)
  allocate(constitutive_dislotwin_CEdgeDipMinDistance(maxNinstance),                 source=0.0_pReal)
  allocate(constitutive_dislotwin_Cmfptwin(maxNinstance),                            source=0.0_pReal)
  allocate(constitutive_dislotwin_Cthresholdtwin(maxNinstance),                      source=0.0_pReal)
@@ -281,12 +282,17 @@ subroutine constitutive_dislotwin_init(fileUnit)
                                                                                     source=0.0_pReal)
  allocate(constitutive_dislotwin_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
+ allocate(constitutive_dislotwin_tau_peierlsPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
+                                                                                    source=0.0_pReal)
+ allocate(constitutive_dislotwin_pPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
+ allocate(constitutive_dislotwin_qPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
  allocate(constitutive_dislotwin_Ndot0PerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
  allocate(constitutive_dislotwin_twinsizePerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
  allocate(constitutive_dislotwin_CLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
                                                                                     source=0.0_pReal)
+ allocate(constitutive_dislotwin_rPerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
  allocate(constitutive_dislotwin_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance), &
                                                                                     source=0.0_pReal)
  allocate(constitutive_dislotwin_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance), &
@@ -321,6 +327,10 @@ subroutine constitutive_dislotwin_init(fileUnit)
        Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
        Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
        Nchunks_TwinTwin =     maxval(lattice_interactionTwinTwin(:,:,phase))
+       if(allocated(tempPerSlip)) deallocate(tempPerSlip)
+       if(allocated(tempPerTwin)) deallocate(tempPerTwin)
+       allocate(tempPerSlip(Nchunks_SlipFamilies))
+       allocate(tempPerTwin(Nchunks_TwinFamilies))
      endif
      cycle                                                                                          ! skip to next line
    endif
@@ -377,66 +387,78 @@ subroutine constitutive_dislotwin_init(fileUnit)
            case default
              call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_DISLOTWIN_label//')')
           end select
+!--------------------------------------------------------------------------------------------------
+! parameters depending on slip number of slip system families
        case ('nslip')
-         if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
+         if (positions(1) < Nchunks_SlipFamilies + 1_pInt) &
            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         if (positions(1) > Nchunks_SlipFamilies + 1_pInt) &
+           call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
          Nchunks_SlipFamilies = positions(1) - 1_pInt
          do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
+             constitutive_dislotwin_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
+       case ('rhoedge0','rhoedgedip0','slipburgers','qedge','v0','clambdaslip','tau_peierls','p_slip','q_slip')
+         do j = 1_pInt, Nchunks_SlipFamilies
+           tempPerSlip(j) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+         select case(tag)
+           case ('rhoedge0')
+             constitutive_dislotwin_rhoEdge0(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('rhoedgedip0')
+             constitutive_dislotwin_rhoEdgeDip0(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('slipburgers')
+             constitutive_dislotwin_burgersPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('qedge')
+             constitutive_dislotwin_QedgePerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('v0')
+             constitutive_dislotwin_v0PerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('clambdaslip')
+             constitutive_dislotwin_CLambdaSlipPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('tau_peierls')
+             if (lattice_structure(phase) /= LATTICE_bcc_ID) &
+               call IO_warning(42_pInt,ext_msg=trim(tag)//' for non-bcc ('//PLASTICITY_DISLOTWIN_label//')')
+             constitutive_dislotwin_tau_peierlsPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('p_slip')
+             constitutive_dislotwin_pPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+           case ('q_slip')
+             constitutive_dislotwin_qPerSlipFamily(1:Nchunks_SlipFamilies,instance) = tempPerSlip(1:Nchunks_SlipFamilies)
+         end select
+!--------------------------------------------------------------------------------------------------
+! parameters depending on slip number of twin families
        case ('ntwin')
-         if (positions(1) < 1_pInt + Nchunks_TwinFamilies) &
-           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         if (positions(1) < Nchunks_TwinFamilies + 1_pInt) &
+           call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         if (positions(1) > Nchunks_TwinFamilies + 1_pInt) &
+           call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
          Nchunks_TwinFamilies = positions(1) - 1_pInt
          do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_dislotwin_Ntwin(j,instance) = IO_intValue(line,positions,1_pInt+j)
+             constitutive_dislotwin_Ntwin(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
-       case ('rhoedge0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_rhoEdge0(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('rhoedgedip0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_rhoEdgeDip0(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('slipburgers')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_burgersPerSlipFamily(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('twinburgers')
-         do j = 1_pInt, Nchunks_TwinFamilies 
-           constitutive_dislotwin_burgersPerTwinFamily(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('qedge')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_QedgePerSlipFamily(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('v0')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_v0PerSlipFamily(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('ndot0')
+       case ('ndot0','twinsize','twinburgers','r_twin')
          do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_dislotwin_Ndot0PerTwinFamily(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           tempPerTwin(j) = IO_floatValue(line,positions,1_pInt+j)
          enddo
-       case ('twinsize')
-         do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_dislotwin_twinsizePerTwinFamily(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('clambdaslip')
-         do j = 1_pInt, Nchunks_SlipFamilies
-           constitutive_dislotwin_CLambdaSlipPerSlipFamily(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
+         select case(tag)
+           case ('ndot0')
+             if (lattice_structure(phase) == LATTICE_fcc_ID) &
+               call IO_warning(42_pInt,ext_msg=trim(tag)//' for fcc ('//PLASTICITY_DISLOTWIN_label//')')
+             constitutive_dislotwin_Ndot0PerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
+           case ('twinsize')
+             constitutive_dislotwin_twinsizePerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
+           case ('twinburgers')
+             constitutive_dislotwin_burgersPerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
+           case ('r_twin')
+             constitutive_dislotwin_rPerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
+         end select
        case ('grainsize')
          constitutive_dislotwin_GrainSize(instance) = IO_floatValue(line,positions,2_pInt)
        case ('maxtwinfraction')
          constitutive_dislotwin_MaxTwinFraction(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('pexponent')
-         constitutive_dislotwin_p(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('qexponent')
-         constitutive_dislotwin_q(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('rexponent')
-         constitutive_dislotwin_r(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('p_shearband')
+         constitutive_dislotwin_pShearBand(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('q_shearband')
+         constitutive_dislotwin_qShearBand(instance) = IO_floatValue(line,positions,2_pInt)
        case ('d0')
          constitutive_dislotwin_D0(instance) = IO_floatValue(line,positions,2_pInt)
        case ('qsd')
@@ -518,6 +540,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
             call IO_error(211_pInt,el=instance,ext_msg='slipBurgers ('//PLASTICITY_DISLOTWIN_label//')')
           if (constitutive_dislotwin_v0PerSlipFamily(f,instance) <= 0.0_pReal) &
             call IO_error(211_pInt,el=instance,ext_msg='v0 ('//PLASTICITY_DISLOTWIN_label//')')
+          if (constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance) < 0.0_pReal) &
+            call IO_error(211_pInt,el=instance,ext_msg='tau_peierls ('//PLASTICITY_DISLOTWIN_label//')')
         endif
       enddo
       do f = 1_pInt,lattice_maxNtwinFamily
@@ -534,16 +558,27 @@ subroutine constitutive_dislotwin_init(fileUnit)
         call IO_error(211_pInt,el=instance,ext_msg='D0 ('//PLASTICITY_DISLOTWIN_label//')')
       if (constitutive_dislotwin_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
-      if (constitutive_dislotwin_SFE_0K(instance) == 0.0_pReal .and. constitutive_dislotwin_dSFE_dT(instance) == 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='SFE ('//PLASTICITY_DISLOTWIN_label//')')
-      if (constitutive_dislotwin_aTolRho(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
-      if (constitutive_dislotwin_aTolTwinFrac(instance) <= 0.0_pReal) &
-        call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
+      if (sum(constitutive_dislotwin_Ntwin(:,instance)) > 0_pInt) then
+        if (constitutive_dislotwin_SFE_0K(instance) == 0.0_pReal .and. &
+            constitutive_dislotwin_dSFE_dT(instance) == 0.0_pReal .and. &
+            lattice_structure(phase) == LATTICE_fcc_ID) &
+          call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
+        if (constitutive_dislotwin_aTolRho(instance) <= 0.0_pReal) &
+          call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
+        if (constitutive_dislotwin_aTolTwinFrac(instance) <= 0.0_pReal) &
+          call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
+      endif
       if (constitutive_dislotwin_sbResistance(instance) < 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
       if (constitutive_dislotwin_sbVelocity(instance) < 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='sbVelocity ('//PLASTICITY_DISLOTWIN_label//')')
+      if (constitutive_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
+          constitutive_dislotwin_pShearBand(instance) <= 0.0_pReal) &
+        call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
+      if (constitutive_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
+          constitutive_dislotwin_qShearBand(instance) <= 0.0_pReal) &
+        call IO_error(211_pInt,el=instance,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
+
 !--------------------------------------------------------------------------------------------------
 ! Determine total number of active slip or twin systems
       constitutive_dislotwin_Nslip(:,instance) = min(lattice_NslipSystem(:,phase),constitutive_dislotwin_Nslip(:,instance))
@@ -567,16 +602,23 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_twinsizePerTwinSystem(maxTotalNtwin, maxNinstance),   source=0.0_pReal)
  allocate(constitutive_dislotwin_CLambdaSlipPerSlipSystem(maxTotalNslip, maxNinstance),source=0.0_pReal)
  
- allocate(constitutive_dislotwin_interactionMatrix_SlipSlip(maxTotalNslip,maxTotalNslip,maxNinstance), &
-                                                                                       source=0.0_pReal)
- allocate(constitutive_dislotwin_interactionMatrix_SlipTwin(maxTotalNslip,maxTotalNtwin,maxNinstance), &
-                                                                                       source=0.0_pReal)
- allocate(constitutive_dislotwin_interactionMatrix_TwinSlip(maxTotalNtwin,maxTotalNslip,maxNinstance), &
-                                                                                       source=0.0_pReal)
- allocate(constitutive_dislotwin_interactionMatrix_TwinTwin(maxTotalNtwin,maxTotalNtwin,maxNinstance), &
-                                                                                       source=0.0_pReal)
+ allocate(constitutive_dislotwin_interactionMatrix_SlipSlip(maxval(constitutive_dislotwin_totalNslip),&  ! slip resistance from slip activity
+                                                            maxval(constitutive_dislotwin_totalNslip),&
+                                                            maxNinstance), source=0.0_pReal)
+ allocate(constitutive_dislotwin_interactionMatrix_SlipTwin(maxval(constitutive_dislotwin_totalNslip),&  ! slip resistance from twin activity
+                                                            maxval(constitutive_dislotwin_totalNtwin),&
+                                                            maxNinstance), source=0.0_pReal)
+ allocate(constitutive_dislotwin_interactionMatrix_TwinSlip(maxval(constitutive_dislotwin_totalNtwin),&  ! twin resistance from slip activity
+                                                            maxval(constitutive_dislotwin_totalNslip),&
+                                                            maxNinstance), source=0.0_pReal)
+ allocate(constitutive_dislotwin_interactionMatrix_TwinTwin(maxval(constitutive_dislotwin_totalNtwin),&  ! twin resistance from twin activity
+                                                            maxval(constitutive_dislotwin_totalNtwin),&
+                                                            maxNinstance), source=0.0_pReal)
  allocate(constitutive_dislotwin_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
+ allocate(constitutive_dislotwin_Ctwin66(6,6,maxTotalNtwin,maxNinstance),              source=0.0_pReal)
+ allocate(constitutive_dislotwin_Ctwin3333(3,3,3,3,maxTotalNtwin,maxNinstance),        source=0.0_pReal)
+
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(phase) == PLASTICITY_dislotwin_ID) then
      instance = phase_plasticityInstance(phase)
@@ -705,19 +747,19 @@ subroutine constitutive_dislotwin_init(fileUnit)
        !* Rotate twin elasticity matrices
  
          index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                             ! index in full lattice twin list
-         do l = 1_pInt,3_pInt ; do m = 1_pInt,3_pInt ; do n = 1_pInt,3_pInt ; do o = 1_pInt,3_pInt
-           do p = 1_pInt,3_pInt ; do q = 1_pInt,3_pInt ; do r = 1_pInt,3_pInt ; do s = 1_pInt,3_pInt
-             constitutive_dislotwin_Ctwin_3333(l,m,n,o,index_myFamily+j,instance) = &
-             constitutive_dislotwin_Ctwin_3333(l,m,n,o,index_myFamily+j,instance) + &
+         do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
+           do p = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
+             constitutive_dislotwin_Ctwin3333(l,m,n,o,index_myFamily+j,instance) = &
+             constitutive_dislotwin_Ctwin3333(l,m,n,o,index_myFamily+j,instance) + &
                lattice_C3333(p,q,r,s,instance) * &
                lattice_Qtwin(l,p,index_otherFamily+j,phase) * &
                lattice_Qtwin(m,q,index_otherFamily+j,phase) * &
                lattice_Qtwin(n,r,index_otherFamily+j,phase) * &
                lattice_Qtwin(o,s,index_otherFamily+j,phase)
-           enddo ; enddo ; enddo ; enddo
-         enddo ; enddo ; enddo ; enddo
-         constitutive_dislotwin_Ctwin_66(1:6,1:6,index_myFamily+j,instance) = &
-           math_Mandel3333to66(constitutive_dislotwin_Ctwin_3333(1:3,1:3,1:3,1:3,index_myFamily+j,instance))
+           enddo; enddo; enddo; enddo
+         enddo; enddo; enddo; enddo
+         constitutive_dislotwin_Ctwin66(1:6,1:6,index_myFamily+j,instance) = &
+           math_Mandel3333to66(constitutive_dislotwin_Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j,instance))
  
       !* Interaction matrices
          do o = 1_pInt,lattice_maxNslipFamily
@@ -757,7 +799,9 @@ function constitutive_dislotwin_stateInit(instance,phase)
    pi
  use lattice, only: &
    lattice_maxNslipFamily, &
-   lattice_mu
+   lattice_structure, &
+   lattice_mu, &
+   lattice_bcc_ID
  
  implicit none
  integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the plasticity
@@ -790,7 +834,7 @@ function constitutive_dislotwin_stateInit(instance,phase)
                index_myFamily+constitutive_dislotwin_Nslip(f,instance)) = &
      constitutive_dislotwin_rhoEdgeDip0(f,instance)
  enddo
- 
+
  constitutive_dislotwin_stateInit(1_pInt:ns)           = rhoEdge0
  constitutive_dislotwin_stateInit(ns+1_pInt:2_pInt*ns) = rhoEdgeDip0
  
@@ -806,11 +850,23 @@ function constitutive_dislotwin_stateInit(instance,phase)
      constitutive_dislotwin_GrainSize(instance)/(1.0_pReal+invLambdaSlip0(i)*constitutive_dislotwin_GrainSize(instance))
  constitutive_dislotwin_stateInit(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = MeanFreePathSlip0
  
- forall (i = 1_pInt:ns) &
-   tauSlipThreshold0(i) = constitutive_dislotwin_SolidSolutionStrength(instance) + &
-     lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(i,instance) * &
-     sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(i,1:ns,instance)))
- constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1:7_pInt*ns+4_pInt*nt) = tauSlipThreshold0
+ if (lattice_structure(phase) == lattice_bcc_ID) then
+   j = 0_pInt
+   slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
+     slipSystemsLoop: do i = 1_pInt,constitutive_dislotwin_Nslip(f,instance)
+        j = j+1_pInt
+        tauSlipThreshold0(i) = constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)
+     enddo slipSystemsLoop
+   enddo slipFamiliesLoop
+ else
+   forall (i = 1_pInt:ns) &
+     tauSlipThreshold0(i) = constitutive_dislotwin_SolidSolutionStrength(instance) + &
+       lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(i,instance) * &
+       sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(i,1:ns,instance)))
+  endif
+  constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1:7_pInt*ns+4_pInt*nt) = tauSlipThreshold0
+
+
  
 !--------------------------------------------------------------------------------------------------
 ! initialize dependent twin microstructural variables
@@ -822,7 +878,7 @@ function constitutive_dislotwin_stateInit(instance,phase)
    TwinVolume0(j) = &
      (pi/4.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(j,instance)*MeanFreePathTwin0(j)**(2.0_pReal)
  constitutive_dislotwin_stateInit(7_pInt*ns+5_pInt*nt+1_pInt:7_pInt*ns+6_pInt*nt) = TwinVolume0
- 
+
 end function constitutive_dislotwin_stateInit
 
 
@@ -923,8 +979,11 @@ subroutine constitutive_dislotwin_microstructure(temperature,state,ipc,ip,el)
    material_phase, &
    phase_plasticityInstance
  use lattice, only: &
+   lattice_structure, &
    lattice_mu, &
-   lattice_nu
+   lattice_nu, &
+   lattice_bcc_ID
+
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1008,7 +1067,7 @@ subroutine constitutive_dislotwin_microstructure(temperature,state,ipc,ip,el)
          (1.0_pReal+constitutive_dislotwin_GrainSize(instance)*(state(ipc,ip,el)%p(3_pInt*ns+s)))
     endif
  enddo
- 
+
  !* mean free path between 2 obstacles seen by a growing twin
  forall (t = 1_pInt:nt) &
    state(ipc,ip,el)%p(6_pInt*ns+3_pInt*nt+t) = &
@@ -1016,11 +1075,13 @@ subroutine constitutive_dislotwin_microstructure(temperature,state,ipc,ip,el)
      (1.0_pReal+constitutive_dislotwin_GrainSize(instance)*state(ipc,ip,el)%p(5_pInt*ns+2_pInt*nt+t))
  
  !* threshold stress for dislocation motion
- forall (s = 1_pInt:ns) &
-   state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+s) = constitutive_dislotwin_SolidSolutionStrength(instance)+ &
-     lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(s,instance)*&
-     sqrt(dot_product((state(ipc,ip,el)%p(1:ns)+state(ipc,ip,el)%p(ns+1_pInt:2_pInt*ns)),&
-                      constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,instance)))
+ if(lattice_structure(phase) /= LATTICE_BCC_ID) then ! bcc value remains constant
+   forall (s = 1_pInt:ns) &
+     state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+s) = constitutive_dislotwin_SolidSolutionStrength(instance)+ &
+       lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(s,instance)*&
+       sqrt(dot_product((state(ipc,ip,el)%p(1:ns)+state(ipc,ip,el)%p(ns+1_pInt:2_pInt*ns)),&
+                        constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,instance)))
+ endif
  
  !* threshold stress for growing twin
  forall (t = 1_pInt:nt) &
@@ -1052,7 +1113,8 @@ end subroutine constitutive_dislotwin_microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,state,ipc,ip,el)
  use prec, only: &
-   p_vec
+   p_vec, &
+   tol_math_check
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33, &
@@ -1146,10 +1208,17 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
       !* Calculation of Lp
       !* Resolved shear stress on slip system
       tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
- 
+      
       !* Stress ratios
-      StressRatio_p = (abs(tau_slip(j))/state(ipc,ip,el)%p(6*ns+4*nt+j))**constitutive_dislotwin_p(instance)
-      StressRatio_pminus1 = (abs(tau_slip(j))/state(ipc,ip,el)%p(6*ns+4*nt+j))**(constitutive_dislotwin_p(instance)-1.0_pReal)
+      if (abs(tau_slip(j)) < tol_math_check) then
+        StressRatio_p = 0.0_pReal
+        StressRatio_pminus1 = 0.0_pReal
+      else
+        StressRatio_p = (abs(tau_slip(j))/state(ipc,ip,el)%p(6*ns+4*nt+j))&
+                                                    **constitutive_dislotwin_pPerSlipFamily(f,instance)
+        StressRatio_pminus1 = (abs(tau_slip(j))/state(ipc,ip,el)%p(6*ns+4*nt+j))&
+                                                    **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+      endif
       !* Boltzmann ratio
       BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
       !* Initial shear rates
@@ -1159,14 +1228,14 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  
       !* Shear rates due to slip
       gdot_slip(j) = (1.0_pReal - sumf) * DotGamma0 &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislotwin_q(instance)) &
+                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislotwin_qPerSlipFamily(f,instance)) &
                    * sign(1.0_pReal,tau_slip(j))
  
       !* Derivatives of shear rates
       dgdot_dtauslip(j) = &
-        ((abs(gdot_slip(j))*BoltzmannRatio*&
-        constitutive_dislotwin_p(instance)*constitutive_dislotwin_q(instance))/state(ipc,ip,el)%p(6*ns+4*nt+j))*&
-        StressRatio_pminus1*(1-StressRatio_p)**(constitutive_dislotwin_q(instance)-1.0_pReal)
+        ((abs(gdot_slip(j))*BoltzmannRatio*constitutive_dislotwin_pPerSlipFamily(f,instance)&
+        *constitutive_dislotwin_qPerSlipFamily(f,instance))/state(ipc,ip,el)%p(6*ns+4*nt+j))*&
+        StressRatio_pminus1*(1-StressRatio_p)**(constitutive_dislotwin_qPerSlipFamily(f,instance)-1.0_pReal)
  
       !* Plastic velocity gradient for dislocation glide
       Lp = Lp + gdot_slip(j)*lattice_Sslip(:,:,1,index_myFamily+i,phase)
@@ -1197,23 +1266,31 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
      tau_sb(j) = dot_product(Tstar_v,constitutive_dislotwin_sbSv(1:6,j,ipc,ip,el))
    
      !* Stress ratios
-     StressRatio_p = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(instance))**constitutive_dislotwin_p(instance)
-     StressRatio_pminus1 = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(instance))&
-                                                                          **(constitutive_dislotwin_p(instance)-1.0_pReal)
+      if (abs(tau_sb(j)) < tol_math_check) then
+        StressRatio_p = 0.0_pReal
+        StressRatio_pminus1 = 0.0_pReal
+      else
+       StressRatio_p = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(instance))&
+                 **constitutive_dislotwin_pShearBand(instance)
+       StressRatio_pminus1 = (abs(tau_sb(j))/constitutive_dislotwin_sbResistance(instance))&
+                 **(constitutive_dislotwin_pShearBand(instance)-1.0_pReal)
+      endif
+
      !* Boltzmann ratio
      BoltzmannRatio = constitutive_dislotwin_sbQedge(instance)/(kB*Temperature)
      !* Initial shear rates
      DotGamma0 = constitutive_dislotwin_sbVelocity(instance)
  
      !* Shear rates due to shearband
-     gdot_sb(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**constitutive_dislotwin_q(instance))*&
-                  sign(1.0_pReal,tau_sb(j))
+     gdot_sb(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
+                  constitutive_dislotwin_qShearBand(instance))*sign(1.0_pReal,tau_sb(j))
                   
      !* Derivatives of shear rates
      dgdot_dtausb(j) = &
        ((abs(gdot_sb(j))*BoltzmannRatio*&
-       constitutive_dislotwin_p(instance)*constitutive_dislotwin_q(instance))/constitutive_dislotwin_sbResistance(instance))*&
-       StressRatio_pminus1*(1_pInt-StressRatio_p)**(constitutive_dislotwin_q(instance)-1.0_pReal)
+       constitutive_dislotwin_pShearBand(instance)*constitutive_dislotwin_qShearBand(instance))/&
+       constitutive_dislotwin_sbResistance(instance))*&
+       StressRatio_pminus1*(1_pInt-StressRatio_p)**(constitutive_dislotwin_qShearBand(instance)-1.0_pReal)
  
      !* Plastic velocity gradient for shear banding
      Lp = Lp + gdot_sb(j)*sb_Smatrix
@@ -1238,13 +1315,13 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  
       !* Calculation of Lp
       !* Resolved shear stress on twin system
+
       tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,phase))
- 
+
       !* Stress ratios
-      StressRatio_r = (state(ipc,ip,el)%p(7*ns+4*nt+j)/tau_twin(j))**constitutive_dislotwin_r(instance)
- 
+      if (tau_twin(j) > tol_math_check) then
+        StressRatio_r = (state(ipc,ip,el)%p(7*ns+4*nt+j)/tau_twin(j))**constitutive_dislotwin_rPerTwinFamily(f,instance) 
       !* Shear rates and their derivatives due to twin
-      if ( tau_twin(j) > 0.0_pReal ) then
         select case(lattice_structure(phase))
           case (LATTICE_fcc_ID)
             s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
@@ -1264,7 +1341,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
         gdot_twin(j) = &
           (constitutive_dislotwin_MaxTwinFraction(instance)-sumf)*lattice_shearTwin(index_myFamily+i,phase)*&
           state(ipc,ip,el)%p(7*ns+5*nt+j)*Ndot0*exp(-StressRatio_r)
-        dgdot_dtautwin(j) = ((gdot_twin(j)*constitutive_dislotwin_r(instance))/tau_twin(j))*StressRatio_r
+        dgdot_dtautwin(j) = ((gdot_twin(j)*constitutive_dislotwin_rPerTwinFamily(f,instance))/tau_twin(j))*StressRatio_r
       endif
  
       !* Plastic velocity gradient for mechanical twinning
@@ -1289,7 +1366,8 @@ end subroutine constitutive_dislotwin_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,el)
  use prec, only: &
-   p_vec
+   p_vec, &
+   tol_math_check
  use math, only: &
    pi
  use mesh, only: &
@@ -1310,7 +1388,8 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
    lattice_mu, &
    lattice_structure, &
    lattice_fcc_twinNucleationSlipPair, &
-   LATTICE_fcc_ID
+   LATTICE_fcc_ID, &
+   LATTICE_bcc_ID
 
  implicit none
  real(pReal), dimension(6),                                                    intent(in):: &
@@ -1357,11 +1436,16 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
  
       !* Resolved shear stress on slip system
       tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
-      !* Stress ratios
-      StressRatio_p = (abs(tau_slip(j))/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                               constitutive_dislotwin_p(instance)
-      StressRatio_pminus1 = (abs(tau_slip(j))/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                   (constitutive_dislotwin_p(instance)-1.0_pReal)
+
+      if (abs(tau_slip(j)) < tol_math_check) then
+        StressRatio_p = 0.0_pReal
+        StressRatio_pminus1 = 0.0_pReal
+      else
+        StressRatio_p = (abs(tau_slip(j))/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
+                                              constitutive_dislotwin_pPerSlipFamily(f,instance)
+        StressRatio_pminus1 = (abs(tau_slip(j))/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
+                                               (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+      endif
       !* Boltzmann ratio
       BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
       !* Initial shear rates
@@ -1370,8 +1454,8 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
         constitutive_dislotwin_v0PerSlipSystem(j,instance)
  
       !* Shear rates due to slip
-      gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**constitutive_dislotwin_q(instance))*&
-                     sign(1.0_pReal,tau_slip(j))
+      gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
+                     constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau_slip(j))
  
       !* Multiplication
       DotRhoMultiplication(j) = abs(gdot_slip(j))/&
@@ -1442,10 +1526,10 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
       !* Resolved shear stress on twin system
       tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,phase))
       !* Stress ratios
-      StressRatio_r = (state(ipc,ip,el)%p(7*ns+4*nt+j)/tau_twin(j))**constitutive_dislotwin_r(instance)
- 
+      if (tau_twin(j) > tol_math_check) then
+        StressRatio_r = (state(ipc,ip,el)%p(7*ns+4*nt+j)/tau_twin(j))**constitutive_dislotwin_rPerTwinFamily(f,instance)
       !* Shear rates and their derivatives due to twin
-      if ( tau_twin(j) > 0.0_pReal ) then
+
         select case(lattice_structure(phase))
           case (LATTICE_fcc_ID)
             s1=lattice_fcc_twinNucleationSlipPair(1,index_myFamily+i)
@@ -1466,7 +1550,7 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
           (constitutive_dislotwin_MaxTwinFraction(instance)-sumf)*&
           state(ipc,ip,el)%p(7_pInt*ns+5_pInt*nt+j)*Ndot0*exp(-StressRatio_r)
         !* Dotstate for accumulated shear due to twin
-        constitutive_dislotwin_dotstate(3_pInt*ns+nt+j) = constitutive_dislotwin_dotState(3_pInt*ns+j) * &
+        constitutive_dislotwin_dotState(3_pInt*ns+nt+j) = constitutive_dislotwin_dotState(3_pInt*ns+j) * &
                                                           lattice_sheartwin(index_myfamily+i,phase)
       endif
    enddo
@@ -1480,7 +1564,8 @@ end function constitutive_dislotwin_dotState
 !--------------------------------------------------------------------------------------------------
 function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
  use prec, only: &
-   p_vec
+   p_vec, &
+   tol_math_check
  use math, only: &
    pi, &
    math_Mandel6to33, &
@@ -1568,10 +1653,15 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
               !* Resolved shear stress on slip system
               tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
               !* Stress ratios
-              StressRatio_p = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                                constitutive_dislotwin_p(instance)
-              StressRatio_pminus1 = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                    (constitutive_dislotwin_p(instance)-1.0_pReal)
+              if (abs(tau) < tol_math_check) then
+                StressRatio_p = 0.0_pReal
+                StressRatio_pminus1 = 0.0_pReal
+              else
+                StressRatio_p = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
+                                     constitutive_dislotwin_pPerSlipFamily(f,instance)
+                StressRatio_pminus1 = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
+                                          (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+              endif
               !* Boltzmann ratio
               BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
               !* Initial shear rates
@@ -1582,7 +1672,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
               !* Shear rates due to slip
               constitutive_dislotwin_postResults(c+j) = &
                 DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                                           constitutive_dislotwin_q(instance))*sign(1.0_pReal,tau)
+                               constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
         enddo ; enddo
         c = c + ns
       case (accumulated_shear_slip_ID)
@@ -1616,8 +1706,8 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
               constitutive_dislotwin_postResults(c+j) = &
                 (3.0_pReal*lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(j,instance))/&
                 (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))))
-              constitutive_dislotwin_postResults(c+j) = min(constitutive_dislotwin_postResults(c+j),state(ipc,ip,el)%p(5*ns+3*nt+j))
- !            constitutive_dislotwin_postResults(c+j) = max(constitutive_dislotwin_postResults(c+j),state(ipc,ip,el)%p(4*ns+2*nt+j))
+              constitutive_dislotwin_postResults(c+j)=min(constitutive_dislotwin_postResults(c+j),state(ipc,ip,el)%p(5*ns+3*nt+j))
+ !            constitutive_dislotwin_postResults(c+j)=max(constitutive_dislotwin_postResults(c+j),state(ipc,ip,el)%p(4*ns+2*nt+j))
         enddo; enddo
         c = c + ns
        case (resolved_stress_shearband_ID)
@@ -1630,17 +1720,23 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
               !* Resolved shear stress on shearband system
               tau = dot_product(Tstar_v,constitutive_dislotwin_sbSv(1:6,j,ipc,ip,el))
               !* Stress ratios
-              StressRatio_p = (abs(tau)/constitutive_dislotwin_sbResistance(instance))**constitutive_dislotwin_p(instance)
-              StressRatio_pminus1 = (abs(tau)/constitutive_dislotwin_sbResistance(instance))&
-                                                                            **(constitutive_dislotwin_p(instance)-1.0_pReal)
+              if (abs(tau) < tol_math_check) then
+                StressRatio_p = 0.0_pReal
+                StressRatio_pminus1 = 0.0_pReal
+              else
+                StressRatio_p = (abs(tau)/constitutive_dislotwin_sbResistance(instance))**&
+                                 constitutive_dislotwin_pShearBand(instance)
+                StressRatio_pminus1 = (abs(tau)/constitutive_dislotwin_sbResistance(instance))**&
+                                (constitutive_dislotwin_pShearBand(instance)-1.0_pReal)
+              endif
               !* Boltzmann ratio
               BoltzmannRatio = constitutive_dislotwin_sbQedge(instance)/(kB*Temperature)
               !* Initial shear rates
               DotGamma0 = constitutive_dislotwin_sbVelocity(instance)
- 
-              !* Shear rates due to slip
+              ! Shear rate due to shear band
               constitutive_dislotwin_postResults(c+j) = &
-          DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**constitutive_dislotwin_q(instance))*sign(1.0_pReal,tau)
+          DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**constitutive_dislotwin_qShearBand(instance))*&
+                sign(1.0_pReal,tau)
          enddo 
         c = c + 6_pInt
       case (twin_fraction_ID)
@@ -1658,10 +1754,15 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
                !* Resolved shear stress on slip system
                tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
                !* Stress ratios
-               StressRatio_p = (abs(tau)/state(ipc,ip,el)%p(5_pInt*ns+3_pInt*nt+j))**&
-                                                                constitutive_dislotwin_p(instance)
-               StressRatio_pminus1 = (abs(tau)/state(ipc,ip,el)%p(5_pInt*ns+3_pInt*nt+j))**&
-                                                    (constitutive_dislotwin_p(instance)-1.0_pReal)
+              if (abs(tau) < tol_math_check) then
+                StressRatio_p = 0.0_pReal
+                StressRatio_pminus1 = 0.0_pReal
+              else
+                StressRatio_p = (abs(tau)/state(ipc,ip,el)%p(5_pInt*ns+3_pInt*nt+j))**&
+                                                    constitutive_dislotwin_pPerSlipFamily(f,instance)
+                StressRatio_pminus1 = (abs(tau)/state(ipc,ip,el)%p(5_pInt*ns+3_pInt*nt+j))**&
+                                                    (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+               endif
                !* Boltzmann ratio
                BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
                !* Initial shear rates
@@ -1671,7 +1772,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
  
                !* Shear rates due to slip
                gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                                           constitutive_dislotwin_q(instance))*sign(1.0_pReal,tau)
+                              constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
           enddo;enddo
         
           j = 0_pInt
@@ -1683,7 +1784,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
               !* Resolved shear stress on twin system
               tau = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,phase))
               !* Stress ratios
-              StressRatio_r = (state(ipc,ip,el)%p(7_pInt*ns+4_pInt*nt+j)/tau)**constitutive_dislotwin_r(instance)
+              StressRatio_r = (state(ipc,ip,el)%p(7_pInt*ns+4_pInt*nt+j)/tau)**constitutive_dislotwin_rPerTwinFamily(f,instance)
  
               !* Shear rates due to twin
               if ( tau > 0.0_pReal ) then
@@ -1738,31 +1839,36 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
           index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase)) ! at which index starts my family
           do i = 1_pInt,constitutive_dislotwin_Nslip(f,instance)          ! process each (active) slip system in family
              j = j + 1_pInt
- 
+
              !* Resolved shear stress on slip system
              tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
-             !* Stress ratios
-             StressRatio_p = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                               constitutive_dislotwin_p(instance)
-             StressRatio_pminus1 = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                   (constitutive_dislotwin_p(instance)-1.0_pReal)
+             if (abs(tau) < tol_math_check) then
+                StressRatio_p = 0.0_pReal
+                StressRatio_pminus1 = 0.0_pReal
+             else
+               StressRatio_p = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
+                                                    constitutive_dislotwin_pPerSlipFamily(f,instance)
+               StressRatio_pminus1 = (abs(tau)/state(ipc,ip,el)%p(6_pInt*ns+4_pInt*nt+j))**&
+                                                   (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+             endif
              !* Boltzmann ratio
              BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
              !* Initial shear rates
              DotGamma0 = &
                state(ipc,ip,el)%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)* &
                constitutive_dislotwin_v0PerSlipSystem(j,instance)
- 
+
              !* Shear rates due to slip
              gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                                          constitutive_dislotwin_q(instance))*sign(1.0_pReal,tau)
- 
+                            constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
+
              !* Derivatives of shear rates
              dgdot_dtauslip = &
                ((abs(gdot_slip(j))*BoltzmannRatio*&
-               constitutive_dislotwin_p(instance)*constitutive_dislotwin_q(instance))/state(ipc,ip,el)%p(6*ns+4*nt+j))*&
-               StressRatio_pminus1*(1_pInt-StressRatio_p)**(constitutive_dislotwin_q(instance)-1.0_pReal)
- 
+               constitutive_dislotwin_pPerSlipFamily(f,instance)*constitutive_dislotwin_qPerSlipFamily(f,instance))/&
+               state(ipc,ip,el)%p(6*ns+4*nt+j))*StressRatio_pminus1*(1_pInt-StressRatio_p)**&
+               (constitutive_dislotwin_qPerSlipFamily(f,instance)-1.0_pReal)
+
              !* Stress exponent
              if (gdot_slip(j)==0.0_pReal) then
                constitutive_dislotwin_postResults(c+j) = 0.0_pReal
