@@ -78,24 +78,31 @@ def output(cmds,locals,dest):
   return
 
 
-def rcbOrientationParser(content):
+def rcbOrientationParser(content,idcolumn):
 
   grains = []
   myOrientation = [0.0,0.0,0.0]
   for line in content:
     m = re.match(r'\s*(#|$)',line)
-    if m: continue                                            # skip comments and blank lines
+    if m: continue                                                # skip comments and blank lines
     for grain in range(2):
-      myID = int(line.split()[12+grain])                      # get grain id
+      myID = int(line.split()[idcolumn+grain])                    # get grain id
       myOrientation = map(float,line.split())[3*grain:3+3*grain]  # get orientation
       if len(grains) < myID:
-        for i in range(myID-len(grains)):                     # extend list to necessary length
+        for i in range(myID-len(grains)):                         # extend list to necessary length
           grains.append([0.0,0.0,0.0])
-      grains[myID-1] = myOrientation                          # store Euler angles
+      try:
+        grains[myID-1] = myOrientation                            # store Euler angles
+      except IndexError:
+        message = 'You might not have chosen the correct column for the grain IDs! Please check the "--id" option.'
+        print '\033[1;31m'+message+'\033[0m\n'
+        raise
+      except:
+        raise
 
   return grains
 
-def rcbParser(content,M,size,tolerance):                      # parser for TSL-OIM reconstructed boundary files
+def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):   # parser for TSL-OIM reconstructed boundary files
 
 # find bounding box
 
@@ -106,7 +113,14 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
   for line in content:
     m = re.match(r'\s*(#|$)',line)
     if m: continue                                            # skip comments and blank lines
-    (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment.
+    try:
+      (x[0],y[0],x[1],y[1]) = map(float,line.split())[segmentcolumn:segmentcolumn+4] # get start and end coordinates of each segment.
+    except IndexError:
+      message = 'You might not have chosen the correct column for the segment end points! Please check the "--segment" option.'
+      print '\033[1;31m'+message+'\033[0m\n'
+      raise
+    except:
+      raise
     (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
     (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
     boxX[0] = min(boxX[0],x[0],x[1])
@@ -130,7 +144,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
   for line in content:
     m = re.match(r'\s*(#|$)',line)
     if m: continue                                # skip comments and blank lines
-    (x[0],y[0],x[1],y[1]) = map(float,line.split())[8:12]     # get start and end coordinates of each segment
+    (x[0],y[0],x[1],y[1]) = map(float,line.split())[segmentcolumn:segmentcolumn+4] # get start and end coordinates of each segment.
     (x[0],y[0]) = (M[0]*x[0]+M[1]*y[0],M[2]*x[0]+M[3]*y[0])   # apply transformation to coordinates
     (x[1],y[1]) = (M[0]*x[1]+M[1]*y[1],M[2]*x[1]+M[3]*y[1])   # to get rcb --> Euler system
 
@@ -138,7 +152,7 @@ def rcbParser(content,M,size,tolerance):                      # parser for TSL-O
     x[1] -= boxX[0]
     y[0] -= boxY[0]
     y[1] -= boxY[0]
-    grainNeighbors.append(map(int,line.split()[12:14]))     # remember right and left grain per segment
+    grainNeighbors.append(map(int,line.split()[idcolumn:idcolumn+2])) # remember right and left grain per segment
     for i in range(2):                                      # store segment to both points
       match = False                                         # check whether point is already known (within a small range)
       for posX in connectivityXY.keys():
@@ -844,6 +858,12 @@ parser.add_option("-M", "--coordtransformation", type="float", nargs=4, \
 parser.add_option("--scatter", type="float",\
         dest="scatter",\
         help="orientation scatter %default")
+parser.add_option("--id", type="int",\
+        dest="idcolumn",\
+        help="column holding the right hand grain ID in the rcb file %default")
+parser.add_option("--segment", type="int",\
+        dest="segmentcolumn",\
+        help="column holding the first entry for the segment end points in the rcb file %default")
 
 parser.set_defaults(output = [])
 parser.set_defaults(size = 1.0)
@@ -861,6 +881,8 @@ parser.set_defaults(strainrate = 1.0e-3)
 parser.set_defaults(increments = 200)
 parser.set_defaults(mesh = 'dt_planar_trimesh')
 parser.set_defaults(twoD = False)
+parser.set_defaults(idcolumn = 13)
+parser.set_defaults(segmentcolumn = 9)
 
 (options, args) = parser.parse_args()
 
@@ -874,15 +896,17 @@ try:
   boundaryFile.close()
 except:
   print 'unable to read boundary file "%s"'%args[0]
-  sys.exit(-1)
+  raise
 
 options.output = [s.lower() for s in options.output]                        # lower case
+options.idcolumn -= 1                                                       # python indexing starts with 0
+options.segmentcolumn -= 1                                                  # python indexing starts with 0
 
 myName = os.path.splitext(args[0])[0]
 print "%s\n"%myName
 
-orientationData = rcbOrientationParser(boundarySegments)
-rcData = rcbParser(boundarySegments,options.M,options.size,options.tolerance)
+orientationData = rcbOrientationParser(boundarySegments,options.idcolumn)
+rcData = rcbParser(boundarySegments,options.M,options.size,options.tolerance,options.idcolumn,options.segmentcolumn)
 
 # ----- write image -----
 
@@ -943,8 +967,10 @@ if 'mentat' in options.output:
     outputLocals = {'log':[]}
     if (options.port != None):
       py_connect('',options.port)
-      output(cmds,outputLocals,'Mentat')
-      py_disconnect()
+      try: 
+        output(cmds,outputLocals,'Mentat')
+      finally:
+        py_disconnect()
       if 'procedure' in options.output:
         output(outputLocals['log'],outputLocals,'Stdout')
   else:
