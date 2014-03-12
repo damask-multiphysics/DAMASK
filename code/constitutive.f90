@@ -80,8 +80,7 @@ subroutine constitutive_init
  use hdf5, only: &
    HID_T
  use IO, only : &
-   HDF5_mappingConstitutive, &
-   HDF5_closeJobFile
+   HDF5_mappingConstitutive
 #endif
 
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
@@ -155,10 +154,14 @@ subroutine constitutive_init
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, nonlocalConstitutionPresent
 #ifdef HDF
- integer(pInt), dimension(:,:,:), allocatable :: mapping
- integer(pInt), dimension(:), allocatable :: InstancePosition
- allocate(mapping(homogenization_maxngrains,mesh_ncpelems,2),source=0_pInt)
- allocate(InstancePosition(material_nphase),source=0_pInt)
+ integer(pInt), dimension(:,:,:), allocatable :: mappingConstitutive
+ integer(pInt), dimension(:,:,:), allocatable :: mappingCrystallite
+ integer(pInt), dimension(:), allocatable :: ConstitutivePosition
+ integer(pInt), dimension(:), allocatable :: CrystallitePosition
+ allocate(mappingConstitutive(homogenization_maxngrains,mesh_ncpelems,2),source=0_pInt)
+ allocate(mappingCrystallite (homogenization_maxngrains,mesh_ncpelems,2),source=0_pInt)
+ allocate(ConstitutivePosition(material_nphase),source=0_pInt)
+ allocate(CrystallitePosition(material_nphase),source=0_pInt)
 #endif
  nonlocalConstitutionPresent = .false.
  
@@ -444,7 +447,6 @@ subroutine constitutive_init
  enddo
 #ifdef HDF
  call  HDF5_mappingConstitutive(mapping)
- call  HDF5_closeJobFile()
 #endif
 !--------------------------------------------------------------------------------------------------
 ! write out state size file

@@ -91,17 +91,17 @@ parser.add_option('--prefix',                dest='prefix', type='string', metav
                                              help='location of (links to) DAMASK executables [%default]')
 parser.add_option('--with-fc',               dest='compiler', type='string', metavar='string',
                                              help='F90 compiler [%default]')
-parser.add_option('--with-fftw-dir',         dest='fftwRoot', type='string', metavar='string',
+parser.add_option('--with-FFTW-dir',         dest='fftwRoot', type='string', metavar='string',
                                              help='root directory of FFTW [%default]')
-parser.add_option('--with-msc-dir',          dest='mscRoot', type='string', metavar='string',
+parser.add_option('--with-MSC-dir',          dest='mscRoot', type='string', metavar='string',
                                              help='root directory of MSC.Marc/Mentat [%default]')
 parser.add_option('--with-HDF5-dir',         dest='hdf5Root', type='string', metavar='string',
                                              help='root directory of HDF5 [%default]')
 parser.add_option('--with-OMP-threads',      dest='threads', type='int', metavar='int',
                                              help='number of openMP threads [%default]')
-parser.add_option('--with-blas-type',        dest='blasType', type='string', metavar='string',
+parser.add_option('--with-BLAS-type',        dest='blasType', type='string', metavar='string',
                                              help='type of BLAS/LAPACK library [%default]')
-parser.add_option('--with-blas-dir',         dest='blasRoot', type='string', metavar='string',
+parser.add_option('--with-BLAS-dir',         dest='blasRoot', type='string', metavar='string',
                                              help='root directory of BLAS/LAPACK library [%default]')
 parser.add_option('--with-spectral-options', dest='spectraloptions', type='string', action='extend', metavar='<string LIST>',
                                              help='options for compilation of spectral solver')
