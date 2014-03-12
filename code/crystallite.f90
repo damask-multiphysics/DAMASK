@@ -3353,7 +3353,7 @@ subroutine crystallite_orientations
  ! --- UPDATE SOME ADDITIONAL VARIABLES THAT ARE NEEDED FOR NONLOCAL MATERIAL ---
  ! --- we use crystallite_orientation from above, so need a separate loop
  
- !$OMP PARALLEL DO PRIVATE(myPhase,lattice_structure,neighboring_e,neighboring_i,neighboringPhase)
+ !$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        myPhase = material_phase(1,i,e)                                                                     ! get my phase
@@ -3363,7 +3363,7 @@ subroutine crystallite_orientations
          do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                        ! loop through my neighbors
            neighboring_e = mesh_ipNeighborhood(1,n,i,e)
            neighboring_i = mesh_ipNeighborhood(2,n,i,e)
-           if ((neighboring_e > 0) .and. (neighboring_i > 0)) then                                         ! if neighbor exists
+           if (neighboring_e > 0 .and. neighboring_i > 0) then                                             ! if neighbor exists
              neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
              if (.not. phase_localPlasticity(neighboringPhase)) then                                       ! neighbor got also nonlocal plasticity
                if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then                 ! if my neighbor has same crystal structure like me
