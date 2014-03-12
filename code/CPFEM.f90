@@ -544,8 +544,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      if (.not. parallelExecution) then
        FEsolving_execElem(1)     = elCP
        FEsolving_execElem(2)     = elCP
-       if (.not. microstructure_elemhomo(mesh_element(4,elCP)) .or. &                           ! calculate unless homogeneous
-                (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip == 1_pInt)) then        ! and then only first ip
+       if (.not. microstructure_elemhomo(mesh_element(4,elCP)) .or. &                               ! calculate unless homogeneous
+                (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip == 1_pInt)) then            ! and then only first ip
          FEsolving_execIP(1,elCP) = ip
          FEsolving_execIP(2,elCP) = ip
          if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) then
@@ -553,8 +553,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
              write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elCP,ip
            !$OMP END CRITICAL (write2out)
          endif
-         call materialpoint_stressAndItsTangent(updateJaco, dt)                                  ! calculate stress and its tangent
-         call materialpoint_postResults()                                                        ! post results
+         call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent
+         call materialpoint_postResults()
        endif
        
      !* parallel computation and calulation not yet done
@@ -566,8 +566,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
                                                                    ' to ',FEsolving_execElem(2)
          !$OMP END CRITICAL (write2out)
        endif
-       call materialpoint_stressAndItsTangent(updateJaco, dt)                                    ! calculate stress and its tangent (parallel execution inside)
-       call materialpoint_postResults()                                                          ! post results
+       call materialpoint_stressAndItsTangent(updateJaco, dt)                                       ! calculate stress and its tangent (parallel execution inside)
+       call materialpoint_postResults()
        CPFEM_calc_done = .true.
      endif
      
@@ -579,7 +579,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
        CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
      else  
-       if (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip > 1_pInt) then                ! me homogenous? --> copy from first ip
+       if (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip > 1_pInt) then                    ! me homogenous? --> copy from first ip
          materialpoint_P(1:3,1:3,ip,elCP) = materialpoint_P(1:3,1:3,1,elCP)
          materialpoint_F(1:3,1:3,ip,elCP) = materialpoint_F(1:3,1:3,1,elCP)
          materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,elCP) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,elCP)

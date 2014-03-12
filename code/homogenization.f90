@@ -615,7 +615,7 @@ subroutine materialpoint_postResults
 
        grainLooping :do g = 1,myNgrains
          theSize = (1 + crystallite_sizePostResults(myCrystallite)) + (1 + constitutive_sizePostResults(g,i,e))
-         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)       ! tell crystallite results
+         materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping
      enddo IpLooping

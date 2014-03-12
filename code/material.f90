@@ -102,7 +102,7 @@ module material
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
 
- integer(pInt), dimension(:,:,:), allocatable, public:: &
+ integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase   (index) of each grain,IP,element
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
    material_texture                                                                                 !< texture (index) of each grain,IP,element

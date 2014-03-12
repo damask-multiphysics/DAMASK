@@ -76,6 +76,14 @@ contains
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_init
+#ifdef HDF
+ use hdf5, only: &
+   HID_T
+ use IO, only : &
+   HDF5_mappingConstitutive, &
+   HDF5_closeJobFile
+#endif
+
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
@@ -146,7 +154,12 @@ subroutine constitutive_init
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, nonlocalConstitutionPresent
-
+#ifdef HDF
+ integer(pInt), dimension(:,:,:), allocatable :: mapping
+ integer(pInt), dimension(:), allocatable :: InstancePosition
+ allocate(mapping(homogenization_maxngrains,mesh_ncpelems,2),source=0_pInt)
+ allocate(InstancePosition(material_nphase),source=0_pInt)
+#endif
  nonlocalConstitutionPresent = .false.
  
  
@@ -248,6 +261,10 @@ subroutine constitutive_init
          case default                                                                               ! so far no output for elasticity
        end select
        instance = phase_plasticityInstance(material_phase(g,i,e))
+#ifdef HDF
+       InstancePosition(instance) = InstancePosition(instance)+1_pInt
+       mapping(g,e,1:2) = [instancePosition(instance),instance]
+#endif
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)
            allocate(constitutive_state0(g,i,e)%p(constitutive_none_sizeState(instance)))
@@ -425,7 +442,10 @@ subroutine constitutive_init
      constitutive_state(g,i,e)%p = constitutive_state0(g,i,e)%p                                     ! need to be defined for first call of constitutive_microstructure in crystallite_init
    endforall
  enddo
- 
+#ifdef HDF
+ call  HDF5_mappingConstitutive(mapping)
+ call  HDF5_closeJobFile()
+#endif
 !--------------------------------------------------------------------------------------------------
 ! write out state size file
  call IO_write_jobIntFile(777,'sizeStateConst', size(constitutive_sizeState))
@@ -875,7 +895,6 @@ function constitutive_postResults(Tstar_v, Fe, temperature, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_NONE_ID)
-     constitutive_postResults = 0.0_pReal
     
    case (PLASTICITY_TITANMOD_ID)
      constitutive_postResults = constitutive_titanmod_postResults(constitutive_state,ipc,ip,el)

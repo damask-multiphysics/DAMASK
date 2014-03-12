@@ -25,7 +25,11 @@
 !> @author Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief  input/output functions, partly depending on chosen solver
 !--------------------------------------------------------------------------------------------------
-module IO   
+module IO
+#ifdef HDF
+ use hdf5, only: &
+   HID_T
+#endif
  use prec, only: &
    pInt, &
    pReal
@@ -34,6 +38,10 @@ module IO
  private
  character(len=5), parameter, public :: &
    IO_EOF = '#EOF#'                                                                                 !< end of file string
+#ifdef HDF 
+ integer(HID_T), public, protected :: resultsFile, tempResults
+#endif
+
  public :: &
    IO_init, &
    IO_read, &
@@ -90,7 +98,10 @@ module IO
  private :: &
    abaqus_assembleInputFile
 #endif
-
+#ifdef HDF
+public:: HDF5_mappingConstitutive, &
+         HDF5_closeJobFile
+#endif
 contains
 
 
@@ -104,6 +115,10 @@ subroutine IO_init
  write(6,'(a)')   ' $Id$'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+
+#ifdef HDF 
+ call HDF5_createJobFile
+#endif
 
 end subroutine IO_init
 
@@ -1891,4 +1906,262 @@ recursive function abaqus_assembleInputFile(unit1,unit2) result(createSuccess)
 end function abaqus_assembleInputFile
 #endif
 
+#ifdef HDF
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates and initializes HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_createJobFile
+ use hdf5
+ use DAMASK_interface, only: &
+   getSolverWorkingDirectoryName, &
+   getSolverJobName
+
+ implicit none
+ integer              :: hdferr
+ INTEGER(SIZE_T)      :: typeSize 
+ character(len=1024)  :: path
+
+!--------------------------------------------------------------------------------------------------
+! initialize HDF5 library and check if integer and float type size match
+ call h5open_f(hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile')
+ call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile: h5tget_size_f (int)')
+ if (int(pInt,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pInt does not match H5T_NATIVE_INTEGER')
+ call h5tget_size_f(H5T_NATIVE_DOUBLE,typeSize, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile: h5tget_size_f (double)')
+ if (int(pReal,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pReal does not match H5T_NATIVE_DOUBLE')
+
+!--------------------------------------------------------------------------------------------------
+! open file
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//'DAMASKout'
+ call h5fcreate_f(path,H5F_ACC_TRUNC_F,resultsFile,hdferr)
+ if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
+ call HDF5_addStringAttribute(resultsFile,'createdBy','$Id$')
+
+!--------------------------------------------------------------------------------------------------
+! create mapping group in file
+ call HDF5_closeGroup(HDF5_addGroup("mapping"))
+
+end subroutine HDF5_createJobFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates and initializes HDF5 output file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_closeJobFile()
+ use hdf5
+ 
+ implicit none
+ integer :: hdferr
+ call h5fclose_f(resultsFile,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile')
+
+end subroutine HDF5_closeJobFile
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a new group to the results file
+!--------------------------------------------------------------------------------------------------
+integer(HID_T) function HDF5_addGroup(path)
+ use hdf5
+
+ implicit none
+ character(len=*), intent(in) :: path
+ integer                      :: hdferr
+
+ call h5gcreate_f(resultsFile, trim(path), HDF5_addGroup, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup failed ('//trim(path)//' )')
+
+end function HDF5_addGroup
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a new group to the results file
+!--------------------------------------------------------------------------------------------------
+integer(HID_T) function HDF5_openGroup(path)
+ use hdf5
+
+ implicit none
+ character(len=*), intent(in) :: path
+ integer                      :: hdferr
+
+ call h5gopen_f(resultsFile, trim(path), HDF5_openGroup, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup failed ('//trim(path)//' )')
+
+end function HDF5_openGroup
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief closes a group
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_closeGroup(ID)
+ use hdf5
+
+ implicit none
+ integer(HID_T), intent(in) :: ID
+ integer                    :: hdferr
+
+ call h5gclose_f(ID, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup')
+
+end subroutine HDF5_closeGroup
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds a new group to the results file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in)  :: entity
+ character(len=*), intent(in)  :: attrLabel, attrValue
+ integer                       :: hdferr
+ integer(HID_T)                :: attr_id, space_id, type_id
+
+ call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ call h5tcopy_f(H5T_NATIVE_CHARACTER, type_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ call h5tset_size_f(type_id, int(len(trim(attrValue)),HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ call h5acreate_f(entity, trim(attrLabel),type_id,space_id,attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ call h5awrite_f(attr_id, type_id, trim(attrValue), int([1],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ call h5aclose_f(attr_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ call h5sclose_f(space_id,hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+
+end subroutine HDF5_addStringAttribute
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds the unique mapping from spatial position and constituent ID to results
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_mappingConstitutive(mapping)
+ use hdf5
+
+ implicit none
+ integer(pInt), intent(in), dimension(:,:,:) :: mapping
+
+ integer        :: hdf5err, NmatPoints,Nconstituents
+ integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id,instance_id,position_id
+
+ Nconstituents=size(mapping,1)
+ NmatPoints=size(mapping,2)
+ mapping_ID = HDF5_openGroup("mapping")
+
+!--------------------------------------------------------------------------------------------------
+! create dataspace
+ call h5screate_simple_f(2, int([Nconstituents,NmatPoints],HSIZE_T), space_id, hdf5err, &
+                            int([Nconstituents,NmatPoints],HSIZE_T))
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute')
+
+!--------------------------------------------------------------------------------------------------
+! compound type
+ call h5tcreate_f(H5T_COMPOUND_F, 6_SIZE_T, dtype_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute: h5tcreate_f dtype_id')
+ call h5tinsert_f(dtype_id, "Constitutive Instance",         0_SIZE_T, H5T_STD_U16LE, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute: h5tinsert_f 0')
+ call h5tinsert_f(dtype_id, "Position in Instance Results",  2_SIZE_T, H5T_STD_U32LE, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute: h5tinsert_f 2')
+
+!--------------------------------------------------------------------------------------------------
+! create Dataset
+ call h5dcreate_f(mapping_id, "Constitutive", dtype_id, space_id, dset_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute')
+
+!--------------------------------------------------------------------------------------------------
+! Create memory types (one compound datatype for each member)
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute: h5tcreate_f instance_id')
+ call h5tinsert_f(instance_id, "Constitutive Instance",        0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute: h5tinsert_f instance_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute: h5tcreate_f position_id')
+ call h5tinsert_f(position_id, "Position in Instance Results", 0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute: h5tinsert_f position_id')
+print*, mapping
+print*, 'ddddddddd'
+print*, mapping(1:Nconstituents,1:nmatpoints,1)
+print*, mapping(1:Nconstituents,1:nmatpoints,2)
+
+!--------------------------------------------------------------------------------------------------
+! write data by fields in the datatype. Fields order is not important.
+ call h5dwrite_f(dset_id, position_id, mapping(1:Nconstituents,1:NmatPoints,1), &
+                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdf5err)
+ 
+ call h5dwrite_f(dset_id, instance_id, mapping(1:Nconstituents,1:NmatPoints,2), &
+                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdf5err)
+
+!--------------------------------------------------------------------------------------------------
+!close types, dataspaces
+ call h5tclose_f(dtype_id, hdf5err)
+ call h5tclose_f(position_id, hdf5err)
+ call h5tclose_f(instance_id, hdf5err)
+ call h5dclose_f(dset_id, hdf5err)
+ call h5sclose_f(space_id, hdf5err)
+ call HDF5_closeGroup(mapping_ID)
+
+end subroutine HDF5_mappingConstitutive
+
+
+subroutine HDF5_mappingHomogenization(Npoints)
+ use hdf5
+
+ implicit none
+ integer(pInt), intent(in) :: Npoints
+ integer(pInt) :: i
+ integer :: hdf5err
+ integer(HID_T) :: mapping_ID,dspace_id,dtype_id,dset_ID
+ INTEGER(HID_T)     ::    instance_id,position_id,elem_id,ip_id
+
+ mapping_ID=HDF5_openGroup("mapping")
+ call h5screate_simple_f(1, [int(Npoints,HSIZE_T)], dspace_id, hdf5err) ! dataspace
+
+! compound type
+ CALL h5tcreate_f(H5T_COMPOUND_F, 11_SIZE_T, dtype_id, hdf5err)
+ CALL h5tinsert_f(dtype_id, "Homogenization Instance",  0_SIZE_T, H5T_STD_U16LE, hdf5err)
+ CALL h5tinsert_f(dtype_id, "Position in Instance",     2_SIZE_T, H5T_STD_U32LE, hdf5err)
+ CALL h5tinsert_f(dtype_id, "Element ID",               6_SIZE_T, H5T_STD_U32LE, hdf5err)
+ CALL h5tinsert_f(dtype_id, "Integration Point Number",10_SIZE_T, H5T_STD_U8LE, hdf5err)
+! create Dataset
+ CALL h5dcreate_f(mapping_id, "Homogenization", dtype_id, dspace_id, dset_id, hdf5err) ! dataset
+
+ ! Create memory types. We have to create a compound datatype
+ ! for each member we want to write.
+ !
+ CALL h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdf5err)
+ CALL h5tinsert_f(instance_id, "Homogenization Instance", 0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
+ CALL h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdf5err)
+ CALL h5tinsert_f(position_id, "Position in Instance",    0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
+ CALL h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), elem_id, hdf5err)
+ CALL h5tinsert_f(elem_id,     "Element Number",          0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
+ CALL h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), ip_id, hdf5err)
+ CALL h5tinsert_f(ip_id,       "Integration Point Number",0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
+
+ ! Write data by fields in the datatype. Fields order is not important.
+ !
+ CALL h5dwrite_f(dset_id, ip_id, spread(1_pInt,1,Npoints), [int(Npoints,HSIZE_T)], hdf5err)
+ CALL h5dwrite_f(dset_id, position_id, [(i,i=0_pInt,Npoints-1_pInt)], [int(Npoints,HSIZE_T)], hdf5err)
+ CALL h5dwrite_f(dset_id, instance_id, spread(1_pInt,1,Npoints), [int(Npoints,HSIZE_T)], hdf5err)
+ CALL h5dwrite_f(dset_id, elem_id, [(i,i=1_pInt,Npoints)], [int(Npoints,HSIZE_T)], hdf5err)
+
+!close
+ call h5tclose_f(ip_id, hdf5err)
+ call h5tclose_f(elem_id, hdf5err)
+ call h5tclose_f(position_id, hdf5err)
+ call h5tclose_f(instance_id, hdf5err)
+ call h5tclose_f(dtype_id, hdf5err)
+ call h5dclose_f(dset_id, hdf5err)
+ call h5sclose_f(dspace_id, hdf5err)
+ call HDF5_closeGroup(mapping_ID)
+
+end subroutine HDF5_mappingHomogenization
+#endif
 end module IO
