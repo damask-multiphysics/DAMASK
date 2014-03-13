@@ -210,8 +210,9 @@ subroutine homogenization_isostrain_partitionDeformation(F,avgF,el)
  real(pReal),   dimension (3,3),                           intent(in)  :: avgF                      !< my average def grad
  integer(pInt),                                            intent(in)  :: &
    el                                                                                               !< element number
-
- F = spread(avgF,3,homogenization_Ngrains(mesh_element(3,el)))
+ F=0.0_pReal
+ F(1:3,1:3,1:homogenization_Ngrains(mesh_element(3,el)))= &
+   spread(avgF,3,homogenization_Ngrains(mesh_element(3,el)))
 
 end subroutine homogenization_isostrain_partitionDeformation
 
