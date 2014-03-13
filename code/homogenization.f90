@@ -126,6 +126,7 @@ subroutine homogenization_init()
  use crystallite, only: &
    crystallite_maxSizePostResults
  use material
+ use homogenization_none
  use homogenization_isostrain
  use homogenization_RGC
 
@@ -146,8 +147,12 @@ subroutine homogenization_init()
 ! parse homogenization from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- call homogenization_isostrain_init(FILEUNIT)
- call homogenization_RGC_init(FILEUNIT)
+ if (any(homogenization_type == HOMOGENIZATION_NONE_ID)) &
+   call homogenization_none_init(FILEUNIT)
+ if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) &
+   call homogenization_isostrain_init(FILEUNIT)
+ if (any(homogenization_type == HOMOGENIZATION_RGC_ID)) &
+   call homogenization_RGC_init(FILEUNIT)
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
@@ -157,6 +162,10 @@ subroutine homogenization_init()
    i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
    knownHomogenization = .true.                                                                     ! assume valid
    select case(homogenization_type(p))                                                              ! split per homogenization type
+     case (HOMOGENIZATION_NONE_ID)
+       outputName = HOMOGENIZATION_NONE_label
+       thisOutput => null()
+       thisSize   => null()
      case (HOMOGENIZATION_ISOSTRAIN_ID)
        outputName = HOMOGENIZATION_ISOSTRAIN_label
        thisOutput => homogenization_isostrain_output
@@ -212,14 +221,9 @@ subroutine homogenization_init()
        mapping(e,1:4) = [instancePosition(myinstance),myinstance,e,i]
 #endif
      select case(homogenization_type(mesh_element(3,e)))
+       case (HOMOGENIZATION_none_ID)
+         homogenization_sizePostResults(i,e) = 0_pInt
        case (HOMOGENIZATION_ISOSTRAIN_ID)
-         if (homogenization_isostrain_sizeState(myInstance) > 0_pInt) then
-           allocate(homogenization_state0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
-           allocate(homogenization_subState0(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
-           allocate(homogenization_state(i,e)%p(homogenization_isostrain_sizeState(myInstance)))
-           homogenization_state0(i,e)%p  = 0.0_pReal
-           homogenization_sizeState(i,e) = homogenization_isostrain_sizeState(myInstance)
-         endif
          homogenization_sizePostResults(i,e) = homogenization_isostrain_sizePostResults(myInstance)
        case (HOMOGENIZATION_RGC_ID)
          if (homogenization_RGC_sizeState(myInstance) > 0_pInt) then
@@ -654,6 +658,7 @@ subroutine homogenization_partitionDeformation(ip,el)
  use material, only: &
    homogenization_type, &
    homogenization_maxNgrains, &
+   HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_RGC_ID
  use crystallite, only: &
@@ -668,8 +673,14 @@ subroutine homogenization_partitionDeformation(ip,el)
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
- 
+
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+
+   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+     crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el) = 0.0_pReal
+     crystallite_partionedF(1:3,1:3,1:1,ip,el) = &
+       spread(materialpoint_subF(1:3,1:3,ip,el),3,1)
+
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
      call homogenization_isostrain_partitionDeformation(&
                           crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
@@ -742,6 +753,7 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
  use material, only: &
    homogenization_type, &
    homogenization_maxNgrains, &
+   HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_RGC_ID
  use crystallite, only: &
@@ -757,6 +769,10 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
    el                                                                                               !< element number
  
  chosenHomogenization: select case(homogenization_type(mesh_element(3,el)))
+   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+       materialpoint_P(1:3,1:3,ip,el) = sum(crystallite_P(1:3,1:3,1:1,ip,el),3)
+       materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,el) &
+        = sum(crystallite_dPdF(1:3,1:3,1:3,1:3,1:1,ip,el),5)
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
      call homogenization_isostrain_averageStressAndItsTangent(&
        materialpoint_P(1:3,1:3,ip,el), &
@@ -812,6 +828,7 @@ function homogenization_postResults(ip,el)
    mesh_element
  use material, only: &
    homogenization_type, &
+   HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
    HOMOGENIZATION_RGC_ID
  use homogenization_isostrain, only: &
@@ -827,6 +844,8 @@ function homogenization_postResults(ip,el)
 
  homogenization_postResults = 0.0_pReal
  chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
+   case (HOMOGENIZATION_NONE_ID) chosenHomogenization
+
    case (HOMOGENIZATION_ISOSTRAIN_ID) chosenHomogenization
      homogenization_postResults = homogenization_isostrain_postResults(&
                                   ip, &

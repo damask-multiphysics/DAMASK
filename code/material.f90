@@ -42,6 +42,7 @@ module material
    PLASTICITY_DISLOTWIN_label     = 'dislotwin', &
    PLASTICITY_TITANMOD_label      = 'titanmod', &
    PLASTICITY_NONLOCAL_label      = 'nonlocal', &
+   HOMOGENIZATION_NONE_label      = 'none', &
    HOMOGENIZATION_ISOSTRAIN_label = 'isostrain', &
    HOMOGENIZATION_RGC_label       = 'rgc'
 
@@ -60,6 +61,7 @@ module material
  end enum
  enum, bind(c)
    enumerator :: HOMOGENIZATION_undefined_ID, &
+                 HOMOGENIZATION_none_ID, &
                  HOMOGENIZATION_isostrain_ID, &
                  HOMOGENIZATION_RGC_ID
  end enum
@@ -165,6 +167,7 @@ module material
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
+   HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
    HOMOGENIZATION_RGC_ID
 
@@ -306,11 +309,11 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  if (Nsections < 1_pInt) call IO_error(160_pInt,ext_msg=myPart)
  
  allocate(homogenization_name(Nsections));          homogenization_name = ''
- allocate(homogenization_type(Nsections),                source=HOMOGENIZATION_undefined_ID)
- allocate(homogenization_typeInstance(Nsections),        source=0_pInt)
- allocate(homogenization_Ngrains(Nsections),             source=0_pInt)
- allocate(homogenization_Noutput(Nsections),             source=0_pInt)
- allocate(homogenization_active(Nsections),              source=.false.)
+ allocate(homogenization_type(Nsections),           source=HOMOGENIZATION_undefined_ID)
+ allocate(homogenization_typeInstance(Nsections),   source=0_pInt)
+ allocate(homogenization_Ngrains(Nsections),        source=0_pInt)
+ allocate(homogenization_Noutput(Nsections),        source=0_pInt)
+ allocate(homogenization_active(Nsections),         source=.false.)
 
  forall (s = 1_pInt:Nsections) homogenization_active(s) = any(mesh_element(3,:) == s)               ! current homogenization used in model? Homogenization view, maximum operations depend on maximum number of homog schemes
    homogenization_Noutput = IO_countTagInPart(fileUnit,myPart,'(output)',Nsections)
@@ -341,6 +344,9 @@ subroutine material_parseHomogenization(fileUnit,myPart)
      select case(tag)
        case ('type')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case(HOMOGENIZATION_NONE_label)
+             homogenization_type(section) = HOMOGENIZATION_NONE_ID
+             homogenization_Ngrains(section) = 1_pInt
            case(HOMOGENIZATION_ISOSTRAIN_label)
              homogenization_type(section) = HOMOGENIZATION_ISOSTRAIN_ID        
            case(HOMOGENIZATION_RGC_label)

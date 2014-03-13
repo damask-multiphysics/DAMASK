@@ -344,7 +344,7 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug
                  FEsolving.o mesh.o material.o lattice.o \
                  constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
                  constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o crystallite.o \
-                 homogenization_RGC.o homogenization_isostrain.o homogenization.o CPFEM.o \
+                 homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o CPFEM.o \
                  DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o 
 
 ifdef PETSC_DIR
@@ -381,6 +381,7 @@ CPFEM.o:                       CPFEM.f90\
                                homogenization.o
 
 homogenization.o:              homogenization.f90\
+                               homogenization_none.o \
                                homogenization_RGC.o \
                                homogenization_isostrain.o
 
@@ -388,6 +389,9 @@ homogenization_RGC.o:          homogenization_RGC.f90 \
                                crystallite.o
 
 homogenization_isostrain.o:    homogenization_isostrain.f90 \
+                               crystallite.o
+
+homogenization_none.o:         homogenization_none.f90 \
                                crystallite.o
 
 crystallite.o:                 crystallite.f90 \

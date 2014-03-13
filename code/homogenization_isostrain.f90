@@ -30,7 +30,6 @@ module homogenization_isostrain
  implicit none
  private
  integer(pInt),               dimension(:),   allocatable,         public, protected :: &
-   homogenization_isostrain_sizeState, &
    homogenization_isostrain_sizePostResults
  integer(pInt),               dimension(:,:), allocatable, target, public :: &
    homogenization_isostrain_sizePostResult
@@ -70,9 +69,6 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_isostrain_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
- use math, only: &
-   math_Mandel3333to66, &
-   math_Voigt66to3333
  use IO
  use material
  
@@ -96,7 +92,6 @@ subroutine homogenization_isostrain_init(fileUnit)
  maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
  if (maxNinstance == 0) return
 
- allocate(homogenization_isostrain_sizeState(maxNinstance),                source=0_pInt)
  allocate(homogenization_isostrain_sizePostResults(maxNinstance),          source=0_pInt)
  allocate(homogenization_isostrain_sizePostResult(maxval(homogenization_Noutput),maxNinstance), &
                                                                            source=0_pInt)
@@ -106,7 +101,7 @@ subroutine homogenization_isostrain_init(fileUnit)
           homogenization_isostrain_output = ''
  allocate(homogenization_isostrain_outputID(maxval(homogenization_Noutput),maxNinstance), &
                                                                            source=undefined_ID)
- 
+
  rewind(fileUnit)
  do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)! wind forward to <homogenization>
    line = IO_read(fileUnit)
@@ -168,7 +163,6 @@ subroutine homogenization_isostrain_init(fileUnit)
  enddo
 
  do k = 1,maxNinstance
-   homogenization_isostrain_sizeState(i)    = 0_pInt
 
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_outputID(j,i))

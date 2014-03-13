@@ -108,6 +108,7 @@ end module DAMASK_interface
 #include "constitutive_nonlocal.f90"
 #include "constitutive.f90"
 #include "crystallite.f90"
+#include "homogenization_none.f90"
 #include "homogenization_isostrain.f90"
 #include "homogenization_RGC.f90"
 #include "homogenization.f90"
