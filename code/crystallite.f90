@@ -2891,8 +2891,7 @@ logical function crystallite_stateJump(g,i,e)
    constitutive_sizeDotState, &
    constitutive_state, &
    constitutive_deltaState, &
-   constitutive_collectDeltaState, &
-   constitutive_microstructure
+   constitutive_collectDeltaState
  
  implicit none
  integer(pInt), intent(in):: &
