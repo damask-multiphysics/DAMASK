@@ -319,18 +319,18 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    phase_plasticityInstance
 
  implicit none
- real(pReal), dimension(3,3),                                                  intent(out) :: &
+ real(pReal), dimension(3,3), intent(out) :: &
    Lp                                                                                               !< plastic velocity gradient
- real(pReal), dimension(9,9),                                                  intent(out) :: &
+ real(pReal), dimension(9,9), intent(out) :: &
    dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
- real(pReal), dimension(6),                                                    intent(in) :: &
+ real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- integer(pInt),                                                                intent(in) :: &
+ integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+ type(p_vec),                 intent(in) :: &
    state                                                                                            !< microstructure state
 
  real(pReal), dimension(3,3) :: &
@@ -355,7 +355,7 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    dLp_dTstar99 = 0.0_pReal
  else
    gamma_dot = constitutive_j2_gdot0(instance) &
-             * (sqrt(1.5_pReal) * norm_Tstar_dev / constitutive_j2_fTaylor(instance) / state(ipc,ip,el)%p(1)) &
+             * (sqrt(1.5_pReal) * norm_Tstar_dev / constitutive_j2_fTaylor(instance) / state%p(1)) &
                                                   **constitutive_j2_n(instance)
 
    Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/constitutive_j2_fTaylor(instance)
@@ -395,13 +395,13 @@ pure function constitutive_j2_dotState(Tstar_v,state,ipc,ip,el)
  implicit none
  real(pReal), dimension(1) :: &
    constitutive_j2_dotState
- real(pReal), dimension(6),                                                    intent(in):: &
+ real(pReal), dimension(6), intent(in):: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- integer(pInt),                                                                intent(in) :: &
+ integer(pInt),             intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+ type(p_vec),               intent(in) :: &
    state                                                                                            !< microstructure state
 
  real(pReal), dimension(6) :: &
@@ -425,7 +425,7 @@ pure function constitutive_j2_dotState(Tstar_v,state,ipc,ip,el)
 ! strain rate 
  gamma_dot = constitutive_j2_gdot0(instance) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
             / &!-----------------------------------------------------------------------------------
-              (constitutive_j2_fTaylor(instance) * state(ipc,ip,el)%p(1)) ) ** constitutive_j2_n(instance)
+              (constitutive_j2_fTaylor(instance) * state%p(1)) ) ** constitutive_j2_n(instance)
  
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
@@ -447,8 +447,8 @@ pure function constitutive_j2_dotState(Tstar_v,state,ipc,ip,el)
                    )
    endif
    hardening = ( constitutive_j2_h0(instance) + constitutive_j2_h0_slopeLnRate(instance) * log(gamma_dot) ) &
-               * abs( 1.0_pReal - state(ipc,ip,el)%p(1)/saturation )**constitutive_j2_a(instance) &
-               * sign(1.0_pReal, 1.0_pReal - state(ipc,ip,el)%p(1)/saturation)
+               * abs( 1.0_pReal - state%p(1)/saturation )**constitutive_j2_a(instance) &
+               * sign(1.0_pReal, 1.0_pReal - state%p(1)/saturation)
  else
    hardening = 0.0_pReal
  endif
@@ -476,13 +476,13 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
    phase_Noutput
 
  implicit none
- real(pReal), dimension(6),                                                    intent(in) :: &
+ real(pReal), dimension(6),  intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- integer(pInt),                                                                intent(in) :: &
+ integer(pInt),              intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- type(p_vec), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
+ type(p_vec),                intent(in) :: &
    state                                                                                            !< microstructure state
 
  real(pReal), dimension(constitutive_j2_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
@@ -511,13 +511,13 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
    select case(constitutive_j2_outputID(o,instance))
      case (flowstress_ID)
-       constitutive_j2_postResults(c+1_pInt) = state(ipc,ip,el)%p(1)
+       constitutive_j2_postResults(c+1_pInt) = state%p(1)
        c = c + 1_pInt
      case (strainrate_ID)
        constitutive_j2_postResults(c+1_pInt) = &
                 constitutive_j2_gdot0(instance) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
              / &!----------------------------------------------------------------------------------
-              (constitutive_j2_fTaylor(instance) * state(ipc,ip,el)%p(1)) ) ** constitutive_j2_n(instance)
+              (constitutive_j2_fTaylor(instance) * state%p(1)) ) ** constitutive_j2_n(instance)
        c = c + 1_pInt
    end select
  enddo outputsLoop

@@ -192,8 +192,8 @@ subroutine constitutive_init
    select case(phase_plasticity(phase))                                                             ! split per constititution
      case (PLASTICITY_NONE_ID)
        outputName = PLASTICITY_NONE_label
-       thisOutput => NULL()                                                                         ! constitutive_none_output
-       thisSize   => NULL()                                                                         ! constitutive_none_sizePostResult
+       thisOutput => null()                                                                         ! constitutive_none_output
+       thisSize   => null()                                                                         ! constitutive_none_sizePostResult
      case (PLASTICITY_J2_ID)
        outputName = PLASTICITY_J2_label
        thisOutput => constitutive_j2_output
@@ -506,11 +506,11 @@ pure function constitutive_homogenizedC(ipc,ip,el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(constitutive_state,ipc,ip,el) 
-    
+     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(constitutive_state(ipc,ip,el), &
+                                                                                        ipc,ip,el) 
    case (PLASTICITY_TITANMOD_ID)
-     constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state,ipc,ip,el)
- 
+     constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state(ipc,ip,el), &
+                                                                                       ipc,ip,el)
    case default
      constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phase(ipc,ip,el))
      
@@ -550,11 +550,11 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_microstructure(temperature,constitutive_state,ipc,ip,el)
-
+     call constitutive_dislotwin_microstructure(temperature,constitutive_state(ipc,ip,el), &
+                                                                               ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_microstructure(temperature,constitutive_state,ipc,ip,el)
-
+     call constitutive_titanmod_microstructure(temperature,constitutive_state(ipc,ip,el), &
+                                                                              ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      call constitutive_nonlocal_microstructure(constitutive_state,Fe,Fp,ipc,ip,el)
 
@@ -610,20 +610,20 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      dLp_dTstar = math_identity2nd(9)
     
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,constitutive_state,ipc,ip,el)
-    
+     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                      constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,constitutive_state,ipc,ip,el)
-    
+     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                      constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,temperature,constitutive_state,ipc,ip,el)
-   
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                    temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,temperature,constitutive_state,ipc,ip,el)
-    
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                   temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, constitutive_state(ipc,ip,el), ipc,ip,el)
-    
+     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
+                                   temperature, constitutive_state(ipc,ip,el), ipc,ip,el)
  end select
  
 end subroutine constitutive_LpAndItsTangent
@@ -700,7 +700,8 @@ end subroutine constitutive_hooke_TandItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, subfrac, ipc, ip, el)
+subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, subdt, subfracArray,&
+                                                                                        ipc, ip, el)
  use prec, only: &
    pLongInt
  use debug, only: &
@@ -742,10 +743,10 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, sub
    Temperature, &
    subdt                                                                                            !< timestep
  real(pReal),  intent(in), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   subfrac                                                                                          !< subfraction of timestep
+   subfracArray                                                                                     !< subfraction of timestep
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   Fe, &                                                                                            !< elastic deformation gradient
-   Fp                                                                                               !< plastic deformation gradient
+   FeArray, &                                                                                       !< elastic deformation gradient
+   FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pLongInt) :: &
@@ -762,20 +763,21 @@ subroutine constitutive_collectDotState(Tstar_v, Fe, Fp, Temperature, subdt, sub
      constitutive_dotState(ipc,ip,el)%p = 0.0_pReal !ToDo: needed or will it remain zero anyway?
   
    case (PLASTICITY_J2_ID)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,constitutive_state,ipc,ip,el)
-  
+     constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,&
+                                      constitutive_state(ipc,ip,el), ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,constitutive_state,ipc,ip,el)
- 
+     constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,&
+                                      constitutive_state(ipc,ip,el), ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_titanmod_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-   
+     constitutive_dotState(ipc,ip,el)%p = constitutive_titanmod_dotState(Tstar_v,Temperature,&
+                                      constitutive_state(ipc,ip,el), ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-  
+     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
+                                      constitutive_state(ipc,ip,el), ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, constitutive_state, &
-                                                                       constitutive_state0, subdt, subfrac, ipc, ip, el)
+     constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
+                                      Temperature, constitutive_state, constitutive_state0, subdt, &
+                                      subfracArray, ipc, ip, el)
  
  end select
  
@@ -830,7 +832,8 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el),constitutive_state, Tstar_v,ipc,ip,el)
+     call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el),&
+                                      constitutive_state(ipc,ip,el), Tstar_v,ipc,ip,el)
 
    case default
      constitutive_deltaState(ipc,ip,el)%p = 0.0_pReal !ToDo: needed or will it remain zero anyway?
@@ -853,7 +856,7 @@ end subroutine constitutive_collectDeltaState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function constitutive_postResults(Tstar_v, Fe, temperature, ipc, ip, el)
+function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -888,7 +891,7 @@ function constitutive_postResults(Tstar_v, Fe, temperature, ipc, ip, el)
  real(pReal),  intent(in) :: &
    temperature
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   Fe                                                                                               !< elastic deformation gradient
+   FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
 
@@ -899,20 +902,20 @@ function constitutive_postResults(Tstar_v, Fe, temperature, ipc, ip, el)
    case (PLASTICITY_NONE_ID)
     
    case (PLASTICITY_TITANMOD_ID)
-     constitutive_postResults = constitutive_titanmod_postResults(constitutive_state,ipc,ip,el)
-    
+     constitutive_postResults = constitutive_titanmod_postResults(&
+                                      constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults = constitutive_j2_postResults(Tstar_v,constitutive_state,ipc,ip,el)
-    
+     constitutive_postResults = constitutive_j2_postResults(Tstar_v,&
+                                      constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,constitutive_state,ipc,ip,el)
-   
+     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,&
+                                      constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,constitutive_state,ipc,ip,el)
-    
+     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,&
+                                      constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, Fe, constitutive_state, &
-                                                                  constitutive_dotstate(ipc,ip,el), ipc, ip, el)
+     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, FeArray, &
+                                 constitutive_state, constitutive_dotstate(ipc,ip,el), ipc, ip, el)
  end select
   
 end function constitutive_postResults
