@@ -92,6 +92,7 @@ module constitutive_dislotwin
    constitutive_dislotwin_sbQedge, &                                                                !< value for shearband systems Qedge
    constitutive_dislotwin_SFE_0K, &                                                                 !< stacking fault energy at zero K
    constitutive_dislotwin_dSFE_dT, &                                                                !< temperature dependance of stacking fault energy
+   constitutive_dislotwin_dipoleFormationFactor, &                                                  !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
    constitutive_dislotwin_aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
    constitutive_dislotwin_aTolTwinFrac                                                              !< absolute tolerance for integration of twin volume fraction
 
@@ -272,6 +273,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_sbQedge(maxNinstance),                             source=0.0_pReal)
  allocate(constitutive_dislotwin_SFE_0K(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_dislotwin_dSFE_dT(maxNinstance),                             source=0.0_pReal)
+ allocate(constitutive_dislotwin_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
  allocate(constitutive_dislotwin_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(constitutive_dislotwin_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(constitutive_dislotwin_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
@@ -511,6 +513,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_SFE_0K(instance) = IO_floatValue(line,positions,2_pInt)
        case ('dsfe_dt')
          constitutive_dislotwin_dSFE_dT(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('dipoleformationfactor')
+         constitutive_dislotwin_dipoleFormationFactor(instance) = IO_floatValue(line,positions,2_pInt)
        case ('shearbandresistance')
          constitutive_dislotwin_sbResistance(instance) = IO_floatValue(line,positions,2_pInt)
        case ('shearbandvelocity')
@@ -575,6 +579,9 @@ subroutine constitutive_dislotwin_init(fileUnit)
       if (constitutive_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           constitutive_dislotwin_pShearBand(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
+      if (constitutive_dislotwin_dipoleFormationFactor(instance) /= 0.0_pReal .and. &
+          constitutive_dislotwin_dipoleFormationFactor(instance) /= 1.0_pReal) &
+        call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
       if (constitutive_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           constitutive_dislotwin_qShearBand(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='qShearBand ('//PLASTICITY_DISLOTWIN_label//')')
@@ -1474,7 +1481,7 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
       if (EdgeDipDistance(j)<EdgeDipMinDistance) EdgeDipDistance(j)=EdgeDipMinDistance
         DotRhoDipFormation(j) = &
           ((2.0_pReal*EdgeDipDistance(j))/constitutive_dislotwin_burgersPerSlipSystem(j,instance))*&
-          state%p(j)*abs(gdot_slip(j))
+          state%p(j)*abs(gdot_slip(j))*constitutive_dislotwin_dipoleFormationFactor(instance)
       endif
  
       !* Spontaneous annihilation of 2 single edge dislocations
