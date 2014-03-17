@@ -24,7 +24,6 @@ PROCESSING=`which postResults`
 if [ "x$PROCESSING" == "x" ]; then
   export PROCESSING='Not found!'
 fi
-  echo "DAMASK_spectral  `which DAMASK_spectral`"
 
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
