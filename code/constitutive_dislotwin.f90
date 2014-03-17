@@ -857,21 +857,20 @@ function constitutive_dislotwin_stateInit(instance,phase)
      constitutive_dislotwin_GrainSize(instance)/(1.0_pReal+invLambdaSlip0(i)*constitutive_dislotwin_GrainSize(instance))
  constitutive_dislotwin_stateInit(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = MeanFreePathSlip0
  
+ forall (i = 1_pInt:ns) &
+   tauSlipThreshold0(i) = constitutive_dislotwin_SolidSolutionStrength(instance) + &
+     lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(i,instance) * &
+     sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(i,1:ns,instance)))
  if (lattice_structure(phase) == lattice_bcc_ID) then
    j = 0_pInt
    slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
      slipSystemsLoop: do i = 1_pInt,constitutive_dislotwin_Nslip(f,instance)
         j = j+1_pInt
-        tauSlipThreshold0(i) = constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)
+        tauSlipThreshold0(j) = tauSlipThreshold0(j) + constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)
      enddo slipSystemsLoop
    enddo slipFamiliesLoop
- else
-   forall (i = 1_pInt:ns) &
-     tauSlipThreshold0(i) = constitutive_dislotwin_SolidSolutionStrength(instance) + &
-       lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(i,instance) * &
-       sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(i,1:ns,instance)))
-  endif
-  constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1:7_pInt*ns+4_pInt*nt) = tauSlipThreshold0
+ endif
+ constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1:7_pInt*ns+4_pInt*nt) = tauSlipThreshold0
 
 
  
@@ -1477,8 +1476,8 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
         EdgeDipDistance(j) = &
           (3.0_pReal*lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(j,instance))/&
           (16.0_pReal*pi*abs(tau_slip(j)))
-      if (EdgeDipDistance(j)>state%p(5*ns+3*nt+j)) EdgeDipDistance(j)=state%p(5*ns+3*nt+j)
-      if (EdgeDipDistance(j)<EdgeDipMinDistance) EdgeDipDistance(j)=EdgeDipMinDistance
+        if (EdgeDipDistance(j)>state%p(5*ns+3*nt+j)) EdgeDipDistance(j)=state%p(5*ns+3*nt+j)
+        if (EdgeDipDistance(j)<EdgeDipMinDistance) EdgeDipDistance(j)=EdgeDipMinDistance
         DotRhoDipFormation(j) = &
           ((2.0_pReal*EdgeDipDistance(j))/constitutive_dislotwin_burgersPerSlipSystem(j,instance))*&
           state%p(j)*abs(gdot_slip(j))*constitutive_dislotwin_dipoleFormationFactor(instance)
