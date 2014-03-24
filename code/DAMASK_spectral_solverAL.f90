@@ -217,7 +217,7 @@ subroutine AL_init(temperature)
  elseif (restartInc > 1_pInt) then 
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-     'reading values of increment', restartInc - 1_pInt, 'from file'
+     'reading values of increment ', restartInc - 1_pInt, ' from file'
    flush(6)
    call IO_read_realFile(777,'F', trim(getSolverJobName()),size(F))
    read (777,rec=1) F
@@ -227,15 +227,19 @@ subroutine AL_init(temperature)
    close (777)
    call IO_read_realFile(777,'F_lastInc2', trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
-   close (777)
-   F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
-   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
+   close (777) 
    call IO_read_realFile(777,'F_lambda',trim(getSolverJobName()),size(F_lambda))
    read (777,rec=1) F_lambda
    close (777)
    call IO_read_realFile(777,'F_lambda_lastInc',&
                                         trim(getSolverJobName()),size(F_lambda_lastInc))
    read (777,rec=1) F_lambda_lastInc
+   close (777)
+   call IO_read_realFile(777,'F_aim', trim(getSolverJobName()),size(F_aim))
+   read (777,rec=1) F_aim
+   close (777)
+   call IO_read_realFile(777,'F_aim_lastInc', trim(getSolverJobName()),size(F_aim_lastInc))
+   read (777,rec=1) F_aim_lastInc
    close (777)
    call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
@@ -437,8 +441,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
    if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-   write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
-                                 math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
+                                   math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
    flush(6)
@@ -656,6 +660,12 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
    call IO_write_jobRealFile(777,'F_lambda_lastInc',size(F_lambda_lastInc))                       ! writing F_lastInc field to file
    write (777,rec=1) F_lambda_lastInc
    close (777)
+   call IO_write_jobRealFile(777,'F_aim',size(F_aim))
+   write (777,rec=1) F_aim
+   close(777)
+   call IO_write_jobRealFile(777,'F_aim_lastInc',size(F_aim_lastInc))
+   write (777,rec=1) F_aim_lastInc
+   close(777)
    call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
    write (777,rec=1) F_aimDot
    close(777)
@@ -670,9 +680,9 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
 
  if (cutBack) then 
-   F_aim = F_aim_lastInc
-   F_lambda= reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid(3)]) 
-   F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
+   F_aim    = F_aim_lastInc
+   F_lambda = reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid(3)]) 
+   F        = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
    C_volAvg = C_volAvgLastInc
  else
    ForwardData = .True.
@@ -703,11 +713,11 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  endif
 
  F_aim = F_aim + f_aimDot * timeinc
- F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                   ! ensure that it matches rotated F_aim
+ F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! ensure that it matches rotated F_aim
                                     math_rotate_backward33(F_aim,rotation_BC)), &
              [9,grid(1),grid(2),grid(3)])
  F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &
-                    [9,grid(1),grid(2),grid(3)])                                                 ! does not have any average value as boundary condition
+                    [9,grid(1),grid(2),grid(3)])                                                    ! does not have any average value as boundary condition
  if (.not. guess) then                                                                              ! large strain forwarding
    do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
       F_lambda33 = reshape(F_lambda(:,i,j,k),[3,3])

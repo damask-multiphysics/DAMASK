@@ -237,6 +237,12 @@ subroutine Polarisation_init(temperature)
                                         trim(getSolverJobName()),size(F_tau_lastInc))
    read (777,rec=1) F_tau_lastInc
    close (777)
+   call IO_read_realFile(777,'F_aim', trim(getSolverJobName()),size(F_aim))
+   read (777,rec=1) F_aim
+   close (777)
+   call IO_read_realFile(777,'F_aim_lastInc', trim(getSolverJobName()),size(F_aim_lastInc))
+   read (777,rec=1) F_aim_lastInc
+   close (777)
    call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
@@ -653,6 +659,12 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC
    close (777)
    call IO_write_jobRealFile(777,'F_tau_lastInc',size(F_tau_lastInc))                             ! writing F_lastInc field to file
    write (777,rec=1) F_tau_lastInc
+   close (777)
+   call IO_write_jobRealFile(777,'F_aim',size(F_aim))
+   write (777,rec=1) F_aim
+   close(777)
+   call IO_write_jobRealFile(777,'F_aim_lastInc',size(F_aim_lastInc))
+   write (777,rec=1) F_aim_lastInc
    close (777)
    call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
    write (777,rec=1) F_aimDot
