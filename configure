@@ -124,15 +124,15 @@ parser.set_defaults(blasType = defaults['blasType'])
 #--- set default for blasRoot depending on current option (or default) for blasType  --------------------
 blasType = defaults['blasType'].upper()
 for i, arg in enumerate(sys.argv):
-  if arg.startswith('--with-blas-type'):
-    if arg.endswith('--with-blas-type'): 
+  if arg.lower().startswith('--with-blas-type'):
+    if arg.lower().endswith('--with-blas-type'): 
       blasType = sys.argv[i+1].upper()
     else:
       blasType = sys.argv[i][17:].upper()
 if blasType not in BLAS_order:
   blasType='LAPACK'
 
-parser.set_defaults(blasRoot = [defaults['blasRoot'][blasType]][0])
+parser.set_defaults(blasRoot = defaults['blasRoot'][blasType])
 parser.set_defaults(spectraloptions = [])
 
 (options,filenames) = parser.parse_args()
