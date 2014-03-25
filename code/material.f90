@@ -169,6 +169,9 @@ module material
    PLASTICITY_nonlocal_ID, &
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
+#ifdef HDF
+   material_NconstituentsPhase, &
+#endif
    HOMOGENIZATION_RGC_ID
 
  private :: &
@@ -1163,5 +1166,13 @@ subroutine material_populateGrains
  deallocate(elemsOfHomogMicro)
 
 end subroutine material_populateGrains
+
+integer(pInt) pure function material_NconstituentsPhase(matID)
+
+ implicit none
+ integer(pInt), intent(in) :: matID
+ 
+ material_NconstituentsPhase = count(microstructure_phase == matID)
+end function
 
 end module material

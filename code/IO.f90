@@ -2209,7 +2209,7 @@ subroutine HDF5_mappingHomogenization(mapping)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
- call h5screate_simple_f(2, int([NmatPoints],HSIZE_T), space_id, hdf5err, &
+ call h5screate_simple_f(1, int([NmatPoints],HSIZE_T), space_id, hdf5err, &
                             int([NmatPoints],HSIZE_T))
  if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization')
 
@@ -2230,7 +2230,7 @@ subroutine HDF5_mappingHomogenization(mapping)
 !--------------------------------------------------------------------------------------------------
 ! create Dataset
  call h5dcreate_f(mapping_id, "Homogenization", dtype_id, space_id, dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_addAttribute')
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization')
 
 !--------------------------------------------------------------------------------------------------
 ! Create memory types (one compound datatype for each member)
