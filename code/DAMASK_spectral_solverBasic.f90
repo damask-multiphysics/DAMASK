@@ -119,7 +119,7 @@ subroutine basic_init(temperature)
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
-     'reading deformation gradients of increment', restartInc - 1_pInt, 'from file'
+     'reading values of increment ', restartInc - 1_pInt, ' from file'
    flush(6)
    call IO_read_realFile(777,'F',trim(getSolverJobName()),size(F))
    read (777,rec=1) F
@@ -127,31 +127,30 @@ subroutine basic_init(temperature)
    call IO_read_realFile(777,'F_lastInc',trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
+   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   read (777,rec=1) f_aimDot
+   close (777)
+   F_aim         = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt                                         ! average of F
+   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
  endif
 
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,F),[3,1,product(grid)])
- call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,C,C_minmaxAvg,&
+ call Utilities_constitutiveResponse(F_lastInc,F,temperature,0.0_pReal,P,C,C_minMaxAvg,&
                                      temp33_Real,.false.,math_I3)                                   ! constitutive response with no deformation in no time to get reference stiffness
    
- if (restartInc > 1_pInt) then                                                                      ! using old values from file                                                      
-   F_aim         = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt                                         ! average of F
-   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
-
+ if (restartInc > 1_pInt) then                                                                      ! using old values from files
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
-   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-   read (777,rec=1) f_aimDot
-   close (777)
    call IO_read_realFile(777,'C',trim(getSolverJobName()),size(C))
    read (777,rec=1) C
    close (777)
    call IO_read_realFile(777,'C_lastInc',trim(getSolverJobName()),size(C_lastInc))
    read (777,rec=1) C_lastInc
    close (777)
-   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minmaxAvg))
-   read (777,rec=1) C_minmaxAvg
+   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
+   read (777,rec=1) C_minMaxAvg
    close (777)
  endif
    

@@ -355,18 +355,14 @@ program DAMASK_spectral_Driver
  if (appendToOutFile) then                                                                          ! after restart, append to existing results file
    open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                '.spectralOut',form='UNFORMATTED', position='APPEND', status='OLD')
-                             !   '.spectralOut',access='STREAM', position='APPEND', status='OLD')
    open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                '.sta',form='FORMATTED', position='APPEND', status='OLD')
  else                                                                                               ! open new files ...
    open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                '.spectralOut',form='UNFORMATTED',status='REPLACE')
-                             !   '.spectralOut',access='STREAM',status='REPLACE')
    write(resUnit) 'load',       trim(loadCaseFile)                                                  ! ... and write header
    write(resUnit) 'workingdir', trim(getSolverWorkingDirectoryName())
    write(resUnit) 'geometry',   trim(geometryFile)
-   !write(resUnit) 'grid', grid
-   !write(resUnit) 'size',  geomSize
    write(resUnit) 'resolution', grid
    write(resUnit) 'dimension',  geomSize
    write(resUnit) 'materialpoint_sizeResults', materialpoint_sizeResults

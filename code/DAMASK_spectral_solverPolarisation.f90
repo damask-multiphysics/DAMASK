@@ -163,9 +163,6 @@ subroutine Polarisation_init(temperature)
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
- real(pReal), dimension(3,3,3,3) :: &
-   temp3333_Real = 0.0_pReal, &
-   temp3333_Real2 = 0.0_pReal
 
  PetscErrorCode :: ierr
  PetscObject :: dummy
@@ -211,9 +208,9 @@ subroutine Polarisation_init(temperature)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
    F_lastInc     = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                    ! initialize to identity
    F_lastInc2 = F_lastInc
-   F_tau_lastInc = 2.0_pReal*F_lastInc
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_tau = 2.0_pReal* F
+   F_tau_lastInc = 2.0_pReal*F_lastInc
  elseif (restartInc > 1_pInt) then 
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
@@ -228,8 +225,6 @@ subroutine Polarisation_init(temperature)
    call IO_read_realFile(777,'F_lastInc2',trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
    close (777)
-   F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
-   F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
    call IO_read_realFile(777,'F_tau',trim(getSolverJobName()),size(F_tau))
    read (777,rec=1) F_tau
    close (777)
@@ -246,32 +241,35 @@ subroutine Polarisation_init(temperature)
    call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
+ endif
+
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+ call Utilities_constitutiveResponse(F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]),&
+   temperature,0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
+ nullify(F)
+ nullify(F_tau)
+ call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
+
+ if (restartInc > 1_pInt) then                                                                      ! using old values from files
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+     write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+     'reading more values of increment', restartInc - 1_pInt, 'from file'
+   flush(6)
    call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
    read (777,rec=1) C_volAvg
    close (777)
    call IO_read_realFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
    read (777,rec=1) C_volAvgLastInc
    close (777)
-   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
+   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
    read (777,rec=1) C_minMaxAvg
    close (777)
  endif
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
- call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,temp3333_Real,temp3333_Real2,&
-                                temp33_Real,.false.,math_I3)
- call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
 
-!--------------------------------------------------------------------------------------------------
-! reference stiffness
- if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
-   C_minMaxAvg = temp3333_Real2
-   C_volAvg = temp3333_Real
- endif 
-
- call Utilities_updateGamma(temp3333_Real2,.True.)
- C_scale = temp3333_Real2
- S_scale = math_invSym3333(temp3333_Real2)
+ call Utilities_updateGamma(C_minMaxAvg,.True.)
+ C_scale = C_minMaxAvg
+ S_scale = math_invSym3333(C_minMaxAvg)
  
 end subroutine Polarisation_init
 
@@ -508,7 +506,7 @@ subroutine Polarisation_formResidual(in,x_scal,f_scal,dummy,ierr)
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
    e = e + 1_pInt
    residual_F(1:3,1:3,i,j,k) = &
-     math_mul3333xx33(math_invSym3333(materialpoint_dPdF(:,:,:,:,1,e) + C_scale), &
+     math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
                       residual_F(1:3,1:3,i,j,k) - math_mul33x33(F(1:3,1:3,i,j,k), &
                       math_mul3333xx33(C_scale,F_tau(1:3,1:3,i,j,k) - F(1:3,1:3,i,j,k) - math_I3))) &
    + residual_F_tau(1:3,1:3,i,j,k)
@@ -720,13 +718,13 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC
  F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot),  [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
  if (.not. guess) then                                                                                 ! large strain forwarding
    do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-      F_lambda33 = reshape(F_tau(:,i,j,k)-F(:,i,j,k),[3,3])
+      F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(:,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
                                                    math_mul33x33(math_transpose33(F_lambda33),&
                                                                  F_lambda33) -math_I3))*0.5_pReal)&
                               + math_I3
-      F_tau(:,i,j,k) = reshape(F_lambda33,[9])+F(:,i,j,k)
+      F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(:,i,j,k)
    enddo; enddo; enddo
  endif
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)

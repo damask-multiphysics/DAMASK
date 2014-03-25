@@ -862,6 +862,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  if (forwardData) then                                                                              ! aging results
    calcMode    = ior(calcMode,    CPFEM_AGERESULTS)             
    collectMode = ior(collectMode, CPFEM_BACKUPJACOBIAN)
+   materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid)])
  endif
  if (cutBack) then                                                                                  ! restore saved variables
   collectMode = ior(collectMode , CPFEM_RESTOREJACOBIAN)
@@ -872,8 +873,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  call CPFEM_general(collectMode,usePingPong,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &            ! collect mode handles Jacobian backup / restoration
                    crystallite_temperature(1,1),timeinc,1_pInt,1_pInt)
  
- materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid)])
- materialpoint_F  = reshape(F,         [3,3,1,product(grid)])
+ materialpoint_F  = reshape(F,[3,3,1,product(grid)])
 
  call debug_reset()
 

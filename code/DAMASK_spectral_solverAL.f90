@@ -163,9 +163,6 @@ subroutine AL_init(temperature)
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
- real(pReal), dimension(3,3,3,3) :: &
-   temp3333_Real = 0.0_pReal, &
-   temp3333_Real2 = 0.0_pReal
 
  PetscErrorCode :: ierr
  PetscObject :: dummy
@@ -214,7 +211,8 @@ subroutine AL_init(temperature)
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_lambda = F
    F_lambda_lastInc = F_lastInc
- elseif (restartInc > 1_pInt) then 
+
+ elseif (restartInc > 1_pInt) then                                                                  ! read in F to calculate coordinates and initialize CPFEM general
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment ', restartInc - 1_pInt, ' from file'
@@ -227,7 +225,7 @@ subroutine AL_init(temperature)
    close (777)
    call IO_read_realFile(777,'F_lastInc2', trim(getSolverJobName()),size(F_lastInc2))
    read (777,rec=1) F_lastInc2
-   close (777) 
+   close (777)
    call IO_read_realFile(777,'F_lambda',trim(getSolverJobName()),size(F_lambda))
    read (777,rec=1) F_lambda
    close (777)
@@ -244,28 +242,35 @@ subroutine AL_init(temperature)
    call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
    read (777,rec=1) f_aimDot
    close (777)
+ endif
+ 
+ mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
+                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+ call Utilities_constitutiveResponse(F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]),&
+   temperature,0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
+ nullify(F)
+ nullify(F_lambda)
+ call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
+                             
+ if (restartInc > 1_pInt) then                                                                      ! using old values from files
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+     write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
+     'reading more values of increment', restartInc - 1_pInt, 'from file'
+   flush(6)
+   call IO_read_realFile(777,'F_lambda',trim(getSolverJobName()),size(F_lambda))
+   read (777,rec=1) F_lambda
    call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
    read (777,rec=1) C_volAvg
    close (777)
    call IO_read_realFile(777,'C_volAvgLastInc',trim(getSolverJobName()),size(C_volAvgLastInc))
    read (777,rec=1) C_volAvgLastInc
    close (777)
-   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(temp3333_Real))
+   call IO_read_realFile(777,'C_ref',trim(getSolverJobName()),size(C_minMaxAvg))
    read (777,rec=1) C_minMaxAvg
    close (777)
  endif
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
- call Utilities_constitutiveResponse(F,F,temperature,0.0_pReal,P,temp3333_Real,temp3333_Real2,&
-                                temp33_Real,.false.,math_I3)
- call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
 
-!--------------------------------------------------------------------------------------------------
-! reference stiffness
- if (restartInc == 1_pInt) then                                                                     ! use initial stiffness as reference stiffness
-   C_minMaxAvg = temp3333_Real2
-   C_volAvg = temp3333_Real
- endif 
+
 
  call Utilities_updateGamma(C_minMaxAvg,.True.)
  C_scale = C_minMaxAvg
@@ -419,11 +424,11 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  integer(pInt) :: &
    i, j, k, e
 
- F              => x_scal(1:3,1:3,1,&
+ F                => x_scal(1:3,1:3,1,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
- F_lambda          => x_scal(1:3,1:3,2,&
+ F_lambda         => x_scal(1:3,1:3,2,&
   XG_RANGE,YG_RANGE,ZG_RANGE)
- residual_F     => f_scal(1:3,1:3,1,&
+ residual_F       => f_scal(1:3,1:3,1,&
   X_RANGE,Y_RANGE,Z_RANGE)
  residual_F_lambda => f_scal(1:3,1:3,2,&
   X_RANGE,Y_RANGE,Z_RANGE)
@@ -434,7 +439,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
  
  if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
- if (totalIter <= PETScIter) then                                                                   ! new iteration
+ if(totalIter <= PETScIter) then                                                                    ! new iteration
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    totalIter = totalIter + 1_pInt
@@ -507,7 +512,7 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  e = 0_pInt
  do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
    e = e + 1_pInt
-   residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(:,:,:,:,1,e) + C_scale), &
+   residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
                                                 residual_F(1:3,1:3,i,j,k) - &
                                                 math_mul33x33(F(1:3,1:3,i,j,k), &
                                                            math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3))) &
@@ -641,7 +646,7 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
 ! update coordinates and rate and forward last inc
  call DMDAVecGetArrayF90(da,solution_vec,xx_psc,ierr)
  F => xx_psc(0:8,:,:,:)
- F_lambda => xx_psc(9:17,:,:,:) 
+ F_lambda => xx_psc(9:17,:,:,:)
  if (restartWrite) then
    write(6,'(/,a)') ' writing converged results for restart'
    flush(6)
@@ -675,6 +680,7 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
    call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
    write (777,rec=1) C_volAvgLastInc
    close(777)
+
  endif 
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
@@ -682,13 +688,13 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  if (cutBack) then 
    F_aim    = F_aim_lastInc
    F_lambda = reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid(3)]) 
-   F        = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
+   F        = reshape(F_lastInc,       [9,grid(1),grid(2),grid(3)]) 
    C_volAvg = C_volAvgLastInc
  else
    ForwardData = .True.
+   C_volAvgLastInc = C_volAvg
 !--------------------------------------------------------------------------------------------------
 ! calculate rate for aim
-   C_volAvgLastInc = C_volAvg
    if (F_BC%myType=='l') then                                                                       ! calculate f_aimDot from given L and current F
      f_aimDot = F_BC%maskFloat * math_mul33x33(F_BC%values, F_aim)
    elseif(F_BC%myType=='fdot') then                                                                 ! f_aimDot is prescribed
@@ -707,8 +713,8 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
                   timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
    F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)]))  
-   F_lastInc2 = F_lastInc                
-   F_lastInc     = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
+   F_lastInc2       = F_lastInc                
+   F_lastInc        = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
    F_lambda_lastInc = reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)])
  endif
 
@@ -720,13 +726,13 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
                     [9,grid(1),grid(2),grid(3)])                                                    ! does not have any average value as boundary condition
  if (.not. guess) then                                                                              ! large strain forwarding
    do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-      F_lambda33 = reshape(F_lambda(:,i,j,k),[3,3])
+      F_lambda33 = reshape(F_lambda(1:9,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
                                                    math_mul33x33(math_transpose33(F_lambda33),&
                                                                  F_lambda33) -math_I3))*0.5_pReal)&
                               + math_I3
-      F_lambda(:,i,j,k) = reshape(F_lambda33,[9])
+      F_lambda(1:9,i,j,k) = reshape(F_lambda33,[9])
    enddo; enddo; enddo
  endif
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)
