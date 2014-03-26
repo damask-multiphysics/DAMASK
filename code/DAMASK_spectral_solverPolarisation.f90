@@ -171,7 +171,7 @@ subroutine Polarisation_init(temperature)
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverPolarisation init  -+>>>'
  write(6,'(a)') ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  allocate (P            (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
@@ -718,13 +718,13 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC
  F_tau = reshape(Utilities_forwardField(timeinc,F_tau_lastInc,F_taudot),  [9,grid(1),grid(2),grid(3)]) ! does not have any average value as boundary condition
  if (.not. guess) then                                                                                 ! large strain forwarding
    do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-      F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(:,i,j,k),[3,3])
+      F_lambda33 = reshape(F_tau(1:9,i,j,k)-F(1:9,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&
                                                    math_mul33x33(math_transpose33(F_lambda33),&
                                                                  F_lambda33) -math_I3))*0.5_pReal)&
                               + math_I3
-      F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(:,i,j,k)
+      F_tau(1:9,i,j,k) = reshape(F_lambda33,[9])+F(1:9,i,j,k)
    enddo; enddo; enddo
  endif
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)

@@ -257,8 +257,6 @@ subroutine AL_init(temperature)
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
-   call IO_read_realFile(777,'F_lambda',trim(getSolverJobName()),size(F_lambda))
-   read (777,rec=1) F_lambda
    call IO_read_realFile(777,'C_volAvg',trim(getSolverJobName()),size(C_volAvg))
    read (777,rec=1) C_volAvg
    close (777)
@@ -269,8 +267,6 @@ subroutine AL_init(temperature)
    read (777,rec=1) C_minMaxAvg
    close (777)
  endif
-
-
 
  call Utilities_updateGamma(C_minMaxAvg,.True.)
  C_scale = C_minMaxAvg
