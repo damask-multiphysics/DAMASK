@@ -536,6 +536,7 @@ program DAMASK_spectral_Driver
          if (.not. cutBack) &
            write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
                              solres%converged, solres%iterationsNeeded                              ! write statistics about accepted solution
+           flush(statUnit)
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
        if(solres%converged) then                                                                    ! report converged inc
@@ -550,6 +551,7 @@ program DAMASK_spectral_Driver
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          write(6,'(1/,a)') ' ... writing results to file ......................................'
          write(resUnit)  materialpoint_results                                                      ! write result to file
+         flush(resUnit)
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
                       mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! ToDo first call to CPFEM_general will write? 
