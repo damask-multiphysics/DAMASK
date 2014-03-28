@@ -74,7 +74,7 @@ for file in files:
                '_row_': 0,
              }
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],buffered = False)  # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
