@@ -108,8 +108,8 @@ h0_twinslip	15e6
 h0_twintwin	15e6
 
 atol_resistance	1
-atol_shear	1
-# atol_twinfrac
+#atol_shear	1e-6
+#atol_twinfrac 1e-7
 
 interaction_slipslip	1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
 interaction_sliptwin	1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1 1
