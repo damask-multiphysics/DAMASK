@@ -840,18 +840,10 @@ function constitutive_dislotwin_stateInit(instance,phase)
  constitutive_dislotwin_stateInit(5_pInt*ns+3_pInt*nt+1:6_pInt*ns+3_pInt*nt) = MeanFreePathSlip0
  
  forall (i = 1_pInt:ns) &
-   tauSlipThreshold0(i) = constitutive_dislotwin_SolidSolutionStrength(instance) + &
+   tauSlipThreshold0(i) = &
      lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(i,instance) * &
      sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(i,1:ns,instance)))
- if (lattice_structure(phase) == lattice_bcc_ID) then
-   j = 0_pInt
-   slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
-     slipSystemsLoop: do i = 1_pInt,constitutive_dislotwin_Nslip(f,instance)
-        j = j+1_pInt
-        tauSlipThreshold0(j) = tauSlipThreshold0(j) + constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)
-     enddo slipSystemsLoop
-   enddo slipFamiliesLoop
- endif
+
  constitutive_dislotwin_stateInit(6_pInt*ns+4_pInt*nt+1:7_pInt*ns+4_pInt*nt) = tauSlipThreshold0
 
 
@@ -970,7 +962,8 @@ subroutine constitutive_dislotwin_microstructure(temperature,state,ipc,ip,el)
    lattice_structure, &
    lattice_mu, &
    lattice_nu, &
-   lattice_bcc_ID
+   lattice_bcc_ID, &
+   lattice_maxNslipFamily
 
 
  implicit none
@@ -1063,13 +1056,11 @@ subroutine constitutive_dislotwin_microstructure(temperature,state,ipc,ip,el)
      (1.0_pReal+constitutive_dislotwin_GrainSize(instance)*state%p(5_pInt*ns+2_pInt*nt+t))
  
  !* threshold stress for dislocation motion
- if(lattice_structure(phase) /= LATTICE_BCC_ID) then ! bcc value remains constant
-   forall (s = 1_pInt:ns) &
-     state%p(6_pInt*ns+4_pInt*nt+s) = constitutive_dislotwin_SolidSolutionStrength(instance)+ &
-       lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(s,instance)*&
-       sqrt(dot_product((state%p(1:ns)+state%p(ns+1_pInt:2_pInt*ns)),&
-                        constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,instance)))
- endif
+ forall (s = 1_pInt:ns) &
+   state%p(6_pInt*ns+4_pInt*nt+s) = &
+     lattice_mu(phase)*constitutive_dislotwin_burgersPerSlipSystem(s,instance)*&
+     sqrt(dot_product((state%p(1:ns)+state%p(ns+1_pInt:2_pInt*ns)),&
+                      constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,instance)))
  
  !* threshold stress for growing twin
  forall (t = 1_pInt:nt) &
@@ -1196,34 +1187,34 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
       !* Calculation of Lp
       !* Resolved shear stress on slip system
       tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
-      
+
+      if((abs(tau_slip(j))-state%p(6*ns+4*nt+j)) > tol_math_check) then
       !* Stress ratios
-      if (abs(tau_slip(j)) < tol_math_check) then
-        StressRatio_p = 0.0_pReal
-        StressRatio_pminus1 = 0.0_pReal
-      else
-        StressRatio_p = (abs(tau_slip(j))/state%p(6*ns+4*nt+j))&
+        StressRatio_p = ((abs(tau_slip(j))-state%p(6*ns+4*nt+j))/&
+          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
                                                     **constitutive_dislotwin_pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = (abs(tau_slip(j))/state%p(6*ns+4*nt+j))&
+        StressRatio_pminus1 = ((abs(tau_slip(j))-state%p(6*ns+4*nt+j))/&
+          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
                                                     **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
-      endif
       !* Boltzmann ratio
-      BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
+        BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
       !* Initial shear rates
-      DotGamma0 = &
-        state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)*&
-        constitutive_dislotwin_v0PerSlipSystem(j,instance)
+        DotGamma0 = &
+          state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)*&
+          constitutive_dislotwin_v0PerSlipSystem(j,instance)
  
-      !* Shear rates due to slip
-      gdot_slip(j) = (1.0_pReal - sumf) * DotGamma0 &
-                   * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislotwin_qPerSlipFamily(f,instance)) &
-                   * sign(1.0_pReal,tau_slip(j))
+        !* Shear rates due to slip
+        gdot_slip(j) = (1.0_pReal - sumf) * DotGamma0 &
+                     * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislotwin_qPerSlipFamily(f,instance)) &
+                     * sign(1.0_pReal,tau_slip(j))
  
-      !* Derivatives of shear rates
-      dgdot_dtauslip(j) = &
-        ((abs(gdot_slip(j))*BoltzmannRatio*constitutive_dislotwin_pPerSlipFamily(f,instance)&
-        *constitutive_dislotwin_qPerSlipFamily(f,instance))/state%p(6*ns+4*nt+j))*&
-        StressRatio_pminus1*(1-StressRatio_p)**(constitutive_dislotwin_qPerSlipFamily(f,instance)-1.0_pReal)
+        !* Derivatives of shear rates
+        dgdot_dtauslip(j) = &
+          abs(gdot_slip(j))*BoltzmannRatio*constitutive_dislotwin_pPerSlipFamily(f,instance)&
+          *constitutive_dislotwin_qPerSlipFamily(f,instance)/&
+          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance))*&
+          StressRatio_pminus1*(1-StressRatio_p)**(constitutive_dislotwin_qPerSlipFamily(f,instance)-1.0_pReal)
+      endif
  
       !* Plastic velocity gradient for dislocation glide
       Lp = Lp + gdot_slip(j)*lattice_Sslip(:,:,1,index_myFamily+i,phase)
@@ -1425,25 +1416,25 @@ pure function constitutive_dislotwin_dotState(Tstar_v,Temperature,state,ipc,ip,e
       !* Resolved shear stress on slip system
       tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
 
-      if (abs(tau_slip(j)) < tol_math_check) then
-        StressRatio_p = 0.0_pReal
-        StressRatio_pminus1 = 0.0_pReal
-      else
-        StressRatio_p = (abs(tau_slip(j))/state%p(6_pInt*ns+4_pInt*nt+j))**&
-                                              constitutive_dislotwin_pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = (abs(tau_slip(j))/state%p(6_pInt*ns+4_pInt*nt+j))**&
-                                               (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
-      endif
+      if((abs(tau_slip(j))-state%p(6*ns+4*nt+j)) > tol_math_check) then
+      !* Stress ratios
+        StressRatio_p = ((abs(tau_slip(j))-state%p(6*ns+4*nt+j))/&
+          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                    **constitutive_dislotwin_pPerSlipFamily(f,instance)
+        StressRatio_pminus1 = ((abs(tau_slip(j))-state%p(6*ns+4*nt+j))/&
+          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                    **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
       !* Boltzmann ratio
-      BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
+        BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
       !* Initial shear rates
-      DotGamma0 = &
-        state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)*&
-        constitutive_dislotwin_v0PerSlipSystem(j,instance)
+        DotGamma0 = &
+          state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)*&
+          constitutive_dislotwin_v0PerSlipSystem(j,instance)
  
       !* Shear rates due to slip
-      gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
+        gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)** &
                      constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau_slip(j))
+      endif
  
       !* Multiplication
       DotRhoMultiplication(j) = abs(gdot_slip(j))/&
@@ -1641,26 +1632,31 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
               !* Resolved shear stress on slip system
               tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
               !* Stress ratios
-              if (abs(tau) < tol_math_check) then
-                StressRatio_p = 0.0_pReal
-                StressRatio_pminus1 = 0.0_pReal
-              else
-                StressRatio_p = (abs(tau)/state%p(6_pInt*ns+4_pInt*nt+j))**&
-                                     constitutive_dislotwin_pPerSlipFamily(f,instance)
-                StressRatio_pminus1 = (abs(tau)/state%p(6_pInt*ns+4_pInt*nt+j))**&
-                                          (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
-              endif
+              if((abs(tau)-state%p(6*ns+4*nt+j)) > tol_math_check) then
+              !* Stress ratios
+                StressRatio_p = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+                                (constitutive_dislotwin_SolidSolutionStrength(instance)+&
+                                 constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                    **constitutive_dislotwin_pPerSlipFamily(f,instance)
+                StressRatio_pminus1 = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+                                      (constitutive_dislotwin_SolidSolutionStrength(instance)+&
+                                       constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                    **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
               !* Boltzmann ratio
-              BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
+                BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
               !* Initial shear rates
-              DotGamma0 = &
-                state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)* &
-                constitutive_dislotwin_v0PerSlipSystem(j,instance)
+                DotGamma0 = &
+                  state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)* &
+                  constitutive_dislotwin_v0PerSlipSystem(j,instance)
  
               !* Shear rates due to slip
-              constitutive_dislotwin_postResults(c+j) = &
-                DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
+                constitutive_dislotwin_postResults(c+j) = &
+                  DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
                                constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
+              else
+                constitutive_dislotwin_postResults(c+j) = 0.0_pReal
+              endif
+              
         enddo ; enddo
         c = c + ns
       case (accumulated_shear_slip_ID)
@@ -1742,25 +1738,29 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
                !* Resolved shear stress on slip system
                tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
                !* Stress ratios
-              if (abs(tau) < tol_math_check) then
-                StressRatio_p = 0.0_pReal
-                StressRatio_pminus1 = 0.0_pReal
-              else
-                StressRatio_p = (abs(tau)/state%p(5_pInt*ns+3_pInt*nt+j))**&
-                                                    constitutive_dislotwin_pPerSlipFamily(f,instance)
-                StressRatio_pminus1 = (abs(tau)/state%p(5_pInt*ns+3_pInt*nt+j))**&
-                                                    (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
-               endif
+               if((abs(tau)-state%p(6*ns+4*nt+j)) > tol_math_check) then
+               !* Stress ratios
+                 StressRatio_p = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+                                 (constitutive_dislotwin_SolidSolutionStrength(instance)+&
+                                  constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                    **constitutive_dislotwin_pPerSlipFamily(f,instance)
+                 StressRatio_pminus1 = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+                                       (constitutive_dislotwin_SolidSolutionStrength(instance)+&
+                                        constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                    **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
                !* Boltzmann ratio
-               BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
+                 BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
                !* Initial shear rates
-               DotGamma0 = &
-                 state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)* &
-                 constitutive_dislotwin_v0PerSlipSystem(j,instance)
+                 DotGamma0 = &
+                   state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)* &
+                   constitutive_dislotwin_v0PerSlipSystem(j,instance)
  
                !* Shear rates due to slip
-               gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
-                              constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
+                 gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
+                                constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
+               else
+                 gdot_slip(j) = 0.0_pReal
+               endif   
           enddo;enddo
         
           j = 0_pInt
@@ -1830,32 +1830,39 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
 
              !* Resolved shear stress on slip system
              tau = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,phase))
-             if (abs(tau) < tol_math_check) then
-                StressRatio_p = 0.0_pReal
-                StressRatio_pminus1 = 0.0_pReal
-             else
-               StressRatio_p = (abs(tau)/state%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                    constitutive_dislotwin_pPerSlipFamily(f,instance)
-               StressRatio_pminus1 = (abs(tau)/state%p(6_pInt*ns+4_pInt*nt+j))**&
-                                                   (constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
-             endif
+             if((abs(tau)-state%p(6*ns+4*nt+j)) > tol_math_check) then
+             !* Stress ratios
+               StressRatio_p = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+                               (constitutive_dislotwin_SolidSolutionStrength(instance)+&
+                                constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                  **constitutive_dislotwin_pPerSlipFamily(f,instance)
+               StressRatio_pminus1 = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+                                     (constitutive_dislotwin_SolidSolutionStrength(instance)+&
+                                      constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
+                                                  **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
              !* Boltzmann ratio
-             BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
+               BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
              !* Initial shear rates
-             DotGamma0 = &
-               state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)* &
-               constitutive_dislotwin_v0PerSlipSystem(j,instance)
+               DotGamma0 = &
+                 state%p(j)*constitutive_dislotwin_burgersPerSlipSystem(j,instance)* &
+                 constitutive_dislotwin_v0PerSlipSystem(j,instance)
 
              !* Shear rates due to slip
-             gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
+               gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
                             constitutive_dislotwin_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau)
 
              !* Derivatives of shear rates
-             dgdot_dtauslip = &
-               ((abs(gdot_slip(j))*BoltzmannRatio*&
-               constitutive_dislotwin_pPerSlipFamily(f,instance)*constitutive_dislotwin_qPerSlipFamily(f,instance))/&
-               state%p(6*ns+4*nt+j))*StressRatio_pminus1*(1_pInt-StressRatio_p)**&
-               (constitutive_dislotwin_qPerSlipFamily(f,instance)-1.0_pReal)
+               dgdot_dtauslip = &
+                 abs(gdot_slip(j))*BoltzmannRatio*constitutive_dislotwin_pPerSlipFamily(f,instance)&
+                 *constitutive_dislotwin_qPerSlipFamily(f,instance)/&
+                 (constitutive_dislotwin_SolidSolutionStrength(instance)+&
+                  constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance))*&
+                 StressRatio_pminus1*(1-StressRatio_p)**(constitutive_dislotwin_qPerSlipFamily(f,instance)-1.0_pReal)
+             
+             else
+               gdot_slip(j) = 0.0_pReal
+               dgdot_dtauslip = 0.0_pReal
+             endif
 
              !* Stress exponent
              if (gdot_slip(j)==0.0_pReal) then
