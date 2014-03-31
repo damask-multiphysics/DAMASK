@@ -1587,8 +1587,6 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'not a rotation defined for loadcase rotation'
  case (847_pInt)
    msg = 'update of gamma operator not possible when pre-calculated'
- case (850_pInt)
-   msg = 'max number of cut back exceeded'
  case (880_pInt)
    msg = 'mismatch of microstructure count and a*b*c in geom file'
  case (890_pInt)
@@ -1713,6 +1711,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
    msg = 'polar decomposition failed'
  case (700_pInt)
    msg = 'unknown crystal symmetry'
+ case (850_pInt)
+   msg = 'max number of cut back exceeded, terminating'
  case default
    msg = 'unknown warning number'
  end select

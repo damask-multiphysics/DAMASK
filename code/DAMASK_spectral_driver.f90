@@ -49,7 +49,7 @@ program DAMASK_spectral_Driver
  use numerics, only: &
    maxCutBack, &
    mySpectralSolver, &
-   regridMode
+   continueCalculation
  use homogenization, only: &
    materialpoint_sizeResults, &
    materialpoint_results
@@ -505,12 +505,14 @@ program DAMASK_spectral_Driver
              time    = time - timeinc                                                               ! rewind time
              timeIncOld = timeinc
              timeinc = timeinc/2.0_pReal
-           elseif (solres%termIll) then                                                             ! material point model cannot find a solution
-             if(regridMode > 0_pInt) call quit(-1_pInt*(lastRestartWritten+1_pInt))                 ! regrid requested (mode 1 or 2)
-             call IO_error(850_pInt)                                                                ! no regrid (give up)
-           else
-             if(regridMode == 2_pInt) call quit(-1_pInt*(lastRestartWritten+1_pInt))                ! regrid also if BVP solver do not converge
-             guess = .true.                                                                         ! continue from non-converged solution and start guessing after accepted (sub)inc
+           elseif (solres%termIll) then                                                             ! material point model cannot find a solution, exit in any casy
+             call IO_warning(850_pInt)
+             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)
+           elseif (continueCalculation == 1_pInt)  then
+             guess = .true.                                                                         ! accept non converged BVP solution   
+           else                                                                                     ! default behavior, exit if spectral solver does not converge                                
+             call IO_warning(850_pInt)
+             call quit(-1_pInt*(lastRestartWritten+1_pInt))                                         ! quit and provide information about last restart inc written (e.g. for regridding)                                                                                       ! continue from non-converged solution and start guessing after accepted (sub)inc
            endif
          else
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
@@ -570,6 +572,7 @@ program DAMASK_spectral_Driver
                                    real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
                                    ' %) increments converged!'
  close(resUnit)
+ close(statUnit)
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
 
@@ -602,7 +605,7 @@ subroutine quit(stop_id)
                                                       dateAndTime(7)  
  if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
  if (stop_id <  0_pInt) then                                                                        ! trigger regridding
-   write(0,'(a,i6)') 'restart at ', stop_id*(-1_pInt)
+   write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
    stop 2
  endif
  if (stop_id == 3_pInt) stop 3                                                                      ! not all incs converged
