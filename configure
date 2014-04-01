@@ -44,7 +44,7 @@ BLAS_order = ['IMKL','ACML','LAPACK']
 
 defaults={'DAMASK_BIN':'depending on access rights',
           'F90':compiler,
-          'FFTW_ROOT':'/usr/local',
+          'FFTW_ROOT':'/usr',
           'MSC_ROOT' :'/msc',
           'HDF5_ROOT':'/usr/local',
           'DAMASK_NUM_THREADS':4,
