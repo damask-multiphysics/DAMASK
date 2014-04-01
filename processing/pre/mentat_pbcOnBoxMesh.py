@@ -178,6 +178,7 @@ print 'waiting to connect...'
 py_connect('',options.port)
 print 'connected...'
 output([\
+        '*draw_manual',              # prevent redrawing in "new" Mentat, should be much faster
         '*remove_all_servos',
         '*sweep_all',
         '*renumber_nodes',
