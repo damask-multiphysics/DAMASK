@@ -12,7 +12,7 @@ from vtk import *
 # --- input parsing
 
 parser = OptionParser(usage='%prog [options] vtkfile', description = """
-""" + string.replace('$Id: $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-v','--vector', nargs=3, dest='vector', type='string', \

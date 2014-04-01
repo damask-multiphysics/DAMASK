@@ -4,7 +4,7 @@ import os,sys,string,re,numpy,vtk
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID = '$Id: vtk_addPointcloudData.py 2770 2013-12-09 15:58:35Z p.eisenlohr $'
+scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
 #--------------------------------------------------------------------------------------------------

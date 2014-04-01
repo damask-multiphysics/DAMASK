@@ -44,7 +44,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog [options] [fil
 Calculates the standard deviation of data in blocks of size 'packing' thus reducing the former resolution
 to resolution/packing. (Requires numpy.)
 
-""" + string.replace('$Id: averageDown.py 1857 2012-10-31 10:06:11Z MPIE\m.diehl $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
@@ -97,7 +97,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id: averageDown.py 1857 2012-10-31 10:06:11Z MPIE\m.diehl $','\n','\\n') + \
+  table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
   
 

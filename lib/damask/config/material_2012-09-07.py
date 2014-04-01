@@ -1,4 +1,4 @@
-# $Id: material.py 1507 2012-05-24 16:00:32Z MPIE\t.elachkar $
+# $Id$
 import re
 
 class Material():
