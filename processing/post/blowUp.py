@@ -8,7 +8,7 @@ class extendableOption(Option):
 # -----------------------------
 # used for definition of new option parser action 'extend', which enables to take multiple option arguments
 # taken from online tutorial http://docs.python.org/library/optparse.html
-  
+
   ACTIONS = Option.ACTIONS + ("extend",)
   STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
   TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
@@ -44,7 +44,7 @@ parser = OptionParser(option_class=extendableOption, usage='%prog [options] [fil
 Blows up each value to a surrounding data block of size 'packing' thus increasing the former resolution
 to resolution*packing. (Requires numpy.)
 
-""" + string.replace('$Id: averageDown.py 1857 2012-10-31 10:06:11Z MPIE\m.diehl $','\n','\\n')
+""" + string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
@@ -89,7 +89,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id: averageDown.py 1857 2012-10-31 10:06:11Z MPIE\m.diehl $','\n','\\n') + \
+  table.info_append(string.replace('$Id$','\n','\\n') + \
                     '\t' + ' '.join(sys.argv[1:]))
   
 
@@ -141,9 +141,9 @@ for file in files:
         d = p*packing
         table.data_read()
         data[d[0]:d[0]+packing[0],
-		         d[1]:d[1]+packing[1],
-     			   d[2]:d[2]+packing[2],
-        		 : ] = numpy.tile(numpy.array(table.data_asFloat(),'d'),packing.tolist()+[1])     # tile to match blowUp voxel size
+             d[1]:d[1]+packing[1],
+              d[2]:d[2]+packing[2],
+             : ] = numpy.tile(numpy.array(table.data_asFloat(),'d'),packing.tolist()+[1])     # tile to match blowUp voxel size
 
   elementSize = dimension/resolution/packing
   elem = 1
@@ -153,7 +153,7 @@ for file in files:
         data[a,b,c,locationCol:locationCol+3] = [a+0.5,b+0.5,c+0.5]*elementSize
         data[a,b,c,elemCol] = elem
         table.data = data[a,b,c,:].tolist()
-        table.data_write()                                                  	 # output processed line
+        table.data_write()                                                     # output processed line
         elem += 1
 
   
