@@ -154,46 +154,51 @@ for file in files:
     i += s
 
 #--- reshape, if 2D make copy ---------------------------------------------------------------------
-  nMicrostuctures = numpy.prod([2 if i == 1 else i for i in info['grid']])
+  expandedGrid = numpy.array([2 if i == 1 else i for i in info['grid']],'i')
+  nMicrostuctures = numpy.prod(expandedGrid)
   if nMicrostuctures > info['grid'].prod():
     microstructure[info['grid'].prod():nMicrostuctures] = microstructure[0:info['grid'].prod()]
   microstructure = microstructure.reshape([2 if i == 1 else i for i in info['grid']],order='F')
+  grid = numpy.array([2 if i == 1 else i for i in info['grid']],'i')
 
-#--- domain decomposition -------------------------------------------------------------------------  
-  stride = numpy.array([2 if i == 1 else i for i in info['grid']],'i')
-  if numpy.any(numpy.floor(stride) != stride): 
-    file['croak'].write('invalid domain decomposition.\n')
-    continue
 
 #--- initialize helper data -----------------------------------------------------------------------  
-  window = 0
-  X,Y,Z = numpy.mgrid[0:stride[0]+2*window,0:stride[1]+2*window,0:stride[2]+2*window]
+  X,Y,Z = numpy.mgrid[0:expandedGrid[0],0:expandedGrid[1],0:expandedGrid[2]]
   gauss = numpy.exp(-(X*X+Y*Y+Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*numpy.pi*options.d*options.d,1.5)
-  gauss[:,:,(stride[2]+2*window)/2::] = gauss[:,:,(stride[2]+2*window)/2-1::-1]
-  gauss[:,(stride[1]+2*window)/2::,:] = gauss[:,(stride[1]+2*window)/2-1::-1,:]
-  gauss[(stride[0]+2*window)/2::,:,:] = gauss[(stride[0]+2*window)/2-1::-1,:,:]
+  gauss[:,:,(expandedGrid[2])/2::] = gauss[:,:,(expandedGrid[2])/2-1::-1]
+  gauss[:,(expandedGrid[1])/2::,:] = gauss[:,(expandedGrid[1])/2-1::-1,:]
+  gauss[(expandedGrid[0])/2::,:,:] = gauss[(expandedGrid[0])/2-1::-1,:,:]
   gauss = numpy.fft.rfftn(gauss)
+  
+  interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0
+  struc = ndimage.generate_binary_structure(3,1)
   for smoothIter in xrange(options.N):
-    interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0
-    struc = ndimage.generate_binary_structure(3,1)
-    microExt = numpy.zeros([microstructure.shape[0]+2,microstructure.shape[1]+2,microstructure.shape[2]+2])
-    microExt[1:-1,1:-1,1:-1] = microstructure
     boundary = numpy.zeros(microstructure.shape)
     for i in range(3):
       for j in range(3):
         for k in range(3):
           boundary = numpy.maximum(boundary,
-                                   interfacialEnergy(microstructure,microExt[i:microstructure.shape[0]+i,
-                                                                             j:microstructure.shape[1]+j,
-                                                                             k:microstructure.shape[2]+k]))
+                                   interfacialEnergy(microstructure,numpy.roll(numpy.roll(numpy.roll(
+                                                     microstructure,i-1,axis=0),j-1,axis=1),k-1,axis=2)))
     index = ndimage.morphology.distance_transform_edt(boundary == 0.,return_distances = False,return_indices = True)
     boundary = numpy.fft.irfftn(numpy.fft.rfftn(numpy.where(ndimage.morphology.binary_dilation(boundary != 0.,
                                                                                                structure = struc,
                                                                                                iterations = 2*options.d-1),
                                                           boundary[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape),
-                                                          0.))*gauss)                                          
-    index = ndimage.morphology.distance_transform_edt(boundary >= 0.5,return_distances=False,return_indices=True)
-    microstructure = microstructure[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape)
+                                                          0.))*gauss)         
+    boundaryExt = numpy.tile(boundary,(3,3,3))
+    boundaryExt = boundaryExt[(expandedGrid[0])/2:-(expandedGrid[0])/2,
+                              (expandedGrid[1])/2:-(expandedGrid[1])/2,
+                              (expandedGrid[2])/2:-(expandedGrid[2])/2]
+    microstructureExt = numpy.tile(microstructure,(3,3,3))
+    microstructureExt = microstructureExt[(expandedGrid[0])/2:-(expandedGrid[0])/2,
+                                          (expandedGrid[1])/2:-(expandedGrid[1])/2,
+                                          (expandedGrid[2])/2:-(expandedGrid[2])/2]
+    index = ndimage.morphology.distance_transform_edt(boundaryExt >= 0.5,return_distances=False,return_indices=True)
+    microstructureExt = microstructureExt[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructureExt.shape)
+    microstructure = microstructureExt[(expandedGrid[0])/2:-(expandedGrid[0])/2,
+                                       (expandedGrid[1])/2:-(expandedGrid[1])/2,
+                                       (expandedGrid[2])/2:-(expandedGrid[2])/2]
 
 # --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
 #  http://stackoverflow.com/questions/10741346/numpy-frequency-counts-for-unique-values-in-an-array  
