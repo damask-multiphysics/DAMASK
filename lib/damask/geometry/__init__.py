@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 no BOM -*-
+
 # $Id$
 
 from .geometry import Geometry   # only one class

@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 no BOM -*-
+
 # $Id$
 
 import os,sys,string,re,subprocess,shlex

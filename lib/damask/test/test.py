@@ -1,4 +1,5 @@
-#!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
+
 # $Id$
 
 import os, sys, shlex, inspect

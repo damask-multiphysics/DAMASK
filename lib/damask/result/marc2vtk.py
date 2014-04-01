@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 no BOM -*-
+
 # $Id$
 # This tool converts a msc.marc result file into the vtk format that 
 # can be viewed by Paraview software (Kitware), or MayaVi (needs xml-vtk, or ...

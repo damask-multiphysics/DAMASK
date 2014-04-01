@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
 
 # Makes postprocessing routines acessible from everywhere.
 import os

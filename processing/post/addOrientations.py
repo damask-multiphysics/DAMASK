@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string,itertools,re,math,numpy
 import damask

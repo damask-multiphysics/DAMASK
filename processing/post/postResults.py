@@ -1,4 +1,5 @@
-#!/usr/bin/env python 
+#!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
 
 import pdb, os, sys, gc, math, re, threading, time, struct, string
 import damask

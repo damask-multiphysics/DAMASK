@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 no BOM -*-
 
 import math, string, sys, os
 from damask import Color,Colormap

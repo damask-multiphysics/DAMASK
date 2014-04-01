@@ -1,3 +1,5 @@
+# -*- coding: UTF-8 no BOM -*-
+
 # damask utility functions
 import math 
 try:

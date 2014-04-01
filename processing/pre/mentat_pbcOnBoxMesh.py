@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: UTF-8 no BOM -*
+# -*- coding: UTF-8 no BOM -*-
 
 import sys,os,pwd,math,re,string,numpy, damask
 from optparse import OptionParser

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+# -*- coding: UTF-8 no BOM -*-
+
 import os
 import glob
 from subprocess import call
