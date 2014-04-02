@@ -1,8 +1,8 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Philip Eisenlohr, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
+!> @author Franz Roters, Max-Planck-Institut fÃ¼r Eisenforschung GmbH
 !> @author Koen Janssens, Paul Scherrer Institut
 !> @author Arun Prakash, Fraunhofer IWM
 !> @brief interfaces DAMASK with Abaqus/Standard
