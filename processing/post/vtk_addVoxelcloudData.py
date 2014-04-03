@@ -51,7 +51,7 @@ datainfo = {                                                               # lis
                             'label':[]},
            }
 
-if not os.path.exists(options.vtk):
+if options.vtk == None or not os.path.exists(options.vtk):
   parser.error('VTK file does not exist')
 
 if os.path.splitext(options.vtk)[1] == '.vtu':
