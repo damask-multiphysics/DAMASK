@@ -3,7 +3,7 @@ SHELL = /bin/sh
 # Makefile for the installation of DAMASK
 ########################################################################################
 .PHONY: all
-all: spectral marc processing install
+all: spectral marc processing
 
 .PHONY: spectral
 spectral:
