@@ -135,7 +135,7 @@ subroutine constitutive_init
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, nonlocalConstitutionPresent
-#ifdef HDF                                                                                            !< phase
+#ifdef HDF
  integer(pInt), dimension(:,:,:), allocatable :: mappingConstitutive
  integer(pInt), dimension(:,:,:), allocatable :: mappingCrystallite
  integer(pInt), dimension(:), allocatable :: ConstitutivePosition
@@ -245,10 +245,11 @@ subroutine constitutive_init
        select case(phase_elasticity(material_phase(g,i,e)))                                            
          case default                                                                               ! so far no output for elasticity
        end select
-       instance = phase_plasticityInstance(material_phase(g,i,e))
+       phase = material_phase(g,i,e)
+       instance = phase_plasticityInstance(phase)
 #ifdef HDF
-       ConstitutivePosition(instance) = ConstitutivePosition(instance)+1_pInt
-       mappingConstitutive(g,e,1:2)   = [ConstitutivePosition(instance),instance]
+       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt
+       mappingConstitutive(g,e,1:2)   = [ConstitutivePosition(phase),phase]
 #endif
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)

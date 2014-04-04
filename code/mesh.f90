@@ -8,7 +8,6 @@
 !> @author Krishna Komerla, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver 
 !--------------------------------------------------------------------------------------------------
-
 module mesh     
  use, intrinsic :: iso_c_binding
  use prec, only: pReal, pInt
@@ -618,6 +617,7 @@ subroutine mesh_init(ip,el)
 
 
 end subroutine mesh_init
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gives the FE to CP ID mapping by binary search through lookup array
@@ -2462,11 +2462,11 @@ subroutine mesh_marc_get_tableStyles(fileUnit)
 !! 'mesh_Nelems' and 'mesh_Nnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_nodesAndElements(fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_IntValue
+ use IO, only: &
+   IO_lc, &
+   IO_stringValue, &
+   IO_stringPos, &
+   IO_IntValue
  
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -2503,11 +2503,11 @@ subroutine mesh_marc_count_nodesAndElements(fileUnit)
 !! 'mesh_maxNelemInSet'
 !--------------------------------------------------------------------------------------------------
  subroutine mesh_marc_count_elementSets(fileUnit)
-
- use IO,   only: IO_lc, &
-                 IO_stringValue, &
-                 IO_stringPos, &
-                 IO_countContinuousIntValues
+ use IO, only: &
+   IO_lc, &
+   IO_stringValue, &
+   IO_stringPos, &
+   IO_countContinuousIntValues
                  
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -5115,6 +5115,7 @@ subroutine mesh_write_cellGeom
 #ifdef HDF
  call HDF5_mappingCells(cellconnection(1:j))
 #endif
+
  error=VTK_ini(output_format = 'ASCII', &
        title=trim(getSolverJobName())//' cell mesh', &
        filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &

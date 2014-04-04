@@ -372,7 +372,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
              call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_DISLOTWIN_label//')')
           end select
 !--------------------------------------------------------------------------------------------------
-! parameters depending on slip number of slip system families
+! parameters depending on number of slip system families
        case ('nslip')
          if (positions(1) < Nchunks_SlipFamilies + 1_pInt) &
            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
@@ -380,7 +380,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
          Nchunks_SlipFamilies = positions(1) - 1_pInt
          do j = 1_pInt, Nchunks_SlipFamilies
-             constitutive_dislotwin_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
+           constitutive_dislotwin_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
        case ('rhoedge0','rhoedgedip0','slipburgers','qedge','v0','clambdaslip','tau_peierls','p_slip','q_slip')
          do j = 1_pInt, Nchunks_SlipFamilies
@@ -435,6 +435,34 @@ subroutine constitutive_dislotwin_init(fileUnit)
            case ('r_twin')
              constitutive_dislotwin_rPerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
          end select
+!--------------------------------------------------------------------------------------------------
+! parameters depending on number of interactions
+       case ('interaction_slipslip','interactionslipslip')
+         if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         do j = 1_pInt, Nchunks_SlipSlip
+           constitutive_dislotwin_interaction_SlipSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('interaction_sliptwin','interactionsliptwin')
+         if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         do j = 1_pInt, Nchunks_SlipTwin
+           constitutive_dislotwin_interaction_SlipTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('interaction_twinslip','interactiontwinslip')
+         if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         do j = 1_pInt, Nchunks_TwinSlip
+           constitutive_dislotwin_interaction_TwinSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+       case ('interaction_twintwin','interactiontwintwin')
+         if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
+           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         do j = 1_pInt, Nchunks_TwinTwin
+           constitutive_dislotwin_interaction_TwinTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+!--------------------------------------------------------------------------------------------------
+! parameters independent of number of slip/twin systems
        case ('grainsize')
          constitutive_dislotwin_GrainSize(instance) = IO_floatValue(line,positions,2_pInt)
        case ('maxtwinfraction')
@@ -467,30 +495,6 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_CEdgeDipMinDistance(instance) = IO_floatValue(line,positions,2_pInt)
        case ('catomicvolume')
          constitutive_dislotwin_CAtomicVolume(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('interaction_slipslip','interactionslipslip')
-         if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
-         do j = 1_pInt, Nchunks_SlipSlip
-           constitutive_dislotwin_interaction_SlipSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_sliptwin','interactionsliptwin')
-         if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
-         do j = 1_pInt, Nchunks_SlipTwin
-           constitutive_dislotwin_interaction_SlipTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_twinslip','interactiontwinslip')
-         if (positions(1) < 1_pInt + Nchunks_TwinSlip) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
-         do j = 1_pInt, Nchunks_TwinSlip
-           constitutive_dislotwin_interaction_TwinSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
-       case ('interaction_twintwin','interactiontwintwin')
-         if (positions(1) < 1_pInt + Nchunks_TwinTwin) &
-           call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
-         do j = 1_pInt, Nchunks_TwinTwin
-           constitutive_dislotwin_interaction_TwinTwin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
-         enddo
        case ('sfe_0k')
          constitutive_dislotwin_SFE_0K(instance) = IO_floatValue(line,positions,2_pInt)
        case ('dsfe_dt')
