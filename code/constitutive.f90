@@ -135,9 +135,7 @@ subroutine constitutive_init
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, nonlocalConstitutionPresent
-#ifdef HDF
- integer(pInt) :: &
-  phase                                                                                             !< phase
+#ifdef HDF                                                                                            !< phase
  integer(pInt), dimension(:,:,:), allocatable :: mappingConstitutive
  integer(pInt), dimension(:,:,:), allocatable :: mappingCrystallite
  integer(pInt), dimension(:), allocatable :: ConstitutivePosition

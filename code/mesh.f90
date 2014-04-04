@@ -5076,6 +5076,9 @@ end subroutine mesh_build_FEdata
 !> @brief writes out initial cell geometry
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_write_cellGeom
+
+
+
  use DAMASK_interface, only: &
    getSolverJobName, &
    getSolverWorkingDirectoryName
@@ -5086,7 +5089,10 @@ subroutine mesh_write_cellGeom
    VTK_geo, &
    VTK_con, &
    VTK_end 
- 
+#ifdef HDF
+ use IO, only: &
+   HDF5_mappingCells 
+ #endif
  implicit none
  integer(I4P), dimension(1:mesh_Ncells)                                :: celltype 
  integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
@@ -5106,7 +5112,9 @@ subroutine mesh_write_cellGeom
      j = j + FE_NcellnodesPerCell(c) + 1_pInt
    enddo
  enddo
-
+#ifdef HDF
+ call HDF5_mappingCells(cellconnection(1:j))
+#endif
  error=VTK_ini(output_format = 'ASCII', &
        title=trim(getSolverJobName())//' cell mesh', &
        filename = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'_ipbased.vtk', &

@@ -83,6 +83,7 @@ module IO
 #ifdef HDF
 public:: HDF5_mappingConstitutive, &
          HDF5_mappingHomogenization, &
+         HDF5_mappingCells, &
          HDF5_closeJobFile
 #endif
 contains
@@ -2273,6 +2274,89 @@ subroutine HDF5_mappingHomogenization(mapping)
  call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingHomogenization
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds the unique cell to node mapping
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_mappingCells(mapping)
+ use hdf5
+
+ implicit none
+ integer(pInt), intent(in), dimension(:) :: mapping
+
+ integer        :: hdf5err, Nnodes
+ integer(HID_T) :: mapping_id, dset_id, space_id
+
+ Nnodes=size(mapping,1)
+ mapping_ID = HDF5_openGroup("mapping")
+
+!--------------------------------------------------------------------------------------------------
+! create dataspace
+ call h5screate_simple_f(1, int([Nnodes],HSIZE_T), space_id, hdf5err, &
+                            int([Nnodes],HSIZE_T))
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
+
+!--------------------------------------------------------------------------------------------------
+! create Dataset
+ call h5dcreate_f(mapping_id, "Cell",H5T_NATIVE_INTEGER, space_id, dset_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
+
+!--------------------------------------------------------------------------------------------------
+! write data by fields in the datatype. Fields order is not important.
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, mapping, int([Nnodes],HSIZE_T), hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells: h5dwrite_f instance_id')
+
+!--------------------------------------------------------------------------------------------------
+!close types, dataspaces
+ call h5dclose_f(dset_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dclose_f')
+ call h5sclose_f(space_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5sclose_f')
+ call HDF5_closeGroup(mapping_ID)
+
+end subroutine HDF5_mappingCells
+
+!--------------------------------------------------------------------------------------------------
+!> @brief adds the unique cell to node mapping
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_mappingCells(mapping)
+ use hdf5
+
+ implicit none
+ integer(pInt), intent(in), dimension(:) :: mapping
+
+ integer        :: hdf5err, Nnodes
+ integer(HID_T) :: mapping_id, dset_id, space_id
+
+ Nnodes=size(mapping,1)
+ mapping_ID = HDF5_openGroup("mapping")
+
+!--------------------------------------------------------------------------------------------------
+! create dataspace
+ call h5screate_simple_f(1, int([Nnodes],HSIZE_T), space_id, hdf5err, &
+                            int([Nnodes],HSIZE_T))
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
+
+!--------------------------------------------------------------------------------------------------
+! create Dataset
+ call h5dcreate_f(mapping_id, "Cell",H5T_NATIVE_INTEGER, space_id, dset_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
+
+!--------------------------------------------------------------------------------------------------
+! write data by fields in the datatype. Fields order is not important.
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, mapping, int([Nnodes],HSIZE_T), hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells: h5dwrite_f instance_id')
+
+!--------------------------------------------------------------------------------------------------
+!close types, dataspaces
+ call h5dclose_f(dset_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dclose_f')
+ call h5sclose_f(space_id, hdf5err)
+ if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5sclose_f')
+ call HDF5_closeGroup(mapping_ID)
+
+end subroutine HDF5_mappingCells
+
 
 #endif
 end module IO
