@@ -5092,7 +5092,7 @@ subroutine mesh_write_cellGeom
 #ifdef HDF
  use IO, only: &
    HDF5_mappingCells 
- #endif
+#endif
  implicit none
  integer(I4P), dimension(1:mesh_Ncells)                                :: celltype 
  integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
