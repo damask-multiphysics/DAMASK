@@ -52,14 +52,15 @@ Changes the (three-dimensional) canvas of a spectral geometry description.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-o', '--origin', dest='origin', type='int', nargs = 3, metavar='int int int', \
+parser.add_option('-o', '--origin', 
+                  '-c', '--center', dest='center', type='int', nargs = 3, metavar='int int int',
                   help='a,b,c origin of primitive %default')
-parser.add_option('-d', '--dimension', dest='dimension', type='int', nargs = 3, metavar='int int int', \
+parser.add_option('-d', '--dimension', dest='dimension', type='int', nargs = 3, metavar='int int int',
                   help='a,b,c extension of hexahedral box; negative values are diameters')
-parser.add_option('-f', '--fill', dest='fill', type='int', metavar = 'int', \
+parser.add_option('-f', '--fill', dest='fill', type='int', metavar = 'int',
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
 
-parser.set_defaults(origin = [0,0,0],
+parser.set_defaults(center = [0,0,0],
                     fill = 0,
                    )
 
@@ -163,18 +164,18 @@ for file in files:
     d = numpy.zeros(3,dtype='float')
 
     d[0] = (1.-dim[0])/2.0
-    for x in xrange(int(math.ceil(options.origin[0]-dim[0]/2.)),
-                    int(math.ceil(options.origin[0]+dim[0]/2.))):
+    for x in xrange(int(math.ceil(options.center[0]-dim[0]/2.)),
+                    int(math.ceil(options.center[0]+dim[0]/2.))):
       i = x%info['grid'][0]
       d[1] = (1.-dim[1])/2.0
 
-      for y in xrange(int(math.ceil(options.origin[1]-dim[1]/2.)),
-                      int(math.ceil(options.origin[1]+dim[1]/2.))):
+      for y in xrange(int(math.ceil(options.center[1]-dim[1]/2.)),
+                      int(math.ceil(options.center[1]+dim[1]/2.))):
         j = y%info['grid'][1]
         d[2] = (1.-dim[2])/2.0
 
-        for z in xrange(int(math.ceil(options.origin[2]-dim[2]/2.)),
-                        int(math.ceil(options.origin[2]+dim[2]/2.))):
+        for z in xrange(int(math.ceil(options.center[2]-dim[2]/2.)),
+                        int(math.ceil(options.center[2]+dim[2]/2.))):
           k = z%info['grid'][2]
           
           if numpy.dot(d*scale*mask,d*scale*mask) <= 1.0:
