@@ -5,34 +5,38 @@
 import os
 from damask import Environment
 
+BOLD = '\033[1m'
+ENDC = '\033[0m'
+
 damaskEnv = Environment()
 baseDir = damaskEnv.relPath('processing/')
 codeDir = damaskEnv.relPath('code/')
 try:
   binDir = damaskEnv.options['DAMASK_BIN']
 except:
-  root=os.access('/usr/local/bin', os.W_OK)
-  if root:
-    binDir = '/usr/local/bin'
-  else:
-    binDir = os.path.join(os.getenv('HOME'),'bin')
+  binDir = '/usr/local/bin' if os.access('/usr/local/bin', os.W_OK) else os.path.join(os.getenv('HOME'),'bin')
 
 if not os.path.isdir(binDir):
   os.mkdir(binDir)
 
 #define ToDo list
-bin_link = ['pre','post','misc']
+processing_subDirs = ['pre','post','misc',]
+processing_extensions = ['.py',]
             
-for myDir in bin_link:
-  myDir = os.path.abspath(os.path.join(baseDir,myDir))
-  for myFile in os.listdir(myDir):
-    if os.path.splitext(myFile)[1] in ['.py']:                                                       #only link to know extension, otherwise .py.bak or somethink like that is uses
-      src = os.path.abspath(os.path.join(myDir,myFile))
-      sym_link = os.path.abspath(os.path.join(binDir,os.path.splitext(myFile)[0]))
-      print sym_link,'-->',src
+for subDir in processing_subDirs:
+  theDir = os.path.abspath(os.path.join(baseDir,subDir))
+
+  for theFile in os.listdir(theDir):
+    if os.path.splitext(theFile)[1] in processing_extensions:                           # omit anything not fitting our script extensions (skip .py.bak, .py~, and the like)
+
+      src      = os.path.abspath(os.path.join(theDir,theFile))
+      sym_link = os.path.abspath(os.path.join(binDir,os.path.splitext(theFile)[0]))
+
       if os.path.lexists(sym_link):
-        os.remove(sym_link)    
-      os.symlink(src,sym_link)            
+        os.remove(sym_link)
+        print sym_link,
+      else:
+        print BOLD + sym_link + ENDC,
 
-
-
+      os.symlink(src,sym_link)
+      print '-->',src
