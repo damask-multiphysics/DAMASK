@@ -465,6 +465,8 @@ prec.o:                        prec.f90
 else
 DAMASK_spectral_interface.o:   DAMASK_spectral_interface.f90 \
                                prec.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -diag-remark 7410 -stand none -warn nostderrors DAMASK_spectral_interface.f90 $(SUFFIX)
+# -diag-disable 7410 should disable warning about directory statement in inquire function, but does not work. hence the other 2 statements
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
 endif
