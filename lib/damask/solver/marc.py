@@ -95,7 +95,7 @@ class Marc(Solver):
     user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
-    if int(release) >= 2013:
+    if int(release[0:4]) >= 2013:
        script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
        script =  script+'%s%s'%({False:'',True:optimization}[optimization!=''],{False:'',True:'mp'}[openMP])
     else:
