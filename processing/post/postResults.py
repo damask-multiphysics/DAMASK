@@ -999,9 +999,10 @@ for item in options.sep:
     sortProperties.append(item)
 
 theKeys = []
-for criterium in options.sort+sortProperties:
-  if criterium in where:
-    theKeys.append('x[0][%i]'%where[criterium])
+if 'none' not in map(str.lower, options.sort):
+  for criterium in options.sort + sortProperties:
+    if criterium in where:
+      theKeys.append('x[0][%i]'%where[criterium])
 
 sortKeys = eval('lambda x:(%s)'%(','.join(theKeys)))
 bg.set_message('sorting groups...')
