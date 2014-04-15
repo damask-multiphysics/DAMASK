@@ -78,8 +78,7 @@ subroutine homogenization_init()
  use hdf5, only: &
    HID_T
  use IO, only : &
-   HDF5_mappingHomogenization, &
-   HDF5_closeJobFile
+   HDF5_mappingHomogenization
 #endif
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use math, only: &
@@ -221,7 +220,6 @@ subroutine homogenization_init()
  enddo elementLooping
 #ifdef HDF
  call  HDF5_mappingHomogenization(mapping)
- call  HDF5_closeJobFile()
 #endif
 
 !--------------------------------------------------------------------------------------------------

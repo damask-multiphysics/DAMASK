@@ -492,8 +492,6 @@ subroutine utilities_inverseLaplace()
  write(6,'(/,a)') ' ... doing inverse laplace .................................................'
  flush(6)
  
-!--------------------------------------------------------------------------------------------------
-! do the actual spectral method calculation (mechanical equilibrium)
  do k = 1_pInt, grid(3)
   k_s(3) = k - 1_pInt
   if(k > grid(3)/2_pInt + 1_pInt) k_s(3) = k_s(3) - grid(3)                                        ! running from 0,1,...,N/2,N/2+1,-N/2,-N/2+1,...,-1
