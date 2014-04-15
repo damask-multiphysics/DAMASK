@@ -21,10 +21,21 @@ module IO
  character(len=5), parameter, public :: &
    IO_EOF = '#EOF#'                                                                                 !< end of file string
 #ifdef HDF 
- integer(HID_T), public, protected :: resultsFile, tempResults
+ integer(HID_T), public, protected :: tempCoordinates, tempResults
+ integer(HID_T), private :: resultsFile, tempFile
+ integer(pInt), private :: currentInc
 #endif
 
  public :: &
+#ifdef HDF
+   HDF5_mappingConstitutive, &
+   HDF5_mappingHomogenization, &
+   HDF5_mappingCells, &
+   HDF5_addGroup ,&
+   HDF5_forwardResults, &
+   HDF5_addScalarDataset, &
+   IO_formatIntToString ,&
+#endif
    IO_init, &
    IO_read, &
    IO_checkAndRewind, &
@@ -80,12 +91,7 @@ module IO
  private :: &
    abaqus_assembleInputFile
 #endif
-#ifdef HDF
-public:: HDF5_mappingConstitutive, &
-         HDF5_mappingHomogenization, &
-         HDF5_mappingCells, &
-         HDF5_closeJobFile
-#endif
+
 contains
 
 
@@ -1893,7 +1899,7 @@ end function abaqus_assembleInputFile
 
 #ifdef HDF
 !--------------------------------------------------------------------------------------------------
-!> @brief creates and initializes HDF5 output file
+!> @brief creates and initializes HDF5 output files
 !--------------------------------------------------------------------------------------------------
 subroutine HDF5_createJobFile
  use hdf5
@@ -1903,13 +1909,16 @@ subroutine HDF5_createJobFile
 
  implicit none
  integer              :: hdferr
- INTEGER(SIZE_T)      :: typeSize 
+ integer(SIZE_T)      :: typeSize 
  character(len=1024)  :: path
+ integer(HID_T) :: prp_id
+ integer(SIZE_T), parameter :: increment = 104857600 ! increase temp file in memory in 100MB steps
+
 
 !--------------------------------------------------------------------------------------------------
 ! initialize HDF5 library and check if integer and float type size match
  call h5open_f(hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile: h5open_f')
  call h5tget_size_f(H5T_NATIVE_INTEGER,typeSize, hdferr)
  if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile: h5tget_size_f (int)')
  if (int(pInt,SIZE_T)/=typeSize) call IO_error(0_pInt,ext_msg='pInt does not match H5T_NATIVE_INTEGER')
@@ -1925,8 +1934,25 @@ subroutine HDF5_createJobFile
  call HDF5_addStringAttribute(resultsFile,'createdBy','$Id$')
 
 !--------------------------------------------------------------------------------------------------
-! create mapping group in file
+! open temp file
+ path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//'DAMASKoutTemp'
+ call h5pcreate_f(H5P_FILE_ACCESS_F, prp_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile: h5pcreate_f')
+ call h5pset_fapl_core_f(prp_id, increment, .false., hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_createJobFile: h5pset_fapl_core_f')
+ call h5fcreate_f(path,H5F_ACC_TRUNC_F,tempFile,hdferr)
+ if (hdferr < 0) call IO_error(100_pInt,ext_msg=path)
+
+!--------------------------------------------------------------------------------------------------
+! create mapping groups in out file
  call HDF5_closeGroup(HDF5_addGroup("mapping"))
+ call HDF5_closeGroup(HDF5_addGroup("results"))
+ call HDF5_closeGroup(HDF5_addGroup("coordinates"))
+
+!--------------------------------------------------------------------------------------------------
+! create results group in temp file
+ tempResults     = HDF5_addGroup("results",tempFile)
+ tempCoordinates = HDF5_addGroup("coordinates",tempFile)
 
 end subroutine HDF5_createJobFile
 
@@ -1940,25 +1966,31 @@ subroutine HDF5_closeJobFile()
  implicit none
  integer :: hdferr
  call h5fclose_f(resultsFile,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_closeJobFile: h5fclose_f')
 
 end subroutine HDF5_closeJobFile
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief adds a new group to the results file
+!> @brief adds a new group to the results file, or if loc is present at the given location
 !--------------------------------------------------------------------------------------------------
-integer(HID_T) function HDF5_addGroup(path)
+integer(HID_T) function HDF5_addGroup(path,loc)
  use hdf5
 
  implicit none
  character(len=*), intent(in) :: path
+ integer(HID_T), intent(in),optional :: loc
  integer                      :: hdferr
 
- call h5gcreate_f(resultsFile, trim(path), HDF5_addGroup, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup failed ('//trim(path)//' )')
+ if (present(loc)) then
+   call h5gcreate_f(loc, trim(path), HDF5_addGroup, hdferr)
+ else
+   call h5gcreate_f(resultsFile, trim(path), HDF5_addGroup, hdferr)
+ endif
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_addGroup: h5gcreate_f ('//trim(path)//' )')
 
 end function HDF5_addGroup
+
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1972,7 +2004,7 @@ integer(HID_T) function HDF5_openGroup(path)
  integer                      :: hdferr
 
  call h5gopen_f(resultsFile, trim(path), HDF5_openGroup, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup failed ('//trim(path)//' )')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_openGroup: h5gopen_f ('//trim(path)//' )')
 
 end function HDF5_openGroup
 
@@ -1988,7 +2020,7 @@ subroutine HDF5_closeGroup(ID)
  integer                    :: hdferr
 
  call h5gclose_f(ID, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg = 'HDF5_closeGroup: h5gclose_f')
 
 end subroutine HDF5_closeGroup
 
@@ -2006,19 +2038,19 @@ subroutine HDF5_addStringAttribute(entity,attrLabel,attrValue)
  integer(HID_T)                :: attr_id, space_id, type_id
 
  call h5screate_f(H5S_SCALAR_F,space_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5screate_f')
  call h5tcopy_f(H5T_NATIVE_CHARACTER, type_id, hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5tcopy_f')
  call h5tset_size_f(type_id, int(len(trim(attrValue)),HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5tset_size_f')
  call h5acreate_f(entity, trim(attrLabel),type_id,space_id,attr_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5acreate_f')
  call h5awrite_f(attr_id, type_id, trim(attrValue), int([1],HSIZE_T), hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5awrite_f')
  call h5aclose_f(attr_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5aclose_f')
  call h5sclose_f(space_id,hdferr)
- if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_addStringAttribute: h5sclose_f')
 
 end subroutine HDF5_addStringAttribute
 
@@ -2032,7 +2064,7 @@ subroutine HDF5_mappingConstitutive(mapping)
  implicit none
  integer(pInt), intent(in), dimension(:,:,:) :: mapping
 
- integer        :: hdf5err, NmatPoints,Nconstituents
+ integer        :: hdferr, NmatPoints,Nconstituents
  integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id,instance_id,position_id
 
  Nconstituents=size(mapping,1)
@@ -2041,59 +2073,59 @@ subroutine HDF5_mappingConstitutive(mapping)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
- call h5screate_simple_f(2, int([Nconstituents,NmatPoints],HSIZE_T), space_id, hdf5err, &
+ call h5screate_simple_f(2, int([Nconstituents,NmatPoints],HSIZE_T), space_id, hdferr, &
                             int([Nconstituents,NmatPoints],HSIZE_T))
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive')
 
 !--------------------------------------------------------------------------------------------------
 ! compound type
- call h5tcreate_f(H5T_COMPOUND_F, 6_SIZE_T, dtype_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tcreate_f dtype_id')
+ call h5tcreate_f(H5T_COMPOUND_F, 6_SIZE_T, dtype_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tcreate_f dtype_id')
 
- call h5tinsert_f(dtype_id, "Constitutive Instance",         0_SIZE_T, H5T_STD_U16LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f 0')
- call h5tinsert_f(dtype_id, "Position in Instance Results",  2_SIZE_T, H5T_STD_U32LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f 2')
+ call h5tinsert_f(dtype_id, "Constitutive Instance",         0_SIZE_T, H5T_STD_U16LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f 0')
+ call h5tinsert_f(dtype_id, "Position in Instance Results",  2_SIZE_T, H5T_STD_U32LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f 2')
 
 !--------------------------------------------------------------------------------------------------
 ! create Dataset
- call h5dcreate_f(mapping_id, "Constitutive", dtype_id, space_id, dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive')
+ call h5dcreate_f(mapping_id, "Constitutive", dtype_id, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive')
 
 !--------------------------------------------------------------------------------------------------
 ! Create memory types (one compound datatype for each member)
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tcreate_f instance_id')
- call h5tinsert_f(instance_id, "Constitutive Instance",        0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f instance_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tcreate_f instance_id')
+ call h5tinsert_f(instance_id, "Constitutive Instance",        0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f instance_id')
 
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tcreate_f position_id')
- call h5tinsert_f(position_id, "Position in Instance Results", 0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f position_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tcreate_f position_id')
+ call h5tinsert_f(position_id, "Position in Instance Results", 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tinsert_f position_id')
 
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
  call h5dwrite_f(dset_id, position_id, mapping(1:Nconstituents,1:NmatPoints,1), &
-                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dwrite_f position_id')
+                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dwrite_f position_id')
  
  call h5dwrite_f(dset_id, instance_id, mapping(1:Nconstituents,1:NmatPoints,2), &
-                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dwrite_f instance_id')
+                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dwrite_f instance_id')
 
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
- call h5tclose_f(dtype_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tclose_f dtype_id')
- call h5tclose_f(position_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tclose_f position_id')
- call h5tclose_f(instance_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tclose_f instance_id')
- call h5dclose_f(dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dclose_f')
- call h5sclose_f(space_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5sclose_f')
+ call h5tclose_f(dtype_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tclose_f dtype_id')
+ call h5tclose_f(position_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tclose_f position_id')
+ call h5tclose_f(instance_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5tclose_f instance_id')
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dclose_f')
+ call h5sclose_f(space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5sclose_f')
  call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingConstitutive
@@ -2108,7 +2140,7 @@ subroutine HDF5_mappingCrystallite(mapping)
  implicit none
  integer(pInt), intent(in), dimension(:,:,:) :: mapping
 
- integer        :: hdf5err, NmatPoints,Nconstituents
+ integer        :: hdferr, NmatPoints,Nconstituents
  integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id,instance_id,position_id
 
  Nconstituents=size(mapping,1)
@@ -2117,59 +2149,59 @@ subroutine HDF5_mappingCrystallite(mapping)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
- call h5screate_simple_f(2, int([Nconstituents,NmatPoints],HSIZE_T), space_id, hdf5err, &
+ call h5screate_simple_f(2, int([Nconstituents,NmatPoints],HSIZE_T), space_id, hdferr, &
                             int([Nconstituents,NmatPoints],HSIZE_T))
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite')
 
 !--------------------------------------------------------------------------------------------------
 ! compound type
- call h5tcreate_f(H5T_COMPOUND_F, 6_SIZE_T, dtype_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f dtype_id')
+ call h5tcreate_f(H5T_COMPOUND_F, 6_SIZE_T, dtype_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f dtype_id')
 
- call h5tinsert_f(dtype_id, "Crystallite Instance",          0_SIZE_T, H5T_STD_U16LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f 0')
- call h5tinsert_f(dtype_id, "Position in Instance Results",  2_SIZE_T, H5T_STD_U32LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f 2')
+ call h5tinsert_f(dtype_id, "Crystallite Instance",          0_SIZE_T, H5T_STD_U16LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f 0')
+ call h5tinsert_f(dtype_id, "Position in Instance Results",  2_SIZE_T, H5T_STD_U32LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f 2')
 
 !--------------------------------------------------------------------------------------------------
 ! create Dataset
- call h5dcreate_f(mapping_id, "Crystallite", dtype_id, space_id, dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite')
+ call h5dcreate_f(mapping_id, "Crystallite", dtype_id, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite')
 
 !--------------------------------------------------------------------------------------------------
 ! Create memory types (one compound datatype for each member)
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f instance_id')
- call h5tinsert_f(instance_id, "Crystallite Instance",        0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f instance_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f instance_id')
+ call h5tinsert_f(instance_id, "Crystallite Instance",        0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f instance_id')
 
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f position_id')
- call h5tinsert_f(position_id, "Position in Instance Results", 0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f position_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tcreate_f position_id')
+ call h5tinsert_f(position_id, "Position in Instance Results", 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tinsert_f position_id')
 
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
  call h5dwrite_f(dset_id, position_id, mapping(1:Nconstituents,1:NmatPoints,1), &
-                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dwrite_f position_id')
+                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dwrite_f position_id')
  
  call h5dwrite_f(dset_id, instance_id, mapping(1:Nconstituents,1:NmatPoints,2), &
-                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dwrite_f instance_id')
+                                            int([Nconstituents,  NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dwrite_f instance_id')
 
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
- call h5tclose_f(dtype_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f dtype_id')
- call h5tclose_f(position_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f position_id')
- call h5tclose_f(instance_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f instance_id')
- call h5dclose_f(dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dclose_f')
- call h5sclose_f(space_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sclose_f')
+ call h5tclose_f(dtype_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f dtype_id')
+ call h5tclose_f(position_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f position_id')
+ call h5tclose_f(instance_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5tclose_f instance_id')
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5dclose_f')
+ call h5sclose_f(space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCrystallite: h5sclose_f')
  call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingCrystallite
@@ -2184,7 +2216,7 @@ subroutine HDF5_mappingHomogenization(mapping)
  implicit none
  integer(pInt), intent(in), dimension(:,:) :: mapping
 
- integer        :: hdf5err, NmatPoints
+ integer        :: hdferr, NmatPoints
  integer(HID_T) :: mapping_id, dtype_id, dset_id, space_id,instance_id,position_id,elem_id,ip_id
 
  NmatPoints=size(mapping,1)
@@ -2192,129 +2224,89 @@ subroutine HDF5_mappingHomogenization(mapping)
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
- call h5screate_simple_f(1, int([NmatPoints],HSIZE_T), space_id, hdf5err, &
+ call h5screate_simple_f(1, int([NmatPoints],HSIZE_T), space_id, hdferr, &
                             int([NmatPoints],HSIZE_T))
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization')
 
 !--------------------------------------------------------------------------------------------------
 ! compound type
- call h5tcreate_f(H5T_COMPOUND_F, 11_SIZE_T, dtype_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f dtype_id')
+ call h5tcreate_f(H5T_COMPOUND_F, 11_SIZE_T, dtype_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f dtype_id')
  
- call h5tinsert_f(dtype_id, "Homogenization Instance",      0_SIZE_T, H5T_STD_U16LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 0')
- call h5tinsert_f(dtype_id, "Position in Instance Results", 2_SIZE_T, H5T_STD_U32LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 2')
- call h5tinsert_f(dtype_id, "Element Number",               6_SIZE_T, H5T_STD_U32LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 6')
- call h5tinsert_f(dtype_id, "Material Point Number",       10_SIZE_T, H5T_STD_U8LE, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 10')
+ call h5tinsert_f(dtype_id, "Homogenization Instance",      0_SIZE_T, H5T_STD_U16LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 0')
+ call h5tinsert_f(dtype_id, "Position in Instance Results", 2_SIZE_T, H5T_STD_U32LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 2')
+ call h5tinsert_f(dtype_id, "Element Number",               6_SIZE_T, H5T_STD_U32LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 6')
+ call h5tinsert_f(dtype_id, "Material Point Number",       10_SIZE_T, H5T_STD_U8LE, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f 10')
 
 !--------------------------------------------------------------------------------------------------
 ! create Dataset
- call h5dcreate_f(mapping_id, "Homogenization", dtype_id, space_id, dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization')
+ call h5dcreate_f(mapping_id, "Homogenization", dtype_id, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization')
 
 !--------------------------------------------------------------------------------------------------
 ! Create memory types (one compound datatype for each member)
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f instance_id')
- call h5tinsert_f(instance_id, "Homogenization Instance",      0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f instance_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), instance_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f instance_id')
+ call h5tinsert_f(instance_id, "Homogenization Instance",      0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f instance_id')
 
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f position_id')
- call h5tinsert_f(position_id, "Position in Instance Results", 0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f position_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), position_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f position_id')
+ call h5tinsert_f(position_id, "Position in Instance Results", 0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f position_id')
 
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), elem_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f elem_id')
- call h5tinsert_f(elem_id,     "Element Number",               0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f elem_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), elem_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f elem_id')
+ call h5tinsert_f(elem_id,     "Element Number",               0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f elem_id')
 
- call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), ip_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f ip_id')
- call h5tinsert_f(ip_id,       "Material Point Number",        0_SIZE_T, H5T_NATIVE_INTEGER, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f ip_id')
+ call h5tcreate_f(H5T_COMPOUND_F, int(pInt,SIZE_T), ip_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tcreate_f ip_id')
+ call h5tinsert_f(ip_id,       "Material Point Number",        0_SIZE_T, H5T_NATIVE_INTEGER, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tinsert_f ip_id')
 
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
  call h5dwrite_f(dset_id, position_id, mapping(1:NmatPoints,1), &
-                                            int([NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f position_id')
+                                            int([NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f position_id')
  
  call h5dwrite_f(dset_id, instance_id, mapping(1:NmatPoints,2), &
-                                            int([NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f position_id')
+                                            int([NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f position_id')
 
  call h5dwrite_f(dset_id, elem_id,     mapping(1:NmatPoints,3), &
-                                            int([NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f elem_id')
+                                            int([NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f elem_id')
 
  call h5dwrite_f(dset_id, ip_id,       mapping(1:NmatPoints,4), &
-                                            int([NmatPoints],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f ip_id')
+                                            int([NmatPoints],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dwrite_f ip_id')
 
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
- call h5tclose_f(dtype_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f dtype_id')
- call h5tclose_f(position_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f position_id')
- call h5tclose_f(instance_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f instance_id')
- call h5tclose_f(ip_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f ip_id')
- call h5tclose_f(elem_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f elem_id')
- call h5dclose_f(dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dclose_f')
- call h5sclose_f(space_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5sclose_f')
+ call h5tclose_f(dtype_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f dtype_id')
+ call h5tclose_f(position_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f position_id')
+ call h5tclose_f(instance_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f instance_id')
+ call h5tclose_f(ip_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f ip_id')
+ call h5tclose_f(elem_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5tclose_f elem_id')
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5dclose_f')
+ call h5sclose_f(space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingHomogenization: h5sclose_f')
  call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingHomogenization
 
-!--------------------------------------------------------------------------------------------------
-!> @brief adds the unique cell to node mapping
-!--------------------------------------------------------------------------------------------------
-subroutine HDF5_mappingCells(mapping)
- use hdf5
-
- implicit none
- integer(pInt), intent(in), dimension(:) :: mapping
-
- integer        :: hdf5err, Nnodes
- integer(HID_T) :: mapping_id, dset_id, space_id
-
- Nnodes=size(mapping,1)
- mapping_ID = HDF5_openGroup("mapping")
-
-!--------------------------------------------------------------------------------------------------
-! create dataspace
- call h5screate_simple_f(1, int([Nnodes],HSIZE_T), space_id, hdf5err, &
-                            int([Nnodes],HSIZE_T))
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
-
-!--------------------------------------------------------------------------------------------------
-! create Dataset
- call h5dcreate_f(mapping_id, "Cell",H5T_NATIVE_INTEGER, space_id, dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
-
-!--------------------------------------------------------------------------------------------------
-! write data by fields in the datatype. Fields order is not important.
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, mapping, int([Nnodes],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells: h5dwrite_f instance_id')
-
-!--------------------------------------------------------------------------------------------------
-!close types, dataspaces
- call h5dclose_f(dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dclose_f')
- call h5sclose_f(space_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5sclose_f')
- call HDF5_closeGroup(mapping_ID)
-
-end subroutine HDF5_mappingCells
 
 !--------------------------------------------------------------------------------------------------
 !> @brief adds the unique cell to node mapping
@@ -2325,37 +2317,104 @@ subroutine HDF5_mappingCells(mapping)
  implicit none
  integer(pInt), intent(in), dimension(:) :: mapping
 
- integer        :: hdf5err, Nnodes
+ integer        :: hdferr, Nnodes
  integer(HID_T) :: mapping_id, dset_id, space_id
 
- Nnodes=size(mapping,1)
+ Nnodes=size(mapping)
  mapping_ID = HDF5_openGroup("mapping")
 
 !--------------------------------------------------------------------------------------------------
 ! create dataspace
- call h5screate_simple_f(1, int([Nnodes],HSIZE_T), space_id, hdf5err, &
+ call h5screate_simple_f(1, int([Nnodes],HSIZE_T), space_id, hdferr, &
                             int([Nnodes],HSIZE_T))
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells: h5screate_simple_f')
 
 !--------------------------------------------------------------------------------------------------
 ! create Dataset
- call h5dcreate_f(mapping_id, "Cell",H5T_NATIVE_INTEGER, space_id, dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
+ call h5dcreate_f(mapping_id, "Cell",H5T_NATIVE_INTEGER, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells')
 
 !--------------------------------------------------------------------------------------------------
 ! write data by fields in the datatype. Fields order is not important.
- call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, mapping, int([Nnodes],HSIZE_T), hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells: h5dwrite_f instance_id')
+ call h5dwrite_f(dset_id, H5T_NATIVE_INTEGER, mapping, int([Nnodes],HSIZE_T), hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingCells: h5dwrite_f instance_id')
 
 !--------------------------------------------------------------------------------------------------
 !close types, dataspaces
- call h5dclose_f(dset_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dclose_f')
- call h5sclose_f(space_id, hdf5err)
- if (hdf5err < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5sclose_f')
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5dclose_f')
+ call h5sclose_f(space_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='IO_mappingConstitutive: h5sclose_f')
  call HDF5_closeGroup(mapping_ID)
 
 end subroutine HDF5_mappingCells
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief creates a new scalar dataset in the given group location
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_addScalarDataset(group,nnodes,label,SIunit)
+ use hdf5
+
+ implicit none
+ integer(HID_T),   intent(in) :: group
+ integer(pInt),    intent(in) :: nnodes
+ character(len=*), intent(in)  :: SIunit,label
+
+ integer        :: hdferr
+ integer(HID_T) :: dset_id, space_id
+
+!--------------------------------------------------------------------------------------------------
+! create dataspace
+ call h5screate_simple_f(1, int([Nnodes],HSIZE_T), space_id, hdferr, &
+                            int([Nnodes],HSIZE_T))
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5screate_simple_f')
+
+!--------------------------------------------------------------------------------------------------
+! create Dataset
+ call h5dcreate_f(group, trim(label),H5T_NATIVE_DOUBLE, space_id, dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5dcreate_f')
+ call HDF5_addStringAttribute(dset_id,'unit',trim(SIunit))
+
+!--------------------------------------------------------------------------------------------------
+!close types, dataspaces
+ call h5dclose_f(dset_id, hdferr)
+ if (hdferr < 0) call IO_error(1_pInt,ext_msg='HDF5_addScalarDataset: h5dclose_f')
+ call h5sclose_f(space_id, hdferr)
+
+end subroutine HDF5_addScalarDataset
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns nicely formatted string of integer value
+!--------------------------------------------------------------------------------------------------
+function IO_formatIntToString(myInt)
+
+ implicit none
+ integer(pInt), intent(in) :: myInt
+ character(len=1_pInt + int(log10(real(myInt)),pInt)) :: IO_formatIntToString
+ write(IO_formatIntToString,'('//IO_intOut(myInt)//')') myInt
+ 
+ end function
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief copies the current temp results to the actual results file
+!--------------------------------------------------------------------------------------------------
+subroutine HDF5_forwardResults
+ use hdf5
+
+ implicit none
+ integer        :: hdferr
+ integer(HID_T)   :: new_loc_id
+    
+ new_loc_id = HDF5_openGroup("results")
+ currentInc = currentInc + 1_pInt
+ call h5ocopy_f(tempFile, 'results', new_loc_id,dst_name=IO_formatIntToString(currentInc), hdferr=hdferr)
+ if (hdferr < 0_pInt) call IO_error(1_pInt,ext_msg='HDF5_forwardResults: h5ocopy_f')
+ call HDF5_closeGroup(new_loc_id)
+
+end subroutine HDF5_forwardResults
 
 
 #endif
