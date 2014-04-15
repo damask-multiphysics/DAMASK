@@ -87,6 +87,7 @@ subroutine constitutive_init
    FE_geomtype
  use material, only: &
    material_phase, &
+   material_phase, &
    material_Nphase, &
    material_localFileExt, &    
    material_configFile, &    
@@ -430,6 +431,13 @@ subroutine constitutive_init
  enddo
 #ifdef HDF
  call  HDF5_mappingConstitutive(mappingConstitutive)
+ do phase = 1_pInt,material_Nphase
+   instance = phase_plasticityInstance(phase)                                                       ! which instance of a plasticity is present phase
+   select case(phase_plasticity(phase))                                                             ! split per constititution
+     case (PLASTICITY_NONE_ID)
+     case (PLASTICITY_J2_ID)
+   end select
+ enddo
 #endif
 !--------------------------------------------------------------------------------------------------
 ! write out state size file
@@ -854,6 +862,9 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
  use constitutive_j2, only: &
+#ifdef HDF
+   constitutive_j2_postResults2,&
+#endif
    constitutive_j2_postResults
  use constitutive_phenopowerlaw, only: &
    constitutive_phenopowerlaw_postResults 
@@ -888,6 +899,9 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
      constitutive_postResults = constitutive_titanmod_postResults(&
                                       constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_J2_ID)
+#ifdef HDF
+   call constitutive_j2_postResults2(Tstar_v,constitutive_state(ipc,ip,el),ipc,ip,el,1)
+#endif
      constitutive_postResults = constitutive_j2_postResults(Tstar_v,&
                                       constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
