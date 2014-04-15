@@ -117,6 +117,11 @@ RUN_PATH  :=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
+#new state
+ifeq "$(STATE)" "NEW"
+INCLUDE_DIRS +=-DNEWSTATE
+endif
+
 ifdef STANDARD_CHECK
 STANDARD_CHECK_ifort =$(STANDARD_CHECK)
 STANDARD_CHECK_gfortran =$(STANDARD_CHECK)

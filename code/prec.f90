@@ -56,6 +56,13 @@ module prec
    integer(pInt), dimension(:), pointer :: p
  end type p_intvec
 
+#ifdef NEWSTATE
+!http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
+ type, public :: tState
+   real(pReal), pointer, dimension(:,:) :: s ! material points, state size
+ end type
+#endif
+
  public :: &
    prec_init
  
@@ -74,11 +81,15 @@ subroutine prec_init
  write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
+#ifdef NEWSTATE
+ write(6,'(a)')       'Using new state structure'
+#endif
  write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
  write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
  write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
  write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
  write(6,'(a,l3,/)')  ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
+
  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
 
 end subroutine prec_init

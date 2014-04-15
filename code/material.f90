@@ -12,6 +12,9 @@ module material
  use prec, only: &
    pReal, &
    pInt, &
+#ifdef NEWSTATE
+   tState, &
+#endif
    p_intvec
 
  implicit none
@@ -88,6 +91,12 @@ module material
 
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase   (index) of each grain,IP,element
+
+#ifdef NEWSTATE
+ type(tState), allocatable, dimension(:) :: &
+   plasticState, &
+   elasticState
+#endif
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
    material_texture                                                                                 !< texture (index) of each grain,IP,element
  
@@ -208,6 +217,11 @@ subroutine material_init
  call material_parsePhase(FILEUNIT,material_partPhase)
  if (iand(myDebug,debug_levelBasic) /= 0_pInt) write(6,'(a)') ' Phase parsed'
  close(FILEUNIT)
+#ifdef NEWSTATE
+ allocate(plasticState(material_Nphase))
+ allocate(plasticState(material_Nphase))
+#endif 
+
 
  do m = 1_pInt,material_Nmicrostructure
    if(microstructure_crystallite(m) < 1_pInt .or. &
@@ -221,12 +235,6 @@ subroutine material_init
         call IO_error(150_pInt,m,ext_msg='texture')
    if(microstructure_Nconstituents(m) < 1_pInt) & 
         call IO_error(151_pInt,m)
-!   if (abs(sum(microstructure_fraction(:,m)) - 1.0_pReal) >= 1.0e-6_pReal) then                     ! have ppm precision in fractions
-!     if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
-!         write(6,'(a,1x,f12.9)') ' sum of microstructure fraction = ',sum(microstructure_fraction(:,m))
-!     endif
-!     call IO_error(153_pInt,m)
-!   endif
  enddo
  debugOut: if (iand(myDebug,debug_levelExtensive) /= 0_pInt) then
    write(6,'(/,a,/)') ' MATERIAL configuration'
