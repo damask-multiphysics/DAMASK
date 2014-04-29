@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 # Makes postprocessing routines acessible from everywhere.
-import os
+import os,sys
 from damask import Environment
 
 BOLD = '\033[1m'
@@ -34,9 +34,9 @@ for subDir in processing_subDirs:
 
       if os.path.lexists(sym_link):
         os.remove(sym_link)
-        print sym_link,
+        sys.stdout.write(sym_link)
       else:
-        print BOLD + sym_link + ENDC,
+        sys.stdout.write(BOLD + sym_link + ENDC)
 
       os.symlink(src,sym_link)
-      print '-->',src
+      sys.stdout.write(' -> '+src+'\n')

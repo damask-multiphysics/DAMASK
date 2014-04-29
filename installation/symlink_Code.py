@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os
+import os,sys
 import damask
 
 bin_link = { \
@@ -35,7 +35,7 @@ for dir in bin_link:
                                                False:os.path.splitext(file)[0]}[file == '']))
       if os.path.lexists(sym_link): os.remove(sym_link)
       os.symlink(src,sym_link)
-      print sym_link,'-->',src
+      sys.stdout.write(sym_link+' -> '+src+'\n')
 
 
 for version in MarcReleases:
@@ -43,5 +43,6 @@ for version in MarcReleases:
   if os.path.exists(src): 
     sym_link = os.path.abspath(os.path.join(baseDir,'DAMASK_marc'+str(version)+'.f90'))                    
     if os.path.lexists(sym_link): os.remove(sym_link)
-    os.symlink(src,sym_link)
-    print sym_link,'-->',src
+    os.symlink(os.path.relpath(src,baseDir),sym_link)
+    sys.stdout.write(sym_link+' -> '+src+'\n')
+
