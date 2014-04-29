@@ -76,35 +76,34 @@ endif
 # names for linking IMKL
 IMKL_COMPILER_ifort :=intel
 IMKL_COMPILER_gfortran :=gf
-IMKL_COMPILER2_ifort :=intel
-IMKL_COMPILER2_gfortran :=gnu
 
 # settings for multicore support
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
 OPENMP_FLAG_gfortran =-fopenmp
-ACML_ARCH =_mp
-IMKL_ARCH =$(IMKL_COMPILER2_$(F90))_thread
 LIBRARIES +=-lfftw3_threads -lpthread
-else
-IMKL_ARCH =sequential
+ifeq "$(F90)" "ifort"
+LIBRARIES +=-liomp5
+endif
 endif
 
+ifndef PETSC_DIR                                                #petsc provides linking options agains selected blas/lapack already
 ifneq  "x$(IMKL_ROOT)" "x"
 LIB_DIRS  +=-L$(IMKL_ROOT)/lib/intel64
 RUN_PATH  :=$(RUN_PATH),-rpath,$(IMKL_ROOT)/lib/intel64
 INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
-LIBRARIES +=-lmkl_$(IMKL_COMPILER_$(F90))_lp64 -lmkl_core -lmkl_$(IMKL_ARCH) -lpthread -lm
+LIBRARIES +=-lmkl_$(IMKL_COMPILER_$(F90))_lp64 -lmkl_core -lmkl_sequential -lm
 else
 ifneq  "x$(ACML_ROOT)" "x"
-LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
-RUN_PATH  :=$(RUN_PATH),-rpath,$(ACML_ROOT)/$(F90)64$(ACML_ARCH)/lib
-LIBRARIES +=-lacml$(ACML_ARCH)
+LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64/lib
+RUN_PATH  :=$(RUN_PATH),-rpath,$(ACML_ROOT)/$(F90)64/lib
+LIBRARIES +=-lacml
 else
 ifneq  "x$(LAPACK_ROOT)" "x"
 LIB_DIRS  +=-L$(LAPACK_ROOT)/lib64 -L$(LAPACK_ROOT)/lib
 RUN_PATH  :=$(RUN_PATH),-rpath,$(LAPACK_ROOT)/lib64,-rpath,$(LAPACK_ROOT)/lib
 LIBRARIES +=-llapack
+endif
 endif
 endif
 endif
@@ -144,7 +143,9 @@ OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-l
 
 COMPILE_OPTIONS_ifort    :=-fpp\
                            -ftz\
-                           -assume byterecl
+                           -assume byterecl\
+                           -shared-intel
+
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
                            -diag-disable 5268\
@@ -161,6 +162,7 @@ endif
 #-fpp:                     preprocessor
 #-ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
 #-assume byterecl          record length is given in bytes (also set by -standard-semantics)
+#-shared-intel:            Link against shared Intel libraries instead of static ones
 #-fimplicit-none:          assume "implicit-none" even if not present in source
 #-diag-disable:            disables warnings, where                           
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
@@ -217,7 +219,8 @@ DEBUG_OPTIONS_ifort      :=-g\
 #-check:                   checks at runtime, where  
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #   stack:
-COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
+COMPILE_OPTIONS_gfortran :=-shared -Wl,-undefined,dynamic_lookup\
+                           -xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
                            -fimplicit-none\
@@ -233,6 +236,8 @@ COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
 endif
 ###################################################################################################
 #COMPILE SWITCHES
+#-shared
+#-Wl,-undefined,dynamic_lookup:ensure to link against dynamic libraries
 #-xf95-cpp-input:              preprocessor
 #-ffree-line-length-132:       restrict line length to the standard 132 characters
 #-fno-range-check:             disables checking if result can be represented by variable. Needs to be set to enable DAMASK_NaN
@@ -359,11 +364,10 @@ PETSC_FILES = DAMASK_spectral_solverAL.o \
 COMPILED_FILES += $(PETSC_FILES)
 endif
 
-
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
-	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(STANDARD_CHECK_$(F90)) \
+	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-  $(COMPILED_FILES) $(LIBRARIES) $(RUN_PATH) $(LIB_DIRS) $(SUFFIX)
+  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(RUN_PATH) $(SUFFIX)
 
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)

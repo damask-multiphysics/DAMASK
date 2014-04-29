@@ -48,7 +48,8 @@ compileOptions = ' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 LDFLAGS = '-Wl,-rpath,%s/lib,-rpath,%s/lib64'%(options['FFTW_ROOT'],options['FFTW_ROOT'])
 if options['F90'] == 'gfortran':
   LDFLAGS += ' -shared -Wl,-undefined,dynamic_lookup'     # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
-
+else:
+  LDFLAGS += ' -shared-intel'
 
 # see http://cens.ioc.ee/pipermail/f2py-users/2003-December/000621.html
 if options['IMKL_ROOT']:
@@ -56,7 +57,7 @@ if options['IMKL_ROOT']:
     arch = 'gf'
   elif options['F90'] == 'ifort':
     arch = 'intel'
-  lib_lapack = '-L%s/lib/intel64 -lmkl_%s_lp64 -lmkl_core -lmkl_sequential -lpthread -lm -liomp5'\
+  lib_lapack = '-L%s/lib/intel64 -lmkl_%s_lp64 -lmkl_core -lmkl_sequential -lm'\
                                                                       %(options['IMKL_ROOT'],arch)
   LDFLAGS +=',-rpath,%s/lib/intel64'%(options['IMKL_ROOT'])
 elif options['ACML_ROOT'] != '':

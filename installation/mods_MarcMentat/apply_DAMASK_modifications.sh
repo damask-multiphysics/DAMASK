@@ -60,10 +60,10 @@ BLASDIR=${BLASDIR%/}               # remove trailing slash
 
 case $BLASTYPE in
     IMKL | imkl) 
-    BLAS=" -I$BLASDIR/include -lmkl_intel_lp64 -lmkl_core -lmkl_intel_thread -lpthread -lm -Wl,-rpath,$BLASDIR/lib/intel64 -L$BLASDIR/lib/intel64" #I'm not too shure about the include (does that work for linker?)
+    BLAS=" -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lm -Wl,-rpath,$BLASDIR/lib/intel64 -L$BLASDIR/lib/intel64"
     ;;
     ACML | acml) 
-    BLAS=" -lacml -Wl,-rpath,$BLASDIR/ifort64_mp/lib -L$BLASDIR/ifort64_mp/lib"
+    BLAS=" -lacml -Wl,-rpath,$BLASDIR/ifort64/lib -L$BLASDIR/ifort64/lib"
     ;;
     LAPACK | lapack) 
     BLAS=" -llapack -Wl,-rpath,$BLASDIR/lib,-rpath,$BLASDIR/lib64 -L$BLASDIR/lib64 -L$BLASDIR/lib"
