@@ -123,7 +123,7 @@ subroutine numerics_init
    IO_EOF
 
 #ifdef Spectral
-!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if not using MSC.Marc
+!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
 #endif  
  implicit none
 #ifndef Spectral

@@ -101,11 +101,11 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
                 TIME,DTIME,TEMP,DTEMP,PREDEF,DPRED,CMNAME,NDI,NSHR,NTENS,&
                 NSTATV,PROPS,NPROPS,COORDS,DROT,PNEWDT,CELENT,&
                 DFGRD0,DFGRD1,NOEL,NPT,KSLAY,KSPT,KSTEP,KINC)
- 
  use prec, only: &
    pReal, &
    pInt
  use numerics, only: &
+!$ DAMASK_NumThreadsInt, &
    usePingPong
  use FEsolving, only: &
    cycleCounter, &
@@ -202,10 +202,15 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) :: computationMode, i, cp_en
  logical :: cutBack
+ !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Abaqus
+ !$ include "omp_lib.h"
 
  temperature = temp                                                                                 ! temp is intent(in)
  DDSDDT = 0.0_pReal
  DRPLDE = 0.0_pReal
+
+ !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
+ !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
    !$OMP CRITICAL (write2out)
@@ -342,6 +347,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
 
  if ( terminallyIll ) pnewdt = 0.5_pReal                                                            ! force cutback directly ?
+ !$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
 
 end subroutine UMAT
 

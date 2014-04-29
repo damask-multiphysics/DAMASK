@@ -106,6 +106,8 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  use prec, only: &
    pReal, &
    pInt
+!$ use numerics, only: &
+!$ DAMASK_NumThreadsInt
  use FEsolving, only: &
    cycleCounter, &
    theTime, &
@@ -192,7 +194,14 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal), dimension(6,6) :: ddsdde
  real(pReal) :: temp, timeInc
  integer(pInt) :: computationMode, n, i, cp_en
+ !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Abaqus
+ !$ include "omp_lib.h"
 
+ !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
+ !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+
+ enerInternNew = 0.0_pReal
+ enerInelasNew = 0.0_pReal
  computationMode = CPFEM_CALCRESULTS                                                                ! always calculate
  do n = 1,nblock(1)                                                                                 ! loop over vector of IPs
    temp    = tempOld(n)
@@ -279,6 +288,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
                                          nBlock(2),mesh_FEasCP('elem', nBlock(4_pInt+n)))
   
  enddo
+ !$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
 
 end subroutine vumat
 
