@@ -359,15 +359,15 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug
 
 ifdef PETSC_DIR
 PETSC_FILES = DAMASK_spectral_solverAL.o \
-                        DAMASK_spectral_solverBasicPETSc.o \
-                        DAMASK_spectral_solverPolarisation.o
+              DAMASK_spectral_solverBasicPETSc.o \
+              DAMASK_spectral_solverPolarisation.o
 COMPILED_FILES += $(PETSC_FILES)
 endif
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(RUN_PATH) $(SUFFIX)
+  $(COMPILED_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)

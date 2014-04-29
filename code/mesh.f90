@@ -8,7 +8,7 @@
 !> @author Krishna Komerla, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief Sets up the mesh for the solvers MSC.Marc, Abaqus and the spectral solver 
 !--------------------------------------------------------------------------------------------------
-module mesh     
+module mesh
  use, intrinsic :: iso_c_binding
  use prec, only: pReal, pInt
 
@@ -5076,9 +5076,6 @@ end subroutine mesh_build_FEdata
 !> @brief writes out initial cell geometry
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_write_cellGeom
-
-
-
  use DAMASK_interface, only: &
    getSolverJobName, &
    getSolverWorkingDirectoryName
@@ -5094,8 +5091,12 @@ subroutine mesh_write_cellGeom
    HDF5_mappingCells 
 #endif
  implicit none
- integer(I4P), dimension(1:mesh_Ncells)                                :: celltype 
+ integer(I4P), dimension(1:mesh_Ncells)                                :: celltype
  integer(I4P), dimension(mesh_Ncells*(1_pInt+FE_maxNcellnodesPerCell)) :: cellconnection
+#ifdef HDF
+ integer(pInt), dimension(mesh_Ncells*FE_maxNcellnodesPerCell) :: cellconnectionHDF5
+ integer(pInt) :: j2=0_pInt
+#endif
  integer(I4P):: error
  integer(I4P):: g, c, e, CellID, i, j
 
@@ -5110,10 +5111,15 @@ subroutine mesh_write_cellGeom
      cellconnection(j+1_pInt:j+FE_NcellnodesPerCell(c)+1_pInt) &
        = [FE_NcellnodesPerCell(c),mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt]                 ! number of cellnodes per cell & list of global cellnode IDs belnging to this cell (cellnode counting starts at 0)
      j = j + FE_NcellnodesPerCell(c) + 1_pInt
+#ifdef HDF
+     cellconnectionHDF5(j2+1_pInt:j2+FE_NcellnodesPerCell(c)) &
+       = mesh_cell(1:FE_NcellnodesPerCell(c),i,e)-1_pInt
+  j2=j2 + FE_ncellnodesPerCell(c)
+#endif
    enddo
  enddo
 #ifdef HDF
- call HDF5_mappingCells(cellconnection(1:j))
+ call HDF5_mappingCells(cellconnectionHDF5(1:j2))
 #endif
 
  error=VTK_ini(output_format = 'ASCII', &
