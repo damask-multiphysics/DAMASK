@@ -141,10 +141,10 @@ OPTIMIZATION_AGGRESSIVE_ifort    :=-O3 $(PORTABLE_SWITCH) -no-prec-div -fp-model
 OPTIMIZATION_AGGRESSIVE_gfortran :=-O3 $(PORTABLE_SWITCH) -ffast-math -funroll-loops -ftree-vectorize 
 
 
+LINK_OPTIONS_ifort       :=-shared-intel
 COMPILE_OPTIONS_ifort    :=-fpp\
                            -ftz\
-                           -assume byterecl\
-                           -shared-intel
+                           -assume byterecl
 
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
@@ -219,8 +219,8 @@ DEBUG_OPTIONS_ifort      :=-g\
 #-check:                   checks at runtime, where  
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #   stack:
-COMPILE_OPTIONS_gfortran :=-shared -Wl,-undefined,dynamic_lookup\
-                           -xf95-cpp-input
+LINK_OPTIONS_gfortran    :=-shared -Wl,-undefined,dynamic_lookup
+COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
                            -fimplicit-none\
@@ -365,7 +365,7 @@ COMPILED_FILES += $(PETSC_FILES)
 endif
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
-	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
+	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
   $(COMPILED_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
