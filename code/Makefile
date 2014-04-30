@@ -219,7 +219,7 @@ DEBUG_OPTIONS_ifort      :=-g\
 #-check:                   checks at runtime, where  
 #   arg_temp_created:        will cause a lot of warnings because we create a bunch of temporary arrays (performance?)
 #   stack:
-LINK_OPTIONS_gfortran    :=-shared -Wl,-undefined,dynamic_lookup
+LINK_OPTIONS_gfortran    :=-Wl,-undefined,dynamic_lookup
 COMPILE_OPTIONS_gfortran :=-xf95-cpp-input
 ifneq "$(FASTBUILD)" "YES"
 COMPILE_OPTIONS_gfortran +=-ffree-line-length-132\
