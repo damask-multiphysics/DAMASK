@@ -89,8 +89,8 @@ for file in files:
   
   for label,formula in zip(options.labels,options.formulas):
     interpolator = []
-    for position,column in enumerate(set(re.findall(r'#(.+?)#',formula))):                          # loop over unique set of column labels in formula
-      formula = formula.replace('#'+column+'#','{%i}'%position)
+    for column in re.findall(r'#(.+?)#',formula):                          # loop over column labels in formula
+      formula = formula.replace('#'+column+'#','%f')
       if column in specials:
         interpolator += ['specials["%s"]'%column]
       elif column.isdigit():
@@ -105,9 +105,9 @@ for file in files:
         except:
           file['croak'].write('column %s not found...\n'%column)
           brokenFormula[label] = True
-
-    if label not in brokenFormula:  
-      evaluator[label] = "'" + formula + "'.format(" + ','.join(interpolator) + ")"
+    
+    if label not in brokenFormula:
+      evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")"
 
 # ------------------------------------------ calculate one result to get length of labels  ------
   table.data_read()
