@@ -50,7 +50,7 @@ parser.add_option('-g','--grid', dest='grid', type='int', nargs=3, metavar='int 
 parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
                   help='seed of random number generator [%default]')
 
-parser.set_defaults(randomSeed = 0)
+parser.set_defaults(randomSeed = None)
 parser.set_defaults(grid = [16,16,16])
 parser.set_defaults(N = 20)
 
@@ -63,6 +63,8 @@ if 0 in options.grid:
 if options.N > Npoints: 
   sys.stderr.write('Warning: more seeds than grid points at minimum resolution.\n')
   options.N = Npoints
+if options.randomSeed == None:
+  options.randomSeed = int(os.urandom(4).encode('hex'), 16)
 
 seeds = numpy.zeros((3,options.N),float)
 numpy.random.seed(options.randomSeed)
