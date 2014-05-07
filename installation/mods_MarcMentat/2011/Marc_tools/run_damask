@@ -1856,8 +1856,8 @@ fi
 #
 # user subroutine used
 #
-# add BLAS options for linking
-  BLAS="%BLAS%"
+# add DAMASK options for linking
+  DAMASK=""
   
   if test "$user"
   then
@@ -2834,7 +2834,7 @@ then
     $TKLIBS  \
     $MRCLIBS     \
     $METISLIBS \
-    $BLAS   \
+    $DAMASK   \
     $SYSLIBS  \
     $SECLIBS      || \
     {
@@ -3126,7 +3126,7 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $BLAS   \
+  $DAMASK   \
   $SYSLIBS  \
   $SECLIBS    || \
   {
@@ -3417,7 +3417,7 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $BLAS   \
+  $DAMASK   \
   $SYSLIBS \
   $SECLIBS         || \
   {

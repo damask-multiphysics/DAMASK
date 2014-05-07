@@ -33,47 +33,6 @@ done
 INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
 echo "MSC installation path: $INSTALLDIR"
 
-BLASDIR=''
-BLASTYPE=''
-if [ "x$LAPACK_ROOT" != "x" ]; then
-  BLASDIR=$LAPACK_ROOT
-  BLASTYPE='LAPACK'
-fi
-if [ "x$ACML_ROOT" != "x" ]; then
-  BLASDIR=$ACML_ROOT
-  BLASTYPE='ACML'
-fi
-if [ "x$IMKL_ROOT" != "x" ]; then
-  BLASDIR=$IMKL_ROOT
-  BLASTYPE='IMKL'
-fi
-
-while [ ! -d "$BLASDIR" ] || [ -z "$BLASDIR" ]
-do
-  echo "Input type of BLAS installation [IMKL | ACML | LAPACK]:"
-  read BLASTYPE
-  echo "Input path of BLAS installation:"
-  read BLASDIR
-done
-
-BLASDIR=${BLASDIR%/}               # remove trailing slash
-
-case $BLASTYPE in
-    IMKL | imkl) 
-    BLAS=" -lmkl_intel_lp64 -lmkl_core -lmkl_sequential -lm -Wl,-rpath,$BLASDIR/lib/intel64 -L$BLASDIR/lib/intel64"
-    ;;
-    ACML | acml) 
-    BLAS=" -lacml -Wl,-rpath,$BLASDIR/ifort64/lib -L$BLASDIR/ifort64/lib"
-    ;;
-    LAPACK | lapack) 
-    BLAS=" -llapack -Wl,-rpath,$BLASDIR/lib,-rpath,$BLASDIR/lib64 -L$BLASDIR/lib64 -L$BLASDIR/lib"
-    ;;
-    *)
-    echo "error, BLAS type must be IMKL, ACML, or LAPACK"
-    exit
-    ;;
-esac
-
 DEFAULT_EDITOR='vi'
 EDITOR=''
 while [ -z "$EDITOR" ]
@@ -106,7 +65,6 @@ for filename in 'comp_damask' \
   cp $WORKINGDIR/$VERSION/Marc_tools/$filename $theDIR
   echo $theDIR/$filename | xargs perl -pi -e "s:%INSTALLDIR%:${INSTALLDIR}:g"
   echo $theDIR/$filename | xargs perl -pi -e "s:%VERSION%:${VERSION}:g"
-  echo $theDIR/$filename | xargs perl -pi -e "s:%BLAS%:${BLAS}:g"
   echo $filename
 done
 
@@ -179,6 +137,7 @@ case $YESNO in
                   'run_damask_lmp' \
                   'run_damask_hmp'; do
     echo ${filename:4}$VERSION
+    [ -f $BIN_DIR/${filename:4}$VERSION ] && rm $BIN_DIR/${filename:4}$VERSION
     ln -s $theDIR/$filename $BIN_DIR/${filename:4}$VERSION 
   done
   ;;

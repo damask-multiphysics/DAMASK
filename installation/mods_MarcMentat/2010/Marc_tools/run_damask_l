@@ -1817,8 +1817,8 @@ fi
 #
 # user subroutine used
 #
-# add BLAS options for linking
-  BLAS="%BLAS%"
+# add DAMASK options for linking
+  DAMASK=""
 
   
   if test "$user"
@@ -2771,7 +2771,7 @@ then
     $TKLIBS  \
     $MRCLIBS     \
     $METISLIBS \
-    $BLAS   \
+    $DAMASK   \
     $SYSLIBS          || \
     {
     echo "$0: link failed for ${user:+$userobj }$objs"
@@ -3062,7 +3062,7 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $BLAS   \
+  $DAMASK   \
   $SYSLIBS          || \
   {
     echo "$0: link failed for ${user:+$userobj }$objs"
@@ -3352,7 +3352,7 @@ then
   $TKLIBS  \
   $MRCLIBS     \
   $METISLIBS \
-  $BLAS   \
+  $DAMASK   \
   $SYSLIBS          || \
   {
     echo "$0: link failed for ${user:+$userobj }$objs"
