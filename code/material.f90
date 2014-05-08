@@ -90,13 +90,14 @@ module material
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
 
  integer(pInt), dimension(:,:,:), allocatable, public :: &
-   material_phase                                                                                   !< phase   (index) of each grain,IP,element
+   material_phase                                                                                   !< phase (index) of each grain,IP,element
 
 #ifdef NEWSTATE
- type(tState), allocatable, dimension(:) :: &
+ type(tState), allocatable, dimension(:), public :: &
    plasticState, &
    elasticState
 #endif
+
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
    material_texture                                                                                 !< texture (index) of each grain,IP,element
  
@@ -219,10 +220,9 @@ subroutine material_init
  close(FILEUNIT)
 #ifdef NEWSTATE
  allocate(plasticState(material_Nphase))
- allocate(plasticState(material_Nphase))
+ allocate(elasticState(material_Nphase))
 #endif 
-
-
+ 
  do m = 1_pInt,material_Nmicrostructure
    if(microstructure_crystallite(m) < 1_pInt .or. &
       microstructure_crystallite(m) > material_Ncrystallite) & 
@@ -845,7 +845,7 @@ subroutine material_populateGrains
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
                   grain,constituentGrain,ipGrain,symExtension, ip
  real(pReal) :: extreme,rnd
- integer(pInt), dimension (:,:),   allocatable :: Nelems                                            ! counts number of elements in homog, micro array
+ integer(pInt),  dimension (:,:),   allocatable :: Nelems                                           ! counts number of elements in homog, micro array
  type(p_intvec), dimension (:,:), allocatable :: elemsOfHomogMicro                                  ! lists element number in homog, micro array
 
  myDebug = debug_level(debug_material)
@@ -1157,6 +1157,7 @@ subroutine material_populateGrains
 
 end subroutine material_populateGrains
 
+#ifdef HDF
 integer(pInt) pure function material_NconstituentsPhase(matID)
 
  implicit none
@@ -1164,5 +1165,6 @@ integer(pInt) pure function material_NconstituentsPhase(matID)
  
  material_NconstituentsPhase = count(microstructure_phase == matID)
 end function
+#endif
 
 end module material

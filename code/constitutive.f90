@@ -87,7 +87,6 @@ subroutine constitutive_init
    FE_geomtype
  use material, only: &
    material_phase, &
-   material_phase, &
    material_Nphase, &
    material_localFileExt, &    
    material_configFile, &    
@@ -111,6 +110,9 @@ subroutine constitutive_init
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_DISLOTWIN_label, &
    PLASTICITY_TITANMOD_label, &
+#ifdef NEWSTATE
+   plasticState, &
+#endif    
    PLASTICITY_NONLOCAL_label
  use constitutive_none
  use constitutive_j2
@@ -130,13 +132,14 @@ subroutine constitutive_init
   eMax, &                                                                                           !< maximum number of elements
   phase, &
   s, &
-  instance,& 
+  instance,&
   myNgrains
+
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, nonlocalConstitutionPresent
-#ifdef HDF
+#if defined(HDF) || defined(NEWSTATE)
  integer(pInt), dimension(:,:,:), allocatable :: mappingConstitutive
  integer(pInt), dimension(:,:,:), allocatable :: mappingCrystallite
  integer(pInt), dimension(:), allocatable :: ConstitutivePosition
@@ -147,7 +150,6 @@ subroutine constitutive_init
  allocate(CrystallitePosition(material_nphase),source=0_pInt)
 #endif
  nonlocalConstitutionPresent = .false.
- 
  
 !--------------------------------------------------------------------------------------------------
 ! parse plasticities from config file
@@ -215,7 +217,10 @@ subroutine constitutive_init
  cMax = homogenization_maxNgrains
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
+
+
  
+! lumped into new state
  allocate(constitutive_state0(cMax,iMax,eMax))            
  allocate(constitutive_partionedState0(cMax,iMax,eMax))
  allocate(constitutive_subState0(cMax,iMax,eMax))
@@ -225,6 +230,7 @@ subroutine constitutive_init
  allocate(constitutive_deltaState(cMax,iMax,eMax))
  allocate(constitutive_dotState_backup(cMax,iMax,eMax))
  allocate(constitutive_aTolState(cMax,iMax,eMax))
+! not needed anymore for new state
  allocate(constitutive_sizeDotState(cMax,iMax,eMax),    source=0_pInt)
  allocate(constitutive_sizeState(cMax,iMax,eMax),       source=0_pInt)
  allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt)
@@ -248,7 +254,7 @@ subroutine constitutive_init
        end select
        phase = material_phase(g,i,e)
        instance = phase_plasticityInstance(phase)
-#ifdef HDF
+#if defined(HDF) || defined(NEWSTATE)
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt
        mappingConstitutive(g,e,1:2)   = [ConstitutivePosition(phase),phase]
 #endif
@@ -280,7 +286,7 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =          0_pInt
            constitutive_sizeDotState(g,i,e) =       0_pInt
            constitutive_sizePostResults(g,i,e) =    0_pInt
-         case (PLASTICITY_J2_ID)
+         case (PLASTICITY_J2_ID) 
            allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
@@ -439,6 +445,8 @@ subroutine constitutive_init
    end select
  enddo
 #endif
+
+
 !--------------------------------------------------------------------------------------------------
 ! write out state size file
  call IO_write_jobIntFile(777,'sizeStateConst', size(constitutive_sizeState))
@@ -537,11 +545,14 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
- 
+ ! offset = mappingConstitutive(ipc,el,1) ????
+
+! OLD constitutive_state(ipc,ip,el)
+! NEW plasticState(phase=material_phase(ipc,ip,el))%state(1:myStateSize,offset)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_microstructure(temperature,constitutive_state(ipc,ip,el), &
+     call constitutive_dislotwin_microstructure(temperature,constitutive_state(ipc,ip,el), &       
                                                                                ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
      call constitutive_titanmod_microstructure(temperature,constitutive_state(ipc,ip,el), &

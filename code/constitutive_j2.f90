@@ -92,10 +92,12 @@ subroutine constitutive_j2_init(fileUnit)
 #ifdef HDF 
  use hdf5
 #endif 
-use debug, only: &
+ use debug, only: &
    debug_level, &
    debug_constitutive, &
    debug_levelBasic
+ use numerics, only: &
+   numerics_integrator
  use math, only: &
    math_Mandel3333to66, &
    math_Voigt66to3333
@@ -122,8 +124,12 @@ use debug, only: &
    phase_Noutput, &
    PLASTICITY_J2_label, &
    PLASTICITY_J2_ID, &
-   material_phase,&
+   material_phase, &
+#ifdef NEWSTATE
+   plasticState, &
+#endif
    MATERIAL_partPhase
+   
  use lattice  
 
  implicit none
@@ -136,12 +142,15 @@ use debug, only: &
  character(len=65536) :: &
    tag  = '', &
    line = ''
+  integer(pInt) :: NofMyPhase
 #ifdef HDF 
  character(len=5) :: &
    str1
  integer(HID_T) :: ID,ID2,ID4
 #endif
-
+#ifdef NEWSTATE
+ integer(pInt) :: sizeDotState,sizeState
+#endif
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_J2_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -200,10 +209,7 @@ use debug, only: &
        instance = phase_plasticityInstance(phase)
        myConstituents = count(material_phase==phase)
 #ifdef HDF
-     outID(instance)=HDF5_addGroup(str1,tempResults)
-#endif
-#ifdef NEWSTATE
-     allocate(plasticState(phase)%s(1,myConstituents)) ! initialize state (like stateInit)
+       outID(instance)=HDF5_addGroup(str1,tempResults)
 #endif
      endif
      cycle                                                                                          ! skip to next line
@@ -225,18 +231,17 @@ use debug, only: &
            case ('flowstress')
              constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = flowstress_ID
 #ifdef HDF 
-             call HDF5_addScalarDataset(outID(instance),a,'flowstress','MPa')
-             allocate(constitutive_j2_Output2(instance)%flowstress(a))
+             call HDF5_addScalarDataset(outID(instance),myConstituents,'flowstress','MPa')
+             allocate(constitutive_j2_Output2(instance)%flowstress(myConstituents))
              constitutive_j2_Output2(instance)%flowstressActive = .true.
 #endif
            case ('strainrate')
              constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = strainrate_ID
 #ifdef HDF 
-             call HDF5_addScalarDataset(outID(instance),a,'strainrate','1/s')
-             allocate(constitutive_j2_Output2(instance)%strainrate(a))
+             call HDF5_addScalarDataset(outID(instance),myConstituents,'strainrate','1/s')
+             allocate(constitutive_j2_Output2(instance)%strainrate(myConstituents))
              constitutive_j2_Output2(instance)%strainrateActive = .true.
 #endif
-
            case default
              call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_J2_label//')')
          end select
@@ -287,7 +292,9 @@ use debug, only: &
  enddo parsingFile
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-   if (phase_plasticity(phase) == PLASTICITY_j2_ID .and. count(material_phase==phase)/=0) then
+   NofMyPhase=count(material_phase==phase)
+   if (phase_plasticity(phase) == PLASTICITY_j2_ID .and. NofMyPhase/=0) then
+     instance = phase_plasticityInstance(phase)
      outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(instance)
        select case(constitutive_j2_outputID(o,instance))
          case(flowstress_ID,strainrate_ID)
@@ -301,15 +308,37 @@ use debug, only: &
          constitutive_j2_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
+#ifdef NEWSTATE
+     sizeDotState = constitutive_j2_sizeDotState(instance)
+     sizeState    = constitutive_j2_sizeState(instance)
+     allocate(plasticState(phase)%state0         (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
+     allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
+     allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%state          (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
+     allocate(plasticState(phase)%state_backup   (sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%aTolState      (sizeState,NofMyPhase),constitutive_j2_aTolResistance(instance))
+     allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),source=0.0_pReal)
+     if (any(numerics_integrator == 1_pInt)) then
+       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),source=0.0_pReal)
+     endif
+     if (any(numerics_integrator == 4_pInt)) &
+       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),source=0.0_pReal)
+     if (any(numerics_integrator == 5_pInt)) &
+       allocate(plasticState(phase)%RKCK45dotState    (sizeDotState,NofMyPhase),source=0.0_pReal)
+#endif
    endif
  enddo initializeInstances
 
 end subroutine constitutive_j2_init
 
-! probably not needed for new state
+
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the initial microstructural state for a given instance of this plasticity
 !> @details initial microstructural state is set to the value specified by tau0
+! not needed for new state
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_j2_stateInit(instance)
   
@@ -325,6 +354,7 @@ end function constitutive_j2_stateInit
 
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant state values for a given instance of this plasticity
+! not needed for new state
 !--------------------------------------------------------------------------------------------------
 pure function constitutive_j2_aTolState(instance)
 

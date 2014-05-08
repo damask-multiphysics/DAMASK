@@ -480,7 +480,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
                                                   constitutive_phenopowerlaw_totalNtwin(instance)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
      constitutive_phenopowerlaw_sizeState(instance)    = constitutive_phenopowerlaw_sizeDotState(instance)
   
-     do f = 1_pInt,lattice_maxNslipFamily                                                             ! >>> interaction slip -- X
+     do f = 1_pInt,lattice_maxNslipFamily                                                                    ! >>> interaction slip -- X
        index_myFamily = sum(constitutive_phenopowerlaw_Nslip(1:f-1_pInt,instance))
        do j = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                            ! loop over (active) systems in my family (slip)
          do o = 1_pInt,lattice_maxNslipFamily
@@ -505,7 +505,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
   
      enddo; enddo
   
-     do f = 1_pInt,lattice_maxNtwinFamily                                                             ! >>> interaction twin -- X
+     do f = 1_pInt,lattice_maxNtwinFamily                                                                    ! >>> interaction twin -- X
        index_myFamily = sum(constitutive_phenopowerlaw_Ntwin(1:f-1_pInt,instance))
        do j = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)                                            ! loop over (active) systems in my family (twin)
   

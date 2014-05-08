@@ -5,6 +5,7 @@
 !> @author   Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @author   Christoph Kords, Max-Planck-Institut für Eisenforschung GmbH
 !> @author   Martin Diehl, Max-Planck-Institut für Eisenforschung GmbH
+!> @author   Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief    setting precision for real and int type depending on makros "FLOAT" and "INT"
 !> @details  setting precision for real and int type and for DAMASK_NaN. Definition is made 
 !!           depending on makros "FLOAT" and "INT" defined during compilation
@@ -59,9 +60,22 @@ module prec
 #ifdef NEWSTATE
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
-   real(pReal), pointer, dimension(:,:) :: s ! material points, state size
+   real(pReal), pointer, dimension(:,:) :: state, &                                                     ! material points, state size
+                                           dotState, &
+                                           state0, &
+                                           partionedState0, &
+                                           subState0, &
+                                           state_backup, &
+                                           deltaState, &
+                                           previousDotState, &
+                                           previousDotState2, &
+                                           dotState_backup, &
+                                           RK4dotState, &
+                                           aTolState, &
+                                           RKCK45dotState
  end type
 #endif
+
 
  public :: &
    prec_init
