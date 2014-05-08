@@ -129,7 +129,7 @@ subroutine homogenization_init()
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(homogenization_type == HOMOGENIZATION_NONE_ID)) &
-   call homogenization_none_init(FILEUNIT)
+   call homogenization_none_init()
  if (any(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)) &
    call homogenization_isostrain_init(FILEUNIT)
  if (any(homogenization_type == HOMOGENIZATION_RGC_ID)) &
