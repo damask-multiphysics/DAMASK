@@ -94,8 +94,6 @@ class Marc(Solver):
     # Define options [see Marc Installation and Operation Guide, pp 23]
     script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
     script =  script+'%s%s'%({False:'',True:optimization}[optimization!=''],{False:'',True:'mp'}[openMP])
-    else:
-       script = 'run_marc'
     
     cmd = os.path.join(self.toolsPath(rootRelation,release),script) + \
           ' -jid ' + model + '_' + job + \
