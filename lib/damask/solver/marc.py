@@ -89,7 +89,13 @@ class Marc(Solver):
 
     damaskEnv = damask.environment.Environment(rootRelation)
     
-    user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')
+    user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')                                   # might be updated if special version is found (usually symlink)
+    if compile:
+      if os.path.isfile(os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s.f90'%release)):
+        user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s'%release)
+    else:
+      if os.path.isfile(os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s.marc'%release)):
+        user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s'%release)
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
     script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
