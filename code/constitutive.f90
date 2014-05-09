@@ -140,11 +140,11 @@ subroutine constitutive_init
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, nonlocalConstitutionPresent
 #if defined(HDF) || defined(NEWSTATE)
- integer(pInt), dimension(:,:,:), allocatable :: mappingConstitutive
- integer(pInt), dimension(:,:,:), allocatable :: mappingCrystallite
+ integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: mappingConstitutive
+ integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingCrystallite
  integer(pInt), dimension(:), allocatable :: ConstitutivePosition
  integer(pInt), dimension(:), allocatable :: CrystallitePosition
- allocate(mappingConstitutive(homogenization_maxngrains,mesh_ncpelems,2),source=0_pInt)
+ allocate(mappingConstitutive(homogenization_maxngrains,mesh_maxNips,mesh_ncpelems,2),source=0_pInt)
  allocate(mappingCrystallite (homogenization_maxngrains,mesh_ncpelems,2),source=0_pInt)
  allocate(ConstitutivePosition(material_nphase),source=0_pInt)
  allocate(CrystallitePosition(material_nphase),source=0_pInt)
@@ -256,7 +256,7 @@ subroutine constitutive_init
        instance = phase_plasticityInstance(phase)
 #if defined(HDF) || defined(NEWSTATE)
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt
-       mappingConstitutive(g,e,1:2)   = [ConstitutivePosition(phase),phase]
+       mappingConstitutive(g,e,i,1:2)   = [ConstitutivePosition(phase),phase]
 #endif
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)

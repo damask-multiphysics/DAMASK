@@ -295,6 +295,9 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
  use material, only: &
    homogenization_maxNgrains, &
    microstructure_elemhomo, &
+#ifdef NEWSTATE
+  plasticState,&
+#endif
    material_phase
  use constitutive, only: &
    constitutive_state0,constitutive_state
@@ -390,6 +393,10 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
             j = 1:mesh_maxNips, &
             k = 1:mesh_NcpElems ) &
      constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p                                ! microstructure of crystallites
+#ifdef NEWSTATE
+!(:) needed?
+plasticState(:)%state0=plasticState(:)%state
+#endif
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
      !$OMP CRITICAL (write2out)
        write(6,'(a)') '<< CPFEM >> aging states'

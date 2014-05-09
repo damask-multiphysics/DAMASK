@@ -543,10 +543,10 @@ subroutine constitutive_j2_postResults2(Tstar_v,state,ipc,ip,el,offset)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el, &
-   offset                                                                                                !< element
+   offset                                                                                           !< element
  type(p_vec),                intent(in) :: &
    state        
-                                                                                  !< microstructure state
+                                                                                                    !< microstructure state
 
  real(pReal), dimension(6) :: &
    Tstar_dev_v                                                                                      ! deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
