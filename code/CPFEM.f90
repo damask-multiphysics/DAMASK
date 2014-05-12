@@ -300,7 +300,11 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
 #endif
    material_phase
  use constitutive, only: &
-   constitutive_state0,constitutive_state
+   constitutive_state0, &
+#ifdef NEWSTATE
+   mappingConstitutive,&
+#endif   
+   constitutive_state
  use crystallite, only: &
    crystallite_partionedF,&
    crystallite_F0, &
@@ -389,16 +393,28 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
    crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
    crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
+
+   
+   
    forall ( i = 1:homogenization_maxNgrains, &
             j = 1:mesh_maxNips, &
             k = 1:mesh_NcpElems ) &
      constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p                                ! microstructure of crystallites
+
 #ifdef NEWSTATE
-!(:) needed? A component cannot be an array if the encompassing structure is an array
-!plasticState(:)%state0(:,:)=plasticState(:)%state(:,:)
-   forall ( i = 1:size(plasticState)) &
-     plasticState(i)%state0= plasticState(i)%state                                             ! microstructure of crystallites 
+   forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
+   if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
+     !$OMP CRITICAL (write2out)
+       write(6,'(a)') '<< CPFEM >> aging states'
+       if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
+         write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') '<< CPFEM >> aged state of elFE ip grain',&
+                debug_e, debug_i, 1, &
+           plasticState(mappingConstitutive(2,1,debug_i,debug_e))%state(:,mappingConstitutive(1,1,debug_i,debug_e))  
+       endif
+     !$OMP END CRITICAL (write2out)
+   endif 
 #endif
+
 
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
      !$OMP CRITICAL (write2out)
@@ -409,6 +425,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        endif
      !$OMP END CRITICAL (write2out)
    endif
+   
    !$OMP PARALLEL DO
      do k = 1,mesh_NcpElems
        do j = 1,mesh_maxNips

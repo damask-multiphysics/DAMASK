@@ -373,6 +373,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
      crystallite_partionedF0(1:3,1:3,g,i,e) = crystallite_F0(1:3,1:3,g,i,e)                         ! ...def grads
      crystallite_partionedTstar0_v(1:6,g,i,e) = crystallite_Tstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
+#ifdef NEWSTATE
+     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+       plasticState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
+#endif
    endforall
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e))
      materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)                               ! ...def grad
@@ -384,15 +388,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), homogenization_sizeState(i,e) > 0_pInt) &
      homogenization_subState0(i,e)%p = homogenization_state0(i,e)%p                                 ! ...internal homogenization state
  enddo
-#ifdef NEWSTATE
-   do i = FEsolving_execIP(1,e), FEsolving_execIP(2,e)
-    do g = 1, myNgrains
-      plasticState(mappingConstitutive(g,i,e,1))%partionedState0(:,mappingConstitutive(g,i,e,2)) = &
-        plasticState(mappingConstitutive(g,i,e,1))%state0(:,mappingConstitutive(g,i,e,2))
-    enddo
-   enddo
-#endif
-
  NiterationHomog = 0_pInt
  
  cutBackLooping: do while (.not. terminallyIll .and. &
