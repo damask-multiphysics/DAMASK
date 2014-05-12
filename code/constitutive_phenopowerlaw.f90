@@ -155,8 +155,12 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ write(6,*)  '******Flag in DAMASK********'
 #include "compilation_info.f90"
  
+
+ 
+! write(6,*) 'lattice_maxNslipFamily=',lattice_maxNslipFamily
  maxNinstance = int(count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
@@ -698,7 +702,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
                     ((abs(tau_slip_neg(j))/state%p(j))**constitutive_phenopowerlaw_n_slip(instance))*&
                                                                     sign(1.0_pReal,tau_slip_neg(j))
      Lp = Lp + (1.0_pReal-state%p(index_F))*&                     ! 1-F
-               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,phase)
+               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,phase) +1
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp

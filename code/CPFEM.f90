@@ -394,9 +394,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
             k = 1:mesh_NcpElems ) &
      constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p                                ! microstructure of crystallites
 #ifdef NEWSTATE
-!(:) needed?
-plasticState(:)%state0=plasticState(:)%state
+!(:) needed? A component cannot be an array if the encompassing structure is an array
+!plasticState(:)%state0(:,:)=plasticState(:)%state(:,:)
+   forall ( i = 1:size(plasticState)) &
+     plasticState(i)%state0= plasticState(i)%state                                             ! microstructure of crystallites 
 #endif
+
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
      !$OMP CRITICAL (write2out)
        write(6,'(a)') '<< CPFEM >> aging states'
