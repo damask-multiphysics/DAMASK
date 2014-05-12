@@ -615,7 +615,6 @@ subroutine mesh_init(ip,el)
  calcMode = .false.                                                                                 ! pretend to have collected what first call is asking (F = I)
  calcMode(ip,mesh_FEasCP('elem',el)) = .true.                                                       ! first ip,el needs to be already pingponged to "calc"
 
- print*,'flag in mesh',mesh_maxNips,mesh_NcpElems
 
 end subroutine mesh_init
 

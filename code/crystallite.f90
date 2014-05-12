@@ -3547,11 +3547,4 @@ function crystallite_postResults(ipc, ip, el)
 
 end function crystallite_postResults
 
-!subroutine gradients
-!use DAMASK_spectral_utilities
-
-!implicit none
-
-!end subroutine gradients
-
 end module crystallite
