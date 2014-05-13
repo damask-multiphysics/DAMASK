@@ -150,7 +150,8 @@ for file in files:
     i += s
 
 #--- do work ------------------------------------------------------------------------------------
-  newInfo['grid'] = numpy.array([{True:int(o*float(n.translate(None,'xX'))), False:   int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['grid'] = numpy.array([{True:  int(o*float(n.translate(None,'xX'))), 
+                                  False: int(n.translate(None,'xX'))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
   newInfo['grid'] = numpy.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
 
   microstructure = microstructure.reshape(info['grid'],order='F')
