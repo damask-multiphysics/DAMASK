@@ -51,12 +51,15 @@ def periodic_3Dpad(array, rimdim=(1,1,1)):
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
+synonyms = {
+        'grid':   ['resolution'],
+        'size':   ['dimension'],
+          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
         'origin': ['x','y','z'],
           }
-
 mappings = {
         'grid':            lambda x: int(x),
         'size':            lambda x: float(x),
@@ -66,9 +69,9 @@ mappings = {
           }
 
 features = [
-            {'aliens': 1, 'names': ['boundary(biplane)'],},
-            {'aliens': 2, 'names': ['tripleline'],},
-            {'aliens': 3, 'names': ['quadruplepoint'],}
+            {'aliens': 1, 'names': ['boundary','biplane'],},
+            {'aliens': 2, 'names': ['tripleline',],},
+            {'aliens': 3, 'names': ['quadruplepoint',],}
            ]
 
 neighborhoods = {
@@ -90,6 +93,7 @@ neighborhoods = {
                                         [-1, 1,-1],
                                         [ 0, 1,-1],
                                         [ 1, 1,-1],
+#
                                         [-1,-1, 0],
                                         [ 0,-1, 0],
                                         [ 1,-1, 0],
@@ -99,6 +103,7 @@ neighborhoods = {
                                         [-1, 1, 0],
                                         [ 0, 1, 0],
                                         [ 1, 1, 0],
+#
                                         [-1,-1, 1],
                                         [ 0,-1, 1],
                                         [ 1,-1, 1],
@@ -117,16 +122,16 @@ boundaries, triple lines, and quadruple points.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-t','--type',        dest='type', action='extend', type='string', metavar = '<string LIST>', \
-                  help='feature type (%s) '%(', '.join(map(lambda x:', '.join(x['names']),features))) )
-parser.add_option('-n','--neighborhood',  dest='neigborhood', choices=neighborhoods.keys(), metavar = 'string',  \
-                  help='type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
-parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
-                  help='output geom file with two-dimensional data arrangement [%default]')
+parser.add_option('-t','--type',          dest = 'type', action = 'extend', type = 'string', metavar = '<string LIST>',
+                  help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
+parser.add_option('-n','--neighborhood',  dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+                  help = 'type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
+parser.add_option('-s', '--scale',        dest = 'scale', type = 'float',
+                  help = 'voxel size [%default]')
 
 parser.set_defaults(type = [])
 parser.set_defaults(neighborhood = 'neumann')
-parser.set_defaults(twoD = False)
+parser.set_defaults(scale = 1.0)
 
 (options,filenames) = parser.parse_args()
 
@@ -152,8 +157,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name,
                     'input':open(name),
-                    'output':[open(string.split(''.join((features[feature]['names'])),sep='(')[0]+'_'+name,'w')
-                    for feature in feature_list],
+                    'output':[open(features[feature]['names'][0]+'_'+name,'w') for feature in feature_list],
                     'croak':sys.stdout,
                     })
 
@@ -162,35 +166,29 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  firstline = file['input'].readline()
-  m = re.search('(\d+)\s*head', firstline.lower())
-  if m:
-    headerlines = int(m.group(1))
-    headers  = [file['input'].readline() for i in range(headerlines)]
-  else:
-    headerlines = 1
-    headers = firstline
+  theTable = damask.ASCIItable(file['input'],file['output'][0],labels = False)
+  theTable.head_read()
 
-  content = file['input'].readlines()
-  file['input'].close()
-
-#--- interprete header ----------------------------------------------------------------------------
+#--- interpret header ----------------------------------------------------------------------------
   info = {
-        'grid':   numpy.zeros(3,'i'),
-        'size':   numpy.zeros(3,'d'),
-        'origin': numpy.zeros(3,'d'),
-        'microstructures': 0,
-        'homogenization':  0
+          'grid':    numpy.zeros(3,'i'),
+          'size':    numpy.zeros(3,'d'),
+          'origin':  numpy.zeros(3,'d'),
+          'homogenization':  0,
+          'microstructures': 0,
          }
   newInfo = {
-        'microstructures': 0,
-            }
+          'grid':    numpy.zeros(3,'i'),
+          'origin':  numpy.zeros(3,'d'),
+          'microstructures': 0,
+         }
+  extra_header = []
 
-  new_header = []
-  for header in headers:
+  for header in theTable.info:
     headitems = map(str.lower,header.split())
-    if headitems[0] == 'resolution': headitems[0] = 'grid'
-    if headitems[0] == 'dimension':  headitems[0] = 'size'
+    if len(headitems) == 0: continue                                                              # skip blank lines
+    for synonym,alternatives in synonyms.iteritems():
+      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
@@ -199,40 +197,41 @@ for file in files:
       else:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
     else:
-      new_header.append(header)
+      extra_header.append(header)
 
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
-  
+
   if numpy.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
-    sys.exit()
+    continue
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
-    sys.exit()
+    continue
 
-  new_header.append(scriptID + ' ' + ' '.join(sys.argv[1:]) + '\n')
-  new_header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
-  new_header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
-  new_header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
-  new_header.append("homogenization\t%i\n"%info['homogenization'])
-
-#--- process input --------------------------------------------------------------------------------
-  structure = numpy.zeros(info['grid'],'i')
+#--- read data ------------------------------------------------------------------------------------
+  microstructure = numpy.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
   i = 0
-  for line in content:  
-    for item in map(int,line.split()):
-      structure[i%info['grid'][0],
-               (i/info['grid'][0])%info['grid'][1],
-                i/info['grid'][0] /info['grid'][1]] = item
-      i += 1
+
+  while theTable.data_read():
+    items = theTable.data
+    if len(items) > 2:
+      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
+      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+      else:                            items = map(int,items)
+    else:                              items = map(int,items)
+
+    s = len(items)
+    microstructure[i:i+s] = items
+    i += s
+
   
   neighborhood = neighborhoods[options.neighborhood]
   convoluted = numpy.empty([len(neighborhood)]+list(info['grid']+2),'i')
-  microstructure = periodic_3Dpad(structure)
+  structure = periodic_3Dpad(microstructure.reshape(info['grid'],order='F'))
   
   for i,p in enumerate(neighborhood):
     stencil = numpy.zeros((3,3,3),'i')
@@ -240,43 +239,49 @@ for file in files:
     stencil[p[0]+1,
             p[1]+1,
             p[2]+1] = 1
-
-    convoluted[i,:,:,:] = ndimage.convolve(microstructure,stencil)
+    convoluted[i,:,:,:] = ndimage.convolve(structure,stencil)
   
   distance = numpy.ones((len(feature_list),info['grid'][0],info['grid'][1],info['grid'][2]),'d')
   
-  convoluted = numpy.sort(convoluted,axis=0)
-  uniques = numpy.zeros(info['grid'])
-  check = numpy.empty(info['grid'])
-  check[:,:,:] = numpy.nan
-  for i in xrange(len(neighborhood)):
-    uniques += numpy.where(convoluted[i,1:-1,1:-1,1:-1] == check,0,1)
-    check = convoluted[i,1:-1,1:-1,1:-1]
+  convoluted = numpy.sort(convoluted,axis = 0)
+  uniques = numpy.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                   # initialize unique value counter (exclude myself [= 0])
+
+  for i in xrange(1,len(neighborhood)):                                           # check remaining points in neighborhood
+    uniques += numpy.where(numpy.logical_and(
+                           convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],    # flip of ID difference detected?
+                           convoluted[i,1:-1,1:-1,1:-1] != 0),                                # not myself?
+                           1,0)                                                   # count flip
+
   for i,feature_id in enumerate(feature_list):
-    distance[i,:,:,:] = numpy.where(uniques > features[feature_id]['aliens'],0.0,1.0)
+    distance[i,:,:,:] = numpy.where(uniques >= features[feature_id]['aliens'],0.0,1.0) # seed with 0.0 when enough unique neighbor IDs are present
+
   for i in xrange(len(feature_list)):
-    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*\
-                                                [max(info['size']/info['grid'])]*3
+    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
+
   for i,feature in enumerate(feature_list):
     newInfo['microstructures'] = int(math.ceil(distance[i,:,:,:].max()))
+
+#--- write header ---------------------------------------------------------------------------------
+    theTable = damask.ASCIItable(file['input'],file['output'][i],labels = False)
+    theTable.labels_clear()
+    theTable.info_clear()
+    theTable.info_append(extra_header+[
+      scriptID + ' ' + ' '.join(sys.argv[1:]),
+      "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
+      "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
+      "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
+      "homogenization\t%i"%info['homogenization'],
+      "microstructures\t%i"%(newInfo['microstructures']),
+      ])
+    theTable.head_write()
+    theTable.output_flush()
+    
+# --- write microstructure information ------------------------------------------------------------
     formatwidth = int(math.floor(math.log10(distance[i,:,:,:].max())+1))
-
-#--- assemble header and report changes -----------------------------------------------------------
-    output  = '%i\theader\n'%(len(new_header)+1)+''.join(new_header)
-    output += "microstructures\t%i\n"%newInfo['microstructures']
-    file['croak'].write('\n'+features[i]['names'][0]+'\n')
-    if (newInfo['microstructures'] != info['microstructures']):
-      file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
-
-#--- write new data -------------------------------------------------------------------------------
-    for z in xrange(info['grid'][2]):
-      for y in xrange(info['grid'][1]):
-        output += {True:' ',False:'\n'}[options.twoD].join(map(lambda x: \
-                                       ('%%%ii'%formatwidth)%(round(x)), distance[i,:,y,z])) + '\n'
-    file['output'][i].write(output)
-    if file['name'] != 'STDIN':
-      file['output'][i].close()
-
-#--- output finalization -------------------------------------------------------------------------- 
+    theTable.data = distance[i,:,:,:].reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+    theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+    file['output'][i].close()
+    
+#--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
     file['input'].close()
