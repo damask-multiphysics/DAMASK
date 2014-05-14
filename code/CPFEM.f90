@@ -25,7 +25,6 @@ module CPFEM
 
  logical,                                       public, protected :: &
    CPFEM_init_done       = .false., &                                                                !< remember whether init has been done already
-   CPFEM_init_inProgress = .false., &                                                                !< remember whether first ip is currently performing init
    CPFEM_calc_done       = .false.                                                                   !< remember whether first ip has already calced the results
  
  integer(pInt), parameter,                      public :: &
@@ -77,19 +76,9 @@ subroutine CPFEM_initAll(temperature,el,ip)
  integer(pInt), intent(in) ::                        el, &                                         ! FE el number
                                                      ip                                            ! FE integration point number
  real(pReal), intent(in) ::                          temperature                                   ! temperature
- real(pReal)   rnd
- integer(pInt) i,n
 
- ! initialization step (three dimensional stress state check missing?)
-
- if (.not. CPFEM_init_done) then
-   call random_number(rnd)
-   do i=1,int(256.0*rnd)
-     n = n+1_pInt                                                                                  ! wasting random amount of time...
-   enddo                                                                                           ! ...to break potential race in multithreading
-   n = n+1_pInt
-   if (.not. CPFEM_init_inProgress) then                                                           ! yes my thread won!
-     CPFEM_init_inProgress = .true.
+ !$OMP CRITICAL (init)
+   if (.not. CPFEM_init_done) then
 #ifdef Spectral
      call DAMASK_interface_init()                                                                  ! Spectral solver is interfacing to commandline
 #endif
@@ -99,7 +88,7 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call debug_init
      call math_init
      call FE_init
-     call mesh_init(ip, el)                                                                   ! pass on coordinates to alter calcMode of first ip
+     call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
      call lattice_init
      call material_init
      call constitutive_init
@@ -110,12 +99,8 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call DAMASK_interface_init()                                                                  ! Spectral solver init is already done
 #endif
      CPFEM_init_done = .true.
-     CPFEM_init_inProgress = .false.
-   else                                                                                            ! loser, loser...
-     do while (CPFEM_init_inProgress)
-     enddo
    endif
- endif
+ !$OMP END CRITICAL (init)
 
 end subroutine CPFEM_initAll
 
