@@ -36,7 +36,7 @@ if options['F90'] not in compilers:
 
 compiler = {
             'gfortran': '--fcompiler=gnu95 --f90flags="-fPIC -fno-range-check -xf95-cpp-input -std=f2008 -fall-intrinsics'+\
-                        ' -fdefault-real-8 -fdefault-double-8 -shared"',
+                        ' -fdefault-real-8 -fdefault-double-8"',
             'ifort':    '--fcompiler=intelem --f90flags="-fPIC -fpp -stand f08 -diag-disable 5268 -assume byterecl'+\
                         ' -real-size 64 -integer-size 32 -shared-intel"',
             }[options['F90']]
@@ -46,7 +46,7 @@ compileOptions = ' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
 #--- this saves the path of libraries to core.so, hence it is known during runtime ----------------
 if options['F90'] == 'gfortran':
-  LDFLAGS = '-Wl,-undefined,dynamic_lookup'     # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
+  LDFLAGS = '-shared -Wl,-undefined,dynamic_lookup'     # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
 else:
   LDFLAGS = ' -Wl'
 

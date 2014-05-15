@@ -82,11 +82,11 @@ seeds[1,:]=(numpy.mod(seedpoint//                  options.grid[0],options.grid[
 seeds[2,:]=(numpy.mod(seedpoint//(options.grid[1]*options.grid[0]),options.grid[2])\
                                                             +numpy.random.random())/options.grid[2]
 
-print "5\theader"
-print scriptID
-print "grid\ta %i\tb %i\tc %i"%(options.grid[0],options.grid[1],options.grid[2],)
-print "microstructures\t%i"%options.N
-print "randomSeed\t%i"%(options.randomSeed)
-print "x\ty\tz\tphi1\tPhi\tphi2"
+sys.stdout.write("5\theader\n")
+sys.stdout.write(scriptID + " " + " ".join(sys.argv[1:])+"\n")
+sys.stdout.write("grid\ta {}\tb {}\tc {}\n".format(options.grid[0],options.grid[1],options.grid[2]))
+sys.stdout.write("microstructures\t{}\n".format(options.N))
+sys.stdout.write("randomSeed\t{}\n".format(options.randomSeed))
+sys.stdout.write("x\ty\tz\tphi1\tPhi\tphi2\n")
 
 numpy.savetxt(sys.stdout,numpy.transpose(numpy.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')
