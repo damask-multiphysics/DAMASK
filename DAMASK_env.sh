@@ -59,7 +59,7 @@ if [ ! -z "$PS1" ]; then
 
 # http://superuser.com/questions/220059/what-parameters-has-ulimit             
 ulimit -s $stack      2>/dev/null # maximum stack size (kB)
-ulimit -h $heap       2>/dev/null # maximum heap size (kB)
+ulimit -d $heap       2>/dev/null # maximum heap size (kB)
 ulimit -c 2000        2>/dev/null # core  file size (512-byte blocks)
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
