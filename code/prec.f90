@@ -71,8 +71,8 @@ module prec
                                            previousDotState2, &
                                            dotState_backup, &
                                            RK4dotState, &
-                                           aTolState, &
-                                           RKCK45dotState
+                                           aTolState
+   real(pReal), pointer, dimension(:,:,:) :: RKCK45dotState
  end type
 #endif
 

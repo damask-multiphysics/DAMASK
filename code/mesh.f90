@@ -1251,7 +1251,8 @@ subroutine mesh_spectral_build_elements(fileUnit)
    e, i, &
    headerLength = 0_pInt, &
    maxIntCount, &
-   homog
+   homog, &
+   elemType
  integer(pInt),     dimension(:), allocatable :: &
    microstructures
  integer(pInt),     dimension(3) :: &
@@ -1295,16 +1296,17 @@ subroutine mesh_spectral_build_elements(fileUnit)
    read(fileUnit,'(a65536)') line
  enddo
 
- allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems)); mesh_element = 0_pInt
- allocate (microstructures (1_pInt+maxIntCount));               microstructures = 2_pInt
+ allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source = 0_pInt)
+ allocate (microstructures (1_pInt+maxIntCount), source = 1_pInt)
  
+ elemType = FE_mapElemtype('C3D8R') 
  e = 0_pInt
  do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)                                     ! fill expected number of elements, stop at end of data (or blank line!)
    microstructures = IO_continuousIntValues(fileUnit,maxIntCount,dummyName,dummySet,0_pInt)         ! get affected elements
    do i = 1_pInt,microstructures(1_pInt)
      e = e+1_pInt                                                                                   ! valid element entry
      mesh_element( 1,e) = e                                                                         ! FE id
-     mesh_element( 2,e) = FE_mapElemtype('C3D8R')                                                   ! elem type
+     mesh_element( 2,e) = elemType                                                                  ! elem type
      mesh_element( 3,e) = homog                                                                     ! homogenization
      mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
      mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &

@@ -1308,9 +1308,9 @@ pure function math_qRot(Q,v)
    enddo
  enddo
 
- math_qRot(1) = -v(1)*(T(3,3)+T(4,4)) + v(2)*(T(3,2)-T(4,1)) + v(3)*(T(4,2)+T(3,1))
- math_qRot(2) =  v(1)*(T(3,2)+T(4,1)) - v(2)*(T(2,2)+T(4,4)) + v(3)*(T(4,3)-T(2,1))
- math_qRot(3) =  v(1)*(T(4,2)-T(3,1)) + v(2)*(T(4,3)+T(2,1)) - v(3)*(T(2,2)+T(3,3))
+ math_qRot = [-v(1)*(T(3,3)+T(4,4)) + v(2)*(T(3,2)-T(4,1)) + v(3)*(T(4,2)+T(3,1)), &
+               v(1)*(T(3,2)+T(4,1)) - v(2)*(T(2,2)+T(4,4)) + v(3)*(T(4,3)-T(2,1)), &
+               v(1)*(T(4,2)-T(3,1)) + v(2)*(T(4,3)+T(2,1)) - v(3)*(T(2,2)+T(3,3))]
 
  math_qRot = 2.0_pReal * math_qRot + v
 
@@ -1337,8 +1337,8 @@ pure function math_RtoEuler(R)
 ! calculate PHI
  myVal=R(3,3)/sqhkl
 
- if(myVal >  1.0_pReal) myVal =  1.0_pReal
- if(myVal < -1.0_pReal) myVal = -1.0_pReal
+ myVal = min(myVal, 1.0_pReal)
+ myVal = max(myVal,-1.0_pReal)
 
  math_RtoEuler(2) = acos(myVal)
 
@@ -1347,23 +1347,23 @@ pure function math_RtoEuler(R)
      math_RtoEuler(3) = 0.0_pReal
 ! calculate phi1
      myVal=R(1,1)/squvw
-     if(myVal >  1.0_pReal) myVal =  1.0_pReal
-     if(myVal < -1.0_pReal) myVal = -1.0_pReal
+     myVal = min(myVal, 1.0_pReal)
+     myVal = max(myVal,-1.0_pReal)
 
      math_RtoEuler(1) = acos(myVal)
      if(R(2,1) > 0.0_pReal) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)
  else
 ! calculate phi2
      myVal=R(2,3)/sqhk
-     if(myVal >  1.0_pReal) myVal =  1.0_pReal
-     if(myVal < -1.0_pReal) myVal = -1.0_pReal
+     myVal = min(myVal, 1.0_pReal)
+     myVal = max(myVal,-1.0_pReal)
 
      math_RtoEuler(3) = acos(myVal)
      if(R(1,3) < 0.0) math_RtoEuler(3) = 2.0_pReal*pi-math_RtoEuler(3)
 ! calculate phi1
      myVal=-R(3,2)/sin(math_RtoEuler(2))
-     if(myVal >  1.0_pReal) myVal =  1.0_pReal
-     if(myVal < -1.0_pReal) myVal = -1.0_pReal
+     myVal = min(myVal, 1.0_pReal)
+     myVal = max(myVal,-1.0_pReal)
 
      math_RtoEuler(1) = acos(myVal)
      if(R(3,1) < 0.0) math_RtoEuler(1) = 2.0_pReal*pi-math_RtoEuler(1)

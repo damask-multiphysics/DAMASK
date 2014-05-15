@@ -327,7 +327,7 @@ subroutine constitutive_j2_init(fileUnit)
      if (any(numerics_integrator == 4_pInt)) &
        allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
 #endif
    endif
  enddo initializeInstances
