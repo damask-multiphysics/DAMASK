@@ -202,7 +202,7 @@ subroutine material_init
  
  write(6,'(/,a)') ' <<<+-  material init  -+>>>'
  write(6,'(a)') ' $Id$'
- write(6,'(a16,a)')   ' Current time : ',IO_timeStamp()
+ write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
@@ -392,6 +392,9 @@ subroutine material_parseMicrostructure(fileUnit,myPart)
  allocate(microstructure_Nconstituents(Nsections),        source=0_pInt)
  allocate(microstructure_active(Nsections),               source=.false.)
  allocate(microstructure_elemhomo(Nsections),             source=.false.)
+
+ if(any(mesh_element(4,1:mesh_NcpElems) > Nsections)) &
+  call IO_error(155_pInt,ext_msg='Microstructure in geometry > Sections in material.config')
 
  forall (e = 1_pInt:mesh_NcpElems) microstructure_active(mesh_element(4,e)) = .true.                ! current microstructure used in model? Elementwise view, maximum N operations for N elements
   

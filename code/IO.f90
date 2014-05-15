@@ -160,10 +160,14 @@ recursive function IO_read(fileUnit,reset) result(line)
 
  inquire(UNIT=unitOn(stack),NAME=path)                                                              ! path of current file
  stack = stack+1_pInt
- pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                               ! glue include to current file's dir
+ if(scan(input,SEP) == 1) then                                                                      ! absolut path given (UNIX only)
+   pathOn(stack) = input
+ else
+   pathOn(stack) = path(1:scan(path,SEP,.true.))//input                                             ! glue include to current file's dir
+ endif
 
  open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack))                                       ! open included file
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=pathOn(stack))
 
  line = IO_read(fileUnit)
  
