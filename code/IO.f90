@@ -167,7 +167,7 @@ recursive function IO_read(fileUnit,reset) result(line)
  endif
 
  open(newunit=unitOn(stack),iostat=myStat,file=pathOn(stack))                                       ! open included file
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=pathOn(stack))
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=pathOn(stack))
 
  line = IO_read(fileUnit)
  
@@ -223,7 +223,7 @@ subroutine IO_open_file(fileUnit,relPath)
  
  path = trim(getSolverWorkingDirectoryName())//relPath
  open(fileUnit,status='old',iostat=myStat,file=path)
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
  
 end subroutine IO_open_file
 
@@ -271,7 +271,7 @@ subroutine IO_open_jobFile(fileUnit,ext)
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
  open(fileUnit,status='old',iostat=myStat,file=path)
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
  
 end subroutine IO_open_jobFile
 
@@ -328,18 +328,18 @@ subroutine IO_open_inputFile(fileUnit,modelName)
     path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)
     open(fileUnit+1,status='old',iostat=myStat,file=path)
  endif
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)                                         ! ensure that any file opened works
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
    
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension(fileType)//'_assembly'
  open(fileUnit,iostat=myStat,file=path)
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
     if (.not.abaqus_assembleInputFile(fileUnit,fileUnit+1_pInt)) call IO_error(103_pInt)            ! strip comments and concatenate any "include"s
  close(fileUnit+1_pInt) 
 #endif
 #ifdef Marc4DAMASK
    path = trim(getSolverWorkingDirectoryName())//trim(modelName)//inputFileExtension
    open(fileUnit,status='old',iostat=myStat,file=path)
-   if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+   if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 #endif
 
 end subroutine IO_open_inputFile
@@ -363,7 +363,7 @@ subroutine IO_open_logFile(fileUnit)
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//LogFileExtension
  open(fileUnit,status='old',iostat=myStat,file=path)
- if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_logFile
 #endif
@@ -387,7 +387,7 @@ subroutine IO_write_jobFile(fileUnit,ext)
 
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
  open(fileUnit,status='replace',iostat=myStat,file=path)
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
  
 end subroutine IO_write_jobFile
 
@@ -418,7 +418,7 @@ subroutine IO_write_jobRealFile(fileUnit,ext,recMultiplier)
                                                    recl=pReal,iostat=myStat,file=path)
  endif
 
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
  
 end subroutine IO_write_jobRealFile
 
@@ -443,13 +443,13 @@ subroutine IO_write_jobIntFile(fileUnit,ext,recMultiplier)
  path = trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.'//ext
  if (present(recMultiplier)) then
    open(fileUnit,status='replace',form='unformatted',access='direct', &
-                                                   recl=pInt*recMultiplier,iostat=myStat,file=path)
+                 recl=pInt*recMultiplier,iostat=myStat,file=path)
  else
    open(fileUnit,status='replace',form='unformatted',access='direct', &
-                                                   recl=pInt,iostat=myStat,file=path)
+                 recl=pInt,iostat=myStat,file=path)
  endif
 
- if (myStat /= 0_pInt) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
  
 end subroutine IO_write_jobIntFile
 
@@ -474,12 +474,12 @@ subroutine IO_read_realFile(fileUnit,ext,modelName,recMultiplier)
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//'.'//ext
  if (present(recMultiplier)) then
    open(fileUnit,status='old',form='unformatted',access='direct', & 
-                                               recl=pReal*recMultiplier,iostat=myStat,file=path)
+                 recl=pReal*recMultiplier,iostat=myStat,file=path)
  else
    open(fileUnit,status='old',form='unformatted',access='direct', &
-                                               recl=pReal,iostat=myStat,file=path)
+                 recl=pReal,iostat=myStat,file=path)
  endif
- if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
+ if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
  
 end subroutine IO_read_realFile
 
@@ -504,10 +504,10 @@ subroutine IO_read_intFile(fileUnit,ext,modelName,recMultiplier)
  path = trim(getSolverWorkingDirectoryName())//trim(modelName)//'.'//ext
  if (present(recMultiplier)) then
    open(fileUnit,status='old',form='unformatted',access='direct', & 
-                                               recl=pInt*recMultiplier,iostat=myStat,file=path)
+                 recl=pInt*recMultiplier,iostat=myStat,file=path)
  else
    open(fileUnit,status='old',form='unformatted',access='direct', &
-                                               recl=pInt,iostat=myStat,file=path)
+                 recl=pInt,iostat=myStat,file=path)
  endif
  if (myStat /= 0) call IO_error(100_pInt,ext_msg=path)
  
@@ -1485,6 +1485,8 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'illegal texture transformation specified'
  case (160_pInt)
    msg = 'no entries in config part'
+ case (165_pInt)
+   msg = 'homogenization configuration'
  case (170_pInt)
    msg = 'no homogenization specified via State Variable 2'
  case (180_pInt)
