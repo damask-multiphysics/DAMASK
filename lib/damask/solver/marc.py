@@ -91,11 +91,11 @@ class Marc(Solver):
     
     user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')                                   # might be updated if special version is found (usually symlink)
     if compile:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s.f90'%release)):
-        user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s'%release)
+      if os.path.isfile(os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc%s.f90'%release)):
+        user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc%s'%release)
     else:
-      if os.path.isfile(os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s.marc'%release)):
-        user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc_%s'%release)
+      if os.path.isfile(os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc%s.marc'%release)):
+        user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc%s'%release)
 
     # Define options [see Marc Installation and Operation Guide, pp 23]
     script = 'run_damask%s'%({False:'',True:'_'}[optimization!='' or openMP])
