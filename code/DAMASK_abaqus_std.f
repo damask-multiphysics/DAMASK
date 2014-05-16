@@ -213,12 +213,10 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
-   !$OMP CRITICAL (write2out)
    write(6,*) 'el',noel,'ip',npt
    write(6,*) 'got kInc as',kInc
    write(6,*) 'got dStran',dStran
    flush(6)
-   !$OMP END CRITICAL (write2out)
  endif
 
  if (.not. CPFEM_init_done) call CPFEM_initAll(temperature,noel,npt)
@@ -232,26 +230,17 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
      lastIncConverged = .false.                                                                     ! no Jacobian backup
      outdatedByNewInc = .false.                                                                     ! no aging of state
      calcMode = .false.                                                                             ! pretend last step was collection
-     !$OMP CRITICAL (write2out)
-     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!'
-     flush(6)
-     !$OMP END CRITICAL (write2out)
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> start of analysis..!';flush(6)
    else if (kInc - theInc > 1) then                                                                 ! >> restart of broken analysis <<
      lastIncConverged = .false.                                                                     ! no Jacobian backup
      outdatedByNewInc = .false.                                                                     ! no aging of state
      calcMode = .true.                                                                              ! pretend last step was calculation
-     !$OMP CRITICAL (write2out)
-     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!'
-     flush(6)
-     !$OMP END CRITICAL (write2out)
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> restart of analysis..!';flush(6)
    else                                                                                             ! >> just the next inc << 
      lastIncConverged = .true.                                                                      ! request Jacobian backup
      outdatedByNewInc = .true.                                                                      ! request aging of state
      calcMode = .true.                                                                              ! assure last step was calculation
-     !$OMP CRITICAL (write2out)
-     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!'
-     flush(6)
-     !$OMP END CRITICAL (write2out)
+     write (6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> new increment..!';flush(6)
    endif
  else if ( dtime < theDelta ) then                                                                  ! >> cutBack <<
    lastIncConverged = .false.                                                                       ! no Jacobian backup
@@ -259,10 +248,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
    terminallyIll = .false.
    cycleCounter = -1                                                                                ! first calc step increments this to cycle = 0
    calcMode = .true.                                                                                ! pretend last step was calculation
-   !$OMP CRITICAL (write2out)
-   write(6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> cutback detected..!'
-   flush(6)
-   !$OMP END CRITICAL (write2out)
+   write(6,'(i8,1x,i2,1x,a)') noel,npt,'<< UMAT >> cutback detected..!';flush(6)
  endif                                                                                              ! convergence treatment end
 
 
@@ -315,10 +301,8 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  lastStep = kStep                                                                                   ! record step number
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
-   !$OMP CRITICAL (write2out)
    write(6,'(a16,1x,i2,1x,a,i8,a,i8,1x,i5,a)') 'computationMode',computationMode,'(',cp_en,':',noel,npt,')'
    flush(6)
-   !$OMP END CRITICAL (write2out)
  endif
    
  call CPFEM_general(computationMode,usePingPong,dfgrd0,dfgrd1,temperature,dtime,noel,npt,stress_h,ddsdde_h)
@@ -360,7 +344,7 @@ subroutine quit(mpie_error)
    pInt
  
  implicit none
- integer(pInt) mpie_error
+ integer(pInt) :: mpie_error
 
  flush(6)
  call xit

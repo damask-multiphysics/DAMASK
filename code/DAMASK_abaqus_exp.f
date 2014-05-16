@@ -196,7 +196,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  integer(pInt) :: computationMode, n, i, cp_en
  !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Abaqus
  !$ include "omp_lib.h"
-                                                                           ! temp is intent(in)
+
  enerInternNew = 0.0_pReal
  enerInelasNew = 0.0_pReal
 
@@ -205,23 +205,19 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
 
  computationMode = CPFEM_CALCRESULTS                                                                ! always calculate
  do n = 1,nblock(1)                                                                                 ! loop over vector of IPs
-   temp    = tempOld(n)
+   temp    = tempOld(n)                                                                             ! temp is intent(in)
    if ( .not. CPFEM_init_done ) then
      call CPFEM_initAll(temp,nBlock(4_pInt+n),nBlock(2))
      outdatedByNewInc = .false.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
-       !$OMP CRITICAL (write2out)
-         write(6,'(i8,1x,i2,1x,a)') nBlock(4_pInt+n),nBlock(2),'first call special case..!'; flush(6)
-       !$OMP END CRITICAL (write2out)
+       write(6,'(i8,1x,i2,1x,a)') nBlock(4_pInt+n),nBlock(2),'first call special case..!'; flush(6)
      endif
    else if (theTime < totalTime) then                                                               ! reached convergence
      outdatedByNewInc = .true.
 
      if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
-       !$OMP CRITICAL (write2out)
-         write (6,'(i8,1x,i2,1x,a)') nBlock(4_pInt+n),nBlock(2),'lastIncConverged + outdated'; flush(6)
-       !$OMP END CRITICAL (write2out)
+       write (6,'(i8,1x,i2,1x,a)') nBlock(4_pInt+n),nBlock(2),'lastIncConverged + outdated'; flush(6)
      endif
 
    endif
@@ -237,10 +233,8 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
 
    theTime  = totalTime                                                                             ! record current starting time
    if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0) then
-     !$OMP CRITICAL (write2out)
-       write(6,'(a,i8,i2,a)') '(',nBlock(4_pInt+n),nBlock(2),')'; flush(6)
-       write(6,'(a,l1)') 'Aging Results: ', iand(computationMode, CPFEM_AGERESULTS) /= 0_pInt
-     !$OMP END CRITICAL (write2out)
+     write(6,'(a,i8,i2,a)') '(',nBlock(4_pInt+n),nBlock(2),')'; flush(6)
+     write(6,'(a,l1)') 'Aging Results: ', iand(computationMode, CPFEM_AGERESULTS) /= 0_pInt
    endif
    defgrd0 = 0.0_pReal
    defgrd1 = 0.0_pReal
@@ -302,7 +296,7 @@ subroutine quit(mpie_error)
    pInt
  
  implicit none
- integer(pInt) mpie_error
+ integer(pInt) :: mpie_error
  
  flush(6)
  call xplb_exit
