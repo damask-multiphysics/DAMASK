@@ -31,6 +31,13 @@ freeMem=`free -k | grep Mem: | awk '{print $4;}'`
 heap=`expr $freeMem / 2`
 stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
 
+# http://superuser.com/questions/220059/what-parameters-has-ulimit             
+ulimit -s $heap       2>/dev/null # maximum stack size (kB)
+ulimit -d $stack      2>/dev/null # maximum heap size (kB)
+ulimit -c 2000        2>/dev/null # core  file size (512-byte blocks)
+ulimit -v unlimited   2>/dev/null # maximum virtual memory size
+ulimit -m unlimited   2>/dev/null # maximum physical memory size
+
 # disable output in case of scp
 if [ ! -z "$PS1" ]; then
   echo
@@ -53,16 +60,9 @@ if [ ! -z "$PS1" ]; then
   echo "FFTW               $FFTW_ROOT"
   echo "HDF5               $HDF5_ROOT (for future use)"
   echo
-  echo "heap size/kB      $heap"
-  echo "stack size/kB     $stack"
+  echo "heap size/kB       `ulimit -d`"
+  echo "stack size/kB      `ulimit -s`"
   fi
-
-# http://superuser.com/questions/220059/what-parameters-has-ulimit             
-ulimit -s $stack      2>/dev/null # maximum stack size (kB)
-ulimit -d $heap       2>/dev/null # maximum heap size (kB)
-ulimit -c 2000        2>/dev/null # core  file size (512-byte blocks)
-ulimit -v unlimited   2>/dev/null # maximum virtual memory size
-ulimit -m unlimited   2>/dev/null # maximum physical memory size
 
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
