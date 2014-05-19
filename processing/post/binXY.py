@@ -4,6 +4,9 @@
 import os,sys,string,numpy
 from optparse import OptionParser, Option
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 # -----------------------------
 class extendableOption(Option):
 # -----------------------------
@@ -30,7 +33,7 @@ class extendableOption(Option):
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional probability density map.
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 
@@ -68,18 +71,25 @@ result = numpy.zeros((options.bins[0]*options.bins[1],3),'f')
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':   'STDIN',
+                'input':  sys.stdin,
+                'output': sys.stdout,
+                'croak':  sys.stderr,
+               })
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, \
-                    'input':open(name), \
-                    'output':open(os.path.splitext(name)[0]+'_binned%i-%i'%(options.data[0],options.data[1])+os.path.splitext(name)[1],'w')})
+      files.append({'name':   name,
+                    'input':  open(name),
+                    'output': open(os.path.splitext(name)[0]+'_binned%i-%i'%(options.data[0],options.data[1])+os.path.splitext(name)[1],'w'),
+                    'croak':  sys.stderr,
+                    })
 
 # ------------------------------------------ loop over input files ---------------------------------------  
 
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   skip = int(file['input'].readline().split()[0])
   for i in xrange(skip): headers = file['input'].readline().split()
@@ -100,16 +110,21 @@ for file in files:
     if x >=0 and x < options.bins[0] and y >= 0 and y < options.bins[1]: grid[x,y] += 1
   
   if (range[2] == 0.0).all(): range[2] = [grid.min(),grid.max()]
+  if (range[2] == 0.0).all():                                             # no data in grid?
+    file['croak'].write('no data found on grid...\n')
+    range[2,:] = numpy.array([0.0,1.0])                                   # making up arbitrary z range
   if options.type[2].lower() == 'log':
     grid = numpy.log(grid)
     range[2] = numpy.log(range[2])
+    
   delta[2] = range[2,1]-range[2,0]
+
   
   i = 0
   for x in xrange(options.bins[0]):
     for y in xrange(options.bins[1]):
-      result[i,:] = [range[0,0]+delta[0]/options.bins[0]*(x+0.5),\
-                     range[1,0]+delta[1]/options.bins[1]*(y+0.5),\
+      result[i,:] = [range[0,0]+delta[0]/options.bins[0]*(x+0.5),
+                     range[1,0]+delta[1]/options.bins[1]*(y+0.5),
                      min(1.0,max(0.0,(grid[x,y]-range[2,0])/delta[2]))]
       if options.type[0].lower() == 'log': result[i,0] = numpy.exp(result[i,0])
       if options.type[1].lower() == 'log': result[i,1] = numpy.exp(result[i,1])
