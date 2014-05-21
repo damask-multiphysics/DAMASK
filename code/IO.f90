@@ -134,7 +134,7 @@ recursive function IO_read(fileUnit,reset) result(line)
 
 !--------------------------------------------------------------------------------------------------
 ! reset case
- if(present(reset)) then; if (reset .eqv. .true.) then                                              ! do not short circuit here
+ if(present(reset)) then; if (reset) then                                                           ! do not short circuit here
    do while (stack > 1_pInt)                                                                        ! can go back to former file
      close(unitOn(stack))
      stack = stack-1_pInt
@@ -148,12 +148,12 @@ recursive function IO_read(fileUnit,reset) result(line)
  unitOn(1) = fileUnit
 
  read(unitOn(stack),'(a65536)',END=100) line
+ 
  input = IO_getTag(line,'{','}')
 
 !--------------------------------------------------------------------------------------------------
 ! normal case
  if (input == '') return                                                                            ! regular line
-
 !--------------------------------------------------------------------------------------------------
 ! recursion case 
  if (stack >= 10_pInt) call IO_error(104_pInt,ext_msg=input)                                        ! recursion limit reached
@@ -182,7 +182,7 @@ recursive function IO_read(fileUnit,reset) result(line)
  else                                                                                               ! top-most file reached
    line = IO_EOF
  endif
- 
+
 end function IO_read
 
 
@@ -752,14 +752,17 @@ integer(pInt) function IO_countSections(fileUnit,part)
  IO_countSections = 0_pInt
  rewind(fileUnit)
 
- do while (trim(line) /= IO_EOF .and. IO_getTag(line,'<','>') /= part)                              ! search for part
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
    line = IO_read(fileUnit)
  enddo
 
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') &                                                             ! found [section] identifier
      IO_countSections = IO_countSections + 1_pInt
  enddo
@@ -791,14 +794,17 @@ function IO_countTagInPart(fileUnit,part,tag,Nsections)
  section = 0_pInt
 
  rewind(fileUnit) 
- do while (trim(line) /= IO_EOF .and. IO_getTag(line,'<','>') /= part)                              ! search for part
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
    line = IO_read(fileUnit)
  enddo
 
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section > 0) then
      positions = IO_stringPos(line,MAXNCHUNKS)
@@ -835,14 +841,17 @@ function IO_spotTagInPart(fileUnit,part,tag,Nsections)
  line =''
 
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_getTag(line,'<','>') /= part)                              ! search for part
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
    line = IO_read(fileUnit)
  enddo
 
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section > 0_pInt) then
      positions = IO_stringPos(line,MAXNCHUNKS)                                          
@@ -875,14 +884,17 @@ logical function IO_globalTagInPart(fileUnit,part,tag)
  line =''
 
  rewind(fileUnit)
- do while (trim(line) /= IO_EOF .and. IO_getTag(line,'<','>') /= part)                              ! search for part
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= part)                       ! search for part
    line = IO_read(fileUnit)
  enddo
 
  do while (trim(line) /= IO_EOF)
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
-   if (IO_getTag(line,'<','>') /= '') exit                                                          ! stop at next part
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
    if (IO_getTag(line,'[',']') /= '') section = section + 1_pInt                                    ! found [section] identifier
    if (section == 0_pInt) then
      positions = IO_stringPos(line,MAXNCHUNKS)
@@ -1215,6 +1227,7 @@ integer(pInt) function IO_countDataLines(fileUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
    tmp = IO_lc(IO_stringValue(line,myPos,1_pInt))
    if (tmp(1:1) == '*' .and. tmp(2:2) /= '*') then                                                  ! found keyword
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read                                                                                          
      exit
    else
      if (tmp(2:2) /= '*') IO_countDataLines = IO_countDataLines + 1_pInt
@@ -1251,18 +1264,22 @@ integer(pInt) function IO_countContinuousIntValues(fileUnit)
    line = IO_read(fileUnit)
    myPos = IO_stringPos(line,MAXNCHUNKS)
    if (myPos(1) < 1_pInt) then                                                                      ! empty line
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit
    elseif (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'to' ) then                                  ! found range indicator
      IO_countContinuousIntValues = 1_pInt + IO_intValue(line,myPos,3_pInt) &
                                           - IO_intValue(line,myPos,1_pInt)
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit                                                                                           ! only one single range indicator allowed
    else if (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'of' ) then                                 ! found multiple entries indicator
      IO_countContinuousIntValues = IO_intValue(line,myPos,1_pInt)
+     line = IO_read(fileUnit, .true.)                                                               ! reset IO_read 
      exit                                                                                           ! only one single multiplier allowed
    else
      IO_countContinuousIntValues = IO_countContinuousIntValues+myPos(1)-1_pInt                      ! add line's count when assuming 'c'
      if ( IO_lc(IO_stringValue(line,myPos,myPos(1))) /= 'c' ) then                                  ! line finished, read last value
        IO_countContinuousIntValues = IO_countContinuousIntValues+1_pInt
+       line = IO_read(fileUnit, .true.)                                                             ! reset IO_read 
        exit                                                                                         ! data ended
      endif
    endif
