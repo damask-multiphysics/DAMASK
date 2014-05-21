@@ -845,6 +845,13 @@ subroutine lattice_init
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  Nphases = IO_countSections(FILEUNIT,material_partPhase)
+
+ if(Nphases<1_pInt) &
+   call IO_error(160_pInt,Nphases, ext_msg='No phases found')
+
+ if (iand(debug_level(debug_lattice),debug_levelBasic) /= 0_pInt) then
+   write(6,'(a16,1x,i5)')   ' # phases:',Nphases
+ endif
  
  allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
@@ -938,10 +945,6 @@ subroutine lattice_init
      end select
    endif
  enddo
-
- if (iand(debug_level(debug_lattice),debug_levelBasic) /= 0_pInt) then
-   write(6,'(a16,1x,i5)')   ' # phases:',Nphases
- endif
 
  do i = 1_pInt,Nphases
    call lattice_initializeStructure(i, CoverA(i))
