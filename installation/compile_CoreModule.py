@@ -46,9 +46,9 @@ compileOptions = ' -DSpectral -DFLOAT=8 -DINT=4 -I%s/lib'%damaskEnv.rootDir()
 
 #--- this saves the path of libraries to core.so, hence it is known during runtime ----------------
 if options['F90'] == 'gfortran':
-  LDFLAGS = '-shared -Wl,-undefined,dynamic_lookup'     # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
+  LDFLAGS = '-shared -Wl,-undefined,dynamic_lookup'                                                 # solved error: Undefined symbols for architecture x86_64: "_PyArg_ParseTupleAndKeywords" as found on https://lists.macosforge.org/pipermail/macports-dev/2013-May/022735.html
 else:
-  LDFLAGS = ' -Wl'
+  LDFLAGS = ' -openmp -Wl'                                                                          # some f2py versions/configurations compile with openMP, so linking against openMP is needed to prevent errors during loading of core module
 
 #--- run path of for fftw during runtime ----------------------------------------------------------
 LDFLAGS += ',-rpath,%s/lib,-rpath,%s/lib64'%(options['FFTW_ROOT'],options['FFTW_ROOT'])
