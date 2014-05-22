@@ -60,6 +60,8 @@ module prec
 #ifdef NEWSTATE
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
+   integer(pInt) :: stateSize
+   real(pReal), pointer, dimension(:) :: atolState
    real(pReal), pointer, dimension(:,:) :: state, &                                                     ! material points, state size
                                            dotState, &
                                            state0, &
@@ -70,8 +72,7 @@ module prec
                                            previousDotState, &
                                            previousDotState2, &
                                            dotState_backup, &
-                                           RK4dotState, &
-                                           aTolState
+                                           RK4dotState
    real(pReal), pointer, dimension(:,:,:) :: RKCK45dotState
  end type
 #endif
