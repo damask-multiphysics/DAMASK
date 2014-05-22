@@ -296,13 +296,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    plasticState, &
 #endif   
    homogenization_Ngrains
+#ifndef NEWSTATE
  use constitutive, only: &
    constitutive_state0, &
    constitutive_partionedState0, &
-#ifdef NEWSTATE
-   mappingConstitutive, &
-#endif     
    constitutive_state
+#else
+ use constitutive, only: &
+   mappingConstitutive
+#endif     
+   
  use crystallite, only: &
    crystallite_heat, &
    crystallite_F0, &
@@ -367,16 +370,18 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
+#ifdef NEWSTATE
+     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+       plasticState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
+#else
      constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p                           ! ...microstructures
+#endif
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
      crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
      crystallite_partionedF0(1:3,1:3,g,i,e) = crystallite_F0(1:3,1:3,g,i,e)                         ! ...def grads
      crystallite_partionedTstar0_v(1:6,g,i,e) = crystallite_Tstar0_v(1:6,g,i,e)                     ! ...2nd PK stress
-#ifdef NEWSTATE
-     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-       plasticState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
-#endif
+
    endforall
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e))
      materialpoint_subF0(1:3,1:3,i,e) = materialpoint_F0(1:3,1:3,i,e)                               ! ...def grad
@@ -425,8 +430,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp(1:3,1:3,1:myNgrains,i,e)    ! ...plastic velocity grads
            crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e)! ...stiffness
            crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = crystallite_Tstar_v(1:6,1:myNgrains,i,e)  ! ...2nd PK stress
-           forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state(g,i,e)%p   ! ...microstructures
+#ifdef NEWSTATE
+forall (g = 1:myNgrains) &
+     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+       plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+#else
 
+           forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state(g,i,e)%p   ! ...microstructures
+#endif
            if (homogenization_sizeState(i,e) > 0_pInt) &
              homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                             ! ...def grad
@@ -473,8 +484,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)      ! ...plastic velocity grads
            crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
            crystallite_Tstar_v(1:6,1:myNgrains,i,e) = crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)    ! ...2nd PK stress
-           forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p     ! ...microstructures
+#ifdef NEWSTATE
+forall (g = 1:myNgrains) &
+     plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
+       plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+#else
 
+           forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p     ! ...microstructures
+#endif
            if (homogenization_sizeState(i,e) > 0_pInt) &
              homogenization_state(i,e)%p = homogenization_subState0(i,e)%p                                  ! ...internal state of homog scheme
          endif       
