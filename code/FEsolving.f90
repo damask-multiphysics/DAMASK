@@ -34,10 +34,10 @@ module FEsolving
    outdatedByNewInc  = .false.                                                                      !< needs description
 
  integer(pInt), dimension(:,:), allocatable, public :: &
-   FEsolving_execIP                                                                                 !< needs description
+   FEsolving_execIP                                                                                 !< for ping-pong scheme always range to max IP, otherwise one specific IP
    
  integer(pInt), dimension(2), public :: &
-   FEsolving_execElem                                                                               !< needs description
+   FEsolving_execElem                                                                               !< for ping-pong scheme always whole range, otherwise one specific element
    
  character(len=1024), public :: &
    modelName                                                                                        !< needs description

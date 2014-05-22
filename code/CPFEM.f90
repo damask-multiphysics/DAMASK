@@ -134,8 +134,10 @@ subroutine CPFEM_init
  use material, only: &
    homogenization_maxNgrains, &
    material_phase
+#ifndef NEWSTATE
  use constitutive, only: &
    constitutive_state0
+#endif
  use crystallite, only: &
    crystallite_F0, &
    crystallite_Fp0, &
@@ -190,7 +192,7 @@ subroutine CPFEM_init
    call IO_read_realFile(777,'convergedTstar',modelName,size(crystallite_Tstar0_v))
    read (777,rec=1) crystallite_Tstar0_v
    close (777)
-
+#ifndef NEWSTATE
    call IO_read_realFile(777,'convergedStateConst',modelName)
    m = 0_pInt
    do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
@@ -210,7 +212,7 @@ subroutine CPFEM_init
      enddo
    enddo; enddo
    close (777)
-
+#endif
    call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
    read (777,rec=1) CPFEM_dcsdE
    close (777)
@@ -283,12 +285,15 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
   plasticState,&
 #endif
    material_phase
+#ifndef NEWSTATE
  use constitutive, only: &
    constitutive_state0, &
-#ifdef NEWSTATE
-   mappingConstitutive,&
-#endif   
    constitutive_state
+#else
+ use constitutive, only: &
+   mappingConstitutive
+#endif   
+   
  use crystallite, only: &
    crystallite_partionedF,&
    crystallite_F0, &
@@ -376,12 +381,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
 
    
-   
+#ifndef NEWSTATE   
    forall ( i = 1:homogenization_maxNgrains, &
             j = 1:mesh_maxNips, &
             k = 1:mesh_NcpElems ) &
      constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p                                ! microstructure of crystallites
-
+#endif
 #ifdef NEWSTATE
    forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
@@ -392,8 +397,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
               plasticState(mappingConstitutive(2,1,debug_i,debug_e))%state(:,mappingConstitutive(1,1,debug_i,debug_e))  
        endif
    endif 
-#endif
-
+#else
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
        write(6,'(a)') '<< CPFEM >> aging states'
        if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
@@ -401,7 +405,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
                                                          debug_e, debug_i, 1, constitutive_state(1,debug_i,debug_e)%p
        endif
    endif
-   
+#endif   
    !$OMP PARALLEL DO
      do k = 1,mesh_NcpElems
        do j = 1,mesh_maxNips
@@ -440,7 +444,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      call IO_write_jobRealFile(777,'convergedTstar',size(crystallite_Tstar0_v))
      write (777,rec=1) crystallite_Tstar0_v
      close (777)
-     
+#ifndef NEWSTATE
      call IO_write_jobRealFile(777,'convergedStateConst')
      m = 0_pInt
      do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
@@ -450,7 +454,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        enddo
      enddo; enddo; enddo
      close (777)
-     
+#endif    
      call IO_write_jobRealFile(777,'convergedStateHomog')
      m = 0_pInt
      do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips

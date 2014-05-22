@@ -312,7 +312,7 @@ subroutine constitutive_j2_init(fileUnit)
      enddo outputsLoop
 #ifdef NEWSTATE
      sizeState    = 1 
-     plasticState(phase)%sizeState = sizeState
+     plasticState(phase)%stateSize = sizeState
      allocate(plasticState(phase)%state0         (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
      allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
      allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase),source=0.0_pReal)

@@ -12,8 +12,10 @@ module constitutive_none
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
+#ifndef NEWSTATE
    constitutive_none_sizeDotState, &
    constitutive_none_sizeState, &
+#endif
    constitutive_none_sizePostResults
 
  integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
@@ -42,14 +44,19 @@ subroutine constitutive_none_init(fileUnit)
    phase_plasticity, &
    phase_Noutput, &
    PLASTICITY_NONE_label, &
+#ifdef NEWSTATE
+   material_phase, &
+   plasticState, &
+#endif
    PLASTICITY_NONE_ID, &
    MATERIAL_partPhase
 
  implicit none
 
  integer(pInt), intent(in) :: fileUnit
- integer(pInt) :: maxNinstance
-
+ integer(pInt) :: &
+   maxNinstance, &
+   phase
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -61,9 +68,16 @@ subroutine constitutive_none_init(fileUnit)
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
- 
+
+#ifdef NEWSTATE
+ initializeInstances: do phase = 1_pInt, size(phase_plasticity)
+   if (phase_plasticity(phase) == PLASTICITY_none_ID .and. count(material_phase==phase)/=0) &
+     plasticState(phase)%stateSize = 0_pInt
+ enddo initializeInstances
+#else
  allocate(constitutive_none_sizeDotState(maxNinstance),    source=1_pInt)
  allocate(constitutive_none_sizeState(maxNinstance),       source=1_pInt)
+#endif
  allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
 
 end subroutine constitutive_none_init
