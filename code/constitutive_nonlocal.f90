@@ -3123,7 +3123,9 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                 !* edge contribution to stress
                 sigma = 0.0_pReal
                 
-                [x,y,z] = connection_neighborSlip
+                x = connection_neighborSlip(1)
+                y = connection_neighborSlip(2)
+                z = connection_neighborSlip(3)
                 xsquare = x * x
                 ysquare = y * y
                 zsquare = z * z
@@ -3177,7 +3179,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                   if (abs(neighbor_rhoExcess(2,j,s)) < significantRho(instance)) then
                     cycle 
                   elseif (j > 1_pInt) then
-                    y = connection_neighborSlip(2) 
+                    y = connection_neighborSlip(2) &
                       + sign(0.5_pReal * segmentLength, &
                              state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,3,neighbor_instance)) &
                              - state(ipc,neighbor_ip,neighbor_el)%p(iRhoB(s,4,neighbor_instance)))
@@ -3304,7 +3306,8 @@ pure function constitutive_nonlocal_postResults(Tstar_v,Fe,state,dotState,ipc,ip
    Fe                                                                                               !< elastic deformation gradient
  type(p_vec),   dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),     intent(in) :: &
    state                                                                                            !< microstructure state
- type(p_vec),                                                                        intent(in) ::                  dotState                  ! evolution rate of microstructural state
+ type(p_vec),                                                                        intent(in) :: & 
+   dotState                                                                                         ! evolution rate of microstructural state
  integer(pInt),                intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
