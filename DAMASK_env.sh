@@ -27,7 +27,7 @@ fi
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size
-freeMem=`free -k | grep Mem: | awk '{print $4;}'`
+freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
 heap=`expr $freeMem / 2`
 stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
 
