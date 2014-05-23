@@ -32,19 +32,21 @@ class extendableOption(Option):
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
-Sort rows by given column label.
+Sort rows by given column label(s).
 
 Examples:
-Coordinates may be given in column "x", "y", and "z".
-Sorting with x fastest and z slowest varying index: --label x,y,z.
+With coordinates in columns "x", "y", and "z"; sorting with x slowest and z fastest varying index: --label x,y,z.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
 
 parser.add_option('-l','--label',   dest='keys', action='extend', type='string', metavar='<LIST>',
                                     help='list of column labels (a,b,c,...)')
+parser.add_option('-r','--reverse', dest='reverse', action='store_true',
+                                    help='reverse sorting')
 
 parser.set_defaults(key = [])
+parser.set_defaults(reverse = False)
 
 (options,filenames) = parser.parse_args()
 
@@ -86,6 +88,8 @@ for file in files:
     cols += [table.data[:,column]]
 
   ind = numpy.lexsort(cols)
+  if options.reverse:
+    ind = ind[::-1]
 
   table.data = table.data[ind]
   table.data_writeArray()
