@@ -3,6 +3,7 @@
 
 import os,sys,string,itertools,re,math,numpy
 import damask
+from collections import defaultdict
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID = '$Id$'
@@ -34,14 +35,16 @@ rotation matrix, or crystal frame coordinates (i.e. component vectors of rotatio
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-o', '--orientations', dest='output', action='append', metavar='<LIST>',
+parser.add_option('-o', '--output', dest='output', action='append', metavar='<LIST>',
                   help = 'output orientation formats')
 parser.add_option('-s', '--symmetry', dest='symmetry', type='string',
                   help = 'crystal symmetry [%default]')
+parser.add_option('-r', '--rotation', dest='rotation', type='float', nargs=4,
+                  help = 'angle and axis to (pre)rotate orientation')
 parser.add_option('-e', '--eulers',   dest='eulers', type='string', metavar='LABEL',
                   help = 'Euler angles')
 parser.add_option('-d', '--degrees',   dest='degrees', action='store_true',
-                  help = 'Euler angles are given in degrees [%default]')
+                  help = 'Angles are given in degrees [%default]')
 parser.add_option('-m', '--matrix',   dest='matrix', type='string', metavar='LABEL',
                   help = 'orientation matrix')
 parser.add_option('-a',               dest='a', type='string', metavar='LABEL',
@@ -55,6 +58,7 @@ parser.add_option('-q', '--quaternion', dest='quaternion', type='string', metava
 
 parser.set_defaults(output = [])
 parser.set_defaults(symmetry = 'cubic')
+parser.set_defaults(rotation = [0.,1.,1.,1.])       # no rotation about 1,1,1
 parser.set_defaults(degrees = False)
 
 (options, filenames) = parser.parse_args()
@@ -78,6 +82,8 @@ if options.quaternion != None:  datainfo['quaternion']['label'] += [options.quat
 toRadians = math.pi/180.0 if options.degrees else 1.0                                                                               # rescale degrees to radians
 options.output = map(lambda x: x.lower(), options.output)
 
+r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])
+
 # ------------------------------------------ setup file handles ---------------------------------------  
 
 files = []
@@ -98,9 +104,8 @@ for file in files:
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out columns to process
-  active = {}
-  column = {}
-  head = []
+  active = defaultdict(list)
+  column = defaultdict(dict)
 
   for datatype,info in datainfo.items():
     for label in info['label']:
@@ -108,8 +113,6 @@ for file in files:
       for key in ['1_'+label,label]:
         if key in table.labels:
           foundIt = True
-          if datatype not in active: active[datatype] = []
-          if datatype not in column: column[datatype] = {}
           active[datatype].append(label)
           column[datatype][label] = table.labels.index(key)                 # remember columns of requested data
       if not foundIt:
@@ -151,6 +154,9 @@ for file in files:
       o = damask.Orientation(quaternion=numpy.array(map(float,table.data[column['quaternion'][options.quaternion]:\
                                                                          column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
                              symmetry=options.symmetry).reduced()
+
+
+    o.quaternion = r*o.quaternion
 
     for output in options.output:
       if output == 'quaternion':
