@@ -59,7 +59,7 @@ parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar=
                   help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
 
 parser.set_defaults(grid = [0,0,0])
-parser.set_defaults(size  = [0.0,0.0,0.0])
+parser.set_defaults(size = [0.0,0.0,0.0])
 
 (options, filenames) = parser.parse_args()
 
@@ -88,14 +88,6 @@ for file in files:
   theTable = damask.ASCIItable(file['input'],file['output'])
   theTable.head_read()
   
-  coords = theTable.data_asArray(['x','y','z'])
-  if theTable.labels_index('microstructure') != -1:
-    grain = theTable.data_asArray(['microstructure'])
-    grainIDs = numpy.unique(grain).astype('i')
-  else:
-    grain = 1+numpy.arange(len(coords))
-    grainIDs = grain
-
 #--- interpret header ----------------------------------------------------------------------------
   info = {
           'grid':   numpy.zeros(3,'i'),
@@ -122,13 +114,17 @@ for file in files:
     info['grid'] = numpy.array(options.grid)
   if numpy.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
-    continue
+#    continue
 
   for i in xrange(3):
     if info['size'][i] <= 0.0:                                                                      # any invalid size?
       info['size'][i] = float(info['grid'][i])/max(info['grid'])
       file['croak'].write('rescaling size %s...\n'%{0:'x',1:'y',2:'z'}[i])
 
+
+#--- read data --------------------------------------------------------------------------------
+  theTable.data_readArray(['x','y','z','microstructure'])
+  theTable.data[:,0:3] *= info['size']
 
 #--- generate grid --------------------------------------------------------------------------------
   grid = vtk.vtkUnstructuredGrid()
@@ -139,31 +135,37 @@ for file in files:
   IDs.SetNumberOfComponents(1)
   IDs.SetName("GrainID")
 
-  for coord,ID in zip(coords,grainIDs):
-    pid = pts.InsertNextPoint(coord)
+  for item in theTable.data:
+    pid = pts.InsertNextPoint(item[0:3])
     pointIds = vtk.vtkIdList()
     pointIds.InsertId(0, pid)
     grid.InsertNextCell(1, pointIds)
-    IDs.InsertNextValue(ID)
+    IDs.InsertNextValue(int(item[3]))
 
   grid.SetPoints(pts)
   grid.GetCellData().AddArray(IDs)
 
 #--- write data -----------------------------------------------------------------------------------
   if file['name'] == 'STDIN':
-    outWriter = vtk.vtkUnstructuredGridWriter()
-    outWriter.WriteToOutputStringOn()
-    outWriter.SetFileTypeToASCII()
-    outWriter.SetHeader('# powered by '+scriptID)
-    outWriter.SetInputData(grid)
-    outWriter.Write()
-    sys.stdout.write(outWriter.GetOutputString()[0:outWriter.GetOutputStringLength()])
+    writer = vtk.vtkUnstructuredGridWriter()
+    writer.WriteToOutputStringOn()
+    writer.SetFileTypeToASCII()
+    writer.SetHeader('# powered by '+scriptID)
+    if vtk.VTK_MAJOR_VERSION <= 5:
+      writer.SetInput(grid)
+    else:
+      writer.SetInputData(grid)
+    writer.Write()
+    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
   else:
     (head,tail) = os.path.split(file['name'])
-    outWriter = vtk.vtkXMLUnstructuredGridWriter()
-    outWriter.SetDataModeToBinary()
-    outWriter.SetCompressorTypeToZLib()
-    outWriter.SetFileName(os.path.join(head,'seeds_'+os.path.splitext(tail)[0]
-                                                   +'.'+outWriter.GetDefaultFileExtension()))
-    outWriter.SetInputData(grid)
-    outWriter.Write()
+    writer = vtk.vtkXMLUnstructuredGridWriter()
+    writer.SetDataModeToBinary()
+    writer.SetCompressorTypeToZLib()
+    writer.SetFileName(os.path.join(head,'seeds_'+os.path.splitext(tail)[0]
+                                                   +'.'+writer.GetDefaultFileExtension()))
+    if vtk.VTK_MAJOR_VERSION <= 5:
+      writer.SetInput(grid)
+    else:
+      writer.SetInputData(grid)
+    writer.Write()
