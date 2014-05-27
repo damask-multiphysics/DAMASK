@@ -506,7 +506,8 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
              2_pInt + &
              constitutive_phenopowerlaw_totalNslip(instance)+ &
              constitutive_phenopowerlaw_totalNtwin(instance)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
-     plasticState(phase)%stateSize = sizeState
+     plasticState(phase)%sizeState = sizeState
+     plasticState(phase)%sizeDotState = sizeState
      allocate(plasticState(phase)%aTolState      (sizeState), source=0.0_pReal)
      allocate(plasticState(phase)%state0         (sizeState,NofMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase), source=0.0_pReal)

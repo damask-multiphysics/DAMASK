@@ -72,7 +72,7 @@ subroutine constitutive_none_init(fileUnit)
 #ifdef NEWSTATE
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
    if (phase_plasticity(phase) == PLASTICITY_none_ID .and. count(material_phase==phase)/=0) &
-     plasticState(phase)%stateSize = 0_pInt
+     plasticState(phase)%sizeState = 0_pInt
  enddo initializeInstances
 #else
  allocate(constitutive_none_sizeDotState(maxNinstance),    source=1_pInt)

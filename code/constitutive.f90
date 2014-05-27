@@ -33,7 +33,7 @@ module constitutive
    constitutive_sizeDotState, &                                                                      !< size of dotState array
    constitutive_sizeState, &                                                                         !< size of state array per grain
    constitutive_sizePostResults                                                                      !< size of postResults array per grain
- integer(pInt), public :: &
+ integer(pInt), public, protected :: &
    constitutive_maxSizeDotState, &
    constitutive_maxSizePostResults
  integer(pInt), private :: &
@@ -41,8 +41,9 @@ module constitutive
 #else
  integer(pInt), public, dimension(:,:,:), allocatable :: &
    constitutive_sizePostResults                                                                      !< size of postResults array per grain
- integer(pInt), public :: &
-   constitutive_maxSizePostResults
+ integer(pInt), public, protected :: &
+   constitutive_maxSizePostResults, &
+   constitutive_maxSizeDotState
 #endif 
  public :: & 
    constitutive_init, &
@@ -148,6 +149,7 @@ subroutine constitutive_init
   eMax, &                                                                                           !< maximum number of elements
   phase, &
   s, &
+  p, &
   instance,&
   myNgrains
 
@@ -508,6 +510,10 @@ subroutine constitutive_init
  flush(6)
 #else
  constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
+ constitutive_maxSizeDotState = 0_pInt
+ do p = 1, size(plasticState)
+  constitutive_maxSizeDotState = max(constitutive_maxSizeDotState, plasticState(p)%sizeDotState)
+ enddo
 #endif
 end subroutine constitutive_init
 
