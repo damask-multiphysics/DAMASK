@@ -162,7 +162,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
    Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_nonSchmid, &
    index_myFamily, index_otherFamily, &
-   mySize=0_pInt
+   mySize=0_pInt,sizeState,sizeDotState
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -489,6 +489,7 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
        outputFound: if (mySize > 0_pInt) then
          constitutive_phenopowerlaw_sizePostResult(o,instance) = mySize
          constitutive_phenopowerlaw_sizePostResults(instance)  = constitutive_phenopowerlaw_sizePostResults(instance) + mySize
+         write(6,*) constitutive_phenopowerlaw_sizePostResults(instance); flush(6)
        endif outputFound
      enddo outputsLoop 
 
@@ -500,30 +501,30 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
                                                   constitutive_phenopowerlaw_totalNtwin(instance)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
      constitutive_phenopowerlaw_sizeState(instance)    = constitutive_phenopowerlaw_sizeDotState(instance)
 #else
-    mySize = constitutive_phenopowerlaw_totalNslip(instance)+ &
+    sizeState = constitutive_phenopowerlaw_totalNslip(instance)+ &
              constitutive_phenopowerlaw_totalNtwin(instance)+ &
              2_pInt + &
              constitutive_phenopowerlaw_totalNslip(instance)+ &
              constitutive_phenopowerlaw_totalNtwin(instance)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
-     plasticState(phase)%stateSize = mySize
-     allocate(plasticState(phase)%aTolState      (mySize), source=0.0_pReal)
-     allocate(plasticState(phase)%state0         (mySize,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0(mySize,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%subState0      (mySize,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state          (mySize,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup   (mySize,NofMyPhase), source=0.0_pReal)
+     plasticState(phase)%stateSize = sizeState
+     allocate(plasticState(phase)%aTolState      (sizeState), source=0.0_pReal)
+     allocate(plasticState(phase)%state0         (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state          (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state_backup   (sizeState,NofMyPhase), source=0.0_pReal)
 
-     allocate(plasticState(phase)%dotState       (mySize,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState     (mySize,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup(mySize,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%dotState       (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState     (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%dotState_backup(sizeState,NofMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState  (mySize,NofMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2 (mySize,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState  (sizeState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState2 (sizeState,NofMyPhase),source=0.0_pReal)
      endif
      if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState       (mySize,NofMyPhase), source=0.0_pReal)
+       allocate(plasticState(phase)%RK4dotState       (sizeState,NofMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (6,mySize,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%RKCK45dotState    (6,sizeState,NofMyPhase),source=0.0_pReal)
 #endif  
      do f = 1_pInt,lattice_maxNslipFamily                                                                    ! >>> interaction slip -- X
        index_myFamily = sum(constitutive_phenopowerlaw_Nslip(1:f-1_pInt,instance))

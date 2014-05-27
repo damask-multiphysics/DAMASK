@@ -274,9 +274,9 @@ subroutine constitutive_init
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                              ! not distinguishing between instances of same phase
        mappingConstitutive(1:2,g,i,e)   = [ConstitutivePosition(phase),phase]
 #endif
-#ifndef NEWSTATE
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)
+#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_none_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_none_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_none_sizeState(instance)))
@@ -302,9 +302,11 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        1.0_pReal
            constitutive_sizeState(g,i,e) =          0_pInt
            constitutive_sizeDotState(g,i,e) =       0_pInt
+#endif
            constitutive_sizePostResults(g,i,e) =    0_pInt
 
          case (PLASTICITY_J2_ID) 
+#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
@@ -330,9 +332,11 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        constitutive_j2_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(instance)
+#endif
            constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(instance)
 
          case (PLASTICITY_PHENOPOWERLAW_ID)
+#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
@@ -358,7 +362,9 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        constitutive_phenopowerlaw_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(instance)
+#endif
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(instance)
+#ifndef NEWSTATE
 
          case (PLASTICITY_DISLOTWIN_ID)
            allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
@@ -442,8 +448,8 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
-       end select
 #endif
+       end select
      enddo GrainLoop
    enddo IPloop
  enddo ElemLoop
@@ -500,6 +506,8 @@ subroutine constitutive_init
    write(6,'(a32,1x,7(i8,1x))')   'maxSizePostResults: ', constitutive_maxSizePostResults
  endif
  flush(6)
+#else
+ constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
 #endif
 end subroutine constitutive_init
 
@@ -811,6 +819,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      
    case (PLASTICITY_J2_ID)
 #ifdef NEWSTATE
+   write(6,*) plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)); flush(6)
    plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)) &
               = constitutive_j2_dotState(Tstar_v,plasticState(mappingConstitutive(2,ipc,ip,el))% &
                                              state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
