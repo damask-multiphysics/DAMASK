@@ -24,7 +24,7 @@ class Test():
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
     self.parser = OptionParser(
     description = 'Using: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $',
-    usage='run_test.py [options]')
+    usage='./test.py [options]')
   
     self.parser.add_option("-u", "--update", action="store_true",\
                                     dest="update",\
@@ -33,13 +33,12 @@ class Test():
   
     (self.options, self.args) = self.parser.parse_args()
     
-  def execute(self,variants = [],update = []):
+  def execute(self):
     '''
     Run all variants and report first failure.
     '''
     if not self.testPossible(): return -1
-    if len(update)   == 0 and self.options.update: print(' This test has no reference to update')
-    if len(variants) == 0: variants = xrange(len(self.variants))       # iterate over all variants
+    if len(variants) == 0: variants = xrange(len(self.variants))                                    # iterate over all variants
     self.clean()
     self.prepareAll()
     for variant in variants:
@@ -47,13 +46,13 @@ class Test():
         self.prepare(variant)
         self.run(variant)
         self.postprocess(variant)
-        if variant in update:
+        if options.update:                                                                          # update requested
           self.update(variant)
-        elif not self.compare(variant):
-          return variant+1
+        elif not self.compare(variant):                                                             # no update, do comparison
+          return variant+1                                                                          # return culprit
       except Exception as e :
         print('\nWARNING:\n %s\n'%e)
-        return variant+1
+        return variant+1                                                                            # return culprit
     return 0
   
   def testPossible(self):
@@ -120,6 +119,7 @@ class Test():
     '''
     Update reference with current results.
     '''
+    print('Update not necessary')
     return True
 
 
@@ -129,17 +129,20 @@ class Test():
     '''
     return os.path.normpath(os.path.join(self.dirBase,'reference/'))
 
+
   def dirCurrent(self):
     '''
     Directory containing current results of the test.
     '''
     return os.path.normpath(os.path.join(self.dirBase,'current/'))
+
   
   def dirProof(self):
     '''
     Directory containing human readable proof of correctness for the test.
     '''
     return os.path.normpath(os.path.join(self.dirBase,'proof/'))
+
     
   def fileInReference(self,file):
     '''
@@ -147,17 +150,20 @@ class Test():
     '''
     return os.path.join(self.dirReference(),file)
 
+
   def fileInCurrent(self,file):
     '''
     Path to a file in the current results directory for the test.
     '''
     return os.path.join(self.dirCurrent(),file)
+
   
   def fileInProof(self,file):
     '''
     Path to a file in the proof directory for the test.
     '''
     return os.path.join(self.dirProof(),file)
+
     
   def copy_Reference2Current(self,sourcefiles=[],targetfiles=[]):
     
@@ -167,6 +173,7 @@ class Test():
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
         print('Reference2Current: Unable to copy file %s'%file)
+
  
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
     
@@ -179,6 +186,7 @@ class Test():
         print(os.path.join(source,file))
         print('Base2Current: Unable to copy file %s'%file)
 
+
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
     
     if len(targetfiles) == 0: targetfiles = sourcefiles
@@ -187,6 +195,7 @@ class Test():
         shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))  
       except:
         print('Current2Reference: Unable to copy file %s'%file)
+
         
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
     
@@ -196,6 +205,7 @@ class Test():
         shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))  
       except:
         print('Proof2Current: Unable to copy file %s'%file)
+
         
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
     
@@ -204,6 +214,7 @@ class Test():
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
         print('Current2Current: Unable to copy file %s'%file)
+
 
   def execute_inCurrentDir(self,cmd,outfile='execute_log.txt'):
     
@@ -215,6 +226,7 @@ class Test():
     process.wait()
     file.close()
     os.chdir(initialPath)
+
     
   def compare_Array(self,File1,File2):
   
@@ -239,12 +251,14 @@ class Test():
     else:
        raise Exception('mismatch in array size to compare')
 
+
   def compare_ArrayRefCur(self,ref,cur=''):
     
     if cur =='': cur = ref
     refName = self.fileInReference(ref)
     curName = self.fileInCurrent(cur)
     return self.compare_Array(refName,curName)
+
     
   def compare_ArrayCurCur(self,cur0,cur1):
     
@@ -354,6 +368,7 @@ class Test():
         print(' * maximum relative error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
     print(' ********')
     return maxError
+
     
   def compare_TableRefCur(self,headingsRef,ref,headingsCur='',cur='',normHeadings='',normType=None,\
                                                  absoluteTolerance=False,perLine=False,skipLines=[]):
@@ -364,6 +379,7 @@ class Test():
     curName = self.fileInCurrent(cur)
     return self.compare_Table(headingsRef,refName,headingsCur,curName,normHeadings,normType,
                                                                absoluteTolerance,perLine,skipLines)
+
     
   def compare_TableCurCur(self,headingsCur0,Cur0,Cur1,headingsCur1='',normHeadings='',normType=None,\
                                                  absoluteTolerance=False,perLine=False,skipLines=[]):
@@ -373,6 +389,7 @@ class Test():
     cur1Name = self.fileInCurrent(Cur1)
     return self.compare_Table(headingsCur0,cur0Name,headingsCur1,cur1Name,normHeadings,normType,
                                                                absoluteTolerance,perLine,skipLines)
+
 
   def report_Success(self,culprit):
     
