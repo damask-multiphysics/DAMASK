@@ -38,15 +38,14 @@ class Test():
     Run all variants and report first failure.
     '''
     if not self.testPossible(): return -1
-    if len(variants) == 0: variants = xrange(len(self.variants))                                    # iterate over all variants
     self.clean()
     self.prepareAll()
-    for variant in variants:
+    for variant in xrange(len(self.variants)):
       try:
         self.prepare(variant)
         self.run(variant)
         self.postprocess(variant)
-        if options.update:                                                                          # update requested
+        if self.options.update:                                                                          # update requested
           self.update(variant)
         elif not self.compare(variant):                                                             # no update, do comparison
           return variant+1                                                                          # return culprit
