@@ -7,16 +7,14 @@ all: spectral marc processing
 
 .PHONY: spectral
 spectral:
-	@$(MAKE) clean -C code >/dev/null
 	$(MAKE) -C code
 
 .PHONY: marc
 marc:
 	@./installation/mods_MarcMentat/apply_DAMASK_modifications.sh ${MAKEFLAGS}
 
-.PHONY : processing
+.PHONY: processing
 processing:
-	@$(MAKE) tidy -C code >/dev/null
 	@./installation/compile_CoreModule.py ${MAKEFLAGS}
 
 .PHONY: tidy

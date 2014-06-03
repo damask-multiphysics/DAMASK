@@ -21,7 +21,7 @@ class Test():
          +'----------------------------------------------------------------\n' \
          +'| '+test_description+'\n' \
          +'----------------------------------------------------------------')
-    self.dirBase = os.path.dirname(os.path.realpath(inspect.getfile(self.__class__)))
+    self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
     self.parser = OptionParser(
     description = 'Using: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $',
     usage='run_test.py [options]')
@@ -207,12 +207,14 @@ class Test():
 
   def execute_inCurrentDir(self,cmd,outfile='execute_log.txt'):
     
+    initialPath=os.getcwd()
     os.chdir(self.dirCurrent())
     file=open(outfile,'a+')
     print(cmd)
     process = subprocess.Popen(shlex.split(cmd),stdout = file,stderr = subprocess.STDOUT)
     process.wait()
     file.close()
+    os.chdir(initialPath)
     
   def compare_Array(self,File1,File2):
   
