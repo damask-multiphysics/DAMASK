@@ -133,9 +133,9 @@ subroutine constitutive_init
  use constitutive_none
  use constitutive_j2
  use constitutive_phenopowerlaw
+ use constitutive_dislotwin
 #ifndef NEWSTATE
  use constitutive_titanmod
- use constitutive_dislotwin
  use constitutive_nonlocal
 #endif
  implicit none
@@ -172,9 +172,9 @@ subroutine constitutive_init
  if (any(phase_plasticity == PLASTICITY_NONE_ID))          call constitutive_none_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_J2_ID))            call constitutive_j2_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
 #ifndef NEWSTATE
  if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call constitutive_titanmod_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call constitutive_nonlocal_init(FILEUNIT)
 #endif
  close(FILEUNIT)
@@ -526,13 +526,16 @@ pure function constitutive_homogenizedC(ipc,ip,el)
    phase_plasticity, &
    material_phase, &
    PLASTICITY_TITANMOD_ID, &
+#ifdef NEWSTATE
+   plasticState,&
+#endif
    PLASTICITY_DISLOTWIN_ID
 #ifndef NEWSTATE
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_homogenizedC
  use constitutive_titanmod, only: &
    constitutive_titanmod_homogenizedC
 #endif
+ use constitutive_dislotwin, only: &
+   constitutive_dislotwin_homogenizedC
  use lattice, only: &
    lattice_C66
 
@@ -544,10 +547,18 @@ pure function constitutive_homogenizedC(ipc,ip,el)
    el                                                                                                !< element number
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
-#ifndef NEWSTATE 
+
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(constitutive_state(ipc,ip,el), &
+#ifdef NEWSTATE 
+     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC &
+     (plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
                                                                                         ipc,ip,el) 
+                                                                                        
+#else
+     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC &
+     (constitutive_state(ipc,ip,el),ipc,ip,el) 
+#endif
+#ifndef NEWSTATE 
    case (PLASTICITY_TITANMOD_ID)
      constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state(ipc,ip,el), &
                                                                                        ipc,ip,el)
@@ -564,20 +575,24 @@ end function constitutive_homogenizedC
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
-#ifndef NEWSTATE
  use material, only: &
    phase_plasticity, &
    material_phase, &
    PLASTICITY_DISLOTWIN_ID, &
+#ifdef NEWSTATE 
+   plasticState, &
+#endif
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
+#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_microstructure
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_microstructure
-#endif 
+#endif
+ use constitutive_dislotwin, only: &
+   constitutive_dislotwin_microstructure
+
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -589,20 +604,27 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
-#ifndef NEWSTATE
+
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
    case (PLASTICITY_DISLOTWIN_ID)
+#ifdef NEWSTATE
+     call constitutive_dislotwin_microstructure(temperature, &
+     plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &       
+                                                                              ipc,ip,el)
+#else
      call constitutive_dislotwin_microstructure(temperature,constitutive_state(ipc,ip,el), &       
-                                                                               ipc,ip,el)
+                                                                              ipc,ip,el)
+#endif
+#ifndef NEWSTATE
    case (PLASTICITY_TITANMOD_ID)
      call constitutive_titanmod_microstructure(temperature,constitutive_state(ipc,ip,el), &
                                                                               ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      call constitutive_nonlocal_microstructure(constitutive_state,Fe,Fp,ipc,ip,el)
-
- end select
 #endif 
+ end select
+
 end subroutine constitutive_microstructure
 
 
@@ -628,9 +650,9 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    constitutive_j2_LpAndItsTangent
  use constitutive_phenopowerlaw, only: &
    constitutive_phenopowerlaw_LpAndItsTangent
-#ifndef NEWSTATE
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_LpAndItsTangent
+#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_LpAndItsTangent
  use constitutive_nonlocal, only: &
@@ -672,10 +694,16 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                       constitutive_state(ipc,ip,el),ipc,ip,el)
 #endif
-#ifndef NEWSTATE
    case (PLASTICITY_DISLOTWIN_ID)
+#ifdef NEWSTATE
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,temperature, &
+       plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
+                                                                                     ipc,ip,el)
+#else
      call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                     temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
+#endif
+#ifndef NEWSTATE
    case (PLASTICITY_TITANMOD_ID)
      call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                    temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
@@ -789,9 +817,9 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    constitutive_j2_dotState
  use constitutive_phenopowerlaw, only: &
    constitutive_phenopowerlaw_dotState
-#ifndef NEWSTATE
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_dotState
+#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_dotState
  use constitutive_nonlocal, only: &
@@ -842,12 +870,19 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,&
                                       constitutive_state(ipc,ip,el), ipc,ip,el)
 #endif
+#ifdef NEWSTATE
+   case (PLASTICITY_DISLOTWIN_ID)
+     plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el))   & 
+     = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
+                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
+                                               state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
+#else
+     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
+                                      constitutive_state(ipc,ip,el), ipc,ip,el)
+#endif
 #ifndef NEWSTATE
    case (PLASTICITY_TITANMOD_ID)
      constitutive_dotState(ipc,ip,el)%p = constitutive_titanmod_dotState(Tstar_v,Temperature,&
-                                      constitutive_state(ipc,ip,el), ipc,ip,el)
-   case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
                                       constitutive_state(ipc,ip,el), ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
@@ -956,9 +991,9 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    constitutive_j2_postResults
  use constitutive_phenopowerlaw, only: &
    constitutive_phenopowerlaw_postResults
-#ifndef NEWSTATE
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_postResults
+#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_postResults
  use constitutive_nonlocal, only: &
@@ -1008,8 +1043,14 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
                                        state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
 #else
      constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,&
-                                      constitutive_state(ipc,ip,el),ipc,ip,el)                                    
+                                      constitutive_state(ipc,ip,el),ipc,ip,el)
+#endif
    case (PLASTICITY_DISLOTWIN_ID)
+#ifdef NEWSTATE
+     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,&
+                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
+                                       state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
+#else
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,&
                                       constitutive_state(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
