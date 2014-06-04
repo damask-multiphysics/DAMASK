@@ -4,6 +4,7 @@
 
 import os, sys, shlex, inspect
 import subprocess,shutil,string
+import logging, logging.config
 import damask
 from optparse import OptionParser
 
@@ -16,8 +17,23 @@ class Test():
   variants = []
   
   def __init__(self,test_description):
-    
-    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n' \
+
+    logger = logging.getLogger()
+    logger.setLevel(0)
+    fh = logging.FileHandler('test.log')                                                            # create file handler which logs even debug messages
+    fh.setLevel(logging.DEBUG)
+    full = logging.Formatter('%(asctime)s - %(levelname)s: \n%(message)s')
+    fh.setFormatter(full)
+    ch = logging.StreamHandler(stream=sys.stdout)                                                   # create console handler with a higher log level
+    ch.setLevel(logging.INFO)
+# create formatter and add it to the handlers
+    plain = logging.Formatter('%(message)s')
+    ch.setFormatter(plain)
+# add the handlers to the logger
+    logger.addHandler(fh)
+    logger.addHandler(ch)
+
+    logging.info('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n' \
          +'----------------------------------------------------------------\n' \
          +'| '+test_description+'\n' \
          +'----------------------------------------------------------------')
@@ -47,11 +63,11 @@ class Test():
         self.postprocess(variant)
         if self.options.update:                                                                          # update requested
           self.update(variant)
-        elif not self.compare(variant):                                                             # no update, do comparison
-          return variant+1                                                                          # return culprit
+        elif not self.compare(variant):                                                                  # no update, do comparison
+          return variant+1                                                                               # return culprit
       except Exception as e :
-        print('\nWARNING:\n %s\n'%e)
-        return variant+1                                                                            # return culprit
+        logging.critical('\nWARNING:\n %s\n'%e)
+        return variant+1                                                                                 # return culprit
     return 0
   
   def testPossible(self):
@@ -69,13 +85,13 @@ class Test():
     try:
       shutil.rmtree(self.dirCurrent())
     except:
-      print('removal of directory "%s" not possible...'%(self.dirCurrent()))
+      logging.warning('removal of directory "%s" not possible...'%(self.dirCurrent()))
       status = status and False
 
     try:
       os.mkdir(self.dirCurrent())
     except:
-      print('creation of directory "%s" failed...'%(self.dirCurrent()))
+      logging.critical('creation of directory "%s" failed...'%(self.dirCurrent()))
       status = status and False
 
     return status
@@ -118,7 +134,7 @@ class Test():
     '''
     Update reference with current results.
     '''
-    print('Update not necessary')
+    loggin.debug('Update not necessary')
     return True
 
 
@@ -171,7 +187,7 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print('Reference2Current: Unable to copy file %s'%file)
+        logging.critical('Reference2Current: Unable to copy file %s'%file)
 
  
   def copy_Base2Current(self,sourceDir,sourcefiles=[],targetfiles=[]):
@@ -182,8 +198,8 @@ class Test():
       try:
         shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print(os.path.join(source,file))
-        print('Base2Current: Unable to copy file %s'%file)
+        loggin.error(os.path.join(source,file))
+        logging.critical('Base2Current: Unable to copy file %s'%file)
 
 
   def copy_Current2Reference(self,sourcefiles=[],targetfiles=[]):
@@ -193,7 +209,7 @@ class Test():
       try:
         shutil.copy2(self.fileInCurrent(file),self.fileInReference(targetfiles[i]))  
       except:
-        print('Current2Reference: Unable to copy file %s'%file)
+        logging.critical('Current2Reference: Unable to copy file %s'%file)
 
         
   def copy_Proof2Current(self,sourcefiles=[],targetfiles=[]):
@@ -203,7 +219,7 @@ class Test():
       try:
         shutil.copy2(self.fileInProof(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print('Proof2Current: Unable to copy file %s'%file)
+        logging.critical('Proof2Current: Unable to copy file %s'%file)
 
         
   def copy_Current2Current(self,sourcefiles=[],targetfiles=[]):
@@ -212,25 +228,26 @@ class Test():
       try:
         shutil.copy2(self.fileInReference(file),self.fileInCurrent(targetfiles[i]))  
       except:
-        print('Current2Current: Unable to copy file %s'%file)
+        logging.critical('Current2Current: Unable to copy file %s'%file)
 
 
-  def execute_inCurrentDir(self,cmd,outfile='execute_log.txt'):
+  def execute_inCurrentDir(self,cmd):
     
     initialPath=os.getcwd()
     os.chdir(self.dirCurrent())
-    file=open(outfile,'a+')
-    print(cmd)
-    process = subprocess.Popen(shlex.split(cmd),stdout = file,stderr = subprocess.STDOUT)
-    process.wait()
-    file.close()
+    logging.info(cmd)
+    line = True
+    process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.STDOUT)
+    while line:
+      line = process.stdout.readline()
+      logging.debug(line)
     os.chdir(initialPath)
 
     
   def compare_Array(self,File1,File2):
   
     import numpy
-    print('comparing\n '+File1+'\n '+File2)
+    logging.info('comparing\n '+File1+'\n '+File2)
     refFile = open(File1)
     table = damask.ASCIItable(refFile)
     table.head_read()
@@ -269,7 +286,7 @@ class Test():
                                      absoluteTolerance=False,perLine=False,skipLines=[]):
     
     import numpy
-    print('comparing ASCII Tables\n %s \n %s'%(file0,file1))
+    logging.info('comparing ASCII Tables\n %s \n %s'%(file0,file1))
     if normHeadings == '': normHeadings = headings0
 
     if len(headings0) == len(headings1) == len(normHeadings):                                         #check if comparison is possible and determine lenght of columns
@@ -343,9 +360,9 @@ class Test():
         norm[i] = [1.0 for j in xrange(line0-len(skipLines))]
         absTol[i] = True
         if perLine:
-          print('At least one norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
+          logging.warning('At least one norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
         else:
-          print('Maximum norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
+          logging.warning('Maximum norm of %s in 1. table is 0.0, using absolute tolerance'%headings0[i]['label'])
 
     line1 = 0
     while table1.data_read():                                                     # read next data line of ASCII table
@@ -359,13 +376,13 @@ class Test():
 
     if (line0 != line1): raise Exception('found %s lines in 1. table and %s in 2. table'%(line0,line1))
 
-    print(' ********')
+    logging.info(' ********')
     for i in xrange(dataLength):
       if absTol[i]:
-        print(' * maximum absolute error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
+        logging.info(' * maximum absolute error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
       else:
-        print(' * maximum relative error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
-    print(' ********')
+        logging.info(' * maximum relative error %e for %s and %s'%(maxError[i],headings0[i]['label'],headings1[i]['label']))
+    logging.info(' ********')
     return maxError
 
     
@@ -393,14 +410,14 @@ class Test():
   def report_Success(self,culprit):
     
     if culprit == 0:
-      print('%s passed.'%({False: 'The test',
+      logging.critical('%s passed.'%({False: 'The test',
                          True: 'All %i tests'%(len(self.variants))}[len(self.variants) > 1]))
-      print('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+      logging.critical('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
       return 0
     if culprit == -1:
-      print('Warning: Could not start test')
+      loggin.warning('Warning: Could not start test')
       return 0
     else:
-      print(' ********\n * Test %i failed...\n ********'%(culprit))
-      print('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
+      logging.critical(' ********\n * Test %i failed...\n ********'%(culprit))
+      logging.critical('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
       return culprit
