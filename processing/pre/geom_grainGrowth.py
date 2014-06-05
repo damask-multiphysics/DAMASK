@@ -63,10 +63,13 @@ parser.add_option('-N', '--smooth', dest='N', type='int', metavar='int', \
                  help='N for curvature flow [%default]')
 parser.add_option('-r', '--renumber', dest='renumber', action='store_true', \
                   help='renumber microstructure indices from 1...N [%default]')
+parser.add_option('-i', '--immutable', action='extend', dest='immutable', type='string', \
+                  help='immutable microstructures')
 
 parser.set_defaults(d = 1)
 parser.set_defaults(N = 1)
 parser.set_defaults(renumber = False)
+parser.set_defaults(immutable = [0])
 (options, filenames) = parser.parse_args()
 
 
@@ -172,6 +175,7 @@ for file in files:
   
   interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0
   struc = ndimage.generate_binary_structure(3,1)
+  microstructure_original = numpy.copy(microstructure)
   for smoothIter in xrange(options.N):
     boundary = numpy.zeros(microstructure.shape)
     for i in range(3):
@@ -179,13 +183,20 @@ for file in files:
         for k in range(3):
           boundary = numpy.maximum(boundary,
                                    interfacialEnergy(microstructure,numpy.roll(numpy.roll(numpy.roll(
-                                                     microstructure,i-1,axis=0),j-1,axis=1),k-1,axis=2)))
-    index = ndimage.morphology.distance_transform_edt(boundary == 0.,return_distances = False,return_indices = True)
-    boundary = numpy.fft.irfftn(numpy.fft.rfftn(numpy.where(ndimage.morphology.binary_dilation(boundary != 0.,
+                                                     microstructure,i-1,axis=0),j-1,axis=1),k-1,axis=2)))  
+    boundaryExt = numpy.tile(boundary,(3,3,3))
+    boundaryExt = boundaryExt[(expandedGrid[0])/2:-(expandedGrid[0])/2,
+                              (expandedGrid[1])/2:-(expandedGrid[1])/2,
+                              (expandedGrid[2])/2:-(expandedGrid[2])/2]
+    index = ndimage.morphology.distance_transform_edt(boundaryExt == 0.,return_distances = False,return_indices = True)             # array index of nearest voxel on periodically extended boundary
+    boundaryExt = boundaryExt[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(boundaryExt.shape)                  # fill bulk with energy of nearest interface 
+    boundary = numpy.fft.irfftn(numpy.fft.rfftn(numpy.where(ndimage.morphology.binary_dilation(boundary > 0.,
                                                                                                structure = struc,
-                                                                                               iterations = 2*options.d-1),
-                                                          boundary[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(microstructure.shape),
-                                                          0.))*gauss)         
+                                                                                               iterations = 2*options.d-1),         # fat boundary        
+                                                            boundaryExt[(expandedGrid[0])/2:-(expandedGrid[0])/2,                   # retain filled energy on fat boundary
+                                                                        (expandedGrid[1])/2:-(expandedGrid[1])/2,                  
+                                                                        (expandedGrid[2])/2:-(expandedGrid[2])/2],                  
+                                                            0.))*gauss)                                                             # zero everywhere else
     boundaryExt = numpy.tile(boundary,(3,3,3))
     boundaryExt = boundaryExt[(expandedGrid[0])/2:-(expandedGrid[0])/2,
                               (expandedGrid[1])/2:-(expandedGrid[1])/2,
@@ -199,6 +210,11 @@ for file in files:
     microstructure = microstructureExt[(expandedGrid[0])/2:-(expandedGrid[0])/2,
                                        (expandedGrid[1])/2:-(expandedGrid[1])/2,
                                        (expandedGrid[2])/2:-(expandedGrid[2])/2]
+    immutable = numpy.zeros(microstructure.shape, dtype=bool)
+    for micro in options.immutable:
+      immutable = numpy.logical_or(immutable, numpy.logical_or(microstructure == int(micro), microstructure_original == int(micro)))
+
+    microstructure = numpy.where(immutable, microstructure_original,microstructure)                                   
 
 # --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
 #  http://stackoverflow.com/questions/10741346/numpy-frequency-counts-for-unique-values-in-an-array  
