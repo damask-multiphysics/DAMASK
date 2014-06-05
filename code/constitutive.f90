@@ -203,11 +203,11 @@ subroutine constitutive_init
        outputName = PLASTICITY_PHENOPOWERLAW_label
        thisOutput => constitutive_phenopowerlaw_output
        thisSize   => constitutive_phenopowerlaw_sizePostResult
-#ifndef NEWSTATE
      case (PLASTICITY_DISLOTWIN_ID)
        outputName = PLASTICITY_DISLOTWIN_label
        thisOutput => constitutive_dislotwin_output
        thisSize   => constitutive_dislotwin_sizePostResult
+#ifndef NEWSTATE
      case (PLASTICITY_TITANMOD_ID)
        outputName = PLASTICITY_TITANMOD_label
        thisOutput => constitutive_titanmod_output
@@ -853,7 +853,6 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      
    case (PLASTICITY_J2_ID)
 #ifdef NEWSTATE
-   write(6,*) plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)); flush(6)
    plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)) &
               = constitutive_j2_dotState(Tstar_v,plasticState(mappingConstitutive(2,ipc,ip,el))% &
                                              state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
@@ -870,8 +869,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,&
                                       constitutive_state(ipc,ip,el), ipc,ip,el)
 #endif
-#ifdef NEWSTATE
    case (PLASTICITY_DISLOTWIN_ID)
+#ifdef NEWSTATE
      plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el))   & 
      = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
                                       plasticState(mappingConstitutive(2,ipc,ip,el))% &
