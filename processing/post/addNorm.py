@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,re,sys,math,string,damask
+from collections import defaultdict
 from optparse import OptionParser, Option
 
 scriptID = '$Id$'
