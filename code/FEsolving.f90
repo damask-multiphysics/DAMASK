@@ -67,8 +67,10 @@ subroutine FE_init
    IO_intValue, &
    IO_lc, &
 #ifndef Spectral
+#ifndef FEM
    IO_open_inputFile, &
    IO_open_logFile, &
+#endif
 #endif
    IO_warning, &
    IO_timeStamp
@@ -76,6 +78,7 @@ subroutine FE_init
  
  implicit none
 #ifndef Spectral
+#ifndef FEM
  integer(pInt), parameter :: &
    FILEUNIT = 222_pInt, &
    maxNchunks = 6_pInt
@@ -83,6 +86,7 @@ subroutine FE_init
  character(len=64)   :: tag
  character(len=1024) :: line
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
+#endif
 #endif
 
  write(6,'(/,a)') ' <<<+-  FEsolving init  -+>>>'
@@ -98,6 +102,13 @@ subroutine FE_init
    restartInc = 1_pInt
  endif
  restartRead = restartInc > 1_pInt                                                                  ! only read in if "true" restart requested
+#elif defined FEM
+ restartInc = FEMRestartInc
+ if(restartInc <= 0_pInt) then
+   call IO_warning(warning_ID=34_pInt)
+   restartInc = 1_pInt
+ endif
+ restartRead = restartInc > 1_pInt 
 #else
  call IO_open_inputFile(FILEUNIT,modelName)
  rewind(FILEUNIT)

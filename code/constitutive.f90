@@ -29,6 +29,9 @@ module constitutive
    constitutive_aTolState                                                                            !< pointer array to absolute state tolerance
  type(p_vec),   public, dimension(:,:,:,:), allocatable :: &
    constitutive_RKCK45dotState                                                                       !< pointer array to evolution of microstructure used by Cash-Karp Runge-Kutta method
+ real(pReal),   public, dimension(:,:,:),  allocatable :: &
+   constitutive_localDamage, &
+   constitutive_gradientDamage
  integer(pInt), public, dimension(:,:,:), allocatable :: &
    constitutive_sizeDotState, &                                                                      !< size of dotState array
    constitutive_sizeState, &                                                                         !< size of state array per grain
@@ -240,6 +243,8 @@ subroutine constitutive_init
 #ifndef NEWSTATE 
 ! lumped into new state
  allocate(constitutive_state0(cMax,iMax,eMax))            
+ allocate(constitutive_localDamage(cMax,iMax,eMax)); constitutive_localDamage = 1.0_pReal
+ allocate(constitutive_gradientDamage(cMax,iMax,eMax)); constitutive_gradientDamage = 1.0_pReal
  allocate(constitutive_partionedState0(cMax,iMax,eMax))
  allocate(constitutive_subState0(cMax,iMax,eMax))
  allocate(constitutive_state(cMax,iMax,eMax))
@@ -775,7 +780,7 @@ use math, only : &
  C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
 
  FeT = math_transpose33(Fe)
- T = 0.5_pReal * math_mul3333xx33(C, math_mul33x33(FeT,Fe)-MATH_I3)
+ T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(FeT,Fe)-MATH_I3)*constitutive_gradientDamage(ipc,ip,el)
 
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &

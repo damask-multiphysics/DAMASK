@@ -551,7 +551,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
 #else
    mappingConstitutive, &
 #endif   
-   constitutive_TandItsTangent
+   constitutive_TandItsTangent, &
+   constitutive_localDamage, &
+   constitutive_gradientDamage
  
  implicit none
  logical, intent(in) :: &
@@ -1371,6 +1373,14 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
           crystallite_heat(g,i,e) = 0.98_pReal* &
                                abs(math_mul33xx33(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)), &
                                                   crystallite_Lp(1:3,1:3,g,i,e)))
+          constitutive_localDamage(g,i,e) = &
+            1.0_pReal* &
+            sum(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)/constitutive_gradientDamage(g,i,e))* &
+                (math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)), &
+                               crystallite_Fe(1:3,1:3,g,i,e))-math_I3))/4.0_pReal + &
+            0.0_pReal* &
+            sum(abs(math_mul33x33(math_transpose33(crystallite_Fp(1:3,1:3,g,i,e)), &
+                               crystallite_Fp(1:3,1:3,g,i,e))-math_I3)/2.0_pReal)
       enddo
    enddo
  enddo elementLooping12

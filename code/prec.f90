@@ -19,6 +19,9 @@ module prec
 #ifdef Spectral
  SPECTRAL SOLVER DOES NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
 #endif
+#ifdef FEM
+ SPECTRAL SOLVER DOES NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
+#endif
  integer,     parameter, public :: pReal = 4                                                        !< floating point single precition (was selected_real_kind(6,37), number with 6 significant digits, up to 1e+-37)
 #ifdef __INTEL_COMPILER
  real(pReal), parameter, public :: DAMASK_NaN = Z'7F800001'                                         !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)

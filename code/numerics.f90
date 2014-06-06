@@ -12,6 +12,9 @@ module numerics
 
  implicit none
  private
+#ifdef FEM
+#include <finclude/petsc.h90>
+#endif
  character(len=64), parameter, private :: &
    numerics_CONFIGFILE        = 'numerics.config'                                                   !< name of configuration file
 
@@ -89,12 +92,40 @@ module numerics
    fftw_planner_flag          =  32_pInt, &                                                         !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
    itmax                      =  250_pInt, &                                                        !< maximum number of iterations
    itmin                      =  2_pInt, &                                                          !< minimum number of iterations
+   stagItMax                  =  25_pInt, &                                                         !< maximum number of iterations
    maxCutBack                 =  3_pInt, &                                                          !< max number of cut backs
    continueCalculation        =  0_pInt, &                                                          !< 0: exit if BVP solver does not converge, 1: continue calculation if BVP solver does not converge
    divergence_correction      =  2_pInt                                                             !< correct divergence calculation in fourier space 0: no correction, 1: size scaled to 1, 2: size scaled to Npoints
  logical, protected, public :: &
    memory_efficient           = .true., &                                                           !< for fast execution (pre calculation of gamma_hat), Default .true.: do not precalculate
    update_gamma               = .false.                                                             !< update gamma operator with current stiffness, Default .false.: use initial stiffness 
+#endif
+
+!--------------------------------------------------------------------------------------------------
+! FEM parameters:
+#ifdef FEM
+ real(pReal), protected, public :: &
+   err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
+   err_struct_tolRel          =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
+   err_thermal_tol            =  1.0e-6_pReal, &
+   err_damage_tol             =  1.0e-4_pReal   
+ character(len=1024), protected, public :: &
+   petsc_optionsFEM           = '-snes_type ngmres &
+                                &-snes_ngmres_anderson '
+ integer(pInt), protected, public :: &
+   itmaxFEM                   =  250_pInt, &                                                        !< maximum number of iterations
+   itminFEM                   =  2_pInt, &                                                          !< minimum number of iterations
+   maxCutBackFEM              =  3_pInt, &                                                          !< max number of cut backs
+   integrationOrder           =  1_pInt, &
+   structOrder                =  2_pInt, &
+   thermalOrder               =  2_pInt, &
+   damageOrder                =  2_pInt, &
+   worldrank                  =  0_pInt, &
+   worldsize                  =  0_pInt
+ logical, protected, public :: &
+   structThermalCoupling      = .false., &
+   structDamageCoupling       = .false., &
+   thermalDamageCoupling      = .false. 
 #endif
 
  public :: numerics_init
@@ -125,14 +156,19 @@ subroutine numerics_init
 #ifdef Spectral
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
 #endif  
+#ifdef FEM
+!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
+#endif  
  implicit none
 #ifndef Spectral
+#ifndef FEM
 !$ include "omp_lib.h"                                                                              ! use the not F90 standard conforming include file to prevent crashes with some versions of MSC.Marc
+#endif
 #endif  
  integer(pInt), parameter ::                 FILEUNIT = 300_pInt ,&
                                              maxNchunks = 2_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
- integer :: i                                                                                       ! no pInt
+ integer :: i, ierr                                                                                 ! no pInt
  integer(pInt), dimension(1+2*maxNchunks) :: positions
  character(len=65536) :: &
    tag ,&
@@ -153,6 +189,11 @@ subroutine numerics_init
 !$   if (DAMASK_NumThreadsInt < 1) DAMASK_NumThreadsInt = 1                                         ! in case of string conversion fails, set it to one
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
+
+#ifdef FEM
+ call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+ call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
+#endif  
 
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
@@ -274,6 +315,8 @@ subroutine numerics_init
          itmax = IO_intValue(line,positions,2_pInt)
        case ('itmin')
          itmin = IO_intValue(line,positions,2_pInt)
+       case ('stagitmax')
+         stagItMax = IO_intValue(line,positions,2_pInt)
        case ('maxcutback')
          maxCutBack = IO_intValue(line,positions,2_pInt)
        case ('continuecalculation')
@@ -312,10 +355,51 @@ subroutine numerics_init
 #endif
 #ifndef Spectral
       case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
-            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
+            'itmax', 'itmin','stagitmax','memory_efficient','fftw_timelimit','fftw_plan_mode', &
             'divergence_correction','update_gamma','myfilter', &
             'err_curl_tolabs','err_curl_tolrel', &
             'maxcutback','polaralpha','polarbeta')
+         call IO_warning(40_pInt,ext_msg=tag)
+#endif
+
+!--------------------------------------------------------------------------------------------------
+! FEM parameters
+#ifdef FEM
+       case ('err_struct_tolabs')
+         err_struct_tolAbs = IO_floatValue(line,positions,2_pInt)
+       case ('err_struct_tolrel')
+         err_struct_tolRel = IO_floatValue(line,positions,2_pInt)
+       case ('err_thermal_tol')
+         err_thermal_tol = IO_floatValue(line,positions,2_pInt)
+       case ('err_damage_tol')
+         err_damage_tol = IO_floatValue(line,positions,2_pInt)
+       case ('itmaxfem')
+         itmaxFEM = IO_intValue(line,positions,2_pInt)
+       case ('itminfem')
+         itminFEM = IO_intValue(line,positions,2_pInt)
+       case ('maxcutbackfem')
+         maxCutBackFEM = IO_intValue(line,positions,2_pInt)
+       case ('integrationorder')
+         integrationorder = IO_intValue(line,positions,2_pInt)
+       case ('structorder')
+         structorder = IO_intValue(line,positions,2_pInt)
+       case ('thermalorder')
+         thermalorder = IO_intValue(line,positions,2_pInt)
+       case ('damageorder')
+         damageorder = IO_intValue(line,positions,2_pInt)
+       case ('petsc_optionsfem')
+         petsc_optionsFEM = trim(line(positions(4):))
+       case ('structthermalcoupling')
+         structThermalCoupling = IO_intValue(line,positions,2_pInt)  > 0_pInt
+       case ('structdamagecoupling')
+         structDamageCoupling = IO_intValue(line,positions,2_pInt)  > 0_pInt
+       case ('thermaldamagecoupling')
+         thermalDamageCoupling = IO_intValue(line,positions,2_pInt)  > 0_pInt
+#endif
+#ifndef FEM
+      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol',&             ! found spectral parameter for FEM build
+            'itmaxfem', 'itminfem','maxcutbackfem','integrationorder','structorder','thermalorder', &
+            'damageorder','petsc_optionsfem','structthermalcoupling','structdamagecoupling','thermaldamagecoupling')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                ! found unknown keyword
@@ -405,6 +489,7 @@ subroutine numerics_init
 #ifdef Spectral
  write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
  write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
+ write(6,'(a24,1x,i8)')      ' stagItMax:              ',stagItMax
  write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
  write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
  write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
@@ -430,6 +515,26 @@ subroutine numerics_init
  write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
+#endif
+
+!--------------------------------------------------------------------------------------------------
+! spectral parameters
+#ifdef FEM
+ write(6,'(a24,1x,i8)')      ' itmaxFEM:               ',itmaxFEM
+ write(6,'(a24,1x,i8)')      ' itminFEM:               ',itminFEM
+ write(6,'(a24,1x,i8)')      ' maxCutBackFEM:          ',maxCutBackFEM
+ write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
+ write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
+ write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
+ write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
+ write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
+ write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
+ write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
+ write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
+ write(6,'(a24,1x,L8)')      ' structThermalCoupling:  ',structThermalCoupling
+ write(6,'(a24,1x,L8)')      ' structDamageCoupling:   ',structDamageCoupling
+ write(6,'(a24,1x,L8)')      ' thermalDamageCoupling:  ',thermalDamageCoupling
+ write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -473,7 +578,7 @@ subroutine numerics_init
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
 #ifdef Spectral
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
- if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
+ if (itmin > itmax .or. itmin < 0_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (continueCalculation /= 0_pInt .and. &
      continueCalculation /= 1_pInt)        call IO_error(301_pInt,ext_msg='continueCalculation')
  if (divergence_correction < 0_pInt .or. &
@@ -493,6 +598,16 @@ subroutine numerics_init
  if (polarBeta < 0.0_pReal .or. &
      polarBeta >  2.0_pReal)               call IO_error(301_pInt,ext_msg='polarBeta')
 #endif
+#endif
+#ifdef FEM
+ if (itmaxFEM <= 1_pInt)                   call IO_error(301_pInt,ext_msg='itmaxFEM')
+ if (itminFEM > itmaxFEM .or. &
+     itminFEM < 0_pInt)                    call IO_error(301_pInt,ext_msg='itminFEM')
+ if (maxCutBackFEM < 0_pInt)               call IO_error(301_pInt,ext_msg='maxCutBackFEM')
+ if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolRel')
+ if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
+ if (err_thermal_tol <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_thermal_tol')
+ if (err_damage_tol <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_damage_tol')
 #endif
 
 end subroutine numerics_init

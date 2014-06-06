@@ -71,6 +71,10 @@ subroutine CPFEM_initAll(temperature,el,ip)
  use IO, only: &
    IO_init
  use DAMASK_interface
+#ifdef FEM
+ use FEZoo, only: &
+   FEZoo_init
+#endif
 
  implicit none
  integer(pInt), intent(in) ::                        el, &                                         ! FE el number
@@ -82,8 +86,14 @@ subroutine CPFEM_initAll(temperature,el,ip)
 #ifdef Spectral
      call DAMASK_interface_init()                                                                  ! Spectral solver is interfacing to commandline
 #endif
+#ifdef FEM
+     call DAMASK_interface_init()                                                                  ! Spectral solver is interfacing to commandline
+#endif
      call prec_init
      call IO_init
+#ifdef FEM
+     call FEZoo_init()                                                                  ! Spectral solver is interfacing to commandline
+#endif
      call numerics_init
      call debug_init
      call math_init
@@ -96,7 +106,9 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call homogenization_init
      call CPFEM_init
 #ifndef Spectral
+#ifndef FEM
      call DAMASK_interface_init()                                                                  ! Spectral solver init is already done
+#endif
 #endif
      CPFEM_init_done = .true.
    endif
