@@ -4,6 +4,9 @@
 import os,re,sys,math,string,damask
 from optparse import OptionParser, Option
 
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 # -----------------------------
 class extendableOption(Option):
 # -----------------------------
@@ -46,7 +49,7 @@ def normMax(object):
 parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing norm of requested column(s) being either vectors or tensors.
 
-""" + string.replace('$Id$','\n','\\n')
+""" + string.replace(scriptID,'\n','\\n')
 )
 
 normChoices = ['abs','frobenius','max']
@@ -92,39 +95,37 @@ if options.special != None:    datainfo['special']['label'] += options.special
 
 files = []
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout})
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w')})
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': print file['name']
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out columns to process
-  active = {}
-  column = {}
-  head = []
+  active = defaultdict(list)
+  column = defaultdict(dict)
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = {True :'1_%s',
-             False:'%s'   }[info['len']>1]%label
-      if key not in table.labels:
-        sys.stderr.write('column %s not found...\n'%key)
-      else:
-        if datatype not in active: active[datatype] = []
-        if datatype not in column: column[datatype] = {}
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
-        table.labels_append('norm%s(%s)'%(options.norm.capitalize(),label)) # extend ASCII header with new labels
+      foundIt = False
+      for key in ['1_'+label,label]:
+        if key in table.labels:
+          foundIt = True
+          active[datatype].append(label)
+          column[datatype][label] = table.labels.index(key)                 # remember columns of requested data
+          table.labels_append('norm%s(%s)'%(options.norm.capitalize(),label)) # extend ASCII header with new labels
+      if not foundIt:
+        file['croak'].write('column %s not found...\n'%label)
+        break
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
@@ -132,19 +133,21 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  while table.data_read():                                                  # read next data line of ASCII table
+  outputAlive = True
+
+  while outputAlive and table.data_read():                                  # read next data line of ASCII table
     
     for datatype,labels in active.items():                                  # loop over vector,tensor
       for label in labels:                                                  # loop over all requested norms
         eval("table.data_append(norm%s(map(float,table.data[column[datatype][label]:column[datatype][label]+datainfo[datatype]['len']])))"%options.norm.capitalize())
     
-    table.data_write()                                                      # output processed line
+    outputAlive = table.data_write()                                        # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
+  outputAlive and table.output_flush()                                      # just in case of buffered ASCII table
 
   file['input'].close()                                                     # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close                                                    # close output ASCII table
+    file['output'].close()                                                  # close output ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
