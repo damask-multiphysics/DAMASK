@@ -92,7 +92,6 @@ module numerics
    fftw_planner_flag          =  32_pInt, &                                                         !< conversion of fftw_plan_mode to integer, basically what is usually done in the include file of fftw
    itmax                      =  250_pInt, &                                                        !< maximum number of iterations
    itmin                      =  2_pInt, &                                                          !< minimum number of iterations
-   stagItMax                  =  25_pInt, &                                                         !< maximum number of iterations
    maxCutBack                 =  3_pInt, &                                                          !< max number of cut backs
    continueCalculation        =  0_pInt, &                                                          !< 0: exit if BVP solver does not converge, 1: continue calculation if BVP solver does not converge
    divergence_correction      =  2_pInt                                                             !< correct divergence calculation in fourier space 0: no correction, 1: size scaled to 1, 2: size scaled to Npoints
@@ -315,8 +314,6 @@ subroutine numerics_init
          itmax = IO_intValue(line,positions,2_pInt)
        case ('itmin')
          itmin = IO_intValue(line,positions,2_pInt)
-       case ('stagitmax')
-         stagItMax = IO_intValue(line,positions,2_pInt)
        case ('maxcutback')
          maxCutBack = IO_intValue(line,positions,2_pInt)
        case ('continuecalculation')
@@ -355,7 +352,7 @@ subroutine numerics_init
 #endif
 #ifndef Spectral
       case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
-            'itmax', 'itmin','stagitmax','memory_efficient','fftw_timelimit','fftw_plan_mode', &
+            'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
             'divergence_correction','update_gamma','myfilter', &
             'err_curl_tolabs','err_curl_tolrel', &
             'maxcutback','polaralpha','polarbeta')
@@ -489,7 +486,6 @@ subroutine numerics_init
 #ifdef Spectral
  write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
  write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
- write(6,'(a24,1x,i8)')      ' stagItMax:              ',stagItMax
  write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
  write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
  write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
@@ -578,7 +574,7 @@ subroutine numerics_init
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
 #ifdef Spectral
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
- if (itmin > itmax .or. itmin < 0_pInt)    call IO_error(301_pInt,ext_msg='itmin')
+ if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
  if (continueCalculation /= 0_pInt .and. &
      continueCalculation /= 1_pInt)        call IO_error(301_pInt,ext_msg='continueCalculation')
  if (divergence_correction < 0_pInt .or. &
