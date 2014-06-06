@@ -101,7 +101,6 @@ if options.asciitable != None and os.path.isfile(options.asciitable):
   mappedTable.input_close()                                                      # close mapped input ASCII table
   mappedTable.output_close()                                                     # close mapped output (same as input) ASCII table
 
-  sys.stderr.write('%s\n'%(mappedTable.data))
 else:
   parser.error("Missing mapped ASCIItable")
 
