@@ -92,6 +92,7 @@ for file in files:
   info = {
           'grid':   numpy.zeros(3,'i'),
           'size':   numpy.zeros(3,'d'),
+          'origin': numpy.zeros(3,'d'),
          }
 
   for header in theTable.info:
@@ -108,8 +109,8 @@ for file in files:
         info[headitems[0]] = mappings[headitems[0]](headitems[1])
 
   file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
-                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))))
-
+                      'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                      'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))))
   if 0 not in options.grid:                                                                         # user-specified grid
     info['grid'] = numpy.array(options.grid)
   if numpy.any(info['grid'] < 1):
@@ -125,6 +126,7 @@ for file in files:
 #--- read data --------------------------------------------------------------------------------
   theTable.data_readArray(['x','y','z','microstructure'])
   theTable.data[:,0:3] *= info['size']
+  theTable.data[:,0:3] += info['origin']
 
 #--- generate grid --------------------------------------------------------------------------------
   grid = vtk.vtkUnstructuredGrid()
