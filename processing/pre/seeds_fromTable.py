@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string,itertools,numpy,damask
+from collections import defaultdict
 from optparse import OptionParser, Option
 
 scriptID = '$Id$'
@@ -59,17 +60,20 @@ Examples:
 )
 
 
-parser.add_option('-p', '--positions',   dest='pos', type='string',
+parser.add_option('-p', '--positions',   dest = 'pos', type = 'string',
                                     help = 'coordinate label')
-parser.add_option('-i', '--index',  dest='index', type='string',
+parser.add_option('--boundingbox',  dest = 'box', type = 'float', nargs = 6,
+                                    help = 'min (x,y,z) and max (x,y,z) to specify bounding box [auto]')
+parser.add_option('-i', '--index',  dest = 'index', type = 'string',
                                     help = 'microstructure index label')
-parser.add_option('-w','--white',   dest='whitelist', action='extend', type='string', \
-                                    help='white list of microstructure indices', metavar='<LIST>')
-parser.add_option('-b','--black',   dest='blacklist', action='extend', type='string', \
-                                    help='black list of microstructure indices', metavar='<LIST>')
+parser.add_option('-w','--white',   dest = 'whitelist', action = 'extend', type = 'string', \
+                                    help = 'white list of microstructure indices', metavar = '<LIST>')
+parser.add_option('-b','--black',   dest = 'blacklist', action = 'extend', type = 'string', \
+                                    help = 'black list of microstructure indices', metavar = '<LIST>')
 
 parser.set_defaults(pos = 'pos')
 parser.set_defaults(index = 'microstructure')
+parser.set_defaults(box = [])
 parser.set_defaults(whitelist = [])
 parser.set_defaults(blacklist = [])
 
@@ -113,9 +117,8 @@ for file in files:
   theTable.head_read()
 
 # --------------- figure out columns to process
-  active = {}
-  column = {}
-  head = []
+  active = defaultdict(list)
+  column = defaultdict(dict)
 
   for datatype,info in datainfo.items():
     for label in info['label']:
@@ -123,8 +126,6 @@ for file in files:
       for key in ['1_'+label,label]:
         if key in theTable.labels:
           foundIt = True
-          if datatype not in active: active[datatype] = []
-          if datatype not in column: column[datatype] = {}
           active[datatype].append(label)
           column[datatype][label] = theTable.labels.index(key)                 # remember columns of requested data
       if not foundIt:
@@ -139,7 +140,10 @@ for file in files:
                        [column['scalar'][label] for label in active['scalar']])
 
 #--- finding bounding box ------------------------------------------------------------------------------------
-  boundingBox = numpy.array((numpy.amin(theTable.data[:,0:3],axis=0),numpy.amax(theTable.data[:,0:3],axis=0)))
+  boundingBox = numpy.array((numpy.amin(theTable.data[:,0:3],axis = 0),numpy.amax(theTable.data[:,0:3],axis = 0)))
+  if len(options.box) == 6:
+    boundingBox[0,:] = numpy.minimum(options.box[0:3],boundingBox[0,:])
+    boundingBox[1,:] = numpy.maximum(options.box[3:6],boundingBox[1,:])
 
 #--- rescaling coordinates ------------------------------------------------------------------------------------
   theTable.data[:,0:3] -= boundingBox[0,:]
