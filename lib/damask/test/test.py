@@ -134,7 +134,7 @@ class Test():
     '''
     Update reference with current results.
     '''
-    loggin.debug('Update not necessary')
+    logging.debug('Update not necessary')
     return True
 
 
@@ -198,7 +198,7 @@ class Test():
       try:
         shutil.copy2(os.path.join(source,file),self.fileInCurrent(targetfiles[i]))  
       except:
-        loggin.error(os.path.join(source,file))
+        logging.error(os.path.join(source,file))
         logging.critical('Base2Current: Unable to copy file %s'%file)
 
 
@@ -415,7 +415,7 @@ class Test():
       logging.critical('\n!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n')
       return 0
     if culprit == -1:
-      loggin.warning('Warning: Could not start test')
+      logging.warning('Warning: Could not start test')
       return 0
     else:
       logging.critical(' ********\n * Test %i failed...\n ********'%(culprit))
