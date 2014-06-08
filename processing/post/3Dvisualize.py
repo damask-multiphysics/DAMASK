@@ -348,13 +348,14 @@ options.scaling = map(float, options.scaling)
 if numpy.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
 if numpy.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 options.separator = options.separator.lower()
+
 for filename in args:
   if not os.path.exists(filename):
     continue
   file = open(filename)
   content = file.readlines()
   file.close()
-  m = re.search('(\d+)\shead',content[0],re.I)
+  m = re.search('(\d+)\s*head', content[0].lower())
   if m == None:
     continue
   print filename,'\n'
@@ -431,7 +432,7 @@ for filename in args:
   grid = numpy.array([len(tempGrid[0]),\
                       len(tempGrid[1]),\
                       len(tempGrid[2]),],'i')
-
+  
   dim = numpy.ones(3)
 
   for i,r in enumerate(grid):
@@ -442,7 +443,7 @@ for filename in args:
       dim[2] = min(dim/grid)
     else:
       dim[2] = options.unitlength
- 
+  print dim
   if options.undeformed:
     Favg = numpy.eye(3)
   else:
