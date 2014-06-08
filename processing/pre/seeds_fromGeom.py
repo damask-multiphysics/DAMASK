@@ -57,9 +57,9 @@ Examples:
 
 
 parser.add_option('-w','--white',   dest='whitelist', action='extend', type='string', \
-                                    help='white list of column labels (a,b,c,...)', metavar='<LIST>')
+                                    help='white list of grain IDs', metavar='<LIST>')
 parser.add_option('-b','--black',   dest='blacklist', action='extend', type='string', \
-                                    help='black list of column labels (a,b,c,...)', metavar='<LIST>')
+                                    help='black list of grain IDs', metavar='<LIST>')
 
 parser.set_defaults(whitelist = [])
 parser.set_defaults(blacklist = [])
@@ -91,7 +91,7 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels=False,buffered=False)
+  theTable = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
   theTable.head_read()
 
 #--- interpret header ----------------------------------------------------------------------------
@@ -136,11 +136,12 @@ for file in files:
   if numpy.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
+  if 'origin' not in info:
+    info['origin'] = numpy.zeros(3)
 
 #--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
   i = 0
-  theTable.data_rewind()
   while theTable.data_read():
     items = theTable.data
     if len(items) > 2:
@@ -159,6 +160,8 @@ for file in files:
   theTable.info = [
                    scriptID,
                    "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
+                   "size\tx %i\ty %i\tz %i"%(info['size'][0],info['size'][1],info['size'][2],),
+                   "origin\tx %i\ty %i\tz %i"%(info['origin'][0],info['origin'][1],info['origin'][2],),
                   ]
   theTable.labels_clear()
   theTable.labels_append(['x','y','z','microstructure'])                                  # implicitly switching label processing/writing on
@@ -167,7 +170,7 @@ for file in files:
 #--- filtering of grain voxels ------------------------------------------------------------------------------------
   theTable.data_clear()
   i = 0
-
+  outputDead = False
   coord = numpy.zeros(3,'d')
   for coord[2] in xrange(info['grid'][2]):
     for coord[1] in xrange(info['grid'][1]):
@@ -175,13 +178,17 @@ for file in files:
         if (options.whitelist == [] and options.blacklist == []) or \
            (options.whitelist != [] and microstructure[i]     in options.whitelist) or \
            (options.blacklist != [] and microstructure[i] not in options.blacklist):
-          theTable.data = list((coord+0.5)/info['grid']*info['size'])+[microstructure[i]]
-          theTable.data_write()
+          theTable.data = list((coord+0.5)/info['grid'])+[microstructure[i]]
+          outputDead = not theTable.data_write()
         i += 1
+        if outputDead: break
+      if outputDead: break
+    if outputDead: break
 
 # ------------------------------------------ output result ---------------------------------------  
 
+  outputDead or theTable.output_flush()                                        # just in case of buffered ASCII table
 
-  file['input'].close()                                                     # close input ASCII table
+  theTable.input_close()                                                       # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close()                                                  # close output ASCII table
+    theTable.output_close()                                                    # close output ASCII table
