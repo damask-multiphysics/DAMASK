@@ -489,7 +489,6 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
        outputFound: if (mySize > 0_pInt) then
          constitutive_phenopowerlaw_sizePostResult(o,instance) = mySize
          constitutive_phenopowerlaw_sizePostResults(instance)  = constitutive_phenopowerlaw_sizePostResults(instance) + mySize
-         write(6,*) constitutive_phenopowerlaw_sizePostResults(instance); flush(6)
        endif outputFound
      enddo outputsLoop 
 
