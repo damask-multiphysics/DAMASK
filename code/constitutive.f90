@@ -137,9 +137,9 @@ subroutine constitutive_init
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_dislotwin
-#ifndef NEWSTATE
  use constitutive_titanmod
- use constitutive_nonlocal
+#ifndef NEWSTATE
+  use constitutive_nonlocal
 #endif
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
@@ -210,11 +210,11 @@ subroutine constitutive_init
        outputName = PLASTICITY_DISLOTWIN_label
        thisOutput => constitutive_dislotwin_output
        thisSize   => constitutive_dislotwin_sizePostResult
-#ifndef NEWSTATE
      case (PLASTICITY_TITANMOD_ID)
        outputName = PLASTICITY_TITANMOD_label
        thisOutput => constitutive_titanmod_output
        thisSize   => constitutive_titanmod_sizePostResult
+#ifndef NEWSTATE
      case (PLASTICITY_NONLOCAL_ID)
        outputName = PLASTICITY_NONLOCAL_label
        thisOutput => constitutive_nonlocal_output
@@ -344,25 +344,25 @@ subroutine constitutive_init
 
          case (PLASTICITY_PHENOPOWERLAW_ID)
 #ifndef NEWSTATE
-           allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
+           allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal) 
              enddo
            endif
            constitutive_state0(g,i,e)%p =           constitutive_phenopowerlaw_stateInit(instance)
@@ -371,36 +371,38 @@ subroutine constitutive_init
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(instance)
 #endif
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(instance)
-#ifndef NEWSTATE
 
          case (PLASTICITY_DISLOTWIN_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(instance)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
+#ifndef NEWSTATE
+           allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_state_backup(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
+           allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
+           allocate(constitutive_deltaState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
+           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
            if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)))
+             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
+             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
            endif
            if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance))) 
+             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal) 
            endif
            if (any(numerics_integrator == 5_pInt)) then
              do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(instance))) 
+               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal) 
              enddo
            endif
            constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(instance,material_phase(g,i,e))
            constitutive_aTolState(g,i,e)%p =        constitutive_dislotwin_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(instance)
+#endif
            constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(instance)
          case (PLASTICITY_TITANMOD_ID)
+#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
@@ -426,8 +428,10 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =       constitutive_titanmod_aTolState(instance)
            constitutive_sizeState(g,i,e) =         constitutive_titanmod_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =      constitutive_titanmod_sizeDotState(instance)
+#endif
            constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
          case (PLASTICITY_NONLOCAL_ID)
+#ifndef NEWSTATE
            nonlocalConstitutionPresent = .true.
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
@@ -456,6 +460,7 @@ subroutine constitutive_init
            constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
 #endif
+!           constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
        end select
      enddo GrainLoop
    enddo IPloop
@@ -469,7 +474,6 @@ subroutine constitutive_init
 
      constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p
      constitutive_state(g,i,e)%p = constitutive_state0(g,i,e)%p                                     ! need to be defined for first call of constitutive_microstructure in crystallite_init
-
    endforall
  enddo
 #endif
@@ -535,10 +539,8 @@ pure function constitutive_homogenizedC(ipc,ip,el)
    plasticState,&
 #endif
    PLASTICITY_DISLOTWIN_ID
-#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_homogenizedC
-#endif
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_homogenizedC
  use lattice, only: &
@@ -563,8 +565,13 @@ pure function constitutive_homogenizedC(ipc,ip,el)
      constitutive_homogenizedC = constitutive_dislotwin_homogenizedC &
      (constitutive_state(ipc,ip,el),ipc,ip,el) 
 #endif
-#ifndef NEWSTATE 
    case (PLASTICITY_TITANMOD_ID)
+#ifdef NEWSTATE 
+
+     constitutive_homogenizedC = constitutive_titanmod_homogenizedC &
+     (plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
+                                                                                        ipc,ip,el)
+#else
      constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state(ipc,ip,el), &
                                                                                        ipc,ip,el)
 #endif
@@ -589,9 +596,9 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
 #endif
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
-#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
+#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_microstructure
 #endif
@@ -621,10 +628,17 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
      call constitutive_dislotwin_microstructure(temperature,constitutive_state(ipc,ip,el), &       
                                                                               ipc,ip,el)
 #endif
-#ifndef NEWSTATE
+
    case (PLASTICITY_TITANMOD_ID)
+#ifdef NEWSTATE
+     call constitutive_titanmod_microstructure(temperature, &
+     plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &       
+                                                                              ipc,ip,el)
+#else
      call constitutive_titanmod_microstructure(temperature,constitutive_state(ipc,ip,el), &
                                                                               ipc,ip,el)
+#endif
+#ifndef NEWSTATE
    case (PLASTICITY_NONLOCAL_ID)
      call constitutive_nonlocal_microstructure(constitutive_state,Fe,Fp,ipc,ip,el)
 #endif 
@@ -657,9 +671,9 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    constitutive_phenopowerlaw_LpAndItsTangent
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_LpAndItsTangent
-#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_LpAndItsTangent
+#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_LpAndItsTangent
 #endif
@@ -708,10 +722,17 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                     temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
 #endif
-#ifndef NEWSTATE
+
    case (PLASTICITY_TITANMOD_ID)
+#ifdef NEWSTATE
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,temperature, &
+       plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
+                                                                                     ipc,ip,el)
+#else
      call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                    temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
+#endif
+#ifndef NEWSTATE
    case (PLASTICITY_NONLOCAL_ID)
      call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
                                    temperature, constitutive_state(ipc,ip,el), ipc,ip,el)
@@ -824,9 +845,9 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    constitutive_phenopowerlaw_dotState
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_dotState
-#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_dotState
+#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_dotState
 #endif 
@@ -884,10 +905,17 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
                                       constitutive_state(ipc,ip,el), ipc,ip,el)
 #endif
-#ifndef NEWSTATE
    case (PLASTICITY_TITANMOD_ID)
+#ifdef NEWSTATE
+     plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el))   & 
+     = constitutive_titanmod_dotState(Tstar_v,Temperature,&
+                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
+                                               state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
+#else
      constitutive_dotState(ipc,ip,el)%p = constitutive_titanmod_dotState(Tstar_v,Temperature,&
                                       constitutive_state(ipc,ip,el), ipc,ip,el)
+#endif
+#ifndef NEWSTATE
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
                                       Temperature, constitutive_state, constitutive_state0, subdt, &
@@ -997,9 +1025,9 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    constitutive_phenopowerlaw_postResults
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_postResults
-#ifndef NEWSTATE
  use constitutive_titanmod, only: &
    constitutive_titanmod_postResults
+#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_postResults
 #endif 
@@ -1022,16 +1050,16 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_NONE_ID)
-#ifndef NEWSTATE 
    case (PLASTICITY_TITANMOD_ID)
+#ifdef NEWSTATE
+     constitutive_postResults = constitutive_titanmod_postResults(&
+                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
+                                       state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
+#else
      constitutive_postResults = constitutive_titanmod_postResults(&
                                       constitutive_state(ipc,ip,el),ipc,ip,el)
 #endif
    case (PLASTICITY_J2_ID)
-#ifdef HDF
-   call constitutive_j2_postResults2(Tstar_v,constitutive_state(ipc,ip,el),ipc,ip,el,1)
-#endif
-
 #ifdef NEWSTATE
      constitutive_postResults= constitutive_j2_postResults(Tstar_v, &
                                       plasticState(mappingConstitutive(2,ipc,ip,el))% &

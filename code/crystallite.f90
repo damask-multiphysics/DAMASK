@@ -425,7 +425,6 @@ subroutine crystallite_init(temperature)
      enddo
    enddo
  !$OMP END PARALLEL DO
-
  call crystallite_stressAndItsTangent(.true.,.false.)                                               ! request elastic answers
  crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
  
@@ -1749,9 +1748,9 @@ subroutine crystallite_integrateStateRKCK45()
    homogenization_maxNgrains
  use constitutive, only: &
    constitutive_collectDotState, &
-   constitutive_maxSizeDotState, &
 #ifndef NEWSTATE
    constitutive_sizeDotState, &
+   constitutive_maxSizeDotState, &
    constitutive_state, &
    constitutive_aTolState, &
    constitutive_subState0, &
@@ -2245,7 +2244,7 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
-       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionem
+       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionen
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
          !$OMP CRITICAL (distributionState)
            debug_StateLoopDistribution(6,numerics_integrationMode) = &
@@ -2262,7 +2261,7 @@ subroutine crystallite_integrateStateRKCK45()
  ! --- nonlocal convergence check ---
  
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'                                                                             ! if not requesting Integration of just a single IP   
+   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'  ! if not requesting Integration of just a single IP   
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &  ! any non-local not yet converged (or broken)...
    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
  
@@ -2717,7 +2716,6 @@ eIter = FEsolving_execElem(1:2)
  enddo
  
  singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
- 
  if (numerics_integrationMode == 1_pInt) then
  !$OMP PARALLEL
  
@@ -3010,7 +3008,7 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
        endif
 #else       
        if ( any(plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e))/= &
-                plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)))) then                                                                                                            ! NaN occured in dotState
+                plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)))) then ! NaN occured in dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
@@ -3036,17 +3034,12 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
                                                      + constitutive_dotState(g,i,e)%p(1:mySizeDotState) &
                                                      * crystallite_subdt(g,i,e)
 #else
-!       write(6,*) size(plasticState); flush(6)
-!       write(6,*) g,i,e;flush(6)
-!       write(6,*) mappingConstitutive(2,g,i,e),mappingConstitutive(1,g,i,e); flush(6)
-!       write(6,*) size(plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)));flush(6)
-!       write(6,*) size(plasticState(mappingConstitutive(2,g,i,e))%substate0(:,mappingConstitutive(1,g,i,e)));flush(6)
-!       write(6,*) size(plasticState(mappingConstitutive(2,g,i,e))%dotstate(:,mappingConstitutive(1,g,i,e)));flush(6)
-       plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) =          &
-              plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) &
-            + plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e))  &
+       mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
+       plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) =          &
+              plasticState(mappingConstitutive(2,g,i,e))%subState0(1:mySizeDotState,mappingConstitutive(1,g,i,e)) &
+            + plasticState(mappingConstitutive(2,g,i,e))%dotState(1:mySizeDotState,mappingConstitutive(1,g,i,e))  &
             * crystallite_subdt(g,i,e)  
-#endif                                                     
+#endif
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
@@ -3187,7 +3180,7 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
 
 #else
 
-         mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeState
+         mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
          dot_prod12 = dot_product( plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) & 
                         - plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)), &
                            plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)) & 
@@ -3212,17 +3205,22 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
          endif        
          ! --- get residui ---
          
-         mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeState
-         stateResiduum(1:mySizeDotState) = plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))      &
-                                         - plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))  &
-                                         -(plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) * &
-                                                                                                                     statedamper &
-                                   + plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)) &
+         mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
+         stateResiduum(1:mySizeDotState) = plasticState(mappingConstitutive(2,g,i,e))% &
+                                             state(1:mySizeDotState,mappingConstitutive(1,g,i,e))      &
+                                         - plasticState(mappingConstitutive(2,g,i,e))% &
+                                             subState0(1:mySizeDotState,mappingConstitutive(1,g,i,e))  &
+                                         -(plasticState(mappingConstitutive(2,g,i,e))% &
+                                             dotState(1:mySizeDotState,mappingConstitutive(1,g,i,e)) * &
+                                    statedamper &
+                                   + plasticState(mappingConstitutive(2,g,i,e))% &
+                                       previousDotState(1:mySizeDotState,mappingConstitutive(1,g,i,e)) &
                                    * (1.0_pReal - statedamper)) * crystallite_subdt(g,i,e)
          
          ! --- correct state with residuum ---
 
-         tempState(1:mySizeDotState) = plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) &
+         tempState(1:mySizeDotState) = plasticState(mappingConstitutive(2,g,i,e))% &
+                                        state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) &
                                      - stateResiduum(1:mySizeDotState)                              ! need to copy to local variable, since we cant flush a pointer in openmp
          
 #endif          
@@ -3389,13 +3387,14 @@ logical function crystallite_stateJump(g,i,e)
  call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), g,i,e)
 #endif
 #ifdef NEWSTATE
+ mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
  if( any(plasticState(mappingConstitutive(2,g,i,e))%deltaState(:,mappingConstitutive(1,g,i,e)) &
              /= plasticState(mappingConstitutive(2,g,i,e))%deltaState(:,mappingConstitutive(1,g,i,e)))) then    ! NaN occured in dotState
    return
  endif
- plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) =            &
-              plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) &
-            + plasticState(mappingConstitutive(2,g,i,e))%deltaState(:,mappingConstitutive(1,g,i,e))
+ plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) =                &
+              plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e))     &
+            + plasticState(mappingConstitutive(2,g,i,e))%deltaState(1:mySizeDotState,mappingConstitutive(1,g,i,e))
 #else 
  mySizeDotState = constitutive_sizeDotState(g,i,e)
  if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) &
