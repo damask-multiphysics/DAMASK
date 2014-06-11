@@ -39,16 +39,10 @@ class Test():
          +'----------------------------------------------------------------')
     self.dirBase = os.path.dirname(os.path.realpath(sys.modules[self.__class__.__module__].__file__))
     self.parser = OptionParser(
-    description = 'Using: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $',
+    description = test_description+' (using class: $Id run_test.py 1285 2012-02-09 08:54:09Z MPIE\m.diehl $)',
     usage='./test.py [options]')
-  
-    self.parser.add_option("-u", "--update", action="store_true",\
-                                    dest="update",\
-                                    help="use current test results as new reference")
-    self.parser.set_defaults(update = False)
-  
-    (self.options, self.args) = self.parser.parse_args()
-    
+    self.updateRequested = False
+
   def execute(self):
     '''
     Run all variants and report first failure.
@@ -61,7 +55,7 @@ class Test():
         self.prepare(variant)
         self.run(variant)
         self.postprocess(variant)
-        if self.options.update:                                                                          # update requested
+        if self.updateRequested:                                                                         # update requested
           self.update(variant)
         elif not self.compare(variant):                                                                  # no update, do comparison
           return variant+1                                                                               # return culprit
