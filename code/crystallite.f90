@@ -1748,9 +1748,9 @@ subroutine crystallite_integrateStateRKCK45()
    homogenization_maxNgrains
  use constitutive, only: &
    constitutive_collectDotState, &
+   constitutive_maxSizeDotState, &
 #ifndef NEWSTATE
    constitutive_sizeDotState, &
-   constitutive_maxSizeDotState, &
    constitutive_state, &
    constitutive_aTolState, &
    constitutive_subState0, &
@@ -2244,7 +2244,7 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
-       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definitionen
+       crystallite_converged(g,i,e) = .true.                                                               ! if still "to do" then converged per definition
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
          !$OMP CRITICAL (distributionState)
            debug_StateLoopDistribution(6,numerics_integrationMode) = &
