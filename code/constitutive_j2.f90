@@ -313,7 +313,8 @@ subroutine constitutive_j2_init(fileUnit)
 #ifdef NEWSTATE
      sizeState    = 1 
      plasticState(phase)%sizeState = sizeState
-     plasticState(phase)%sizeDotState = sizeState
+     sizeDotState = sizeState
+     plasticState(phase)%sizeDotState = sizeDotState
      allocate(plasticState(phase)%state0         (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
      allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
      allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase),source=0.0_pReal)
@@ -456,7 +457,6 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    dLp_dTstar99 = math_Plain3333to99(gamma_dot / constitutive_j2_fTaylor(instance) * &
                                       dLp_dTstar_3333 / norm_Tstar_dev)
  end if
-
 end subroutine constitutive_j2_LpAndItsTangent
 
 
