@@ -817,7 +817,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    materialpoint_dPdF
  
  implicit none
- real(pReal), intent(inout)                                      :: temperature                     !< temperature (no field)
+ real(pReal), intent(in)                                         :: temperature                     !< temperature (no field)
  real(pReal), intent(in), dimension(3,3,grid(1),grid(2),grid(3)) :: &
    F_lastInc, &                                                                                     !< target deformation gradient
    F                                                                                                !< previous deformation gradient
@@ -851,8 +851,9 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  endif
 
  call CPFEM_general(collectMode,usePingPong,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &            ! collect mode handles Jacobian backup / restoration
-                   crystallite_temperature(1,1),timeinc,1_pInt,1_pInt)
+                   temperature,timeinc,1_pInt,1_pInt)
  
+ crystallite_temperature = temperature
  materialpoint_F  = reshape(F,[3,3,1,product(grid)])
 
  call debug_reset()
@@ -874,7 +875,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
   
  call CPFEM_general(calcMode,usePingPong,F_lastInc(1:3,1:3,1,1,1), F(1:3,1:3,1,1,1), &              ! first call calculates everything
                     temperature,timeinc,1_pInt,1_pInt)
- 
+
  max_dPdF = 0.0_pReal
  max_dPdF_norm = 0.0_pReal
  min_dPdF = huge(1.0_pReal)
