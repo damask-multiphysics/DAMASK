@@ -138,9 +138,7 @@ subroutine constitutive_init
  use constitutive_phenopowerlaw
  use constitutive_dislotwin
  use constitutive_titanmod
-#ifndef NEWSTATE
-  use constitutive_nonlocal
-#endif
+ use constitutive_nonlocal
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
@@ -176,10 +174,8 @@ subroutine constitutive_init
  if (any(phase_plasticity == PLASTICITY_J2_ID))            call constitutive_j2_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
-#ifndef NEWSTATE
  if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call constitutive_titanmod_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call constitutive_nonlocal_init(FILEUNIT)
-#endif
  close(FILEUNIT)
  
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
@@ -431,9 +427,9 @@ subroutine constitutive_init
 #endif
            constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
          case (PLASTICITY_NONLOCAL_ID)
-#ifndef NEWSTATE
            nonlocalConstitutionPresent = .true.
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
+#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
@@ -458,20 +454,24 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        constitutive_nonlocal_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(instance)
-           constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
 #endif
-!           constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
+           constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
        end select
      enddo GrainLoop
    enddo IPloop
  enddo ElemLoop
-#ifndef NEWSTATE
- if (nonlocalConstitutionPresent) &
+
+ if (nonlocalConstitutionPresent) & 
+#ifdef NEWSTATE
+   call constitutive_nonlocal_stateInit(mappingConstitutive)
+#else
    call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
+#endif
+
+#ifndef NEWSTATE
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
-
      constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p
      constitutive_state(g,i,e)%p = constitutive_state0(g,i,e)%p                                     ! need to be defined for first call of constitutive_microstructure in crystallite_init
    endforall
@@ -598,13 +598,10 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
    PLASTICITY_NONLOCAL_ID
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
-#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_microstructure
-#endif
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_microstructure
-
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -638,8 +635,10 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
      call constitutive_titanmod_microstructure(temperature,constitutive_state(ipc,ip,el), &
                                                                               ipc,ip,el)
 #endif
-#ifndef NEWSTATE
    case (PLASTICITY_NONLOCAL_ID)
+#ifdef NEWSTATE
+     call constitutive_nonlocal_microstructure(mappingConstitutive,Fe,Fp,ipc,ip,el)
+#else
      call constitutive_nonlocal_microstructure(constitutive_state,Fe,Fp,ipc,ip,el)
 #endif 
  end select
@@ -673,10 +672,9 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    constitutive_dislotwin_LpAndItsTangent
  use constitutive_titanmod, only: &
    constitutive_titanmod_LpAndItsTangent
-#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_LpAndItsTangent
-#endif
+ 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
@@ -732,8 +730,11 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                    temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
 #endif
-#ifndef NEWSTATE
    case (PLASTICITY_NONLOCAL_ID)
+#ifdef NEWSTATE
+     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
+                                   temperature, mappingConstitutive, ipc,ip,el)
+#else
      call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
                                    temperature, constitutive_state(ipc,ip,el), ipc,ip,el)
 #endif
@@ -846,10 +847,9 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    constitutive_dislotwin_dotState
  use constitutive_titanmod, only: &
    constitutive_titanmod_dotState
-#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_dotState
-#endif 
+
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
@@ -914,8 +914,14 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      constitutive_dotState(ipc,ip,el)%p = constitutive_titanmod_dotState(Tstar_v,Temperature,&
                                       constitutive_state(ipc,ip,el), ipc,ip,el)
 #endif
-#ifndef NEWSTATE
    case (PLASTICITY_NONLOCAL_ID)
+#ifdef NEWSTATE
+     plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)) = &
+                                         constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
+                                                          Temperature, mappingConstitutive, subdt, &
+                                                                          subfracArray, ipc, ip, el)
+
+#else
      constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
                                       Temperature, constitutive_state, constitutive_state0, subdt, &
                                       subfracArray, ipc, ip, el)
@@ -931,10 +937,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      if (tock < tick) debug_cumDotStateTicks  = debug_cumDotStateTicks + maxticks
    !$OMP END CRITICAL (debugTimingDotState)
  endif
- 
 end subroutine constitutive_collectDotState
 
-#ifndef NEWSTATE
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the incremental change of 
 !> microstructure based on the current stress and state  
@@ -951,7 +955,10 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  use material, only: &
    phase_plasticity, &
    material_phase, &
-   PLASTICITY_NONLOCAL_ID
+#ifdef NEWSTATE   
+   plasticState, &
+#endif
+   PLASTICITY_NONLOCAL_ID 
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_deltaState
  
@@ -973,11 +980,17 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_NONLOCAL_ID)
+#ifdef NEWSTATE
+     call constitutive_nonlocal_deltaState(mappingConstitutive, Tstar_v,ipc,ip,el)
+#else
      call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el),&
                                       constitutive_state(ipc,ip,el), Tstar_v,ipc,ip,el)
-
+#endif
    case default
-#ifndef NEWSTATE
+#ifdef NEWSTATE
+    plasticState(mappingConstitutive(2,ipc,ip,el))%deltaState(:,mappingConstitutive(2,ipc,ip,el)) = &
+                                                                                         0.0_pReal
+#else
      constitutive_deltaState(ipc,ip,el)%p = 0.0_pReal !ToDo: needed or will it remain zero anyway?
 #endif
  end select
@@ -993,8 +1006,6 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  endif
 
 end subroutine constitutive_collectDeltaState
-#endif
-
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
@@ -1026,10 +1037,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    constitutive_dislotwin_postResults
  use constitutive_titanmod, only: &
    constitutive_titanmod_postResults
-#ifndef NEWSTATE
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_postResults
-#endif 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
@@ -1084,7 +1093,12 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
 #else
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,&
                                       constitutive_state(ipc,ip,el),ipc,ip,el)
+#endif
    case (PLASTICITY_NONLOCAL_ID)
+#ifdef NEWSTATE
+     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, FeArray, &
+                                 mappingConstitutive, ipc, ip, el)
+#else
      constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, FeArray, &
                                  constitutive_state, constitutive_dotstate(ipc,ip,el), ipc, ip, el)
 #endif

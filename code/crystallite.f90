@@ -1287,7 +1287,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
              case(5_pInt)
                call crystallite_integrateStateRKCK45()
            end select
-
            !why not OMP?
            elementLooping8: do e = FEsolving_execElem(1),FEsolving_execElem(2)
              myNgrains = homogenization_Ngrains(mesh_element(3,e))
@@ -2409,9 +2408,9 @@ subroutine crystallite_integrateStateAdaptiveEuler()
          mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
          stateResiduum(1:mySizeDotState,g,i,e) = - 0.5_pReal * plasticState(mappingConstitutive(2,g,i,e))% &
                   dotstate(1:mySizeDotState,mappingConstitutive(1,g,i,e)) * crystallite_subdt(g,i,e)            ! contribution to absolute residuum in state 
-         plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-           plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) &
-         + plasticState(mappingConstitutive(2,g,i,e))%dotstate(:,mappingConstitutive(1,g,i,e)) &
+         plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) = &
+           plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) &
+         + plasticState(mappingConstitutive(2,g,i,e))%dotstate(1:mySizeDotState,mappingConstitutive(1,g,i,e)) &
          * crystallite_subdt(g,i,e)          
 #endif
        endif
@@ -3335,7 +3334,6 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
    enddo elemLoop
 
  enddo crystalliteLooping
- 
 end subroutine crystallite_integrateStateFPI
 
 
