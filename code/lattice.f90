@@ -919,7 +919,7 @@ subroutine lattice_init
            case('ort','orthorombic')
              lattice_structure(section) = LATTICE_ort_ID
            case default
-             !there will be an error here
+             call IO_error(450_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
          end select
      case ('c11')
          lattice_C66(1,1,section) = IO_floatValue(line,positions,2_pInt)
@@ -1126,7 +1126,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
 !--------------------------------------------------------------------------------------------------
 ! something went wrong
    case default
-     print*, 'error'
+     call IO_error(450_pInt,ext_msg='lattice_initializeStructure')
  end select
 
 
