@@ -64,6 +64,7 @@ module prec
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
    integer(pInt) :: sizeState,sizeDotState
+!   logical       :: nonlocal
    real(pReal), pointer, dimension(:) :: atolState
    real(pReal), pointer, dimension(:,:) :: state, &                                                     ! material points, state size
                                            dotState, &

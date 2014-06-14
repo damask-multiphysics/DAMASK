@@ -910,7 +910,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
                                         
 #ifdef NEWSTATE
 ! Determine size of state array
-     plasticState(phase)%nonlocal = .true.
+!     plasticState(phase)%nonlocal = .true.
      sizeDotState              =   int(size(BASICSTATES),pInt) * ns
      sizeDependentState        =   int(size(DEPENDENTSTATES),pInt) * ns
      sizeState                 =   sizeDotState &
