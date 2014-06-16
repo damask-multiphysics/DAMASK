@@ -879,10 +879,10 @@ subroutine lattice_init
  allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
  allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,Nphases),source=0_pInt)
 
- allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)! other:me
- allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,Nphases),source=0_pInt)! other:me
- allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,Nphases),source=0_pInt)! other:me
- allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,Nphases),source=0_pInt)! other:me
+ allocate(lattice_interactionSlipSlip(lattice_maxNslip,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
+ allocate(lattice_interactionSlipTwin(lattice_maxNslip,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
+ allocate(lattice_interactionTwinSlip(lattice_maxNtwin,lattice_maxNslip,Nphases),source=0_pInt)     ! other:me
+ allocate(lattice_interactionTwinTwin(lattice_maxNtwin,lattice_maxNtwin,Nphases),source=0_pInt)     ! other:me
 
  allocate(CoverA(Nphases),source=0.0_pReal)
  rewind(fileUnit)
@@ -996,9 +996,15 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
   myNslip, myNtwin
 
  lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),lattice_C66(1:6,1:6,myPhase))
- lattice_mu(myPhase) = 0.2_pReal * (lattice_C66(1,1,myPhase) - lattice_C66(1,2,myPhase) + 3.0_pReal*lattice_C66(4,4,myPhase)) ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
- lattice_nu(myPhase) = (lattice_C66(1,1,myPhase) + 4.0_pReal*lattice_C66(1,2,myPhase) - 2.0_pReal*lattice_C66(4,4,myPhase)) &
-      / (4.0_pReal*lattice_C66(1,1,myPhase) + 6.0_pReal*lattice_C66(1,2,myPhase) + 2.0_pReal*lattice_C66(4,4,myPhase))  ! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+ lattice_mu(myPhase) = 0.2_pReal *(  lattice_C66(1,1,myPhase) &
+                                   - lattice_C66(1,2,myPhase) &
+                                   + 3.0_pReal*lattice_C66(4,4,myPhase))                            ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+ lattice_nu(myPhase) = (  lattice_C66(1,1,myPhase) &
+                        + 4.0_pReal*lattice_C66(1,2,myPhase) &
+                        - 2.0_pReal*lattice_C66(4,4,myPhase)) &
+                                                             /(  4.0_pReal*lattice_C66(1,1,myPhase) &
+                                                               + 6.0_pReal*lattice_C66(1,2,myPhase) &
+                                                               + 2.0_pReal*lattice_C66(4,4,myPhase))! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
  lattice_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_C66(1:6,1:6,myPhase))          ! Literature data is Voigt
  lattice_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_C3333(1:3,1:3,1:3,1:3,myPhase))         ! DAMASK uses Mandel
 
@@ -1009,113 +1015,103 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    case (LATTICE_fcc_ID)
      myNslip = lattice_fcc_Nslip
      myNtwin = lattice_fcc_Ntwin
-     do i = 1_pInt,lattice_fcc_Nslip                                                                ! assign slip system vectors
-         sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)
-         sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)
-         enddo  
-     do i = 1_pInt,lattice_fcc_Ntwin                                                                ! assign twin system vectors and shears
-         td(1:3,i) = lattice_fcc_systemTwin(1:3,i)
-         tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)
-         ts(i)     = lattice_fcc_shearTwin(i)
+     do i = 1_pInt,myNslip                                                                           ! assign slip system vectors
+       sd(1:3,i) = lattice_fcc_systemSlip(1:3,i)
+       sn(1:3,i) = lattice_fcc_systemSlip(4:6,i)
+     enddo  
+     do i = 1_pInt,myNtwin                                                                           ! assign twin system vectors and shears
+       td(1:3,i) = lattice_fcc_systemTwin(1:3,i)
+       tn(1:3,i) = lattice_fcc_systemTwin(4:6,i)
+       ts(i)     = lattice_fcc_shearTwin(i)
      enddo
-     lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase) = lattice_fcc_NslipSystem
-     lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase) = lattice_fcc_NtwinSystem
-     lattice_NnonSchmid(myPhase)                           = lattice_fcc_NnonSchmid
-     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase) = &
-                                                             lattice_fcc_interactionSlipSlip
-     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase) = &
-                                                             lattice_fcc_interactionSlipTwin
-     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase) = &
-                                                             lattice_fcc_interactionTwinSlip
-     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase) = &
-                                                             lattice_fcc_interactionTwinTwin
+     lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)    = lattice_fcc_NslipSystem
+     lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)    = lattice_fcc_NtwinSystem
+     lattice_NnonSchmid(myPhase)                              = lattice_fcc_NnonSchmid
+     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase) = lattice_fcc_interactionSlipSlip
+     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase) = lattice_fcc_interactionSlipTwin
+     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase) = lattice_fcc_interactionTwinSlip
+     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase) = lattice_fcc_interactionTwinTwin
      
 !--------------------------------------------------------------------------------------------------
 ! bcc
    case (LATTICE_bcc_ID)
      myNslip = lattice_bcc_Nslip
      myNtwin = lattice_bcc_Ntwin
-     do i = 1_pInt,lattice_bcc_Nslip                                                                ! assign slip system vectors
-         sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
-         sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
-         sdU = sd(1:3,i) / math_norm3(sd(1:3,i))
-         snU = sn(1:3,i) / math_norm3(sn(1:3,i))
-         ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
-         np = math_mul33x3(math_axisAngleToR(sdU,60.0_pReal*INRAD), snU)
-         nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), snU)
+     do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
+       sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
+       sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
+       sdU = sd(1:3,i) / math_norm3(sd(1:3,i))
+       snU = sn(1:3,i) / math_norm3(sn(1:3,i))
+       ! "np" and "nn" according to Gröger_etal2008, Acta Materialia 56 (2008) 5412–5425, table 1 (corresponds to their "n1" for positive and negative slip direction respectively)
+       np = math_mul33x3(math_axisAngleToR(sdU,60.0_pReal*INRAD), snU)
+       nn = math_mul33x3(math_axisAngleToR(-sdU,60.0_pReal*INRAD), snU)
          ! Schmid matrices with non-Schmid contributions according to Koester_etal2012, Acta Materialia 60 (2012) 3894–3901, eq. (17) ("n1" is replaced by either "np" or "nn" according to either positive or negative slip direction)
-         sns(1:3,1:3,1,1,i) = math_tensorproduct(sdU, np)
-         sns(1:3,1:3,2,1,i) = math_tensorproduct(-sdU, nn)
-         sns(1:3,1:3,1,2,i) = math_tensorproduct(math_vectorproduct(snU, sdU), snU)
-         sns(1:3,1:3,2,2,i) = math_tensorproduct(math_vectorproduct(snU, -sdU), snU)
-         sns(1:3,1:3,1,3,i) = math_tensorproduct(math_vectorproduct(np, sdU), np)
-         sns(1:3,1:3,2,3,i) = math_tensorproduct(math_vectorproduct(nn, -sdU), nn)
-         sns(1:3,1:3,1,4,i) = math_tensorproduct(snU, snU)
-         sns(1:3,1:3,2,4,i) = math_tensorproduct(snU, snU)
-         sns(1:3,1:3,1,5,i) = math_tensorproduct(math_vectorproduct(snU, sdU), math_vectorproduct(snU, sdU))
-         sns(1:3,1:3,2,5,i) = math_tensorproduct(math_vectorproduct(snU, -sdU), math_vectorproduct(snU, -sdU))
-         sns(1:3,1:3,1,6,i) = math_tensorproduct(sdU, sdU)
-         sns(1:3,1:3,2,6,i) = math_tensorproduct(-sdU, -sdU)
-       enddo
-     do i = 1_pInt,lattice_bcc_Ntwin                                                                ! assign twin system vectors and shears
-         td(1:3,i) = lattice_bcc_systemTwin(1:3,i)
-         tn(1:3,i) = lattice_bcc_systemTwin(4:6,i)
-         ts(i)     = lattice_bcc_shearTwin(i)
-       enddo
-     lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase) = lattice_bcc_NslipSystem
-     lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase) = lattice_bcc_NtwinSystem
-     lattice_NnonSchmid(myPhase)                           = lattice_bcc_NnonSchmid
-     lattice_interactionSlipSlip(1:lattice_bcc_Nslip,1:lattice_bcc_Nslip,myPhase) = &
-                                                             lattice_bcc_interactionSlipSlip
-     lattice_interactionSlipTwin(1:lattice_bcc_Nslip,1:lattice_bcc_Ntwin,myPhase) = &
-                                                             lattice_bcc_interactionSlipTwin
-     lattice_interactionTwinSlip(1:lattice_bcc_Ntwin,1:lattice_bcc_Nslip,myPhase) = &
-                                                             lattice_bcc_interactionTwinSlip
-     lattice_interactionTwinTwin(1:lattice_bcc_Ntwin,1:lattice_bcc_Ntwin,myPhase) = &
-                                                             lattice_bcc_interactionTwinTwin
+       sns(1:3,1:3,1,1,i) = math_tensorproduct(sdU, np)
+       sns(1:3,1:3,2,1,i) = math_tensorproduct(-sdU, nn)
+       sns(1:3,1:3,1,2,i) = math_tensorproduct(math_vectorproduct(snU, sdU), snU)
+       sns(1:3,1:3,2,2,i) = math_tensorproduct(math_vectorproduct(snU, -sdU), snU)
+       sns(1:3,1:3,1,3,i) = math_tensorproduct(math_vectorproduct(np, sdU), np)
+       sns(1:3,1:3,2,3,i) = math_tensorproduct(math_vectorproduct(nn, -sdU), nn)
+       sns(1:3,1:3,1,4,i) = math_tensorproduct(snU, snU)
+       sns(1:3,1:3,2,4,i) = math_tensorproduct(snU, snU)
+       sns(1:3,1:3,1,5,i) = math_tensorproduct(math_vectorproduct(snU, sdU), math_vectorproduct(snU, sdU))
+       sns(1:3,1:3,2,5,i) = math_tensorproduct(math_vectorproduct(snU, -sdU), math_vectorproduct(snU, -sdU))
+       sns(1:3,1:3,1,6,i) = math_tensorproduct(sdU, sdU)
+       sns(1:3,1:3,2,6,i) = math_tensorproduct(-sdU, -sdU)
+     enddo
+     do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
+       td(1:3,i) = lattice_bcc_systemTwin(1:3,i)
+       tn(1:3,i) = lattice_bcc_systemTwin(4:6,i)
+       ts(i)     = lattice_bcc_shearTwin(i)
+     enddo
+     lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)    = lattice_bcc_NslipSystem
+     lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)    = lattice_bcc_NtwinSystem
+     lattice_NnonSchmid(myPhase)                              = lattice_bcc_NnonSchmid
+     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase) = lattice_bcc_interactionSlipSlip
+     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase) = lattice_bcc_interactionSlipTwin
+     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase) = lattice_bcc_interactionTwinSlip
+     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase) = lattice_bcc_interactionTwinTwin
      
 !--------------------------------------------------------------------------------------------------
 ! hex (including conversion from miller-bravais (a1=a2=a3=c) to miller (a, b, c) indices)
    case (LATTICE_hex_ID)
      myNslip = lattice_hex_Nslip
      myNtwin = lattice_hex_Ntwin
-     do i = 1_pInt,lattice_hex_Nslip                                                                ! assign slip system vectors                                                         
-       sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
-       sd(2,i) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*(0.5_pReal*sqrt(3.0_pReal))
+     do i = 1_pInt,myNslip                                                                          ! assign slip system vectors                                                         
+       sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal                                             ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
+       sd(2,i) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*&
+                                                                      (0.5_pReal*sqrt(3.0_pReal))
        sd(3,i) =  lattice_hex_systemSlip(4,i)*CoverA
-       sn(1,i) =  lattice_hex_systemSlip(5,i)           ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
+       sn(1,i) =  lattice_hex_systemSlip(5,i)                                                       ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
        sn(2,i) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
        sn(3,i) =  lattice_hex_systemSlip(8,i)/CoverA
      enddo  
-     do i = 1_pInt,lattice_hex_Ntwin                                                                ! assign twin system vectors and shears
+     do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
        td(1,i) =  lattice_hex_systemTwin(1,i)*1.5_pReal
-       td(2,i) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*(0.5_pReal*sqrt(3.0_pReal))
+       td(2,i) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*&
+                                                                     (0.5_pReal*sqrt(3.0_pReal))
        td(3,i) =  lattice_hex_systemTwin(4,i)*CoverA
        tn(1,i) =  lattice_hex_systemTwin(5,i)
        tn(2,i) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/sqrt(3.0_pReal)
        tn(3,i) =  lattice_hex_systemTwin(8,i)/CoverA
-       select case(lattice_hex_shearTwin(i))                                          ! from Christian & Mahajan 1995 p.29
-         case (1_pInt)                                                                ! <-10.1>{10.2}
+       select case(lattice_hex_shearTwin(i))                                                        ! from Christian & Mahajan 1995 p.29
+         case (1_pInt)                                                                              ! <-10.1>{10.2}
                   ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
-         case (2_pInt)                                                                ! <11.6>{-1-1.1}
+         case (2_pInt)                                                                              ! <11.6>{-1-1.1}
                   ts(i) = 1.0_pReal/CoverA
-         case (3_pInt)                                                                ! <10.-2>{10.1}
+         case (3_pInt)                                                                              ! <10.-2>{10.1}
                   ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
-         case (4_pInt)                                                                ! <11.-3>{11.2}
+         case (4_pInt)                                                                              ! <11.-3>{11.2}
                   ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
        end select
      enddo
-     lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase) = lattice_hex_NslipSystem
-     lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase) = lattice_hex_NtwinSystem
-     lattice_NnonSchmid(myPhase)                           = lattice_hex_NnonSchmid
-     lattice_interactionSlipSlip(1:lattice_hex_Nslip,1:lattice_hex_Nslip,myPhase) = &
-                                                             lattice_hex_interactionSlipSlip
-     lattice_interactionSlipTwin(1:lattice_hex_Nslip,1:lattice_hex_Ntwin,myPhase) = &
-                                                             lattice_hex_interactionSlipTwin
-     lattice_interactionTwinSlip(1:lattice_hex_Ntwin,1:lattice_hex_Nslip,myPhase) = &
-                                                             lattice_hex_interactionTwinSlip
-     lattice_interactionTwinTwin(1:lattice_hex_Ntwin,1:lattice_hex_Ntwin,myPhase) = &
-                                                             lattice_hex_interactionTwinTwin
+     lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)    = lattice_hex_NslipSystem
+     lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)    = lattice_hex_NtwinSystem
+     lattice_NnonSchmid(myPhase)                              = lattice_hex_NnonSchmid
+     lattice_interactionSlipSlip(1:myNslip,1:myNslip,myPhase) = lattice_hex_interactionSlipSlip
+     lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase) = lattice_hex_interactionSlipTwin
+     lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase) = lattice_hex_interactionTwinSlip
+     lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase) = lattice_hex_interactionTwinTwin
 
 !--------------------------------------------------------------------------------------------------
 ! orthorombic and isotropic (no crystal plasticity)
@@ -1134,17 +1130,17 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    lattice_sd(1:3,i,myPhase) = sd(1:3,i)/math_norm3(sd(1:3,i))                                      ! make unit vector
    lattice_sn(1:3,i,myPhase) = sn(1:3,i)/math_norm3(sn(1:3,i))                                      ! make unit vector
    lattice_st(1:3,i,myPhase) = math_vectorproduct(lattice_sd(1:3,i,myPhase), &
-                                                      lattice_sn(1:3,i,myPhase))
+                                                  lattice_sn(1:3,i,myPhase))
    lattice_Sslip(1:3,1:3,1,i,myPhase) = math_tensorproduct(lattice_sd(1:3,i,myPhase), &
-                                                                 lattice_sn(1:3,i,myPhase))
+                                                           lattice_sn(1:3,i,myPhase))
    do j = 1_pInt,lattice_NnonSchmid(myPhase)
      lattice_Sslip(1:3,1:3,2*j  ,i,myPhase) = sns(1:3,1:3,1,j,i)
      lattice_Sslip(1:3,1:3,2*j+1,i,myPhase) = sns(1:3,1:3,2,j,i)
-     enddo 
+   enddo 
    do j = 1_pInt,1_pInt+2_pInt*lattice_NnonSchmid(myPhase)
      lattice_Sslip_v(1:6,j,i,myPhase) = &
        math_Mandel33to6(math_symmetric33(lattice_Sslip(1:3,1:3,j,i,myPhase)))
-     enddo
+   enddo
    if (abs(math_trace33(lattice_Sslip(1:3,1:3,1,i,myPhase))) > tol_math_check) &
      call IO_error(0_pInt,myPhase,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
    enddo

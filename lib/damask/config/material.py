@@ -63,11 +63,13 @@ class Texture(Section):
   def add_component(self,theType,properties):
     
     if 'scatter' not in map(str.lower,properties.keys()):
-          scatter = 0.0
-    else: scatter = properties['scatter']
+      scatter = 0.0
+    else: 
+      scatter = properties['scatter']
     if 'fraction' not in map(str.lower,properties.keys()):
-          fraction = 1.0
-    else: fraction = properties['fraction']
+      fraction = 1.0
+    else:
+      fraction = properties['fraction']
 
     multiKey = theType.lower()
 
@@ -144,6 +146,7 @@ class Material():
     for line in content:
       line = line.split('#')[0].strip()                   # kill comments and extra whitespace
       line = line.split('#')[0].strip()                   # kill comments and extra whitespace
+      line = line.lower()                                 # be case insensitive
       if line:                                            # content survives...
         match_part = re_part.match(line)
         if match_part:                                    # found <part> separator
@@ -189,28 +192,30 @@ class Material():
     f.close()
     return saveFile
 
-  def add_section(self, part=None, section=None, object=None, merge = False):
+  def add_section(self, part=None, section=None, initialData=None, merge = False):
     '''adding/updating'''
     
+    part    = part.lower()
+    section = section.lower()
     if part not in self.parts: raise Exception('invalid part %s'%part)
 
-    if type(object) is dict: data = object
-    else: data = object.data()
+    if type(initialData) is not dict:
+      initialData = initialData.data()
     
     if section not in self.data[part]: self.data[part]['__order__'] += [section]
     if section in self.data[part] and merge:
       for existing in self.data[part][section]['__order__']:                        # replace existing
-        if existing in data['__order__']:
+        if existing in initialData['__order__']:
           if existing.startswith('(') and existing.endswith(')'):                   # multiple (key)
-            self.data[part][section][existing] += data[existing]                    # add new multiple entries to existing ones
+            self.data[part][section][existing] += initialData[existing]                    # add new multiple entries to existing ones
           else:                                                                     # regular key
-            self.data[part][section][existing] = data[existing]                     # plain replice
-      for new in data['__order__']:                                                 # merge new content
+            self.data[part][section][existing] = initialData[existing]                     # plain replice
+      for new in initialData['__order__']:                                                 # merge new content
         if new not in self.data[part][section]['__order__']:
-          self.data[part][section][new] = data[new]
+          self.data[part][section][new] = initialData[new]
           self.data[part][section]['__order__'] += [new]
     else:
-      self.data[part][section] = data
+      self.data[part][section] = initialData
         
     
       
@@ -244,11 +249,10 @@ class Material():
         value = '%s'%value
       value = [value]
     newlen = len(value)  
-    oldval = self.data[part][section][key]
+    oldval = self.data[part.lower()][section.lower()][key.lower()]
     oldlen = len(oldval)
-    print('changing %s:%s:%s:%s'%(part,section,key,oldval))
-    self.data[part][section][key] = value
-    print('new: %s'%self.data[part][section][key])
+    print('changing %s:%s:%s from %s to %s '%(part.lower(),section.lower(),key.lower(),oldval,value))
+    self.data[part.lower()][section.lower()][key.lower()] = value
     if newlen is not oldlen:
       print('Length of value was changed from %i to %i!'%(oldlen,newlen))
     
