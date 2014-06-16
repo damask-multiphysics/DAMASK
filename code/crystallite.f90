@@ -425,6 +425,7 @@ subroutine crystallite_init(temperature)
      enddo
    enddo
  !$OMP END PARALLEL DO
+
  call crystallite_stressAndItsTangent(.true.,.false.)                                               ! request elastic answers
  crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
  
@@ -665,7 +666,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
  numerics_integrationMode = 1_pInt
  cutbackLooping: do while (any(crystallite_todo(:,startIP:endIP,FEsolving_execELem(1):FEsolving_execElem(2))))
    timeSyncing1: if (any(.not. crystallite_localPlasticity) .and. numerics_timeSyncing) then
-    
+
     ! Time synchronization can only be used for nonlocal calculations, and only there it makes sense.
     ! The idea is that in nonlocal calculations often the vast amjority of the ips
     ! converges in one iteration whereas a small fraction of ips has to do a lot of cutbacks. 
@@ -2260,7 +2261,7 @@ subroutine crystallite_integrateStateRKCK45()
  ! --- nonlocal convergence check ---
  
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'  ! if not requesting Integration of just a single IP   
+   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'                                                                             ! if not requesting Integration of just a single IP   
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &  ! any non-local not yet converged (or broken)...
    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
  
@@ -2685,8 +2686,7 @@ subroutine crystallite_integrateStateEuler()
    constitutive_state, &
    constitutive_sizeDotState, &
    constitutive_maxSizeDotState, &
-   constitutive_dotState, &
-   constitutive_aTolState
+   constitutive_dotState
 #else
    mappingConstitutive
 #endif  
@@ -2715,6 +2715,7 @@ eIter = FEsolving_execElem(1:2)
  enddo
  
  singleRun = (eIter(1) == eIter(2) .and. iIter(1,eIter(1)) == iIter(2,eIter(2)))
+ 
  if (numerics_integrationMode == 1_pInt) then
  !$OMP PARALLEL
  
@@ -3038,7 +3039,7 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
               plasticState(mappingConstitutive(2,g,i,e))%subState0(1:mySizeDotState,mappingConstitutive(1,g,i,e)) &
             + plasticState(mappingConstitutive(2,g,i,e))%dotState(1:mySizeDotState,mappingConstitutive(1,g,i,e))  &
             * crystallite_subdt(g,i,e)  
-#endif
+#endif                                                     
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
@@ -3178,14 +3179,13 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
                                      - stateResiduum(1:mySizeDotState)                              ! need to copy to local variable, since we cant flush a pointer in openmp
 
 #else
-
-         mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
          dot_prod12 = dot_product( plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) & 
                         - plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)), &
-                           plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)) & 
+                          plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)) & 
                         - plasticState(mappingConstitutive(2,g,i,e))%previousDotState2(:,mappingConstitutive(1,g,i,e)))
 
-         dot_prod22 = dot_product( plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) & 
+         dot_prod22 = dot_product( &
+                           plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)) & 
                         - plasticState(mappingConstitutive(2,g,i,e))%previousDotState2(:,mappingConstitutive(1,g,i,e)), &
                            plasticState(mappingConstitutive(2,g,i,e))%previousDotState(:,mappingConstitutive(1,g,i,e)) & 
                         - plasticState(mappingConstitutive(2,g,i,e))%previousDotState2(:,mappingConstitutive(1,g,i,e)))
@@ -3211,7 +3211,7 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
                                              subState0(1:mySizeDotState,mappingConstitutive(1,g,i,e))  &
                                          -(plasticState(mappingConstitutive(2,g,i,e))% &
                                              dotState(1:mySizeDotState,mappingConstitutive(1,g,i,e)) * &
-                                    statedamper &
+                                         statedamper &
                                    + plasticState(mappingConstitutive(2,g,i,e))% &
                                        previousDotState(1:mySizeDotState,mappingConstitutive(1,g,i,e)) &
                                    * (1.0_pReal - statedamper)) * crystallite_subdt(g,i,e)
@@ -3273,7 +3273,7 @@ real(pReal), dimension(constitutive_maxSizeDotState) :: &
              !$OMP END CRITICAL (distributionState)
            endif
          endif
-         plasticState(mappingConstitutive(2,g,i,e))%dotState(1:mySizeDotState,mappingConstitutive(1,g,i,e))= &
+         plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e))= &
                                                                                 tempState(1:mySizeDotState)       ! copy local backup to global pointer
 #endif  
         endif
