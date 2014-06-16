@@ -210,12 +210,10 @@ subroutine constitutive_init
        outputName = PLASTICITY_TITANMOD_label
        thisOutput => constitutive_titanmod_output
        thisSize   => constitutive_titanmod_sizePostResult
-#ifndef NEWSTATE
      case (PLASTICITY_NONLOCAL_ID)
        outputName = PLASTICITY_NONLOCAL_label
        thisOutput => constitutive_nonlocal_output
        thisSize   => constitutive_nonlocal_sizePostResult
-#endif
      case default
        knownPlasticity = .false.
    end select   
