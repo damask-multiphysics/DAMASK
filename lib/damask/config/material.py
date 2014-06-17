@@ -71,7 +71,10 @@ class Texture(Section):
     else:
       fraction = properties['fraction']
 
-    multiKey = theType.lower()
+    try:
+      multiKey = theType.lower()
+    except AttributeError:
+      pass
 
     if multiKey == 'gauss':
       self.add_multiKey(multiKey,'phi1 %g\tPhi %g\tphi2 %g\tscatter %g\tfraction %g'%(
@@ -204,11 +207,11 @@ class Material():
     
     if section not in self.data[part]: self.data[part]['__order__'] += [section]
     if section in self.data[part] and merge:
-      for existing in self.data[part][section]['__order__']:                        # replace existing
+      for existing in self.data[part][section]['__order__']:                               # replace existing
         if existing in initialData['__order__']:
-          if existing.startswith('(') and existing.endswith(')'):                   # multiple (key)
+          if existing.startswith('(') and existing.endswith(')'):                          # multiple (key)
             self.data[part][section][existing] += initialData[existing]                    # add new multiple entries to existing ones
-          else:                                                                     # regular key
+          else:                                                                            # regular key
             self.data[part][section][existing] = initialData[existing]                     # plain replice
       for new in initialData['__order__']:                                                 # merge new content
         if new not in self.data[part][section]['__order__']:
@@ -226,17 +229,28 @@ class Material():
     ''' Experimental! Needs expansion to multi-constituent microstructures...''' 
     
     microstructure = Microstructure()
-    
-    for property in ['phase','texture','fraction','crystallite']:
-      if type(components[property]) is not list: components[property] = [components[property]]
-
+    components=dict((k.lower(), v) for k,v in components.iteritems())                               # make keys lower case (http://stackoverflow.com/questions/764235/dictionary-to-lowercase-in-python)
+   
+    for key in ['phase','texture','fraction','crystallite']:
+      if type(components[key]) is not list:
+        try:
+          components[key] = [components[key].lower()]
+        except AttributeError:
+          components[key] = [components[key]]
+      else:
+        for i, x in enumerate(components[key]):
+          try:
+            components[key][i] = x.lower()
+          except AttributeError:
+            pass
+            
     for (phase,texture,fraction,crystallite) in zip(components['phase'],components['texture'],components['fraction'],components['crystallite']):
       microstructure.add_multiKey('constituent','phase %i\ttexture %i\tfraction %g\ncrystallite %i'%(
                                     self.data['phase']['__order__'].index(phase)+1,
                                     self.data['texture']['__order__'].index(texture)+1,
                                     fraction,
                                     self.data['crystallite']['__order__'].index(crystallite)+1))
-
+   
     self.add_section('microstructure',section,microstructure)
 
     
