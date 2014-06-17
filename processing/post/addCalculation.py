@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string,damask,numpy
-from optparse import OptionParser, Option
+import os,re,sys,math,string
+import numpy as np
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
@@ -11,31 +13,11 @@ def unravel(item):
   if hasattr(item,'__contains__'): return ' '.join(map(unravel,item))
   else: return str(item)
 
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) with derived values according to user defined arithmetic operation between column(s).
 Columns can be specified either by label or index. Use ';' for ',' in functions.
 
@@ -113,7 +95,7 @@ for file in files:
   table.data_read()
   labelLen = {}
   for label in options.labels:
-    labelLen[label] = numpy.size(eval(eval(evaluator[label])))
+    labelLen[label] = np.size(eval(eval(evaluator[label])))
 
 # ------------------------------------------ assemble header ---------------------------------------  
   for label,formula in zip(options.labels,options.formulas):

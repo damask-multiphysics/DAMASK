@@ -13,6 +13,7 @@ from .result      import Result           # only one class
 from .geometry    import Geometry         # one class with subclasses
 from .solver      import Solver           # one class with subclasses
 from .test        import Test
+from .util        import extendableOption
 
 try:
   from .          import core

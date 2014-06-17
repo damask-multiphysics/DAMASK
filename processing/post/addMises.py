@@ -1,37 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,numpy,string,damask
-from optparse import OptionParser, Option
+import os,re,sys,math,string
+import numpy as np
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-
 def Mises(what,tensor):
 
-  dev = tensor - numpy.trace(tensor)/3.0*numpy.eye(3)
+  dev = tensor - np.trace(tensor)/3.0*np.eye(3)
   symdev = 0.5*(dev+dev.T)
-  return math.sqrt(numpy.sum(symdev*symdev.T)*
+  return math.sqrt(np.sum(symdev*symdev.T)*
         {
          'stress': 3.0/2.0,
          'strain': 2.0/3.0,
@@ -41,7 +23,7 @@ def Mises(what,tensor):
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add vonMises equivalent values for symmetric part of requested strains and/or stresses.
 
 """ + string.replace(scriptID,'\n','\\n')
@@ -120,7 +102,7 @@ for file in files:
     for datatype,labels in active.items():                                  # loop over vector,tensor
       for label in labels:                                                  # loop over all requested norms
         table.data_append(Mises(datatype,
-                                numpy.array(map(float,table.data[column[datatype][label]:
+                                np.array(map(float,table.data[column[datatype][label]:
                                                                  column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)))
 
     table.data_write()                                                      # output processed line
