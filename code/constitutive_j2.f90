@@ -322,7 +322,6 @@ subroutine constitutive_j2_init(fileUnit)
      allocate(plasticState(phase)%state_backup   (sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%aTolState      (NofMyPhase),source=constitutive_j2_aTolResistance(instance))
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),source=0.0_pReal)

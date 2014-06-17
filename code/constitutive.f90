@@ -55,9 +55,7 @@ module constitutive
    constitutive_LpAndItsTangent, &
    constitutive_TandItsTangent, &
    constitutive_collectDotState, &
-#ifndef NEWSTATE
    constitutive_collectDeltaState, &
-#endif
    constitutive_postResults
  
  private :: &
@@ -262,17 +260,17 @@ subroutine constitutive_init
  endif
 #endif
  
- ElemLoop:do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
+ ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                            ! loop over IPs
-     GrainLoop:do g = 1_pInt,myNgrains                                                                        ! loop over grains
+   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
+     GrainLoop:do g = 1_pInt,myNgrains                                                              ! loop over grains
        select case(phase_elasticity(material_phase(g,i,e)))                                            
          case default                                                                               ! so far no output for elasticity
        end select
        phase = material_phase(g,i,e)
        instance = phase_plasticityInstance(phase)
 #if defined(HDF) || defined(NEWSTATE)
-       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                              ! not distinguishing between instances of same phase
+       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
        mappingConstitutive(1:2,g,i,e)   = [ConstitutivePosition(phase),phase]
 #endif
        select case(phase_plasticity(material_phase(g,i,e)))
@@ -938,10 +936,10 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
 end subroutine constitutive_collectDotState
 
 !--------------------------------------------------------------------------------------------------
-!> @brief contains the constitutive equation for calculating the incremental change of 
-!> microstructure based on the current stress and state  
+!> @brief for constitutive models having an instantaneous change of state (so far, only nonlocal)
+!> will return false if delta state is not needed/supported by the constitutive model
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
+logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  use prec, only: &
    pLongInt
  use debug, only: &
@@ -978,6 +976,7 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_NONLOCAL_ID)
+     constitutive_collectDeltaState = .true.
 #ifdef NEWSTATE
      call constitutive_nonlocal_deltaState(mappingConstitutive, Tstar_v,ipc,ip,el)
 #else
@@ -985,10 +984,8 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
                                       constitutive_state(ipc,ip,el), Tstar_v,ipc,ip,el)
 #endif
    case default
-#ifdef NEWSTATE
-    plasticState(mappingConstitutive(2,ipc,ip,el))%deltaState(:,mappingConstitutive(2,ipc,ip,el)) = &
-                                                                                         0.0_pReal
-#else
+     constitutive_collectDeltaState = .false.
+#ifndef NEWSTATE
      constitutive_deltaState(ipc,ip,el)%p = 0.0_pReal !ToDo: needed or will it remain zero anyway?
 #endif
  end select
@@ -1003,7 +1000,9 @@ subroutine constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
    !$OMP END CRITICAL (debugTimingDeltaState)
  endif
 
-end subroutine constitutive_collectDeltaState
+end function constitutive_collectDeltaState
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------

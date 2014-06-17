@@ -3339,6 +3339,7 @@ end subroutine crystallite_integrateStateFPI
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates a jump in the state according to the current state and the current stress
+!> returns true, if state jump was successfull or not needed. false indicates NaN in delta state
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_stateJump(g,i,e)
  use debug, only: &
@@ -3361,8 +3362,8 @@ logical function crystallite_stateJump(g,i,e)
 #endif
    homogenization_Ngrains
  use constitutive, only: &
-#ifndef NEWSTATE
    constitutive_collectDeltaState, &
+#ifndef NEWSTATE
    constitutive_sizeDotState, &
    constitutive_state, &
    constitutive_deltaState
@@ -3380,40 +3381,40 @@ logical function crystallite_stateJump(g,i,e)
    mySizeDotState
  
  
- crystallite_stateJump = .false.
-#ifndef NEWSTATE 
- call constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), g,i,e)
-#endif
+ if (constitutive_collectDeltaState(crystallite_Tstar_v(1:6,g,i,e), g,i,e)) then
 #ifdef NEWSTATE
- mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
- if( any(plasticState(mappingConstitutive(2,g,i,e))%deltaState(:,mappingConstitutive(1,g,i,e)) &
-             /= plasticState(mappingConstitutive(2,g,i,e))%deltaState(:,mappingConstitutive(1,g,i,e)))) then    ! NaN occured in dotState
-   return
- endif
- plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) =                &
-              plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e))     &
-            + plasticState(mappingConstitutive(2,g,i,e))%deltaState(1:mySizeDotState,mappingConstitutive(1,g,i,e))
+   mySizeDotState = plasticState(mappingConstitutive(2,g,i,e))%sizeDotState
+   if( any(plasticState(mappingConstitutive(2,g,i,e))%deltaState(:,mappingConstitutive(1,g,i,e)) &
+               /= plasticState(mappingConstitutive(2,g,i,e))%deltaState(:,mappingConstitutive(1,g,i,e)))) then    ! NaN occured in deltaState
+     crystallite_stateJump = .false.
+     return
+   endif
+   plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) =                &
+                plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e))     &
+              + plasticState(mappingConstitutive(2,g,i,e))%deltaState(1:mySizeDotState,mappingConstitutive(1,g,i,e))
 #else 
- mySizeDotState = constitutive_sizeDotState(g,i,e)
- if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) &
-      /= constitutive_deltaState(g,i,e)%p(1:mySizeDotState))) then
-   return
- endif
+   mySizeDotState = constitutive_sizeDotState(g,i,e)
+   if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) &
+        /= constitutive_deltaState(g,i,e)%p(1:mySizeDotState))) then
+     crystallite_stateJump = .false.
+     return
+   endif
 
- constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:mySizeDotState) &
+   constitutive_state(g,i,e)%p(1:mySizeDotState) = constitutive_state(g,i,e)%p(1:mySizeDotState) &
                                                + constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
  
 #ifndef _OPENMP
- if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) /= 0.0_pReal) &
-     .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-     .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-             .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip g ',e,i,g
-   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
-   write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
- endif
+   if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) /= 0.0_pReal) &
+       .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+       .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+               .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+     write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip g ',e,i,g
+     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
+     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+   endif
 #endif
-#endif 
+#endif
+ endif
  
  crystallite_stateJump = .true.
  
