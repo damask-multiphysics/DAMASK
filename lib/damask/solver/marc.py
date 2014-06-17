@@ -87,6 +87,10 @@ class Marc(Solver):
     
     if len(release) == 0: release = self.version(rootRelation)
 
+    if release not in self.releases:
+      raise Exception("Unknown MSC.Marc Version %s"%release)
+      
+
     damaskEnv = damask.environment.Environment(rootRelation)
     
     user = os.path.join(damaskEnv.relPath('code/'),'DAMASK_marc')                                   # might be updated if special version is found (usually symlink)
