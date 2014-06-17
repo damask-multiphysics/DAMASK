@@ -424,7 +424,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
 ! parameters depending on slip number of twin families
        case ('ntwin')
          if (positions(1) < Nchunks_TwinFamilies + 1_pInt) &
-           call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
          if (positions(1) > Nchunks_TwinFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
          Nchunks_TwinFamilies = positions(1) - 1_pInt

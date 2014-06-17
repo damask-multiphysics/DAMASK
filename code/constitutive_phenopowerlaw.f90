@@ -317,7 +317,7 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
 ! parameters depending on number of twin families
        case ('ntwin')
          if (positions(1) < Nchunks_TwinFamilies + 1_pInt) &
-           call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          if (positions(1) > Nchunks_TwinFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          Nchunks_TwinFamilies = positions(1) - 1_pInt

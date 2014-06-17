@@ -3389,9 +3389,9 @@ logical function crystallite_stateJump(g,i,e)
      crystallite_stateJump = .false.
      return
    endif
-   plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e)) =                &
-                plasticState(mappingConstitutive(2,g,i,e))%state(1:mySizeDotState,mappingConstitutive(1,g,i,e))     &
-              + plasticState(mappingConstitutive(2,g,i,e))%deltaState(1:mySizeDotState,mappingConstitutive(1,g,i,e))
+   plasticState(  mappingConstitutive(2,g,i,e))%state     (1:mySizeDotState,mappingConstitutive(1,g,i,e)) =  &
+     plasticState(mappingConstitutive(2,g,i,e))%state     (1:mySizeDotState,mappingConstitutive(1,g,i,e)) +  &
+     plasticState(mappingConstitutive(2,g,i,e))%deltaState(1:mySizeDotState,mappingConstitutive(1,g,i,e))
 #else 
    mySizeDotState = constitutive_sizeDotState(g,i,e)
    if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) &
