@@ -407,11 +407,11 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
    myPhase: if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then
      instance = phase_plasticityInstance(phase)           
      constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,instance) = &
-       min(lattice_NslipSystem(1:lattice_maxNslipFamily,phase),& ! limit active slip systems per family to min of available and requested
-                                  constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,instance))
+       min(lattice_NslipSystem(1:lattice_maxNslipFamily,phase),&                                    ! limit active slip systems per family to min of available and requested
+           constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,instance))
      constitutive_phenopowerlaw_Ntwin(1:lattice_maxNtwinFamily,instance) = &
-       min(lattice_NtwinSystem(1:lattice_maxNtwinFamily,phase),& ! limit active twin systems per family to min of available and requested
-                                  constitutive_phenopowerlaw_Ntwin(:,instance))
+       min(lattice_NtwinSystem(1:lattice_maxNtwinFamily,phase),&                                    ! limit active twin systems per family to min of available and requested
+           constitutive_phenopowerlaw_Ntwin(:,instance))
      constitutive_phenopowerlaw_totalNslip(instance) = sum(constitutive_phenopowerlaw_Nslip(:,instance))            ! how many slip systems altogether
      constitutive_phenopowerlaw_totalNtwin(instance) = sum(constitutive_phenopowerlaw_Ntwin(:,instance))            ! how many twin systems altogether
 

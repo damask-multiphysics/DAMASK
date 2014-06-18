@@ -922,31 +922,32 @@ subroutine lattice_init
              call IO_error(450_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
          end select
      case ('c11')
-         lattice_C66(1,1,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('c12')
-         lattice_C66(1,2,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(1,2,section) = IO_floatValue(line,positions,2_pInt)
      case ('c13')
-         lattice_C66(1,3,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(1,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('c22')
-         lattice_C66(2,2,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(2,2,section) = IO_floatValue(line,positions,2_pInt)
      case ('c23')
-         lattice_C66(2,3,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(2,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('c33')
-         lattice_C66(3,3,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('c44')
-         lattice_C66(4,4,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(4,4,section) = IO_floatValue(line,positions,2_pInt)
      case ('c55')
-         lattice_C66(5,5,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_C66(5,5,section) = IO_floatValue(line,positions,2_pInt)
      case ('c66')
-         lattice_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
-       case ('covera_ratio','c/a_ratio','c/a')
+       lattice_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
+     case ('covera_ratio','c/a_ratio','c/a')
        CoverA(section) = IO_floatValue(line,positions,2_pInt)
-         if (CoverA(section) < 1.0_pReal .or. CoverA(section) > 2.0_pReal) call IO_error(206_pInt)  ! checking physical significance of c/a
      end select
    endif
  enddo
 
  do i = 1_pInt,Nphases
+   if (CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal &
+       .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(206_pInt)        ! checking physical significance of c/a
    call lattice_initializeStructure(i, CoverA(i))
  enddo
 
@@ -995,7 +996,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
   i,j, &
   myNslip, myNtwin
 
- lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),lattice_C66(1:6,1:6,myPhase))
+ lattice_C66(1:6,1:6,myPhase) = lattice_symmetrizeC66(lattice_structure(myPhase),&
+                                                      lattice_C66(1:6,1:6,myPhase))
  lattice_mu(myPhase) = 0.2_pReal *(  lattice_C66(1,1,myPhase) &
                                    - lattice_C66(1,2,myPhase) &
                                    + 3.0_pReal*lattice_C66(4,4,myPhase))                            ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
@@ -1007,6 +1009,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
                                                                + 2.0_pReal*lattice_C66(4,4,myPhase))! C12iso/(C11iso+C12iso) with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
  lattice_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_C66(1:6,1:6,myPhase))          ! Literature data is Voigt
  lattice_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_C3333(1:3,1:3,1:3,1:3,myPhase))         ! DAMASK uses Mandel
+ do i = 1_pInt, 6_pInt
+   if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_error(43_pInt,el=i,ip=myPhase)
+ enddo
 
  
  select case(lattice_structure(myPhase))
@@ -1080,7 +1085,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      do i = 1_pInt,myNslip                                                                          ! assign slip system vectors                                                         
        sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal                                             ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
        sd(2,i) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*&
-                                                                      (0.5_pReal*sqrt(3.0_pReal))
+                                                                      0.5_pReal*sqrt(3.0_pReal)
        sd(3,i) =  lattice_hex_systemSlip(4,i)*CoverA
        sn(1,i) =  lattice_hex_systemSlip(5,i)                                                       ! plane (hkil)->(h (h+2k)/sqrt(3) l/(c/a))
        sn(2,i) = (lattice_hex_systemSlip(5,i)+2.0_pReal*lattice_hex_systemSlip(6,i))/sqrt(3.0_pReal)
@@ -1089,20 +1094,20 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
      do i = 1_pInt,myNtwin                                                                          ! assign twin system vectors and shears
        td(1,i) =  lattice_hex_systemTwin(1,i)*1.5_pReal
        td(2,i) = (lattice_hex_systemTwin(1,i)+2.0_pReal*lattice_hex_systemTwin(2,i))*&
-                                                                     (0.5_pReal*sqrt(3.0_pReal))
+                                                                     0.5_pReal*sqrt(3.0_pReal)
        td(3,i) =  lattice_hex_systemTwin(4,i)*CoverA
        tn(1,i) =  lattice_hex_systemTwin(5,i)
        tn(2,i) = (lattice_hex_systemTwin(5,i)+2.0_pReal*lattice_hex_systemTwin(6,i))/sqrt(3.0_pReal)
        tn(3,i) =  lattice_hex_systemTwin(8,i)/CoverA
        select case(lattice_hex_shearTwin(i))                                                        ! from Christian & Mahajan 1995 p.29
          case (1_pInt)                                                                              ! <-10.1>{10.2}
-                  ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
+           ts(i) = (3.0_pReal-CoverA*CoverA)/sqrt(3.0_pReal)/CoverA
          case (2_pInt)                                                                              ! <11.6>{-1-1.1}
-                  ts(i) = 1.0_pReal/CoverA
+           ts(i) = 1.0_pReal/CoverA
          case (3_pInt)                                                                              ! <10.-2>{10.1}
-                  ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
+           ts(i) = (4.0_pReal*CoverA*CoverA-9.0_pReal)/4.0_pReal/sqrt(3.0_pReal)/CoverA
          case (4_pInt)                                                                              ! <11.-3>{11.2}
-                  ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
+           ts(i) = 2.0_pReal*(CoverA*CoverA-2.0_pReal)/3.0_pReal/CoverA
        end select
      enddo
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)    = lattice_hex_NslipSystem
@@ -1143,14 +1148,14 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
    enddo
    if (abs(math_trace33(lattice_Sslip(1:3,1:3,1,i,myPhase))) > tol_math_check) &
      call IO_error(0_pInt,myPhase,i,0_pInt,ext_msg = 'dilatational slip Schmid matrix')
-   enddo
-   do i = 1_pInt,myNtwin                                                                            ! store twin system vectors and Schmid plus rotation matrix for my structure
+ enddo
+ do i = 1_pInt,myNtwin                                                                              ! store twin system vectors and Schmid plus rotation matrix for my structure
    lattice_td(1:3,i,myPhase) = td(1:3,i)/math_norm3(td(1:3,i))                                      ! make unit vector
    lattice_tn(1:3,i,myPhase) = tn(1:3,i)/math_norm3(tn(1:3,i))                                      ! make unit vector
    lattice_tt(1:3,i,myPhase) = math_vectorproduct(lattice_td(1:3,i,myPhase), &
-                                                      lattice_tn(1:3,i,myPhase))
+                                                  lattice_tn(1:3,i,myPhase))
    lattice_Stwin(1:3,1:3,i,myPhase) = math_tensorproduct(lattice_td(1:3,i,myPhase), &
-                                                             lattice_tn(1:3,i,myPhase))
+                                                         lattice_tn(1:3,i,myPhase))
    lattice_Stwin_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_Stwin(1:3,1:3,i,myPhase)))
    lattice_Qtwin(1:3,1:3,i,myPhase) = math_axisAngleToR(tn(1:3,i),180.0_pReal*INRAD)
    lattice_shearTwin(i,myPhase)     = ts(i)

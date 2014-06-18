@@ -1721,6 +1721,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
    msg = 'found PETSc solver parameter'
  case (42_pInt)
    msg = 'parameter has no effect'
+ case (43_pInt)
+   msg = 'main diagonal of C66 close to zero'
  case (47_pInt)
    msg = 'no valid parameter for FFTW, using FFTW_PATIENT'
  case (50_pInt)
