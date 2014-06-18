@@ -231,10 +231,12 @@ class Test():
     os.chdir(self.dirCurrent())
     logging.info(cmd)
     line = True
+    out = ''
     process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.STDOUT)
     while line:
       line = process.stdout.readline()
-      logging.debug(line)
+      out += line
+    logging.debug(out)
     os.chdir(initialPath)
 
     
