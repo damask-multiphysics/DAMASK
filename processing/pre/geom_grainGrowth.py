@@ -1,33 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy,itertools
-import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import os,sys,string,re,math,itertools
+import numpy as np
+from optparse import OptionParser
 from scipy import ndimage
 from multiprocessing import Pool
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
-
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-
-   ACTIONS = Option.ACTIONS + ("extend",)
-   STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-   TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-   ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-   def take_action(self, action, dest, opt, value, values, parser):
-       if action == "extend":
-           lvalue = value.split(",")
-           values.ensure_value(dest, []).extend(lvalue)
-       else:
-           Option.take_action(self, action, dest, opt, value, values, parser)
-
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -49,7 +31,7 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Smoothens out interface roughness by simulated curvature flow.
 This is achieved by the diffusion of each initially sharply bounded grain volume within the periodic domain
 up to a given distance 'd' voxels.
@@ -102,9 +84,9 @@ for file in files:
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.zeros(3,'i'),
-          'size':   numpy.zeros(3,'d'),
-          'origin': numpy.zeros(3,'d'),
+          'grid':   np.zeros(3,'i'),
+          'size':   np.zeros(3,'d'),
+          'origin': np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
@@ -134,15 +116,15 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = numpy.zeros(numpy.prod([2 if i == 1 else i for i in info['grid']]),'i')              # 2D structures do not work
+  microstructure = np.zeros(np.prod([2 if i == 1 else i for i in info['grid']]),'i')                                                # 2D structures do not work
   i = 0
 
   while theTable.data_read():                                  # read next data line of ASCII table
@@ -159,47 +141,47 @@ for file in files:
 
 #--- reshape, if 2D make copy ---------------------------------------------------------------------
 
-  microstructure = numpy.tile(microstructure.reshape(info['grid'],order='F'),
-                              numpy.where(info['grid'] == 1, 2,1))                                                                  # make one copy along dimensions with grid == 1
-  grid = numpy.array(microstructure.shape)
+  microstructure = np.tile(microstructure.reshape(info['grid'],order='F'),
+                              np.where(info['grid'] == 1, 2,1))                                                                     # make one copy along dimensions with grid == 1
+  grid = np.array(microstructure.shape)
   
 #--- initialize support data -----------------------------------------------------------------------  
 
-  periodic_microstructure = numpy.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
+  periodic_microstructure = np.tile(microstructure,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                grid[1]/2:-grid[1]/2,
                                                                grid[2]/2:-grid[2]/2]                                                # periodically extend the microstructure
-  microstructure_original = numpy.copy(microstructure)                                                                              # store a copy the initial microstructure to find locations of immutable indices
+  microstructure_original = np.copy(microstructure)                                                                                 # store a copy the initial microstructure to find locations of immutable indices
 
-  X,Y,Z = numpy.mgrid[0:grid[0],0:grid[1],0:grid[2]]
-  gauss = numpy.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*numpy.pi*options.d*options.d,1.5)
+  X,Y,Z = np.mgrid[0:grid[0],0:grid[1],0:grid[2]]
+  gauss = np.exp(-(X*X + Y*Y + Z*Z)/(2.0*options.d*options.d))/math.pow(2.0*np.pi*options.d*options.d,1.5)
   gauss[:,:,grid[2]/2::] = gauss[:,:,round(grid[2]/2.)-1::-1]     # trying to cope with uneven (odd) grid size
   gauss[:,grid[1]/2::,:] = gauss[:,round(grid[1]/2.)-1::-1,:]
   gauss[grid[0]/2::,:,:] = gauss[round(grid[0]/2.)-1::-1,:,:]
-  gauss = numpy.fft.rfftn(gauss)
+  gauss = np.fft.rfftn(gauss)
   
   interfacialEnergy = lambda A,B: (A*B != 0)*(A != B)*1.0
   struc = ndimage.generate_binary_structure(3,1)                                                                                    # 3D von Neumann neighborhood
 
 
   for smoothIter in xrange(options.N):
-    boundary = numpy.zeros(microstructure.shape)
+    boundary = np.zeros(microstructure.shape)
     for i in (-1,0,1):
       for j in (-1,0,1):
         for k in (-1,0,1):
-          interfaceEnergy = numpy.maximum(boundary,
-                                          interfacialEnergy(microstructure,numpy.roll(numpy.roll(numpy.roll(
+          interfaceEnergy = np.maximum(boundary,
+                                          interfacialEnergy(microstructure,np.roll(np.roll(np.roll(
                                                             microstructure,i,axis=0), j,axis=1), k,axis=2)))                        # assign interfacial energy to all voxels that have a differing neighbor (in Moore neighborhood)
-    periodic_interfaceEnergy = numpy.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
+    periodic_interfaceEnergy = np.tile(interfaceEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                    grid[1]/2:-grid[1]/2,
                                                                    grid[2]/2:-grid[2]/2]                                            # periodically extend interfacial energy array by half a grid size in positive and negative directions
     index = ndimage.morphology.distance_transform_edt(periodic_interfaceEnergy == 0.,                                               # transform bulk volume (i.e. where interfacial energy is zero)
                                                       return_distances = False,
                                                       return_indices = True)                                                        # want array index of nearest voxel on periodically extended boundary
-#    boundaryExt = boundaryExt[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(boundaryExt.shape)                  # fill bulk with energy of nearest interface | question PE: what "flatten" for?
+#    boundaryExt = boundaryExt[index[0].flatten(),index[1].flatten(),index[2].flatten()].reshape(boundaryExt.shape)                 # fill bulk with energy of nearest interface | question PE: what "flatten" for?
     periodic_bulkEnergy = periodic_interfaceEnergy[index[0],
                                                    index[1],
                                                    index[2]].reshape(2*grid)                                                        # fill bulk with energy of nearest interface
-    diffusedEnergy = numpy.fft.irfftn(numpy.fft.rfftn(numpy.where(ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
+    diffusedEnergy = np.fft.irfftn(np.fft.rfftn(np.where(ndimage.morphology.binary_dilation(interfaceEnergy > 0.,
                                                                                                      structure = struc,
                                                                                                      iterations = options.d/2 + 1), # fat boundary | question PE: why 2d - 1? I would argue for d/2 + 1 !!
                                                             periodic_bulkEnergy[grid[0]/2:-grid[0]/2,                               # retain filled energy on fat boundary...
@@ -207,7 +189,7 @@ for file in files:
                                                                                 grid[2]/2:-grid[2]/2],                              # ...and zero everywhere else
                                                             0.)\
                                                 )*gauss)
-    periodic_diffusedEnergy = numpy.tile(diffusedEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
+    periodic_diffusedEnergy = np.tile(diffusedEnergy,(3,3,3))[grid[0]/2:-grid[0]/2,
                                                                  grid[1]/2:-grid[1]/2,
                                                                  grid[2]/2:-grid[2]/2]                                              # periodically extend the smoothed bulk energy
     index = ndimage.morphology.distance_transform_edt(periodic_diffusedEnergy >= 0.5,                                               # transform voxels close to interface region | question PE: what motivates 1/2 (could be any small number, or)?
@@ -219,21 +201,21 @@ for file in files:
                                                                        grid[1]/2:-grid[1]/2,
                                                                        grid[2]/2:-grid[2]/2]                                        # extent grains into interface region
 
-    immutable = numpy.zeros(microstructure.shape, dtype=bool)
+    immutable = np.zeros(microstructure.shape, dtype=bool)
     for micro in options.immutable:
-      immutable += numpy.logical_or(microstructure == micro, microstructure_original == micro)                                      # find locations where immutable microstructures have been or are now
+      immutable += np.logical_or(microstructure == micro, microstructure_original == micro)                                         # find locations where immutable microstructures have been or are now
 
-    microstructure = numpy.where(immutable, microstructure_original,microstructure)                                                 # undo any changes involving immutable microstructures
+    microstructure = np.where(immutable, microstructure_original,microstructure)                                                    # undo any changes involving immutable microstructures
 
 # --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
-#  http://stackoverflow.com/questions/10741346/numpy-frequency-counts-for-unique-values-in-an-array  
+#  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array  
 
   if options.renumber:
     newID = 0
-    for microstructureID,count in enumerate(numpy.bincount(microstructure.flatten())):
+    for microstructureID,count in enumerate(np.bincount(microstructure.flatten())):
       if count != 0:
         newID += 1
-        microstructure = numpy.where(microstructure == microstructureID, newID, microstructure)
+        microstructure = np.where(microstructure == microstructureID, newID, microstructure)
 
 # --- assemble header -----------------------------------------------------------------------------
   newInfo['microstructures'] = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].max()
@@ -257,11 +239,11 @@ for file in files:
   
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
-  theTable.data = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].reshape(numpy.prod(info['grid']),order='F').transpose()   # question PE: this assumes that only the Z dimension can be 1!
+  theTable.data = microstructure[0:info['grid'][0],0:info['grid'][1],0:info['grid'][2]].reshape(np.prod(info['grid']),order='F').transpose() # question PE: this assumes that only the Z dimension can be 1!
   theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    theTable.input_close()
-    theTable.output_close()
+    theTable.__IO__['in'].close()
+    theTable.__IO__['out'].close()
     os.rename(file['name']+'_tmp',file['name'])
