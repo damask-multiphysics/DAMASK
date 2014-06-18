@@ -946,7 +946,7 @@ subroutine lattice_init
  enddo
 
  do i = 1_pInt,Nphases
-   if (CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal &
+   if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
        .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(206_pInt)        ! checking physical significance of c/a
    call lattice_initializeStructure(i, CoverA(i))
  enddo
