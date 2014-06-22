@@ -27,6 +27,13 @@ module material
    PLASTICITY_DISLOTWIN_label     = 'dislotwin', &
    PLASTICITY_TITANMOD_label      = 'titanmod', &
    PLASTICITY_NONLOCAL_label      = 'nonlocal', &
+   DAMAGE_NONE_label              = 'none', &
+   DAMAGE_LOCAL_label             = 'local', &
+   DAMAGE_GRADIENT_label          = 'gradient', &
+   THERMAL_NONE_label             = 'none', &
+   THERMAL_ISO_label              = 'isothermal', &
+   THERMAL_CONDUCTION_label       = 'conduction', &
+   THERMAL_ADIABATIC_label        = 'adiabatic', &
    HOMOGENIZATION_NONE_label      = 'none', &
    HOMOGENIZATION_ISOSTRAIN_label = 'isostrain', &
    HOMOGENIZATION_RGC_label       = 'rgc'
@@ -43,6 +50,19 @@ module material
                  PLASTICITY_dislotwin_ID, &
                  PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
+ end enum
+ enum, bind(c)
+   enumerator :: DAMAGE_undefined_ID, &
+                 DAMAGE_none_ID, &
+                 DAMAGE_local_ID, &
+                 DAMAGE_gradient_ID
+ end enum
+ enum, bind(c)
+   enumerator :: THERMAL_undefined_ID, &
+                 THERMAL_none_ID, &
+                 THERMAL_iso_ID, &
+                 THERMAL_conduction_ID, &
+                 THERMAL_adiabatic_ID
  end enum
  enum, bind(c)
    enumerator :: HOMOGENIZATION_undefined_ID, &
@@ -64,6 +84,10 @@ module material
    phase_elasticity                                                                                 !< elasticity of each phase  
  integer(kind(PLASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
    phase_plasticity                                                                                 !< plasticity of each phase  
+ integer(kind(DAMAGE_undefined_ID)), dimension(:),           allocatable, public, protected :: &
+   phase_damage                                                                                     !< damage of each phase  
+ integer(kind(THERMAL_undefined_ID)), dimension(:),          allocatable, public, protected :: &
+   phase_thermal                                                                                    !< thermal of each phase  
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
 
@@ -85,6 +109,8 @@ module material
    phase_Noutput, &                                                                                 !< number of '(output)' items per phase
    phase_elasticityInstance, &                                                                      !< instance of particular elasticity of each phase
    phase_plasticityInstance, &                                                                      !< instance of particular plasticity of each phase
+   phase_damageInstance, &                                                                          !< instance of particular plasticity of each phase
+   phase_thermalInstance, &                                                                         !< instance of particular plasticity of each phase
    crystallite_Noutput, &                                                                           !< number of '(output)' items per crystallite setting
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
@@ -95,7 +121,9 @@ module material
 #ifdef NEWSTATE
  type(tState), allocatable, dimension(:), public :: &
    plasticState, &
-   elasticState
+   elasticState, &
+   damageState, &
+   thermalState
 #endif
 
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
@@ -148,7 +176,13 @@ module material
  
  logical, dimension(:), allocatable, private :: &
    homogenization_active
-
+   
+#if defined(HDF) || defined(NEWSTATE)
+ integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: mappingConstitutive
+ integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingCrystallite
+ integer(pInt), dimension(:), allocatable :: ConstitutivePosition
+ integer(pInt), dimension(:), allocatable :: CrystallitePosition
+#endif
 
  public :: &
    material_init, &
@@ -159,6 +193,15 @@ module material
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
+   DAMAGE_undefined_ID, &
+   DAMAGE_none_ID, &
+   DAMAGE_local_ID, &
+   DAMAGE_gradient_ID, &
+   THERMAL_undefined_ID, &
+   THERMAL_none_ID, &
+   THERMAL_iso_ID, &
+   THERMAL_conduction_ID, &
+   THERMAL_adiabatic_ID, &
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
 #ifdef HDF
@@ -194,10 +237,21 @@ subroutine material_init
    debug_material, &
    debug_levelBasic, &
    debug_levelExtensive
+ use mesh, only: &
+   mesh_maxNips, &
+   mesh_NcpElems, &
+   mesh_element, &
+   FE_Nips, &
+   FE_geomtype   
  
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt)            :: m,c,h, myDebug
+ integer(pInt) :: &
+  g, &                                                                                              !< grain number
+  i, &                                                                                              !< integration point number
+  e, &                                                                                              !< element number
+  phase
  myDebug = debug_level(debug_material)
  
  write(6,'(/,a)') ' <<<+-  material init  -+>>>'
@@ -221,6 +275,24 @@ subroutine material_init
 #ifdef NEWSTATE
  allocate(plasticState(material_Nphase))
  allocate(elasticState(material_Nphase))
+ allocate(damageState (material_Nphase))
+ allocate(thermalState(material_Nphase))
+#endif
+
+#if defined(HDF) || defined(NEWSTATE)
+ allocate(mappingConstitutive(2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+ allocate(mappingCrystallite (2,homogenization_maxNgrains,mesh_NcpElems),source=0_pInt)
+ allocate(ConstitutivePosition(material_Nphase),source=0_pInt)
+ allocate(CrystallitePosition(material_Nphase),source=0_pInt)
+ ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
+   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
+     GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))                              ! loop over grains
+       phase = material_phase(g,i,e)
+       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
+       mappingConstitutive(1:2,g,i,e)   = [ConstitutivePosition(phase),phase]
+     enddo GrainLoop
+   enddo IPloop
+ enddo ElemLoop
 #endif 
  
  do m = 1_pInt,material_Nmicrostructure
@@ -556,6 +628,10 @@ subroutine material_parsePhase(fileUnit,myPart)
  allocate(phase_elasticityInstance(Nsections),   source=0_pInt)
  allocate(phase_plasticity(Nsections) ,          source=PLASTICITY_undefined_ID)
  allocate(phase_plasticityInstance(Nsections),   source=0_pInt)
+ allocate(phase_damage(Nsections) ,              source=DAMAGE_undefined_ID)
+ allocate(phase_damageInstance(Nsections),       source=0_pInt)
+ allocate(phase_thermal(Nsections) ,             source=THERMAL_undefined_ID)
+ allocate(phase_thermalInstance(Nsections),      source=0_pInt)
  allocate(phase_Noutput(Nsections),              source=0_pInt)
  allocate(phase_localPlasticity(Nsections),      source=.false.)
 
@@ -612,6 +688,32 @@ subroutine material_parsePhase(fileUnit,myPart)
              call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
          phase_plasticityInstance(section) = count(phase_plasticity == phase_plasticity(section))   ! count instances
+       case ('damage')
+         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case (DAMAGE_NONE_label)
+             phase_damage(section) = DAMAGE_none_ID
+           case (DAMAGE_LOCAL_label)
+             phase_damage(section) = DAMAGE_local_ID
+           case (DAMAGE_GRADIENT_label)
+             phase_damage(section) = DAMAGE_gradient_ID
+           case default
+             call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+         end select
+         phase_damageInstance(section) = count(phase_damage == phase_damage(section))               ! count instances
+       case ('thermal')
+         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case (THERMAL_NONE_label)
+             phase_thermal(section) = THERMAL_none_ID
+           case (THERMAL_ISO_label)
+             phase_thermal(section) = THERMAL_iso_ID
+           case (THERMAL_CONDUCTION_label)
+             phase_thermal(section) = THERMAL_conduction_ID
+           case (THERMAL_ADIABATIC_label)
+             phase_thermal(section) = THERMAL_adiabatic_ID
+           case default
+             call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+         end select
+         phase_thermalInstance(section) = count(phase_thermal == phase_thermal(section))            ! count instances
      end select
    endif
  enddo

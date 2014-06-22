@@ -536,6 +536,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
    homogenization_Ngrains, &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif     
    homogenization_maxNgrains
  use constitutive, only:  &
@@ -548,8 +549,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
    constitutive_partionedState0, &
    constitutive_dotState, &
    constitutive_dotState_backup, &
-#else
-   mappingConstitutive, &
 #endif   
    constitutive_TandItsTangent, &
    constitutive_localDamage, &
@@ -1414,11 +1413,11 @@ subroutine crystallite_integrateStateRK4()
    homogenization_Ngrains, &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif       
    homogenization_maxNgrains
  use constitutive, only: &
    constitutive_collectDotState, &
-   constitutive_microstructure, &
 #ifndef NEWSTATE
    constitutive_sizeDotState, &
    constitutive_state, &
@@ -1427,9 +1426,8 @@ subroutine crystallite_integrateStateRK4()
    constitutive_RK4dotState, &
    constitutive_deltaState, &
    constitutive_collectDeltaState
-#else
-   mappingConstitutive
 #endif    
+   constitutive_microstructure
  
  implicit none
  real(pReal), dimension(4), parameter :: &
@@ -1744,6 +1742,7 @@ subroutine crystallite_integrateStateRKCK45()
    homogenization_Ngrains, &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif   
    homogenization_maxNgrains
  use constitutive, only: &
@@ -1758,8 +1757,6 @@ subroutine crystallite_integrateStateRKCK45()
    constitutive_RKCK45dotState, &
    constitutive_deltaState, &
    constitutive_collectDeltaState, &
-#else
-   mappingConstitutive, &
 #endif    
    constitutive_microstructure
  
@@ -2297,21 +2294,20 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    homogenization_Ngrains, &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif
    homogenization_maxNgrains
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure, &
-   constitutive_maxSizeDotState, &
 #ifndef NEWSTATE
    constitutive_subState0, &
    constitutive_state, &
    constitutive_sizeDotState, &
    constitutive_dotState, &
    constitutive_aTolState
-#else
-   mappingConstitutive
 #endif  
+   constitutive_maxSizeDotState
  
  implicit none
 
@@ -2676,20 +2672,19 @@ subroutine crystallite_integrateStateEuler()
  use material, only: &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif 
    homogenization_Ngrains
  use constitutive, only: &
    constitutive_collectDotState, &
-   constitutive_microstructure, &
 #ifndef NEWSTATE
    constitutive_subState0, &
    constitutive_state, &
    constitutive_sizeDotState, &
    constitutive_maxSizeDotState, &
    constitutive_dotState
-#else
-   mappingConstitutive
 #endif  
+   constitutive_microstructure
  
  implicit none
 
@@ -2902,12 +2897,12 @@ subroutine crystallite_integrateStateFPI()
  use material, only: &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif
    homogenization_Ngrains
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure, &
-   constitutive_maxSizeDotState, &
 #ifndef NEWSTATE
    constitutive_subState0, &
    constitutive_state, &
@@ -2916,9 +2911,8 @@ subroutine crystallite_integrateStateFPI()
    constitutive_previousDotState, &
    constitutive_previousDotState2, &
    constitutive_aTolState
-#else
-   mappingConstitutive
 #endif   
+   constitutive_maxSizeDotState
    
  
  implicit none 
@@ -3359,17 +3353,16 @@ logical function crystallite_stateJump(g,i,e)
  use material, only: &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif
    homogenization_Ngrains
  use constitutive, only: &
-   constitutive_collectDeltaState, &
 #ifndef NEWSTATE
    constitutive_sizeDotState, &
    constitutive_state, &
    constitutive_deltaState
-#else
-   mappingConstitutive
 #endif
+   constitutive_collectDeltaState
    
  
  implicit none

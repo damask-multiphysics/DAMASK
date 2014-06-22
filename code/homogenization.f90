@@ -294,6 +294,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  use material, only: &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif   
    homogenization_Ngrains
 #ifndef NEWSTATE
@@ -301,9 +302,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    constitutive_state0, &
    constitutive_partionedState0, &
    constitutive_state
-#else
- use constitutive, only: &
-   mappingConstitutive
 #endif     
    
  use crystallite, only: &

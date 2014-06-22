@@ -295,15 +295,13 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    microstructure_elemhomo, &
 #ifdef NEWSTATE
   plasticState,&
+  mappingConstitutive, &
 #endif
    material_phase
 #ifndef NEWSTATE
  use constitutive, only: &
    constitutive_state0, &
    constitutive_state
-#else
- use constitutive, only: &
-   mappingConstitutive
 #endif   
    
  use crystallite, only: &

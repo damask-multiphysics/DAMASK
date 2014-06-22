@@ -60,13 +60,6 @@ module constitutive
  
  private :: &
    constitutive_hooke_TandItsTangent
-   
-#if defined(HDF) || defined(NEWSTATE)
- integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: mappingConstitutive
- integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingCrystallite
- integer(pInt), dimension(:), allocatable :: ConstitutivePosition
- integer(pInt), dimension(:), allocatable :: CrystallitePosition
-#endif
  
 contains
 
@@ -129,6 +122,9 @@ subroutine constitutive_init
    PLASTICITY_TITANMOD_label, &
 #ifdef NEWSTATE
    plasticState, &
+#endif
+#if defined(HDF) || defined(NEWSTATE)
+   mappingConstitutive, &
 #endif    
    PLASTICITY_NONLOCAL_label
  use constitutive_none
@@ -156,12 +152,6 @@ subroutine constitutive_init
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, nonlocalConstitutionPresent
-#if defined(HDF) || defined(NEWSTATE)
- allocate(mappingConstitutive(2,homogenization_maxngrains,mesh_maxNips,mesh_ncpelems),source=0_pInt)
- allocate(mappingCrystallite (2,homogenization_maxngrains,mesh_ncpelems),source=0_pInt)
- allocate(ConstitutivePosition(material_nphase),source=0_pInt)
- allocate(CrystallitePosition(material_nphase),source=0_pInt)
-#endif
  nonlocalConstitutionPresent = .false.
  
 !--------------------------------------------------------------------------------------------------
@@ -269,10 +259,6 @@ subroutine constitutive_init
        end select
        phase = material_phase(g,i,e)
        instance = phase_plasticityInstance(phase)
-#if defined(HDF) || defined(NEWSTATE)
-       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
-       mappingConstitutive(1:2,g,i,e)   = [ConstitutivePosition(phase),phase]
-#endif
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)
 #ifndef NEWSTATE
@@ -533,6 +519,7 @@ pure function constitutive_homogenizedC(ipc,ip,el)
    PLASTICITY_TITANMOD_ID, &
 #ifdef NEWSTATE
    plasticState,&
+   mappingConstitutive, &
 #endif
    PLASTICITY_DISLOTWIN_ID
  use constitutive_titanmod, only: &
@@ -589,6 +576,7 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
    PLASTICITY_DISLOTWIN_ID, &
 #ifdef NEWSTATE 
    plasticState, &
+   mappingConstitutive, &
 #endif
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
@@ -653,6 +641,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    material_phase, &
 #ifdef NEWSTATE
    plasticState,&
+   mappingConstitutive, &
 #endif
    PLASTICITY_NONE_ID, &
    PLASTICITY_J2_ID, &
@@ -826,6 +815,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    phase_plasticity, &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif   
    material_phase, &
    homogenization_maxNgrains, &
@@ -953,6 +943,7 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
    material_phase, &
 #ifdef NEWSTATE   
    plasticState, &
+   mappingConstitutive, &
 #endif
    PLASTICITY_NONLOCAL_ID 
  use constitutive_nonlocal, only: &
@@ -1013,6 +1004,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  use material, only: &
 #ifdef NEWSTATE
    plasticState, &
+   mappingConstitutive, &
 #endif  
    phase_plasticity, &
    material_phase, &
