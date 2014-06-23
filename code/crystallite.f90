@@ -1425,7 +1425,7 @@ subroutine crystallite_integrateStateRK4()
    constitutive_dotState, &
    constitutive_RK4dotState, &
    constitutive_deltaState, &
-   constitutive_collectDeltaState
+   constitutive_collectDeltaState, &
 #endif    
    constitutive_microstructure
  
@@ -2305,7 +2305,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    constitutive_state, &
    constitutive_sizeDotState, &
    constitutive_dotState, &
-   constitutive_aTolState
+   constitutive_aTolState, &
 #endif  
    constitutive_maxSizeDotState
  
@@ -2682,7 +2682,7 @@ subroutine crystallite_integrateStateEuler()
    constitutive_state, &
    constitutive_sizeDotState, &
    constitutive_maxSizeDotState, &
-   constitutive_dotState
+   constitutive_dotState, &
 #endif  
    constitutive_microstructure
  
@@ -2910,7 +2910,7 @@ subroutine crystallite_integrateStateFPI()
    constitutive_dotState, &
    constitutive_previousDotState, &
    constitutive_previousDotState2, &
-   constitutive_aTolState
+   constitutive_aTolState, &
 #endif   
    constitutive_maxSizeDotState
    
@@ -3360,7 +3360,7 @@ logical function crystallite_stateJump(g,i,e)
 #ifndef NEWSTATE
    constitutive_sizeDotState, &
    constitutive_state, &
-   constitutive_deltaState
+   constitutive_deltaState, &
 #endif
    constitutive_collectDeltaState
    
