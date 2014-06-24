@@ -357,6 +357,12 @@ COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug
                  homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o CPFEM.o \
                  DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o 
 
+ifeq "$(STATE)" "NEW"
+COMPILED_FILES += constitutive_damage.o damage_none.o damage_gradient.o \
+                  constitutive_thermal.o thermal_none.o thermal_conduction.o 
+CONSTITUTIVE_FILES := constitutive_thermal.o constitutive_damage.o
+endif
+
 ifdef PETSC_DIR
 PETSC_FILES = DAMASK_spectral_solverAL.o \
               DAMASK_spectral_solverBasicPETSc.o \
@@ -404,7 +410,7 @@ homogenization_none.o:         homogenization_none.f90 \
                                crystallite.o
 
 crystallite.o:                 crystallite.f90 \
-                               constitutive.o
+                               constitutive.o $(CONSTITUTIVE_FILES)
                             
 constitutive.o:                constitutive.f90 \
                                constitutive_nonlocal.o \
@@ -431,6 +437,29 @@ constitutive_j2.o:             constitutive_j2.f90 \
 
 constitutive_none.o:           constitutive_none.f90 \
                                lattice.o
+
+constitutive_damage.o:         constitutive_damage.f90 \
+                               damage_none.o \
+                               damage_gradient.o
+
+damage_none.o:                 damage_none.f90 \
+                               lattice.o \
+
+damage_gradient.o:             damage_gradient.f90 \
+                               lattice.o \
+
+constitutive_thermal.o:        constitutive_thermal.f90 \
+                               thermal_none.o \
+                               thermal_conduction.o
+
+thermal_none.o:                thermal_none.f90 \
+                               lattice.o \
+
+thermal_conduction.o:          thermal_conduction.f90 \
+                               lattice.o \
+
+thermal_adiabatic.o:           thermal_adiabatic.f90 \
+                               lattice.o \
 
 lattice.o:                     lattice.f90 \
                                material.o
