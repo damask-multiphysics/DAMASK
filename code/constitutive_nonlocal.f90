@@ -434,185 +434,344 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
-       case ('plasticity','elasticity','lattice_structure', &
-              'covera_ratio','c/a_ratio','c/a', &
-              'c11','c12','c13','c22','c23','c33','c44','c55','c66',&
-              '/nonlocal/')
-         cycle
        case ('(output)')
-         Noutput(instance) = Noutput(instance) + 1_pInt
-         constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case('rho')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('delta')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = delta_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('delta_sgl')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = delta_sgl_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_pos')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_pos_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_neg')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_neg_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_pos')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_pos_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_neg')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_neg_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_pos_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_pos_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_neg_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_neg_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_pos_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_pos_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_neg_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_neg_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_immobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_immobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_immobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_immobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_pos_immobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_pos_immobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_edge_neg_immobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_edge_neg_immobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_immobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_immobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_pos_immobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_pos_immobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_sgl_screw_neg_immobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_sgl_screw_neg_immobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dip')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dip_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('delta_dip')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = delta_dip_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dip_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dip_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dip_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dip_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('excess_rho')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = excess_rho_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('excess_rho_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = excess_rho_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('excess_rho_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = excess_rho_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_forest')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_forest_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('shearrate')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = shearrate_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('resolvedstress')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = resolvedstress_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('resolvedstress_external')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = resolvedstress_external_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('resolvedstress_back')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = resolvedstress_back_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('resistance')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = resistance_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_sgl')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_sgl_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_sgl_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_sgl_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_dip')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_dip_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_gen')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_gen_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_gen_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_gen_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_gen_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_gen_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_sgl2dip')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_sgl2dip_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_sgl2dip_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_sgl2dip_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_sgl2dip_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_sgl2dip_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_ann_ath')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_ann_ath_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_ann_the')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_ann_the_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_ann_the_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_ann_the_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_ann_the_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_ann_the_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_edgejogs')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_edgejogs_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_flux')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_flux_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_flux_mobile')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_flux_mobile_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_flux_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_flux_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('rho_dot_flux_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = rho_dot_flux_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('velocity_edge_pos')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = velocity_edge_pos_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('velocity_edge_neg')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = velocity_edge_neg_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('velocity_screw_pos')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = velocity_screw_pos_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('velocity_screw_neg')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = velocity_screw_neg_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('slipdirection.x')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = slipdirectionx_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('slipdirection.y')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = slipdirectiony_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('slipdirection.z')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = slipdirectionz_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('slipnormal.x')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = slipnormalx_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('slipnormal.y')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = slipnormaly_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('slipnormal.z')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = slipnormalz_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_edge_pos.x')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_edge_posx_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_edge_pos.y')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_edge_posy_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_edge_pos.z')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_edge_posz_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_edge_neg.x')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_edge_negx_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_edge_neg.y')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_edge_negy_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_edge_neg.z')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_edge_negz_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_screw_pos.x')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_screw_posx_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_screw_pos.y')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_screw_posy_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_screw_pos.z')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_screw_posz_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_screw_neg.x')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_screw_negx_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_screw_neg.y')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_screw_negy_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('fluxdensity_screw_neg.z')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = fluxdensity_screw_negz_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('maximumdipoleheight_edge')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = maximumdipoleheight_edge_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('maximumdipoleheight_screw')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = maximumdipoleheight_screw_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('accumulatedshear')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = accumulatedshear_ID
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
            case('dislocationstress')
              constitutive_nonlocal_outputID(Noutput(instance),instance) = dislocationstress_ID
-           case default
-             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_NONLOCAL_label//')')
+             Noutput(instance) = Noutput(instance) + 1_pInt
+             constitutive_nonlocal_output(Noutput(instance),instance) = IO_lc(IO_stringValue(line,positions,2_pInt))
          end select
        case ('nslip')
          if (positions(1) < 1_pInt + Nchunks_SlipFamilies) &
@@ -735,8 +894,6 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
          enddo
        case('probabilisticmultiplication','randomsources','randommultiplication','discretesources')
          probabilisticMultiplication(instance) = IO_floatValue(line,positions,2_pInt) > 0.0_pReal
-       case default
-         call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_NONLOCAL_label//')')
      end select
    endif; endif
  enddo parsingFile
@@ -5898,7 +6055,7 @@ forall (s = 1_pInt:ns) &
                                       lattice_sn(1:3,slipSystemLattice(s,instance),phase))
 
 
-outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
+outputsLoop: do o = 1_pInt,Noutput(instance)
   select case(constitutive_nonlocal_outputID(o,instance))
     case (rho_ID)
       constitutive_nonlocal_postResults(cs+1_pInt:cs+ns) = sum(abs(rhoSgl),2) + sum(rhoDip,2)

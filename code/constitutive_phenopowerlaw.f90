@@ -261,36 +261,60 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
-       case ('plasticity','elasticity','lattice_structure', &
-             'covera_ratio','c/a_ratio','c/a', &
-             'c11','c12','c13','c22','c23','c33','c44','c55','c66')
        case ('(output)')
-         constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
-         constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
-                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('resistance_slip')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resistance_slip_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('accumulatedshear_slip')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_slip_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shearrate_slip')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = shearrate_slip_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resolvedstress_slip')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resolvedstress_slip_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('totalshear')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalshear_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resistance_twin')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resistance_twin_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('accumulatedshear_twin')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_twin_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shearrate_twin')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = shearrate_twin_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resolvedstress_twin')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resolvedstress_twin_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('totalvolfrac')
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalvolfrac_ID
+             constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
+                                                           IO_lc(IO_stringValue(line,positions,2_pInt))
            case default
-             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+
          end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip families
@@ -398,7 +422,7 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
            constitutive_phenopowerlaw_interaction_SlipSlip(j,instance) = IO_floatValue(line,positions,1_pInt+j)
          enddo
        case default
-         call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+
      end select
    endif; endif
  enddo parsingFile
@@ -1203,7 +1227,7 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
  constitutive_phenopowerlaw_postResults = 0.0_pReal
  c = 0_pInt
 
- outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
+ outputsLoop: do o = 1_pInt,constitutive_phenopowerlaw_Noutput(instance)
    select case(constitutive_phenopowerlaw_outputID(o,instance))
      case (resistance_slip_ID)
 #ifdef NEWSTATE

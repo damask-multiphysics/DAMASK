@@ -335,53 +335,98 @@ subroutine constitutive_dislotwin_init(fileUnit)
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
-       case ('plasticity','elasticity','lattice_structure', &                                       ! already known
-           'covera_ratio','c/a_ratio','c/a', &
-           'c11','c12','c13','c22','c23','c33','c44','c55','c66')
-         cycle
        case ('(output)')
-         constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
-         constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
-                                                   IO_lc(IO_stringValue(line,positions,2_pInt))
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('edge_density')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = edge_density_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('dipole_density')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = dipole_density_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_rate_slip')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = shear_rate_slip_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('accumulated_shear_slip')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = accumulated_shear_slip_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('mfp_slip')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = mfp_slip_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resolved_stress_slip')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = resolved_stress_slip_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('edge_dipole_distance')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = edge_dipole_distance_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('stress_exponent')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = stress_exponent_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('twin_fraction')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = twin_fraction_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_rate_twin')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = shear_rate_twin_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('accumulated_shear_twin')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = accumulated_shear_twin_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('mfp_twin')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = mfp_twin_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resolved_stress_twin')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = resolved_stress_twin_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('threshold_stress_twin')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = threshold_stress_twin_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resolved_stress_shearband')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = resolved_stress_shearband_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_rate_shearband')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = shear_rate_shearband_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('sb_eigenvalues')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = sb_eigenvalues_ID
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('sb_eigenvectors')
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = sb_eigenvectors_ID
-           case default
-             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_DISLOTWIN_label//')')
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of slip system families
@@ -519,8 +564,6 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_sbVelocity(instance) = IO_floatValue(line,positions,2_pInt)
        case ('qedgepersbsystem')
          constitutive_dislotwin_sbQedge(instance) = IO_floatValue(line,positions,2_pInt)
-       case default
-         call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
      end select
    endif; endif
  enddo parsingFile
@@ -1860,7 +1903,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,state,ipc,ip,el)
  !* Spectral decomposition of stress
  call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
  
- do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
+ do o = 1_pInt,constitutive_dislotwin_Noutput(instance)
     select case(constitutive_dislotwin_outputID(o,instance))
  
       case (edge_density_ID)

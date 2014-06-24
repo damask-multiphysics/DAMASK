@@ -222,16 +222,13 @@ subroutine constitutive_j2_init(fileUnit)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
 
      select case(tag)
-       case ('plasticity','elasticity','lattice_structure', &
-             'covera_ratio','c/a_ratio','c/a', &
-             'c11','c12','c13','c22','c23','c33','c44','c55','c66')
        case ('(output)')
-         constitutive_j2_Noutput(instance) = constitutive_j2_Noutput(instance) + 1_pInt
-         constitutive_j2_output(constitutive_j2_Noutput(instance),instance) = &
-                                            IO_lc(IO_stringValue(line,positions,2_pInt))
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('flowstress')
              constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = flowstress_ID
+             constitutive_j2_Noutput(instance) = constitutive_j2_Noutput(instance) + 1_pInt
+             constitutive_j2_output(constitutive_j2_Noutput(instance),instance) = &
+                                                IO_lc(IO_stringValue(line,positions,2_pInt))
 #ifdef HDF 
              call HDF5_addScalarDataset(outID(instance),myConstituents,'flowstress','MPa')
              allocate(constitutive_j2_Output2(instance)%flowstress(myConstituents))
@@ -239,13 +236,16 @@ subroutine constitutive_j2_init(fileUnit)
 #endif
            case ('strainrate')
              constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = strainrate_ID
+             constitutive_j2_Noutput(instance) = constitutive_j2_Noutput(instance) + 1_pInt
+             constitutive_j2_output(constitutive_j2_Noutput(instance),instance) = &
+                                                IO_lc(IO_stringValue(line,positions,2_pInt))
 #ifdef HDF 
              call HDF5_addScalarDataset(outID(instance),myConstituents,'strainrate','1/s')
              allocate(constitutive_j2_Output2(instance)%strainrate(myConstituents))
              constitutive_j2_Output2(instance)%strainrateActive = .true.
 #endif
            case default
-             call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//' ('//PLASTICITY_J2_label//')')
+
          end select
        case ('tau0')
          constitutive_j2_tau0(instance)         = IO_floatValue(line,positions,2_pInt)
@@ -288,7 +288,7 @@ subroutine constitutive_j2_init(fileUnit)
          if (constitutive_j2_aTolResistance(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
        case default
-         call IO_error(210_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+
      end select
    endif
  enddo parsingFile
@@ -613,7 +613,7 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  c = 0_pInt
  constitutive_j2_postResults = 0.0_pReal
 
- outputsLoop: do o = 1_pInt,phase_Noutput(material_phase(ipc,ip,el))
+ outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(instance)
    select case(constitutive_j2_outputID(o,instance))
      case (flowstress_ID)
        constitutive_j2_postResults(c+1_pInt) = tempState
