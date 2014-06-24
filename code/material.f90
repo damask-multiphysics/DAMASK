@@ -51,6 +51,7 @@ module material
                  PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
  end enum
+#ifdef NEWSTATE
  enum, bind(c)
    enumerator :: DAMAGE_undefined_ID, &
                  DAMAGE_none_ID, &
@@ -64,6 +65,7 @@ module material
                  THERMAL_conduction_ID, &
                  THERMAL_adiabatic_ID
  end enum
+#endif
  enum, bind(c)
    enumerator :: HOMOGENIZATION_undefined_ID, &
                  HOMOGENIZATION_none_ID, &
@@ -84,10 +86,12 @@ module material
    phase_elasticity                                                                                 !< elasticity of each phase  
  integer(kind(PLASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
    phase_plasticity                                                                                 !< plasticity of each phase  
+#ifdef NEWSTATE
  integer(kind(DAMAGE_undefined_ID)), dimension(:),           allocatable, public, protected :: &
    phase_damage                                                                                     !< damage of each phase  
  integer(kind(THERMAL_undefined_ID)), dimension(:),          allocatable, public, protected :: &
    phase_thermal                                                                                    !< thermal of each phase  
+#endif
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
 
@@ -109,8 +113,10 @@ module material
    phase_Noutput, &                                                                                 !< number of '(output)' items per phase
    phase_elasticityInstance, &                                                                      !< instance of particular elasticity of each phase
    phase_plasticityInstance, &                                                                      !< instance of particular plasticity of each phase
+#ifdef NEWSTATE
    phase_damageInstance, &                                                                          !< instance of particular plasticity of each phase
    phase_thermalInstance, &                                                                         !< instance of particular plasticity of each phase
+#endif
    crystallite_Noutput, &                                                                           !< number of '(output)' items per crystallite setting
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
@@ -193,6 +199,7 @@ module material
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
+#ifdef NEWSTATE
    DAMAGE_undefined_ID, &
    DAMAGE_none_ID, &
    DAMAGE_local_ID, &
@@ -202,6 +209,7 @@ module material
    THERMAL_iso_ID, &
    THERMAL_conduction_ID, &
    THERMAL_adiabatic_ID, &
+#endif
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
 #ifdef HDF
@@ -278,22 +286,6 @@ subroutine material_init
  allocate(damageState (material_Nphase))
  allocate(thermalState(material_Nphase))
 #endif
-
-#if defined(HDF) || defined(NEWSTATE)
- allocate(mappingConstitutive(2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
- allocate(mappingCrystallite (2,homogenization_maxNgrains,mesh_NcpElems),source=0_pInt)
- allocate(ConstitutivePosition(material_Nphase),source=0_pInt)
- allocate(CrystallitePosition(material_Nphase),source=0_pInt)
- ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
-   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
-     GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))                              ! loop over grains
-       phase = material_phase(g,i,e)
-       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
-       mappingConstitutive(1:2,g,i,e)   = [ConstitutivePosition(phase),phase]
-     enddo GrainLoop
-   enddo IPloop
- enddo ElemLoop
-#endif 
  
  do m = 1_pInt,material_Nmicrostructure
    if(microstructure_crystallite(m) < 1_pInt .or. &
@@ -332,6 +324,22 @@ subroutine material_init
  endif debugOut
  
  call material_populateGrains
+
+#if defined(HDF) || defined(NEWSTATE)
+ allocate(mappingConstitutive(2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+ allocate(mappingCrystallite (2,homogenization_maxNgrains,mesh_NcpElems),source=0_pInt)
+ allocate(ConstitutivePosition(material_Nphase),source=0_pInt)
+ allocate(CrystallitePosition(material_Nphase),source=0_pInt)
+ ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
+   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
+     GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))                              ! loop over grains
+       phase = material_phase(g,i,e)
+       ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
+       mappingConstitutive(1:2,g,i,e)   = [ConstitutivePosition(phase),phase]
+     enddo GrainLoop
+   enddo IPloop
+ enddo ElemLoop
+#endif 
 
 end subroutine material_init
 
@@ -628,10 +636,12 @@ subroutine material_parsePhase(fileUnit,myPart)
  allocate(phase_elasticityInstance(Nsections),   source=0_pInt)
  allocate(phase_plasticity(Nsections) ,          source=PLASTICITY_undefined_ID)
  allocate(phase_plasticityInstance(Nsections),   source=0_pInt)
+#ifdef NEWSTATE
  allocate(phase_damage(Nsections) ,              source=DAMAGE_undefined_ID)
  allocate(phase_damageInstance(Nsections),       source=0_pInt)
  allocate(phase_thermal(Nsections) ,             source=THERMAL_undefined_ID)
  allocate(phase_thermalInstance(Nsections),      source=0_pInt)
+#endif
  allocate(phase_Noutput(Nsections),              source=0_pInt)
  allocate(phase_localPlasticity(Nsections),      source=.false.)
 
@@ -688,6 +698,7 @@ subroutine material_parsePhase(fileUnit,myPart)
              call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
          phase_plasticityInstance(section) = count(phase_plasticity == phase_plasticity(section))   ! count instances
+#ifdef NEWSTATE
        case ('damage')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (DAMAGE_NONE_label)
@@ -714,6 +725,7 @@ subroutine material_parsePhase(fileUnit,myPart)
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
          phase_thermalInstance(section) = count(phase_thermal == phase_thermal(section))            ! count instances
+#endif
      end select
    endif
  enddo
