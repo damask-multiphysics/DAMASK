@@ -75,6 +75,12 @@ subroutine CPFEM_initAll(temperature,el,ip)
  use FEZoo, only: &
    FEZoo_init
 #endif
+#ifdef NEWSTATE
+ use constitutive_thermal, only: &
+   constitutive_thermal_init
+ use constitutive_damage, only: &
+   constitutive_damage_init
+#endif
 
  implicit none
  integer(pInt), intent(in) ::                        el, &                                         ! FE el number
@@ -102,6 +108,10 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call lattice_init
      call material_init
      call constitutive_init
+#ifdef NEWSTATE
+     call constitutive_thermal_init
+     call constitutive_damage_init
+#endif
      call crystallite_init(temperature)                                                            ! (have to) use temperature of first ip for whole model
      call homogenization_init
      call CPFEM_init
@@ -294,7 +304,9 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    homogenization_maxNgrains, &
    microstructure_elemhomo, &
 #ifdef NEWSTATE
-  plasticState,&
+  plasticState, &
+  damageState, &
+  thermalState, &
   mappingConstitutive, &
 #endif
    material_phase
@@ -399,6 +411,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
 #endif
 #ifdef NEWSTATE
    forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
+   forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
+   forall ( i = 1:size(thermalState)) thermalState(i)%state0= thermalState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
      if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then

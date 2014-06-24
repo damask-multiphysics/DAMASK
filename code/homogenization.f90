@@ -104,6 +104,12 @@ subroutine homogenization_init()
    FE_geomtype
  use constitutive, only: &
    constitutive_maxSizePostResults
+#ifdef NEWSTATE
+ use constitutive_damage, only: &
+   constitutive_damage_maxSizePostResults
+ use constitutive_thermal, only: &
+   constitutive_thermal_maxSizePostResults
+#endif   
  use crystallite, only: &
    crystallite_maxSizePostResults
  use material
@@ -233,6 +239,10 @@ subroutine homogenization_init()
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
+#ifdef NEWSTATE
+                                                        + 1 + constitutive_damage_maxSizePostResults &     
+                                                        + 1 + constitutive_thermal_maxSizePostResults &    
+#endif   
                                                         + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
  
@@ -294,6 +304,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  use material, only: &
 #ifdef NEWSTATE
    plasticState, &
+   damageState, &
+   thermalState, &
    mappingConstitutive, &
 #endif   
    homogenization_Ngrains
@@ -371,6 +383,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 #ifdef NEWSTATE
      plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
        plasticState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
+     damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+       damageState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
+     thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+       thermalState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
 #else
      constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p                           ! ...microstructures
 #endif
@@ -429,9 +445,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e)! ...stiffness
            crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = crystallite_Tstar_v(1:6,1:myNgrains,i,e)  ! ...2nd PK stress
 #ifdef NEWSTATE
-forall (g = 1:myNgrains) &
-     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-       plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+           forall (g = 1:myNgrains)
+             plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+               plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+             damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+               damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+             thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+               thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+           end forall    
 #else
 
            forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state(g,i,e)%p   ! ...microstructures
@@ -483,9 +504,14 @@ forall (g = 1:myNgrains) &
            crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
            crystallite_Tstar_v(1:6,1:myNgrains,i,e) = crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)    ! ...2nd PK stress
 #ifdef NEWSTATE
-forall (g = 1:myNgrains) &
-     plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-       plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+           forall (g = 1:myNgrains)
+             plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
+               plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+             damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
+               damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+             thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
+               thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+           end forall    
 #else
 
            forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p     ! ...microstructures
@@ -610,6 +636,12 @@ subroutine materialpoint_postResults
  use constitutive, only: &
    constitutive_sizePostResults, &
    constitutive_postResults
+#ifdef NEWSTATE
+ use constitutive_damage, only: &
+   constitutive_damage_sizePostResults
+ use constitutive_thermal, only: &
+   constitutive_thermal_sizePostResults
+#endif   
  use crystallite, only: &
    crystallite_sizePostResults, &
    crystallite_postResults
@@ -644,7 +676,12 @@ subroutine materialpoint_postResults
        thePos = thePos + 1_pInt
 
        grainLooping :do g = 1,myNgrains
-         theSize = (1 + crystallite_sizePostResults(myCrystallite)) + (1 + constitutive_sizePostResults(g,i,e))
+         theSize = (1 + crystallite_sizePostResults(myCrystallite)) + &
+#ifdef NEWSTATE
+                   (1 + constitutive_damage_sizePostResults(g,i,e)) + &     
+                   (1 + constitutive_thermal_sizePostResults(g,i,e)) + &     
+#endif   
+                   (1 + constitutive_sizePostResults(g,i,e))
          materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping
