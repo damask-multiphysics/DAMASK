@@ -1176,9 +1176,9 @@ use lattice,  only: lattice_maxNslipFamily
 use math,     only: math_sampleGaussVar
 use mesh,     only: mesh_ipVolume, &
                     mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_element, &
-                    FE_Nips, &
+                    mesh_maxNips,  &
+                    mesh_element,  &
+                    FE_Nips,       &
                     FE_geomtype
 use material, only: material_phase, &
                     phase_plasticityInstance, &
@@ -1249,8 +1249,16 @@ do instance = 1_pInt,maxNinstances
         s = nint(rnd(3)*real(ns,pReal)+0.5_pReal,pInt)
         t = nint(rnd(4)*4.0_pReal+0.5_pReal,pInt)
         meanDensity = meanDensity + densityBinning * mesh_ipVolume(ip,el) / totalVolume
+        plasticState(mapping(2,1,ip,el))%state0(iRhoU(s,t,instance),mapping(1,1,ip,el)) =  &
+           plasticState(mapping(2,1,ip,el))%state0(iRhoU(s,t,instance),mapping(1,1,ip,el)) &
+         + densityBinning
+
         plasticState(mapping(2,1,ip,el))%state(iRhoU(s,t,instance),mapping(1,1,ip,el)) =  &
            plasticState(mapping(2,1,ip,el))%state(iRhoU(s,t,instance),mapping(1,1,ip,el)) &
+         + densityBinning
+
+        plasticState(mapping(2,1,ip,el))%partionedState0(iRhoU(s,t,instance),mapping(1,1,ip,el)) =  &
+           plasticState(mapping(2,1,ip,el))%partionedState0(iRhoU(s,t,instance),mapping(1,1,ip,el)) &
          + densityBinning
 
       endif
@@ -1269,39 +1277,68 @@ do instance = 1_pInt,maxNinstances
                 noise(j) = math_sampleGaussVar(0.0_pReal, rhoSglScatter(instance))
               enddo
 
-             plasticState(mapping(2,1,i,e))%state(iRhoU(s,1,instance),mapping(1,1,i,e)) =   &
+             plasticState(mapping(2,1,i,e))%state0(iRhoU(s,1,instance),mapping(1,1,i,e)) =   &
                                                           rhoSglEdgePos0(f,instance) + noise(1)
-             plasticState(mapping(2,1,i,e))%state(iRhoU(s,2,instance),mapping(1,1,i,e)) =   &
+             plasticState(mapping(2,1,i,e))%state0(iRhoU(s,2,instance),mapping(1,1,i,e)) =   &
                                                           rhoSglEdgeNeg0(f,instance) + noise(1)
-             plasticState(mapping(2,1,i,e))%state(iRhoU(s,3,instance),mapping(1,1,i,e)) =   &
+             plasticState(mapping(2,1,i,e))%state0(iRhoU(s,3,instance),mapping(1,1,i,e)) =   &
                                                           rhoSglScrewPos0(f,instance) + noise(2)
-             plasticState(mapping(2,1,i,e))%state(iRhoU(s,4,instance),mapping(1,1,i,e)) =   &
+             plasticState(mapping(2,1,i,e))%state0(iRhoU(s,4,instance),mapping(1,1,i,e)) =   &
                                                           rhoSglScrewNeg0(f,instance) + noise(2)
+
+!             plasticState(mapping(2,1,i,e))%state(iRhoU(s,1,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglEdgePos0(f,instance) + noise(1)
+!             plasticState(mapping(2,1,i,e))%state(iRhoU(s,2,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglEdgeNeg0(f,instance) + noise(1)
+!             plasticState(mapping(2,1,i,e))%state(iRhoU(s,3,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglScrewPos0(f,instance) + noise(2)
+!             plasticState(mapping(2,1,i,e))%state(iRhoU(s,4,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglScrewNeg0(f,instance) + noise(2)
+!
+!             plasticState(mapping(2,1,i,e))%partionedState0(iRhoU(s,1,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglEdgePos0(f,instance) + noise(1)
+!             plasticState(mapping(2,1,i,e))%partionedState0(iRhoU(s,2,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglEdgeNeg0(f,instance) + noise(1)
+!             plasticState(mapping(2,1,i,e))%partionedState0(iRhoU(s,3,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglScrewPos0(f,instance) + noise(2)
+!             plasticState(mapping(2,1,i,e))%partionedState0(iRhoU(s,4,instance),mapping(1,1,i,e)) =   &
+!                                                          rhoSglScrewNeg0(f,instance) + noise(2)
+                                                          
 
             enddo 
 
-        plasticState(mapping(2,1,i,e))%state(iRhoD(from:upto,1,instance),mapping(1,1,i,e)) =   &
+        plasticState(mapping(2,1,i,e))%state0(iRhoD(from:upto,1,instance),mapping(1,1,i,e)) =   &
                                                                              rhoDipEdge0(f,instance)
-        plasticState(mapping(2,1,i,e))%state(iRhoD(from:upto,2,instance),mapping(1,1,i,e)) =   &
+        plasticState(mapping(2,1,i,e))%state0(iRhoD(from:upto,2,instance),mapping(1,1,i,e)) =   &
                                                                             rhoDipScrew0(f,instance)
+
+!        plasticState(mapping(2,1,i,e))%state(iRhoD(from:upto,1,instance),mapping(1,1,i,e)) =   &
+!                                                                             rhoDipEdge0(f,instance)
+!        plasticState(mapping(2,1,i,e))%state(iRhoD(from:upto,2,instance),mapping(1,1,i,e)) =   &
+!                                                                            rhoDipScrew0(f,instance)
+!
+!        plasticState(mapping(2,1,i,e))%partionedState0(iRhoD(from:upto,1,instance),mapping(1,1,i,e)) =   &
+!                                                                             rhoDipEdge0(f,instance)
+!        plasticState(mapping(2,1,i,e))%partionedState0(iRhoD(from:upto,2,instance),mapping(1,1,i,e)) =   &
+!                                                                            rhoDipScrew0(f,instance)
+                                                                            
 
           enddo
         endif
       enddo
     enddo
-do e = 1_pInt,mesh_NcpElems
-  do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
-        if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
-            .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
-             plasticState(mapping(2,1,i,e))%state0(:,mapping(1,1,i,e)) =   &
-                               plasticState(mapping(2,1,i,e))%state(:,mapping(1,1,i,e))
-             plasticState(mapping(2,1,i,e))%partionedState0(:,mapping(1,1,i,e)) =   &
-                               plasticState(mapping(2,1,i,e))%state0(:,mapping(1,1,i,e))
-             plasticState(mapping(2,1,i,e))%State(:,mapping(1,1,i,e)) =   &
-                               plasticState(mapping(2,1,i,e))%state0(:,mapping(1,1,i,e))
-        endif
-  enddo
-enddo
+!do e = 1_pInt,mesh_NcpElems
+!  do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))
+!         if(plasticState(mapping(2,1,i,e))%nonlocal == .true.) then
+!        if (PLASTICITY_NONLOCAL_ID == phase_plasticity(material_phase(1,i,e)) &
+!            .and. instance == phase_plasticityInstance(material_phase(1,i,e))) then
+!             plasticState(mapping(2,1,i,e))%partionedState0(:,mapping(1,1,i,e)) =   &
+!                               plasticState(mapping(2,1,i,e))%state0(:,mapping(1,1,i,e))
+!             plasticState(mapping(2,1,i,e))%State(:,mapping(1,1,i,e)) =   &
+!                               plasticState(mapping(2,1,i,e))%state0(:,mapping(1,1,i,e))
+!        endif
+!  enddo
+!enddo
     
   endif
 enddo
@@ -1319,7 +1356,7 @@ implicit none
 integer(pInt), intent(in) :: & 
  instance, &                                                              !< number specifying the instance of the plasticity
  phase
- real(pReal), dimension(size(plasticState(phase)%aTolState(:))) :: tempTol
+ real(pReal), dimension(plasticState(phase)%sizeState) :: tempTol
 !*** local variables
  integer(pInt)             :: ns, t, c
  
@@ -1334,7 +1371,8 @@ endforall
 forall (c = 1_pInt:2_pInt) &
   tempTol(iRhoD(1:ns,c,instance)) = aTolRho(instance)
   tempTol(iGamma(1:ns,instance)) = aTolShear(instance)
- plasticState(phase)%aTolState = tempTol
+ plasticState(phase)%aTolState(1:plasticState(phase)%sizeDotState) = &
+    tempTol(1:plasticState(phase)%sizeDotState)
 
 end subroutine constitutive_nonlocal_aTolState
 
@@ -1702,11 +1740,27 @@ if (.not. phase_localPlasticity(phase) .and. shortRangeStressCorrection(instance
           forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
             neighbor_rhoExcess(c,s,n) = &
                 max(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
-                              state(iRhoU(s,2*c-1,neighbor_instance), &
+                    state(iRhoU(s,2*c-1,neighbor_instance), &
                               mapping(1,ipc,neighbor_ip,neighbor_el)),0.0_pReal) &! positive mobiles
               - max(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
-                              state(iRhoU(s,2*c,neighbor_instance), &
+                    state(iRhoU(s,2*c,neighbor_instance), &
                               mapping(1,ipc,neighbor_ip,neighbor_el)),0.0_pReal)    ! negative mobiles
+
+            neighbor_rhoTotal(c,s,n) = &
+                max(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
+                    state(iRhoU(s,2*c-1,neighbor_instance),mapping(1,ipc,neighbor_ip,neighbor_el)),&
+                                                                                        0.0_pReal) &! positive mobiles
+              + max(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
+                    state(iRhoU(s,2*c,neighbor_instance),mapping(1,ipc,neighbor_ip,neighbor_el)),  &
+                                                                                        0.0_pReal) &  ! negative mobiles
+              + abs(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
+                    state(iRhoB(s,2*c-1,neighbor_instance),mapping(1,ipc,neighbor_ip,neighbor_el)))&  ! positive deads
+              + abs(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
+                    state(iRhoB(s,2*c,neighbor_instance),mapping(1,ipc,neighbor_ip,neighbor_el)))  &  ! negative deads
+              + max(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
+                    state(iRhoD(s,c,neighbor_instance),mapping(1,ipc,neighbor_ip,neighbor_el)),    &
+                                                                                          0.0_pReal)  ! dipoles
+
           endforall
           connection_latticeConf(1:3,n) = &
             math_mul33x3(invFe, mesh_ipCoordinates(1:3,neighbor_ip,neighbor_el) &
@@ -1789,9 +1843,9 @@ endif
 
 !*** set dependent states
 
-plasticState(mapping(2,ipc,ip,el))%state(iRhoF(1:ns,instance),mapping(1,ipc,ip,el)) = rhoForest
-plasticState(mapping(2,ipc,ip,el))%state(iTauF(1:ns,instance),mapping(1,ipc,ip,el)) = tauThreshold
-plasticState(mapping(2,ipc,ip,el))%state(iTauB(1:ns,instance),mapping(1,ipc,ip,el)) = tauBack
+  plasticState(mapping(2,ipc,ip,el))%state(iRhoF(1:ns,instance),mapping(1,ipc,ip,el)) = rhoForest
+  plasticState(mapping(2,ipc,ip,el))%state(iTauF(1:ns,instance),mapping(1,ipc,ip,el)) = tauThreshold
+  plasticState(mapping(2,ipc,ip,el))%state(iTauB(1:ns,instance),mapping(1,ipc,ip,el)) = tauBack
 
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
@@ -2370,16 +2424,16 @@ ns = totalNslip(instance)
 
 
 forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
-  rhoSgl(s,t) = max(plasticState(mapping(2,1,ip,el))%state(iRhoU(s,t,instance),mapping(1,ipc,ip,el)), &
+  rhoSgl(s,t) = max(plasticState(mapping(2,ipc,ip,el))%state(iRhoU(s,t,instance),mapping(1,ipc,ip,el)), &
                                                              0.0_pReal)                              ! ensure positive single mobile densities
-  rhoSgl(s,t+4_pInt) = plasticState(mapping(2,1,ip,el))%state(iRhoB(s,t,instance),mapping(1,ipc,ip,el))
+  rhoSgl(s,t+4_pInt) = plasticState(mapping(2,ipc,ip,el))%state(iRhoB(s,t,instance),mapping(1,ipc,ip,el))
 endforall
 where (abs(rhoSgl) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance) &
   .or. abs(rhoSgl) < significantRho(instance)) &
   rhoSgl = 0.0_pReal
 
-tauBack      = plasticState(mapping(2,1,ip,el))%state(iTauB(1:ns,instance),mapping(1,ipc,ip,el))
-tauThreshold = plasticState(mapping(2,1,ip,el))%state(iTauF(1:ns,instance),mapping(1,ipc,ip,el))
+tauBack      = plasticState(mapping(2,ipc,ip,el))%state(iTauB(1:ns,instance),mapping(1,ipc,ip,el))
+tauThreshold = plasticState(mapping(2,ipc,ip,el))%state(iTauF(1:ns,instance),mapping(1,ipc,ip,el))
 
 
 !*** get resolved shear stress
@@ -2751,6 +2805,7 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(ipc,ip
                                             deltaDUpper                   ! change in maximum stable dipole distance for edges and screws
 integer(pInt),dimension(2,homogenization_maxngrains,mesh_maxNips,mesh_ncpelems), intent(in) ::     &
  mapping
+integer(pInt) :: sizeDot
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == ipc)&
@@ -2773,7 +2828,7 @@ forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
                                       mapping(1,ipc,ip,el)),0.0_pReal)                              ! ensure positive single mobile densities
   rhoSgl(s,t+4_pInt) = plasticState(mapping(2,ipc,ip,el))%state(iRhoB(s,t,instance), &
                                                                                mapping(1,ipc,ip,el))
-  v(s,t) = plasticState(mapping(2,ipc,ip,el))%state(iRhoU(s,t,instance),mapping(1,ipc,ip,el))
+  v(s,t) = plasticState(mapping(2,ipc,ip,el))%state(iV(s,t,instance),mapping(1,ipc,ip,el))
 endforall
 forall (s = 1_pInt:ns, c = 1_pInt:2_pInt)
   rhoDip(s,c) = max(plasticState(mapping(2,ipc,ip,el))%state(iRhoD(s,c,instance),mapping(1,ipc,ip,el)), 0.0_pReal)                               ! ensure positive dipole densities
@@ -2855,8 +2910,9 @@ forall (s = 1_pInt:ns, c = 1_pInt:2_pInt) &
 deltaRho = deltaRhoRemobilization &
          + deltaRhoDipole2SingleStress
 
+sizeDot = plasticState(mapping(2,ipc,ip,el))%sizeDotState
 !deltaState%p = 0.0_pReal
-plasticState(mapping(2,ipc,ip,el))%deltaState(:,mapping(1,ipc,ip,el)) = 0.0_pReal
+plasticState(mapping(2,ipc,ip,el))%deltaState(1:sizeDot,mapping(1,ipc,ip,el)) = 0.0_pReal
 forall (s = 1:ns, t = 1_pInt:4_pInt) 
   plasticState(mapping(2,ipc,ip,el))%deltaState(iRhoU(s,t,instance),mapping(1,ipc,ip,el)) = &
                                                                                       deltaRho(s,t)
@@ -3263,10 +3319,10 @@ where (abs(rhoDip) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance
 if (numerics_timeSyncing) then
   forall (s = 1_pInt:ns, t = 1_pInt:4_pInt)
 
-    rhoSgl0(s,t) = max(plasticState(mapping(2,ipc,ip,el))%state(iRhoU(s,t,instance), &
+    rhoSgl0(s,t) = max(plasticState(mapping(2,ipc,ip,el))%state0(iRhoU(s,t,instance), &
                                                                   mapping(1,ipc,ip,el)), 0.0_pReal)
-    rhoSgl0(s,t+4_pInt) = plasticState(mapping(2,ipc,ip,el))%state(iRhoB(s,t,instance),mapping(1,ipc,ip,el))
-    v0(s,t) = plasticState(mapping(2,ipc,ip,el))%state(iV(s,t,instance),mapping(1,ipc,ip,el))
+    rhoSgl0(s,t+4_pInt) = plasticState(mapping(2,ipc,ip,el))%state0(iRhoB(s,t,instance),mapping(1,ipc,ip,el))
+    v0(s,t) = plasticState(mapping(2,ipc,ip,el))%state0(iV(s,t,instance),mapping(1,ipc,ip,el))
   endforall
   where (abs(rhoSgl0) * mesh_ipVolume(ip,el) ** 0.667_pReal < significantN(instance) &
     .or. abs(rhoSgl0) < significantRho(instance)) &
@@ -3457,17 +3513,17 @@ if (.not. phase_localPlasticity(material_phase(ipc,ip,el))) then                
     if (considerEnteringFlux) then
       if(numerics_timeSyncing .and. (subfrac(ipc,neighbor_ip,neighbor_el) /= subfrac(ipc,ip,el))) then  ! for timesyncing: in case of a timestep at the interface we have to use "state0" to make sure that fluxes n both sides are equal
         forall (s = 1:ns, t = 1_pInt:4_pInt)
-          neighbor_v(s,t) = plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
-                                              state0(iV(s,t,neighbor_instance),mapping(1,ipc,ip,el))
+          neighbor_v(s,t)      =     plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
+                 state0(iV(s,t,neighbor_instance),mapping(1,ipc,ip,el))
           neighbor_rhoSgl(s,t) = max(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
-                                  state0(iV(s,t,neighbor_instance),mapping(1,ipc,ip,el)), 0.0_pReal)
+                 state0(iRhoU(s,t,neighbor_instance),mapping(1,ipc,ip,el)), 0.0_pReal)
         endforall
       else
         forall (s = 1:ns, t = 1_pInt:4_pInt)
           neighbor_v(s,t) = plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
                                               state(iV(s,t,neighbor_instance),mapping(1,ipc,ip,el))
           neighbor_rhoSgl(s,t) = max(plasticState(mapping(2,ipc,neighbor_ip,neighbor_el))% &
-                                  state(iV(s,t,neighbor_instance),mapping(1,ipc,ip,el)), 0.0_pReal)
+                                state(iRhoU(s,t,neighbor_instance),mapping(1,ipc,ip,el)), 0.0_pReal)
         endforall
       endif
       where (neighbor_rhoSgl * mesh_ipVolume(neighbor_ip,neighbor_el) ** 0.667_pReal < significantN(instance) &
