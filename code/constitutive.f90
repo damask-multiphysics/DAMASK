@@ -13,9 +13,6 @@ module constitutive
  
  implicit none
  private
- real(pReal),   public, dimension(:,:,:),  allocatable :: &
-   constitutive_localDamage, &
-   constitutive_gradientDamage
 #ifndef NEWSTATE
  type(p_vec),   public, dimension(:,:,:), allocatable :: &
    constitutive_state0, &                                                                            !< pointer array to microstructure at start of BVP inc
@@ -208,9 +205,11 @@ subroutine constitutive_init
    write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
    if (knownPlasticity) then
      write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-     do e = 1_pInt,phase_Noutput(phase)
-       write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
-     enddo
+     if (phase_plasticity(phase) /= PLASTICITY_NONE_ID) then
+       do e = 1_pInt,phase_Noutput(phase)
+         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+       enddo
+     endif
    endif
  enddo
  close(FILEUNIT)
@@ -221,9 +220,6 @@ subroutine constitutive_init
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
  allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt)
-
- allocate(constitutive_localDamage(cMax,iMax,eMax)); constitutive_localDamage = 1.0_pReal
- allocate(constitutive_gradientDamage(cMax,iMax,eMax)); constitutive_gradientDamage = 1.0_pReal 
 #ifndef NEWSTATE 
 ! lumped into new state
  allocate(constitutive_state0(cMax,iMax,eMax))
@@ -782,6 +778,20 @@ use math, only : &
   math_Mandel66to3333, &
   math_transpose33, &
   MATH_I3
+#ifdef NEWSTATE
+use material, only: &
+  mappingConstitutive, &
+  damageState, &
+  phase_damage, &
+  DAMAGE_gradient_ID, &
+  thermalState, &
+  phase_thermal, &
+  THERMAL_conduction_ID, &
+  THERMAL_adiabatic_ID
+ use lattice, only: &
+  lattice_referenceTemperature, &
+  lattice_thermalExpansion33
+#endif   
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -798,15 +808,39 @@ use math, only : &
  integer(pInt) :: i, j, k, l
  real(pReal), dimension(3,3)     :: FeT
  real(pReal), dimension(3,3,3,3) :: C
+ real(pReal) :: damage
+ integer(pInt) :: phase, constituent
 
 
  C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
 
  FeT = math_transpose33(Fe)
- T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(FeT,Fe)-MATH_I3)*constitutive_gradientDamage(ipc,ip,el)
+ T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(FeT,Fe)-MATH_I3)
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
    dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3))                                            ! dT*_ij/dFe_kl
+
+#ifdef NEWSTATE
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ select case (phase_damage(phase))
+   case (DAMAGE_gradient_ID)
+     damage = damageState(phase)%state(3,constituent) &
+            * damageState(phase)%state(3,constituent)
+     T = damage*T
+     dT_dFe = damage*dT_dFe
+ end select
+ select case (phase_thermal(phase))
+   case (THERMAL_conduction_ID)
+     T = T - math_mul3333xx33(C,  (thermalState(phase)%state(2,constituent) - &
+                                   lattice_referenceTemperature(phase)) &
+                                * lattice_thermalExpansion33(1:3,1:3,phase))
+   case (THERMAL_adiabatic_ID)
+     T = T - math_mul3333xx33(C,  (thermalState(phase)%state(1,constituent) - &
+                                   lattice_referenceTemperature(phase)) &
+                                * lattice_thermalExpansion33(1:3,1:3,phase))
+ end select
+#endif   
 
 end subroutine constitutive_hooke_TandItsTangent
 
