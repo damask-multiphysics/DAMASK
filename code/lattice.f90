@@ -635,6 +635,12 @@ module lattice
  real(pReal),                              dimension(:),   allocatable, public, protected :: &
    lattice_mu, &
    lattice_nu
+#ifdef NEWSTATE
+ real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
+   lattice_thermalConductivity33, &
+   lattice_thermalExpansion33, &
+   lattice_surfaceEnergy33
+#endif
  enum, bind(c)
    enumerator :: LATTICE_undefined_ID, &
                  LATTICE_iso_ID, &
@@ -856,6 +862,11 @@ subroutine lattice_init
  allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
+#ifdef NEWSTATE
+ allocate(lattice_thermalConductivity33(3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_thermalExpansion33   (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_surfaceEnergy33      (3,3,Nphases), source=0.0_pReal)
+#endif
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
@@ -941,6 +952,26 @@ subroutine lattice_init
        lattice_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
      case ('covera_ratio','c/a_ratio','c/a')
        CoverA(section) = IO_floatValue(line,positions,2_pInt)
+#ifdef NEWSTATE
+     case ('k11')
+       lattice_thermalConductivity33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k22')
+       lattice_thermalConductivity33(1,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k33')
+       lattice_thermalConductivity33(1,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('thermal_expansion11')
+       lattice_thermalExpansion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('thermal_expansion22')
+       lattice_thermalExpansion33(1,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('thermal_expansion33')
+       lattice_thermalExpansion33(1,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('g11')
+       lattice_surfaceEnergy33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('g22')
+       lattice_surfaceEnergy33(1,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('g33')
+       lattice_surfaceEnergy33(1,3,section) = IO_floatValue(line,positions,2_pInt)
+#endif
      end select
    endif
  enddo
@@ -1012,7 +1043,14 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  do i = 1_pInt, 6_pInt
    if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_error(43_pInt,el=i,ip=myPhase)
  enddo
-
+#ifdef NEWSTATE
+ lattice_thermalConductivity33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                       lattice_thermalConductivity33(1:3,1:3,myPhase))
+ lattice_thermalExpansion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                    lattice_thermalExpansion33(1:3,1:3,myPhase))
+ lattice_surfaceEnergy33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                    lattice_surfaceEnergy33(1:3,1:3,myPhase))
+#endif
  
  select case(lattice_structure(myPhase))
 !--------------------------------------------------------------------------------------------------
@@ -1223,6 +1261,39 @@ pure function lattice_symmetrizeC66(struct,C66)
   end select
   
  end function lattice_symmetrizeC66
+
+
+#ifdef NEWSTATE
+!--------------------------------------------------------------------------------------------------
+!> @brief Symmetrizes 2nd order tensor according to lattice type
+!--------------------------------------------------------------------------------------------------
+pure function lattice_symmetrize33(struct,T33)
+
+ implicit none
+ integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
+ real(pReal), dimension(3,3), intent(in) :: T33
+ real(pReal), dimension(3,3) :: lattice_symmetrize33
+ integer(pInt) :: j,k
+
+ lattice_symmetrize33 = 0.0_pReal
+ 
+ select case(struct)
+   case (LATTICE_iso_ID,LATTICE_fcc_ID,LATTICE_bcc_ID)
+     forall(k=1_pInt:3_pInt) lattice_symmetrize33(k,k) = T33(1,1)
+   case (LATTICE_hex_ID)
+     lattice_symmetrize33(1,1) = T33(1,1)
+     lattice_symmetrize33(2,2) = T33(1,1)
+     lattice_symmetrize33(3,3) = T33(3,3)
+   case (LATTICE_ort_ID)
+     lattice_symmetrize33(1,1) = T33(1,1)
+     lattice_symmetrize33(2,2) = T33(2,3)
+     lattice_symmetrize33(3,3) = T33(3,3)
+   case default
+     lattice_symmetrize33 = T33
+  end select
+  
+ end function lattice_symmetrize33
+#endif 
 
 
 !--------------------------------------------------------------------------------------------------
