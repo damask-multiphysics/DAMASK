@@ -640,6 +640,8 @@ module lattice
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
    lattice_surfaceEnergy33
+ real(pReal),                              dimension(:),       allocatable, public, protected :: &
+   lattice_referenceTemperature
 #endif
  enum, bind(c)
    enumerator :: LATTICE_undefined_ID, &
@@ -866,6 +868,7 @@ subroutine lattice_init
  allocate(lattice_thermalConductivity33(3,3,Nphases), source=0.0_pReal)
  allocate(lattice_thermalExpansion33   (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_surfaceEnergy33      (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_referenceTemperature     (Nphases), source=0.0_pReal)
 #endif
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
@@ -956,21 +959,23 @@ subroutine lattice_init
      case ('k11')
        lattice_thermalConductivity33(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('k22')
-       lattice_thermalConductivity33(1,2,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_thermalConductivity33(2,2,section) = IO_floatValue(line,positions,2_pInt)
      case ('k33')
-       lattice_thermalConductivity33(1,3,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_thermalConductivity33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('thermal_expansion11')
        lattice_thermalExpansion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('thermal_expansion22')
-       lattice_thermalExpansion33(1,2,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_thermalExpansion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
      case ('thermal_expansion33')
-       lattice_thermalExpansion33(1,3,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_thermalExpansion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('g11')
        lattice_surfaceEnergy33(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('g22')
-       lattice_surfaceEnergy33(1,2,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_surfaceEnergy33(2,2,section) = IO_floatValue(line,positions,2_pInt)
      case ('g33')
-       lattice_surfaceEnergy33(1,3,section) = IO_floatValue(line,positions,2_pInt)
+       lattice_surfaceEnergy33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('reference_temperature')
+       lattice_referenceTemperature(section) = IO_floatValue(line,positions,2_pInt)
 #endif
      end select
    endif
@@ -1049,7 +1054,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  lattice_thermalExpansion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                     lattice_thermalExpansion33(1:3,1:3,myPhase))
  lattice_surfaceEnergy33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                    lattice_surfaceEnergy33(1:3,1:3,myPhase))
+                                                                 lattice_surfaceEnergy33(1:3,1:3,myPhase))
 #endif
  
  select case(lattice_structure(myPhase))
