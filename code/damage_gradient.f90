@@ -263,7 +263,7 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
- use mesh, only: &
+ use numerics, only: &
    charLength
  use math, only: &
    math_Mandel6to33, &

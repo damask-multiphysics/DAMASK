@@ -60,7 +60,8 @@ module numerics
    maxdRelax_RGC              =  1.0e+0_pReal, &                                                    !< threshold of maximum relaxation vector increment (if exceed this then cutback)
    maxVolDiscr_RGC            =  1.0e-5_pReal, &                                                    !< threshold of maximum volume discrepancy allowed
    volDiscrMod_RGC            =  1.0e+12_pReal, &                                                   !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
-   volDiscrPow_RGC            =  5.0_pReal                                                          !< powerlaw penalty for volume discrepancy
+   volDiscrPow_RGC            =  5.0_pReal, &                                                       !< powerlaw penalty for volume discrepancy
+   charLength                =  1.0_pReal                                                          !< characteristic length scale for gradient problems
  logical, protected, public :: &                                                   
    analyticJaco               = .false., &                                                         !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
    usePingPong                = .true., & 
@@ -298,6 +299,11 @@ subroutine numerics_init
 ! random seeding parameter
        case ('fixed_seed')
          fixedSeed = IO_intValue(line,positions,2_pInt)
+
+!--------------------------------------------------------------------------------------------------
+! gradient parameter
+       case ('charlength')
+         charLength = IO_floatValue(line,positions,2_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
