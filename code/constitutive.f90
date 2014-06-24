@@ -410,6 +410,10 @@ subroutine constitutive_init
            constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
          case (PLASTICITY_NONLOCAL_ID)
            nonlocalConstitutionPresent = .true.
+#ifdef NEWSTATE
+           plasticState(mappingConstitutive(2,g,i,e))%nonlocal = .true.
+#endif
+
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
 #ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
@@ -450,7 +454,17 @@ subroutine constitutive_init
    call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
 #endif
 
-#ifndef NEWSTATE
+#ifdef NEWSTATE
+ do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
+   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
+   forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
+     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+      plasticState(mappingConstitutive(2,g,i,e))%State0(:,mappingConstitutive(1,g,i,e))    ! need to be defined for first call of constitutive_microstructure in crystallite_init
+     plasticState(mappingConstitutive(2,g,i,e))%State(:,mappingConstitutive(1,g,i,e)) =          &
+      plasticState(mappingConstitutive(2,g,i,e))%State0(:,mappingConstitutive(1,g,i,e))    ! need to be defined for first call of constitutive_microstructure in crystallite_init
+   endforall
+ enddo
+#else
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
@@ -459,6 +473,8 @@ subroutine constitutive_init
    endforall
  enddo
 #endif
+
+
 #ifdef HDF
  call  HDF5_mappingConstitutive(mappingConstitutive)
  do phase = 1_pInt,material_Nphase
