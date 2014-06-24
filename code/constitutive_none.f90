@@ -39,7 +39,8 @@ subroutine constitutive_none_init(fileUnit)
    debug_levelBasic
  use IO, only: &
    IO_timeStamp
-
+ use numerics, only: &
+   numerics_integrator
  use material, only: &
    phase_plasticity, &
    phase_Noutput, &
@@ -48,7 +49,7 @@ subroutine constitutive_none_init(fileUnit)
    material_phase, &
    plasticState, &
 #endif
-   PLASTICITY_NONE_ID, &
+   PLASTICITY_none_ID, &
    MATERIAL_partPhase
 
  implicit none
@@ -56,14 +57,17 @@ subroutine constitutive_none_init(fileUnit)
  integer(pInt), intent(in) :: fileUnit
  integer(pInt) :: &
    maxNinstance, &
-   phase
+   phase, &
+   NofMyPhase, &
+   sizeState, &
+   sizeDotState
  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
- maxNinstance = int(count(phase_plasticity == PLASTICITY_NONE_ID),pInt)
+ maxNinstance = int(count(phase_plasticity == PLASTICITY_none_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -71,8 +75,29 @@ subroutine constitutive_none_init(fileUnit)
 
 #ifdef NEWSTATE
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-   if (phase_plasticity(phase) == PLASTICITY_none_ID .and. count(material_phase==phase)/=0) &
-     plasticState(phase)%sizeState = 0_pInt
+   NofMyPhase=count(material_phase==phase)
+   if (phase_plasticity(phase) == PLASTICITY_none_ID .and. NofMyPhase/=0) then
+     sizeState    = 0_pInt
+     plasticState(phase)%sizeState = sizeState
+     sizeDotState = sizeState
+     plasticState(phase)%sizeDotState = sizeDotState
+     allocate(plasticState(phase)%state0         (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase))
+     allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%state          (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%state_backup   (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%aTolState      (NofMyPhase))
+     allocate(plasticState(phase)%dotState       (sizeDotState,NofMyPhase))
+     allocate(plasticState(phase)%dotState_backup(sizeDotState,NofMyPhase))
+     if (any(numerics_integrator == 1_pInt)) then
+       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase))
+     endif
+     if (any(numerics_integrator == 4_pInt)) &
+       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase))
+     if (any(numerics_integrator == 5_pInt)) &
+       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase))
+   endif
  enddo initializeInstances
 #else
  allocate(constitutive_none_sizeDotState(maxNinstance),    source=1_pInt)
