@@ -63,21 +63,21 @@ module prec
 #ifdef NEWSTATE
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
-   integer(pInt) :: sizeState,sizeDotState
-   logical       :: nonlocal
-   real(pReal), pointer, dimension(:) :: atolState
-   real(pReal), pointer, dimension(:,:) :: state, &                                                     ! material points, state size
-                                           dotState, &
-                                           state0, &
-                                           partionedState0, &
-                                           subState0, &
-                                           state_backup, &
-                                           deltaState, &
-                                           previousDotState, &
-                                           previousDotState2, &
-                                           dotState_backup, &
-                                           RK4dotState
-   real(pReal), pointer, dimension(:,:,:) :: RKCK45dotState
+   integer(pInt)                              :: sizeState,sizeDotState
+   logical                                    :: nonlocal
+   real(pReal), allocatable, dimension(:)     :: atolState
+   real(pReal), allocatable, dimension(:,:)   :: state, &                                                     ! material points, state size
+                                                 dotState, &
+                                                 state0, &
+                                                 partionedState0, &
+                                                 subState0, &
+                                                 state_backup, &
+                                                 deltaState, &
+                                                 previousDotState, &
+                                                 previousDotState2, &
+                                                 dotState_backup, &
+                                                 RK4dotState
+   real(pReal), allocatable, dimension(:,:,:) :: RKCK45dotState
  end type
 #endif
 
