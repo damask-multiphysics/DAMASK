@@ -53,11 +53,11 @@ module prec
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
  type, public :: p_vec                                                                              !< variable length datatype used for storage of state
-   real(pReal), dimension(:), pointer :: p
+   real(pReal), dimension(:), allocatable :: p
  end type p_vec
 
  type, public :: p_intvec
-   integer(pInt), dimension(:), pointer :: p
+   integer(pInt), dimension(:), allocatable :: p
  end type p_intvec
 
 #ifdef NEWSTATE
