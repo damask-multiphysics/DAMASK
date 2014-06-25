@@ -53,14 +53,12 @@ module material
  end enum
 #ifdef NEWSTATE
  enum, bind(c)
-   enumerator :: DAMAGE_undefined_ID, &
-                 DAMAGE_none_ID, &
+   enumerator :: DAMAGE_none_ID, &
                  DAMAGE_local_ID, &
                  DAMAGE_gradient_ID
  end enum
  enum, bind(c)
-   enumerator :: THERMAL_undefined_ID, &
-                 THERMAL_none_ID, &
+   enumerator :: THERMAL_none_ID, &
                  THERMAL_iso_ID, &
                  THERMAL_conduction_ID, &
                  THERMAL_adiabatic_ID
@@ -87,9 +85,9 @@ module material
  integer(kind(PLASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
    phase_plasticity                                                                                 !< plasticity of each phase  
 #ifdef NEWSTATE
- integer(kind(DAMAGE_undefined_ID)), dimension(:),           allocatable, public, protected :: &
+ integer(kind(DAMAGE_none_ID)), dimension(:),           allocatable, public, protected :: &
    phase_damage                                                                                     !< damage of each phase  
- integer(kind(THERMAL_undefined_ID)), dimension(:),          allocatable, public, protected :: &
+ integer(kind(THERMAL_none_ID)), dimension(:),          allocatable, public, protected :: &
    phase_thermal                                                                                    !< thermal of each phase  
 #endif
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
@@ -200,11 +198,9 @@ module material
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
 #ifdef NEWSTATE
-   DAMAGE_undefined_ID, &
    DAMAGE_none_ID, &
    DAMAGE_local_ID, &
    DAMAGE_gradient_ID, &
-   THERMAL_undefined_ID, &
    THERMAL_none_ID, &
    THERMAL_iso_ID, &
    THERMAL_conduction_ID, &
@@ -637,9 +633,9 @@ subroutine material_parsePhase(fileUnit,myPart)
  allocate(phase_plasticity(Nsections) ,          source=PLASTICITY_undefined_ID)
  allocate(phase_plasticityInstance(Nsections),   source=0_pInt)
 #ifdef NEWSTATE
- allocate(phase_damage(Nsections) ,              source=DAMAGE_undefined_ID)
+ allocate(phase_damage(Nsections) ,              source=DAMAGE_none_ID)
  allocate(phase_damageInstance(Nsections),       source=0_pInt)
- allocate(phase_thermal(Nsections) ,             source=THERMAL_undefined_ID)
+ allocate(phase_thermal(Nsections) ,             source=THERMAL_none_ID)
  allocate(phase_thermalInstance(Nsections),      source=0_pInt)
 #endif
  allocate(phase_Noutput(Nsections),              source=0_pInt)
