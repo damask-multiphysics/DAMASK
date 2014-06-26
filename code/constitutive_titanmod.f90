@@ -363,148 +363,148 @@ subroutine constitutive_titanmod_init(fileUnit)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('rhoedge')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoscrew')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('segment_edge')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = segment_edge_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = segment_edge_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('segment_screw')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = segment_screw_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = segment_screw_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resistance_edge')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = resistance_edge_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = resistance_edge_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resistance_screw')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = resistance_screw_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = resistance_screw_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('velocity_edge')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = velocity_edge_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = velocity_edge_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('velocity_screw')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = velocity_screw_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = velocity_screw_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('tau_slip')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = tau_slip_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = tau_slip_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('gdot_slip_edge')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = gdot_slip_edge_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = gdot_slip_edge_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('gdot_slip_screw')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = gdot_slip_screw_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = gdot_slip_screw_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('gdot_slip')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = gdot_slip_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = gdot_slip_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('stressratio_edge_p')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = stressratio_edge_p_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = stressratio_edge_p_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('stressratio_screw_p')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = stressratio_screw_p_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = stressratio_screw_p_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_system')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_system_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_system_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('twin_fraction')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = twin_fraction_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = twin_fraction_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_basal')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_basal_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_basal_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_prism')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_prism_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_prism_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_pyra')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_pyra_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_pyra_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_pyrca')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_pyrca_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_pyrca_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoedge_basal')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_basal_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_basal_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoedge_prism')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_prism_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_prism_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoedge_pyra')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_pyra_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_pyra_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoedge_pyrca')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_pyrca_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoedge_pyrca_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoscrew_basal')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_basal_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_basal_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoscrew_prism')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_prism_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_prism_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoscrew_pyra')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_pyra_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_pyra_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('rhoscrew_pyrca')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_pyrca_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = rhoscrew_pyrca_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shear_total')
-             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_total_ID
              constitutive_titanmod_Noutput(instance) = constitutive_titanmod_Noutput(instance) + 1_pInt
+             constitutive_titanmod_outputID(constitutive_titanmod_Noutput(instance),instance) = shear_total_ID
              constitutive_titanmod_output(constitutive_titanmod_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
          end select

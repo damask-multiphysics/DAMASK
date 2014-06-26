@@ -225,8 +225,8 @@ subroutine constitutive_j2_init(fileUnit)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('flowstress')
-             constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = flowstress_ID
              constitutive_j2_Noutput(instance) = constitutive_j2_Noutput(instance) + 1_pInt
+             constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = flowstress_ID
              constitutive_j2_output(constitutive_j2_Noutput(instance),instance) = &
                                                 IO_lc(IO_stringValue(line,positions,2_pInt))
 #ifdef HDF 
@@ -235,8 +235,8 @@ subroutine constitutive_j2_init(fileUnit)
              constitutive_j2_Output2(instance)%flowstressActive = .true.
 #endif
            case ('strainrate')
-             constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = strainrate_ID
              constitutive_j2_Noutput(instance) = constitutive_j2_Noutput(instance) + 1_pInt
+             constitutive_j2_outputID(constitutive_j2_Noutput(instance),instance) = strainrate_ID
              constitutive_j2_output(constitutive_j2_Noutput(instance),instance) = &
                                                 IO_lc(IO_stringValue(line,positions,2_pInt))
 #ifdef HDF 

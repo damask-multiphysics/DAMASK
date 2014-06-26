@@ -33,18 +33,16 @@ module constitutive
    constitutive_sizeDotState, &                                                                      !< size of dotState array
    constitutive_sizeState, &                                                                         !< size of state array per grain
    constitutive_sizePostResults                                                                      !< size of postResults array per grain
- integer(pInt), public, protected :: &
-   constitutive_maxSizeDotState, &
-   constitutive_maxSizePostResults
  integer(pInt), private :: &
    constitutive_maxSizeState
 #else
  integer(pInt), public, dimension(:,:,:), allocatable :: &
    constitutive_sizePostResults                                                                      !< size of postResults array per grain
+#endif 
  integer(pInt), public, protected :: &
    constitutive_maxSizePostResults, &
    constitutive_maxSizeDotState
-#endif 
+
  public :: & 
    constitutive_init, &
    constitutive_homogenizedC, &
@@ -445,7 +443,7 @@ subroutine constitutive_init
 
  if (nonlocalConstitutionPresent) & 
 #ifdef NEWSTATE
-   call constitutive_nonlocal_stateInit(mappingConstitutive)
+   call constitutive_nonlocal_stateInit()
 #else
    call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
 #endif
@@ -633,7 +631,7 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
 #endif
    case (PLASTICITY_NONLOCAL_ID)
 #ifdef NEWSTATE
-     call constitutive_nonlocal_microstructure(mappingConstitutive,Fe,Fp,ipc,ip,el)
+     call constitutive_nonlocal_microstructure(Fe,Fp,ipc,ip,el)
 #else
      call constitutive_nonlocal_microstructure(constitutive_state,Fe,Fp,ipc,ip,el)
 #endif 
@@ -730,7 +728,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    case (PLASTICITY_NONLOCAL_ID)
 #ifdef NEWSTATE
      call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
-                                   temperature, mappingConstitutive, ipc,ip,el)
+                                   temperature, ipc,ip,el)
 #else
      call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
                                    temperature, constitutive_state(ipc,ip,el), ipc,ip,el)
@@ -952,9 +950,10 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
 #endif
    case (PLASTICITY_NONLOCAL_ID)
 #ifdef NEWSTATE
+!*
      plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)) = &
                                          constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
-                                                          Temperature, mappingConstitutive, subdt, &
+                                                                              Temperature,  subdt, &
                                                                           subfracArray, ipc, ip, el)
 
 #else
@@ -1019,7 +1018,7 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_collectDeltaState = .true.
 #ifdef NEWSTATE
-     call constitutive_nonlocal_deltaState(mappingConstitutive, Tstar_v,ipc,ip,el)
+     call constitutive_nonlocal_deltaState(Tstar_v,ip,el)
 #else
      call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el),&
                                       constitutive_state(ipc,ip,el), Tstar_v,ipc,ip,el)

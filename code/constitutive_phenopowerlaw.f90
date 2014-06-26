@@ -264,53 +264,53 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('resistance_slip')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resistance_slip_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resistance_slip_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('accumulatedshear_slip')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_slip_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_slip_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shearrate_slip')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = shearrate_slip_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = shearrate_slip_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resolvedstress_slip')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resolvedstress_slip_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resolvedstress_slip_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('totalshear')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalshear_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalshear_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resistance_twin')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resistance_twin_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resistance_twin_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('accumulatedshear_twin')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_twin_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_twin_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('shearrate_twin')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = shearrate_twin_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = shearrate_twin_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('resolvedstress_twin')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resolvedstress_twin_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resolvedstress_twin_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('totalvolfrac')
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalvolfrac_ID
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalvolfrac_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case default
