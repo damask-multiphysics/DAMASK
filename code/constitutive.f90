@@ -1020,7 +1020,7 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
 #ifdef NEWSTATE
      call constitutive_nonlocal_deltaState(Tstar_v,ip,el)
 #else
-     call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el),&
+     call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el)%p,&
                                       constitutive_state(ipc,ip,el), Tstar_v,ipc,ip,el)
 #endif
    case default

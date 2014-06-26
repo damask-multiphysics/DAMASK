@@ -2335,7 +2335,7 @@ real(pReal), dimension(6), intent(in) ::    Tstar_v                   ! current 
 #ifndef NEWSTATE
 type(p_vec), intent(inout) :: &
                                             state                     ! current microstructural state
-type(p_vec), intent(out) ::                 deltaState                ! change of state variables / microstructure
+real(pReal), dimension(:), intent(out) ::   deltaState                ! change of state variables / microstructure
 #else
  integer(pInt) :: &
    p, &                                                                                             !< phase
@@ -2370,15 +2370,11 @@ real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1,ip,e
                                             dUpperOld, &                  ! old maximum stable dipole distance for edges and screws
                                             deltaDUpper                   ! change in maximum stable dipole distance for edges and screws
 
-
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == 1)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-    write(6,*)
-    write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_deltaState at el ip ipc ',el,ip,1
-    write(6,*)
-  endif
+             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) &
+    write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_deltaState at el ip ipc ',el,ip,1
 #endif
 
 phase = material_phase(1,ip,el)
@@ -2457,19 +2453,21 @@ dUpper(1:ns,1) = lattice_mu(phase) * burgers(1:ns,instance) &
 dUpper(1:ns,2) = lattice_mu(phase) * burgers(1:ns,instance) / (4.0_pReal * pi * abs(tau))
 
 
-!in the test there is an FPE exception. Division by zero?
-forall (c = 1_pInt:2_pInt) &
-  dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
+forall (c = 1_pInt:2_pInt)
+  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+    dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
+end forall
 dUpper = max(dUpper,dLower)
 deltaDUpper = dUpper - dUpperOld
 
 
 !*** dissociation by stress increase
-
 deltaRhoDipole2SingleStress = 0.0_pReal
-forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal) &
+forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
+                                           (dUpperOld(s,c) - dLower(s,c))/= 0.0_pReal) &
   deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) &
                                            / (dUpperOld(s,c) - dLower(s,c))
 
@@ -2477,7 +2475,6 @@ forall (t=1_pInt:4_pInt) &
   deltaRhoDipole2SingleStress(1_pInt:ns,t) = -0.5_pReal &
                                   * deltaRhoDipole2SingleStress(1_pInt:ns,(t-1_pInt)/2_pInt+9_pInt)
 
- 
 
 !*** store new maximum dipole height in state
 
@@ -2504,15 +2501,14 @@ endforall
 forall (s = 1:ns, c = 1_pInt:2_pInt) &
   plasticState(p)%deltaState(iRhoD(s,c,instance),o) = deltaRho(s,c+8_pInt)
 #else
-deltaState%p = 0.0_pReal
+deltaState = 0.0_pReal
 forall (s = 1:ns, t = 1_pInt:4_pInt) 
-  deltaState%p(iRhoU(s,t,instance)) = deltaRho(s,t)
-  deltaState%p(iRhoB(s,t,instance)) = deltaRho(s,t+4_pInt)
+  deltaState(iRhoU(s,t,instance)) = deltaRho(s,t)
+  deltaState(iRhoB(s,t,instance)) = deltaRho(s,t+4_pInt)
 endforall
 forall (s = 1:ns, c = 1_pInt:2_pInt) &
-  deltaState%p(iRhoD(s,c,instance)) = deltaRho(s,c+8_pInt)
+  deltaState(iRhoD(s,c,instance)) = deltaRho(s,c+8_pInt)
 #endif
-
 
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelExtensive) /= 0_pInt &
@@ -2698,11 +2694,8 @@ allocate(constitutive_nonlocal_dotState(plasticState(p)%sizeDotState), source = 
 #ifndef _OPENMP
   if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt &
       .and. ((debug_e == el .and. debug_i == ip .and. debug_g == ipc)&
-             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) then
-    write(6,*)
-    write(6,'(a,i8,1x,i2,1x,i1)') '<< CONST >> nonlocal_dotState at el ip ipc ',el,ip,ipc
-    write(6,*)
-  endif
+             .or. .not. iand(debug_level(debug_constitutive),debug_levelSelective) /= 0_pInt)) &
+    write(6,'(/,a,i8,1x,i2,1x,i1,/)') '<< CONST >> nonlocal_dotState at el ip ipc ',el,ip,ipc
 #endif
 
 phase = material_phase(ipc,ip,el)
@@ -2811,13 +2804,14 @@ dUpper(1:ns,1) = lattice_mu(phase) * burgers(1:ns,instance) &
                / (8.0_pReal * pi * (1.0_pReal - lattice_nu(phase)) * abs(tau))
 dUpper(1:ns,2) = lattice_mu(phase) * burgers(1:ns,instance) &
                / (4.0_pReal * pi * abs(tau))
-forall (c = 1_pInt:2_pInt) &
-  dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
+forall (c = 1_pInt:2_pInt)
+  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+    dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
+end forall
 dUpper = max(dUpper,dLower)
-
-
 
 !****************************************************************************
 !*** calculate dislocation multiplication
@@ -3920,10 +3914,13 @@ dUpper(1:ns,1) = lattice_mu(phase) * burgers(1:ns,instance) &
                / (8.0_pReal * pi * (1.0_pReal - lattice_nu(phase)) * abs(tau))
 dUpper(1:ns,2) = lattice_mu(phase) * burgers(1:ns,instance) &
                / (4.0_pReal * pi * abs(tau))
-forall (c = 1_pInt:2_pInt) &
-  dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
+forall (c = 1_pInt:2_pInt)
+  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+    dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
+end forall
 dUpper = max(dUpper,dLower)
 
 !*** dislocation motion
@@ -4433,10 +4430,13 @@ dUpper(1:ns,1) = lattice_mu(phase) * burgers(1:ns,instance) &
                / (8.0_pReal * pi * (1.0_pReal - lattice_nu(phase)) * abs(tau))
 dUpper(1:ns,2) = lattice_mu(phase) * burgers(1:ns,instance) &
                / (4.0_pReal * pi * abs(tau))
-forall (c = 1_pInt:2_pInt) &
-  dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
+forall (c = 1_pInt:2_pInt)
+  where(sqrt(rhoSgl(1:ns,2*c-1)+rhoSgl(1:ns,2*c)+&
+        abs(rhoSgl(1:ns,2*c+3))+abs(rhoSgl(1:ns,2*c+4))+rhoDip(1:ns,c)) >= tiny(0.0_pReal)) &
+    dUpper(1:ns,c) = min(1.0_pReal / sqrt(rhoSgl(1:ns,2*c-1) + rhoSgl(1:ns,2*c) & 
                        + abs(rhoSgl(1:ns,2*c+3)) + abs(rhoSgl(1:ns,2*c+4)) + rhoDip(1:ns,c)), &
                        dUpper(1:ns,c))
+end forall
 dUpper = max(dUpper,dLower)
 
 

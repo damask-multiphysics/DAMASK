@@ -16,11 +16,8 @@ module prec
  implicit none
  private 
 #if (FLOAT==4)
-#ifdef Spectral
- SPECTRAL SOLVER DOES NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
-#endif
-#ifdef FEM
- SPECTRAL SOLVER DOES NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
+#if defined(Spectral) || defined(FEM)
+ SPECTRAL SOLVER AND OWN FEM DO NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
 #endif
  integer,     parameter, public :: pReal = 4                                                        !< floating point single precition (was selected_real_kind(6,37), number with 6 significant digits, up to 1e+-37)
 #ifdef __INTEL_COMPILER
@@ -80,7 +77,6 @@ module prec
    real(pReal), allocatable, dimension(:,:,:) :: RKCK45dotState
  end type
 #endif
-
 
  public :: &
    prec_init
