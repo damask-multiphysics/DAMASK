@@ -315,6 +315,7 @@ subroutine constitutive_j2_init(fileUnit)
      plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
      allocate(plasticState(phase)%state0         (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
      allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
      allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase),source=0.0_pReal)

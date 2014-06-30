@@ -35,9 +35,6 @@ module constitutive
    constitutive_sizePostResults                                                                      !< size of postResults array per grain
  integer(pInt), private :: &
    constitutive_maxSizeState
-#else
- integer(pInt), public, dimension(:,:,:), allocatable :: &
-   constitutive_sizePostResults                                                                      !< size of postResults array per grain
 #endif 
  integer(pInt), public, protected :: &
    constitutive_maxSizePostResults, &
@@ -217,7 +214,6 @@ subroutine constitutive_init
  cMax = homogenization_maxNgrains
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
- allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt)
 #ifndef NEWSTATE 
 ! lumped into new state
  allocate(constitutive_state0(cMax,iMax,eMax))
@@ -232,6 +228,7 @@ subroutine constitutive_init
 ! not needed anymore for new state
  allocate(constitutive_sizeDotState(cMax,iMax,eMax),    source=0_pInt)
  allocate(constitutive_sizeState(cMax,iMax,eMax),       source=0_pInt)
+ allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt)
  if (any(numerics_integrator == 1_pInt)) then
    allocate(constitutive_previousDotState(cMax,iMax,eMax))
    allocate(constitutive_previousDotState2(cMax,iMax,eMax))
@@ -281,8 +278,8 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        1.0_pReal
            constitutive_sizeState(g,i,e) =          0_pInt
            constitutive_sizeDotState(g,i,e) =       0_pInt
-#endif
            constitutive_sizePostResults(g,i,e) =    0_pInt
+#endif
 
          case (PLASTICITY_J2_ID) 
 #ifndef NEWSTATE
@@ -311,8 +308,8 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        constitutive_j2_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(instance)
-#endif
            constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(instance)
+#endif
 
          case (PLASTICITY_PHENOPOWERLAW_ID)
 #ifndef NEWSTATE
@@ -341,8 +338,8 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        constitutive_phenopowerlaw_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(instance)
-#endif
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(instance)
+#endif
 
          case (PLASTICITY_DISLOTWIN_ID)
 #ifndef NEWSTATE
@@ -371,8 +368,8 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        constitutive_dislotwin_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(instance)
-#endif
            constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(instance)
+#endif
          case (PLASTICITY_TITANMOD_ID)
 #ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
@@ -400,8 +397,8 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =       constitutive_titanmod_aTolState(instance)
            constitutive_sizeState(g,i,e) =         constitutive_titanmod_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =      constitutive_titanmod_sizeDotState(instance)
-#endif
            constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
+#endif
          case (PLASTICITY_NONLOCAL_ID)
            nonlocalConstitutionPresent = .true.
 #ifdef NEWSTATE
@@ -434,8 +431,8 @@ subroutine constitutive_init
            constitutive_aTolState(g,i,e)%p =        constitutive_nonlocal_aTolState(instance)
            constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(instance)
-#endif
            constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
+#endif
        end select
      enddo GrainLoop
    enddo IPloop
@@ -510,10 +507,11 @@ subroutine constitutive_init
  endif
  flush(6)
 #else
- constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
+ constitutive_maxSizePostResults = 0_pInt
  constitutive_maxSizeDotState = 0_pInt
  do p = 1, size(plasticState)
   constitutive_maxSizeDotState = max(constitutive_maxSizeDotState, plasticState(p)%sizeDotState)
+  constitutive_maxSizePostResults = max(constitutive_maxSizePostResults, plasticState(p)%sizePostResults)
  enddo
 #endif
 end subroutine constitutive_init
@@ -1082,8 +1080,13 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
+#ifndef NEWSTATE
  real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: &
    constitutive_postResults
+#else
+ real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
+   constitutive_postResults
+#endif
  real(pReal),  intent(in) :: &
    temperature
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &

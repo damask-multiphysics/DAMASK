@@ -1246,6 +1246,9 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
          constitutive_nonlocal_sizePostResults(instance)  = constitutive_nonlocal_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
+#ifdef NEWSTATE
+     plasticState(phase)%sizePostResults = constitutive_nonlocal_sizePostResults(instance)
+#endif
      
      do s1 = 1_pInt,ns 
        f = slipFamily(s1,instance)

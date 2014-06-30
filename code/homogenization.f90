@@ -631,17 +631,19 @@ subroutine materialpoint_postResults
  use mesh, only: &
    mesh_element
  use material, only: &
+#ifdef NEWSTATE
+   plasticState, &
+   damageState, &
+   thermalState, &
+   material_phase, &
+#endif
    homogenization_Ngrains, &
    microstructure_crystallite
  use constitutive, only: &
+#ifndef NEWSTATE
    constitutive_sizePostResults, &
+#endif
    constitutive_postResults
-#ifdef NEWSTATE
- use constitutive_damage, only: &
-   constitutive_damage_sizePostResults
- use constitutive_thermal, only: &
-   constitutive_thermal_sizePostResults
-#endif   
  use crystallite, only: &
    crystallite_sizePostResults, &
    crystallite_postResults
@@ -678,10 +680,12 @@ subroutine materialpoint_postResults
        grainLooping :do g = 1,myNgrains
          theSize = (1 + crystallite_sizePostResults(myCrystallite)) + &
 #ifdef NEWSTATE
-                   (1 + constitutive_damage_sizePostResults(g,i,e)) + &     
-                   (1 + constitutive_thermal_sizePostResults(g,i,e)) + &     
-#endif   
+                   (1 + plasticState(material_phase(g,i,e))%sizePostResults) + &     
+                   (1 + damageState(material_phase(g,i,e))%sizePostResults) + &     
+                   (1 + thermalState(material_phase(g,i,e))%sizePostResults)    
+#else   
                    (1 + constitutive_sizePostResults(g,i,e))
+#endif
          materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping

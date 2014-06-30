@@ -12,8 +12,6 @@ module constitutive_damage
  
  implicit none
  private
- integer(pInt), public, dimension(:,:,:), allocatable :: &
-   constitutive_damage_sizePostResults                                                                      !< size of postResults array per grain
  integer(pInt), public, protected :: &
    constitutive_damage_maxSizePostResults, &
    constitutive_damage_maxSizeDotState
@@ -128,30 +126,23 @@ use damage_gradient
  
 !--------------------------------------------------------------------------------------------------
 ! allocation of states
- cMax = homogenization_maxNgrains
- iMax = mesh_maxNips
- eMax = mesh_NcpElems
- allocate(constitutive_damage_sizePostResults(cMax,iMax,eMax), source=0_pInt)
+ PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
+   instance = phase_damageInstance(phase)
+   select case(phase_damage(phase))
+     case (DAMAGE_none_ID) 
+       damageState(material_phase(g,i,e))%sizePostResults = damage_none_sizePostResults(instance)
+
+     case (DAMAGE_gradient_ID) 
+       damageState(material_phase(g,i,e))%sizePostResults = damage_gradient_sizePostResults(instance)
+       
+   end select
+ enddo PhaseLoop
  
- ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
-   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
-     GrainLoop:do g = 1_pInt,myNgrains                                                              ! loop over grains
-       phase = material_phase(g,i,e)
-       instance = phase_damageInstance(phase)
-       select case(phase_damage(phase))
-         case (DAMAGE_gradient_ID)
-           constitutive_damage_sizePostResults(g,i,e) =    damage_gradient_sizePostResults(instance)
-           
-       end select
-     enddo GrainLoop
-   enddo IPloop
- enddo ElemLoop
- 
- constitutive_damage_maxSizePostResults = maxval(constitutive_damage_sizePostResults)
+ constitutive_damage_maxSizePostResults = 0_pInt
  constitutive_damage_maxSizeDotState = 0_pInt
  do p = 1, size(damageState)
   constitutive_damage_maxSizeDotState = max(constitutive_damage_maxSizeDotState, damageState(p)%sizeDotState)
+  constitutive_damage_maxSizePostResults = max(constitutive_damage_maxSizePostResults, damageState(p)%sizePostResults)
  enddo
 end subroutine constitutive_damage_init
 
@@ -243,6 +234,7 @@ end function constitutive_damage_collectDeltaState
 !--------------------------------------------------------------------------------------------------
 function constitutive_damage_postResults(ipc, ip, el)
  use material, only: &
+   damageState, &
    material_phase, &
    phase_damage, &
    DAMAGE_gradient_ID
@@ -254,7 +246,7 @@ function constitutive_damage_postResults(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal), dimension(constitutive_damage_sizePostResults(ipc,ip,el)) :: &
+ real(pReal), dimension(damageState(material_phase(ipc,ip,el))%sizePostResults) :: &
    constitutive_damage_postResults
 
  constitutive_damage_postResults = 0.0_pReal

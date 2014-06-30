@@ -4479,21 +4479,26 @@ function crystallite_postResults(ipc, ip, el)
    FE_geomtype, &
    FE_celltype
  use material, only: &
+#ifdef NEWSTATE
+   plasticState, &
+   damageState, &
+   thermalState, &
+#endif
    microstructure_crystallite, &
    crystallite_Noutput, &
    material_phase, &
    material_texture, &
    homogenization_Ngrains
  use constitutive, only: &
+#ifndef NEWSTATE
    constitutive_sizePostResults, &
+#endif
    constitutive_postResults, &
    constitutive_homogenizedC
 #ifdef NEWSTATE
  use constitutive_damage, only: &
-   constitutive_damage_sizePostResults, &
    constitutive_damage_postResults
  use constitutive_thermal, only: &
-   constitutive_thermal_sizePostResults, &
    constitutive_thermal_postResults
 #endif   
  
@@ -4505,10 +4510,12 @@ function crystallite_postResults(ipc, ip, el)
 
  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &
 #ifdef NEWSTATE
-                        1+constitutive_damage_sizePostResults(ipc,ip,el) + &
-                        1+constitutive_thermal_sizePostResults(ipc,ip,el) + &
-#endif   
+                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
+                        1+damageState(material_phase(ipc,ip,el))%sizePostResults + &
+                        1+thermalState(material_phase(ipc,ip,el))%sizePostResults) :: &
+#else  
                         1+constitutive_sizePostResults(ipc,ip,el)) :: &
+#endif 
    crystallite_postResults
  real(pReal), dimension(3,3) :: &
    Ee
@@ -4626,6 +4633,7 @@ function crystallite_postResults(ipc, ip, el)
    c = c + mySize
  enddo
 
+#ifndef NEWSTATE
  crystallite_postResults(c+1) = real(constitutive_sizePostResults(ipc,ip,el),pReal)             ! size of constitutive results
  c = c + 1_pInt
  if (constitutive_sizePostResults(ipc,ip,el) > 0_pInt) &
@@ -4633,21 +4641,28 @@ function crystallite_postResults(ipc, ip, el)
       constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe, &
                                crystallite_temperature(ip,el), ipc, ip, el)
  c = c + constitutive_sizePostResults(ipc,ip,el)
+#else
+ crystallite_postResults(c+1) = real(plasticState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
+ c = c + 1_pInt
+ if (plasticState(material_phase(ipc,ip,el))%sizePostResults > 0_pInt) &
+   crystallite_postResults(c+1:c+plasticState(material_phase(ipc,ip,el))%sizePostResults) = &
+      constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe, &
+                               crystallite_temperature(ip,el), ipc, ip, el)
+ c = c + plasticState(material_phase(ipc,ip,el))%sizePostResults
 
-#ifdef NEWSTATE
- crystallite_postResults(c+1) = real(constitutive_damage_sizePostResults(ipc,ip,el),pReal)             ! size of constitutive results
+ crystallite_postResults(c+1) = real(damageState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
  c = c + 1_pInt
- if (constitutive_damage_sizePostResults(ipc,ip,el) > 0_pInt) &
-   crystallite_postResults(c+1:c+constitutive_damage_sizePostResults(ipc,ip,el)) = &
+ if (damageState(material_phase(ipc,ip,el))%sizePostResults > 0_pInt) &
+   crystallite_postResults(c+1:c+damageState(material_phase(ipc,ip,el))%sizePostResults) = &
       constitutive_damage_postResults(ipc, ip, el)
- c = c + constitutive_damage_sizePostResults(ipc,ip,el)
+ c = c + damageState(material_phase(ipc,ip,el))%sizePostResults
  
- crystallite_postResults(c+1) = real(constitutive_thermal_sizePostResults(ipc,ip,el),pReal)             ! size of constitutive results
+ crystallite_postResults(c+1) = real(thermalState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
  c = c + 1_pInt
- if (constitutive_thermal_sizePostResults(ipc,ip,el) > 0_pInt) &
-   crystallite_postResults(c+1:c+constitutive_thermal_sizePostResults(ipc,ip,el)) = &
+ if (thermalState(material_phase(ipc,ip,el))%sizePostResults > 0_pInt) &
+   crystallite_postResults(c+1:c+thermalState(material_phase(ipc,ip,el))%sizePostResults) = &
       constitutive_thermal_postResults(ipc, ip, el)
- c = c + constitutive_thermal_sizePostResults(ipc,ip,el)
+ c = c + thermalState(material_phase(ipc,ip,el))%sizePostResults
 #endif   
 
 end function crystallite_postResults

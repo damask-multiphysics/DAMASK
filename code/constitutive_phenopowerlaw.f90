@@ -532,6 +532,7 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
      plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeState
+     plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
      allocate(plasticState(phase)%aTolState      (sizeState), source=0.0_pReal)
      allocate(plasticState(phase)%state0         (sizeState,NofMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase), source=0.0_pReal)

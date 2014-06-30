@@ -12,8 +12,6 @@ module constitutive_thermal
  
  implicit none
  private
- integer(pInt), public, dimension(:,:,:), allocatable :: &
-   constitutive_thermal_sizePostResults                                                                      !< size of postResults array per grain
  integer(pInt), public, protected :: &
    constitutive_thermal_maxSizePostResults, &
    constitutive_thermal_maxSizeDotState
@@ -128,29 +126,23 @@ subroutine constitutive_thermal_init
  
 !--------------------------------------------------------------------------------------------------
 ! allocation of states
- cMax = homogenization_maxNgrains
- iMax = mesh_maxNips
- eMax = mesh_NcpElems
- allocate(constitutive_thermal_sizePostResults(cMax,iMax,eMax), source=0_pInt)
+ PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
+   instance = phase_thermalInstance(phase)
+   select case(phase_thermal(phase))
+     case (THERMAL_none_ID) 
+       thermalState(material_phase(g,i,e))%sizePostResults = thermal_none_sizePostResults(instance)
+
+     case (THERMAL_conduction_ID) 
+       thermalState(material_phase(g,i,e))%sizePostResults = thermal_conduction_sizePostResults(instance)
+       
+   end select
+ enddo PhaseLoop
  
- ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
-   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
-     GrainLoop:do g = 1_pInt,myNgrains                                                              ! loop over grains
-       phase = material_phase(g,i,e)
-       instance = phase_thermalInstance(phase)
-       select case(phase_thermal(phase))
-         case (THERMAL_conduction_ID) 
-           constitutive_thermal_sizePostResults(g,i,e) =    thermal_conduction_sizePostResults(instance)
-       end select
-     enddo GrainLoop
-   enddo IPloop
- enddo ElemLoop
- 
- constitutive_thermal_maxSizePostResults = maxval(constitutive_thermal_sizePostResults)
+ constitutive_thermal_maxSizePostResults = 0_pInt
  constitutive_thermal_maxSizeDotState = 0_pInt
  do p = 1, size(thermalState)
   constitutive_thermal_maxSizeDotState = max(constitutive_thermal_maxSizeDotState, thermalState(p)%sizeDotState)
+  constitutive_thermal_maxSizePostResults = max(constitutive_thermal_maxSizePostResults, thermalState(p)%sizePostResults)
  enddo
 end subroutine constitutive_thermal_init
 
@@ -239,6 +231,7 @@ end function constitutive_thermal_collectDeltaState
 !--------------------------------------------------------------------------------------------------
 function constitutive_thermal_postResults(ipc, ip, el)
  use material, only: &
+   thermalState, &
    material_phase, &
    phase_thermal, &
    THERMAL_conduction_ID
@@ -250,7 +243,7 @@ function constitutive_thermal_postResults(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal), dimension(constitutive_thermal_sizePostResults(ipc,ip,el)) :: &
+ real(pReal), dimension(thermalState(material_phase(ipc,ip,el))%sizePostResults) :: &
    constitutive_thermal_postResults
 
  constitutive_thermal_postResults = 0.0_pReal

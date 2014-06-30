@@ -48,6 +48,7 @@ subroutine constitutive_none_init(fileUnit)
 #ifdef NEWSTATE
    material_phase, &
    plasticState, &
+   phase_plasticityInstance, &
 #endif
    PLASTICITY_none_ID, &
    MATERIAL_partPhase
@@ -56,6 +57,7 @@ subroutine constitutive_none_init(fileUnit)
 
  integer(pInt), intent(in) :: fileUnit
  integer(pInt) :: &
+   instance, &
    maxNinstance, &
    phase, &
    NofMyPhase, &
@@ -73,14 +75,17 @@ subroutine constitutive_none_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
+ allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
 #ifdef NEWSTATE
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
    NofMyPhase=count(material_phase==phase)
    if (phase_plasticity(phase) == PLASTICITY_none_ID .and. NofMyPhase/=0) then
+     instance = phase_plasticityInstance(phase)
      sizeState    = 0_pInt
      plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
      allocate(plasticState(phase)%state0         (sizeState,NofMyPhase))
      allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase))
      allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase))
@@ -103,7 +108,6 @@ subroutine constitutive_none_init(fileUnit)
  allocate(constitutive_none_sizeDotState(maxNinstance),    source=1_pInt)
  allocate(constitutive_none_sizeState(maxNinstance),       source=1_pInt)
 #endif
- allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
 
 end subroutine constitutive_none_init
 
