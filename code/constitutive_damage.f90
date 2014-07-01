@@ -130,10 +130,10 @@ use damage_gradient
    instance = phase_damageInstance(phase)
    select case(phase_damage(phase))
      case (DAMAGE_none_ID) 
-       damageState(material_phase(g,i,e))%sizePostResults = damage_none_sizePostResults(instance)
+       damageState(phase)%sizePostResults = damage_none_sizePostResults(instance)
 
      case (DAMAGE_gradient_ID) 
-       damageState(material_phase(g,i,e))%sizePostResults = damage_gradient_sizePostResults(instance)
+       damageState(phase)%sizePostResults = damage_gradient_sizePostResults(instance)
        
    end select
  enddo PhaseLoop

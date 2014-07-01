@@ -130,10 +130,10 @@ subroutine constitutive_thermal_init
    instance = phase_thermalInstance(phase)
    select case(phase_thermal(phase))
      case (THERMAL_none_ID) 
-       thermalState(material_phase(g,i,e))%sizePostResults = thermal_none_sizePostResults(instance)
+       thermalState(phase)%sizePostResults = thermal_none_sizePostResults(instance)
 
      case (THERMAL_conduction_ID) 
-       thermalState(material_phase(g,i,e))%sizePostResults = thermal_conduction_sizePostResults(instance)
+       thermalState(phase)%sizePostResults = thermal_conduction_sizePostResults(instance)
        
    end select
  enddo PhaseLoop

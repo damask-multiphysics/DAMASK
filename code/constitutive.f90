@@ -239,7 +239,6 @@ subroutine constitutive_init
  if (any(numerics_integrator == 5_pInt)) then
    allocate(constitutive_RKCK45dotState(6,cMax,iMax,eMax))
  endif
-#endif
  
  ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
@@ -252,7 +251,6 @@ subroutine constitutive_init
        instance = phase_plasticityInstance(phase)
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)
-#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_none_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_none_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_none_sizeState(instance)))
@@ -279,10 +277,8 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =          0_pInt
            constitutive_sizeDotState(g,i,e) =       0_pInt
            constitutive_sizePostResults(g,i,e) =    0_pInt
-#endif
 
          case (PLASTICITY_J2_ID) 
-#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
@@ -309,10 +305,8 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(instance)
-#endif
 
          case (PLASTICITY_PHENOPOWERLAW_ID)
-#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
            allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
@@ -339,10 +333,8 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(instance)
-#endif
 
          case (PLASTICITY_DISLOTWIN_ID)
-#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
            allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
@@ -369,9 +361,7 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(instance)
-#endif
          case (PLASTICITY_TITANMOD_ID)
-#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
@@ -398,15 +388,10 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =         constitutive_titanmod_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =      constitutive_titanmod_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
-#endif
          case (PLASTICITY_NONLOCAL_ID)
            nonlocalConstitutionPresent = .true.
-#ifdef NEWSTATE
-           plasticState(mappingConstitutive(2,g,i,e))%nonlocal = .true.
-#endif
 
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
-#ifndef NEWSTATE
            allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
            allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
            allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
@@ -432,11 +417,32 @@ subroutine constitutive_init
            constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(instance)
            constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
-#endif
        end select
      enddo GrainLoop
    enddo IPloop
  enddo ElemLoop
+#endif
+#ifdef NEWSTATE 
+ PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
+   instance = phase_plasticityInstance(phase)
+   select case(phase_plasticity(phase))
+     case (PLASTICITY_NONE_ID)
+       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
+     case (PLASTICITY_J2_ID)
+       plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
+     case (PLASTICITY_PHENOPOWERLAW_ID)
+       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
+     case (PLASTICITY_DISLOTWIN_ID)
+       plasticState(phase)%sizePostResults = constitutive_dislotwin_sizePostResults(instance)
+     case (PLASTICITY_TITANMOD_ID)
+       plasticState(phase)%sizePostResults = constitutive_titanmod_sizePostResults(instance)
+     case (PLASTICITY_NONLOCAL_ID)
+       nonlocalConstitutionPresent = .true.
+       plasticState(phase)%nonlocal = .true.
+       plasticState(phase)%sizePostResults = constitutive_nonlocal_sizePostResults(instance)
+   end select   
+ enddo PhaseLoop
+#endif
 
  if (nonlocalConstitutionPresent) & 
 #ifdef NEWSTATE
