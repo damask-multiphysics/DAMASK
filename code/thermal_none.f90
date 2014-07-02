@@ -12,8 +12,6 @@ module thermal_none
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
-   thermal_none_sizeDotState, &
-   thermal_none_sizeState, &
    thermal_none_sizePostResults
 
  integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
@@ -68,8 +66,7 @@ subroutine thermal_none_init(fileUnit)
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
-
-#ifdef NEWSTATE
+   
  initializeInstances: do phase = 1_pInt, size(phase_thermal)
    NofMyPhase=count(material_phase==phase)
    if (phase_thermal(phase) == THERMAL_none_ID .and. NofMyPhase/=0) then
@@ -95,10 +92,6 @@ subroutine thermal_none_init(fileUnit)
        allocate(thermalState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase))
    endif
  enddo initializeInstances
-#else
- allocate(thermal_none_sizeDotState(maxNinstance),    source=1_pInt)
- allocate(thermal_none_sizeState(maxNinstance),       source=1_pInt)
-#endif
  allocate(thermal_none_sizePostResults(maxNinstance), source=0_pInt)
 
 end subroutine thermal_none_init

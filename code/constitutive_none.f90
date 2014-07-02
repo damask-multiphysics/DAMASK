@@ -12,10 +12,6 @@ module constitutive_none
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
-#ifndef NEWSTATE
-   constitutive_none_sizeDotState, &
-   constitutive_none_sizeState, &
-#endif
    constitutive_none_sizePostResults
 
  integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
@@ -45,11 +41,8 @@ subroutine constitutive_none_init(fileUnit)
    phase_plasticity, &
    phase_Noutput, &
    PLASTICITY_NONE_label, &
-#ifdef NEWSTATE
    material_phase, &
    plasticState, &
-   phase_plasticityInstance, &
-#endif
    PLASTICITY_none_ID, &
    MATERIAL_partPhase
 
@@ -57,7 +50,6 @@ subroutine constitutive_none_init(fileUnit)
 
  integer(pInt), intent(in) :: fileUnit
  integer(pInt) :: &
-   instance, &
    maxNinstance, &
    phase, &
    NofMyPhase, &
@@ -75,39 +67,36 @@ subroutine constitutive_none_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
- allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
-#ifdef NEWSTATE
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
+   if (phase_plasticity(phase) == PLASTICITY_none_ID) then
    NofMyPhase=count(material_phase==phase)
-   if (phase_plasticity(phase) == PLASTICITY_none_ID .and. NofMyPhase/=0) then
-     instance = phase_plasticityInstance(phase)
+
      sizeState    = 0_pInt
      plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
-     plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
-     allocate(plasticState(phase)%state0         (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase))
-     allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%state          (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%state_backup   (sizeState,NofMyPhase))
-     allocate(plasticState(phase)%aTolState      (NofMyPhase))
-     allocate(plasticState(phase)%dotState       (sizeDotState,NofMyPhase))
-     allocate(plasticState(phase)%dotState_backup(sizeDotState,NofMyPhase))
+     plasticState(phase)%sizePostResults = 0_pInt
+     allocate(plasticState(phase)%aTolState          (sizeState))
+     allocate(plasticState(phase)%state0             (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%state              (sizeState,NofMyPhase))
+     allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase))
+
+     allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase))
+     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase))
      if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase))
-       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase))
      endif
      if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NofMyPhase))
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase))
+       allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NofMyPhase))
    endif
  enddo initializeInstances
-#else
- allocate(constitutive_none_sizeDotState(maxNinstance),    source=1_pInt)
- allocate(constitutive_none_sizeState(maxNinstance),       source=1_pInt)
-#endif
+
+ allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
 
 end subroutine constitutive_none_init
 

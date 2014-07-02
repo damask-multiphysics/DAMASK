@@ -635,14 +635,12 @@ module lattice
  real(pReal),                              dimension(:),   allocatable, public, protected :: &
    lattice_mu, &
    lattice_nu
-#ifdef NEWSTATE
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
    lattice_surfaceEnergy33
  real(pReal),                              dimension(:),       allocatable, public, protected :: &
    lattice_referenceTemperature
-#endif
  enum, bind(c)
    enumerator :: LATTICE_undefined_ID, &
                  LATTICE_iso_ID, &
@@ -864,12 +862,10 @@ subroutine lattice_init
  allocate(lattice_structure(Nphases),source = LATTICE_undefined_ID)
  allocate(lattice_C66(6,6,Nphases),  source=0.0_pReal)
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
-#ifdef NEWSTATE
  allocate(lattice_thermalConductivity33(3,3,Nphases), source=0.0_pReal)
  allocate(lattice_thermalExpansion33   (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_surfaceEnergy33      (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_referenceTemperature     (Nphases), source=0.0_pReal)
-#endif
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
@@ -955,7 +951,6 @@ subroutine lattice_init
        lattice_C66(6,6,section) = IO_floatValue(line,positions,2_pInt)
      case ('covera_ratio','c/a_ratio','c/a')
        CoverA(section) = IO_floatValue(line,positions,2_pInt)
-#ifdef NEWSTATE
      case ('k11')
        lattice_thermalConductivity33(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('k22')
@@ -976,7 +971,6 @@ subroutine lattice_init
        lattice_surfaceEnergy33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('reference_temperature')
        lattice_referenceTemperature(section) = IO_floatValue(line,positions,2_pInt)
-#endif
      end select
    endif
  enddo
@@ -1048,14 +1042,12 @@ subroutine lattice_initializeStructure(myPhase,CoverA)
  do i = 1_pInt, 6_pInt
    if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_error(43_pInt,el=i,ip=myPhase)
  enddo
-#ifdef NEWSTATE
  lattice_thermalConductivity33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                        lattice_thermalConductivity33(1:3,1:3,myPhase))
  lattice_thermalExpansion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                     lattice_thermalExpansion33(1:3,1:3,myPhase))
  lattice_surfaceEnergy33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                  lattice_surfaceEnergy33(1:3,1:3,myPhase))
-#endif
  
  select case(lattice_structure(myPhase))
 !--------------------------------------------------------------------------------------------------
@@ -1267,8 +1259,6 @@ pure function lattice_symmetrizeC66(struct,C66)
   
  end function lattice_symmetrizeC66
 
-
-#ifdef NEWSTATE
 !--------------------------------------------------------------------------------------------------
 !> @brief Symmetrizes 2nd order tensor according to lattice type
 !--------------------------------------------------------------------------------------------------
@@ -1298,7 +1288,6 @@ pure function lattice_symmetrize33(struct,T33)
   end select
   
  end function lattice_symmetrize33
-#endif 
 
 
 !--------------------------------------------------------------------------------------------------

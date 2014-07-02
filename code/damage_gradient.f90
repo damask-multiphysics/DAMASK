@@ -14,8 +14,6 @@ module damage_gradient
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   damage_gradient_sizeDotState, &                                                           !< number of dotStates
-   damage_gradient_sizeState, &                                                              !< total number of microstructural state variables
    damage_gradient_sizePostResults                                                           !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
@@ -112,8 +110,6 @@ subroutine damage_gradient_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(damage_gradient_sizeDotState(maxNinstance),                        source=0_pInt)
- allocate(damage_gradient_sizeState(maxNinstance),                           source=0_pInt)
  allocate(damage_gradient_sizePostResults(maxNinstance),                     source=0_pInt)
  allocate(damage_gradient_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
  allocate(damage_gradient_output(maxval(phase_Noutput),maxNinstance))
@@ -168,8 +164,6 @@ subroutine damage_gradient_init(fileUnit)
    if (phase_damage(phase) == DAMAGE_gradient_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_damageInstance(phase)
-     damage_gradient_sizeDotState(instance) = 1_pInt
-     damage_gradient_sizeState(instance) = 3_pInt
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -187,8 +181,8 @@ subroutine damage_gradient_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   damage_gradient_sizeDotState(instance)
-     sizeState                 =   damage_gradient_sizeState   (instance)
+     sizeDotState              =   1_pInt
+     sizeState                 =   3_pInt
                 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState

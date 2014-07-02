@@ -13,6 +13,7 @@ module constitutive_j2
  use hdf5, only: &
    HID_T
 #endif
+
  use prec, only: &
    pReal,&
    pInt
@@ -20,10 +21,6 @@ module constitutive_j2
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
-#ifndef NEWSTATE
-   constitutive_j2_sizeDotState, &                                                                  !< number of dotStates
-   constitutive_j2_sizeState, &                                                                     !< total number of microstructural variables
-#endif
    constitutive_j2_sizePostResults                                                                  !< cumulative size of post results
    
  integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
@@ -58,25 +55,24 @@ module constitutive_j2
                  flowstress_ID, &
                  strainrate_ID
  end enum
- integer(kind(undefined_ID)),         dimension(:,:),   allocatable,          private :: & 
+ integer(kind(undefined_ID)),           dimension(:,:),   allocatable,        private :: & 
    constitutive_j2_outputID                                                                         !< ID of each post result output
  
+
 #ifdef HDF 
  type constitutive_j2_tOutput
    real(pReal),                         dimension(:),     allocatable,         private :: &
      flowstress, &
      strainrate
-   logical :: flowstressActive = .false., strainrateActive = .false.                ! if we can write the output block wise, this is not needed anymore because we can do an if(allocated(xxx))                                 
+ logical :: flowstressActive = .false., strainrateActive = .false.                ! if we can write the output block wise, this is not needed anymore because we can do an if(allocated(xxx))                                 
  end type constitutive_j2_tOutput
  type(constitutive_j2_tOutput), allocatable, dimension(:) :: constitutive_j2_Output2
 integer(HID_T), allocatable, dimension(:) :: outID
-#endif 
+#endif
+
+
  public  :: &
    constitutive_j2_init, &
-#ifndef NEWSTATE 
-   constitutive_j2_stateInit, &
-   constitutive_j2_aTolState, &
-#endif
    constitutive_j2_LpAndItsTangent, &
    constitutive_j2_dotState, &
    constitutive_j2_postResults
@@ -126,9 +122,7 @@ subroutine constitutive_j2_init(fileUnit)
    PLASTICITY_J2_label, &
    PLASTICITY_J2_ID, &
    material_phase, &
-#ifdef NEWSTATE
    plasticState, &
-#endif
    MATERIAL_partPhase
    
  use lattice  
@@ -139,19 +133,25 @@ subroutine constitutive_j2_init(fileUnit)
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
  
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS) :: positions
- integer(pInt) :: phase, maxNinstance, instance,o, mySize, myConstituents
+ integer(pInt) :: &
+   o, &
+   phase, & 
+   maxNinstance, &
+   instance, &
+   mySize, &
+   sizeDotState, &
+   sizeState
  character(len=65536) :: &
    tag  = '', &
    line = ''
   integer(pInt) :: NofMyPhase
+
 #ifdef HDF 
  character(len=5) :: &
    str1
  integer(HID_T) :: ID,ID2,ID4
 #endif
-#ifdef NEWSTATE
- integer(pInt) :: sizeDotState,sizeState
-#endif
+
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_J2_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -160,17 +160,14 @@ subroutine constitutive_j2_init(fileUnit)
  maxNinstance = int(count(phase_plasticity == PLASTICITY_J2_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
+ if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
+   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+
 #ifdef HDF 
   allocate(constitutive_j2_Output2(maxNinstance))
   allocate(outID(maxNinstance))
 #endif
 
- if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
-   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
-#ifndef NEWSTATE 
- allocate(constitutive_j2_sizeDotState(maxNinstance),                         source=1_pInt)
- allocate(constitutive_j2_sizeState(maxNinstance),                            source=1_pInt)
-#endif
  allocate(constitutive_j2_sizePostResults(maxNinstance),                      source=0_pInt)
  allocate(constitutive_j2_sizePostResult(maxval(phase_Noutput), maxNinstance),source=0_pInt)
  allocate(constitutive_j2_output(maxval(phase_Noutput), maxNinstance))
@@ -205,18 +202,16 @@ subroutine constitutive_j2_init(fileUnit)
      exit                                                                                           
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
-     myConstituents = 0_pInt
      phase = phase + 1_pInt                                                                         ! advance section counter
      if (phase_plasticity(phase) == PLASTICITY_J2_ID) then
        instance = phase_plasticityInstance(phase)
-       myConstituents = count(material_phase==phase)
 #ifdef HDF
        outID(instance)=HDF5_addGroup(str1,tempResults)
 #endif
      endif
      cycle                                                                                          ! skip to next line
    endif
-   if (myConstituents > 0_pInt ) then
+   if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_J2_ID) then                 ! one of my phases. Do not short-circuit here (.and. between if-statements), it's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,MAXNCHUNKS) 
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
@@ -290,13 +285,15 @@ subroutine constitutive_j2_init(fileUnit)
        case default
 
      end select
-   endif
+   endif; endif
  enddo parsingFile
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-   NofMyPhase=count(material_phase==phase)
-   if (phase_plasticity(phase) == PLASTICITY_j2_ID .and. NofMyPhase/=0) then
+   myPhase: if (phase_plasticity(phase) == PLASTICITY_j2_ID) then
+     NofMyPhase=count(material_phase==phase)
      instance = phase_plasticityInstance(phase)
+!--------------------------------------------------------------------------------------------------
+!  Determine size of postResults array
      outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(instance)
        select case(constitutive_j2_outputID(o,instance))
          case(flowstress_ID,strainrate_ID)
@@ -310,75 +307,41 @@ subroutine constitutive_j2_init(fileUnit)
          constitutive_j2_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
-#ifdef NEWSTATE
-     sizeState    = 1 
+
+!--------------------------------------------------------------------------------------------------
+! allocate state arrays
+     sizeState    = 1_pInt
      plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
-     allocate(plasticState(phase)%state0         (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
-     allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
-     allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%state          (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
-     allocate(plasticState(phase)%state_backup   (sizeState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%aTolState      (NofMyPhase),source=constitutive_j2_aTolResistance(instance))
-     allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%aTolState          (sizeState),source=constitutive_j2_aTolResistance(instance))
+     allocate(plasticState(phase)%state0             (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
+     allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%state              (sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase),source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase),source=0.0_pReal)
      endif
      if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NofMyPhase),source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
-#endif
-   endif
+       allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+
+   endif myPhase
  enddo initializeInstances
 
 end subroutine constitutive_j2_init
 
-#ifndef NEWSTATE
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the initial microstructural state for a given instance of this plasticity
-!> @details initial microstructural state is set to the value specified by tau0
-! not needed for new state
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_stateInit(instance)
-  
- implicit none
- real(pReal),   dimension(1)            :: constitutive_j2_stateInit
- integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the plasticity
- 
- constitutive_j2_stateInit = constitutive_j2_tau0(instance)
-
-
-end function constitutive_j2_stateInit
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant state values for a given instance of this plasticity
-! not needed for new state
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_aTolState(instance)
-
- implicit none
- real(pReal),   dimension(1)            :: constitutive_j2_aTolState
- integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the plasticity
-
-
- constitutive_j2_aTolState = constitutive_j2_aTolResistance(instance)
-
-end function constitutive_j2_aTolState
-
-#endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ipc,ip,el)
- use prec, only: &
-   p_vec
+subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6, &
    math_Mandel6to33, &
@@ -389,6 +352,8 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
+   mappingConstitutive, &
+   plasticState, &
    homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance
@@ -405,13 +370,6 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
-#ifdef NEWSTATE
- real(pReal), dimension(1), intent(in) :: &
-   state
-#else
- type(p_vec),               intent(in) :: &
-   state                                                                                            !< microstructure state
-#endif 
 
  real(pReal), dimension(3,3) :: &
    Tstar_dev_33                                                                                     !< deviatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
@@ -434,15 +392,11 @@ pure subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ip
    Lp = 0.0_pReal
    dLp_dTstar99 = 0.0_pReal
  else
-#ifdef NEWSTATE
    gamma_dot = constitutive_j2_gdot0(instance) &
-             * (sqrt(1.5_pReal) * norm_Tstar_dev / constitutive_j2_fTaylor(instance) / state(1)) &
+             * (sqrt(1.5_pReal) * norm_Tstar_dev / (constitutive_j2_fTaylor(instance) * &
+               plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
                                                   **constitutive_j2_n(instance)
-#else
-   gamma_dot = constitutive_j2_gdot0(instance) &
-             * (sqrt(1.5_pReal) * norm_Tstar_dev / constitutive_j2_fTaylor(instance) / state%p(1)) &
-                                                  **constitutive_j2_n(instance)
-#endif
+
    Lp = Tstar_dev_33/norm_Tstar_dev * gamma_dot/constitutive_j2_fTaylor(instance)
 
 !--------------------------------------------------------------------------------------------------
@@ -463,23 +417,21 @@ end subroutine constitutive_j2_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_dotState(Tstar_v,state,ipc,ip,el)
- use prec, only: &
-   p_vec
+subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
+   mappingConstitutive, &
+   plasticState, &
    homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance
  
  implicit none
- real(pReal), dimension(1) :: &
-   constitutive_j2_dotState
-real(pReal) :: &
+ real(pReal) :: &
    tempState
  real(pReal), dimension(6), intent(in):: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
@@ -487,13 +439,6 @@ real(pReal) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
-#ifdef NEWSTATE
- real(pReal), dimension(1), intent(in) :: &
-   state
-#else
- type(p_vec),               intent(in) :: &
-   state                                                                                            !< microstructure state
-#endif
  real(pReal), dimension(6) :: &
    Tstar_dev_v                                                                                      !< deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal) :: &
@@ -502,14 +447,14 @@ real(pReal) :: &
    saturation, &                                                                                    !< saturation resistance
    norm_Tstar_dev                                                                                   !< euclidean norm of Tstar_dev
  integer(pInt) :: &
-   instance
-#ifdef NEWSTATE
-  tempState = state(1)
-#else
-  tempState = state%p(1)
-#endif
+   instance, &                                                                                      !< instance of my instance (unique number of my constitutive model)
+   of, &                                                                                            !< shortcut notation for offset position in state array
+   ph                                                                                               !< shortcut notation for phase ID (unique number of all phases, regardless of constitutive model)
 
+ of = mappingConstitutive(1,ipc,ip,el)
+ ph = mappingConstitutive(2,ipc,ip,el)
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
+
 !--------------------------------------------------------------------------------------------------
 ! norm of deviatoric part of 2nd Piola-Kirchhoff stress
  Tstar_dev_v(1:3) = Tstar_v(1:3) - sum(Tstar_v(1:3))/3.0_pReal
@@ -518,9 +463,9 @@ real(pReal) :: &
 
 !--------------------------------------------------------------------------------------------------
 ! strain rate 
- gamma_dot = constitutive_j2_gdot0(instance) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
+ gamma_dot = constitutive_j2_gdot0(instance) * ( sqrt(1.5_pReal) * norm_Tstar_dev & 
             / &!-----------------------------------------------------------------------------------
-              (constitutive_j2_fTaylor(instance) * tempState) ) ** constitutive_j2_n(instance)
+           (constitutive_j2_fTaylor(instance)*plasticState(ph)%state(1,of)) )**constitutive_j2_n(instance)
  
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
@@ -543,21 +488,20 @@ real(pReal) :: &
    endif
    hardening = ( constitutive_j2_h0(instance) + constitutive_j2_h0_slopeLnRate(instance) * log(gamma_dot) ) &
                * abs( 1.0_pReal - tempState/saturation )**constitutive_j2_a(instance) &
-               * sign(1.0_pReal, 1.0_pReal - tempState/saturation)
+               * sign(1.0_pReal, 1.0_pReal - plasticState(ph)%state(1,of)/saturation)
  else
    hardening = 0.0_pReal
  endif
+
+  plasticState(ph)%dotState(1,of) = hardening * gamma_dot !!!!!!!!!!!!!check if dostate
+
+end subroutine constitutive_j2_dotState
+
  
- constitutive_j2_dotState = hardening * gamma_dot
-
-end function constitutive_j2_dotState
-
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
- use prec, only: &
-   p_vec
+function constitutive_j2_postResults(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
  use mesh, only: &
@@ -566,6 +510,8 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
+   plasticState, &
+   mappingConstitutive, &
    phase_plasticityInstance, &
    phase_Noutput
 
@@ -576,15 +522,6 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal) :: &
-  tempState
-#ifdef NEWSTATE
- real(pReal), dimension(1), intent(in) :: &
-   state
-#else
- type(p_vec),               intent(in) :: &
-   state                                                                                            !< microstructure state
-#endif
  real(pReal), dimension(constitutive_j2_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
                                            constitutive_j2_postResults
 
@@ -593,16 +530,14 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  real(pReal) :: &
    norm_Tstar_dev                                                                                   ! euclidean norm of Tstar_dev
  integer(pInt) :: &
-   instance, &
-   o, &
-   c
+   instance, &                                                                                      !< instance of my instance (unique number of my constitutive model)
+   of, &                                                                                            !< shortcut notation for offset position in state array
+   ph, &                                                                                            !< shortcut notation for phase ID (unique number of all phases, regardless of constitutive model)
+   c, &
+   o
 
-#ifdef NEWSTATE
-  tempState = state(1)
-#else
-  tempState = state%p(1)
-#endif
- 
+ of = mappingConstitutive(1,ipc,ip,el)
+ ph = mappingConstitutive(2,ipc,ip,el)
  instance = phase_plasticityInstance(material_phase(ipc,ip,el))
  
 !--------------------------------------------------------------------------------------------------
@@ -617,13 +552,13 @@ pure function constitutive_j2_postResults(Tstar_v,state,ipc,ip,el)
  outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(instance)
    select case(constitutive_j2_outputID(o,instance))
      case (flowstress_ID)
-       constitutive_j2_postResults(c+1_pInt) = tempState
+       constitutive_j2_postResults(c+1_pInt) = plasticState(ph)%state(1,of)
        c = c + 1_pInt
      case (strainrate_ID)
        constitutive_j2_postResults(c+1_pInt) = &
                 constitutive_j2_gdot0(instance) * (            sqrt(1.5_pReal) * norm_Tstar_dev & 
              / &!----------------------------------------------------------------------------------
-              (constitutive_j2_fTaylor(instance) * tempState) ) ** constitutive_j2_n(instance)
+              (constitutive_j2_fTaylor(instance) * plasticState(ph)%state(1,of)) ) ** constitutive_j2_n(instance)
        c = c + 1_pInt
    end select
  enddo outputsLoop

@@ -19,7 +19,6 @@ module constitutive_thermal
    constitutive_thermal_init, &
    constitutive_thermal_microstructure, &
    constitutive_thermal_collectDotState, &
-   constitutive_thermal_collectDeltaState, &
    constitutive_thermal_postResults
  
 contains
@@ -203,28 +202,6 @@ subroutine constitutive_thermal_collectDotState(Tstar_v, Lp, ipc, ip, el)
  end select
 
 end subroutine constitutive_thermal_collectDotState
-
-!--------------------------------------------------------------------------------------------------
-!> @brief for constitutive models having an instantaneous change of state (so far, only nonlocal)
-!> will return false if delta state is not needed/supported by the constitutive model
-!--------------------------------------------------------------------------------------------------
-logical function constitutive_thermal_collectDeltaState(ipc, ip, el)
- use material, only: &
-   material_phase, &
-   phase_thermal
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
-
- select case (phase_thermal(material_phase(ipc,ip,el)))
-
- end select
-
-end function constitutive_thermal_collectDeltaState
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results

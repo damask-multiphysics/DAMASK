@@ -12,8 +12,6 @@ module damage_none
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
-   damage_none_sizeDotState, &
-   damage_none_sizeState, &
    damage_none_sizePostResults
 
  integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
@@ -69,10 +67,9 @@ subroutine damage_none_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
-#ifdef NEWSTATE
  initializeInstances: do phase = 1_pInt, size(phase_damage)
    NofMyPhase=count(material_phase==phase)
-   if (phase_damage(phase) == DAMAGE_none_ID .and. NofMyPhase/=0) then
+   if (phase_damage(phase) == DAMAGE_none_ID) then
      sizeState    = 0_pInt
      damageState(phase)%sizeState = sizeState
      sizeDotState = sizeState
@@ -95,10 +92,7 @@ subroutine damage_none_init(fileUnit)
        allocate(damageState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase))
    endif
  enddo initializeInstances
-#else
- allocate(damage_none_sizeDotState(maxNinstance),    source=1_pInt)
- allocate(damage_none_sizeState(maxNinstance),       source=1_pInt)
-#endif
+
  allocate(damage_none_sizePostResults(maxNinstance), source=0_pInt)
 
 end subroutine damage_none_init

@@ -116,11 +116,6 @@ RUN_PATH  :=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
-#new state
-ifeq "$(STATE)" "NEW"
-INCLUDE_DIRS +=-DNEWSTATE
-endif
-
 ifdef STANDARD_CHECK
 STANDARD_CHECK_ifort =$(STANDARD_CHECK)
 STANDARD_CHECK_gfortran =$(STANDARD_CHECK)
@@ -350,18 +345,22 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 ###################################################################################################
+CONSTITUTIVE_FILES = constitutive_thermal.o \
+                     constitutive_damage.o  \
+                     constitutive_nonlocal.o \
+                     constitutive_titanmod.o \
+                     constitutive_dislotwin.o \
+                     constitutive_phenopowerlaw.o \
+                     constitutive_j2.o \
+                     constitutive_none.o
+
 COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
-                 constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o crystallite.o \
+                 damage_none.o damage_gradient.o thermal_none.o thermal_conduction.o thermal_adiabatic.o \
+                 $(CONSTITUTIVE_FILES) constitutive.o crystallite.o \
                  homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o CPFEM.o \
-                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o 
+                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o \
 
-ifeq "$(STATE)" "NEW"
-COMPILED_FILES += constitutive_damage.o damage_none.o damage_gradient.o \
-                  constitutive_thermal.o thermal_none.o thermal_conduction.o 
-CONSTITUTIVE_FILES := constitutive_thermal.o constitutive_damage.o
-endif
 
 ifdef PETSC_DIR
 PETSC_FILES = DAMASK_spectral_solverAL.o \
@@ -410,15 +409,10 @@ homogenization_none.o:         homogenization_none.f90 \
                                crystallite.o
 
 crystallite.o:                 crystallite.f90 \
-                               constitutive.o $(CONSTITUTIVE_FILES)
+                               constitutive.o 
                             
 constitutive.o:                constitutive.f90 \
-                               constitutive_nonlocal.o \
-                               constitutive_titanmod.o \
-                               constitutive_dislotwin.o \
-                               constitutive_phenopowerlaw.o \
-                               constitutive_j2.o \
-                               constitutive_none.o
+                               $(CONSTITUTIVE_FILES)
 
 constitutive_nonlocal.o:       constitutive_nonlocal.f90 \
                                lattice.o
@@ -450,6 +444,7 @@ damage_gradient.o:             damage_gradient.f90 \
 
 constitutive_thermal.o:        constitutive_thermal.f90 \
                                thermal_none.o \
+                               thermal_adiabatic.o \
                                thermal_conduction.o
 
 thermal_none.o:                thermal_none.f90 \

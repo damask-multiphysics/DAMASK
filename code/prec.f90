@@ -57,10 +57,11 @@ module prec
    integer(pInt), dimension(:), allocatable :: p
  end type p_intvec
 
-#ifdef NEWSTATE
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
-   integer(pInt)                              :: sizeState,sizeDotState,sizePostResults
+   integer(pInt)                              :: sizeState = 0_pInt , &
+                                                 sizeDotState = 0_pInt, &
+                                                 sizePostResults = 0_pInt
    logical                                    :: nonlocal
    real(pReal), allocatable, dimension(:)     :: atolState
    real(pReal), allocatable, dimension(:,:)   :: state, &                                                     ! material points, state size
@@ -76,7 +77,6 @@ module prec
                                                  RK4dotState
    real(pReal), allocatable, dimension(:,:,:) :: RKCK45dotState
  end type
-#endif
 
  public :: &
    prec_init
@@ -96,9 +96,6 @@ subroutine prec_init
  write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
  write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
-#ifdef NEWSTATE
- write(6,'(a)')       'Using new state structure'
-#endif
  write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
  write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
  write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt

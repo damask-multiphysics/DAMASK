@@ -104,12 +104,10 @@ subroutine homogenization_init()
    FE_geomtype
  use constitutive, only: &
    constitutive_maxSizePostResults
-#ifdef NEWSTATE
  use constitutive_damage, only: &
    constitutive_damage_maxSizePostResults
  use constitutive_thermal, only: &
    constitutive_thermal_maxSizePostResults
-#endif   
  use crystallite, only: &
    crystallite_maxSizePostResults
  use material
@@ -239,10 +237,8 @@ subroutine homogenization_init()
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
-#ifdef NEWSTATE
                                                         + 1 + constitutive_damage_maxSizePostResults &     
                                                         + 1 + constitutive_thermal_maxSizePostResults &    
-#endif   
                                                         + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
  
@@ -302,19 +298,12 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
-#ifdef NEWSTATE
    plasticState, &
    damageState, &
    thermalState, &
    mappingConstitutive, &
-#endif   
    homogenization_Ngrains
-#ifndef NEWSTATE
- use constitutive, only: &
-   constitutive_state0, &
-   constitutive_partionedState0, &
-   constitutive_state
-#endif     
+  
    
  use crystallite, only: &
    crystallite_heat, &
@@ -380,16 +369,12 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
-#ifdef NEWSTATE
      plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
        plasticState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
      damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
        damageState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
      thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
        thermalState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
-#else
-     constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p                           ! ...microstructures
-#endif
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
      crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
@@ -444,7 +429,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e) = crystallite_Lp(1:3,1:3,1:myNgrains,i,e)    ! ...plastic velocity grads
            crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e)! ...stiffness
            crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = crystallite_Tstar_v(1:6,1:myNgrains,i,e)  ! ...2nd PK stress
-#ifdef NEWSTATE
            forall (g = 1:myNgrains)
              plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
                plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
@@ -453,10 +437,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
                thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
            end forall    
-#else
-
-           forall (g = 1:myNgrains) constitutive_partionedState0(g,i,e)%p = constitutive_state(g,i,e)%p   ! ...microstructures
-#endif
            if (homogenization_sizeState(i,e) > 0_pInt) &
              homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                             ! ...def grad
@@ -503,7 +483,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_Lp(1:3,1:3,1:myNgrains,i,e) = crystallite_partionedLp0(1:3,1:3,1:myNgrains,i,e)      ! ...plastic velocity grads
            crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
            crystallite_Tstar_v(1:6,1:myNgrains,i,e) = crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)    ! ...2nd PK stress
-#ifdef NEWSTATE
            forall (g = 1:myNgrains)
              plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
                plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
@@ -512,10 +491,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
                thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
            end forall    
-#else
-
-           forall (g = 1:myNgrains) constitutive_state(g,i,e)%p = constitutive_partionedState0(g,i,e)%p     ! ...microstructures
-#endif
            if (homogenization_sizeState(i,e) > 0_pInt) &
              homogenization_state(i,e)%p = homogenization_subState0(i,e)%p                                  ! ...internal state of homog scheme
          endif       
@@ -631,18 +606,13 @@ subroutine materialpoint_postResults
  use mesh, only: &
    mesh_element
  use material, only: &
-#ifdef NEWSTATE
    plasticState, &
    damageState, &
    thermalState, &
    material_phase, &
-#endif
    homogenization_Ngrains, &
    microstructure_crystallite
  use constitutive, only: &
-#ifndef NEWSTATE
-   constitutive_sizePostResults, &
-#endif
    constitutive_postResults
  use crystallite, only: &
    crystallite_sizePostResults, &
@@ -679,13 +649,9 @@ subroutine materialpoint_postResults
 
        grainLooping :do g = 1,myNgrains
          theSize = (1 + crystallite_sizePostResults(myCrystallite)) + &
-#ifdef NEWSTATE
                    (1 + plasticState(material_phase(g,i,e))%sizePostResults) + &     
                    (1 + damageState(material_phase(g,i,e))%sizePostResults) + &     
                    (1 + thermalState(material_phase(g,i,e))%sizePostResults)    
-#else   
-                   (1 + constitutive_sizePostResults(g,i,e))
-#endif
          materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping

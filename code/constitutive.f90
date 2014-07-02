@@ -7,35 +7,12 @@
 !--------------------------------------------------------------------------------------------------
 module constitutive
  use prec, only: &
-   pInt, &
-   pReal, &
-   p_vec
+   pInt
  
  implicit none
  private
-#ifndef NEWSTATE
- type(p_vec),   public, dimension(:,:,:), allocatable :: &
-   constitutive_state0, &                                                                            !< pointer array to microstructure at start of BVP inc
-   constitutive_partionedState0, &                                                                   !< pointer array to microstructure at start of homogenization inc
-   constitutive_subState0, &                                                                         !< pointer array to microstructure at start of crystallite inc
-   constitutive_state, &                                                                             !< pointer array to current microstructure (end of converged time step)
-   constitutive_state_backup, &                                                                      !< pointer array to backed up microstructure (end of converged time step)
-   constitutive_dotState, &                                                                          !< pointer array to evolution of current microstructure
-   constitutive_deltaState, &                                                                        !< pointer array to incremental change of current microstructure
-   constitutive_previousDotState,&                                                                   !< pointer array to previous evolution of current microstructure
-   constitutive_previousDotState2,&                                                                  !< pointer array to 2nd previous evolution of current microstructure
-   constitutive_dotState_backup, &                                                                   !< pointer array to backed up evolution of current microstructure
-   constitutive_RK4dotState, &                                                                       !< pointer array to evolution of microstructure defined by classical Runge-Kutta method
-   constitutive_aTolState                                                                            !< pointer array to absolute state tolerance
- type(p_vec),   public, dimension(:,:,:,:), allocatable :: &
-   constitutive_RKCK45dotState                                                                       !< pointer array to evolution of microstructure used by Cash-Karp Runge-Kutta method
  integer(pInt), public, dimension(:,:,:), allocatable :: &
-   constitutive_sizeDotState, &                                                                      !< size of dotState array
-   constitutive_sizeState, &                                                                         !< size of state array per grain
    constitutive_sizePostResults                                                                      !< size of postResults array per grain
- integer(pInt), private :: &
-   constitutive_maxSizeState
-#endif 
  integer(pInt), public, protected :: &
    constitutive_maxSizePostResults, &
    constitutive_maxSizeDotState
@@ -68,6 +45,8 @@ subroutine constitutive_init
 #endif
 
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: &
+   pReal
  use debug, only: &
    debug_level, &
    debug_constitutive, &
@@ -112,12 +91,9 @@ subroutine constitutive_init
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_DISLOTWIN_label, &
    PLASTICITY_TITANMOD_label, &
-#ifdef NEWSTATE
    plasticState, &
-#endif
-#if defined(HDF) || defined(NEWSTATE)
    mappingConstitutive, &
-#endif    
+ 
    PLASTICITY_NONLOCAL_label
  use constitutive_none
  use constitutive_j2
@@ -214,32 +190,7 @@ subroutine constitutive_init
  cMax = homogenization_maxNgrains
  iMax = mesh_maxNips
  eMax = mesh_NcpElems
-#ifndef NEWSTATE 
-! lumped into new state
- allocate(constitutive_state0(cMax,iMax,eMax))
- allocate(constitutive_partionedState0(cMax,iMax,eMax))
- allocate(constitutive_subState0(cMax,iMax,eMax))
- allocate(constitutive_state(cMax,iMax,eMax))
- allocate(constitutive_state_backup(cMax,iMax,eMax))
- allocate(constitutive_dotState(cMax,iMax,eMax))
- allocate(constitutive_deltaState(cMax,iMax,eMax))
- allocate(constitutive_dotState_backup(cMax,iMax,eMax))
- allocate(constitutive_aTolState(cMax,iMax,eMax))
-! not needed anymore for new state
- allocate(constitutive_sizeDotState(cMax,iMax,eMax),    source=0_pInt)
- allocate(constitutive_sizeState(cMax,iMax,eMax),       source=0_pInt)
- allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt)
- if (any(numerics_integrator == 1_pInt)) then
-   allocate(constitutive_previousDotState(cMax,iMax,eMax))
-   allocate(constitutive_previousDotState2(cMax,iMax,eMax))
- endif
- if (any(numerics_integrator == 4_pInt)) then
-   allocate(constitutive_RK4dotState(cMax,iMax,eMax)) 
- endif
- if (any(numerics_integrator == 5_pInt)) then
-   allocate(constitutive_RKCK45dotState(6,cMax,iMax,eMax))
- endif
- 
+ allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt) 
  ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
@@ -251,207 +202,28 @@ subroutine constitutive_init
        instance = phase_plasticityInstance(phase)
        select case(phase_plasticity(material_phase(g,i,e)))
          case (PLASTICITY_NONE_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_none_sizeState(instance)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_none_sizeState(instance)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_none_sizeState(instance)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_none_sizeState(instance)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_none_sizeState(instance)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_none_sizeState(instance)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_none_sizeDotState(instance)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_none_sizeDotState(instance)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_none_sizeDotState(instance)))
-           if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_none_sizeDotState(instance)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_none_sizeDotState(instance)))
-           endif
-           if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_none_sizeDotState(instance))) 
-           endif
-           if (any(numerics_integrator == 5_pInt)) then
-             do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_none_sizeDotState(instance))) 
-             enddo
-           endif
-           constitutive_state0(g,i,e)%p =           0.0_pReal
-           constitutive_aTolState(g,i,e)%p =        1.0_pReal
-           constitutive_sizeState(g,i,e) =          0_pInt
-           constitutive_sizeDotState(g,i,e) =       0_pInt
            constitutive_sizePostResults(g,i,e) =    0_pInt
-
          case (PLASTICITY_J2_ID) 
-           allocate(constitutive_state0(g,i,e)%p(constitutive_j2_sizeState(instance)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_j2_sizeState(instance)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_j2_sizeState(instance)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_j2_sizeState(instance)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_j2_sizeState(instance)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
-           if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_j2_sizeDotState(instance)))
-           endif
-           if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_j2_sizeDotState(instance))) 
-           endif
-           if (any(numerics_integrator == 5_pInt)) then
-             do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_j2_sizeDotState(instance))) 
-             enddo
-           endif
-           constitutive_state0(g,i,e)%p =           constitutive_j2_stateInit(instance)
-           constitutive_aTolState(g,i,e)%p =        constitutive_j2_aTolState(instance)
-           constitutive_sizeState(g,i,e) =          constitutive_j2_sizeState(instance)
-           constitutive_sizeDotState(g,i,e) =       constitutive_j2_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(instance)
-
          case (PLASTICITY_PHENOPOWERLAW_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_state(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_phenopowerlaw_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
-           if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal)
-           endif
-           if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal) 
-           endif
-           if (any(numerics_integrator == 5_pInt)) then
-             do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_phenopowerlaw_sizeDotState(instance)),source=0.0_pReal) 
-             enddo
-           endif
-           constitutive_state0(g,i,e)%p =           constitutive_phenopowerlaw_stateInit(instance)
-           constitutive_aTolState(g,i,e)%p =        constitutive_phenopowerlaw_aTolState(instance)
-           constitutive_sizeState(g,i,e) =          constitutive_phenopowerlaw_sizeState(instance)
-           constitutive_sizeDotState(g,i,e) =       constitutive_phenopowerlaw_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(instance)
-
          case (PLASTICITY_DISLOTWIN_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_state(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_dislotwin_sizeState(instance)),source=0.0_pReal)
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
-           if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal)
-           endif
-           if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal) 
-           endif
-           if (any(numerics_integrator == 5_pInt)) then
-             do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_dislotwin_sizeDotState(instance)),source=0.0_pReal) 
-             enddo
-           endif
-           constitutive_state0(g,i,e)%p =           constitutive_dislotwin_stateInit(instance,material_phase(g,i,e))
-           constitutive_aTolState(g,i,e)%p =        constitutive_dislotwin_aTolState(instance)
-           constitutive_sizeState(g,i,e) =          constitutive_dislotwin_sizeState(instance)
-           constitutive_sizeDotState(g,i,e) =       constitutive_dislotwin_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(instance)
          case (PLASTICITY_TITANMOD_ID)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_titanmod_sizeState(instance)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
-           if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_titanmod_sizeDotState(instance)))
-           endif
-           if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_titanmod_sizeDotState(instance))) 
-           endif
-           if (any(numerics_integrator == 5_pInt)) then
-             do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_titanmod_sizeDotState(instance))) 
-             enddo
-           endif
-           constitutive_state0(g,i,e)%p =          constitutive_titanmod_stateInit(instance,material_phase(g,i,e))
-           constitutive_aTolState(g,i,e)%p =       constitutive_titanmod_aTolState(instance)
-           constitutive_sizeState(g,i,e) =         constitutive_titanmod_sizeState(instance)
-           constitutive_sizeDotState(g,i,e) =      constitutive_titanmod_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
          case (PLASTICITY_NONLOCAL_ID)
            nonlocalConstitutionPresent = .true.
-
+           plasticState(mappingConstitutive(2,g,i,e))%nonlocal = .true.
            if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
-           allocate(constitutive_state0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
-           allocate(constitutive_partionedState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
-           allocate(constitutive_subState0(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
-           allocate(constitutive_state(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
-           allocate(constitutive_state_backup(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
-           allocate(constitutive_aTolState(g,i,e)%p(constitutive_nonlocal_sizeState(instance)))
-           allocate(constitutive_dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
-           allocate(constitutive_deltaState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
-           allocate(constitutive_dotState_backup(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
-           if (any(numerics_integrator == 1_pInt)) then
-             allocate(constitutive_previousDotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
-             allocate(constitutive_previousDotState2(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance)))
-           endif
-           if (any(numerics_integrator == 4_pInt)) then
-             allocate(constitutive_RK4dotState(g,i,e)%p(constitutive_nonlocal_sizeDotState(instance))) 
-           endif
-           if (any(numerics_integrator == 5_pInt)) then
-             do s = 1_pInt,6_pInt
-               allocate(constitutive_RKCK45dotState(s,g,i,e)%p(constitutive_nonlocal_sizeDotState(instance))) 
-             enddo
-           endif
-           constitutive_aTolState(g,i,e)%p =        constitutive_nonlocal_aTolState(instance)
-           constitutive_sizeState(g,i,e) =          constitutive_nonlocal_sizeState(instance)
-           constitutive_sizeDotState(g,i,e) =       constitutive_nonlocal_sizeDotState(instance)
            constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
        end select
      enddo GrainLoop
    enddo IPloop
  enddo ElemLoop
-#endif
-#ifdef NEWSTATE 
- PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
-   instance = phase_plasticityInstance(phase)
-   select case(phase_plasticity(phase))
-     case (PLASTICITY_NONE_ID)
-       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
-     case (PLASTICITY_J2_ID)
-       plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
-     case (PLASTICITY_PHENOPOWERLAW_ID)
-       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
-     case (PLASTICITY_DISLOTWIN_ID)
-       plasticState(phase)%sizePostResults = constitutive_dislotwin_sizePostResults(instance)
-     case (PLASTICITY_TITANMOD_ID)
-       plasticState(phase)%sizePostResults = constitutive_titanmod_sizePostResults(instance)
-     case (PLASTICITY_NONLOCAL_ID)
-       nonlocalConstitutionPresent = .true.
-       plasticState(phase)%nonlocal = .true.
-       plasticState(phase)%sizePostResults = constitutive_nonlocal_sizePostResults(instance)
-   end select   
- enddo PhaseLoop
-#endif
 
- if (nonlocalConstitutionPresent) & 
-#ifdef NEWSTATE
+ if (nonlocalConstitutionPresent) &
    call constitutive_nonlocal_stateInit()
-#else
-   call constitutive_nonlocal_stateInit(constitutive_state0(1,1:iMax,1:eMax))
-#endif
 
-#ifdef NEWSTATE
  do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
    myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
    forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
@@ -461,16 +233,6 @@ subroutine constitutive_init
       plasticState(mappingConstitutive(2,g,i,e))%State0(:,mappingConstitutive(1,g,i,e))    ! need to be defined for first call of constitutive_microstructure in crystallite_init
    endforall
  enddo
-#else
- do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
-   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-   forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
-     constitutive_partionedState0(g,i,e)%p = constitutive_state0(g,i,e)%p
-     constitutive_state(g,i,e)%p = constitutive_state0(g,i,e)%p                                     ! need to be defined for first call of constitutive_microstructure in crystallite_init
-   endforall
- enddo
-#endif
-
 
 #ifdef HDF
  call  HDF5_mappingConstitutive(mappingConstitutive)
@@ -483,7 +245,7 @@ subroutine constitutive_init
  enddo
 #endif
 
-#ifndef NEWSTATE
+#ifdef TODO
 !--------------------------------------------------------------------------------------------------
 ! write out state size file
  call IO_write_jobIntFile(777,'sizeStateConst', size(constitutive_sizeState))
@@ -512,29 +274,30 @@ subroutine constitutive_init
    write(6,'(a32,1x,7(i8,1x))')   'maxSizePostResults: ', constitutive_maxSizePostResults
  endif
  flush(6)
-#else
+#endif
+
  constitutive_maxSizePostResults = 0_pInt
  constitutive_maxSizeDotState = 0_pInt
  do p = 1, size(plasticState)
   constitutive_maxSizeDotState = max(constitutive_maxSizeDotState, plasticState(p)%sizeDotState)
   constitutive_maxSizePostResults = max(constitutive_maxSizePostResults, plasticState(p)%sizePostResults)
  enddo
-#endif
+
 end subroutine constitutive_init
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenize elasticity matrix
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_homogenizedC(ipc,ip,el)
+function constitutive_homogenizedC(ipc,ip,el)
+ use prec, only: &
+   pReal 
  use material, only: &
    phase_plasticity, &
    material_phase, &
    PLASTICITY_TITANMOD_ID, &
-#ifdef NEWSTATE
    plasticState,&
    mappingConstitutive, &
-#endif
    PLASTICITY_DISLOTWIN_ID
  use constitutive_titanmod, only: &
    constitutive_titanmod_homogenizedC
@@ -553,27 +316,11 @@ pure function constitutive_homogenizedC(ipc,ip,el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_DISLOTWIN_ID)
-#ifdef NEWSTATE 
-     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC &
-     (plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
-                                                                                        ipc,ip,el) 
-                                                                                        
-#else
-     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC &
-     (constitutive_state(ipc,ip,el),ipc,ip,el) 
-#endif
+     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(ipc,ip,el) 
    case (PLASTICITY_TITANMOD_ID)
-#ifdef NEWSTATE 
-
-     constitutive_homogenizedC = constitutive_titanmod_homogenizedC &
-     (plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
-                                                                                        ipc,ip,el)
-#else
-     constitutive_homogenizedC = constitutive_titanmod_homogenizedC(constitutive_state(ipc,ip,el), &
-                                                                                       ipc,ip,el)
-#endif
+     constitutive_homogenizedC = constitutive_titanmod_homogenizedC (ipc,ip,el)
    case default
-     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phase(ipc,ip,el))
+     constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phase (ipc,ip,el))
      
  end select
 
@@ -584,14 +331,14 @@ end function constitutive_homogenizedC
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
+ use prec, only: &
+   pReal 
  use material, only: &
    phase_plasticity, &
    material_phase, &
    PLASTICITY_DISLOTWIN_ID, &
-#ifdef NEWSTATE 
    plasticState, &
    mappingConstitutive, &
-#endif
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
  use constitutive_titanmod, only: &
@@ -615,30 +362,12 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
    case (PLASTICITY_DISLOTWIN_ID)
-#ifdef NEWSTATE
-     call constitutive_dislotwin_microstructure(temperature, &
-     plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &       
-                                                                              ipc,ip,el)
-#else
-     call constitutive_dislotwin_microstructure(temperature,constitutive_state(ipc,ip,el), &       
-                                                                              ipc,ip,el)
-#endif
-
+     call constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-#ifdef NEWSTATE
-     call constitutive_titanmod_microstructure(temperature, &
-     plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &       
-                                                                              ipc,ip,el)
-#else
-     call constitutive_titanmod_microstructure(temperature,constitutive_state(ipc,ip,el), &
-                                                                              ipc,ip,el)
-#endif
+     call constitutive_titanmod_microstructure (temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-#ifdef NEWSTATE
-     call constitutive_nonlocal_microstructure(Fe,Fp,ipc,ip,el)
-#else
-     call constitutive_nonlocal_microstructure(constitutive_state,Fe,Fp,ipc,ip,el)
-#endif 
+     call constitutive_nonlocal_microstructure (Fe,Fp,          ip,el)
+
  end select
 
 end subroutine constitutive_microstructure
@@ -648,15 +377,15 @@ end subroutine constitutive_microstructure
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ipc, ip, el)
+ use prec, only: &
+   pReal 
  use math, only: &
    math_identity2nd
  use material, only: &
    phase_plasticity, &
    material_phase, &
-#ifdef NEWSTATE
    plasticState,&
    mappingConstitutive, &
-#endif
    PLASTICITY_NONE_ID, &
    PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
@@ -693,50 +422,17 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    case (PLASTICITY_NONE_ID)
      Lp = 0.0_pReal
      dLp_dTstar = math_identity2nd(9)
-    
    case (PLASTICITY_J2_ID)
-#ifdef NEWSTATE
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
-          plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
-#else
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
-                                      constitutive_state(ipc,ip,el),ipc,ip,el)
-#endif
+     call constitutive_j2_LpAndItsTangent           (Lp,dLp_dTstar,Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-#ifdef NEWSTATE
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
-          plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
-#else
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
-                                      constitutive_state(ipc,ip,el),ipc,ip,el)
-#endif
-   case (PLASTICITY_DISLOTWIN_ID)
-#ifdef NEWSTATE
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,temperature, &
-       plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
-                                                                                     ipc,ip,el)
-#else
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
-                                    temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
-#endif
-
-   case (PLASTICITY_TITANMOD_ID)
-#ifdef NEWSTATE
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,temperature, &
-       plasticState(mappingConstitutive(2,ipc,ip,el))%state(:,mappingConstitutive(1,ipc,ip,el)), &
-                                                                                     ipc,ip,el)
-#else
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
-                                   temperature,constitutive_state(ipc,ip,el),ipc,ip,el)
-#endif
+     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-#ifdef NEWSTATE
-     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
-                                   temperature, ipc,ip,el)
-#else
-     call constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, &
-                                   temperature, constitutive_state(ipc,ip,el), ipc,ip,el)
-#endif
+     call constitutive_nonlocal_LpAndItsTangent     (Lp,dLp_dTstar,Tstar_v,temperature,    ip,el)
+   case (PLASTICITY_DISLOTWIN_ID)
+     call constitutive_dislotwin_LpAndItsTangent    (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
+   case (PLASTICITY_TITANMOD_ID)
+     call constitutive_titanmod_LpAndItsTangent     (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
+
  end select
  
 end subroutine constitutive_LpAndItsTangent
@@ -748,8 +444,10 @@ end subroutine constitutive_LpAndItsTangent
 !> the elastic deformation gradient depending on the selected elastic law (so far no case switch
 !! because only hooke is implemented
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
- 
+subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+ use prec, only: &
+   pReal
+
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
@@ -772,28 +470,28 @@ end subroutine constitutive_TandItsTangent
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to 
 !> the elastic deformation gradient using hookes law
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
-use math, only : &
-  math_mul3x3, &
-  math_mul33x33, &
-  math_mul3333xx33, &
-  math_Mandel66to3333, &
-  math_transpose33, &
-  MATH_I3
-#ifdef NEWSTATE
-use material, only: &
-  mappingConstitutive, &
-  damageState, &
-  phase_damage, &
-  DAMAGE_gradient_ID, &
-  thermalState, &
-  phase_thermal, &
-  THERMAL_conduction_ID, &
-  THERMAL_adiabatic_ID
+subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+ use prec, only: &
+   pReal
+ use math, only : &
+   math_mul3x3, &
+   math_mul33x33, &
+   math_mul3333xx33, &
+   math_Mandel66to3333, &
+   math_transpose33, &
+   MATH_I3
+ use material, only: &
+   mappingConstitutive, &
+   damageState, &
+   phase_damage, &
+   DAMAGE_gradient_ID, &
+   thermalState, &
+   phase_thermal, &
+   THERMAL_conduction_ID, &
+   THERMAL_adiabatic_ID
  use lattice, only: &
-  lattice_referenceTemperature, &
-  lattice_thermalExpansion33
-#endif   
+   lattice_referenceTemperature, &
+   lattice_thermalExpansion33
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -822,7 +520,6 @@ use material, only: &
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
    dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3))                                            ! dT*_ij/dFe_kl
 
-#ifdef NEWSTATE
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  select case (phase_damage(phase))
@@ -842,7 +539,6 @@ use material, only: &
                                    lattice_referenceTemperature(phase)) &
                                 * lattice_thermalExpansion33(1:3,1:3,phase))
  end select
-#endif   
 
 end subroutine constitutive_hooke_TandItsTangent
 
@@ -853,6 +549,7 @@ end subroutine constitutive_hooke_TandItsTangent
 subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, subdt, subfracArray,&
                                                                                         ipc, ip, el)
  use prec, only: &
+   pReal, &
    pLongInt
  use debug, only: &
    debug_cumDotStateCalls, &
@@ -865,10 +562,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    mesh_maxNips
  use material, only: &
    phase_plasticity, &
-#ifdef NEWSTATE
    plasticState, &
-   mappingConstitutive, &
-#endif   
+   mappingConstitutive, &  
    material_phase, &
    homogenization_maxNgrains, &
    PLASTICITY_NONE_ID, &
@@ -912,59 +607,17 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
  
  select case (phase_plasticity(material_phase(ipc,ip,el)))
-   case (PLASTICITY_NONE_ID)
-     
    case (PLASTICITY_J2_ID)
-#ifdef NEWSTATE
-   plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)) &
-              = constitutive_j2_dotState(Tstar_v,plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                             state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
-#else
-     constitutive_dotState(ipc,ip,el)%p = constitutive_j2_dotState(Tstar_v,&
-                                      constitutive_state(ipc,ip,el), ipc,ip,el)
-#endif
+     call constitutive_j2_dotState           (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-#ifdef NEWSTATE
-   plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el))     &
-     = constitutive_phenopowerlaw_dotState(Tstar_v,plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                               state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
-#else
-     constitutive_dotState(ipc,ip,el)%p = constitutive_phenopowerlaw_dotState(Tstar_v,&
-                                      constitutive_state(ipc,ip,el), ipc,ip,el)
-#endif
+     call constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-#ifdef NEWSTATE
-     plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el))   & 
-     = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
-                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                               state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
-#else
-     constitutive_dotState(ipc,ip,el)%p = constitutive_dislotwin_dotState(Tstar_v,Temperature,&
-                                      constitutive_state(ipc,ip,el), ipc,ip,el)
-#endif
+     call constitutive_dislotwin_dotState    (Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-#ifdef NEWSTATE
-     plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el))   & 
-     = constitutive_titanmod_dotState(Tstar_v,Temperature,&
-                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                               state(:,mappingConstitutive(1,ipc,ip,el)), ipc,ip,el)
-#else
-     constitutive_dotState(ipc,ip,el)%p = constitutive_titanmod_dotState(Tstar_v,Temperature,&
-                                      constitutive_state(ipc,ip,el), ipc,ip,el)
-#endif
+     call constitutive_titanmod_dotState     (Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-#ifdef NEWSTATE
-!*
-     plasticState(mappingConstitutive(2,ipc,ip,el))%dotState(:,mappingConstitutive(1,ipc,ip,el)) = &
-                                         constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
-                                                                              Temperature,  subdt, &
-                                                                          subfracArray, ipc, ip, el)
-
-#else
-     constitutive_dotState(ipc,ip,el)%p = constitutive_nonlocal_dotState(Tstar_v, FeArray, FpArray, &
-                                      Temperature, constitutive_state, constitutive_state0, subdt, &
-                                      subfracArray, ipc, ip, el)
-#endif 
+     call constitutive_nonlocal_dotState     (Tstar_v,FeArray,FpArray,Temperature, subdt, &
+                                              subfracArray,ip,el)
  end select
  
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
@@ -984,6 +637,7 @@ end subroutine constitutive_collectDotState
 !--------------------------------------------------------------------------------------------------
 logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  use prec, only: &
+   pReal, &
    pLongInt
  use debug, only: &
    debug_cumDeltaStateCalls, &
@@ -1021,17 +675,10 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
 
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_collectDeltaState = .true.
-#ifdef NEWSTATE
      call constitutive_nonlocal_deltaState(Tstar_v,ip,el)
-#else
-     call constitutive_nonlocal_deltaState(constitutive_deltaState(ipc,ip,el)%p,&
-                                      constitutive_state(ipc,ip,el), Tstar_v,ipc,ip,el)
-#endif
    case default
      constitutive_collectDeltaState = .false.
-#ifndef NEWSTATE
-     constitutive_deltaState(ipc,ip,el)%p = 0.0_pReal !ToDo: needed or will it remain zero anyway?
-#endif
+
  end select
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
@@ -1051,14 +698,14 @@ end function constitutive_collectDeltaState
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
+ use prec, only: &
+   pReal 
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
-#ifdef NEWSTATE
    plasticState, &
    mappingConstitutive, &
-#endif  
    phase_plasticity, &
    material_phase, &
    homogenization_maxNgrains, &
@@ -1086,13 +733,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
-#ifndef NEWSTATE
  real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: &
    constitutive_postResults
-#else
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
-   constitutive_postResults
-#endif
  real(pReal),  intent(in) :: &
    temperature
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
@@ -1103,52 +745,16 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  constitutive_postResults = 0.0_pReal
  
  select case (phase_plasticity(material_phase(ipc,ip,el)))
- 
-   case (PLASTICITY_NONE_ID)
    case (PLASTICITY_TITANMOD_ID)
-#ifdef NEWSTATE
-     constitutive_postResults = constitutive_titanmod_postResults(&
-                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                       state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
-#else
-     constitutive_postResults = constitutive_titanmod_postResults(&
-                                      constitutive_state(ipc,ip,el),ipc,ip,el)
-#endif
+     constitutive_postResults = constitutive_titanmod_postResults             (ipc,ip,el)
    case (PLASTICITY_J2_ID)
-#ifdef NEWSTATE
-     constitutive_postResults= constitutive_j2_postResults(Tstar_v, &
-                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                       state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
-#else
-     constitutive_postResults = constitutive_j2_postResults(Tstar_v,&
-                                      constitutive_state(ipc,ip,el),ipc,ip,el)                                      
-#endif
+     constitutive_postResults= constitutive_j2_postResults            (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-#ifdef NEWSTATE
-     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,&
-                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                       state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
-#else
-     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,&
-                                      constitutive_state(ipc,ip,el),ipc,ip,el)
-#endif
+     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-#ifdef NEWSTATE
-     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,&
-                                      plasticState(mappingConstitutive(2,ipc,ip,el))% &
-                                       state(:,mappingConstitutive(1,ipc,ip,el)),ipc,ip,el)
-#else
-     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,&
-                                      constitutive_state(ipc,ip,el),ipc,ip,el)
-#endif
+     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-#ifdef NEWSTATE
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, FeArray, &
-                                 mappingConstitutive, ipc, ip, el)
-#else
-     constitutive_postResults = constitutive_nonlocal_postResults(Tstar_v, FeArray, &
-                                 constitutive_state, constitutive_dotstate(ipc,ip,el), ipc, ip, el)
-#endif
+     constitutive_postResults = constitutive_nonlocal_postResults (Tstar_v,FeArray,        ip,el)
  end select
   
 end function constitutive_postResults

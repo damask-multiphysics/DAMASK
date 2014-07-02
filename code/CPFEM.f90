@@ -75,12 +75,10 @@ subroutine CPFEM_initAll(temperature,el,ip)
  use FEZoo, only: &
    FEZoo_init
 #endif
-#ifdef NEWSTATE
  use constitutive_thermal, only: &
    constitutive_thermal_init
  use constitutive_damage, only: &
    constitutive_damage_init
-#endif
 
  implicit none
  integer(pInt), intent(in) ::                        el, &                                         ! FE el number
@@ -108,10 +106,8 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call lattice_init
      call material_init
      call constitutive_init
-#ifdef NEWSTATE
      call constitutive_thermal_init
      call constitutive_damage_init
-#endif
      call crystallite_init(temperature)                                                            ! (have to) use temperature of first ip for whole model
      call homogenization_init
      call CPFEM_init
@@ -156,10 +152,6 @@ subroutine CPFEM_init
  use material, only: &
    homogenization_maxNgrains, &
    material_phase
-#ifndef NEWSTATE
- use constitutive, only: &
-   constitutive_state0
-#endif
  use crystallite, only: &
    crystallite_F0, &
    crystallite_Fp0, &
@@ -214,7 +206,8 @@ subroutine CPFEM_init
    call IO_read_realFile(777,'convergedTstar',modelName,size(crystallite_Tstar0_v))
    read (777,rec=1) crystallite_Tstar0_v
    close (777)
-#ifndef NEWSTATE
+
+#ifdef TODO
    call IO_read_realFile(777,'convergedStateConst',modelName)
    m = 0_pInt
    do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
@@ -235,6 +228,8 @@ subroutine CPFEM_init
    enddo; enddo
    close (777)
 #endif
+
+
    call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
    read (777,rec=1) CPFEM_dcsdE
    close (777)
@@ -303,19 +298,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
  use material, only: &
    homogenization_maxNgrains, &
    microstructure_elemhomo, &
-#ifdef NEWSTATE
-  plasticState, &
-  damageState, &
-  thermalState, &
-  mappingConstitutive, &
-#endif
+   plasticState, &
+   damageState, &
+   thermalState, &
+   mappingConstitutive, &
    material_phase
-#ifndef NEWSTATE
- use constitutive, only: &
-   constitutive_state0, &
-   constitutive_state
-#endif   
-   
+
  use crystallite, only: &
    crystallite_partionedF,&
    crystallite_F0, &
@@ -402,14 +390,6 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
    crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
 
-   
-#ifndef NEWSTATE   
-   forall ( i = 1:homogenization_maxNgrains, &
-            j = 1:mesh_maxNips, &
-            k = 1:mesh_NcpElems ) &
-     constitutive_state0(i,j,k)%p = constitutive_state(i,j,k)%p                                ! microstructure of crystallites
-#endif
-#ifdef NEWSTATE
    forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
    forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
    forall ( i = 1:size(thermalState)) thermalState(i)%state0= thermalState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
@@ -421,15 +401,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
               plasticState(mappingConstitutive(2,1,debug_i,debug_e))%state(:,mappingConstitutive(1,1,debug_i,debug_e))  
        endif
    endif 
-#else
-   if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
-       write(6,'(a)') '<< CPFEM >> aging states'
-       if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
-         write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') '<< CPFEM >> aged state of elFE ip grain',&
-                                                         debug_e, debug_i, 1, constitutive_state(1,debug_i,debug_e)%p
-       endif
-   endif
-#endif   
+
    !$OMP PARALLEL DO
      do k = 1,mesh_NcpElems
        do j = 1,mesh_maxNips
@@ -468,7 +440,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      call IO_write_jobRealFile(777,'convergedTstar',size(crystallite_Tstar0_v))
      write (777,rec=1) crystallite_Tstar0_v
      close (777)
-#ifndef NEWSTATE
+#ifdef TODO
      call IO_write_jobRealFile(777,'convergedStateConst')
      m = 0_pInt
      do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
@@ -478,7 +450,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        enddo
      enddo; enddo; enddo
      close (777)
-#endif    
+#endif
      call IO_write_jobRealFile(777,'convergedStateHomog')
      m = 0_pInt
      do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
@@ -648,8 +620,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
  
 
  !*** copy to output if required (FEM solver)
- if(present(cauchyStress)) cauchyStress = CPFEM_cs(1:6,ip,elCP)
- if(present(jacobian)) jacobian = CPFEM_dcsdE(1:6,1:6,ip,elCP)
+ if(present(cauchyStress)) cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
+ if(present(jacobian))     jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
  
 end subroutine CPFEM_general
 

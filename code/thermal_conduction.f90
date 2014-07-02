@@ -14,8 +14,6 @@ module thermal_conduction
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   thermal_conduction_sizeDotState, &                                                           !< number of dotStates
-   thermal_conduction_sizeState, &                                                              !< total number of microstructural state variables
    thermal_conduction_sizePostResults                                                           !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
@@ -111,8 +109,6 @@ subroutine thermal_conduction_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(thermal_conduction_sizeDotState(maxNinstance),                        source=0_pInt)
- allocate(thermal_conduction_sizeState(maxNinstance),                           source=0_pInt)
  allocate(thermal_conduction_sizePostResults(maxNinstance),                     source=0_pInt)
  allocate(thermal_conduction_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
  allocate(thermal_conduction_output(maxval(phase_Noutput),maxNinstance))
@@ -165,8 +161,6 @@ subroutine thermal_conduction_init(fileUnit)
    if (phase_thermal(phase) == THERMAL_conduction_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_thermalInstance(phase)
-     thermal_conduction_sizeDotState(instance) = 0_pInt
-     thermal_conduction_sizeState(instance) = 2_pInt
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -182,8 +176,8 @@ subroutine thermal_conduction_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   thermal_conduction_sizeDotState(instance)
-     sizeState                 =   thermal_conduction_sizeState   (instance)
+     sizeDotState              =   0_pInt
+     sizeState                 =   2_pInt
                 
      thermalState(phase)%sizeState = sizeState
      thermalState(phase)%sizeDotState = sizeDotState
@@ -195,7 +189,7 @@ subroutine thermal_conduction_init(fileUnit)
      allocate(thermalState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(thermalState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(thermalState(phase)%deltaState          (sizeDotState,NofMyPhase),     source=0.0_pReal)
+     allocate(thermalState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(thermalState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(thermalState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)

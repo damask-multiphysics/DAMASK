@@ -14,10 +14,6 @@ module constitutive_phenopowerlaw
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
-#ifndef NEWSTATE
-   constitutive_phenopowerlaw_sizeDotState, &
-   constitutive_phenopowerlaw_sizeState, &
-#endif
    constitutive_phenopowerlaw_sizePostResults                                                       !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),   allocatable, target, public :: &
@@ -40,7 +36,6 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_gdot0_twin, &                                                         !< reference shear strain rate for twin (input parameter)
    constitutive_phenopowerlaw_n_slip, &                                                             !< stress exponent for slip (input parameter)
    constitutive_phenopowerlaw_n_twin, &                                                             !< stress exponent for twin (input parameter)
-
    constitutive_phenopowerlaw_spr, &                                                                !< push-up factor for slip saturation due to twinning
    constitutive_phenopowerlaw_twinB, &
    constitutive_phenopowerlaw_twinC, &
@@ -90,19 +85,13 @@ module constitutive_phenopowerlaw
  
  public :: &
    constitutive_phenopowerlaw_init, &
-#ifndef NEWSTATE
-   constitutive_phenopowerlaw_stateInit, &
-   constitutive_phenopowerlaw_aTolState, &
-#endif
    constitutive_phenopowerlaw_LpAndItsTangent, &
    constitutive_phenopowerlaw_dotState, &
    constitutive_phenopowerlaw_postResults
-
-#ifdef NEWSTATE
  private :: &
    constitutive_phenopowerlaw_aTolState, &
    constitutive_phenopowerlaw_stateInit
-#endif
+
 
 contains
 
@@ -142,10 +131,8 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    phase_Noutput, &
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_PHENOPOWERLAW_ID, &
-   material_phase, &   
-#ifdef NEWSTATE
+   material_phase, &
    plasticState, &
-#endif   
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
@@ -179,11 +166,8 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
-#ifndef NEWSTATE  
- allocate(constitutive_phenopowerlaw_sizeDotState(maxNinstance),                  source=0_pInt)
- allocate(constitutive_phenopowerlaw_sizeState(maxNinstance),                     source=0_pInt)
-#endif
-allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),               source=0_pInt)
+
+ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),               source=0_pInt)
  allocate(constitutive_phenopowerlaw_sizePostResult(maxval(phase_Noutput),maxNinstance), &
                                                                                   source=0_pInt)
  allocate(constitutive_phenopowerlaw_output(maxval(phase_Noutput),maxNinstance))
@@ -428,6 +412,7 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
  enddo parsingFile
 
  sanityChecks: do phase = 1_pInt, size(phase_plasticity)
+   NofMyPhase=count(material_phase==phase)
    myPhase: if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then
      instance = phase_plasticityInstance(phase)           
      constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,instance) = &
@@ -486,9 +471,12 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
                                                               maxNinstance), source=0.0_pReal)
 
  initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-   if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then
+   myPhase2: if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_plasticityInstance(phase) 
+
+!--------------------------------------------------------------------------------------------------
+!  Determine size of postResults array
      outputsLoop: do o = 1_pInt,constitutive_phenopowerlaw_Noutput(instance)
        select case(constitutive_phenopowerlaw_outputID(o,instance))
          case(resistance_slip_ID, &
@@ -515,15 +503,8 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
          constitutive_phenopowerlaw_sizePostResults(instance)  = constitutive_phenopowerlaw_sizePostResults(instance) + mySize
        endif outputFound
      enddo outputsLoop 
-
-#ifndef NEWSTATE
-     constitutive_phenopowerlaw_sizeDotState(instance) = constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                                  constitutive_phenopowerlaw_totalNtwin(instance)+ &
-                                                  2_pInt + &
-                                                  constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                                  constitutive_phenopowerlaw_totalNtwin(instance)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
-     constitutive_phenopowerlaw_sizeState(instance)    = constitutive_phenopowerlaw_sizeDotState(instance)
-#else
+!--------------------------------------------------------------------------------------------------
+! allocate state arrays
     sizeState = constitutive_phenopowerlaw_totalNslip(instance)+ &
              constitutive_phenopowerlaw_totalNtwin(instance)+ &
              2_pInt + &
@@ -533,24 +514,23 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeState
      plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
-     allocate(plasticState(phase)%aTolState      (sizeState), source=0.0_pReal)
-     allocate(plasticState(phase)%state0         (sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0(sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%subState0      (sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state          (sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup   (sizeState,NofMyPhase), source=0.0_pReal)
-
-     allocate(plasticState(phase)%dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup(sizeDotState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%aTolState          (sizeState), source=0.0_pReal)
+     allocate(plasticState(phase)%state0             (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state              (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase),source=0.0_pReal)
      endif
      if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase), source=0.0_pReal)
+       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NofMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
-#endif  
+       allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+  
      do f = 1_pInt,lattice_maxNslipFamily                                                                    ! >>> interaction slip -- X
        index_myFamily = sum(constitutive_phenopowerlaw_Nslip(1:f-1_pInt,instance))
        do j = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                            ! loop over (active) systems in my family (slip)
@@ -601,59 +581,50 @@ allocate(constitutive_phenopowerlaw_sizePostResults(maxNinstance),              
          enddo; enddo
   
      enddo; enddo
-#ifdef NEWSTATE
      call constitutive_phenopowerlaw_stateInit(phase,instance)
      call constitutive_phenopowerlaw_aTolState(phase,instance)
-#endif
-   endif
+   endif myPhase2 
  enddo initializeInstances
 
 end subroutine constitutive_phenopowerlaw_init
 
 
-#ifdef NEWSTATE
-
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the initial microstructural state for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_phenopowerlaw_stateInit(phase,instance)
+subroutine constitutive_phenopowerlaw_stateInit(ph,instance)
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily
  use material, only: &
-   plasticState
+   plasticState, &
+   mappingConstitutive
   
  
  implicit none
  integer(pInt), intent(in) :: &
    instance, &                                                                                        !< number specifying the instance of the plasticity
-   phase 
+   ph 
  integer(pInt) :: &
    i
-  real(pReal), dimension(size(plasticState(phase)%state(:,1))) :: tempState
+ real(pReal),   dimension(plasticState(ph)%sizeState) :: &
+   tempState
  
- tempState = 0.0_pReal
  do i = 1_pInt,lattice_maxNslipFamily
-   tempState(1+&
-                                        sum(constitutive_phenopowerlaw_Nslip(1:i-1,instance)) : &
-                                        sum(constitutive_phenopowerlaw_Nslip(1:i  ,instance))) = &
-     constitutive_phenopowerlaw_tau0_slip(i,instance)
-
+   tempState(1+sum(constitutive_phenopowerlaw_Nslip(1:i-1,instance)) : &
+               sum(constitutive_phenopowerlaw_Nslip(1:i  ,instance))) = &
+                                         constitutive_phenopowerlaw_tau0_slip(i,instance)
  enddo
 
  do i = 1_pInt,lattice_maxNtwinFamily
-
    tempState(1+sum(constitutive_phenopowerlaw_Nslip(:,instance))+&
-                                        sum(constitutive_phenopowerlaw_Ntwin(1:i-1,instance)) : &
-                                          sum(constitutive_phenopowerlaw_Nslip(:,instance))+&
-                                        sum(constitutive_phenopowerlaw_Ntwin(1:i  ,instance))) = &
-     constitutive_phenopowerlaw_tau0_twin(i,instance)
-
+               sum(constitutive_phenopowerlaw_Ntwin(1:i-1,instance)) : &
+               sum(constitutive_phenopowerlaw_Nslip(:,instance))+&
+               sum(constitutive_phenopowerlaw_Ntwin(1:i  ,instance))) = &
+                                          constitutive_phenopowerlaw_tau0_twin(i,instance)
  enddo
 
-plasticState(phase)%state = spread(tempState,2,size(plasticState(phase)%state(1,:)))
-plasticState(phase)%state0 = plasticState(phase)%state
-plasticState(phase)%partionedState0 = plasticState(phase)%state
+ plasticState(ph)%state0 = spread(tempState,2,size(plasticState(ph)%state0(1,:)))
 
 end subroutine constitutive_phenopowerlaw_stateInit
 
@@ -662,107 +633,37 @@ end subroutine constitutive_phenopowerlaw_stateInit
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant state values for a given instance of this plasticity
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_phenopowerlaw_aTolState(phase,instance)
+subroutine constitutive_phenopowerlaw_aTolState(ph,instance)
   use material, only: &
    plasticState
 
  implicit none
  integer(pInt), intent(in) :: & 
    instance, &                                                              !< number specifying the instance of the plasticity
-   phase
-  real(pReal), dimension(size(plasticState(phase)%aTolState(:))) :: tempTol
+   ph
 
- tempTol = 0.0_pReal
+ plasticState(ph)%aTolState(1:constitutive_phenopowerlaw_totalNslip(instance)+ &
+                              constitutive_phenopowerlaw_totalNtwin(instance)) = &
+                                              constitutive_phenopowerlaw_aTolResistance(instance)
+ plasticState(ph)%aTolState(1+constitutive_phenopowerlaw_totalNslip(instance)+ &
+                              constitutive_phenopowerlaw_totalNtwin(instance)) = &
+                                              constitutive_phenopowerlaw_aTolShear(instance)
+ plasticState(ph)%aTolState(2+constitutive_phenopowerlaw_totalNslip(instance)+ &
+                              constitutive_phenopowerlaw_totalNtwin(instance)) = &
+                                             constitutive_phenopowerlaw_aTolTwinFrac(instance)
+ plasticState(ph)%aTolState(3+constitutive_phenopowerlaw_totalNslip(instance)+ &
+                              constitutive_phenopowerlaw_totalNtwin(instance): &
+                            2+2*(constitutive_phenopowerlaw_totalNslip(instance)+ &
+                                 constitutive_phenopowerlaw_totalNtwin(instance))) = &
+                                             constitutive_phenopowerlaw_aTolShear(instance)
 
- tempTol(1:constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance)) = &
-          constitutive_phenopowerlaw_aTolResistance(instance)
- tempTol(1+constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance)) = &
-          constitutive_phenopowerlaw_aTolShear(instance)
- tempTol(2+constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance)) = &
-          constitutive_phenopowerlaw_aTolTwinFrac(instance)
- tempTol(3+constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance): &
-                                     2+2*(constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                          constitutive_phenopowerlaw_totalNtwin(instance))) = &
-          constitutive_phenopowerlaw_aTolShear(instance)
-
- plasticState(phase)%aTolState = tempTol
 end subroutine constitutive_phenopowerlaw_aTolState
 
-#else
 
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the initial microstructural state for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_stateInit(instance)
- use lattice, only: &
-   lattice_maxNslipFamily, &
-   lattice_maxNtwinFamily
- 
- implicit none
- integer(pInt), intent(in) :: &
-    instance                                                                                        !< number specifying the instance of the plasticity
- real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(instance)) :: &
-   constitutive_phenopowerlaw_stateInit
- integer(pInt) :: &
-   i
-
- constitutive_phenopowerlaw_stateInit = 0.0_pReal
- 
- do i = 1_pInt,lattice_maxNslipFamily
-   constitutive_phenopowerlaw_stateInit(1+&
-                                        sum(constitutive_phenopowerlaw_Nslip(1:i-1,instance)) : &
-                                        sum(constitutive_phenopowerlaw_Nslip(1:i  ,instance))) = &
-     constitutive_phenopowerlaw_tau0_slip(i,instance)
- enddo
-
- do i = 1_pInt,lattice_maxNtwinFamily
-   constitutive_phenopowerlaw_stateInit(1+sum(constitutive_phenopowerlaw_Nslip(:,instance))+&
-                                        sum(constitutive_phenopowerlaw_Ntwin(1:i-1,instance)) : &
-                                          sum(constitutive_phenopowerlaw_Nslip(:,instance))+&
-                                        sum(constitutive_phenopowerlaw_Ntwin(1:i  ,instance))) = &
-     constitutive_phenopowerlaw_tau0_twin(i,instance)
- enddo
-
-end function constitutive_phenopowerlaw_stateInit
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant state values for a given instance of this plasticity
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_aTolState(instance)
- 
- implicit none
- integer(pInt), intent(in) :: instance                                                              !< number specifying the instance of the plasticity
- 
- real(pReal), dimension(constitutive_phenopowerlaw_sizeState(instance)) :: &
-   constitutive_phenopowerlaw_aTolState
-
- constitutive_phenopowerlaw_aTolState(1:constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance)) = &
-          constitutive_phenopowerlaw_aTolResistance(instance)
- constitutive_phenopowerlaw_aTolState(1+constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance)) = &
-          constitutive_phenopowerlaw_aTolShear(instance)
- constitutive_phenopowerlaw_aTolState(2+constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance)) = &
-          constitutive_phenopowerlaw_aTolTwinFrac(instance)
- constitutive_phenopowerlaw_aTolState(3+constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                       constitutive_phenopowerlaw_totalNtwin(instance): &
-                                     2+2*(constitutive_phenopowerlaw_totalNslip(instance)+ &
-                                          constitutive_phenopowerlaw_totalNtwin(instance))) = &
-          constitutive_phenopowerlaw_aTolShear(instance)
-
-end function constitutive_phenopowerlaw_aTolState
-
-#endif
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,state,ipc,ip,el)
+subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  use prec, only: &
    p_vec
  use math, only: &
@@ -784,6 +685,8 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
+   plasticState, &
+   mappingConstitutive, &
    phase_plasticityInstance
 
  implicit none
@@ -799,19 +702,13 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
-#ifdef NEWSTATE
- real(pReal), dimension(:), intent(in) :: &
-   state
-#else
- type(p_vec),               intent(in) :: &
-   state                                                                                            !< microstructure state
-#endif 
-
  integer(pInt) :: &
    instance, & 
    nSlip, &
    nTwin,phase,index_Gamma,index_F,index_myFamily, &
-   f,i,j,k,l,m,n
+   f,i,j,k,l,m,n, &
+   of, &
+   ph
  real(pReal), dimension(3,3,3,3) :: &
    dLp_dTstar3333                                                                                   !< derivative of Lp with respect to Tstar as 4th order tensor
  real(pReal), dimension(3,3,2) :: &
@@ -822,8 +719,9 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
    gdot_twin,dgdot_dtautwin,tau_twin
 
  
- phase = material_phase(ipc,ip,el)
- instance    = phase_plasticityInstance(phase)
+ of = mappingConstitutive(1,ipc,ip,el)
+ ph = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(ph)
  nSlip = constitutive_phenopowerlaw_totalNslip(instance)
  nTwin = constitutive_phenopowerlaw_totalNtwin(instance)
  index_Gamma = nSlip + nTwin + 1_pInt
@@ -835,49 +733,37 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
 
  j = 0_pInt
  slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
+   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                   ! at which index starts my family
    do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                          ! process each (active) slip system in family
      j = j+1_pInt
      
 !--------------------------------------------------------------------------------------------------
 ! Calculation of Lp
-     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,phase))
+     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
      tau_slip_neg(j)  = tau_slip_pos(j)
-     nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,phase)
+     nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
-     do k = 1,lattice_NnonSchmid(phase) 
+     do k = 1,lattice_NnonSchmid(ph) 
        tau_slip_pos(j) = tau_slip_pos(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,phase))
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
        tau_slip_neg(j) = tau_slip_neg(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,phase))
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
        nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)*&
-                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,phase)
+                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
        nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)*&
-                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,phase)
+                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo
-#ifdef NEWSTATE
      gdot_slip_pos(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_pos(j))/state(j))**constitutive_phenopowerlaw_n_slip(instance))*&
+                    ((abs(tau_slip_pos(j))/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance))*&
                                                                     sign(1.0_pReal,tau_slip_pos(j))
 
      gdot_slip_neg(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_neg(j))/state(j))**constitutive_phenopowerlaw_n_slip(instance))*&
+                    ((abs(tau_slip_neg(j))/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance))*&
                                                                     sign(1.0_pReal,tau_slip_neg(j))
                                                                     
-     Lp = Lp + (1.0_pReal-state(index_F))*&                                                                                  ! 1-F
-               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,phase)
-#else
-     gdot_slip_pos(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_pos(j))/state%p(j))**constitutive_phenopowerlaw_n_slip(instance))*&
-                                                                    sign(1.0_pReal,tau_slip_pos(j))
+     Lp = Lp + (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                  ! 1-F
+               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
 
-     gdot_slip_neg(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_neg(j))/state%p(j))**constitutive_phenopowerlaw_n_slip(instance))*&
-                                                                    sign(1.0_pReal,tau_slip_neg(j))
-                                                                    
-     Lp = Lp + (1.0_pReal-state%p(index_F))*&                                                                         ! 1-F
-               (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,phase)
-#endif
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
@@ -885,7 +771,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
        dgdot_dtauslip_pos(j) = gdot_slip_pos(j)*constitutive_phenopowerlaw_n_slip(instance)/tau_slip_pos(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-                                   dgdot_dtauslip_pos(j)*lattice_Sslip(k,l,1,index_myFamily+i,phase)* &
+                                   dgdot_dtauslip_pos(j)*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
                                                      nonSchmid_tensor(m,n,1)
      endif
      
@@ -893,7 +779,7 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
        dgdot_dtauslip_neg(j) = gdot_slip_neg(j)*constitutive_phenopowerlaw_n_slip(instance)/tau_slip_neg(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-                                   dgdot_dtauslip_neg(j)*lattice_Sslip(k,l,1,index_myFamily+i,phase)* &
+                                   dgdot_dtauslip_neg(j)*lattice_Sslip(k,l,1,index_myFamily+i,ph)* &
                                                      nonSchmid_tensor(m,n,2)
      endif
    enddo
@@ -901,25 +787,18 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
 
  j = 0_pInt
  twinFamiliesLoop: do f = 1_pInt,lattice_maxNtwinFamily
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
+   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                      ! at which index starts my family
    do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)                                       ! process each (active) twin system in family
      j = j+1_pInt
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of Lp
-     tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,phase)) 
-#ifdef NEWSTATE
-     gdot_twin(j) = (1.0_pReal-state(index_F))*&                                                  ! 1-F
+     tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph)) 
+     gdot_twin(j) = (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                                  ! 1-F
                     constitutive_phenopowerlaw_gdot0_twin(instance)*&
-                    (abs(tau_twin(j))/state(nSlip+j))**&
-                    constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
-#else
-     gdot_twin(j) = (1.0_pReal-state%p(index_F))*&                                                  ! 1-F
-                    constitutive_phenopowerlaw_gdot0_twin(instance)*&
-                    (abs(tau_twin(j))/state%p(nSlip+j))**&
-                    constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
-#endif                     
-     Lp = Lp + gdot_twin(j)*lattice_Stwin(1:3,1:3,index_myFamily+i,phase)
+                    (abs(tau_twin(j))/plasticState(ph)%state(nSlip+j,of))**&
+                    constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))               
+     Lp = Lp + gdot_twin(j)*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of the tangent of Lp
@@ -927,23 +806,21 @@ pure subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar
        dgdot_dtautwin(j) = gdot_twin(j)*constitutive_phenopowerlaw_n_twin(instance)/tau_twin(j)
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLp_dTstar3333(k,l,m,n) = dLp_dTstar3333(k,l,m,n) + &
-                                   dgdot_dtautwin(j)*lattice_Stwin(k,l,index_myFamily+i,phase)* &
-                                                     lattice_Stwin(m,n,index_myFamily+i,phase)
+                                   dgdot_dtautwin(j)*lattice_Stwin(k,l,index_myFamily+i,ph)* &
+                                                     lattice_Stwin(m,n,index_myFamily+i,ph)
      endif
    enddo
  enddo twinFamiliesLoop
 
  dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
 
-end subroutine constitutive_phenopowerlaw_LpAndItsTangent
 
+end subroutine constitutive_phenopowerlaw_LpAndItsTangent
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
- use prec, only: &
-   p_vec
+subroutine constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -959,6 +836,8 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
+   mappingConstitutive, &
+   plasticState, &
    phase_plasticityInstance
  
  implicit none
@@ -968,25 +847,14 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element                                                                                    !< microstructure state
-#ifdef NEWSTATE
- real(pReal), dimension(:), intent(in) :: &
-   state
- real(pReal), dimension(size(state)) :: &
-   constitutive_phenopowerlaw_dotState
-#else
- type(p_vec),               intent(in) :: &
-   state                                                                                            !< microstructure state
- real(pReal), dimension(constitutive_phenopowerlaw_sizeDotState(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-   constitutive_phenopowerlaw_dotState
-#endif 
-
 
  integer(pInt) :: &
-   instance,phase, &
+   instance,ph, &
    nSlip,nTwin, &
    f,i,j,k, &
    index_Gamma,index_F,index_myFamily, &
-   offset_accshear_slip,offset_accshear_twin
+   offset_accshear_slip,offset_accshear_twin, &
+   of
  real(pReal) :: &
    c_SlipSlip,c_SlipTwin,c_TwinSlip,c_TwinTwin, &
    ssat_offset
@@ -995,8 +863,10 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
    gdot_slip,tau_slip_pos,tau_slip_neg,left_SlipSlip,left_SlipTwin,right_SlipSlip,right_TwinSlip
  real(pReal), dimension(constitutive_phenopowerlaw_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_twin,tau_twin,left_TwinSlip,left_TwinTwin,right_SlipTwin,right_TwinTwin
- phase = material_phase(ipc,ip,el)
- instance = phase_plasticityInstance(phase)
+ 
+ of = mappingConstitutive(1,ipc,ip,el)
+ ph = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(ph)
  
  nSlip = constitutive_phenopowerlaw_totalNslip(instance)
  nTwin = constitutive_phenopowerlaw_totalNtwin(instance)
@@ -1005,89 +875,58 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
  index_F     = nSlip + nTwin + 2_pInt
  offset_accshear_slip = nSlip + nTwin + 2_pInt
  offset_accshear_twin = nSlip + nTwin + 2_pInt + nSlip
-
- constitutive_phenopowerlaw_dotState = 0.0_pReal
+ plasticState(ph)%dotState = 0.0_pReal
  
+
 !--------------------------------------------------------------------------------------------------
 ! system-independent (nonlinear) prefactors to M_Xx (X influenced by x) matrices
-#ifdef NEWSTATE
  c_SlipSlip = constitutive_phenopowerlaw_h0_SlipSlip(instance)*&
-              (1.0_pReal + constitutive_phenopowerlaw_twinC(instance)*state(index_F)**&
+              (1.0_pReal + constitutive_phenopowerlaw_twinC(instance)*plasticState(ph)%state(index_F,of)**&
                                                            constitutive_phenopowerlaw_twinB(instance))
  c_SlipTwin = 0.0_pReal
  c_TwinSlip = constitutive_phenopowerlaw_h0_TwinSlip(instance)*&
-              state(index_Gamma)**constitutive_phenopowerlaw_twinE(instance)
+              plasticState(ph)%state(index_Gamma,of)**constitutive_phenopowerlaw_twinE(instance)
  c_TwinTwin = constitutive_phenopowerlaw_h0_TwinTwin(instance)*&
-              state(index_F)**constitutive_phenopowerlaw_twinD(instance)
-#else
- c_SlipSlip = constitutive_phenopowerlaw_h0_SlipSlip(instance)*&
-              (1.0_pReal + constitutive_phenopowerlaw_twinC(instance)*state%p(index_F)**&
-                                                           constitutive_phenopowerlaw_twinB(instance))
- c_SlipTwin = 0.0_pReal
- c_TwinSlip = constitutive_phenopowerlaw_h0_TwinSlip(instance)*&
-              state%p(index_Gamma)**constitutive_phenopowerlaw_twinE(instance)
- c_TwinTwin = constitutive_phenopowerlaw_h0_TwinTwin(instance)*&
-              state%p(index_F)**constitutive_phenopowerlaw_twinD(instance)
-#endif 
+              plasticState(ph)%state(index_F,of)**constitutive_phenopowerlaw_twinD(instance)
+
 !--------------------------------------------------------------------------------------------------
 !  calculate left and right vectors and calculate dot gammas
-#ifdef NEWSTATE
- ssat_offset = constitutive_phenopowerlaw_spr(instance)*sqrt(state(index_F))
-#else
- ssat_offset = constitutive_phenopowerlaw_spr(instance)*sqrt(state%p(index_F))                                                                                           !< microstructure state
-#endif  
+ ssat_offset = constitutive_phenopowerlaw_spr(instance)*sqrt(plasticState(ph)%state(index_F,of))
  j = 0_pInt
  slipFamiliesLoop1: do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
+   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                       ! process each (active) slip system in family
      j = j+1_pInt
      left_SlipSlip(j) = 1.0_pReal                                                                   ! no system-dependent left part
      left_SlipTwin(j) = 1.0_pReal                                                                   ! no system-dependent left part
-#ifdef NEWSTATE
-
-     right_SlipSlip(j) = abs(1.0_pReal-state(j) / &
+     right_SlipSlip(j) = abs(1.0_pReal-plasticState(ph)%state(j,of) / &
                                     (constitutive_phenopowerlaw_tausat_slip(f,instance)+ssat_offset)) &
                          **constitutive_phenopowerlaw_a_slip(instance)&
-                         *sign(1.0_pReal,1.0_pReal-state(j) / &
+                         *sign(1.0_pReal,1.0_pReal-plasticState(ph)%state(j,of) / &
                                     (constitutive_phenopowerlaw_tausat_slip(f,instance)+ssat_offset))
-#else
-     right_SlipSlip(j) = abs(1.0_pReal-state%p(j) / &
-                                    (constitutive_phenopowerlaw_tausat_slip(f,instance)+ssat_offset)) &
-                         **constitutive_phenopowerlaw_a_slip(instance)&
-                         *sign(1.0_pReal,1.0_pReal-state%p(j) / &
-                                    (constitutive_phenopowerlaw_tausat_slip(f,instance)+ssat_offset))                                                                                        !< microstructure state
-#endif  
      right_TwinSlip(j) = 1.0_pReal                                                                  ! no system-dependent part
      
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot gamma 
-     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,phase))
+     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
      tau_slip_neg(j)  = tau_slip_pos(j)
-     do k = 1,lattice_NnonSchmid(phase) 
+     do k = 1,lattice_NnonSchmid(ph) 
        tau_slip_pos(j) = tau_slip_pos(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,phase))
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
        tau_slip_neg(j) = tau_slip_neg(j) + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,phase))
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
      enddo
-#ifdef NEWSTATE
-
      gdot_slip(j) = constitutive_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
-                  ((abs(tau_slip_pos(j))/state(j))**constitutive_phenopowerlaw_n_slip(instance) &
-                  +(abs(tau_slip_neg(j))/state(j))**constitutive_phenopowerlaw_n_slip(instance))&
+                  ((abs(tau_slip_pos(j))/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance) &
+                  +(abs(tau_slip_neg(j))/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance))&
                   *sign(1.0_pReal,tau_slip_pos(j)) 
-#else
-     gdot_slip(j) = constitutive_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
-                  ((abs(tau_slip_pos(j))/state%p(j))**constitutive_phenopowerlaw_n_slip(instance) &
-                  +(abs(tau_slip_neg(j))/state%p(j))**constitutive_phenopowerlaw_n_slip(instance))&
-                  *sign(1.0_pReal,tau_slip_pos(j))
-#endif 
    enddo
  enddo slipFamiliesLoop1
 
 
  j = 0_pInt
  twinFamiliesLoop1: do f = 1_pInt,lattice_maxNtwinFamily
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
+   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                      ! at which index starts my family
    do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)                                       ! process each (active) twin system in family
      j = j+1_pInt
      left_TwinSlip(j)  = 1.0_pReal                                                                  ! no system-dependent right part
@@ -1097,18 +936,11 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! Calculation of dot vol frac
-     tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,phase)) 
-#ifdef NEWSTATE
-     gdot_twin(j) = (1.0_pReal-state(index_F))*&                                       ! 1-F
+     tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph)) 
+     gdot_twin(j) = (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                       ! 1-F
                     constitutive_phenopowerlaw_gdot0_twin(instance)*&
-                    (abs(tau_twin(j))/state(nSlip+j))**&
+                    (abs(tau_twin(j))/plasticState(ph)%state(nslip+j,of))**&
                     constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
-#else
-     gdot_twin(j) = (1.0_pReal-state%p(index_F))*&                                       ! 1-F
-                    constitutive_phenopowerlaw_gdot0_twin(instance)*&
-                    (abs(tau_twin(j))/state%p(nSlip+j))**&
-                    constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
-#endif 
     enddo
   enddo twinFamiliesLoop1
 
@@ -1118,54 +950,45 @@ function constitutive_phenopowerlaw_dotState(Tstar_v,state,ipc,ip,el)
  slipFamiliesLoop2: do f = 1_pInt,lattice_maxNslipFamily
    do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                       ! process each (active) slip system in family
      j = j+1_pInt
-     constitutive_phenopowerlaw_dotState(j) = &                                                     ! evolution of slip resistance j
+     plasticState(ph)%dotState(j,of) = &                                                     ! evolution of slip resistance j
        c_SlipSlip * left_SlipSlip(j) * &
        dot_product(constitutive_phenopowerlaw_hardeningMatrix_SlipSlip(j,1:nSlip,instance), &
                    right_SlipSlip*abs(gdot_slip)) + &                                               ! dot gamma_slip modulated by right-side slip factor
        c_SlipTwin * left_SlipTwin(j) * &
        dot_product(constitutive_phenopowerlaw_hardeningMatrix_SlipTwin(j,1:nTwin,instance), &
                    right_SlipTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
-     constitutive_phenopowerlaw_dotState(index_Gamma) = constitutive_phenopowerlaw_dotState(index_Gamma) + &
+     plasticState(ph)%dotState(index_Gamma,of) = plasticState(ph)%dotState(index_Gamma,of) + &
                                                         abs(gdot_slip(j))
-     constitutive_phenopowerlaw_dotState(offset_accshear_slip+j) = abs(gdot_slip(j))
+     plasticState(ph)%dotState(offset_accshear_slip+j,of) = abs(gdot_slip(j))
    enddo
  enddo slipFamiliesLoop2
 
  j = 0_pInt
  twinFamiliesLoop2: do f = 1_pInt,lattice_maxNtwinFamily
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
+   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                      ! at which index starts my family
    do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)                                       ! process each (active) twin system in family
      j = j+1_pInt
-     constitutive_phenopowerlaw_dotState(j+nSlip) = &                                               ! evolution of twin resistance j
+     plasticState(ph)%dotState(j+nSlip,of) = &                                                      ! evolution of twin resistance j
        c_TwinSlip * left_TwinSlip(j) * &
        dot_product(constitutive_phenopowerlaw_hardeningMatrix_TwinSlip(j,1:nSlip,instance), &
                    right_TwinSlip*abs(gdot_slip)) + &                                               ! dot gamma_slip modulated by right-side slip factor
        c_TwinTwin * left_TwinTwin(j) * &
        dot_product(constitutive_phenopowerlaw_hardeningMatrix_TwinTwin(j,1:nTwin,instance), &
                    right_TwinTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
-#ifndef NEWSTATE
-     if (state%p(index_F) < 0.98_pReal) &                                                           ! ensure twin volume fractions stays below 1.0
-       constitutive_phenopowerlaw_dotState(index_F) = constitutive_phenopowerlaw_dotState(index_F) + &
-                                                      gdot_twin(j)/lattice_shearTwin(index_myFamily+i,phase)
-#else
-     if (state(index_F) < 0.98_pReal) &                                                           ! ensure twin volume fractions stays below 1.0
-       constitutive_phenopowerlaw_dotState(index_F) = constitutive_phenopowerlaw_dotState(index_F) + &
-                                                      gdot_twin(j)/lattice_shearTwin(index_myFamily+i,phase)
-#endif
-
-
-
-     constitutive_phenopowerlaw_dotState(offset_accshear_twin+j) = abs(gdot_twin(j))
+     if (plasticState(ph)%state(index_F,of) < 0.98_pReal) &                                                           ! ensure twin volume fractions stays below 1.0
+       plasticState(ph)%dotState(index_F,of) = plasticState(ph)%dotState(index_F,of) + &
+                                                      gdot_twin(j)/lattice_shearTwin(index_myFamily+i,ph)
+     plasticState(ph)%dotState(offset_accshear_twin+j,of) = abs(gdot_twin(j))
    enddo
  enddo twinFamiliesLoop2
  
-end function constitutive_phenopowerlaw_dotState
+end subroutine constitutive_phenopowerlaw_dotState
 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
+function constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
  use prec, only: &
    p_vec
  use mesh, only: &
@@ -1174,6 +997,8 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
+   plasticState, &
+   mappingConstitutive, &
    phase_plasticityInstance, &
    phase_Noutput
  use lattice, only: &
@@ -1195,27 +1020,21 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element                                                                                        !< microstructure state
-#ifdef NEWSTATE
- real(pReal),     dimension(:),          intent(in) :: &
-   state
-#else
- type(p_vec),                            intent(in) :: &
-   state                                                                                            !< microstructure state
-#endif
 
  real(pReal), dimension(constitutive_phenopowerlaw_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    constitutive_phenopowerlaw_postResults
 
  integer(pInt) :: &
-   instance,phase, &
+   instance,ph, of, &
    nSlip,nTwin, &
    o,f,i,c,j,k, &
    index_Gamma,index_F,index_accshear_slip,index_accshear_twin,index_myFamily 
  real(pReal) :: &
    tau_slip_pos,tau_slip_neg,tau
 
- phase = material_phase(ipc,ip,el)
- instance = phase_plasticityInstance(phase)
+ of = mappingConstitutive(1,ipc,ip,el)
+ ph = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(ph)
 
  nSlip = constitutive_phenopowerlaw_totalNslip(instance)
  nTwin = constitutive_phenopowerlaw_totalNtwin(instance)
@@ -1231,48 +1050,33 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
  outputsLoop: do o = 1_pInt,constitutive_phenopowerlaw_Noutput(instance)
    select case(constitutive_phenopowerlaw_outputID(o,instance))
      case (resistance_slip_ID)
-#ifdef NEWSTATE
-       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(1:nSlip)
-#else
-       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state%p(1:nSlip)
-#endif
+       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = plasticState(ph)%state(1:nSlip,of)
        c = c + nSlip
 
      case (accumulatedshear_slip_ID)
-#ifdef NEWSTATE
-       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state(index_accshear_slip:&
-                                                                        index_accshear_slip+nSlip-1_pInt)
-#else
-       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = state%p(index_accshear_slip:&
-                                                                          index_accshear_slip+nSlip-1_pInt)
-#endif
+       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nSlip) = plasticState(ph)%state(index_accshear_slip:&
+                                                                        index_accshear_slip+nSlip-1_pInt,of)
        c = c + nSlip
 
      case (shearrate_slip_ID)
        j = 0_pInt
        slipFamiliesLoop1: do f = 1_pInt,lattice_maxNslipFamily
-         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                ! at which index starts my family
+         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                 ! process each (active) slip system in family
            j = j + 1_pInt
-           tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,phase))
+           tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
            tau_slip_neg  = tau_slip_pos
-           do k = 1,lattice_NnonSchmid(phase) 
+           do k = 1,lattice_NnonSchmid(ph) 
              tau_slip_pos = tau_slip_pos + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,phase))
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
              tau_slip_neg = tau_slip_neg + constitutive_phenopowerlaw_nonSchmidCoeff(k,instance)* &
-                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,phase))
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
            enddo
-#ifdef NEWSTATE
            constitutive_phenopowerlaw_postResults(c+j) = constitutive_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
-                    ((abs(tau_slip_pos)/state(j))**constitutive_phenopowerlaw_n_slip(instance) &
-                    +(abs(tau_slip_neg)/state(j))**constitutive_phenopowerlaw_n_slip(instance))&
+                    ((abs(tau_slip_pos)/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance) &
+                    +(abs(tau_slip_neg)/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance))&
                     *sign(1.0_pReal,tau_slip_pos)
-#else
-           constitutive_phenopowerlaw_postResults(c+j) = constitutive_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
-                    ((abs(tau_slip_pos)/state%p(j))**constitutive_phenopowerlaw_n_slip(instance) &
-                    +(abs(tau_slip_neg)/state%p(j))**constitutive_phenopowerlaw_n_slip(instance))&
-                    *sign(1.0_pReal,tau_slip_pos)
-#endif
+
          enddo
        enddo slipFamiliesLoop1
        c = c + nSlip
@@ -1280,63 +1084,40 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
      case (resolvedstress_slip_ID)
        j = 0_pInt
        slipFamiliesLoop2: do f = 1_pInt,lattice_maxNslipFamily
-         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                ! at which index starts my family
+         index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                 ! process each (active) slip system in family
            j = j + 1_pInt
            constitutive_phenopowerlaw_postResults(c+j) = &
-                             dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,phase))
+                             dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
          enddo
        enddo slipFamiliesLoop2
        c = c + nSlip
 
      case (totalshear_ID)
-#ifdef NEWSTATE
        constitutive_phenopowerlaw_postResults(c+1_pInt) = &
-                             state(index_Gamma)
-#else
-       constitutive_phenopowerlaw_postResults(c+1_pInt) = &
-                             state%p(index_Gamma)
-#endif
+                             plasticState(ph)%state(index_Gamma,of)
        c = c + 1_pInt
 
      case (resistance_twin_ID)
-#ifdef NEWSTATE
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
-                             state(1_pInt+nSlip:nTwin+nSlip-1_pInt)
-#else
-       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
-                             state%p(1_pInt+nSlip:nTwin+nSlip-1_pInt)
-#endif
+                             plasticState(ph)%state(1_pInt+nSlip:nTwin+nSlip-1_pInt,of)
        c = c + nTwin
 
      case (accumulatedshear_twin_ID)
-#ifdef NEWSTATE
        constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
-                             state(index_accshear_twin:index_accshear_twin+nTwin-1_pInt)
-#else
-       constitutive_phenopowerlaw_postResults(c+1_pInt:c+nTwin) = &
-                             state%p(index_accshear_twin:index_accshear_twin+nTwin-1_pInt)
-#endif
+                             plasticState(ph)%state(index_accshear_twin:index_accshear_twin+nTwin-1_pInt,of)
        c = c + nTwin
-
      case (shearrate_twin_ID)
        j = 0_pInt
        twinFamiliesLoop1: do f = 1_pInt,lattice_maxNtwinFamily
-         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                                ! at which index starts my family
+         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)                                 ! process each (active) twin system in family
            j = j + 1_pInt
-           tau = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,phase))
-#ifdef NEWSTATE
-           constitutive_phenopowerlaw_postResults(c+j) = (1.0_pReal-state(index_F))*&  ! 1-F
+           tau = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
+           constitutive_phenopowerlaw_postResults(c+j) = (1.0_pReal-plasticState(ph)%state(index_F,of))*&  ! 1-F
                                                          constitutive_phenopowerlaw_gdot0_twin(instance)*&
-                                                         (abs(tau)/state(j+nSlip))**&
+                                                         (abs(tau)/plasticState(ph)%state(j+nSlip,of))**&
                                            constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau))
-#else
-           constitutive_phenopowerlaw_postResults(c+j) = (1.0_pReal-state%p(index_F))*&  ! 1-F
-                                                         constitutive_phenopowerlaw_gdot0_twin(instance)*&
-                                                         (abs(tau)/state%p(j+nSlip))**&
-                                           constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau))
-#endif
          enddo
        enddo twinFamiliesLoop1
        c = c + nTwin
@@ -1344,28 +1125,22 @@ pure function constitutive_phenopowerlaw_postResults(Tstar_v,state,ipc,ip,el)
      case (resolvedstress_twin_ID)
        j = 0_pInt
        twinFamiliesLoop2: do f = 1_pInt,lattice_maxNtwinFamily
-         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                                ! at which index starts my family
+         index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                ! at which index starts my family
          do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)                                 ! process each (active) twin system in family
            j = j + 1_pInt
            constitutive_phenopowerlaw_postResults(c+j) = &
-                             dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,phase))
+                             dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph))
          enddo
        enddo twinFamiliesLoop2
        c = c + nTwin
 
      case (totalvolfrac_ID)
-#ifdef NEWSTATE
-       constitutive_phenopowerlaw_postResults(c+1_pInt) = state(index_F)
-#else
-       constitutive_phenopowerlaw_postResults(c+1_pInt) = state%p(index_F)
-#endif
+       constitutive_phenopowerlaw_postResults(c+1_pInt) = plasticState(ph)%state(index_F,of)
        c = c + 1_pInt
 
    end select
  enddo outputsLoop
 
 end function constitutive_phenopowerlaw_postResults
-
-
 
 end module constitutive_phenopowerlaw

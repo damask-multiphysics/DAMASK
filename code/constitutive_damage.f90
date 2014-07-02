@@ -19,7 +19,6 @@ module constitutive_damage
    constitutive_damage_init, &
    constitutive_damage_microstructure, &
    constitutive_damage_collectDotState, &
-   constitutive_damage_collectDeltaState, &
    constitutive_damage_postResults
  
 contains
@@ -205,28 +204,6 @@ subroutine constitutive_damage_collectDotState(Tstar_v, Lp, ipc, ip, el)
  end select
 
 end subroutine constitutive_damage_collectDotState
-
-!--------------------------------------------------------------------------------------------------
-!> @brief for constitutive models having an instantaneous change of state (so far, only nonlocal)
-!> will return false if delta state is not needed/supported by the constitutive model
-!--------------------------------------------------------------------------------------------------
-logical function constitutive_damage_collectDeltaState(ipc, ip, el)
- use material, only: &
-   material_phase, &
-   phase_damage
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
-
- select case (phase_damage(material_phase(ipc,ip,el)))
-
- end select
- constitutive_damage_collectDeltaState = .true.
-
-end function constitutive_damage_collectDeltaState
 
 
 !--------------------------------------------------------------------------------------------------

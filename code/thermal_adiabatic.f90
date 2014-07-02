@@ -14,8 +14,6 @@ module thermal_adiabatic
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   thermal_adiabatic_sizeDotState, &                                                           !< number of dotStates
-   thermal_adiabatic_sizeState, &                                                              !< total number of microstructural state variables
    thermal_adiabatic_sizePostResults                                                           !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
@@ -111,8 +109,6 @@ subroutine thermal_adiabatic_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(thermal_adiabatic_sizeDotState(maxNinstance),                        source=0_pInt)
- allocate(thermal_adiabatic_sizeState(maxNinstance),                           source=0_pInt)
  allocate(thermal_adiabatic_sizePostResults(maxNinstance),                     source=0_pInt)
  allocate(thermal_adiabatic_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
  allocate(thermal_adiabatic_output(maxval(phase_Noutput),maxNinstance))
@@ -165,8 +161,6 @@ subroutine thermal_adiabatic_init(fileUnit)
    if (phase_thermal(phase) == THERMAL_adiabatic_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_thermalInstance(phase)
-     thermal_adiabatic_sizeDotState(instance) = 1_pInt
-     thermal_adiabatic_sizeState(instance) = 1_pInt
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -182,9 +176,8 @@ subroutine thermal_adiabatic_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   thermal_adiabatic_sizeDotState(instance)
-     sizeState                 =   thermal_adiabatic_sizeState   (instance)
-                
+     sizeDotState              =   1_pInt
+     sizeState                 =   1_pInt
      thermalState(phase)%sizeState = sizeState
      thermalState(phase)%sizeDotState = sizeDotState
      allocate(thermalState(phase)%aTolState           (sizeState),                source=0.0_pReal)
