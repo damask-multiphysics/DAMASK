@@ -1133,7 +1133,7 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
          iD(s,c,instance) = l
        enddo
      enddo
-     if (iD(ns,2,instance) /= constitutive_nonlocal_sizeState(instance)) &  ! check if last index is equal to size of state
+     if (iD(ns,2,instance) /= sizeState) &  ! check if last index is equal to size of state
        call IO_error(0_pInt, ext_msg = 'state indices not properly set ('//PLASTICITY_NONLOCAL_label//')')
      
    
