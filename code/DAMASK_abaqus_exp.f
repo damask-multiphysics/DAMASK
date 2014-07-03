@@ -95,6 +95,13 @@ end module DAMASK_interface
 #include "homogenization_RGC.f90"
 #include "homogenization.f90"
 #include "CPFEM.f90"
+#include "constitutive_damage.f90"
+#include "damage_none.f90"
+#include "damage_gradient.f90"
+#include "constitutive_thermal.f90"
+#include "thermal_none.f90"
+#include "thermal_conduction.f90"
+#include "thermal_adiabatic.f90"
 
 subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
                  stepTime, totalTime, dt, cmName, coordMp, charLength, &
