@@ -184,7 +184,7 @@ subroutine constitutive_init
      case (PLASTICITY_J2_ID)
        plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
      case (PLASTICITY_PHENOPOWERLAW_ID)
-       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
+       plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
      case (PLASTICITY_DISLOTWIN_ID)
        plasticState(phase)%sizePostResults = constitutive_dislotwin_sizePostResults(instance)
      case (PLASTICITY_TITANMOD_ID)
