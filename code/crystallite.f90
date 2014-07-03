@@ -2194,7 +2194,7 @@ subroutine crystallite_integrateStateRKCK45()
                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
          write(6,'(a,i8,1x,i3,1x,i3,/)') '<< CRYST >> updateState at el ip g ',e,i,g
          write(6,'(a,/,(12x,12(f12.1,1x)),/)') '<< CRYST >> absolute residuum tolerance', &
-               stateResiduum(1:mySizeDotState,g,i,e) / plasticState(p)%aTolState(1:mySizePlasticDotState,cc)
+               stateResiduum(1:mySizeDotState,g,i,e) / plasticState(p)%aTolState(1:mySizePlasticDotState)
          write(6,'(a,/,(12x,12(f12.1,1x)),/)') '<< CRYST >> relative residuum tolerance', &
                relStateResiduum(1:mySizeDotState,g,i,e) / rTol_crystalliteState
          write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState', &
@@ -2337,7 +2337,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    constitutive_thermal_maxSizeDotState
  
  implicit none
-
  integer(pInt) :: &
    e, &                                                                                             ! element index in element loop
    i, &                                                                                             ! integration point index in ip loop
