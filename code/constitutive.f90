@@ -11,8 +11,6 @@ module constitutive
  
  implicit none
  private
- integer(pInt), public, dimension(:,:,:), allocatable :: &
-   constitutive_sizePostResults                                                                      !< size of postResults array per grain
  integer(pInt), public, protected :: &
    constitutive_maxSizePostResults, &
    constitutive_maxSizeDotState
@@ -104,17 +102,9 @@ subroutine constitutive_init
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
-  g, &                                                                                              !< grain number
-  i, &                                                                                              !< integration point number
-  e, &                                                                                              !< element number
-  cMax, &                                                                                           !< maximum number of grains
-  iMax, &                                                                                           !< maximum number of integration points
-  eMax, &                                                                                           !< maximum number of elements
+  e, &                                                                                        !< maximum number of elements
   phase, &
-  s, &
-  p, &
-  instance,&
-  myNgrains
+  instance
 
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
@@ -185,54 +175,41 @@ subroutine constitutive_init
  enddo
  close(FILEUNIT)
  
-!--------------------------------------------------------------------------------------------------
-! allocation of states
- cMax = homogenization_maxNgrains
- iMax = mesh_maxNips
- eMax = mesh_NcpElems
- allocate(constitutive_sizePostResults(cMax,iMax,eMax), source=0_pInt) 
- ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
-   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-   IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
-     GrainLoop:do g = 1_pInt,myNgrains                                                              ! loop over grains
-       select case(phase_elasticity(material_phase(g,i,e)))                                            
-         case default                                                                               ! so far no output for elasticity
-       end select
-       phase = material_phase(g,i,e)
-       instance = phase_plasticityInstance(phase)
-       select case(phase_plasticity(material_phase(g,i,e)))
-         case (PLASTICITY_NONE_ID)
-           constitutive_sizePostResults(g,i,e) =    0_pInt
-         case (PLASTICITY_J2_ID) 
-           constitutive_sizePostResults(g,i,e) =    constitutive_j2_sizePostResults(instance)
-         case (PLASTICITY_PHENOPOWERLAW_ID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_phenopowerlaw_sizePostResults(instance)
-         case (PLASTICITY_DISLOTWIN_ID)
-           constitutive_sizePostResults(g,i,e) =    constitutive_dislotwin_sizePostResults(instance)
-         case (PLASTICITY_TITANMOD_ID)
-           constitutive_sizePostResults(g,i,e) =   constitutive_titanmod_sizePostResults(instance)
-         case (PLASTICITY_NONLOCAL_ID)
-           nonlocalConstitutionPresent = .true.
-           plasticState(mappingConstitutive(2,g,i,e))%nonlocal = .true.
-           if(myNgrains/=1_pInt) call IO_error(252_pInt, e,i,g)
-           constitutive_sizePostResults(g,i,e) =    constitutive_nonlocal_sizePostResults(instance)
-       end select
-     enddo GrainLoop
-   enddo IPloop
- enddo ElemLoop
+
+ PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
+   instance = phase_plasticityInstance(phase)
+   select case(phase_plasticity(phase))
+     case (PLASTICITY_NONE_ID)
+       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
+     case (PLASTICITY_J2_ID)
+       plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
+     case (PLASTICITY_PHENOPOWERLAW_ID)
+       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
+     case (PLASTICITY_DISLOTWIN_ID)
+       plasticState(phase)%sizePostResults = constitutive_dislotwin_sizePostResults(instance)
+     case (PLASTICITY_TITANMOD_ID)
+       plasticState(phase)%sizePostResults = constitutive_titanmod_sizePostResults(instance)
+     case (PLASTICITY_NONLOCAL_ID)
+       nonlocalConstitutionPresent = .true.
+       plasticState(phase)%nonlocal = .true.
+       plasticState(phase)%sizePostResults = constitutive_nonlocal_sizePostResults(instance)
+   end select   
+
+ enddo PhaseLoop
 
  if (nonlocalConstitutionPresent) &
    call constitutive_nonlocal_stateInit()
 
- do e = 1_pInt,mesh_NcpElems                                                                        ! loop over elements
-   myNgrains = homogenization_Ngrains(mesh_element(3,e)) 
-   forall(i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))), g = 1_pInt:myNgrains)
-     plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-      plasticState(mappingConstitutive(2,g,i,e))%State0(:,mappingConstitutive(1,g,i,e))    ! need to be defined for first call of constitutive_microstructure in crystallite_init
-     plasticState(mappingConstitutive(2,g,i,e))%State(:,mappingConstitutive(1,g,i,e)) =          &
-      plasticState(mappingConstitutive(2,g,i,e))%State0(:,mappingConstitutive(1,g,i,e))    ! need to be defined for first call of constitutive_microstructure in crystallite_init
-   endforall
- enddo
+
+ constitutive_maxSizeDotState = 0_pInt
+ constitutive_maxSizePostResults = 0_pInt
+
+ PhaseLoop2:do phase = 1_pInt,material_Nphase
+   plasticState(phase)%partionedState0 = plasticState(phase)%State0
+   plasticState(phase)%State = plasticState(phase)%State0
+   constitutive_maxSizeDotState = max(constitutive_maxSizeDotState, plasticState(phase)%sizeDotState)
+   constitutive_maxSizePostResults = max(constitutive_maxSizePostResults, plasticState(phase)%sizePostResults)
+ enddo PhaseLoop2
 
 #ifdef HDF
  call  HDF5_mappingConstitutive(mappingConstitutive)
@@ -276,12 +253,6 @@ subroutine constitutive_init
  flush(6)
 #endif
 
- constitutive_maxSizePostResults = 0_pInt
- constitutive_maxSizeDotState = 0_pInt
- do p = 1, size(plasticState)
-  constitutive_maxSizeDotState = max(constitutive_maxSizeDotState, plasticState(p)%sizeDotState)
-  constitutive_maxSizePostResults = max(constitutive_maxSizePostResults, plasticState(p)%sizePostResults)
- enddo
 
 end subroutine constitutive_init
 
@@ -733,7 +704,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal), dimension(constitutive_sizePostResults(ipc,ip,el)) :: &
+ real(pReal), dimension(plasticState(mappingConstitutive(1,ipc,ip,el))%sizePostResults) :: &
    constitutive_postResults
  real(pReal),  intent(in) :: &
    temperature

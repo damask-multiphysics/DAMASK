@@ -3948,7 +3948,6 @@ function crystallite_postResults(ipc, ip, el)
    material_texture, &
    homogenization_Ngrains
  use constitutive, only: &
-   constitutive_sizePostResults, &
    constitutive_postResults, &
    constitutive_homogenizedC
  use constitutive_damage, only: &

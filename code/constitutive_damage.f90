@@ -63,17 +63,9 @@ use damage_gradient
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
-  g, &                                                                                              !< grain number
-  i, &                                                                                              !< integration point number
-  e, &                                                                                              !< element number
-  cMax, &                                                                                           !< maximum number of grains
-  iMax, &                                                                                           !< maximum number of integration points
-  eMax, &                                                                                           !< maximum number of elements
-  phase, &
-  s, &
-  p, &
-  instance,&
-  myNgrains
+  e, &                                                                                              !< grain number
+  ph, &
+  instance
 
  integer(pInt), dimension(:,:), pointer :: thisSize
  logical :: knownDamage
@@ -96,10 +88,10 @@ use damage_gradient
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
  call IO_write_jobFile(FILEUNIT,'outputDamage') 
- do phase = 1_pInt,material_Nphase
-   instance = phase_damageInstance(phase)                                                           ! which instance of a plasticity is present phase
+ do ph = 1_pInt,material_Nphase
+   instance = phase_damageInstance(ph)                                                           ! which instance of a plasticity is present phase
    knownDamage = .true.
-   select case(phase_damage(phase))                                                                 ! split per constititution
+   select case(phase_damage(ph))                                                                 ! split per constititution
      case (DAMAGE_none_ID)
        outputName = DAMAGE_NONE_label
        thisOutput => null()
@@ -111,11 +103,11 @@ use damage_gradient
      case default
        knownDamage = .false.
    end select   
-   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
+   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(ph))//']'
    if (knownDamage) then
      write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
-     if (phase_damage(phase) /= DAMAGE_none_ID) then
-       do e = 1_pInt,phase_Noutput(phase)
+     if (phase_damage(ph) /= DAMAGE_none_ID) then
+       do e = 1_pInt,phase_Noutput(ph)
          write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
        enddo
      endif
@@ -125,24 +117,22 @@ use damage_gradient
  
 !--------------------------------------------------------------------------------------------------
 ! allocation of states
- PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
-   instance = phase_damageInstance(phase)
-   select case(phase_damage(phase))
-     case (DAMAGE_none_ID) 
-       damageState(phase)%sizePostResults = damage_none_sizePostResults(instance)
-
-     case (DAMAGE_gradient_ID) 
-       damageState(phase)%sizePostResults = damage_gradient_sizePostResults(instance)
-       
-   end select
- enddo PhaseLoop
- 
  constitutive_damage_maxSizePostResults = 0_pInt
  constitutive_damage_maxSizeDotState = 0_pInt
- do p = 1, size(damageState)
-  constitutive_damage_maxSizeDotState = max(constitutive_damage_maxSizeDotState, damageState(p)%sizeDotState)
-  constitutive_damage_maxSizePostResults = max(constitutive_damage_maxSizePostResults, damageState(p)%sizePostResults)
- enddo
+ PhaseLoop:do ph = 1_pInt,material_Nphase                                                              ! loop over phases
+   instance = phase_damageInstance(ph)
+   select case(phase_damage(ph))
+     case (DAMAGE_none_ID) 
+       damageState(ph)%sizePostResults = damage_none_sizePostResults(instance)
+
+     case (DAMAGE_gradient_ID) 
+       damageState(ph)%sizePostResults = damage_gradient_sizePostResults(instance)
+       
+   end select
+  constitutive_damage_maxSizeDotState = max(constitutive_damage_maxSizeDotState, damageState(ph)%sizeDotState)
+  constitutive_damage_maxSizePostResults = max(constitutive_damage_maxSizePostResults, damageState(ph)%sizePostResults)
+ enddo PhaseLoop
+
 end subroutine constitutive_damage_init
 
 

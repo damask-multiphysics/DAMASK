@@ -63,17 +63,9 @@ subroutine constitutive_thermal_init
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
-  g, &                                                                                              !< grain number
-  i, &                                                                                              !< integration point number
-  e, &                                                                                              !< element number
-  cMax, &                                                                                           !< maximum number of grains
-  iMax, &                                                                                           !< maximum number of integration points
-  eMax, &                                                                                           !< maximum number of elements
-  phase, &
-  s, &
-  p, &
-  instance,&
-  myNgrains
+  e, &                                                                                              !< grain number
+  ph, &                                                                                                !< phase
+  instance
 
  integer(pInt), dimension(:,:), pointer :: thisSize
  logical :: knownThermal
@@ -96,10 +88,10 @@ subroutine constitutive_thermal_init
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
  call IO_write_jobFile(FILEUNIT,'outputThermal') 
- do phase = 1_pInt,material_Nphase
-   instance = phase_thermalInstance(phase)                                                           ! which instance is present phase
+ do ph = 1_pInt,material_Nphase
+   instance = phase_thermalInstance(ph)                                                              ! which instance is present phase
    knownThermal = .true.
-   select case(phase_thermal(phase))                                                                 ! split per constititution
+   select case(phase_thermal(ph))                                                                 ! split per constititution
      case (THERMAL_none_ID)
        outputName = THERMAL_NONE_label
        thisOutput => null()
@@ -111,11 +103,11 @@ subroutine constitutive_thermal_init
      case default
        knownThermal = .false.
    end select   
-   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
+   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(ph))//']'
    if (knownThermal) then
      write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
-     if (phase_thermal(phase) /= THERMAL_none_ID) then
-       do e = 1_pInt,phase_Noutput(phase)
+     if (phase_thermal(ph) /= THERMAL_none_ID) then
+       do e = 1_pInt,phase_Noutput(ph)
          write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
        enddo
      endif
@@ -125,24 +117,22 @@ subroutine constitutive_thermal_init
  
 !--------------------------------------------------------------------------------------------------
 ! allocation of states
- PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
-   instance = phase_thermalInstance(phase)
-   select case(phase_thermal(phase))
-     case (THERMAL_none_ID) 
-       thermalState(phase)%sizePostResults = thermal_none_sizePostResults(instance)
-
-     case (THERMAL_conduction_ID) 
-       thermalState(phase)%sizePostResults = thermal_conduction_sizePostResults(instance)
-       
-   end select
- enddo PhaseLoop
- 
  constitutive_thermal_maxSizePostResults = 0_pInt
  constitutive_thermal_maxSizeDotState = 0_pInt
- do p = 1, size(thermalState)
-  constitutive_thermal_maxSizeDotState = max(constitutive_thermal_maxSizeDotState, thermalState(p)%sizeDotState)
-  constitutive_thermal_maxSizePostResults = max(constitutive_thermal_maxSizePostResults, thermalState(p)%sizePostResults)
- enddo
+ PhaseLoop:do ph = 1_pInt,material_Nphase                                                              ! loop over phases
+   instance = phase_thermalInstance(ph)
+   select case(phase_thermal(ph))
+     case (THERMAL_none_ID) 
+       thermalState(ph)%sizePostResults = thermal_none_sizePostResults(instance)
+
+     case (THERMAL_conduction_ID) 
+       thermalState(ph)%sizePostResults = thermal_conduction_sizePostResults(instance)
+       
+   end select
+  constitutive_thermal_maxSizeDotState = max(constitutive_thermal_maxSizeDotState, thermalState(ph)%sizeDotState)
+  constitutive_thermal_maxSizePostResults = max(constitutive_thermal_maxSizePostResults, thermalState(ph)%sizePostResults)
+ enddo PhaseLoop
+
 end subroutine constitutive_thermal_init
 
 

@@ -29,7 +29,7 @@ endif
 COMPILERNAME ?= $(F90)
 
 INCLUDE_DIRS :=-I../lib
-LIBRARIES :=-lfftw3
+LIBRARIES :=-llapack -lfftw3
 LIB_DIRS  :=-L$(FFTW_ROOT)/lib
 RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib
 
@@ -372,7 +372,7 @@ endif
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-  $(COMPILED_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
+  $(COMPILED_FILES) $(LIB_DIRS) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
