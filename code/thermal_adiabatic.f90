@@ -143,8 +143,8 @@ subroutine thermal_adiabatic_init(fileUnit)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('temperature')
-             thermal_adiabatic_outputID(thermal_adiabatic_Noutput(instance),instance) = temperature_ID
              thermal_adiabatic_Noutput(instance) = thermal_adiabatic_Noutput(instance) + 1_pInt
+             thermal_adiabatic_outputID(thermal_adiabatic_Noutput(instance),instance) = temperature_ID
              thermal_adiabatic_output(thermal_adiabatic_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select

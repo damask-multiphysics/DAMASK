@@ -25,7 +25,7 @@ module thermal_conduction
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    thermal_conduction_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         private :: &
+ real(pReal),                         dimension(:),     allocatable,         public :: &
    thermal_conduction_specific_heat, &
    thermal_conduction_density
 
@@ -143,8 +143,8 @@ subroutine thermal_conduction_init(fileUnit)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('temperature')
-             thermal_conduction_outputID(thermal_conduction_Noutput(instance),instance) = temperature_ID
              thermal_conduction_Noutput(instance) = thermal_conduction_Noutput(instance) + 1_pInt
+             thermal_conduction_outputID(thermal_conduction_Noutput(instance),instance) = temperature_ID
              thermal_conduction_output(thermal_conduction_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
@@ -242,7 +242,7 @@ subroutine thermal_conduction_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the thermal
  real(pReal), dimension(thermalState(phase)%sizeState) :: tempTol
 
- tempTol = 0.0_pReal
+ tempTol = 1.0_pReal
  thermalState(phase)%aTolState = tempTol
 end subroutine thermal_conduction_aTolState
  

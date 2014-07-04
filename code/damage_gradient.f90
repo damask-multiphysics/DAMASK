@@ -25,7 +25,7 @@ module damage_gradient
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    damage_gradient_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         private :: &
+ real(pReal),                         dimension(:),     allocatable,         public :: &
    damage_gradient_crack_mobility
 
  enum, bind(c) 
@@ -143,13 +143,13 @@ subroutine damage_gradient_init(fileUnit)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('local_damage')
-             damage_gradient_outputID(damage_gradient_Noutput(instance),instance) = local_damage_ID
              damage_gradient_Noutput(instance) = damage_gradient_Noutput(instance) + 1_pInt
+             damage_gradient_outputID(damage_gradient_Noutput(instance),instance) = local_damage_ID
              damage_gradient_output(damage_gradient_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('gradient_damage')
-             damage_gradient_outputID(damage_gradient_Noutput(instance),instance) = gradient_damage_ID
              damage_gradient_Noutput(instance) = damage_gradient_Noutput(instance) + 1_pInt
+             damage_gradient_outputID(damage_gradient_Noutput(instance),instance) = gradient_damage_ID
              damage_gradient_output(damage_gradient_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
@@ -245,7 +245,7 @@ subroutine damage_gradient_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the damage
  real(pReal), dimension(damageState(phase)%sizeState) :: tempTol
 
- tempTol = 0.0_pReal
+ tempTol = 1.0_pReal
  damageState(phase)%aTolState = tempTol
 end subroutine damage_gradient_aTolState
  
@@ -257,15 +257,11 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
- use numerics, only: &
-   charLength
  use math, only: &
    math_Mandel6to33, &
    math_mul33x33, &
    math_transpose33, &
    math_I3
- use lattice, only: &
-   lattice_surfaceEnergy33
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -287,11 +283,8 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
  damage = damageState(phase)%state(3,constituent)*damageState(phase)%state(3,constituent)
  
  damageState(phase)%state(2,constituent) = &
-   min(1.0_pReal, &   
-       2.0_pReal*charLength*maxval(lattice_surfaceEnergy33(1:3,1:3,phase))/ &
-       (0.125_pReal*sum(math_Mandel6to33(Tstar_v/damage)*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)) + &
-        0.5_pReal*damageState(phase)%state(1,constituent)) &
-       )  
+   0.5_pReal*sum(math_Mandel6to33(Tstar_v/damage)*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)) - &
+   0.5_pReal*damageState(phase)%state(1,constituent)
   
 end subroutine damage_gradient_microstructure
  
