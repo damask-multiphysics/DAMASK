@@ -659,7 +659,7 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_elasticityInstance(section) = count(phase_elasticity == phase_elasticity(section))   ! count instances
+         phase_elasticityInstance(section) = count(phase_elasticity(1:section) == phase_elasticity(section))   ! count instances
        case ('plasticity')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (PLASTICITY_NONE_label)
@@ -677,7 +677,7 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_plasticityInstance(section) = count(phase_plasticity == phase_plasticity(section))   ! count instances
+         phase_plasticityInstance(section) = count(phase_plasticity(1:section) == phase_plasticity(section))   ! count instances
        case ('damage')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (DAMAGE_NONE_label)
@@ -689,7 +689,7 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_damageInstance(section) = count(phase_damage == phase_damage(section))               ! count instances
+         phase_damageInstance(section) = count(phase_damage(1:section) == phase_damage(section))               ! count instances
        case ('thermal')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (THERMAL_NONE_label)
@@ -703,7 +703,7 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_thermalInstance(section) = count(phase_thermal == phase_thermal(section))            ! count instances
+         phase_thermalInstance(section) = count(phase_thermal(1:section) == phase_thermal(section))            ! count instances
      end select
    endif
  enddo
