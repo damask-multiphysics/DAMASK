@@ -13,8 +13,9 @@ def asFullTensor(voigt):
                    [voigt[5],voigt[4],voigt[2]]])
 
 def Hill48(x, F,G,H,L,M,N):
-  return F*(x[1]-x[2])**2 + G*(x[2]-x[0])**2 + H*(x[0]-x[1])** + \
+  a= F*(x[1]-x[2])**2 + G*(x[2]-x[0])**2 + H*(x[0]-x[1])** + \
          2*L*x[4]**2 + 2*M*x[5]**2 + 2*N*x[3]**2 -1.
+  return a.ravel()
 
 def vonMises(x, S_y):
   p = svd(asFullTensor(x)) 
@@ -44,7 +45,6 @@ class Loadcase():
     for off in [[1,3,0],[2,6,0],[5,7,0]]:
       off=np.array(off)
       np.random.shuffle(off)
-      print off
       if off[0] != 0: 
         defgrad[off[0]]=values[off[0]]
         stress[off[0]]='*'
@@ -66,16 +66,15 @@ class Criterion(object):
     self.popt = 0.0
 
   def fit(self,stress):
-    print len(stress)
     if self.name == 'hill48':
       try:
-        self.popt, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[0]))
+        self.popt, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]))
         print self.popt
       except:
         pass
     elif self.name == 'vonmises':
       try:
-        self.popt, pcov = curve_fit(vonMises, stress.transpose(), np.shape(stress)[0])
+        self.popt, pcov = curve_fit(vonMises, stress.transpose(), np.shape(stress)[1])
       except:
         pass 
 
@@ -102,21 +101,21 @@ class myThread (threading.Thread):
 
 def doSim(delay,thread):
   s.acquire()
-  me=getLoadcase()+1
-  print('starting sim %i from thread %s'%(me,thread))
+  me=getLoadcase()
+  print('starting sim %i from %s'%(me,thread))
   f=open('%s.load'%me,'w')
   f.write(myLoad.getNext(me))
   f.close()
   #dummy
+  print('doing postprocessing sim %i from %s'%(me,thread))
   voigt = np.random.random_sample(6)*90e6
   global stressAll
-  stressAll=np.append(stressAll,asFullTensor(voigt).reshape(1,9))
-  stressAll=stressAll.reshape(len(stressAll)//9,9)
+  stressAll=np.append(stressAll,asFullTensor(voigt).reshape(9))
+  stressAll=stressAll.reshape(9,len(stressAll)//9)
   myFit.fit(stressAll)
   s.release()
   time.sleep(delay)
   s.acquire()
-  print('doing postprocessing sim %i from thread %s'%(me,thread))
   s.release()
 
 def getLoadcase():
@@ -156,10 +155,4 @@ for i in range(N_threads):
 for i in range(N_threads):
   t[i].join()
 
-a, b = curve_fit(Hill48, stressAll.transpose(), np.zeros(10))
-print a
 print "Exiting Main Thread"
-
-
-
- 
