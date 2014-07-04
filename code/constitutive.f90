@@ -704,7 +704,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal), dimension(plasticState(mappingConstitutive(2,ipc,ip,el))%sizePostResults) :: &
+ real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
    constitutive_postResults
  real(pReal),  intent(in) :: &
    temperature
