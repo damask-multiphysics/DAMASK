@@ -437,20 +437,20 @@ constitutive_damage.o:         constitutive_damage.f90 \
                                damage_gradient.o
 
 damage_none.o:                 damage_none.f90 \
-                               lattice.o \
+                               lattice.o
 
 damage_gradient.o:             damage_gradient.f90 \
-                               lattice.o \
+                               lattice.o
 
 constitutive_thermal.o:        constitutive_thermal.f90 \
                                thermal_none.o \
                                thermal_conduction.o
 
 thermal_none.o:                thermal_none.f90 \
-                               lattice.o \
+                               lattice.o
 
 thermal_conduction.o:          thermal_conduction.f90 \
-                               lattice.o \
+                               lattice.o
 
 lattice.o:                     lattice.f90 \
                                material.o
