@@ -74,6 +74,7 @@ subroutine thermal_none_init(fileUnit)
      thermalState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      thermalState(phase)%sizeDotState = sizeDotState
+     thermalState(phase)%sizePostResults = 0_pInt
      allocate(thermalState(phase)%state0         (sizeState,NofMyPhase))
      allocate(thermalState(phase)%partionedState0(sizeState,NofMyPhase))
      allocate(thermalState(phase)%subState0      (sizeState,NofMyPhase))

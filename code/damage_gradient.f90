@@ -186,6 +186,7 @@ subroutine damage_gradient_init(fileUnit)
                 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
+     damageState(phase)%sizePostResults = damage_gradient_sizePostResults(instance)
      allocate(damageState(phase)%aTolState           (sizeState),                source=0.0_pReal)
      allocate(damageState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(damageState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)

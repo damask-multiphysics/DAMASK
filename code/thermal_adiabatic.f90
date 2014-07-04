@@ -180,6 +180,7 @@ subroutine thermal_adiabatic_init(fileUnit)
      sizeState                 =   1_pInt
      thermalState(phase)%sizeState = sizeState
      thermalState(phase)%sizeDotState = sizeDotState
+     thermalState(phase)%sizePostResults = thermal_adiabatic_sizePostResults(instance)
      allocate(thermalState(phase)%aTolState           (sizeState),                source=0.0_pReal)
      allocate(thermalState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(thermalState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)

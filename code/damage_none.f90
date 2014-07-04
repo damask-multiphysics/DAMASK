@@ -74,6 +74,7 @@ subroutine damage_none_init(fileUnit)
      damageState(phase)%sizeState = sizeState
      sizeDotState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
+     damageState(phase)%sizePostResults = 0_pInt
      allocate(damageState(phase)%state0         (sizeState,NofMyPhase))
      allocate(damageState(phase)%partionedState0(sizeState,NofMyPhase))
      allocate(damageState(phase)%subState0      (sizeState,NofMyPhase))

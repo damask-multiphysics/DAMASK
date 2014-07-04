@@ -120,15 +120,6 @@ use damage_gradient
  constitutive_damage_maxSizePostResults = 0_pInt
  constitutive_damage_maxSizeDotState = 0_pInt
  PhaseLoop:do ph = 1_pInt,material_Nphase                                                              ! loop over phases
-   instance = phase_damageInstance(ph)
-   select case(phase_damage(ph))
-     case (DAMAGE_none_ID) 
-       damageState(ph)%sizePostResults = damage_none_sizePostResults(instance)
-
-     case (DAMAGE_gradient_ID) 
-       damageState(ph)%sizePostResults = damage_gradient_sizePostResults(instance)
-       
-   end select
   constitutive_damage_maxSizeDotState = max(constitutive_damage_maxSizeDotState, damageState(ph)%sizeDotState)
   constitutive_damage_maxSizePostResults = max(constitutive_damage_maxSizePostResults, damageState(ph)%sizePostResults)
  enddo PhaseLoop

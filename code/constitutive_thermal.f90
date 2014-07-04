@@ -119,16 +119,8 @@ subroutine constitutive_thermal_init
 ! allocation of states
  constitutive_thermal_maxSizePostResults = 0_pInt
  constitutive_thermal_maxSizeDotState = 0_pInt
- PhaseLoop:do ph = 1_pInt,material_Nphase                                                              ! loop over phases
-   instance = phase_thermalInstance(ph)
-   select case(phase_thermal(ph))
-     case (THERMAL_none_ID) 
-       thermalState(ph)%sizePostResults = thermal_none_sizePostResults(instance)
 
-     case (THERMAL_conduction_ID) 
-       thermalState(ph)%sizePostResults = thermal_conduction_sizePostResults(instance)
-       
-   end select
+ PhaseLoop:do ph = 1_pInt,material_Nphase                                                           ! loop over phases
   constitutive_thermal_maxSizeDotState = max(constitutive_thermal_maxSizeDotState, thermalState(ph)%sizeDotState)
   constitutive_thermal_maxSizePostResults = max(constitutive_thermal_maxSizePostResults, thermalState(ph)%sizePostResults)
  enddo PhaseLoop
