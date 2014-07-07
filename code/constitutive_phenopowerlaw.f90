@@ -514,12 +514,12 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeState
      plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
-     allocate(plasticState(phase)%aTolState          (sizeState), source=0.0_pReal)
-     allocate(plasticState(phase)%state0             (sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state              (sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%aTolState          (  sizeState),             source=0.0_pReal)
+     allocate(plasticState(phase)%state0             (   sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%partionedState0    (   sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%subState0          (   sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state              (   sizeState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state_backup       (   sizeState,NofMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
@@ -581,6 +581,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
          enddo; enddo
   
      enddo; enddo
+
      call constitutive_phenopowerlaw_stateInit(phase,instance)
      call constitutive_phenopowerlaw_aTolState(phase,instance)
    endif myPhase2 
@@ -609,7 +610,7 @@ subroutine constitutive_phenopowerlaw_stateInit(ph,instance)
    i
  real(pReal),   dimension(plasticState(ph)%sizeState) :: &
    tempState
- 
+ tempState = 0.0_pReal
  do i = 1_pInt,lattice_maxNslipFamily
    tempState(1+sum(constitutive_phenopowerlaw_Nslip(1:i-1,instance)) : &
                sum(constitutive_phenopowerlaw_Nslip(1:i  ,instance))) = &
@@ -624,8 +625,7 @@ subroutine constitutive_phenopowerlaw_stateInit(ph,instance)
                                           constitutive_phenopowerlaw_tau0_twin(i,instance)
  enddo
 
- plasticState(ph)%state0 = spread(tempState,2,size(plasticState(ph)%state0(1,:)))
-
+ plasticState(ph)%state0(:,:) = spread(tempState,2,size(plasticState(ph)%state0(1,:)))
 end subroutine constitutive_phenopowerlaw_stateInit
 
 
@@ -875,7 +875,7 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  index_F     = nSlip + nTwin + 2_pInt
  offset_accshear_slip = nSlip + nTwin + 2_pInt
  offset_accshear_twin = nSlip + nTwin + 2_pInt + nSlip
- plasticState(ph)%dotState = 0.0_pReal
+ plasticState(ph)%dotState(:,of) = 0.0_pReal
  
 
 !--------------------------------------------------------------------------------------------------
@@ -981,6 +981,7 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
      plasticState(ph)%dotState(offset_accshear_twin+j,of) = abs(gdot_twin(j))
    enddo
  enddo twinFamiliesLoop2
+
  
 end subroutine constitutive_phenopowerlaw_dotState
 

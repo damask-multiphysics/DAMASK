@@ -1197,7 +1197,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
          endforall
        enddo elementLooping7
      !$END PARALLEL DO 
-
      ! --- CALCULATE STATE AND STRESS FOR PERTURBATION ---
 
      dPdF_perturbation1 = crystallite_dPdF0                                                            ! initialize stiffness with known good values from last increment
@@ -1208,7 +1207,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
          do k = 1,3; do l = 1,3                                                                        ! ...alter individual components
            if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
                write(6,'(a,2(1x,i1),1x,a,/)') '<< CRYST >> [[[[[[ Stiffness perturbation',k,l,']]]]]]'
-           
            ! --- INITIALIZE UNPERTURBED STATE ---  
 
            select case(numerics_integrator(numerics_integrationMode))
@@ -3040,6 +3038,7 @@ subroutine crystallite_integrateStateFPI()
                                                  g,i,e)
      endif
    enddo; enddo; enddo
+
  !$OMP ENDDO
  !$OMP DO PRIVATE(p,c)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
@@ -3049,7 +3048,8 @@ subroutine crystallite_integrateStateFPI()
        c = mappingConstitutive(1,g,i,e)  
        if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
             any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c)) .or.&
-            any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
+            any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then   !NaN occured in dotState
+
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
@@ -3062,7 +3062,6 @@ subroutine crystallite_integrateStateFPI()
    enddo; enddo; enddo
  !$OMP ENDDO
 
- 
  ! --- UPDATE STATE  ---
  
  !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
@@ -3088,7 +3087,6 @@ subroutine crystallite_integrateStateFPI()
 
  !$OMP END PARALLEL
  
- 
  ! --+>> STATE LOOP <<+--
  
  NiterationState = 0_pInt
@@ -3105,7 +3103,7 @@ subroutine crystallite_integrateStateFPI()
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
          call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
-       call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
+       call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &   !ToDo: should this be independent of todo/converged?
                                                crystallite_Fe(1:3,1:3,g,i,e), &
                                                g,i,e)                   ! update dependent state variables to be consistent with basic states
        call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
@@ -3121,7 +3119,6 @@ subroutine crystallite_integrateStateFPI()
        thermalState(p)%previousDotState(:,c) =  thermalState(p)%dotState(:,c)          
      enddo; enddo; enddo
    !$OMP ENDDO
-
    
    ! --- STRESS INTEGRATION ---
    
@@ -3140,7 +3137,6 @@ subroutine crystallite_integrateStateFPI()
      enddo; enddo; enddo
    !$OMP ENDDO
 
- 
    !$OMP SINGLE
    !$OMP CRITICAL (write2out)
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
@@ -3184,10 +3180,8 @@ subroutine crystallite_integrateStateFPI()
          
        endif
        
-       
      enddo; enddo; enddo
    !$OMP ENDDO
-
 
    ! --- UPDATE STATE  ---
  
@@ -3206,10 +3200,8 @@ subroutine crystallite_integrateStateFPI()
          mySizeThermalDotState = thermalState(p)%sizeDotState
          dot_prod12 = dot_product(plasticState(p)%dotState(:,c)- plasticState(p)%previousDotState(:,c), &
                                   plasticState(p)%previousDotState(:,c) - plasticState(p)%previousDotState2(:,c))
-
          dot_prod22 = dot_product(plasticState(p)%previousDotState(:,c) - plasticState(p)%previousDotState2(:,c), &
                                   plasticState(p)%previousDotState(:,c) - plasticState(p)%previousDotState2(:,c))
-
          if (      dot_prod22 > 0.0_pReal &
              .and. (     dot_prod12 < 0.0_pReal &
                     .or. dot_product(plasticState(p)%dotState(:,c), &
@@ -3217,14 +3209,11 @@ subroutine crystallite_integrateStateFPI()
            stateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
          else
            stateDamper = 1.0_pReal
-         endif        
-
+         endif
          dot_prod12 = dot_product(damageState(p)%dotState(:,c)- damageState(p)%previousDotState(:,c), &
                                   damageState(p)%previousDotState(:,c) - damageState(p)%previousDotState2(:,c))
-
          dot_prod22 = dot_product(damageState(p)%previousDotState(:,c) - damageState(p)%previousDotState2(:,c), &
                                   damageState(p)%previousDotState(:,c) - damageState(p)%previousDotState2(:,c))
-
          if (      dot_prod22 > 0.0_pReal &
              .and. (     dot_prod12 < 0.0_pReal &
                     .or. dot_product(damageState(p)%dotState(:,c), &
@@ -3233,13 +3222,10 @@ subroutine crystallite_integrateStateFPI()
          else
            damageStateDamper = 1.0_pReal
          endif        
-
          dot_prod12 = dot_product(thermalState(p)%dotState(:,c)- thermalState(p)%previousDotState(:,c), &
                                   thermalState(p)%previousDotState(:,c) - thermalState(p)%previousDotState2(:,c))
-
          dot_prod22 = dot_product(thermalState(p)%previousDotState(:,c) - thermalState(p)%previousDotState2(:,c), &
                                   thermalState(p)%previousDotState(:,c) - thermalState(p)%previousDotState2(:,c))
-
          if (      dot_prod22 > 0.0_pReal &
              .and. (     dot_prod12 < 0.0_pReal &
                     .or. dot_product(thermalState(p)%dotState(:,c), &
@@ -3267,9 +3253,7 @@ subroutine crystallite_integrateStateFPI()
                                                        - (thermalState(p)%dotState(1:mySizeThermalDotState,c) * thermalStateDamper &
                                                        + thermalState(p)%previousDotState(1:mySizeThermalDotState,c) &
                                                        * (1.0_pReal - thermalStateDamper)) * crystallite_subdt(g,i,e)
-         
          ! --- correct state with residuum ---
-
          tempState(1:mySizePlasticDotState) = plasticState(p)%state(1:mySizePlasticDotState,c) &
                                             - stateResiduum(1:mySizePlasticDotState)                              ! need to copy to local variable, since we cant flush a pointer in openmp
          tempDamageState(1:mySizeDamageDotState) = damageState(p)%state(1:mySizeDamageDotState,c) &
@@ -3282,32 +3266,31 @@ subroutine crystallite_integrateStateFPI()
                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
            write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> update state at el ip g ',e,i,g
            write(6,'(a,f6.1,/)')                 '<< CRYST >> statedamper ',statedamper
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> state residuum',stateResiduum(1:mySizeDotState)
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',tempState(1:mySizeDotState)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> state residuum',stateResiduum(1:mySizePlasticDotState)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',tempState(1:mySizePlasticDotState)
          endif
 #endif
- 
          ! --- store corrected dotState --- (cannot do this before state update, because not sure how to flush pointers in openmp)
 
          plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * stateDamper &
                                        + plasticState(p)%previousDotState(:,c) &
-                                       * (1.0_pReal - stateDamper)  
+                                       * (1.0_pReal - stateDamper)
          damageState(p)%dotState(:,c)  = damageState(p)%dotState(:,c) * damageStateDamper &
                                        + damageState(p)%previousDotState(:,c) &
                                        * (1.0_pReal - damageStateDamper)  
          thermalState(p)%dotState(:,c) = thermalState(p)%dotState(:,c) * thermalStateDamper &
                                        + thermalState(p)%previousDotState(:,c) &
-                                       * (1.0_pReal - thermalStateDamper)  
+                                       * (1.0_pReal - thermalStateDamper)
          ! --- converged ? ---
-         if ( all(    abs(stateResiduum(1:mySizePlasticDotState)) < plasticState(p)%aTolState(1:mySizePlasticDotState) &
-                 .or. abs(stateResiduum(1:mySizePlasticDotState)) < rTol_crystalliteState &
-                                                                  * abs(tempState(1:mySizePlasticDotState)) ) &
-        .and. all(    abs(damageStateResiduum(1:mySizeDamageDotState)) < damageState(p)%aTolState(1:mySizeDamageDotState) &
-                 .or. abs(damageStateResiduum(1:mySizeDamageDotState)) < rTol_crystalliteState &
-                                                                       * abs(tempDamageState(1:mySizeDamageDotState)) ) &
+         if ( all(    abs(stateResiduum(1:mySizePlasticDotState))        < plasticState(p)%aTolState(1:mySizePlasticDotState) &
+                 .or. abs(stateResiduum(1:mySizePlasticDotState))        < rTol_crystalliteState &
+                                                                         * abs(tempState(1:mySizePlasticDotState)) ) &
+        .and. all(    abs(damageStateResiduum(1:mySizeDamageDotState))   < damageState(p)%aTolState(1:mySizeDamageDotState) &
+                 .or. abs(damageStateResiduum(1:mySizeDamageDotState))   < rTol_crystalliteState &
+                                                                         * abs(tempDamageState(1:mySizeDamageDotState)) ) &
         .and. all(    abs(thermalStateResiduum(1:mySizeThermalDotState)) < thermalState(p)%aTolState(1:mySizeThermalDotState) &
                  .or. abs(thermalStateResiduum(1:mySizeThermalDotState)) < rTol_crystalliteState &
-                                                                         * abs(tempThermalState(1:mySizeThermalDotState)) )) then 
+                                                                         * abs(tempThermalState(1:mySizeThermalDotState)) )) then
            crystallite_converged(g,i,e) = .true.                                                                   ! ... converged per definition
 
            if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
@@ -3317,13 +3300,12 @@ subroutine crystallite_integrateStateFPI()
              !$OMP END CRITICAL (distributionState)
            endif
          endif
-         plasticState(p)%state(1:mySizePlasticDotState,c) = tempState(1:mySizePlasticDotState)       ! copy local backup to global pointer
-         damageState(p)%state (1:mySizeDamageDotState, c) = tempDamageState(1:mySizeDamageDotState)       ! copy local backup to global pointer
-         thermalState(p)%state(1:mySizeThermalDotState,c) = tempThermalState(1:mySizeThermalDotState)       ! copy local backup to global pointer
+         plasticState(p)%dotState(1:mySizePlasticDotState,c) = tempState(1:mySizePlasticDotState)       ! copy local backup to global pointer
+         damageState(p)%dotState (1:mySizeDamageDotState, c) = tempDamageState(1:mySizeDamageDotState)       ! copy local backup to global pointer
+         thermalState(p)%dotState(1:mySizeThermalDotState,c) = tempThermalState(1:mySizeThermalDotState)       ! copy local backup to global pointer
         endif
      enddo; enddo; enddo
    !$OMP ENDDO
-
    ! --- STATE JUMP ---
  
    !$OMP DO
@@ -3343,7 +3325,6 @@ subroutine crystallite_integrateStateFPI()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
- 
    !$OMP END PARALLEL
  
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
@@ -3364,7 +3345,6 @@ subroutine crystallite_integrateStateFPI()
      write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_todo(:,:,:)), &
                               ' grains todo after state integration no. ', NiterationState
    endif
-   
    ! --- CHECK IF DONE WITH INTEGRATION ---
 
    doneWithIntegration = .true.
