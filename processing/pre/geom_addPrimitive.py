@@ -48,23 +48,43 @@ mappings = {
           }
 
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
-Changes the (three-dimensional) canvas of a spectral geometry description.
+Positions a geometric object within the (three-dimensional) canvas of a spectral geometry description.
+Depending on the sign of the dimension parameters, these objects can be boxes, cylinders, or ellipsoids.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-o', '--origin', 
-                  '-c', '--center', dest='center', type='int', nargs = 3, metavar='int int int',
+                  '-c', '--center',     dest='center', type='int', nargs = 3, metavar=' '.join(['int']*3),
                   help='a,b,c origin of primitive %default')
-parser.add_option('-d', '--dimension', dest='dimension', type='int', nargs = 3, metavar='int int int',
+parser.add_option('-d', '--dimension',  dest='dimension', type='int', nargs = 3, metavar=' '.join(['int']*3),
                   help='a,b,c extension of hexahedral box; negative values are diameters')
-parser.add_option('-f', '--fill', dest='fill', type='int', metavar = 'int',
+parser.add_option('-f', '--fill',       dest='fill', type='int', metavar = 'int',
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
+parser.add_option('-q', '--quaternion', dest='quaternion', type='float', nargs = 4, metavar=' '.join(['float']*4),
+                  help = 'rotation of primitive as quaternion')
+parser.add_option('-a', '--angleaxis',  dest='angleaxis', type='string', nargs = 4, metavar=' '.join(['float']*4),
+                  help = 'rotation of primitive as angle and axis')
+parser.add_option(     '--degrees',     dest='degrees', action='store_true',
+                  help = 'angle is given in degrees [%default]')
 
 parser.set_defaults(center = [0,0,0],
                     fill = 0,
+                    quaternion = [],
+                    angleaxis = [],
+                    degrees = False,
                    )
 
 (options, filenames) = parser.parse_args()
+
+if options.angleaxis != []:
+  options.angleaxis = map(float,options.angleaxis)
+  rotation = damask.Quaternion().fromAngleAxis(numpy.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
+                                               options.angleaxis[1:4]).conjugated()
+elif options.quaternion != []:
+  options.rotation = map(float,options.rotation)
+  rotation = damask.Quaternion(options.quaternion).conjugated()
+else:
+  rotation = damask.Quaternion().conjugated()
 
 #--- setup file handles --------------------------------------------------------------------------   
 files = []
@@ -156,34 +176,24 @@ for file in files:
     options.fill = microstructure.max()+1
 
   microstructure = microstructure.reshape(info['grid'],order='F')
-  
+
   if options.dimension != None:
-    mask = (numpy.array(options.dimension) < 0).astype(float)
-    dim = abs(numpy.array(options.dimension))
-    scale = 2.0/dim
-    d = numpy.zeros(3,dtype='float')
+    mask = (numpy.array(options.dimension) < 0).astype(float)                                       # zero where positive dimension, otherwise one
+    dim = abs(numpy.array(options.dimension))                                                       # dimensions of primitive body
+    extent = range(int(math.ceil(-math.sqrt(numpy.dot(dim,dim))/2.)),
+                   int(math.ceil( math.sqrt(numpy.dot(dim,dim))/2.)))                               # maximum extent (diagonal) of body
+    gridpos = numpy.zeros(3,dtype='float')
 
-    d[0] = (1.-dim[0])/2.0
-    for x in xrange(int(math.ceil(options.center[0]-dim[0]/2.)),
-                    int(math.ceil(options.center[0]+dim[0]/2.))):
-      i = x%info['grid'][0]
-      d[1] = (1.-dim[1])/2.0
-
-      for y in xrange(int(math.ceil(options.center[1]-dim[1]/2.)),
-                      int(math.ceil(options.center[1]+dim[1]/2.))):
-        j = y%info['grid'][1]
-        d[2] = (1.-dim[2])/2.0
-
-        for z in xrange(int(math.ceil(options.center[2]-dim[2]/2.)),
-                        int(math.ceil(options.center[2]+dim[2]/2.))):
-          k = z%info['grid'][2]
-          
-          if numpy.dot(d*scale*mask,d*scale*mask) <= 1.0:
-            microstructure[i,j,k] = options.fill
-
-          d[2] += 1.
-        d[1] += 1.
-      d[0] += 1.
+    for     gridpos[0] in extent + (1+dim[0])%2/2.0:
+      for   gridpos[1] in extent + (1+dim[1])%2/2.0:
+        for gridpos[2] in extent + (1+dim[2])%2/2.0:
+          pos = rotation*gridpos
+          if numpy.dot(mask*pos/dim,mask*pos/dim) <= 0.25 and \
+             numpy.all(abs((1.-mask)*pos/dim) <= 0.5):                                              # inside ellipsoid and inside box
+            microstructure[options.center[0]+gridpos[0],
+                           options.center[1]+gridpos[1],
+                           options.center[2]+gridpos[2],
+                          ] = options.fill
 
   newInfo['microstructures'] = microstructure.max()
 
