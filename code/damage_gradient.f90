@@ -262,7 +262,10 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
    math_Mandel6to33, &
    math_mul33x33, &
    math_transpose33, &
+   math_trace33, &
    math_I3
+ use lattice, only: &
+   lattice_surfaceEnergy33
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -284,8 +287,8 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
  damage = damageState(phase)%state(3,constituent)*damageState(phase)%state(3,constituent)
  
  damageState(phase)%state(2,constituent) = &
-   0.5_pReal*sum(math_Mandel6to33(Tstar_v/damage)*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)) - &
-   0.5_pReal*damageState(phase)%state(1,constituent)
+   (0.5_pReal*sum(math_Mandel6to33(Tstar_v/damage)*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)) - &
+    0.5_pReal*damageState(phase)%state(1,constituent))/math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal
   
 end subroutine damage_gradient_microstructure
  
