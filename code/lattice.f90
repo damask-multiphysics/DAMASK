@@ -1281,7 +1281,7 @@ pure function lattice_symmetrize33(struct,T33)
      lattice_symmetrize33(3,3) = T33(3,3)
    case (LATTICE_ort_ID)
      lattice_symmetrize33(1,1) = T33(1,1)
-     lattice_symmetrize33(2,2) = T33(2,3)
+     lattice_symmetrize33(2,2) = T33(2,2)
      lattice_symmetrize33(3,3) = T33(3,3)
    case default
      lattice_symmetrize33 = T33
