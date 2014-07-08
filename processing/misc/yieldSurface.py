@@ -6,6 +6,8 @@ from scipy.optimize import curve_fit
 from scipy.linalg import svd
 import threading,time,os,subprocess,shlex
 import damask
+geomName='20grains16x16x16'
+popt1=np.ones(6,'d')
 
 def execute(cmd,dir='./'):
       
@@ -30,11 +32,11 @@ def Hill48(x, F,G,H,L,M,N):
 
 def vonMises(x, S_y):
   sv=np.zeros(0,'d')
-  for i in xrange(np.shape(x)[1]):
-    U, l, Vh = svd(np.array(x[:,i]).reshape(3,3))
+  for i in xrange(np.shape(x)[0]):
+    U, l, Vh = svd(np.array(x[i,:]).reshape(3,3))
     sv = np.append(sv,l)
-  sv = sv.reshape(3,np.shape(x)[1])
-  ooo= (sv[2,:]-sv[1,:])**2+(sv[1,:]-sv[0,:])**2+(sv[0,:]-sv[2,:])**2-2*S_y**2
+  sv = sv.reshape(np.shape(x)[0],3)
+  ooo= (sv[:,2]-sv[:,1])**2+(sv[:,1]-sv[:,0])**2+(sv[:,0]-sv[:,2])**2-2*S_y**2
   return ooo
 
 #---------------------------------------------------------------------------------------------------
@@ -85,13 +87,15 @@ class Criterion(object):
 
   def fit(self,stress):
     try:
-      popt, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]))
+      spopt1, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1)
+      popt = popt1
       print 'Hill 48', popt
+      print Hill48(stress,popt[0],popt[1],popt[2],popt[3],popt[4],popt[5])
     except Exception as detail:
       print detail
       pass
-    popt, pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[1]))
-    print 'von Mises', popt
+    #popt, pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[0]))
+    #print 'von Mises', popt
 
 
 #---------------------------------------------------------------------------------------------------
@@ -118,39 +122,53 @@ def doSim(delay,thread):
 
   s.acquire()
   me=getLoadcase()
-  print('generating loadcase for sim %i from %s'%(me,thread))
-  f=open('%s.load'%me,'w')
-  f.write(myLoad.getNext(me))
-  f.close()
-
-  print('starting simulation %i from %s'%(me,thread))
-  s.release()
-
-  execute('DAMASK_spectral -l %i -g 20grains16x16x16'%me)
+  if not os.path.isfile('%s.load'%me):
+    print('generating loadcase for sim %s from %s'%(me,thread))
+    f=open('%s.load'%me,'w')
+    f.write(myLoad.getNext(me))
+    f.close()
+    s.release()
+  else: s.release()
+  
+  s.acquire()
+  if not os.path.isfile('%s_%s.spectralOut'%(geomName,me)):
+    print('starting simulation %i from %s'%(me,thread))
+    s.release()
+    execute('DAMASK_spectral -l %i -g %i'%(me,geomName))
+  else: s.release()
+   
 
   s.acquire()
-  print('startin post processing for sim %i from %s'%(me,thread))
+  if not os.path.isfile('./postProc/%s_%s.txt'%(geomName,me)):
+    print('starting post processing for sim %i from %s'%(me,thread))
+    s.release()
+    execute('postResults --cr f,p %i_%i.spectralOut'%(geomName,me))
+    execute('addCauchy ./postProc/%i_%i.txt'%(geomName,me))
+    execute('addStrainTensors -l -v ./postProc/%i_%i.txt'%(geomName,me))
+    execute('addMises -s Cauchy -e ln(V) ./postProc/%i_%i.txt'%(geomName,me))
+  else: s.release()
+
+  s.acquire()
+  print('reading values for sim %i from %s'%(me,thread))
   s.release()
-  execute('postResults --cr f,p 20grains16x16x16_%i.spectralOut'%me)
-  execute('addCauchy ./postProc/20grains16x16x16_%i.txt'%me)
-  execute('addStrainTensors -l -v ./postProc/20grains16x16x16_%i.txt'%me)
-  execute('addMises -s Cauchy -e ln(V) ./postProc/20grains16x16x16_%i.txt'%me)
 
   refFile = open('./postProc/20grains16x16x16_%i.txt'%me)
+  refFile = open('./postProc/20grains16x16x16_1.txt')
   table = damask.ASCIItable(refFile)
   table.head_read()
   for l in ['Mises(ln(V))','1_Cauchy']:
     if l not in table.labels: print '%s not found'%l
   while table.data_read():
     if float(table.data[table.labels.index('Mises(ln(V))')]) > 0.002:
-      yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d').reshape(3,3)
-
+      yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d')
+  
   s.acquire()
-  print('startin fitting for sim %i from %s'%(me,thread))
+  print('starting fitting for sim %i from %s'%(me,thread))
   global stressAll
-  stressAll=np.append(stressAll,yieldStress.reshape(9))
-  stressAll=stressAll.reshape(9,len(stressAll)//9)
-  myFit.fit(stressAll)
+  stressAll=np.append(yieldStress,stressAll)
+  for i in range(np.shape(stressAll.reshape(len(stressAll)//9,9).transpose())[1]):
+    print i, stressAll.reshape(len(stressAll)//9,9).transpose()[:,i]
+  myFit.fit(stressAll.reshape(len(stressAll)//9,9).transpose())
   s.release()
 
 def getLoadcase():
@@ -169,13 +187,13 @@ def converged():
 # main
 
 minN_simulations=20
-maxN_simulations=20
+maxN_simulations=14
 N_simulations=0
 s=threading.Semaphore(1)
 scale = 0.02
 incs = 10
 duration = 10
-stressAll=np.zeros(0,'d')
+stressAll=np.zeros(0,'d').reshape(0,0)
 
 myLoad = Loadcase()
 myFit = Criterion('Hill48')
@@ -189,5 +207,4 @@ for i in range(N_threads):
 
 for i in range(N_threads):
   t[i].join()
-
 print "Exiting Main Thread"
