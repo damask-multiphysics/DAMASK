@@ -121,7 +121,10 @@ subroutine constitutive_init
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call constitutive_titanmod_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID))      call constitutive_nonlocal_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
+  call constitutive_nonlocal_init(FILEUNIT)
+  call constitutive_nonlocal_stateInit()
+ endif
  close(FILEUNIT)
  
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
@@ -175,32 +178,6 @@ subroutine constitutive_init
  enddo
  close(FILEUNIT)
  
-
- PhaseLoop:do phase = 1_pInt,material_Nphase                                                              ! loop over phases
-   instance = phase_plasticityInstance(phase)
-   select case(phase_plasticity(phase))
-     case (PLASTICITY_NONE_ID)
-       plasticState(phase)%sizePostResults = constitutive_none_sizePostResults(instance)
-     case (PLASTICITY_J2_ID)
-       plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
-     case (PLASTICITY_PHENOPOWERLAW_ID)
-       plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
-     case (PLASTICITY_DISLOTWIN_ID)
-       plasticState(phase)%sizePostResults = constitutive_dislotwin_sizePostResults(instance)
-     case (PLASTICITY_TITANMOD_ID)
-       plasticState(phase)%sizePostResults = constitutive_titanmod_sizePostResults(instance)
-     case (PLASTICITY_NONLOCAL_ID)
-       nonlocalConstitutionPresent = .true.
-       plasticState(phase)%nonlocal = .true.
-       plasticState(phase)%sizePostResults = constitutive_nonlocal_sizePostResults(instance)
-   end select   
-
- enddo PhaseLoop
-
- if (nonlocalConstitutionPresent) &
-   call constitutive_nonlocal_stateInit()
-
-
  constitutive_maxSizeDotState = 0_pInt
  constitutive_maxSizePostResults = 0_pInt
 

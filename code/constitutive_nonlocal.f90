@@ -1055,37 +1055,14 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      !*** determine size of state array
      
      ns = totalNslip(instance)
-                                        
-! Determine size of state array
-  !   plasticState(phase)%nonlocal = .true.
+
      sizeDotState              = int(size(BASICSTATES),pInt) * ns
      sizeDependentState        = int(size(DEPENDENTSTATES),pInt) * ns
      sizeState                 = sizeDotState + sizeDependentState &
                                + int(size(OTHERSTATES),pInt) * ns
-                
-     plasticState(phase)%sizeState    = sizeState
-     plasticState(phase)%sizeDotState = sizeDotState
-     allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
-     allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
-     allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     endif
-     if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
-   
      !*** determine indices to state array
-   
+
      l = 0_pInt
      do t = 1_pInt,4_pInt
        do s = 1_pInt,ns
@@ -1235,7 +1212,30 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
          constitutive_nonlocal_sizePostResults(instance)  = constitutive_nonlocal_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
-     
+                
+     plasticState(phase)%sizeState    = sizeState
+     plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizePostResults = constitutive_nonlocal_sizePostResults(instance)
+     plasticState(phase)%nonlocal = .true.
+     allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
+     allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
+     allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
+     allocate(plasticState(phase)%subState0           (sizeState,NofMyPhase),     source=0.0_pReal)
+     allocate(plasticState(phase)%state               (sizeState,NofMyPhase),     source=0.0_pReal)
+     allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
+
+     allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     if (any(numerics_integrator == 1_pInt)) then
+       allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState2 (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     endif
+     if (any(numerics_integrator == 4_pInt)) &
+       allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
+     if (any(numerics_integrator == 5_pInt)) &
+       allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+
      do s1 = 1_pInt,ns 
        f = slipFamily(s1,instance)
        

@@ -847,6 +847,7 @@ subroutine constitutive_titanmod_init(fileUnit)
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = constitutive_titanmod_sizePostResults(instance)
+     plasticState(phase)%nonlocal = .false.
      allocate(plasticState(phase)%aTolState           (sizeState),                source=constitutive_titanmod_aTolRho(instance))
      allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)

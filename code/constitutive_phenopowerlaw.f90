@@ -510,10 +510,11 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
              2_pInt + &
              constitutive_phenopowerlaw_totalNslip(instance)+ &
              constitutive_phenopowerlaw_totalNtwin(instance)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
-     plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
-     plasticState(phase)%sizeDotState = sizeState
+     plasticState(phase)%sizeState = sizeState
+     plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
+     plasticState(phase)%nonlocal = .false.
      allocate(plasticState(phase)%aTolState          (  sizeState),             source=0.0_pReal)
      allocate(plasticState(phase)%state0             (   sizeState,NofMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0    (   sizeState,NofMyPhase), source=0.0_pReal)
