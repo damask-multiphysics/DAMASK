@@ -4,10 +4,13 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.linalg import svd
-import threading,time,os,subprocess,shlex
+import threading,time,os,subprocess,shlex,string
 import damask
+from optparse import OptionParser
+scriptID='aa'
+
 geomName='20grains16x16x16'
-popt1=np.ones(6,'d')
+popt1=[np.ones(1,'d'),np.ones(6,'d')]
 
 def execute(cmd,dir='./'):
       
@@ -28,16 +31,16 @@ def asFullTensor(voigt):
 def Hill48(x, F,G,H,L,M,N):
   a = F*(x[1]-x[2])**2 + G*(x[2]-x[0])**2 + H*(x[0]-x[1])** + \
          2*L*x[4]**2 + 2*M*x[5]**2 + 2*N*x[3]**2 -1.
-  return a.ravel() * 1000.0
+  return a.ravel()
 
 def vonMises(x, S_y):
   sv=np.zeros(0,'d')
-  for i in xrange(np.shape(x)[0]):
-    U, l, Vh = svd(np.array(x[i,:]).reshape(3,3))
+  for i in xrange(np.shape(x)[1]):
+    U, l, Vh = svd(np.array(x[:,i]).reshape(3,3))
     sv = np.append(sv,l)
-  sv = sv.reshape(np.shape(x)[0],3)
-  ooo= (sv[:,2]-sv[:,1])**2+(sv[:,1]-sv[:,0])**2+(sv[:,0]-sv[:,2])**2-2*S_y**2
-  return ooo
+  sv = sv.reshape(np.shape(x)[1],3)
+  ooo = (sv[:,2]-sv[:,1])**2+(sv[:,1]-sv[:,0])**2+(sv[:,0]-sv[:,2])**2-2*S_y**2
+  return ooo.ravel()
 
 #---------------------------------------------------------------------------------------------------
 class Loadcase():
@@ -47,13 +50,16 @@ class Loadcase():
   '''
 
 # ------------------------------------------------------------------
-  def __init__(self):
+  def __init__(self,finalStrain,incs,time):
     print('using the random load case generator')
+    self.finalStrain = finalStrain
+    self.incs = incs
+    self.time = time
 
-  def getNext(self,N=0):
+  def getLoadcase(self,N=0):
     defgrad=['*']*9
     stress =[0]*9
-    values=(np.random.random_sample(9)-.5)*scale*2
+    values=(np.random.random_sample(9)-.5)*self.finalStrain*2
 
     main=np.array([0,4,8])
     np.random.shuffle(main)
@@ -70,8 +76,8 @@ class Loadcase():
 
     return 'f '+' '.join(str(c) for c in defgrad)+\
           ' p '+' '.join(str(c) for c in stress)+\
-          ' incs %s'%incs+\
-          ' time %s'%duration
+          ' incs %s'%self.incs+\
+          ' time %s'%self.time
 
 #---------------------------------------------------------------------------------------------------
 class Criterion(object):
@@ -83,19 +89,21 @@ class Criterion(object):
     self.name = name.lower()
     if self.name not in ['hill48','vonmises']: print('Mist')
     print('using the %s criterion'%self.name)
-    self.popt = 0.0
 
   def fit(self,stress):
-    try:
-      spopt1, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1,xtol=1e-30)
-      popt = popt1
-      print 'Hill 48', popt
-      print Hill48(stress,popt[0],popt[1],popt[2],popt[3],popt[4],popt[5])
+    global popt1
+    try:  
+      popt1[0], pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[1]),p0=popt1[0])
+      print 'Mises', popt1[0], pcov
     except Exception as detail:
       print detail
       pass
-    #popt, pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[0]))
-    #print 'von Mises', popt
+    try:  
+      popt1[1], pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1[1])
+      print 'Hill48', popt1[1], pcov
+    except Exception as detail:
+      print detail
+      pass
 
 
 #---------------------------------------------------------------------------------------------------
@@ -159,14 +167,12 @@ def doSim(delay,thread):
     if l not in table.labels: print '%s not found'%l
   while table.data_read():
     if float(table.data[table.labels.index('Mises(ln(V))')]) > 0.002:
-      yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d')
+      yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d')/10.e8
   
   s.acquire()
   print('starting fitting for sim %i from %s'%(me,thread))
   global stressAll
   stressAll=np.append(yieldStress,stressAll)
-  for i in range(np.shape(stressAll.reshape(len(stressAll)//9,9).transpose())[1]):
-    print i, stressAll.reshape(len(stressAll)//9,9).transpose()[:,i]
   myFit.fit(stressAll.reshape(len(stressAll)//9,9).transpose())
   s.release()
 
@@ -183,19 +189,41 @@ def converged():
   else:
     return True
 
-# main
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
+
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+Add column(s) with derived values according to user defined arithmetic operation between column(s).
+Columns can be specified either by label or index. Use ';' for ',' in functions.
+
+Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round(#ip.z#;3)**2 )"
+""", version=string.replace(scriptID,'\n','\\n')
+)
+
+parser.add_option('--labelnodalcoords', dest='nodalcoords', type='string', nargs=3, \
+                  help='labels of nodal coords in ASCII table')
+
+parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3, \
+                                     help='load: final strain; increments; time', metavar='float int float')
+parser.add_option('-g','--geometry', dest='formulas', action='extend', type='string', \
+                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
+parser.add_option('-c','--criterion',dest='formulas', action='extend', type='string', \
+                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
+parser.set_defaults(load = [0.005,20,20.0])
+parser.set_defaults(formulas= [])
+
+options = parser.parse_args()[0]
 
 minN_simulations=20
-maxN_simulations=14
+maxN_simulations=40
 N_simulations=0
 s=threading.Semaphore(1)
 scale = 0.02
-incs = 10
-duration = 10
 stressAll=np.zeros(0,'d').reshape(0,0)
 
-myLoad = Loadcase()
-myFit = Criterion('Hill48')
+myLoad = Loadcase(options.load[0],options.load[1],options.load[2])
+myFit = Criterion('vonmises')
 
 N_threads=3
 t=[]
