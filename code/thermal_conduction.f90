@@ -136,7 +136,7 @@ subroutine thermal_conduction_init(fileUnit)
      cycle                                                                                          ! skip to next line
    endif
    if (phase > 0_pInt ) then; if (phase_thermal(phase) == THERMAL_conduction_ID) then               ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-     instance = phase_thermalInstance(phase)                                                     ! which instance of my thermal is present phase
+     instance = phase_thermalInstance(phase)                                                        ! which instance of my thermal is present phase
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
