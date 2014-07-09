@@ -26,9 +26,9 @@ def asFullTensor(voigt):
           [voigt[5],voigt[4],voigt[2]]])
 
 def Hill48(x, F,G,H,L,M,N):
-  a= F*(x[1]-x[2])**2 + G*(x[2]-x[0])**2 + H*(x[0]-x[1])** + \
+  a = F*(x[1]-x[2])**2 + G*(x[2]-x[0])**2 + H*(x[0]-x[1])** + \
          2*L*x[4]**2 + 2*M*x[5]**2 + 2*N*x[3]**2 -1.
-  return a.ravel()
+  return a.ravel() * 1000.0
 
 def vonMises(x, S_y):
   sv=np.zeros(0,'d')
@@ -87,7 +87,7 @@ class Criterion(object):
 
   def fit(self,stress):
     try:
-      spopt1, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1)
+      spopt1, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1,xtol=1e-30)
       popt = popt1
       print 'Hill 48', popt
       print Hill48(stress,popt[0],popt[1],popt[2],popt[3],popt[4],popt[5])
@@ -131,29 +131,28 @@ def doSim(delay,thread):
   else: s.release()
   
   s.acquire()
-  if not os.path.isfile('%s_%s.spectralOut'%(geomName,me)):
-    print('starting simulation %i from %s'%(me,thread))
+  if not os.path.isfile('%s_%i.spectralOut'%(geomName,me)):
+    print('starting simulation %s from %s'%(me,thread))
     s.release()
-    execute('DAMASK_spectral -l %i -g %i'%(me,geomName))
+    execute('DAMASK_spectral -g %s -l %i'%(geomName,me))
   else: s.release()
    
 
   s.acquire()
-  if not os.path.isfile('./postProc/%s_%s.txt'%(geomName,me)):
+  if not os.path.isfile('./postProc/%s_%i.txt'%(geomName,me)):
     print('starting post processing for sim %i from %s'%(me,thread))
     s.release()
-    execute('postResults --cr f,p %i_%i.spectralOut'%(geomName,me))
-    execute('addCauchy ./postProc/%i_%i.txt'%(geomName,me))
-    execute('addStrainTensors -l -v ./postProc/%i_%i.txt'%(geomName,me))
-    execute('addMises -s Cauchy -e ln(V) ./postProc/%i_%i.txt'%(geomName,me))
+    execute('postResults --cr f,p %s_%i.spectralOut'%(geomName,me))
+    execute('addCauchy ./postProc/%s_%i.txt'%(geomName,me))
+    execute('addStrainTensors -l -v ./postProc/%s_%i.txt'%(geomName,me))
+    execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(geomName,me))
   else: s.release()
 
   s.acquire()
   print('reading values for sim %i from %s'%(me,thread))
   s.release()
 
-  refFile = open('./postProc/20grains16x16x16_%i.txt'%me)
-  refFile = open('./postProc/20grains16x16x16_1.txt')
+  refFile = open('./postProc/%s_%i.txt'%(geomName,me))
   table = damask.ASCIItable(refFile)
   table.head_read()
   for l in ['Mises(ln(V))','1_Cauchy']:
