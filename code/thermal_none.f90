@@ -69,7 +69,7 @@ subroutine thermal_none_init(fileUnit)
    
  initializeInstances: do phase = 1_pInt, size(phase_thermal)
    NofMyPhase=count(material_phase==phase)
-   if (phase_thermal(phase) == THERMAL_none_ID .and. NofMyPhase/=0) then
+   if (phase_thermal(phase) == THERMAL_none_ID) then
      sizeState    = 0_pInt
      thermalState(phase)%sizeState = sizeState
      sizeDotState = sizeState
