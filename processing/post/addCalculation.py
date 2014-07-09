@@ -19,17 +19,16 @@ def unravel(item):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) with derived values according to user defined arithmetic operation between column(s).
-Columns can be specified either by label or index. Use ';' for ',' in functions.
+Columns can be specified either by label or index. Use ';' for ',' in functions. Numpy is available as np
 
 Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round(#ip.z#;3)**2 )"
-""" + string.replace(scriptID,'\n','\\n')
+""", version = string.replace(scriptID,'\n','\\n')
 )
 
-
 parser.add_option('-l','--label',    dest='labels', action='extend', type='string', \
-                                     help='(list of) new column labels', metavar='<LIST>')
+                                     help='(list of) new column labels', metavar='<string LIST>')
 parser.add_option('-f','--formula',  dest='formulas', action='extend', type='string', \
-                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
+                                     help='(list of) formulas corresponding to labels', metavar='<string LIST>')
 parser.set_defaults(labels= [])
 parser.set_defaults(formulas= [])
 
@@ -42,7 +41,6 @@ for i in xrange(len(options.formulas)):
   options.formulas[i]=options.formulas[i].replace(';',',')
 
 # ------------------------------------------ setup file handles ---------------------------------------  
-
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -52,7 +50,6 @@ else:
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 #--- loop over input files ------------------------------------------------------------------------
-
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
@@ -63,8 +60,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
   evaluator = {}
   brokenFormula = {}
@@ -110,7 +106,6 @@ for file in files:
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------  
-
   outputAlive = True
   table.data_rewind()
 
@@ -121,7 +116,6 @@ for file in files:
     outputAlive = table.data_write()                                        # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
-
   outputAlive and table.output_flush()                                      # just in case of buffered ASCII table
 
   file['input'].close()                                                     # close input ASCII table

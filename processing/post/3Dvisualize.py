@@ -1,33 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-# This script is used for the post processing of the results achieved by the spectral method.
-# As it reads in the data coming from "materialpoint_results", it can be adopted to the data
-# computed using the FEM solvers. Its capable to handle elements with one IP in a regular order
-
-import os,sys,threading,re,numpy,time,string,fnmatch,vtk
+import os,sys,threading,re,time,string,fnmatch,vtk
+import numpy as np
+from optparse import OptionParser
 from vtk.util import numpy_support
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-# -----------------------------
-class extendedOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
             
 # -----------------------------
 class backgroundMessage(threading.Thread):
@@ -130,7 +111,7 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          string.replace('powered by $Id$','\n','\\n'),
+          string.replace('powered by %s'%scriptID,'\n','\\n'),
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i double'%N1,
@@ -247,7 +228,7 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          'powered by $Id$',
+          string.replace('powered by %s'%scriptID,'\n','\\n'),
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i float'%N,
@@ -275,28 +256,30 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
 
 # ----------------------- MAIN -------------------------------
 
-parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] datafile[s]', description = """
 Produce VTK file from data field. Coordinates are taken from (consecutive) x, y, and z columns.
 
-""" + string.replace('$Id$','\n','\\n')
+""",version = string.replace(scriptID,'\n','\\n')
 )
 
 parser.add_option('-s', '--scalar', action='extend', dest='scalar', type='string', \
-                  help='list of scalars to visualize')
+                  help='list of single scalars to visualize', metavar = '<string LIST>')
 parser.add_option(      '--double', action='extend', dest='double', type='string', \
-                  help='list of scalars to visualize')
+                  help='list of two scalars to visualize', metavar = '<string LIST>')
 parser.add_option(      '--triple', action='extend', dest='triple', type='string', \
-                  help='list of scalars to visualize')
+                  help='list of three scalars to visualize', metavar = '<string LIST>')
 parser.add_option(      '--quadruple', action='extend', dest='quadruple', type='string', \
-                  help='list of scalars to visualize')
+                  help='list of four scalars to visualize', metavar = '<string LIST>')
 parser.add_option('-v', '--vector', action='extend', dest='vector', type='string', \
-                  help='list of vectors to visualize')
+                  help='list of vectors to visualize', metavar = '<string LIST>')
+parser.add_option('-t', '--tensor', action='extend', dest='tensor', type='string', \
+                  help='list of tensors to visualize', metavar = '<string LIST>')
 parser.add_option('-d', '--deformation', dest='defgrad', type='string', \
-                  help='heading of deformation gradient columns [%default]')
+                  help='heading of deformation gradient columns [%default]', metavar = 'string')
 parser.add_option('--reference', dest='undeformed', action='store_true',\
-                  help='map results to reference (undeformed) configuration')
+                  help='map results to reference (undeformed) configuration [%default]')
 parser.add_option('-c','--cell', dest='cell', action='store_true',\
-                  help='data is cell-centered')
+                  help='data is cell-centered [%default]')
 parser.add_option('-p','--vertex', dest='cell', action='store_false',\
                   help='data is vertex-centered')
 parser.add_option('--mesh', dest='output_mesh', action='store_true', \
@@ -308,15 +291,15 @@ parser.add_option('--points', dest='output_points', action='store_true', \
 parser.add_option('--nopoints', dest='output_points', action='store_false', \
                   help='omit VTK points file')
 parser.add_option('--separator', dest='separator', type='string', \
-                  help='data separator [t(ab), n(ewline), s(pace)]')
+                  help='data separator (t(ab), n(ewline), s(pace)) [%default]', metavar = 'string')
 parser.add_option('--scaling', dest='scaling', action='extend', type='string', \
-                  help='scaling of fluctuation')
+                  help='scaling of fluctuation', metavar = '<float LIST>')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
-                  help='set unit length for 2D model [%default]')
+                  help='set unit length for 2D model [%default]', metavar = 'float')
 parser.add_option('--filenodalcoords', dest='filenodalcoords', type='string', \
-                  help='ASCII table containing nodal coords')
-parser.add_option('--labelnodalcoords', dest='nodalcoords', type='string', nargs=3, \
-                  help='labels of nodal coords in ASCII table')
+                  help='ASCII table containing nodal coords', metavar = 'string')
+parser.add_option('--labelnodalcoords', dest='labelnodalcoords', type='string', nargs=3, \
+                  help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
 parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',\
                   help='use linear reconstruction of geometry [%default]')
                   
@@ -345,8 +328,8 @@ sep = {'n': '\n', 't': '\t', 's': ' '}
 options.scaling += [1.0 for i in xrange(max(0,3-len(options.scaling)))]
 options.scaling = map(float, options.scaling)
 
-if numpy.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
-if numpy.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
+if np.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
+if np.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 options.separator = options.separator.lower()
 
 for filename in args:
@@ -419,7 +402,7 @@ for filename in args:
             matches[what][needle] += [head]
 
 
-  values = numpy.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
+  values = np.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
                               key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),'d')             # sort with z as fastest and x as slowest index
 
   N = len(values)
@@ -429,11 +412,11 @@ for filename in args:
     for i in xrange(N):
       tempGrid[j][str(values[i,locol+j])] = True
 
-  grid = numpy.array([len(tempGrid[0]),\
+  grid = np.array([len(tempGrid[0]),\
                       len(tempGrid[1]),\
                       len(tempGrid[2]),],'i')
   
-  dim = numpy.ones(3)
+  dim = np.ones(3)
 
   for i,r in enumerate(grid):
     if r > 1:
@@ -445,14 +428,14 @@ for filename in args:
       dim[2] = options.unitlength
   print dim
   if options.undeformed:
-    Favg = numpy.eye(3)
+    Favg = np.eye(3)
   else:
     Favg = damask.core.math.tensorAvg(
-                      numpy.reshape(numpy.transpose(values[:,column['tensor'][options.defgrad]:
+                      np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
                                                              column['tensor'][options.defgrad]+9]),
                                                              (3,3,grid[0],grid[1],grid[2])))
   if not options.filenodalcoords:
-    F = numpy.reshape(numpy.transpose(values[:,column['tensor'][options.defgrad]:
+    F = np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
                                                column['tensor'][options.defgrad]+9]),
                                                              (3,3,grid[0],grid[1],grid[2]))
     if options.linearreconstruction:
@@ -462,7 +445,7 @@ for filename in args:
     nodes = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
 
   else:
-    nodes = numpy.zeros(((3,grid[0]+1)*(grid[1]+1)*(grid[2]+1)),'d')
+    nodes = np.zeros(((3,grid[0]+1)*(grid[1]+1)*(grid[2]+1)),'d')
 
     filenodalcoords = open(options.filenodalcoords)
     tablenodalcoords = damask.ASCIItable(filenodalcoords)
@@ -555,7 +538,7 @@ for filename in args:
         col = column[datatype][label]
         if col != -1:
           print label,
-          fields[datatype][label] = numpy.reshape(values[:,col:col+length[datatype]],[grid[0],grid[1],grid[2]]+reshape[datatype])
+          fields[datatype][label] = np.reshape(values[:,col:col+length[datatype]],[grid[0],grid[1],grid[2]]+reshape[datatype])
           fields[datatype]['_order_'] += [label]
   print '\n'
 
