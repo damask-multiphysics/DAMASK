@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,numpy,string
+import os,re,sys,math,string
+import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
 import damask
@@ -24,7 +25,6 @@ parser.add_option('-f','--defgrad',     dest='defgrad', type='string', metavar='
                                         help='heading of columns containing deformation gradient [%default]')
 parser.add_option('-p','--stress',      dest='stress', type='string', metavar='string', \
                                         help='heading of columns containing first Piola--Kirchhoff stress [%default]')
-
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(stress = 'p')
 
@@ -33,7 +33,7 @@ parser.set_defaults(stress = 'p')
 if options.defgrad == None or options.stress == None:
   parser.error('missing data column...')
 
-datainfo = {                                                               # list of requested labels per datatype
+datainfo = {                                                                                        # list of requested labels per datatype
              'defgrad':    {'mandatory': True,
                             'len':9,
                             'label':[]},
@@ -45,7 +45,6 @@ datainfo = {                                                               # lis
 
 datainfo['defgrad']['label'].append(options.defgrad)
 datainfo['stress']['label'].append(options.stress)
-
 
 # ------------------------------------------ setup file handles ---------------------------------------
 files = []
@@ -61,8 +60,8 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
+  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
   active = defaultdict(list)
@@ -75,36 +74,34 @@ for file in files:
              False:'%s'   }[info['len']>1]%label
       if key not in table.labels:
         file['croak'].write('column %s not found...\n'%key)
-        missingColumns |= info['mandatory']                                 # break if label is mandatory
+        missingColumns |= info['mandatory']                                                         # break if label is mandatory
       else:
         active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
+        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
 
   if missingColumns:
     continue
-    
+ # ------------------------------------------ assemble header ---------------------------------------   
   table.labels_append(['%i_Cauchy'%(i+1) 
-                      for i in xrange(datainfo['stress']['len'])])          # extend ASCII header with new labels
-
-# ------------------------------------------ assemble header ---------------------------------------
+                      for i in xrange(datainfo['stress']['len'])])                                  # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------
+# ------------------------------------------ process data ---------------------------------------  
   outputAlive = True
-  while outputAlive and table.data_read():                                  # read next data line of ASCII table
-  
-    F = numpy.array(map(float,table.data[column['defgrad'][active['defgrad'][0]]:
-                                         column['defgrad'][active['defgrad'][0]]+datainfo['defgrad']['len']]),'d').reshape(3,3)
-    P = numpy.array(map(float,table.data[column['stress'][active['stress'][0]]:
-                                         column['stress'][active['stress'][0]]+datainfo['stress']['len']]),'d').reshape(3,3)
+  table.data_rewind()
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    F = np.array(map(float,table.data[column['defgrad'][active['defgrad'][0]]:
+                                      column['defgrad'][active['defgrad'][0]]+datainfo['defgrad']['len']]),'d').reshape(3,3)
+    P = np.array(map(float,table.data[column['stress'][active['stress'][0]]:
+                                      column['stress'][active['stress'][0]]+datainfo['stress']['len']]),'d').reshape(3,3)
 
-    table.data_append(list(1.0/numpy.linalg.det(F)*numpy.dot(P,F.T).reshape(9)))  # [Cauchy] = (1/det(F)) * [P].[F_transpose]
-    outputAlive = table.data_write()                                        # output processed line
+    table.data_append(list(1.0/np.linalg.det(F)*np.dot(P,F.T).reshape(9)))                          # [Cauchy] = (1/det(F)) * [P].[F_transpose]
+    outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------
-  table.output_flush()                                                      # just in case of buffered ASCII table
+# ------------------------------------------ output result ---------------------------------------  
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  file['input'].close()                                                     # close input ASCII table
+  file['input'].close()                                                                             # close input ASCII table (works for stdin)
+  file['output'].close()                                                                            # close output ASCII table (works for stdout)
   if file['name'] != 'STDIN':
-    file['output'].close()                                                    # close output ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new

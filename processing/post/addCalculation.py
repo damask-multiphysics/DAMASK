@@ -67,7 +67,7 @@ for file in files:
   
   for label,formula in zip(options.labels,options.formulas):
     interpolator = []
-    for column in re.findall(r'#(.+?)#',formula):                          # loop over column labels in formula
+    for column in re.findall(r'#(.+?)#',formula):                                                   # loop over column labels in formula
       formula = formula.replace('#'+column+'#','%f')
       if column in specials:
         interpolator += ['specials["%s"]'%column]
@@ -87,7 +87,7 @@ for file in files:
     if label not in brokenFormula:
       evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")"
 
-# ------------------------------------------ calculate one result to get length of labels  ------
+# ------------------------------------------ calculate one result to get length of labels  ---------
   table.data_read()
   labelLen = {}
   for label in options.labels:
@@ -102,23 +102,20 @@ for file in files:
         table.labels_append(label)
       else:
         table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])])
-
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------  
   outputAlive = True
   table.data_rewind()
-
-  while outputAlive and table.data_read():                                  # read next data line of ASCII table
-
-    specials['_row_'] += 1                                                  # count row
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    specials['_row_'] += 1                                                                          # count row
     for label in options.labels: table.data_append(unravel(eval(eval(evaluator[label]))))
-    outputAlive = table.data_write()                                        # output processed line
+    outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
-  outputAlive and table.output_flush()                                      # just in case of buffered ASCII table
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  file['input'].close()                                                     # close input ASCII table
+  file['input'].close()                                                                             # close input ASCII table (works for stdin)
+  file['output'].close()                                                                            # close output ASCII table (works for stdout)
   if file['name'] != 'STDIN':
-    file['output'].close()                                                  # close output ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
