@@ -978,14 +978,13 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
                  .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
                  .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
                if (crystallite_todo(g,i,e)) then
-                 write(6,'(a,f12.8,a,i8,1x,i2,1x,i3)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent &
+                 write(6,'(a,f12.8,a,i8,1x,i2,1x,i3,/)') '<< CRYST >> cutback step in crystallite_stressAndItsTangent &
                                                         &with new crystallite_subStep: ',&
                                                        crystallite_subStep(g,i,e),' at el ip g ',e,i,g
                else
-                 write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> reached minimum step size &
+                 write(6,'(a,i8,1x,i2,1x,i3,/)') '<< CRYST >> reached minimum step size &
                                                &in crystallite_stressAndItsTangent at el ip g ',e,i,g
                endif
-               write(6,*)
              endif
 #endif
            endif
@@ -1054,7 +1053,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
          call crystallite_integrateStateRKCK45()
      end select
    endif
-
    
    where(.not. crystallite_converged .and. crystallite_subStep > subStepMinCryst) &                  ! do not try non-converged & fully cutbacked any further
      crystallite_todo = .true.
@@ -1093,7 +1091,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
      enddo
    enddo
  enddo elementLooping5
-
 
 ! --+>> STIFFNESS CALCULATION <<+--
 
@@ -3007,9 +3004,10 @@ subroutine crystallite_integrateStateFPI()
  else
    e = eIter(1)
    i = iIter(1,e)
-   do g = iIter(1,e), iIter(2,e)
+   do g = gIter(1,e), gIter(2,e)
      p = mappingConstitutive(2,g,i,e) 
-     c = mappingConstitutive(1,g,i,e)  
+     c = mappingConstitutive(1,g,i,e)
+
      plasticState(p)%previousDotState (:,c) = 0.0_pReal   
      plasticState(p)%previousDotState2(:,c) = 0.0_pReal   
      damageState(p)%previousDotState (:,c) = 0.0_pReal   
