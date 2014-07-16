@@ -3,6 +3,7 @@
 
 import os,re,sys,math,string
 import numpy as np
+from collections import defaultdict
 from optparse import OptionParser
 import damask
 
@@ -18,9 +19,8 @@ Add column(s) containing curl of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 Deals with both vector- and tensor-valued fields.
 
-""", version=string.replace('$Id$','\n','\\n')
+""", version = string.replace(scriptID,'\n','\\n')
 )
-
 
 parser.add_option('-c','--coordinates', dest='coords', type='string', metavar='string', \
                                         help='column heading for coordinates [%default]')
@@ -49,19 +49,15 @@ if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
 
 # ------------------------------------------ setup file handles ------------------------------------
 files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+for name in filenames:
+  if os.path.exists(name):
+    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],True)                                      # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
@@ -73,29 +69,27 @@ for file in files:
     continue
 
   grid = [{},{},{}]
-  while table.data_read():                                                  # read next data line of ASCII table
+  while table.data_read():                                                                          # read next data line of ASCII table
     for j in xrange(3):
-      grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
+      grid[j][str(table.data[locationCol+j])] = True                                                # remember coordinate along x,y,z
   resolution = np.array([len(grid[0]),\
-                            len(grid[1]),\
-                            len(grid[2]),],'i')                             # resolution is number of distinct coordinates found
+                         len(grid[1]),\
+                         len(grid[2]),],'i')                                                        # resolution is number of distinct coordinates found
   dimension = resolution/np.maximum(np.ones(3,'d'),resolution-1.0)* \
               np.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
-                           max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
-                           max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
-                          ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
+                        max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
+                        max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
+                        ],'d')                                                                      # dimension from bounding box, corrected for cell-centeredness
   if resolution[2] == 1:
     dimension[2] = min(dimension[:2]/resolution[:2])
-
   N = resolution.prod()
   
-# --------------- figure out columns to process
-  active = {}
-  column = {}
-  values = {}
-  curl   = {}
-
-  head = []
+# --------------- figure out columns to process  --------------------------------------------------
+  active = defaultdict(list)
+  column = defaultdict(dict)
+  values = defaultdict(dict)
+  curl   = defaultdict(dict)
+  missingColumns = False
 
   for datatype,info in datainfo.items():
     for label in info['label']:
@@ -104,28 +98,28 @@ for file in files:
       if key not in table.labels:
         sys.stderr.write('column %s not found...\n'%key)
       else:
-        if datatype not in active: active[datatype] = []
-        if datatype not in column: column[datatype] = {}
-        if datatype not in values: values[datatype] = {}
-        if datatype not in curl:     curl[datatype] = {}
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
         values[datatype][label] = np.array([0.0 for i in xrange(N*datainfo[datatype]['len'])]).\
                                            reshape(list(resolution)+[datainfo[datatype]['len']//3,3])
         curl[datatype][label]   = np.array([0.0 for i in xrange(N*datainfo[datatype]['len'])]).\
                                            reshape(list(resolution)+[datainfo[datatype]['len']//3,3])
-        table.labels_append(['%i_curlFFT(%s)'%(i+1,label) 
-                             for i in xrange(datainfo[datatype]['len'])])                           # extend ASCII header with new labels
 
+  if missingColumns:
+    continue
         
 # ------------------------------------------ assemble header ---------------------------------------  
+  for datatype,info in datainfo.items():
+    for label in info['label']:
+        table.labels_append(['%i_curlFFT(%s)'%(i+1,label) 
+                             for i in xrange(datainfo[datatype]['len'])])                           # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ read value field --------------------------------------
   table.data_rewind()
   idx = 0
   while table.data_read():                                                                          # read next data line of ASCII table
-    (x,y,z) = damask.gridLocation(idx,resolution)                                                   # figure out (x,y,z) position from line count
+    (x,y,z) = damask.util.gridLocation(idx,resolution)                                              # figure out (x,y,z) position from line count
     idx += 1
     for datatype,labels in active.items():                                                          # loop over vector,tensor
       for label in labels:                                                                          # loop over all requested curls
@@ -141,10 +135,10 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------
   table.data_rewind()
-  outputAlive = True
   idx = 0
+  outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.gridLocation(idx,resolution)                                                   # figure out (x,y,z) position from line count
+    (x,y,z) = damask.util.gridLocation(idx,resolution)                                              # figure out (x,y,z) position from line count
     idx += 1
     for datatype,labels in active.items():                                                          # loop over vector,tensor
       for label in labels:                                                                          # loop over all requested norms
@@ -152,11 +146,9 @@ for file in files:
 
     outputAlive = table.data_write()                                                                 # output processed line
 
-  
 # ------------------------------------------ output result ---------------------------------------  
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)
   file['output'].close()                                                                            # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new
