@@ -7,9 +7,8 @@ from scipy.linalg import svd
 import threading,time,os,subprocess,shlex,string
 import damask
 from optparse import OptionParser
-scriptID='aa'
 
-geomName='20grains16x16x16'
+scriptID='aa'
 popt1=[np.ones(1,'d'),np.ones(6,'d')]
 
 def execute(cmd,dir='./'):
@@ -127,13 +126,14 @@ class myThread (threading.Thread):
       s.release()
 
 def doSim(delay,thread):
-
+  
+  global geomName
   s.acquire()
   me=getLoadcase()
   if not os.path.isfile('%s.load'%me):
     print('generating loadcase for sim %s from %s'%(me,thread))
     f=open('%s.load'%me,'w')
-    f.write(myLoad.getNext(me))
+    f.write(myLoad.getLoadcase(me))
     f.close()
     s.release()
   else: s.release()
@@ -145,7 +145,6 @@ def doSim(delay,thread):
     execute('DAMASK_spectral -g %s -l %i'%(geomName,me))
   else: s.release()
    
-
   s.acquire()
   if not os.path.isfile('./postProc/%s_%i.txt'%(geomName,me)):
     print('starting post processing for sim %i from %s'%(me,thread))
@@ -194,27 +193,23 @@ def converged():
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) with derived values according to user defined arithmetic operation between column(s).
-Columns can be specified either by label or index. Use ';' for ',' in functions.
+Performs calculations with various loads on given geometry file and fits yield surface.
 
-Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round(#ip.z#;3)**2 )"
 """, version=string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('--labelnodalcoords', dest='nodalcoords', type='string', nargs=3, \
-                  help='labels of nodal coords in ASCII table')
-
 parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3, \
                                      help='load: final strain; increments; time', metavar='float int float')
-parser.add_option('-g','--geometry', dest='formulas', action='extend', type='string', \
-                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
-parser.add_option('-c','--criterion',dest='formulas', action='extend', type='string', \
-                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
-parser.set_defaults(load = [0.005,20,20.0])
-parser.set_defaults(formulas= [])
+parser.add_option('-g','--geometry', dest='geometry', type='string', \
+                                     help='name of the geometry file', metavar='string')
+#parser.add_option('-c','--criterion',dest='formulas', action='extend', type='string', \
+#                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
+parser.set_defaults(load    = [0.008,80,80.0])
+parser.set_defaults(geometry ='20grains16x16x16')
 
 options = parser.parse_args()[0]
 
+geomName =options.geometry
 minN_simulations=20
 maxN_simulations=40
 N_simulations=0
@@ -225,7 +220,7 @@ stressAll=np.zeros(0,'d').reshape(0,0)
 myLoad = Loadcase(options.load[0],options.load[1],options.load[2])
 myFit = Criterion('vonmises')
 
-N_threads=3
+N_threads=4
 t=[]
 
 for i in range(N_threads):

@@ -36,3 +36,14 @@ class extendableOption(Option):
     else:
       Option.take_action(self, action, dest, opt, value, values, parser)
 
+
+def gridLocation(idx,res):
+  return ( idx  % res[0], \
+         ( idx // res[0]) % res[1], \
+         ( idx // res[0] // res[1]) % res[2] )
+
+def gridIndex(location,res):
+  return ( location[0] % res[0]                   + \
+         ( location[1] % res[1]) * res[0]          + \
+         ( location[2] % res[2]) * res[1] * res[0]   )
+
