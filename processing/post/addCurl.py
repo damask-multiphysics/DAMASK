@@ -89,14 +89,13 @@ for file in files:
   column = defaultdict(dict)
   values = defaultdict(dict)
   curl   = defaultdict(dict)
-  missingColumns = False
 
   for datatype,info in datainfo.items():
     for label in info['label']:
       key = {True :'1_%s',
              False:'%s'   }[info['len']>1]%label
       if key not in table.labels:
-        sys.stderr.write('column %s not found...\n'%key)
+        file['croak'].write('column %s not found...\n'%key)
       else:
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
@@ -104,15 +103,12 @@ for file in files:
                                            reshape(list(resolution)+[datainfo[datatype]['len']//3,3])
         curl[datatype][label]   = np.array([0.0 for i in xrange(N*datainfo[datatype]['len'])]).\
                                            reshape(list(resolution)+[datainfo[datatype]['len']//3,3])
-
-  if missingColumns:
-    continue
         
 # ------------------------------------------ assemble header ---------------------------------------  
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-        table.labels_append(['%i_curlFFT(%s)'%(i+1,label) 
-                             for i in xrange(datainfo[datatype]['len'])])                           # extend ASCII header with new labels
+  for datatype,labels in active.items():                                                            # loop over vector,tensor
+    for label in labels:
+      table.labels_append(['%i_curlFFT(%s)'%(i+1,label) 
+                           for i in xrange(datainfo[datatype]['len'])])                             # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ read value field --------------------------------------

@@ -3,7 +3,6 @@
 
 import os,re,sys,math,string
 import numpy as np
-from collections import defaultdict
 from optparse import OptionParser
 import damask
 
@@ -45,48 +44,25 @@ datainfo['defgrad']['label'].append(options.defgrad)
 
 # ------------------------------------------ setup file handles -------------------------------------
 files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+for name in filenames:
+  if os.path.exists(name):
+    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
-# --------------- figure out dimension and resolution --------------------------------------------------
+# --------------- figure out dimension and resolution ----------------------------------------------
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
   except ValueError:
     file['croak'].write('no coordinate data found...\n'%key)
     continue
 
-  active = defaultdict(list)
-  column = defaultdict(dict)
-  missingColumns = False
-  
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = '1_%s'%label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
-        missingColumns = True
-      else:
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
-  column = table.labels.index(key)
-
-  if missingColumns:
-    continue
-
-# --------------- figure out dimension and resolution  ---------------------------------------------
   grid = [{},{},{}]
   while table.data_read():                                                                          # read next data line of ASCII table
     for j in xrange(3):
@@ -103,6 +79,21 @@ for file in files:
     geomdim[2] = min(geomdim[:2]/res[:2])
   N = res.prod()
 
+# --------------- figure out columns to process  ---------------------------------------------------
+  missingColumns = False
+  
+  for datatype,info in datainfo.items():
+    for label in info['label']:
+      key = '1_%s'%label
+      if key not in table.labels:
+        file['croak'].write('column %s not found...\n'%key)
+        missingColumns = True
+      else:
+        column = table.labels.index(key)                                                            # remember columns of requested data
+
+  if missingColumns:
+    continue
+
 # ------------------------------------------ assemble header --------------------------------------- 
   if not options.noShape:  table.labels_append(['shapeMismatch(%s)' %options.defgrad])
   if not options.noVolume: table.labels_append(['volMismatch(%s)'%options.defgrad])
@@ -112,7 +103,8 @@ for file in files:
   table.data_rewind()
   F = np.array([0.0 for i in xrange(N*9)]).reshape([3,3]+list(res))
   idx = 0
-    (x,y,z) = damask.gridLocation(idx,res)                                                          # figure out (x,y,z) position from line count
+  while table.data_read():    
+    (x,y,z) = damask.util.gridLocation(idx,res)                                                     # figure out (x,y,z) position from line count
     idx += 1
     F[0:3,0:3,x,y,z] = np.array(map(float,table.data[column:column+9]),'d').reshape(3,3)                                               
   
@@ -125,20 +117,18 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------
   table.data_rewind()
-  outputAlive = True
   idx = 0
-  while outputAlive and table.data_read():                                                           # read next data line of ASCII table
-    (x,y,z) = damask.gridLocation(idx,res )                                                          # figure out (x,y,z) position from line count
+  outputAlive = True
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    (x,y,z) = damask.util.gridLocation(idx,res)                                                     # figure out (x,y,z) position from line count
     idx += 1
     if not options.noShape:  table.data_append( shapeMismatch[x,y,z])
     if not options.noVolume: table.data_append(volumeMismatch[x,y,z])
-    
-    outputAlive = table.data_write()                                                                 # output processed line
+    outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)
   file['output'].close()                                                                            # close output ASCII table (works for stdout)
-  if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
+  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new

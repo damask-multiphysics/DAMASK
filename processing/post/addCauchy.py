@@ -30,18 +30,12 @@ parser.set_defaults(stress = 'p')
 
 (options,filenames) = parser.parse_args()
 
-if options.defgrad == None or options.stress == None:
-  parser.error('missing data column...')
-
 datainfo = {                                                                                        # list of requested labels per datatype
-             'defgrad':    {'mandatory': True,
-                            'len':9,
+             'defgrad':    {'len':9,
                             'label':[]},
-             'stress':     {'mandatory': True,
-                            'len':9,
+             'stress':     {'len':9,
                             'label':[]},
            }
-
 
 datainfo['defgrad']['label'].append(options.defgrad)
 datainfo['stress']['label'].append(options.stress)
@@ -74,21 +68,20 @@ for file in files:
              False:'%s'   }[info['len']>1]%label
       if key not in table.labels:
         file['croak'].write('column %s not found...\n'%key)
-        missingColumns |= info['mandatory']                                                         # break if label is mandatory
+        missingColumns = True                                                                       # break if label not found
       else:
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
 
   if missingColumns:
     continue
- # ------------------------------------------ assemble header ---------------------------------------   
-  table.labels_append(['%i_Cauchy'%(i+1) 
-                      for i in xrange(datainfo['stress']['len'])])                                  # extend ASCII header with new labels
+
+ # ------------------------------------------ assemble header ------------------------------------ 
+  table.labels_append(['%i_Cauchy'%(i+1) for i in xrange(datainfo['stress']['len'])])               # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ----------------------------------------  
   outputAlive = True
-  table.data_rewind()
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     F = np.array(map(float,table.data[column['defgrad'][active['defgrad'][0]]:
                                       column['defgrad'][active['defgrad'][0]]+datainfo['defgrad']['len']]),'d').reshape(3,3)

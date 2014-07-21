@@ -87,28 +87,29 @@ for file in files:
     if label not in brokenFormula:
       evaluator[label] = "'" + formula + "'%(" + ','.join(interpolator) + ")"
 
-# ------------------------------------------ calculate one result to get length of labels  ---------
-  table.data_read()
-  labelLen = {}
-  for label in options.labels:
-    labelLen[label] = np.size(eval(eval(evaluator[label])))
-
-# ------------------------------------------ assemble header ---------------------------------------  
-  for label,formula in zip(options.labels,options.formulas):
-    if labelLen[label] == 0:
-      brokenFormula[label] = True
-    if label not in brokenFormula:
-      if labelLen[label] == 1:
-        table.labels_append(label)
-      else:
-        table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])])
-  table.head_write()
-
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ------------------------------------------
+  firstLine=True 
   outputAlive = True
-  table.data_rewind()
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     specials['_row_'] += 1                                                                          # count row
+# ------------------------------------------ calculate one result to get length of labels  ---------
+    if firstLine:
+      labelLen = {}
+      for label in options.labels:
+        labelLen[label] = np.size(eval(eval(evaluator[label])))
+
+# ------------------------------------------ assemble header ---------------------------------------  
+      for label,formula in zip(options.labels,options.formulas):
+        if labelLen[label] == 0:
+          brokenFormula[label] = True
+        if label not in brokenFormula:
+          if labelLen[label] == 1:
+            table.labels_append(label)
+          else:
+            table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])])
+      table.head_write()
+      firstLine = False
+
     for label in options.labels: table.data_append(unravel(eval(eval(evaluator[label]))))
     outputAlive = table.data_write()                                                                # output processed line
 
