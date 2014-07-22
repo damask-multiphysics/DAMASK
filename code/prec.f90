@@ -62,7 +62,7 @@ module prec
    integer(pInt)                              :: sizeState = 0_pInt , &
                                                  sizeDotState = 0_pInt, &
                                                  sizePostResults = 0_pInt
-   logical                                    :: nonlocal
+   logical                                    :: nonlocal = .false.
    real(pReal), allocatable, dimension(:)     :: atolState
    real(pReal), allocatable, dimension(:,:)   :: state, &                                                     ! material points, state size
                                                  dotState, &
