@@ -1,56 +1,43 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy
-import damask
+import os,re,sys,math,string
+import numpy as np
 from collections import defaultdict
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
 
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add RGB color value corresponding to TSL-OIM scheme for inverse pole figures.
-""" + string.replace(scriptID,'\n','\\n')
+
+""", version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-p', '--pole', dest='pole', type='float', nargs=3, metavar='X Y Z',
-                  help = 'lab frame direction for inverse pole figure %default')
-parser.add_option('-s', '--symmetry', dest='symmetry', type='string',
-                  help = 'crystal symmetry [%default]')
-parser.add_option('-e', '--eulers',   dest='eulers', type='string', metavar='LABEL',
-                  help = 'Euler angles label')
-parser.add_option('-d', '--degrees',   dest='degrees', action='store_true',
-                  help = 'Euler angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',   dest='matrix', type='string', metavar='LABEL',
-                  help = 'orientation matrix label')
-parser.add_option('-a',               dest='a', type='string', metavar='LABEL',
-                  help = 'crystal frame a vector label')
-parser.add_option('-b',               dest='b', type='string', metavar='LABEL',
-                  help = 'crystal frame b vector label')
-parser.add_option('-c',               dest='c', type='string', metavar='LABEL',
-                  help = 'crystal frame c vector label')
+parser.add_option('-p', '--pole',       dest='pole', type='float', nargs=3, metavar='X Y Z',
+                                        help = 'lab frame direction for inverse pole figure %default')
+parser.add_option('-s', '--symmetry',   dest='symmetry', type='string',
+                                        help = 'crystal symmetry [%default]')
+parser.add_option('-e', '--eulers',     dest='eulers', type='string', metavar='LABEL',
+                                        help = 'Euler angles label')
+parser.add_option('-d', '--degrees',    dest='degrees', action='store_true',
+                                        help = 'Euler angles are given in degrees [%default]')
+parser.add_option('-m', '--matrix',     dest='matrix', type='string', metavar='LABEL',
+                                        help = 'orientation matrix label')
+parser.add_option('-a',                 dest='a', type='string', metavar='LABEL',
+                                        help = 'crystal frame a vector label')
+parser.add_option('-b',                 dest='b', type='string', metavar='LABEL',
+                                        help = 'crystal frame b vector label')
+parser.add_option('-c',                 dest='c', type='string', metavar='LABEL',
+                                        help = 'crystal frame c vector label')
 parser.add_option('-q', '--quaternion', dest='quaternion', type='string', metavar='LABEL',
-                  help = 'quaternion label')
+                                        help = 'quaternion label')
 
 parser.set_defaults(pole = [0.0,0.0,1.0])
 parser.set_defaults(symmetry = 'cubic')
@@ -75,8 +62,8 @@ if options.matrix     != None:  datainfo['tensor']['label'] += [options.matrix];
 if options.quaternion != None:  datainfo['quaternion']['label'] += [options.quaternion];        input = 'quaternion'
 
 toRadians = math.pi/180.0 if options.degrees else 1.0                                                                               # rescale degrees to radians
-pole = numpy.array(options.pole)
-pole /= numpy.linalg.norm(pole)
+pole = np.array(options.pole)
+pole /= np.linalg.norm(pole)
 
 # ------------------------------------------ setup file handles ---------------------------------------  
 
@@ -124,15 +111,15 @@ for file in files:
   while table.data_read():                                                  # read next data line of ASCII table
 
     if input == 'eulers':
-      o = damask.Orientation(Eulers=toRadians*numpy.array(map(float,table.data[column['vector'][options.eulers]:\
+      o = damask.Orientation(Eulers=toRadians*np.array(map(float,table.data[column['vector'][options.eulers]:\
                                                                                column['vector'][options.eulers]+datainfo['vector']['len']])),
                              symmetry=options.symmetry).reduced()
     elif input == 'matrix':
-      o = damask.Orientation(matrix=numpy.array([map(float,table.data[column['tensor'][options.matrix]:\
+      o = damask.Orientation(matrix=np.array([map(float,table.data[column['tensor'][options.matrix]:\
                                                                       column['tensor'][options.matrix]+datainfo['tensor']['len']])]),
                              symmetry=options.symmetry).reduced()
     elif input == 'frame':
-      o = damask.Orientation(matrix=numpy.array([map(float,table.data[column['vector'][options.a]:\
+      o = damask.Orientation(matrix=np.array([map(float,table.data[column['vector'][options.a]:\
                                                                       column['vector'][options.a]+datainfo['vector']['len']] + \
                                                            table.data[column['vector'][options.b]:\
                                                                       column['vector'][options.b]+datainfo['vector']['len']] + \
@@ -141,19 +128,17 @@ for file in files:
                                                     )]).reshape(3,3),
                              symmetry=options.symmetry).reduced()
     elif input == 'quaternion':
-      o = damask.Orientation(quaternion=numpy.array(map(float,table.data[column['quaternion'][options.quaternion]:\
+      o = damask.Orientation(quaternion=np.array(map(float,table.data[column['quaternion'][options.quaternion]:\
                                                                           column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
                              symmetry=options.symmetry).reduced()
 
     table.data_append(o.IPFcolor(pole))
-
-    table.data_write()                                                      # output processed line
+    outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
-
+  file['input'].close()                                                                             # close input ASCII table (works for stdin)
+  file['output'].close()                                                                            # close output ASCII table (works for stdout)
   if file['name'] != 'STDIN':
-    file['input'].close()                                                   # close input ASCII table
-    file['output'].close()                                                  # close output ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new

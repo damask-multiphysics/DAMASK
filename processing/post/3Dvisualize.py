@@ -274,7 +274,7 @@ parser.add_option('-v', '--vector', action='extend', dest='vector', type='string
                   help='list of vectors to visualize', metavar = '<string LIST>')
 parser.add_option('-t', '--tensor', action='extend', dest='tensor', type='string', \
                   help='list of tensors to visualize', metavar = '<string LIST>')
-parser.add_option('-d', '--deformation', dest='defgrad', type='string', \
+parser.add_option('-d', '--deformation', dest='defgrad', action='store', type='string', \
                   help='heading of deformation gradient columns [%default]', metavar = 'string')
 parser.add_option('--reference', dest='undeformed', action='store_true',\
                   help='map results to reference (undeformed) configuration [%default]')
@@ -290,15 +290,15 @@ parser.add_option('--points', dest='output_points', action='store_true', \
                   help='produce VTK points file [%default]')
 parser.add_option('--nopoints', dest='output_points', action='store_false', \
                   help='omit VTK points file')
-parser.add_option('--separator', dest='separator', type='string', \
+parser.add_option('--separator', dest='separator', action='store', type='string', \
                   help='data separator (t(ab), n(ewline), s(pace)) [%default]', metavar = 'string')
 parser.add_option('--scaling', dest='scaling', action='extend', type='string', \
                   help='scaling of fluctuation', metavar = '<float LIST>')
-parser.add_option('-u', '--unitlength', dest='unitlength', type='float', \
+parser.add_option('-u', '--unitlength', dest='unitlength', action='store', type='float', \
                   help='set unit length for 2D model [%default]', metavar = 'float')
-parser.add_option('--filenodalcoords', dest='filenodalcoords', type='string', \
+parser.add_option('--filenodalcoords', dest='filenodalcoords', action='store', type='string', \
                   help='ASCII table containing nodal coords', metavar = 'string')
-parser.add_option('--labelnodalcoords', dest='labelnodalcoords', type='string', nargs=3, \
+parser.add_option('--labelnodalcoords', dest='labelnodalcoords', action='store', type='string', nargs=3, \
                   help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
 parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',\
                   help='use linear reconstruction of geometry [%default]')

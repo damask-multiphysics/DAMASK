@@ -27,7 +27,7 @@ parser.add_option('--fdm',              dest='accuracy', action='extend', type='
                                         help='degree of central difference accuracy (%s)'%(','.join(accuracyChoices)))
 parser.add_option('--fft',              dest='fft', action='store_true', \
                                         help='calculate divergence in Fourier space')
-parser.add_option('-c','--coordinates', dest='coords', type='string', metavar = 'string', \
+parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar = 'string', \
                                         help='column heading for coordinates [%default]')
 parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>', \
                                         help='heading of columns containing vector field values')

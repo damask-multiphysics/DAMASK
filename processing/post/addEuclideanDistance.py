@@ -1,39 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,numpy,string,damask
+import os,re,sys,math,string
+import numpy as np
+from optparse import OptionParser
 from scipy import ndimage
-from optparse import OptionParser, Option
+import damask
 
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
 
 def periodic_3Dpad(array, rimdim=(1,1,1)):
 
-  rimdim = numpy.array(rimdim,'i')
-  size = numpy.array(array.shape,'i')
-  padded = numpy.empty(size+2*rimdim,array.dtype)
+  rimdim = np.array(rimdim,'i')
+  size = np.array(array.shape,'i')
+  padded = np.empty(size+2*rimdim,array.dtype)
   padded[rimdim[0]:rimdim[0]+size[0],
          rimdim[1]:rimdim[1]+size[1],
          rimdim[2]:rimdim[2]+size[2]] = array
 
-  p = numpy.zeros(3,'i')
+  p = np.zeros(3,'i')
   for side in xrange(3):
     for p[(side+2)%3] in xrange(padded.shape[(side+2)%3]):
       for p[(side+1)%3] in xrange(padded.shape[(side+1)%3]):
@@ -56,7 +42,7 @@ features = [ \
            ]
 
 neighborhoods = {
-                  'neumann':numpy.array([
+                  'neumann':np.array([
                                         [-1, 0, 0],
                                         [ 1, 0, 0],
                                         [ 0,-1, 0],
@@ -64,7 +50,7 @@ neighborhoods = {
                                         [ 0, 0,-1],
                                         [ 0, 0, 1],
                                       ]),
-                  'moore':numpy.array([
+                  'moore':np.array([
                                         [-1,-1,-1],
                                         [ 0,-1,-1],
                                         [ 1,-1,-1],
@@ -95,22 +81,22 @@ neighborhoods = {
                                       ])
                 }
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing Euclidean distance to grain structural features:
 boundaries, triple lines, and quadruple points.
 
-""" + string.replace('$Id$','\n','\\n')
+""", version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-i','--identifier',  dest='id', action='store', type='string', \
-                                        help='heading of column containing grain identifier [%default]', \
-                                        metavar='<label>')
-parser.add_option('-t','--type',        dest='type', action='extend', type='string', \
+parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string', \
+                                        help='column heading for coordinates [%default]')
+parser.add_option('-i','--identifier',  dest='id', action='store', type='string', metavar = 'string', \
+                                        help='heading of column containing grain identifier [%default]')
+parser.add_option('-t','--type',        dest='type', action='extend', type='string', metavar='<string LIST>', \
                                         help='feature type (%s)'%(', '.join(map(lambda x:', '.join(x['names']),features))))
-parser.add_option('-n','--neighborhood',  dest='neigborhood', action='store', type='string', \
-                                        help='type of neighborhood (%s)'%(', '.join(neighborhoods.keys())), \
-                                        metavar='<int>')
-
+parser.add_option('-n','--neighborhood',dest='neigborhood', action='store', type='string', metavar='int', \
+                                        help='type of neighborhood (%s)'%(', '.join(neighborhoods.keys())))
+parser.set_defaults(coords = 'ip')
 parser.set_defaults(type = [])
 parser.set_defaults(id = 'texture')
 parser.set_defaults(neighborhood = 'neumann')
@@ -126,60 +112,61 @@ for i,feature in enumerate(features):
   for name in feature['names']:
     for type in options.type:
       if name.startswith(type):
-        feature_list.append(i)                            # remember valid features
+        feature_list.append(i)                                                                      # remember valid features
         break
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+# ------------------------------------------ setup file handles -----------------------------------
 
 files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+for name in filenames:
+  if os.path.exists(name):
+    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+# ------------------------------------------ loop over input files ---------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
+  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
+  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
-# ------------------------------------------ assemble header ---------------------------------------  
+# --------------- figure out position of labels and coordinates ------------------------------------
+  try:
+    locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
+  except ValueError:
+    file['croak'].write('no coordinate data found...\n'%key)
+    continue
 
   if options.id not in table.labels:
     file['croak'].write('column %s not found...\n'%options.id)
     continue
 
+# ------------------------------------------ assemble header --------------------------------------- 
   for feature in feature_list:
-    table.labels_append('ED_%s(%s)'%(features[feature]['names'][0],options.id))     # extend ASCII header with new labels
+    table.labels_append('ED_%s(%s)'%(features[feature]['names'][0],options.id))                     # extend ASCII header with new labels
 
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------   
   
-  table.data_readArray(['ip.x','ip.y','ip.z',options.id])
+  table.data_readArray([options.coords+'.x',options.coords+'.y',options.coords+'.z',options.id])
 
   grid = [{},{},{}]
   for i in xrange(len(table.data)):
     for j in xrange(3):
       grid[j][str(table.data[i,j])] = True
 
-  resolution = numpy.array(map(len,grid),'i')
+  resolution = np.array(map(len,grid),'i')
   unitlength = 0.0
   for i,r in enumerate(resolution):
     if r > 1: unitlength = max(unitlength,(max(map(float,grid[i].keys()))-min(map(float,grid[i].keys())))/(r-1.0))
 
   neighborhood = neighborhoods[options.neighborhood]
-  convoluted = numpy.empty([len(neighborhood)]+list(resolution+2),'i')
-  microstructure = periodic_3Dpad(numpy.array(table.data[:,3].reshape(resolution),'i'))
+  convoluted = np.empty([len(neighborhood)]+list(resolution+2),'i')
+  microstructure = periodic_3Dpad(np.array(table.data[:,3].reshape(resolution),'i'))
   
   for i,p in enumerate(neighborhood):
-    stencil = numpy.zeros((3,3,3),'i')
+    stencil = np.zeros((3,3,3),'i')
     stencil[1,1,1] = -1
     stencil[p[0]+1,
             p[1]+1,
@@ -187,36 +174,34 @@ for file in files:
 
     convoluted[i,:,:,:] = ndimage.convolve(microstructure,stencil)
   
-  distance = numpy.ones((len(feature_list),resolution[0],resolution[1],resolution[2]),'d')
+  distance = np.ones((len(feature_list),resolution[0],resolution[1],resolution[2]),'d')
   
-  convoluted = numpy.sort(convoluted,axis=0)
-  uniques = numpy.zeros(resolution)
-  check = numpy.empty(resolution)
-  check[:,:,:] = numpy.nan
+  convoluted = np.sort(convoluted,axis=0)
+  uniques = np.zeros(resolution)
+  check = np.empty(resolution)
+  check[:,:,:] = np.nan
   for i in xrange(len(neighborhood)):
-    uniques += numpy.where(convoluted[i,1:-1,1:-1,1:-1] == check,0,1)
+    uniques += np.where(convoluted[i,1:-1,1:-1,1:-1] == check,0,1)
     check = convoluted[i,1:-1,1:-1,1:-1]
   for i,feature_id in enumerate(feature_list):
-    distance[i,:,:,:] = numpy.where(uniques > features[feature_id]['aliens'],0.0,1.0)
+    distance[i,:,:,:] = np.where(uniques > features[feature_id]['aliens'],0.0,1.0)
   
   for i in xrange(len(feature_list)):
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[unitlength]*3
   distance.shape = (len(feature_list),resolution.prod())
   
+# ------------------------------------------ process data ---------------------------------------
   table.data_rewind()
   l = 0
   while table.data_read():
     for i in xrange(len(feature_list)):
-      table.data_append(distance[i,l])                                      # add all distance fields
-    table.data_write()                                                      # output processed line
+      table.data_append(distance[i,l])                                                              # add all distance fields
+    outputAlive = table.data_write()                                                                # output processed line
     l += 1
-    
+
 # ------------------------------------------ output result ---------------------------------------  
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
-
-  if file['name'] != 'STDIN':
-    file['input'].close()                                                   # close input ASCII table
-    file['output'].close()                                                  # close output ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
-    
+  file['input'].close()                                                                             # close input ASCII table (works for stdin)
+  file['output'].close()                                                                            # close output ASCII table (works for stdout)
+  os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new

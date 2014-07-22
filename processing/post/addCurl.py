@@ -22,7 +22,7 @@ Deals with both vector- and tensor-valued fields.
 """, version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-c','--coordinates', dest='coords', type='string', metavar='string', \
+parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string', \
                                         help='column heading for coordinates [%default]')
 parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>', \
                                         help='heading of columns containing vector field values')
