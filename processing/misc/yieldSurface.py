@@ -1,19 +1,20 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 no BOM -*-
 
+import threading,time,os,subprocess,shlex,string
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.linalg import svd
-import threading,time,os,subprocess,shlex,string
-import damask
 from optparse import OptionParser
+import damask
 
-scriptID='aa'
-popt1=[np.ones(1,'d'),np.ones(6,'d')]
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
 
 def execute(cmd,dir='./'):
       
   initialPath=os.getcwd()
+  os.chdir(dir)
   out = ''
   line = True
   process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.STDOUT)
@@ -26,20 +27,6 @@ def asFullTensor(voigt):
   return np.array([[voigt[0],voigt[3],voigt[5]],\
           [voigt[3],voigt[1],voigt[4]],\
           [voigt[5],voigt[4],voigt[2]]])
-
-def Hill48(x, F,G,H,L,M,N):
-  a = F*(x[1]-x[2])**2 + G*(x[2]-x[0])**2 + H*(x[0]-x[1])** + \
-         2*L*x[4]**2 + 2*M*x[5]**2 + 2*N*x[3]**2 -1.
-  return a.ravel()
-
-def vonMises(x, S_y):
-  sv=np.zeros(0,'d')
-  for i in xrange(np.shape(x)[1]):
-    U, l, Vh = svd(np.array(x[:,i]).reshape(3,3))
-    sv = np.append(sv,l)
-  sv = sv.reshape(np.shape(x)[1],3)
-  ooo = (sv[:,2]-sv[:,1])**2+(sv[:,1]-sv[:,0])**2+(sv[:,0]-sv[:,2])**2-2*S_y**2
-  return ooo.ravel()
 
 #---------------------------------------------------------------------------------------------------
 class Loadcase():
@@ -84,13 +71,35 @@ class Criterion(object):
   '''
      Fitting to certain criterion
   '''
-  def __init__(self,name):
-    self.name = name.lower()
-    if self.name not in ['hill48','vonmises']: print('Mist')
-    print('using the %s criterion'%self.name)
+  def __init__(self,name='worst'):
+    self.name = name
+    self.results = {
+               'vonmises':{'fit':np.ones(1,'d'),'err':np.inf},
+               'hill48'  :{'fit':np.ones(6,'d'),'err':np.inf},
+               'worst'   :{'err':np.inf},
+               'best'    :{'err':np.inf}
+              }
+    if self.name.lower not in self.results.keys():
+      raise Exception as detail:
+      print detail
+    else:
+      print('fitting to the %s criterion'%name)
+
+  def Hill48(x, F,G,H,L,M,N):
+    a = F*(x[1]-x[2])**2 + G*(x[2]-x[0])**2 + H*(x[0]-x[1])** + \
+           2*L*x[4]**2 + 2*M*x[5]**2 + 2*N*x[3]**2 -1.
+    return a.ravel()
+
+  def vonMises(x, S_y):
+    sv=np.zeros(0,'d')
+    for i in xrange(np.shape(x)[1]):
+      U, l, Vh = svd(np.array(x[:,i]).reshape(3,3))
+      sv = np.append(sv,l)
+    sv = sv.reshape(np.shape(x)[1],3)
+    ooo = (sv[:,2]-sv[:,1])**2+(sv[:,1]-sv[:,0])**2+(sv[:,0]-sv[:,2])**2-2*S_y**2
+    return ooo.ravel()
 
   def fit(self,stress):
-    global popt1
     try:  
       popt1[0], pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[1]),p0=popt1[0])
       print 'Mises', popt1[0], pcov
