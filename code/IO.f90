@@ -1731,6 +1731,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
    msg = 'not all available twin system families are defined'
  case (52_pInt)
    msg = 'not all available parameters are defined'
+ case (53_pInt)
+   msg = 'not all available transformation system families are defined'
  case (101_pInt)
    msg = 'crystallite debugging off'
  case (201_pInt)

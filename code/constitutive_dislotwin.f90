@@ -46,11 +46,13 @@ module constitutive_dislotwin
 
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    constitutive_dislotwin_totalNslip, &                                                             !< total number of active slip systems for each instance
-   constitutive_dislotwin_totalNtwin                                                                !< total number of active twin systems for each instance
+   constitutive_dislotwin_totalNtwin, &                                                             !< total number of active twin systems for each instance
+   constitutive_dislotwin_totalNtrans                                                               !< number of active transformation systems 
 
  integer(pInt),                       dimension(:,:),         allocatable,         private :: &
    constitutive_dislotwin_Nslip, &                                                                  !< number of active slip systems for each family and instance
-   constitutive_dislotwin_Ntwin                                                                     !< number of active twin systems for each family and instance
+   constitutive_dislotwin_Ntwin, &                                                                  !< number of active twin systems for each family and instance
+   constitutive_dislotwin_Ntrans                                                                    !< number of active transformation systems for each family and instance
 
  real(pReal),                         dimension(:),           allocatable,         private :: &
    constitutive_dislotwin_CAtomicVolume, &                                                          !< atomic volume in Bugers vector unit
@@ -74,7 +76,12 @@ module constitutive_dislotwin
    constitutive_dislotwin_dSFE_dT, &                                                                !< temperature dependance of stacking fault energy
    constitutive_dislotwin_dipoleFormationFactor, &                                                  !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
    constitutive_dislotwin_aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
-   constitutive_dislotwin_aTolTwinFrac                                                              !< absolute tolerance for integration of twin volume fraction
+   constitutive_dislotwin_aTolTwinFrac, &                                                           !< absolute tolerance for integration of twin volume fraction
+   constitutive_dislotwin_c1, &                                                                     !< strain induced martensite nucleation coefficient
+   constitutive_dislotwin_c2, &                                                                     !< phase boundary energy
+   constitutive_dislotwin_c3, &                                                                     !< Lagrange multiplier
+   constitutive_dislotwin_c5, &                                                                     !< phase transformation rate coefficient
+   constitutive_dislotwin_deltaG                                                                    !< free energy difference between austensite and martensite [MPa]
 
  real(pReal),                         dimension(:,:,:,:),     allocatable,         private :: &
    constitutive_dislotwin_Ctwin66                                                                   !< twin elasticity matrix in Mandel notation for each instance
@@ -207,14 +214,14 @@ subroutine constitutive_dislotwin_init(fileUnit)
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,maxTotalNtwin,&
                   f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt, &
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
-                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
+                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_TransFamilies, &
                   index_myFamily, index_otherFamily
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase   
  character(len=65536) :: &
    tag  = '', &
    line = ''
- real(pReal), dimension(:), allocatable :: tempPerSlip, tempPerTwin
+ real(pReal), dimension(:), allocatable :: tempPerSlip, tempPerTwin, tempPerTrans
   
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOTWIN_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -235,8 +242,10 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_Noutput(maxNinstance),                             source=0_pInt)
  allocate(constitutive_dislotwin_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
  allocate(constitutive_dislotwin_Ntwin(lattice_maxNtwinFamily,maxNinstance),        source=0_pInt)
+ allocate(constitutive_dislotwin_Ntrans(lattice_maxNtransFamily,maxNinstance),      source=0_pInt)
  allocate(constitutive_dislotwin_totalNslip(maxNinstance),                          source=0_pInt)
  allocate(constitutive_dislotwin_totalNtwin(maxNinstance),                          source=0_pInt)
+ allocate(constitutive_dislotwin_totalNtrans(maxNinstance),                         source=0_pInt)
  allocate(constitutive_dislotwin_CAtomicVolume(maxNinstance),                       source=0.0_pReal)
  allocate(constitutive_dislotwin_D0(maxNinstance),                                  source=0.0_pReal)
  allocate(constitutive_dislotwin_Qsd(maxNinstance),                                 source=0.0_pReal)
@@ -259,6 +268,11 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_SFE_0K(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_dislotwin_dSFE_dT(maxNinstance),                             source=0.0_pReal)
  allocate(constitutive_dislotwin_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
+ allocate(constitutive_dislotwin_c1(maxNinstance),                                  source=0.0_pReal)
+ allocate(constitutive_dislotwin_c2(maxNinstance),                                  source=0.0_pReal)
+ allocate(constitutive_dislotwin_c3(maxNinstance),                                  source=0.0_pReal)
+ allocate(constitutive_dislotwin_c5(maxNinstance),                                  source=0.0_pReal)
+ allocate(constitutive_dislotwin_deltaG(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_dislotwin_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(constitutive_dislotwin_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(constitutive_dislotwin_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
@@ -310,14 +324,17 @@ subroutine constitutive_dislotwin_init(fileUnit)
      if (phase_plasticity(phase) == PLASTICITY_DISLOTWIN_ID) then
        Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)
        Nchunks_TwinFamilies = count(lattice_NtwinSystem(:,phase) > 0_pInt)
+       Nchunks_TransFamilies =count(lattice_NtransSystem(:,phase)> 0_pInt)
        Nchunks_SlipSlip =     maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
        Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
        Nchunks_TwinTwin =     maxval(lattice_interactionTwinTwin(:,:,phase))
        if(allocated(tempPerSlip)) deallocate(tempPerSlip)
        if(allocated(tempPerTwin)) deallocate(tempPerTwin)
+       if(allocated(tempPerTrans)) deallocate(tempPerTrans)
        allocate(tempPerSlip(Nchunks_SlipFamilies))
        allocate(tempPerTwin(Nchunks_TwinFamilies))
+       allocate(tempPerTrans(Nchunks_TransFamilies))
      endif
      cycle                                                                                          ! skip to next line
    endif
@@ -485,6 +502,17 @@ subroutine constitutive_dislotwin_init(fileUnit)
              constitutive_dislotwin_rPerTwinFamily(1:Nchunks_TwinFamilies,instance) = tempPerTwin(1:Nchunks_TwinFamilies)
          end select
 !--------------------------------------------------------------------------------------------------
+! parameters depending on number of transformation system families
+       case ('ntrans')
+         if (positions(1) < Nchunks_TransFamilies + 1_pInt) &
+           call IO_warning(53_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         if (positions(1) > Nchunks_TransFamilies + 1_pInt) &
+           call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_DISLOTWIN_label//')')
+         Nchunks_TransFamilies = positions(1) - 1_pInt
+         do j = 1_pInt, Nchunks_TransFamilies
+           constitutive_dislotwin_Ntrans(j,instance) = IO_intValue(line,positions,1_pInt+j)
+         enddo
+!--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
        case ('interaction_slipslip','interactionslipslip')
          if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
@@ -556,6 +584,16 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_sbVelocity(instance) = IO_floatValue(line,positions,2_pInt)
        case ('qedgepersbsystem')
          constitutive_dislotwin_sbQedge(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('c1')
+         constitutive_dislotwin_c1(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('c2')
+         constitutive_dislotwin_c2(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('c3')
+         constitutive_dislotwin_c3(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('c5')
+         constitutive_dislotwin_c5(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('deltag')
+         constitutive_dislotwin_deltaG(instance) = IO_floatValue(line,positions,2_pInt)
      end select
    endif; endif
  enddo parsingFile
@@ -623,8 +661,10 @@ subroutine constitutive_dislotwin_init(fileUnit)
 ! Determine total number of active slip or twin systems
       constitutive_dislotwin_Nslip(:,instance) = min(lattice_NslipSystem(:,phase),constitutive_dislotwin_Nslip(:,instance))
       constitutive_dislotwin_Ntwin(:,instance) = min(lattice_NtwinSystem(:,phase),constitutive_dislotwin_Ntwin(:,instance))
+      constitutive_dislotwin_Ntrans(:,instance)= min(lattice_NtransSystem(:,phase),constitutive_dislotwin_Ntrans(:,instance))
       constitutive_dislotwin_totalNslip(instance) = sum(constitutive_dislotwin_Nslip(:,instance))
       constitutive_dislotwin_totalNtwin(instance) = sum(constitutive_dislotwin_Ntwin(:,instance))
+      constitutive_dislotwin_totalNtrans(instance) = sum(constitutive_dislotwin_Ntrans(:,instance))
    endif myPhase
  enddo sanityChecks
  
@@ -725,7 +765,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
      allocate(plasticState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(plasticState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),     source=0.0_pReal)
+     allocate(plasticState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(plasticState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
@@ -872,7 +912,6 @@ subroutine constitutive_dislotwin_stateInit(ph,instance)
    instance, &                                                                                      !< number specifying the instance of the plasticity
    ph 
 
-
   real(pReal), dimension(plasticState(ph)%sizeState) :: tempState
 
  integer(pInt) :: i,j,f,ns,nt, index_myFamily
@@ -973,6 +1012,8 @@ subroutine constitutive_dislotwin_aTolState(ph,instance)
                                   2_pInt*constitutive_dislotwin_totalNtwin(instance)) = 1e6_pReal
 
 end subroutine constitutive_dislotwin_aTolState
+
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
