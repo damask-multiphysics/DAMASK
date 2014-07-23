@@ -301,26 +301,28 @@ subroutine constitutive_j2_init(fileUnit)
          case default
        end select
   
-       if (mySize > 0_pInt) then                                                                      ! any meaningful output found
+       outputFound: if (mySize > 0_pInt) then
          constitutive_j2_sizePostResult(o,instance) = mySize
          constitutive_j2_sizePostResults(instance) = &
          constitutive_j2_sizePostResults(instance) + mySize
-       endif
+       endif outputFound
      enddo outputsLoop
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
      sizeState    = 1_pInt
-     plasticState(phase)%sizeState = sizeState
      sizeDotState = sizeState
+     plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
-     allocate(plasticState(phase)%aTolState          (sizeState),source=constitutive_j2_aTolResistance(instance))
-     allocate(plasticState(phase)%state0             (sizeState,NofMyPhase),source=constitutive_j2_tau0(instance))
-     allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%subState0          (sizeState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%state              (sizeState,NofMyPhase),source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup       (sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%aTolState          (   sizeState),&
+                                  source=constitutive_j2_aTolResistance(instance))
+     allocate(plasticState(phase)%state0             (   sizeState,NofMyPhase),&
+                                  source=constitutive_j2_tau0(instance))
+     allocate(plasticState(phase)%partionedState0    (   sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%subState0          (   sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%state              (   sizeState,NofMyPhase),source=0.0_pReal)
+     allocate(plasticState(phase)%state_backup       (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase),source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
@@ -431,8 +433,6 @@ subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
    phase_plasticityInstance
  
  implicit none
- real(pReal) :: &
-   tempState
  real(pReal), dimension(6), intent(in):: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),             intent(in) :: &
@@ -487,13 +487,13 @@ subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
                    )
    endif
    hardening = ( constitutive_j2_h0(instance) + constitutive_j2_h0_slopeLnRate(instance) * log(gamma_dot) ) &
-               * abs( 1.0_pReal - tempState/saturation )**constitutive_j2_a(instance) &
+               * abs( 1.0_pReal - plasticState(ph)%state(1,of)/saturation )**constitutive_j2_a(instance) &
                * sign(1.0_pReal, 1.0_pReal - plasticState(ph)%state(1,of)/saturation)
  else
    hardening = 0.0_pReal
  endif
 
-  plasticState(ph)%dotState(1,of) = hardening * gamma_dot !!!!!!!!!!!!!check if dostate
+  plasticState(ph)%dotState(1,of) = hardening * gamma_dot
 
 end subroutine constitutive_j2_dotState
 

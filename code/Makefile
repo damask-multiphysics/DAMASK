@@ -514,4 +514,4 @@ clean:
 	@rm -rf *.o
 	@rm -rf *.mod
 	@rm -rf *.exe
-
+	@rm -rf *.marc

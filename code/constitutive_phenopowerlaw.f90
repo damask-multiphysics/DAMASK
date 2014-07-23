@@ -505,16 +505,14 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
      enddo outputsLoop 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-    sizeState = constitutive_phenopowerlaw_totalNslip(instance)+ &
-             constitutive_phenopowerlaw_totalNtwin(instance)+ &
-             2_pInt + &
-             constitutive_phenopowerlaw_totalNslip(instance)+ &
-             constitutive_phenopowerlaw_totalNtwin(instance)            ! s_slip, s_twin, sum(gamma), sum(f), accshear_slip, accshear_twin
+     sizeState = constitutive_phenopowerlaw_totalNslip(instance) * 2_pInt &                         ! s_slip, accshear_slip
+               + constitutive_phenopowerlaw_totalNtwin(instance) * 2_pInt &                         ! s_twin, accshear_twin
+               + 2_pInt                                                                             ! sum(gamma) + sum(f)
      sizeDotState = sizeState
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
-     allocate(plasticState(phase)%aTolState          (  sizeState),             source=0.0_pReal)
+     allocate(plasticState(phase)%aTolState          (   sizeState),            source=0.0_pReal)
      allocate(plasticState(phase)%state0             (   sizeState,NofMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0    (   sizeState,NofMyPhase), source=0.0_pReal)
      allocate(plasticState(phase)%subState0          (   sizeState,NofMyPhase), source=0.0_pReal)
