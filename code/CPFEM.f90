@@ -217,6 +217,7 @@ subroutine CPFEM_init
      enddo
    enddo; enddo; enddo
    close (777)
+#endif
 
    call IO_read_realFile(777,'convergedStateHomog',modelName)
    m = 0_pInt
@@ -227,7 +228,7 @@ subroutine CPFEM_init
      enddo
    enddo; enddo
    close (777)
-#endif
+
 
 
    call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
@@ -240,7 +241,7 @@ subroutine CPFEM_init
    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
    write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
-   write(6,*) 'symmetricSolver:      ', symmetricSolver
+   write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
  endif
  flush(6)
 
@@ -440,6 +441,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      call IO_write_jobRealFile(777,'convergedTstar',size(crystallite_Tstar0_v))
      write (777,rec=1) crystallite_Tstar0_v
      close (777)
+
 #ifdef TODO
      call IO_write_jobRealFile(777,'convergedStateConst')
      m = 0_pInt
@@ -451,6 +453,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      enddo; enddo; enddo
      close (777)
 #endif
+
      call IO_write_jobRealFile(777,'convergedStateHomog')
      m = 0_pInt
      do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips

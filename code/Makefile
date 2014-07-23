@@ -20,24 +20,25 @@ SHELL = /bin/sh
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-ifneq ("","$(wildcard ${HOME}/.damask/damask.conf)")
-	include ${HOME}/.damask/damask.conf
+ifneq ("","$(wildcard $(HOME)/.damask/damask.conf)")
+	include $(HOME)/.damask/damask.conf
 else
 	include /etc/damask.conf
 endif  
 
 COMPILERNAME ?= $(F90)
 
+ifdef PETSC_DIR
+include $(PETSC_DIR)/conf/variables
+INCLUDE_DIRS :=$(PETSC_FC_INCLUDES) -DPETSc -I../lib
+LIBRARIES    :=$(PETSC_WITH_EXTERNAL_LIB) -lfftw3
+else
 INCLUDE_DIRS :=-I../lib
-LIBRARIES :=-llapack -lfftw3
+LIBRARIES :=-lfftw3
+endif
+
 LIB_DIRS  :=-L$(FFTW_ROOT)/lib
 RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib
-
-ifdef PETSC_DIR
-include ${PETSC_DIR}/conf/variables
-INCLUDE_DIRS +=${PETSC_FC_INCLUDES} -DPETSc
-LIBRARIES  +=${PETSC_WITH_EXTERNAL_LIB}
-endif
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -365,7 +366,7 @@ endif
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-  $(COMPILED_FILES)  $(LIB_DIRS) $(RUN_PATH) $(LIBRARIES) $(SUFFIX)
+  $(COMPILED_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)

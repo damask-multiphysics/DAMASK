@@ -2793,15 +2793,15 @@ eIter = FEsolving_execElem(1:2)
                                                           * crystallite_subdt(g,i,e)
                                                        
 #ifndef _OPENMP
-#ifdef TODO
          if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
              .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
                      .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
+           p = mappingConstitutive(2,g,i,e) 
+           c = mappingConstitutive(1,g,i,e) 
            write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> update state at el ip g ',e,i,g
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState', constitutive_dotState(g,i,e)%p(1:mySizeDotState)
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState',  plasticState(p)%dotState (1:mySizePlasticDotState,c)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%state    (1:mySizePlasticDotState,c)
          endif
-#endif
 #endif
        endif
      enddo; enddo; enddo
@@ -3414,17 +3414,18 @@ logical function crystallite_stateJump(g,i,e)
    endif
    plasticState(p)%state(1:mySizePlasticDotState,c) = plasticState(p)%state(1:mySizePlasticDotState,c) + &
                                                       plasticState(p)%deltaState(1:mySizePlasticDotState,c)
-#ifdef TODO
+
 #ifndef _OPENMP
-   if (any(constitutive_deltaState(g,i,e)%p(1:mySizeDotState) /= 0.0_pReal) &
+   p = mappingConstitutive(2,g,i,e) 
+   c = mappingConstitutive(1,g,i,e) 
+   if (any(plasticState(p)%deltaState(1:mySizePlasticDotState,c) /= 0.0_pReal) &
        .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
        .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
                .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
      write(6,'(a,i8,1x,i2,1x,i3, /)') '<< CRYST >> update state at el ip g ',e,i,g
-     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', constitutive_deltaState(g,i,e)%p(1:mySizeDotState)
-     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', constitutive_state(g,i,e)%p(1:mySizeDotState)
+     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> deltaState', plasticState(p)%deltaState(1:mySizePlasticDotState,c)
+     write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state',  plasticState(p)%state     (1:mySizePlasticDotState,c)
    endif
-#endif
 #endif
  endif
  
