@@ -151,7 +151,9 @@ subroutine CPFEM_init
    mesh_maxNips
  use material, only: &
    homogenization_maxNgrains, &
-   material_phase
+   material_phase, &
+   phase_plasticity, &
+   plasticState
  use crystallite, only: &
    crystallite_F0, &
    crystallite_Fp0, &
@@ -164,7 +166,7 @@ subroutine CPFEM_init
    homogenization_state0
 
  implicit none
- integer(pInt) :: i,j,k,l,m
+ integer(pInt) :: i,j,k,l,m,ph
 
  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -207,17 +209,16 @@ subroutine CPFEM_init
    read (777,rec=1) crystallite_Tstar0_v
    close (777)
 
-#ifdef TODO
    call IO_read_realFile(777,'convergedStateConst',modelName)
    m = 0_pInt
-   do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
-     do l = 1,size(constitutive_state0(i,j,k)%p)
-       m = m+1_pInt
-       read(777,rec=m) constitutive_state0(i,j,k)%p(l)
-     enddo
-   enddo; enddo; enddo
+   readInstances: do ph = 1_pInt, size(phase_plasticity)
+     do k = 1_pInt, plasticState(ph)%sizeState
+       do l = 1, size(plasticState(ph)%state(1,:))
+         m = m+1_pInt
+         read(777,rec=m) plasticState(ph)%state0(k,l)
+     enddo; enddo
+   enddo readInstances
    close (777)
-#endif
 
    call IO_read_realFile(777,'convergedStateHomog',modelName)
    m = 0_pInt
@@ -228,8 +229,6 @@ subroutine CPFEM_init
      enddo
    enddo; enddo
    close (777)
-
-
 
    call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
    read (777,rec=1) CPFEM_dcsdE
@@ -303,8 +302,8 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    damageState, &
    thermalState, &
    mappingConstitutive, &
-   material_phase
-
+   material_phase, &
+   phase_plasticity
  use crystallite, only: &
    crystallite_partionedF,&
    crystallite_F0, &
@@ -355,7 +354,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
                                                      H, &
                                                      jacobian3333                                  ! jacobian in Matrix notation
  integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
-                                                     i, j, k, l, m, n                         
+                                                     i, j, k, l, m, n, ph                        
  logical                                             updateJaco                                    ! flag indicating if JAcobian has to be updated
  
  
@@ -441,18 +440,17 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      call IO_write_jobRealFile(777,'convergedTstar',size(crystallite_Tstar0_v))
      write (777,rec=1) crystallite_Tstar0_v
      close (777)
-
-#ifdef TODO
+     
      call IO_write_jobRealFile(777,'convergedStateConst')
      m = 0_pInt
-     do i = 1,homogenization_maxNgrains; do j = 1,mesh_maxNips; do k = 1,mesh_NcpElems
-       do l = 1,size(constitutive_state0(i,j,k)%p)
-         m = m+1_pInt
-         write(777,rec=m) constitutive_state0(i,j,k)%p(l)
-       enddo
-     enddo; enddo; enddo
+     writeInstances: do ph = 1_pInt, size(phase_plasticity)
+       do k = 1_pInt, plasticState(ph)%sizeState
+         do l = 1, size(plasticState(ph)%state(1,:))
+           m = m+1_pInt
+           write(777,rec=m) plasticState(ph)%state0(k,l)
+       enddo; enddo
+     enddo writeInstances
      close (777)
-#endif
 
      call IO_write_jobRealFile(777,'convergedStateHomog')
      m = 0_pInt
@@ -614,18 +612,14 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
                                      elCP, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))/1.0e9_pReal
        flush(6)
    endif
-
  endif
 
  !*** warn if stiffness close to zero
  if (all(abs(CPFEM_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) call IO_warning(601,elCP,ip)
-
- 
-
  !*** copy to output if required (FEM solver)
  if(present(cauchyStress)) cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
  if(present(jacobian))     jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
- 
+
 end subroutine CPFEM_general
 
 end module CPFEM
