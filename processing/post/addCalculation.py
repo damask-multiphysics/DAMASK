@@ -103,10 +103,8 @@ for file in files:
         if labelLen[label] == 0:
           brokenFormula[label] = True
         if label not in brokenFormula:
-          if labelLen[label] == 1:
-            table.labels_append(label)
-          else:
-            table.labels_append(['%i_%s'%(i+1,label) for i in xrange(labelLen[label])])
+          table.labels_append({True:['%i_%s'%(i+1,label) for i in xrange(labelLen[label])],
+                               False:label}[labelLen[label]>1] )
       table.head_write()
       firstLine = False
 

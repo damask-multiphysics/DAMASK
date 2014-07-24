@@ -2,60 +2,47 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string,itertools,re,math,numpy
-import damask
 from collections import defaultdict
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
 
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """\
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
 Orientation is given by quaternion, Euler angles,
 rotation matrix, or crystal frame coordinates (i.e. component vectors of rotation matrix).
-""" + string.replace(scriptID,'\n','\\n')
+
+""", version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-o', '--output', dest='output', action='append', metavar='<LIST>',
-                  help = 'output orientation formats')
-parser.add_option('-s', '--symmetry', dest='symmetry', type='string',
-                  help = 'crystal symmetry [%default]')
-parser.add_option('-r', '--rotation', dest='rotation', type='float', nargs=4,
-                  help = 'angle and axis to (pre)rotate orientation')
-parser.add_option('-e', '--eulers',   dest='eulers', type='string', metavar='LABEL',
-                  help = 'Euler angles')
-parser.add_option('-d', '--degrees',   dest='degrees', action='store_true',
-                  help = 'Angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',   dest='matrix', type='string', metavar='LABEL',
-                  help = 'orientation matrix')
-parser.add_option('-a',               dest='a', type='string', metavar='LABEL',
-                  help = 'crystal frame a vector')
-parser.add_option('-b',               dest='b', type='string', metavar='LABEL',
-                  help = 'crystal frame b vector')
-parser.add_option('-c',               dest='c', type='string', metavar='LABEL',
-                  help = 'crystal frame c vector')
-parser.add_option('-q', '--quaternion', dest='quaternion', type='string', metavar='LABEL',
-                  help = 'quaternion')
-
+outputChoices = ['quaternion','eulers']
+parser.add_option('-o', '--output',     dest='output', action='extend', type='string', metavar='<string LIST>',
+                                        help = 'output orientation formats (%s)'%(','.join(outputChoices)))
+parser.add_option('-s', '--symmetry',   dest='symmetry', action='store', type='choice', 
+                                        choices=damask.Symmetry.lattices[1:], metavar='string',
+                                        help = 'crystal symmetry (%s) [cubic]'%(', '.join(damask.Symmetry.lattices[1:])))
+parser.add_option('-r', '--rotation',   dest='rotation', action='store', type='float', nargs=4, metavar='float float float float',
+                                        help = 'angle and axis to (pre)rotate orientation')
+parser.add_option('-e', '--eulers',     dest='eulers', action='store', type='string', metavar='string',
+                                        help = 'Euler angles label')
+parser.add_option('-d', '--degrees',    dest='degrees', action='store_true',
+                                        help = 'Euler angles are given in degrees [%default]')
+parser.add_option('-m', '--matrix',     dest='matrix', action='store', type='string', metavar='string',
+                                        help = 'orientation matrix label')
+parser.add_option('-a',                 dest='a', action='store', type='string', metavar='string',
+                                        help = 'crystal frame a vector label')
+parser.add_option('-b',                 dest='b', action='store', type='string', metavar='string',
+                                        help = 'crystal frame b vector label')
+parser.add_option('-c',                 dest='c', action='store', type='string', metavar='string',
+                                        help = 'crystal frame c vector label')
+parser.add_option('-q', '--quaternion', dest='quaternion', action='store', type='string', metavar='string',
+                                        help = 'quaternion label')
 parser.set_defaults(output = [])
 parser.set_defaults(symmetry = 'cubic')
 parser.set_defaults(rotation = [0.,1.,1.,1.])       # no rotation about 1,1,1
@@ -71,6 +58,9 @@ datainfo = {                                                               # lis
              'quaternion': {'len':4,
                             'label':[]},
            }
+
+if not set(options.output).issubset(set(outputChoices)):
+  parser.error('output must be chosen from %s...'%(', '.join(outputChoices)))
 
 if options.eulers     != None:  datainfo['vector']['label'] += [options.eulers];                input = 'eulers'
 if options.a          != None and \
@@ -94,16 +84,15 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-#--- loop over input files ------------------------------------------------------------------------
+# ------------------------------------------ loop over input files ----------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered = False)  # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
+  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
-# --------------- figure out columns to process
   active = defaultdict(list)
   column = defaultdict(dict)
 
@@ -114,25 +103,22 @@ for file in files:
         if key in table.labels:
           foundIt = True
           active[datatype].append(label)
-          column[datatype][label] = table.labels.index(key)                 # remember columns of requested data
+          column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
       if not foundIt:
         file['croak'].write('column %s not found...\n'%label)
         break
 
+# ------------------------------------------ assemble header --------------------------------------- 
   for output in options.output:
     if output == 'quaternion':
       table.labels_append(['%i_quaternion_%s'%(i+1,options.symmetry) for i in xrange(4)])
     if output == 'eulers':
       table.labels_append(['%i_eulers_%s'%(i+1,options.symmetry) for i in xrange(3)])
-
-# ------------------------------------------ assemble header ---------------------------------------  
-
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------  
-
-  while table.data_read():                                                  # read next data line of ASCII table
-
+# ------------------------------------------ process data ----------------------------------------  
+  outputAlive = True
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if input == 'eulers':
       o = damask.Orientation(Eulers=toRadians*numpy.array(map(float,table.data[column['vector'][options.eulers]:\
                                                                                column['vector'][options.eulers]+datainfo['vector']['len']])),
@@ -155,7 +141,6 @@ for file in files:
                                                                          column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
                              symmetry=options.symmetry).reduced()
 
-
     o.quaternion = r*o.quaternion
 
     for output in options.output:
@@ -163,14 +148,12 @@ for file in files:
         table.data_append(o.asQuaternion())
       if output == 'eulers':
         table.data_append(o.asEulers('Bunge'))
-
-    table.data_write()                                                      # output processed line
+    outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
-
+  file['input'].close()                                                                             # close input ASCII table (works for stdin)
+  file['output'].close()                                                                            # close output ASCII table (works for stdout)
   if file['name'] != 'STDIN':
-    file['input'].close()                                                   # close input ASCII table
-    file['output'].close()                                                  # close output ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new

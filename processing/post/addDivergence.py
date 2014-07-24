@@ -124,10 +124,8 @@ for file in files:
   for datatype,labels in active.items():                                                            # loop over vector,tensor
     for label in labels:
       for accuracy in options.accuracy:
-        if datatype == 'vector':                                                                    # extend ASCII header with new labels
-          table.labels_append(['div%s(%s)'%(accuracy,label)])
-        if datatype == 'tensor':
-          table.labels_append(['%i_div%s(%s)'%(i+1,accuracy,label) for i in xrange(3)])
+        table.labels_append({False: ['%i_div%s(%s)'%(i+1,accuracy,label) for i in xrange(3)],       # extend ASCII header with new labels
+                            {True:  ['div%s(%s)'%(accuracy,label)]} [datatype == 'tensor'])
   table.head_write()
 
 # ------------------------------------------ read value field --------------------------------------
