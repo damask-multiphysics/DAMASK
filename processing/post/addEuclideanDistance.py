@@ -36,9 +36,10 @@ def periodic_3Dpad(array, rimdim=(1,1,1)):
 # --------------------------------------------------------------------
 
 features = [ \
-            {'aliens': 1, 'names': ['boundary','biplane'],},
-            {'aliens': 2, 'names': ['tripleline',],},
-            {'aliens': 3, 'names': ['quadruplepoint',],}
+            {'aliens': 1, 'name': 'biplane'},
+            {'aliens': 1, 'name': 'boundary'},
+            {'aliens': 2, 'name': 'tripleline'},
+            {'aliens': 3, 'name': 'quadruplepoint'}
            ]
 
 neighborhoods = {
@@ -87,34 +88,31 @@ boundaries, triple lines, and quadruple points.
 
 """, version = string.replace(scriptID,'\n','\\n')
 )
-
-parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string', \
+parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-i','--identifier',  dest='id', action='store', type='string', metavar = 'string', \
+parser.add_option('-i','--identifier',  dest='id', action='store', type='string', metavar = 'string',
                                         help='heading of column containing grain identifier [%default]')
-parser.add_option('-t','--type',        dest='type', action='extend', type='string', metavar='<string LIST>', \
-                                        help='feature type (%s)'%(', '.join(map(lambda x:', '.join(x['names']),features))))
-parser.add_option('-n','--neighborhood',dest='neigborhood', action='store', type='string', metavar='int', \
-                                        help='type of neighborhood (%s)'%(', '.join(neighborhoods.keys())))
-parser.set_defaults(coords = 'ip')
+parser.add_option('-t','--type',        dest='type', action='extend', type='string', metavar='<string LIST>',
+                                        help='feature type (%s)'%(', '.join(map(lambda x:', '.join([x['name']]),features))))
+parser.add_option('-n','--neighborhood',dest='neigborhood', action='store', type='choice', 
+                                        choices=neighborhoods.keys(), metavar='string',
+                                        help='type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
 parser.set_defaults(type = [])
+parser.set_defaults(coords = 'ip')
 parser.set_defaults(id = 'texture')
 parser.set_defaults(neighborhood = 'neumann')
 
 (options,filenames) = parser.parse_args()
 
-options.neighborhood = options.neighborhood.lower()
-if options.neighborhood not in neighborhoods:
-  parser.error('unknown neighborhood %s!'%options.neighborhood)
-  
+if len(options.type) == 0: parser.error('please select a feature type')
+if not set(options.type).issubset(set(map(lambda x: x['name'],features))):
+  parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:', '.join([x['name']]),features))))
+if 'biplane' in options.type and 'boundary' in options.type:
+  parser.error("please select only one alias for 'biplane' and 'boundary'")
+
 feature_list = []
 for i,feature in enumerate(features):
-  for name in feature['names']:
-    for type in options.type:
-      if name.startswith(type):
-        feature_list.append(i)                                                                      # remember valid features
-        break
-
+  if feature['name'] in options.type: feature_list.append(i)                                        # remember valid features
 # ------------------------------------------ setup file handles -----------------------------------
 
 files = []
@@ -143,7 +141,7 @@ for file in files:
 
 # ------------------------------------------ assemble header --------------------------------------- 
   for feature in feature_list:
-    table.labels_append('ED_%s(%s)'%(features[feature]['names'][0],options.id))                     # extend ASCII header with new labels
+    table.labels_append('ED_%s(%s)'%(features[feature]['name'],options.id))                         # extend ASCII header with new labels
 
   table.head_write()
 

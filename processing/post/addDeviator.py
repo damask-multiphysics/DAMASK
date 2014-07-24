@@ -28,9 +28,9 @@ Add column(s) containing deviator of requested tensor column(s).
 """, version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>', \
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
-parser.add_option('-s','--spherical',   dest='hydrostatic', action='store_true',\
+parser.add_option('-s','--spherical',   dest='hydrostatic', action='store_true',
                                         help='also add sperical part of tensor (hydrostatic component, pressure)')
 parser.set_defaults(hydrostatic = False)
 parser.set_defaults(tensor = [])

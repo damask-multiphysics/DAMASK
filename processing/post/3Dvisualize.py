@@ -262,46 +262,47 @@ Produce VTK file from data field. Coordinates are taken from (consecutive) x, y,
 """,version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-s', '--scalar', action='extend', dest='scalar', type='string', \
-                  help='list of single scalars to visualize', metavar = '<string LIST>')
-parser.add_option(      '--double', action='extend', dest='double', type='string', \
-                  help='list of two scalars to visualize', metavar = '<string LIST>')
-parser.add_option(      '--triple', action='extend', dest='triple', type='string', \
-                  help='list of three scalars to visualize', metavar = '<string LIST>')
-parser.add_option(      '--quadruple', action='extend', dest='quadruple', type='string', \
-                  help='list of four scalars to visualize', metavar = '<string LIST>')
-parser.add_option('-v', '--vector', action='extend', dest='vector', type='string', \
-                  help='list of vectors to visualize', metavar = '<string LIST>')
-parser.add_option('-t', '--tensor', action='extend', dest='tensor', type='string', \
-                  help='list of tensors to visualize', metavar = '<string LIST>')
-parser.add_option('-d', '--deformation', dest='defgrad', action='store', type='string', \
-                  help='heading of deformation gradient columns [%default]', metavar = 'string')
-parser.add_option('--reference', dest='undeformed', action='store_true',\
-                  help='map results to reference (undeformed) configuration [%default]')
-parser.add_option('-c','--cell', dest='cell', action='store_true',\
-                  help='data is cell-centered [%default]')
-parser.add_option('-p','--vertex', dest='cell', action='store_false',\
-                  help='data is vertex-centered')
-parser.add_option('--mesh', dest='output_mesh', action='store_true', \
-                  help='produce VTK mesh file [%default]')
-parser.add_option('--nomesh', dest='output_mesh', action='store_false', \
-                  help='omit VTK mesh file')
-parser.add_option('--points', dest='output_points', action='store_true', \
-                  help='produce VTK points file [%default]')
-parser.add_option('--nopoints', dest='output_points', action='store_false', \
-                  help='omit VTK points file')
-parser.add_option('--separator', dest='separator', action='store', type='string', \
-                  help='data separator (t(ab), n(ewline), s(pace)) [%default]', metavar = 'string')
-parser.add_option('--scaling', dest='scaling', action='extend', type='string', \
-                  help='scaling of fluctuation', metavar = '<float LIST>')
-parser.add_option('-u', '--unitlength', dest='unitlength', action='store', type='float', \
-                  help='set unit length for 2D model [%default]', metavar = 'float')
-parser.add_option('--filenodalcoords', dest='filenodalcoords', action='store', type='string', \
-                  help='ASCII table containing nodal coords', metavar = 'string')
-parser.add_option('--labelnodalcoords', dest='labelnodalcoords', action='store', type='string', nargs=3, \
-                  help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
-parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',\
-                  help='use linear reconstruction of geometry [%default]')
+sepChoices = ['n','t','s']
+parser.add_option('-s', '--scalar', dest='scalar', action='extend', type='string', metavar = '<string LIST>',
+                                    help='list of single scalars to visualize')
+parser.add_option(      '--double', dest='double', action='extend', type='string', metavar = '<string LIST>',
+                                    help='list of two scalars to visualize')
+parser.add_option(      '--triple', dest='triple', action='extend', type='string', metavar = '<string LIST>',
+                                    help='list of three scalars to visualize')
+parser.add_option(      '--quadruple', dest='quadruple', action='extend', type='string', metavar = '<string LIST>',
+                                    help='list of four scalars to visualize')
+parser.add_option('-v', '--vector', dest='vector', action='extend', type='string', metavar = '<string LIST>', 
+                                    help='list of vectors to visualize')
+parser.add_option('-t', '--tensor', dest='tensor', action='extend', type='string', metavar = '<string LIST>',
+                                    help='list of tensors to visualize')
+parser.add_option('-d', '--deformation', dest='defgrad', action='store', type='string', metavar = 'string',
+                                    help='heading of deformation gradient columns [%default]')
+parser.add_option('--reference',    dest='undeformed', action='store_true',
+                                    help='map results to reference (undeformed) configuration [%default]')
+parser.add_option('-c','--cell',    dest='cell', action='store_true',
+                                    help='data is cell-centered [%default]')
+parser.add_option('-p','--vertex',  dest='cell', action='store_false',
+                                    help='data is vertex-centered')
+parser.add_option('--mesh',         dest='output_mesh', action='store_true',
+                                    help='produce VTK mesh file [%default]')
+parser.add_option('--nomesh',       dest='output_mesh', action='store_false',
+                                    help='omit VTK mesh file')
+parser.add_option('--points',       dest='output_points', action='store_true',
+                                    help='produce VTK points file [%default]')
+parser.add_option('--nopoints',     dest='output_points', action='store_false',
+                                    help='omit VTK points file')
+parser.add_option('--separator',    dest='separator', action='store', type='choice', choices=sepChoices, metavar='string',
+                                    help='data separator (%s) [t]'%(','.join(map(str,sepChoices))))
+parser.add_option('--scaling',      dest='scaling', action='extend', type='string',
+                                    help='scaling of fluctuation', metavar = '<float LIST>')
+parser.add_option('-u', '--unitlength', dest='unitlength', action='store', type='float', metavar = 'float',
+                                    help='set unit length for 2D model [%default]')
+parser.add_option('--filenodalcoords', dest='filenodalcoords', action='store', type='string', metavar = 'string',
+                                    help='ASCII table containing nodal coords')
+parser.add_option('--labelnodalcoords', dest='labelnodalcoords', action='store', type='string', nargs=3,
+                                    help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
+parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',
+                                    help='use linear reconstruction of geometry [%default]')
                   
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(separator = 't')
@@ -330,7 +331,6 @@ options.scaling = map(float, options.scaling)
 
 if np.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
 if np.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
-options.separator = options.separator.lower()
 
 for filename in args:
   if not os.path.exists(filename):

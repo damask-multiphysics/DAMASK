@@ -21,9 +21,9 @@ deformation gradient and first Piola--Kirchhoff stress.
 """, version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-f','--defgrad',     dest='defgrad', action='store', type='string', metavar='string', \
+parser.add_option('-f','--defgrad',     dest='defgrad', action='store', type='string', metavar='string',
                                         help='heading of columns containing deformation gradient [%default]')
-parser.add_option('-p','--stress',      dest='stress', action='store', type='string', metavar='string', \
+parser.add_option('-p','--stress',      dest='stress', action='store', type='string', metavar='string',
                                         help='heading of columns containing first Piola--Kirchhoff stress [%default]')
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(stress = 'p')

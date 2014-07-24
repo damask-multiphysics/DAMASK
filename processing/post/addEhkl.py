@@ -38,10 +38,10 @@ based on given cubic stiffness values C11, C12, and C44 in consecutive columns.
 """, version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-c','--stiffness',   dest='vector', action='extend', type='string', metavar='<string LIST>', \
+parser.add_option('-c','--stiffness',   dest='vector', action='extend', type='string', metavar='<string LIST>',
                                         help='heading of column containing C11 (followed by C12, C44) field values')
 parser.add_option('-d','--direction', \
-                       '--hkl',         dest='hkl', action='store', type='int', nargs=3, metavar='int int int', \
+                       '--hkl',         dest='hkl', action='store', type='int', nargs=3, metavar='int int int',
                                         help='direction of elastic modulus %default')
 parser.set_defaults(vector = [])
 parser.set_defaults(hkl = [1,1,1])

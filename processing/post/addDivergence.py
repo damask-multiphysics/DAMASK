@@ -9,7 +9,7 @@ import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
-accuracyChoices = ['2','4','6','8']
+
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -23,15 +23,16 @@ Deals with both vector- and tensor-valued fields.
 """, version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('--fdm',              dest='accuracy', action='extend', type='string', metavar='<int LIST>', \
+accuracyChoices = ['2','4','6','8']
+parser.add_option('--fdm',              dest='accuracy', action='extend', type='string', metavar='<int LIST>',
                                         help='degree of central difference accuracy (%s)'%(','.join(accuracyChoices)))
-parser.add_option('--fft',              dest='fft', action='store_true', \
+parser.add_option('--fft',              dest='fft', action='store_true',
                                         help='calculate divergence in Fourier space')
-parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar = 'string', \
+parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar = 'string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>', \
+parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>',
                                         help='heading of columns containing vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>', \
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
 parser.set_defaults(coords = 'ip')
 parser.set_defaults(accuracy = [])
@@ -43,10 +44,9 @@ parser.set_defaults(tensor = [])
 
 if len(options.vector) + len(options.tensor) == 0:
   parser.error('no data column specified...')
-  
-for choice in options.accuracy:
-  if choice not in accuracyChoices:
-    parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
+if not set(options.accuracy).issubset(set(accuracyChoices)):
+  parser.error('accuracy must be chosen from %s...'%(', '.join(accuracyChoices)))
+
 if options.fft: options.accuracy.append('FFT')
 if not options.accuracy:
   parser.error('no accuracy selected')

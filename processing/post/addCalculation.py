@@ -25,10 +25,10 @@ Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round
 """, version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-l','--label',    dest='labels', action='extend', type='string', \
-                                     help='(list of) new column labels', metavar='<string LIST>')
-parser.add_option('-f','--formula',  dest='formulas', action='extend', type='string', \
-                                     help='(list of) formulas corresponding to labels', metavar='<string LIST>')
+parser.add_option('-l','--label',   dest='labels', action='extend', type='string', metavar='<string LIST>',
+                                    help='(list of) new column labels')
+parser.add_option('-f','--formula', dest='formulas', action='extend', type='string', metavar='<string LIST>',
+                                    help='(list of) formulas corresponding to labels')
 parser.set_defaults(labels= [])
 parser.set_defaults(formulas= [])
 

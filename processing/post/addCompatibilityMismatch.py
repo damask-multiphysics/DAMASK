@@ -20,13 +20,13 @@ Operates on periodic ordered three-dimensional data sets.
 """, version = string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('--no-shape','-s',    dest='noShape', action='store_false', \
+parser.add_option('--no-shape','-s',    dest='noShape', action='store_false',
                                         help='do not calcuate shape mismatch [%default]')
-parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false', \
+parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false',
                                         help='do not calculate volume mismatch [%default]')
-parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string', \
+parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-f','--deformation', dest='defgrad', action='store', type='string', metavar='string ', \
+parser.add_option('-f','--deformation', dest='defgrad', action='store', type='string', metavar='string ',
                                         help='column heading for coordinates [%defgrad]')
 parser.set_defaults(noVolume = False)
 parser.set_defaults(noShape = False)
