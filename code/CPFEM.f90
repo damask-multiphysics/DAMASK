@@ -12,17 +12,17 @@ module CPFEM
 
  implicit none
  private
+#if defined(Marc4DAMASK) || defined(Abaqus)
  real(pReal),                      parameter,   private :: &
    CPFEM_odd_stress    = 1e15_pReal, &                                                               !< return value for stress in case of ping pong dummy cycle
    CPFEM_odd_jacobian  = 1e50_pReal                                                                  !< return value for jacobian in case of ping pong dummy cycle
-
  real(pReal), dimension (:,:,:),   allocatable, private :: &
    CPFEM_cs                                                                                          !< Cauchy stress
  real(pReal), dimension (:,:,:,:), allocatable, private :: &
    CPFEM_dcsdE                                                                                       !< Cauchy stress tangent
  real(pReal), dimension (:,:,:,:), allocatable, private :: &
    CPFEM_dcsdE_knownGood                                                                             !< known good tangent
-
+#endif
  logical,                                       public, protected :: &
    CPFEM_init_done       = .false., &                                                                !< remember whether init has been done already
    CPFEM_calc_done       = .false.                                                                   !< remember whether first ip has already calced the results
@@ -87,16 +87,13 @@ subroutine CPFEM_initAll(temperature,el,ip)
 
  !$OMP CRITICAL (init)
    if (.not. CPFEM_init_done) then
-#ifdef Spectral
-     call DAMASK_interface_init()                                                                  ! Spectral solver is interfacing to commandline
-#endif
-#ifdef FEM
-     call DAMASK_interface_init()                                                                  ! Spectral solver is interfacing to commandline
+#if defined(Spectral) || defined(FEM)
+     call DAMASK_interface_init                                                                    ! Spectral and FEM interface to commandline
 #endif
      call prec_init
      call IO_init
 #ifdef FEM
-     call FEZoo_init()                                                                  ! Spectral solver is interfacing to commandline
+     call FEZoo_init
 #endif
      call numerics_init
      call debug_init
@@ -111,10 +108,8 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call crystallite_init(temperature)                                                            ! (have to) use temperature of first ip for whole model
      call homogenization_init
      call CPFEM_init
-#ifndef Spectral
-#ifndef FEM
-     call DAMASK_interface_init()                                                                  ! Spectral solver init is already done
-#endif
+#if defined(Marc4DAMASK) || defined(Abaqus)
+     call DAMASK_interface_init                                                                    ! Spectral solver and FEM init is already done
 #endif
      CPFEM_init_done = .true.
    endif
@@ -173,10 +168,12 @@ subroutine CPFEM_init
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- ! initialize stress and jacobian to zero 
+#if defined(Marc4DAMASK) || defined(Abaqus)
+ ! initialize stress and jacobian to zero
  allocate(CPFEM_cs(6,mesh_maxNips,mesh_NcpElems)) ;                CPFEM_cs              = 0.0_pReal
  allocate(CPFEM_dcsdE(6,6,mesh_maxNips,mesh_NcpElems)) ;           CPFEM_dcsdE           = 0.0_pReal
  allocate(CPFEM_dcsdE_knownGood(6,6,mesh_maxNips,mesh_NcpElems)) ; CPFEM_dcsdE_knownGood = 0.0_pReal
+#endif
 
  ! *** restore the last converged values of each essential variable from the binary file
  if (restartRead) then
@@ -229,19 +226,21 @@ subroutine CPFEM_init
      enddo
    enddo; enddo
    close (777)
-
+#if defined(Marc4DAMASK) || defined(Abaqus)
    call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
    read (777,rec=1) CPFEM_dcsdE
    close (777)
+#endif
    restartRead = .false.
  endif
-
+#if defined(Marc4DAMASK) || defined(Abaqus)
  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0) then
    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_cs:              ', shape(CPFEM_cs)
    write(6,'(a32,1x,6(i8,1x))')   'CPFEM_dcsdE:           ', shape(CPFEM_dcsdE)
    write(6,'(a32,1x,6(i8,1x),/)') 'CPFEM_dcsdE_knownGood: ', shape(CPFEM_dcsdE_knownGood)
    write(6,'(a32,l1)')            'symmetricSolver:       ', symmetricSolver
  endif
+#endif
  flush(6)
 
 end subroutine CPFEM_init
@@ -250,7 +249,11 @@ end subroutine CPFEM_init
 !--------------------------------------------------------------------------------------------------
 !> @brief perform initialization at first call, update variables and call the actual material model
 !--------------------------------------------------------------------------------------------------
+#if defined(Marc4DAMASK) || defined(Abaqus)
 subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, elFE, ip, cauchyStress, jacobian)
+#else
+subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
+#endif
  use numerics, only: &
    defgradTolerance, &
    iJacoStiffness
@@ -341,25 +344,31 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
  real(pReal), dimension (3,3), intent(in) ::         ffn, &                                         !< deformation gradient for t=t0
                                                      ffn1                                           !< deformation gradient for t=t1
  integer(pInt), intent(in) ::                        mode                                           !< computation mode  1: regular computation plus aging of results
+#if defined(Marc4DAMASK) || defined(Abaqus)
  logical, intent(in) ::                              parallelExecution                              !< flag indicating parallel computation of requested IPs
- 
- real(pReal), dimension(6), intent(out), optional ::           cauchyStress                         !< stress vector in Mandel notation
- real(pReal), dimension(6,6), intent(out), optional ::         jacobian                             !< jacobian in Mandel notation (Consistent tangent dcs/dE)
+ real(pReal), dimension(6), intent(out) ::           cauchyStress                                   !< stress vector in Mandel notation
+ real(pReal), dimension(6,6), intent(out) ::         jacobian                                       !< jacobian in Mandel notation (Consistent tangent dcs/dE)
 
- real(pReal)                                         J_inverse, &                                  ! inverse of Jacobian
+ real(pReal)                                         J_inverse, &                                   ! inverse of Jacobian
                                                      rnd
- real(pReal), dimension (3,3) ::                     Kirchhoff, &                                  ! Piola-Kirchhoff stress in Matrix notation
-                                                     cauchyStress33                                ! stress vector in Matrix notation
+ real(pReal), dimension (3,3) ::                     Kirchhoff, &                                   ! Piola-Kirchhoff stress in Matrix notation
+                                                     cauchyStress33                                 ! stress vector in Matrix notation
  real(pReal), dimension (3,3,3,3) ::                 H_sym, &
                                                      H, &
-                                                     jacobian3333                                  ! jacobian in Matrix notation
- integer(pInt)                                       elCP, &                                       ! crystal plasticity element number
+                                                     jacobian3333                                   ! jacobian in Matrix notation
+#else
+ logical, parameter ::                               parallelExecution = .true.
+#endif
+
+ integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
                                                      i, j, k, l, m, n, ph                        
- logical                                             updateJaco                                    ! flag indicating if JAcobian has to be updated
+ logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
  
- 
+#if defined(Marc4DAMASK) || defined(Abaqus)
  elCP = mesh_FEasCP('elem',elFE)
-!if elCP = 0_pInt return ToDo: needed?
+#else
+ elCP = elFE
+#endif
  
  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt &
      .and. elCP == debug_e .and. ip == debug_i) then
@@ -375,12 +384,13 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
  endif
 
 
- 
+#if defined(Marc4DAMASK) || defined(Abaqus)
  !*** backup or restore jacobian
  if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde_knownGood = CPFEM_dcsde
  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde = CPFEM_dcsde_knownGood
+#endif
 
  !*** age results and write restart data if requested
  if (iand(mode, CPFEM_AGERESULTS) /= 0_pInt) then
@@ -390,9 +400,9 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
    crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
 
-   forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
-   forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
-   forall ( i = 1:size(thermalState)) thermalState(i)%state0= thermalState(i)%state            ! copy state in this lenghty way because A component cannot be an array if the encompassing structure is an array
+   forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+   forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+   forall ( i = 1:size(thermalState)) thermalState(i)%state0= thermalState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
      if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
@@ -461,11 +471,13 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        enddo
      enddo; enddo
      close (777)
-     
+
+#if defined(Marc4DAMASK) || defined(Abaqus)
      call IO_write_jobRealFile(777,'convergeddcsdE',size(CPFEM_dcsdE))
      write (777,rec=1) CPFEM_dcsdE
      close (777)
-     
+#endif
+
    endif
  endif
 
@@ -480,13 +492,15 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
  elseif (iand(mode, CPFEM_COLLECT) /= 0_pInt) then
+#if defined(Marc4DAMASK) || defined(Abaqus)
    call random_number(rnd)
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
+   CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
+   CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
+#endif
    crystallite_temperature(ip,elCP) = temperature
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
-   CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
-   CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
    CPFEM_calc_done = .false.
  endif
 
@@ -507,17 +521,17 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        endif
        outdatedFFN1 = .true.
      endif
+#if defined(Marc4DAMASK) || defined(Abaqus)
      call random_number(rnd)
      if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
      CPFEM_cs(1:6,ip,elCP) = rnd*CPFEM_odd_stress
      CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian*math_identity2nd(6)
-   
+#endif  
    
    !*** deformation gradient is not outdated
    
    else
-     updateJaco = mod(cycleCounter,iJacoStiffness) == 0
-     
+     updateJaco = mod(cycleCounter,iJacoStiffness) == 0 
      !* no parallel computation, so we use just one single elFE and ip for computation
      
      if (.not. parallelExecution) then
@@ -547,10 +561,12 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
      !* map stress and stiffness (or return odd values if terminally ill)
      
      if ( terminallyIll ) then
+#if defined(Marc4DAMASK) || defined(Abaqus)
        call random_number(rnd)
        if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
        CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
        CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
+#endif
      else  
        if (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip > 1_pInt) then                    ! me homogenous? --> copy from first ip
          materialpoint_P(1:3,1:3,ip,elCP) = materialpoint_P(1:3,1:3,1,elCP)
@@ -559,6 +575,7 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
          materialpoint_results(1:materialpoint_sizeResults,ip,elCP) = &
                                         materialpoint_results(1:materialpoint_sizeResults,1,elCP)
        endif
+#if defined(Marc4DAMASK) || defined(Abaqus)
        ! translate from P to CS
        Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,ip,elCP), math_transpose33(materialpoint_F(1:3,1:3,ip,elCP)))
        J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
@@ -578,9 +595,11 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
        forall(i=1:3, j=1:3,k=1:3,l=1:3) &
          H_sym(i,j,k,l) = 0.25_pReal * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
        CPFEM_dcsde(1:6,1:6,ip,elCP) = math_Mandel3333to66(J_inverse * H_sym)
+#endif
      endif
    endif
 
+#if defined(Marc4DAMASK) || defined(Abaqus)
    !* remember extreme values of stress and jacobian
    cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,ip,elCP))
    if (maxval(cauchyStress33) > debug_stressMax) then                        
@@ -612,13 +631,16 @@ subroutine CPFEM_general(mode, parallelExecution, ffn, ffn1, temperature, dt, el
                                      elCP, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))/1.0e9_pReal
        flush(6)
    endif
+#endif
  endif
 
+#if defined(Marc4DAMASK) || defined(Abaqus)
  !*** warn if stiffness close to zero
  if (all(abs(CPFEM_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) call IO_warning(601,elCP,ip)
  !*** copy to output if required (FEM solver)
- if(present(cauchyStress)) cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
- if(present(jacobian))     jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
+ cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
+ jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
+#endif
 
 end subroutine CPFEM_general
 
