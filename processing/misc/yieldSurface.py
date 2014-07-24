@@ -49,10 +49,10 @@ class Loadcase():
 
     main=np.array([0,4,8])
     np.random.shuffle(main)
-    for i in main[:2]: # fill 2 out of 3 main entries
+    for i in main[:2]:                                                                              # fill 2 out of 3 main entries
       defgrad[i]=1.+values[i]
       stress[i]='*'
-    for off in [[1,3,0],[2,6,0],[5,7,0]]: # fill 3 off-diagonal pairs of defgrad (1 or 2 entries)
+    for off in [[1,3,0],[2,6,0],[5,7,0]]:                                                           # fill 3 off-diagonal pairs of defgrad (1 or 2 entries)
       off=np.array(off)
       np.random.shuffle(off)
       for i in off[0:2]:
@@ -79,9 +79,8 @@ class Criterion(object):
                'worst'   :{'err':np.inf},
                'best'    :{'err':np.inf}
               }
-    if self.name.lower not in self.results.keys():
-      raise Exception as detail:
-      print detail
+    if self.name.lower() not in self.results.keys():
+      raise Exception('no suitable fitting criterion selected')
     else:
       print('fitting to the %s criterion'%name)
 
@@ -211,8 +210,12 @@ parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3, \
                                      help='load: final strain; increments; time', metavar='float int float')
 parser.add_option('-g','--geometry', dest='geometry', type='string', \
                                      help='name of the geometry file', metavar='string')
-#parser.add_option('-c','--criterion',dest='formulas', action='extend', type='string', \
-#                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
+parser.add_option('-c','--criterion',dest='criterion', action='extend', type='string', \              # this should be a choice
+                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
+parser.add_option('--min', dest='min', type='string', \
+                                     help='name of the geometry file', metavar='string')
+parser.add_option('--max', dest='max', type='string', \
+                                     help='name of the geometry file', metavar='string')
 parser.set_defaults(load    = [0.008,80,80.0])
 parser.set_defaults(geometry ='20grains16x16x16')
 
