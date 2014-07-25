@@ -39,6 +39,8 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 
 parser.add_option('-d','--data',    dest='data', nargs=2, type='int',
                                     help='columns containing x and y')
+parser.add_option('-w','--weight',  dest='weight', type='int',
+                                    help='column containing weight of (x,y) point')
 parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int',
                                     help='number of bins in x and y direction')
 parser.add_option('-t','--type',    dest='type', nargs=3, type='string',
@@ -53,6 +55,7 @@ parser.add_option('-i','--invert',  dest='invert', action='store_true',
                                     help='invert probability density')
 
 parser.set_defaults(data = [1,2])
+parser.set_defaults(weight = None)
 parser.set_defaults(bins = [10,10])
 parser.set_defaults(type = ['linear','linear','linear'])
 parser.set_defaults(xrange = [0.0,0.0])
@@ -81,7 +84,10 @@ else:
     if os.path.exists(name):
       files.append({'name':   name,
                     'input':  open(name),
-                    'output': open(os.path.splitext(name)[0]+'_binned%i-%i'%(options.data[0],options.data[1])+os.path.splitext(name)[1],'w'),
+                    'output': open(os.path.splitext(name)[0]+ \
+                                   '_binned%i-%i'%(options.data[0],options.data[1])+ \
+                                   ('_weighted%i'%(options.weight) if options.weight != None else '')+ \
+                                   os.path.splitext(name)[1],'w'),
                     'croak':  sys.stderr,
                     })
 
@@ -93,21 +99,21 @@ for file in files:
 
   skip = int(file['input'].readline().split()[0])
   for i in xrange(skip): headers = file['input'].readline().split()
-  data = numpy.loadtxt(file['input'],usecols=numpy.array(options.data)-1)
+  data = numpy.loadtxt(file['input'],usecols=numpy.array(options.data+([options.weight] if options.weight != None else [])-1))
   file['input'].close()                                                   # close input ASCII table
 
-  for i in (0,1):    
+  for i in (0,1):                                                         # check data range for x and y
     if (range[i] == 0.0).all(): range[i] = [data[:,i].min(),data[:,i].max()]
-    if options.type[i].lower() == 'log':
-      data[:,i] = numpy.log(data[:,i])
-      range[i] = numpy.log(range[i])
+    if options.type[i].lower() == 'log':                                  # if log scale
+      data[:,i] = numpy.log(data[:,i])                                    # change x,y coordinates to log
+      range[i] = numpy.log(range[i])                                      # change range to log, too
   
   delta = range[:,1]-range[:,0]
   
   for i in xrange(len(data)):
     x = int(options.bins[0]*(data[i,0]-range[0,0])/delta[0])
     y = int(options.bins[1]*(data[i,1]-range[1,0])/delta[1])
-    if x >=0 and x < options.bins[0] and y >= 0 and y < options.bins[1]: grid[x,y] += 1
+    if x >=0 and x < options.bins[0] and y >= 0 and y < options.bins[1]: grid[x,y] += 1 if options.weight == None else data[i,2]
   
   if (range[2] == 0.0).all(): range[2] = [grid.min(),grid.max()]
   if (range[2] == 0.0).all():                                             # no data in grid?
