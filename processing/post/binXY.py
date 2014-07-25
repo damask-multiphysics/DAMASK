@@ -99,7 +99,7 @@ for file in files:
 
   skip = int(file['input'].readline().split()[0])
   for i in xrange(skip): headers = file['input'].readline().split()
-  data = numpy.loadtxt(file['input'],usecols=numpy.array(options.data+([options.weight] if options.weight != None else [])-1))
+  data = numpy.loadtxt(file['input'],usecols=numpy.array(options.data+((options.weight,) if options.weight != None else ()))-1)
   file['input'].close()                                                   # close input ASCII table
 
   for i in (0,1):                                                         # check data range for x and y
