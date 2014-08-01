@@ -226,8 +226,8 @@ subroutine damage_gradient_stateInit(phase,instance)
 
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
- tempState(1) = 0.0_pReal
- tempState(2:3) = 1.0_pReal
+ tempState(1:2) = 0.0_pReal
+ tempState(3)   = 1.0_pReal
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
  damageState(phase)%partionedState0 = damageState(phase)%state
@@ -259,13 +259,15 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
    phase_damageInstance, &
    damageState
  use math, only: &
-   math_Mandel6to33, &
+   math_Mandel66to3333, &
    math_mul33x33, &
+   math_mul3333xx33, &
    math_transpose33, &
    math_trace33, &
    math_I3
  use lattice, only: &
-   lattice_surfaceEnergy33
+   lattice_surfaceEnergy33, &
+   lattice_C66
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -277,18 +279,19 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
  real(pReal),  intent(in), dimension(3,3) :: &
    Fe
  integer(pInt) :: &
-   instance, phase, constituent 
+   phase, constituent 
  real(pReal) :: &
-   damage
+   strainEnergy, strain(3,3), phi
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
- damage = damageState(phase)%state(3,constituent)*damageState(phase)%state(3,constituent)
- 
- damageState(phase)%state(2,constituent) = &
-   (0.5_pReal*sum(math_Mandel6to33(Tstar_v/damage)*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)) - &
-    0.5_pReal*damageState(phase)%state(1,constituent))/math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal
+
+ strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+ strainEnergy = 0.5_pReal*sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), &
+                                                      strain))
+
+ damageState(phase)%state(2,constituent) = abs(strainEnergy)/ &
+                                           (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)
   
 end subroutine damage_gradient_microstructure
  
@@ -320,7 +323,8 @@ subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
  instance = phase_damageInstance(phase)
  
  damageState(phase)%dotState(1,constituent) = &
-   sum(abs(math_Mandel6to33(Tstar_v)*Lp))
+   0.0_pReal
+   !sum(abs(math_Mandel6to33(Tstar_v)*Lp))
   
 end subroutine damage_gradient_dotState
 
@@ -359,7 +363,8 @@ function damage_gradient_postResults(ipc,ip,el)
         damage_gradient_postResults(c+1_pInt) = damageState(phase)%state(2,constituent)
         c = c + 1
       case (gradient_damage_ID)
-        damage_gradient_postResults(c+1_pInt) = damageState(phase)%state(3,constituent)
+        damage_gradient_postResults(c+1_pInt) = damageState(phase)%state(3,constituent)* &
+                                                damageState(phase)%state(3,constituent)   
         c = c + 1
     end select
  enddo
