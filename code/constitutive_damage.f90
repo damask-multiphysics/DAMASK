@@ -55,9 +55,12 @@ subroutine constitutive_damage_init
    damageState, &
    DAMAGE_none_ID, &
    DAMAGE_NONE_label, &
+   DAMAGE_local_ID, &
+   DAMAGE_LOCAL_label, &
    DAMAGE_gradient_ID, &
    DAMAGE_GRADIENT_label
 use damage_none
+use damage_local
 use damage_gradient
    
  implicit none
@@ -77,6 +80,7 @@ use damage_gradient
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(phase_damage == DAMAGE_none_ID))       call damage_none_init(FILEUNIT)
+ if (any(phase_damage == DAMAGE_local_ID))      call damage_local_init(FILEUNIT)
  if (any(phase_damage == DAMAGE_gradient_ID))   call damage_gradient_init(FILEUNIT)
  close(FILEUNIT)
  
@@ -96,6 +100,10 @@ use damage_gradient
        outputName = DAMAGE_NONE_label
        thisOutput => null()
        thisSize   => null()
+     case (DAMAGE_local_ID)
+       outputName = DAMAGE_LOCAL_label
+       thisOutput => damage_local_output
+       thisSize   => damage_local_sizePostResult
      case (DAMAGE_gradient_ID)
        outputName = DAMAGE_GRADIENT_label
        thisOutput => damage_gradient_output
@@ -160,13 +168,16 @@ end subroutine constitutive_damage_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_damage_collectDotState(Tstar_v, Lp, ipc, ip, el)
+subroutine constitutive_damage_collectDotState(Tstar_v, Fe, Lp, ipc, ip, el)
  use material, only: &
    material_phase, &
    phase_damage, &
+   DAMAGE_local_ID, &
    DAMAGE_gradient_ID
  use damage_gradient, only:  &
    damage_gradient_dotState
+ use damage_local, only:  &
+   damage_local_dotState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -176,9 +187,13 @@ subroutine constitutive_damage_collectDotState(Tstar_v, Lp, ipc, ip, el)
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in), dimension(3,3) :: &
-   Lp
+   Lp, &
+   Fe
  
  select case (phase_damage(material_phase(ipc,ip,el)))
+   case (DAMAGE_local_ID)
+     call damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
+
    case (DAMAGE_gradient_ID)
      call damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
 
@@ -195,7 +210,10 @@ function constitutive_damage_postResults(ipc, ip, el)
    damageState, &
    material_phase, &
    phase_damage, &
+   DAMAGE_local_ID, &
    DAMAGE_gradient_ID
+ use damage_local, only:  &
+   damage_local_postResults
  use damage_gradient, only:  &
    damage_gradient_postResults
 
@@ -210,6 +228,9 @@ function constitutive_damage_postResults(ipc, ip, el)
  constitutive_damage_postResults = 0.0_pReal
  
  select case (phase_damage(material_phase(ipc,ip,el)))
+   case (DAMAGE_local_ID)
+     constitutive_damage_postResults = damage_local_postResults(ipc, ip, el)
+
    case (DAMAGE_gradient_ID)
      constitutive_damage_postResults = damage_gradient_postResults(ipc,ip,el)
  end select

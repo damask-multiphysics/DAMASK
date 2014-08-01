@@ -432,6 +432,7 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    mappingConstitutive, &
    damageState, &
    phase_damage, &
+   DAMAGE_local_ID, &
    DAMAGE_gradient_ID, &
    thermalState, &
    phase_thermal, &
@@ -471,11 +472,18 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  select case (phase_damage(phase))
-   case (DAMAGE_gradient_ID)
-     damage = damageState(phase)%state(3,constituent) &
-            * damageState(phase)%state(3,constituent)
+   case (DAMAGE_local_ID)
+     damage = damageState(phase)%state(2,constituent)* &
+              damageState(phase)%state(2,constituent)
      T = damage*T
      dT_dFe = damage*dT_dFe
+
+   case (DAMAGE_gradient_ID)
+     damage = damageState(phase)%state(3,constituent)* &
+              damageState(phase)%state(3,constituent)
+     T = damage*T
+     dT_dFe = damage*dT_dFe
+
  end select
  select case (phase_thermal(phase))
    case (THERMAL_conduction_ID)

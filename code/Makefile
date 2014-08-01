@@ -348,7 +348,7 @@ COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHEC
 ###################################################################################################
 COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 damage_none.o damage_gradient.o thermal_none.o thermal_conduction.o \
+                 damage_none.o damage_local.o damage_gradient.o thermal_none.o thermal_conduction.o \
                  constitutive_dislotwin.o constitutive_j2.o constitutive_phenopowerlaw.o \
                  constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o \
                  constitutive_damage.o constitutive_thermal.o constitutive.o crystallite.o \
@@ -435,9 +435,13 @@ constitutive_none.o:           constitutive_none.f90 \
 
 constitutive_damage.o:         constitutive_damage.f90 \
                                damage_none.o \
+                               damage_local.o \
                                damage_gradient.o
 
 damage_none.o:                 damage_none.f90 \
+                               lattice.o
+
+damage_local.o:                damage_local.f90 \
                                lattice.o
 
 damage_gradient.o:             damage_gradient.f90 \

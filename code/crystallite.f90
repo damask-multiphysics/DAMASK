@@ -53,9 +53,9 @@ module crystallite
    crystallite_Lp, &                                                                                !< current plastic velocitiy grad (end of converged time step)
    crystallite_Lp0, &                                                                               !< plastic velocitiy grad at start of FE inc
    crystallite_partionedLp0,&                                                                       !< plastic velocity grad at start of homog inc
+   crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
-   crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_subFe0,&                                                                             !< "elastic" def grad at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
@@ -1477,6 +1477,7 @@ subroutine crystallite_integrateStateRK4()
                                          crystallite_Fp, crystallite_temperature(i,e), &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
        call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                crystallite_Fe(1:3,1:3,g,i,e), &
                                                 crystallite_Lp(1:3,1:3,g,i,e), &
                                                 g,i,e)
        call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -1641,6 +1642,7 @@ subroutine crystallite_integrateStateRK4()
                                              timeStepFraction(n)*crystallite_subdt(g,i,e), &               ! fraction of original timestep
                                              crystallite_subFrac, g,i,e)
            call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                    crystallite_Fe(1:3,1:3,g,i,e), &
                                                     crystallite_Lp(1:3,1:3,g,i,e), &
                                                     g,i,e)
            call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -1824,6 +1826,7 @@ subroutine crystallite_integrateStateRKCK45()
                                          crystallite_Fp, crystallite_temperature(i,e), &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
        call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                crystallite_Fe(1:3,1:3,g,i,e), &
                                                 crystallite_Lp(1:3,1:3,g,i,e), &
                                                 g,i,e)
        call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -2031,6 +2034,7 @@ subroutine crystallite_integrateStateRKCK45()
                                            C(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
                                            crystallite_subFrac, g,i,e)
          call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                  crystallite_Fe(1:3,1:3,g,i,e), &
                                                   crystallite_Lp(1:3,1:3,g,i,e), &
                                                   g,i,e)
          call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -2392,6 +2396,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
          call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                  crystallite_Fe(1:3,1:3,g,i,e), &
                                                   crystallite_Lp(1:3,1:3,g,i,e), &
                                                   g,i,e )
          call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -2522,6 +2527,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
          call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                  crystallite_Fe(1:3,1:3,g,i,e), &
                                                   crystallite_Lp(1:3,1:3,g,i,e), &
                                                   g,i,e)
          call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -2743,6 +2749,7 @@ eIter = FEsolving_execElem(1:2)
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
          call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                  crystallite_Fe(1:3,1:3,g,i,e), &
                                                   crystallite_Lp(1:3,1:3,g,i,e), &
                                                   g,i,e)
          call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -3029,6 +3036,7 @@ subroutine crystallite_integrateStateFPI()
                                          crystallite_Fp, crystallite_temperature(i,e), &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
        call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                crystallite_Fe(1:3,1:3,g,i,e), &
                                                 crystallite_Lp(1:3,1:3,g,i,e), &
                                                 g,i,e)
        call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
@@ -3153,6 +3161,7 @@ endif
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
          call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
+                                                  crystallite_Fe(1:3,1:3,g,i,e), &
                                                   crystallite_Lp(1:3,1:3,g,i,e), &
                                                   g,i,e)
          call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
