@@ -114,12 +114,11 @@ class Criterion(object):
 
 
 #---------------------------------------------------------------------------------------------------
-
+class myThread (threading.Thread):
 #---------------------------------------------------------------------------------------------------
   '''
      Runner class
   '''
-class myThread (threading.Thread):
   def __init__(self, threadID):
     threading.Thread.__init__(self)
     self.threadID = threadID
@@ -135,7 +134,7 @@ class myThread (threading.Thread):
 
 def doSim(delay,thread):
   
-  global geomName
+  global options.geometry
   s.acquire()
   me=getLoadcase()
   if not os.path.isfile('%s.load'%me):
@@ -147,27 +146,27 @@ def doSim(delay,thread):
   else: s.release()
   
   s.acquire()
-  if not os.path.isfile('%s_%i.spectralOut'%(geomName,me)):
+  if not os.path.isfile('%s_%i.spectralOut'%(options.geometry,me)):
     print('starting simulation %s from %s'%(me,thread))
     s.release()
-    execute('DAMASK_spectral -g %s -l %i'%(geomName,me))
+    execute('DAMASK_spectral -g %s -l %i'%(options.geometry,me))
   else: s.release()
    
   s.acquire()
-  if not os.path.isfile('./postProc/%s_%i.txt'%(geomName,me)):
+  if not os.path.isfile('./postProc/%s_%i.txt'%(options.geometry,me)):
     print('starting post processing for sim %i from %s'%(me,thread))
     s.release()
-    execute('postResults --cr f,p %s_%i.spectralOut'%(geomName,me))
-    execute('addCauchy ./postProc/%s_%i.txt'%(geomName,me))
-    execute('addStrainTensors -l -v ./postProc/%s_%i.txt'%(geomName,me))
-    execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(geomName,me))
+    execute('postResults --cr f,p %s_%i.spectralOut'%(options.geometry,me))
+    execute('addCauchy ./postProc/%s_%i.txt'%(options.geometry,me))
+    execute('addStrainTensors -l -v ./postProc/%s_%i.txt'%(options.geometry,me))
+    execute('addMises -s Cauchy -e ln(V) ./postProc/%s_%i.txt'%(options.geometry,me))
   else: s.release()
 
   s.acquire()
   print('reading values for sim %i from %s'%(me,thread))
   s.release()
 
-  refFile = open('./postProc/%s_%i.txt'%(geomName,me))
+  refFile = open('./postProc/%s_%i.txt'%(options.geometry,me))
   table = damask.ASCIItable(refFile)
   table.head_read()
   for l in ['Mises(ln(V))','1_Cauchy']:
@@ -206,39 +205,41 @@ Performs calculations with various loads on given geometry file and fits yield s
 """, version=string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3, \
+parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3,
                                      help='load: final strain; increments; time', metavar='float int float')
-parser.add_option('-g','--geometry', dest='geometry', type='string', \
+parser.add_option('-g','--geometry', dest='geometry', type='string',
                                      help='name of the geometry file', metavar='string')
-parser.add_option('-c','--criterion',dest='criterion', action='extend', type='string', \              # this should be a choice
+parser.add_option('-c','--criterion',dest='criterion', action='extend', type='string',              # this should be a choice
                                      help='(list of) formulas corresponding to labels', metavar='<LIST>')
-parser.add_option('--min', dest='min', type='string', \
-                                     help='name of the geometry file', metavar='string')
-parser.add_option('--max', dest='max', type='string', \
-                                     help='name of the geometry file', metavar='string')
+parser.add_option('-c','--criterion',dest='fittin', action='extend', type='string',              # this should be a choice
+                                     help='(list of) formulas corresponding to labels', metavar='<LIST>')
+parser.add_option('--min',           dest='min', type='int',
+                                     help='minimum number of simulations', metavar='int')
+parser.add_option('--max',           dest='max', type='int',
+                                     help='maximum number of iterations',  metavar='int')
+parser.add_option('--threads',       dest='threads', type='int',
+                                     help='number of parallel executions',  metavar='int')
+parser.set_defaults(min     = 12)
+parser.set_defaults(max     = 30)
+parser.set_defaults(threads = 4)
 parser.set_defaults(load    = [0.008,80,80.0])
 parser.set_defaults(geometry ='20grains16x16x16')
 
 options = parser.parse_args()[0]
 
-geomName =options.geometry
-minN_simulations=20
-maxN_simulations=40
+
 N_simulations=0
 s=threading.Semaphore(1)
-scale = 0.02
-stressAll=np.zeros(0,'d').reshape(0,0)
 
+stressAll=np.zeros(0,'d').reshape(0,0)
 myLoad = Loadcase(options.load[0],options.load[1],options.load[2])
 myFit = Criterion('vonmises')
 
-N_threads=4
-t=[]
-
-for i in range(N_threads):
+for i in range(options.threads):
   t.append(myThread(i))
   t[i].start()
 
-for i in range(N_threads):
+for i in range(options.threads):
   t[i].join()
-print "Exiting Main Thread"
+
+print 'finished fitting to yield criteria'
