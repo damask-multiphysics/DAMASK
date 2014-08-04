@@ -210,7 +210,7 @@ subroutine CPFEM_init
    m = 0_pInt
    readInstances: do ph = 1_pInt, size(phase_plasticity)
      do k = 1_pInt, plasticState(ph)%sizeState
-       do l = 1, size(plasticState(ph)%state(1,:))
+       do l = 1, size(plasticState(ph)%state0(1,:))
          m = m+1_pInt
          read(777,rec=m) plasticState(ph)%state0(k,l)
      enddo; enddo
@@ -224,6 +224,7 @@ subroutine CPFEM_init
        m = m+1_pInt
        read(777,rec=m) homogenization_state0(j,k)%p(l)
      enddo
+
    enddo; enddo
    close (777)
 #if defined(Marc4DAMASK) || defined(Abaqus)
@@ -403,7 +404,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    forall ( i = 1:size(thermalState)) thermalState(i)%state0= thermalState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
-   if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) then
+   if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
      if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
        write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') &
@@ -424,7 +425,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    ! * dump the last converged values of each essential variable to a binary file
    
    if (restartWrite) then 
-     if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
+     if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
         write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
      
      call IO_write_jobRealFile(777,'recordedPhase',size(material_phase))
@@ -455,7 +456,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      m = 0_pInt
      writeInstances: do ph = 1_pInt, size(phase_plasticity)
        do k = 1_pInt, plasticState(ph)%sizeState
-         do l = 1, size(plasticState(ph)%state(1,:))
+         do l = 1, size(plasticState(ph)%state0(1,:))
            m = m+1_pInt
            write(777,rec=m) plasticState(ph)%state0(k,l)
        enddo; enddo
@@ -559,14 +560,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      endif
      
      !* map stress and stiffness (or return odd values if terminally ill)
-     
+#if defined(Marc4DAMASK) || defined(Abaqus)   
      if ( terminallyIll ) then
-#if defined(Marc4DAMASK) || defined(Abaqus)
        call random_number(rnd)
        if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
        CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
        CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
-#endif
      else  
        if (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip > 1_pInt) then                    ! me homogenous? --> copy from first ip
          materialpoint_P(1:3,1:3,ip,elCP) = materialpoint_P(1:3,1:3,1,elCP)
@@ -575,7 +574,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
          materialpoint_results(1:materialpoint_sizeResults,ip,elCP) = &
                                         materialpoint_results(1:materialpoint_sizeResults,1,elCP)
        endif
-#if defined(Marc4DAMASK) || defined(Abaqus)
        ! translate from P to CS
        Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,ip,elCP), math_transpose33(materialpoint_F(1:3,1:3,ip,elCP)))
        J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
@@ -595,8 +593,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
        forall(i=1:3, j=1:3,k=1:3,l=1:3) &
          H_sym(i,j,k,l) = 0.25_pReal * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
        CPFEM_dcsde(1:6,1:6,ip,elCP) = math_Mandel3333to66(J_inverse * H_sym)
-#endif
      endif
+#endif
    endif
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
@@ -637,7 +635,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #if defined(Marc4DAMASK) || defined(Abaqus)
  !*** warn if stiffness close to zero
  if (all(abs(CPFEM_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) call IO_warning(601,elCP,ip)
- !*** copy to output if required (FEM solver)
+ !*** copy to output if using commercial FEM solver
  cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
  jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
 #endif

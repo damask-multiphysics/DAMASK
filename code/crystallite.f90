@@ -3052,9 +3052,9 @@ subroutine crystallite_integrateStateFPI()
      if (crystallite_todo(g,i,e)) then
        p = mappingConstitutive(2,g,i,e) 
        c = mappingConstitutive(1,g,i,e)  
-       if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
+       if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or.&
             any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c)) .or.&
-            any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then   !NaN occured in dotState
+            any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c))) then                      !NaN occured in dotState
 
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)

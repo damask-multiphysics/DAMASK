@@ -608,6 +608,7 @@ subroutine constitutive_phenopowerlaw_stateInit(ph,instance)
    i
  real(pReal),   dimension(plasticState(ph)%sizeState) :: &
    tempState
+
  tempState = 0.0_pReal
  do i = 1_pInt,lattice_maxNslipFamily
    tempState(1+sum(constitutive_phenopowerlaw_Nslip(1:i-1,instance)) : &
@@ -624,8 +625,8 @@ subroutine constitutive_phenopowerlaw_stateInit(ph,instance)
  enddo
 
  plasticState(ph)%state0(:,:) = spread(tempState,2,size(plasticState(ph)%state0(1,:)))
-end subroutine constitutive_phenopowerlaw_stateInit
 
+end subroutine constitutive_phenopowerlaw_stateInit
 
 
 !--------------------------------------------------------------------------------------------------

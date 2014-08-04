@@ -827,14 +827,13 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
  
  integer(pInt) :: &
    calcMode, &                                                                                      !< CPFEM mode for calculation
-   collectMode, &                                                                                   !< CPFEM mode for collection
    j,k
  real(pReal), dimension(3,3,3,3) :: max_dPdF, min_dPdF
  real(pReal)   :: max_dPdF_norm, min_dPdF_norm, defgradDetMin, defgradDetMax, defgradDet
 
  write(6,'(/,a)') ' ... evaluating constitutive response ......................................'
  calcMode    = CPFEM_CALCRESULTS
- collectMode = CPFEM_COLLECT
+
  if (forwardData) then                                                                              ! aging results
    calcMode    = ior(calcMode,    CPFEM_AGERESULTS)             
    materialpoint_F0 = reshape(F_lastInc, [3,3,1,product(grid)])
@@ -843,7 +842,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
   calcMode    = iand(calcMode,    not(CPFEM_AGERESULTS)) 
  endif
 
- call CPFEM_general(collectMode,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &            ! collect mode handles Jacobian backup / restoration
+ call CPFEM_general(CPFEM_COLLECT,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &
                    temperature,timeinc,1_pInt,1_pInt)
  
  crystallite_temperature = temperature
