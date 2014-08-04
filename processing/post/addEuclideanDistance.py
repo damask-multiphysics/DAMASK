@@ -194,8 +194,8 @@ for file in files:
   while table.data_read():
     for i in xrange(len(feature_list)):
       table.data_append(distance[i,l])                                                              # add all distance fields
-    outputAlive = table.data_write()                                                                # output processed line
     l += 1
+    outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table

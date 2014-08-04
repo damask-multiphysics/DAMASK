@@ -61,33 +61,28 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
-  active = defaultdict(list)
+  active = []
   column = defaultdict(dict)
 
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = {True :'1_%s',
-             False:'%s'   }[info['len']>1]%label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
-      else:
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
+  for label in datainfo['tensor']['label']:
+    key = '1_%s'%label
+    if key not in table.labels:
+      file['croak'].write('column %s not found...\n'%key)
+    else:
+      active.append(label)
+      column[label] = table.labels.index(key)                                                       # remember columns of requested data
 
 # ------------------------------------------ assemble header --------------------------------------- 
-  for datatype,labels in active.items():                                                            # loop over vector,tensor
-    for label in labels:                                                                            # loop over all requested determinants
-      table.labels_append('det(%s)'%label)                                                          # extend ASCII header with new labels
+  for label in active:
+    table.labels_append('det(%s)'%label)                                                            # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ---------------------------------------  
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for datatype,labels in active.items():                                                          # loop over vector,tensor
-      for label in labels:                                                                          # loop over all requested determinantes
-        table.data_append(determinant(map(float,table.data[column[datatype][label]:
-                                                           column[datatype][label]+datainfo[datatype]['len']])))
-
+    for label in active:
+      table.data_append(determinant(map(float,table.data[column[label]:
+                                                         column[label]+datainfo['tensor']['len']])))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  

@@ -75,8 +75,7 @@ for file in files:
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = {True :'1_%s',
-             False:'%s'   }[info['len']>1]%label
+      key = '1_%s'%label
       if key not in table.labels:
         file['croak'].write('column %s not found...\n'%key)
       else:

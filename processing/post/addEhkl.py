@@ -77,36 +77,30 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
-  active = defaultdict(list)
+  active = []
   column = defaultdict(dict)
 
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      foundIt = False
-      for key in ['1_'+label,label]:
-        if key in table.labels:
-          foundIt = True
-          active[datatype].append(label)
-          column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
-      if not foundIt:
-        file['croak'].write('column %s not found...\n'%label)    
+  for label in datainfo['vector']['label']:
+    key = '1_%s'%label
+    if key not in table.labels:
+      file['croak'].write('column %s not found...\n'%key)
+    else:
+      active.append(label)
+      column[label] = table.labels.index(key)                                                       # remember columns of requested data
 
 # ------------------------------------------ assemble header --------------------------------------- 
-  for datatype,labels in active.items():                                                            # loop over vector,tensor
-    for label in labels:                                                                            # loop over all requested stiffnesses
-      table.labels_append('E%i%i%i(%s)'%(options.hkl[0],
-                                         options.hkl[1],
-                                         options.hkl[2],label))                                     # extend ASCII header with new labels
+  for label in active:
+    table.labels_append('E%i%i%i(%s)'%(options.hkl[0],
+                                       options.hkl[1],
+                                       options.hkl[2],label))                                       # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ----------------------------------------  
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    for datatype,labels in active.items():                                                          # loop over vector,tensor
-      for label in labels:                                                                          # loop over all requested stiffnesses
-        table.data_append(E_hkl(map(float,table.data[column[datatype][label]:\
-                                                    column[datatype][label]+datainfo[datatype]['len']]),options.hkl))
-    
+    for label in active:
+      table.data_append(E_hkl(map(float,table.data[column[label]:\
+                                                   column[label]+datainfo['vector']['len']]),options.hkl))
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  

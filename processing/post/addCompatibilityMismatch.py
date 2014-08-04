@@ -26,7 +26,7 @@ parser.add_option('--no-volume','-v',   dest='noVolume', action='store_false',
                                         help='do not calculate volume mismatch [%default]')
 parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-f','--deformation', dest='defgrad', action='store', type='string', metavar='string ',
+parser.add_option('-f','--defgrad',     dest='defgrad', action='store', type='string', metavar='string ',
                                         help='column heading for coordinates [%defgrad]')
 parser.set_defaults(noVolume = False)
 parser.set_defaults(noShape = False)
@@ -82,14 +82,13 @@ for file in files:
 # --------------- figure out columns to process  ---------------------------------------------------
   missingColumns = False
   
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = '1_%s'%label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
-        missingColumns = True
-      else:
-        column = table.labels.index(key)                                                            # remember columns of requested data
+  for label in datainfo['defgrad']['label']:
+    key = '1_%s'%label
+    if key not in table.labels:
+      file['croak'].write('column %s not found...\n'%key)
+      missingColumns = True
+    else:
+      column = table.labels.index(key)                                                              # remember columns of requested data
 
   if missingColumns:
     continue

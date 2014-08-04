@@ -64,8 +64,7 @@ for file in files:
   
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = {True :'1_%s',
-             False:'%s'   }[info['len']>1]%label
+      key = '1_%s'%label
       if key not in table.labels:
         file['croak'].write('column %s not found...\n'%key)
         missingColumns = True                                                                       # break if label not found
@@ -77,7 +76,7 @@ for file in files:
     continue
 
  # ------------------------------------------ assemble header ------------------------------------ 
-  table.labels_append(['%i_Cauchy'%(i+1) for i in xrange(datainfo['stress']['len'])])               # extend ASCII header with new labels
+  table.labels_append(['%i_Cauchy'%(i+1) for i in xrange(9)])                                       # extend ASCII header with new labels
   table.head_write()
 
 # ------------------------------------------ process data ----------------------------------------  
@@ -87,7 +86,6 @@ for file in files:
                                       column['defgrad'][active['defgrad'][0]]+datainfo['defgrad']['len']]),'d').reshape(3,3)
     P = np.array(map(float,table.data[column['stress'][active['stress'][0]]:
                                       column['stress'][active['stress'][0]]+datainfo['stress']['len']]),'d').reshape(3,3)
-
     table.data_append(list(1.0/np.linalg.det(F)*np.dot(P,F.T).reshape(9)))                          # [Cauchy] = (1/det(F)) * [P].[F_transpose]
     outputAlive = table.data_write()                                                                # output processed line
 

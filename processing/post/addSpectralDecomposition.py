@@ -1,42 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,numpy,string,damask
-from optparse import OptionParser, Option
+import os,re,sys,math,string
+import numpy as np
+from collections import defaultdict
+from optparse import OptionParser
+import damask
 
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing eigenvalues and eigenvectors of requested tensor column(s).
 
-""" + string.replace('$Id$','\n','\\n')
+""", version = string.replace(scriptID,'\n','\\n')
 )
 
-
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', \
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
-
 parser.set_defaults(tensor = [])
 
 (options,filenames) = parser.parse_args()
@@ -44,97 +29,59 @@ parser.set_defaults(tensor = [])
 if len(options.tensor) == 0:
   parser.error('no data column specified...')
 
-datainfo = {                                                               # list of requested labels per datatype
+datainfo = {                                                                                        # list of requested labels per datatype
              'tensor':     {'len':9,
                             'label':[]},
            }
 
+datainfo['tensor']['label'] += options.tensor
 
-if options.tensor != None:    datainfo['tensor']['label'] += options.tensor
-
-# ------------------------------------------ setup file handles ---------------------------------------  
-
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
-if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
-                    })
+for name in filenames:
+  if os.path.exists(name):
+    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------  
-
+#--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
+  file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
+  table = damask.ASCIItable(file['input'],file['output'],True)                                      # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
+  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
 
-  table = damask.ASCIItable(file['input'],file['output'],False)             # make unbuffered ASCII_table
-  table.head_read()                                                         # read ASCII header info
-  table.info_append(string.replace('$Id$','\n','\\n') + \
-                    '\t' + ' '.join(sys.argv[1:]))
-
-  active = {}
-  column = {}
-  head = []
-
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      key = {True :'1_%s',
-             False:'%s'   }[info['len']>1]%label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
-      else:
-        if datatype not in active: active[datatype] = []
-        if datatype not in column: column[datatype] = {}
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                   # remember columns of requested data
-        table.labels_append(['%i_eigval(%s)'%(i+1,label) 
-                            for i in xrange(3)])                            # extend ASCII header with new labels
-        table.labels_append(['%i_eigvec(%s)'%(i+1,label) 
-                            for i in xrange(9)])                            # extend ASCII header with new labels
+  active = []
+  column = defaultdict(dict)
+  
+  for label in datainfo['tensor']['label']:
+    key = '1_%s'%label
+    if key not in table.labels:
+      file['croak'].write('column %s not found...\n'%key)
+    else:
+      active.append(label)
+      column[label] = table.labels.index(key)                                                       # remember columns of requested data
 
 # ------------------------------------------ assemble header ---------------------------------------  
-
+  for labels in active: 
+    table.labels_append(['%i_eigval(%s)'%(i+1,label) for i in xrange(3)])                           # extend ASCII header with new labels
+    table.labels_append(['%i_eigvec(%s)'%(i+1,label) for i in xrange(9)])                           # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------  
-
-  while table.data_read():                                                  # read next data line of ASCII table
-  
-    for datatype,labels in active.items():                                  # loop over vector,tensor
-      for label in labels:                                                  # loop over all requested norms
-        tensor = numpy.array(map(float,table.data[column[datatype][label]:
-                                                  column[datatype][label]+datainfo[datatype]['len']])).reshape((datainfo[datatype]['len']//3,3))
-        (u,v) = numpy.linalg.eig(tensor)
-        table.data_append(list(u))
-        table.data_append(list(v.transpose().reshape(datainfo[datatype]['len'])))
-
-    table.data_write()                                                      # output processed line
+# ------------------------------------------ process data ----------------------------------------  
+  outputAlive = True
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    for labels in active:                                                                           # loop over requested data
+      tensor = np.array(map(float,table.data[column[label]:column[label]+datainfo['tensor']['len']])).\
+                                                            reshape((datainfo['tensor']['len']//3,3))
+      (u,v) = np.linalg.eig(tensor)
+      table.data_append(list(u))
+      table.data_append(list(v.transpose().reshape(datainfo['tensor']['len'])))
+    outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result ---------------------------------------  
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  table.output_flush()                                                      # just in case of buffered ASCII table
-
-  try:
-    file['output'].close()                                                  # close output ASCII table
-  except:
-    pass
-  try:
-    file['croak'].close()                                                   # stop croaking
-  except:
-    pass
-  try:
-    file['input'].close()                                                   # close input ASCII table
-  except:
-    pass
-
+  file['input'].close()                                                                             # close input ASCII table (works for stdin)
+  file['output'].close()                                                                            # close output ASCII table (works for stdout)
   if file['name'] != 'STDIN':
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new

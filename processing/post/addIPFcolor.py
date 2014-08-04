@@ -61,6 +61,11 @@ if options.a          != None and \
 if options.matrix     != None:  datainfo['tensor']['label'] += [options.matrix];                input = 'matrix'
 if options.quaternion != None:  datainfo['quaternion']['label'] += [options.quaternion];        input = 'quaternion'
 
+inputGiven = 0
+for datatype,info in datainfo.items():
+  inputGiven += len(info['label'])
+if inputGiven != 1: parser.error('select exactly one input format...')
+
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 pole = np.array(options.pole)
 pole /= np.linalg.norm(pole)
@@ -85,18 +90,20 @@ for file in files:
 
   active = defaultdict(list)
   column = defaultdict(dict)
+  missingColumns = False
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      foundIt = False
-      for key in ['1_'+label,label]:
-        if key in table.labels:
-          foundIt = True
-          active[datatype].append(label)
-          column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
-      if not foundIt:
-        file['croak'].write('column %s not found...\n'%label)
-        break
+      key = '1_%s'%label
+      if key not in table.labels:
+        file['croak'].write('column %s not found...\n'%key)
+        missingColumns = True                                                                       # break if label not found
+      else:
+        active[datatype].append(label)
+        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
+
+  if missingColumns:
+    continue
 
 # ------------------------------------------ assemble header ---------------------------------------  
   table.labels_append(['%i_IPF_%g%g%g'%(i+1,options.pole[0],options.pole[1],options.pole[2]) for i in xrange(3)])
@@ -124,7 +131,7 @@ for file in files:
                              symmetry=options.symmetry).reduced()
     elif input == 'quaternion':
       o = damask.Orientation(quaternion=np.array(map(float,table.data[column['quaternion'][options.quaternion]:\
-                                                                          column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
+                                                                      column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
                              symmetry=options.symmetry).reduced()
 
     table.data_append(o.IPFcolor(pole))
