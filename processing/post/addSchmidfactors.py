@@ -1,11 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math
+import os,re,sys,math,string
+import numpy as np
+from collections import defaultdict
 from optparse import OptionParser
+import damask
 
-CoverA=1.587
-slipnormal_temp = [ # This is the real slip system information for hex aka titanium for now.
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
+slipnormal_temp = [
     [0,0,0,1],
     [0,0,0,1],
     [0,0,0,1],
@@ -198,15 +203,21 @@ slipdirection = { \
    ],
    }
 
-
-# --------------------------------------------------------------------
-
 def applyEulers(phi1,Phi,phi2,x):
   """ transform x given in crystal coordinates to xbar returned in lab coordinates for Euler angles phi1,Phi,phi2 """
   
-  eulerRot = [[ math.cos(phi1)*math.cos(phi2) - math.cos(Phi)*math.sin(phi1)*math.sin(phi2), - math.cos(phi1)*math.sin(phi2) - math.cos(Phi)*math.cos(phi2)*math.sin(phi1),  math.sin(Phi)*math.sin(phi1)], \
-              [ math.cos(phi2)*math.sin(phi1) + math.cos(Phi)*math.cos(phi1)*math.sin(phi2),   math.cos(Phi)*math.cos(phi1)*math.cos(phi2) - math.sin(phi1)*math.sin(phi2), -math.sin(Phi)*math.cos(phi1)], \
-              [                                 math.sin(Phi)*math.sin(phi2),                                   math.sin(Phi)*math.cos(phi2),            math.cos(Phi)]]
+  eulerRot = [[ math.cos(phi1)*math.cos(phi2) - math.cos(Phi)*math.sin(phi1)*math.sin(phi2),
+               -math.cos(phi1)*math.sin(phi2) - math.cos(Phi)*math.cos(phi2)*math.sin(phi1),
+                math.sin(Phi)*math.sin(phi1)
+              ],
+              [ math.cos(phi2)*math.sin(phi1) + math.cos(Phi)*math.cos(phi1)*math.sin(phi2),
+                math.cos(Phi)*math.cos(phi1)*math.cos(phi2) - math.sin(phi1)*math.sin(phi2),
+               -math.sin(Phi)*math.cos(phi1)
+              ],
+              [ math.sin(Phi)*math.sin(phi2),
+                math.sin(Phi)*math.cos(phi2),
+                math.cos(Phi)
+             ]]
   
   xbar = [0,0,0]
   if len(x) == 3:
@@ -214,15 +225,11 @@ def applyEulers(phi1,Phi,phi2,x):
       xbar[i] = sum([eulerRot[i][j]*x[j] for j in range(3)])
   return xbar
 
-# --------------------------------------------------------------------
-
 def normalize(x):
   
   norm = math.sqrt(sum([x[i]*x[i] for i in range(len(x))]))
   
   return [x[i]/norm for i in range(len(x))]
-
-# --------------------------------------------------------------------
 
 def crossproduct(x,y):
   
@@ -233,36 +240,41 @@ def crossproduct(x,y):
          ]
 
 # --------------------------------------------------------------------
-
-
-
-# --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-parser = OptionParser(usage='%prog [options] [file]', description = """
+
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add columns listing Schmid factors (and optional trace vector of selected system) for given Euler angles.
-Column headings need to have names 'phi1', 'Phi', 'phi2'.
 
-$Id$
-""")
+""", version = string.replace(scriptID,'\n','\\n')
+)
 
-parser.add_option('-l','--lattice', dest='lattice', choices=('fcc','bcc','hex'), \
-                                    help='key for lattice type [%default]')
-parser.add_option('-d','--forcedirection', dest='forcedirection', type='int', nargs=3, \
-                                      help='force direction in lab coordinates [%default]')
-parser.add_option('-n','--stressnormal', dest='stressnormal', type='int', nargs=3, \
-                                      help='stress plane normal in lab coordinates [%default]')
-parser.add_option('-t','--trace', dest='traceplane', type='int', nargs=3, \
-                                      help="normal (in lab coordinates) of plane on which the plane trace of the Schmid factor(s) is reported [%default]")
-parser.add_option('-r','--rank', dest='rank', type='int', \
+parser.add_option('-l','--lattice',   dest='lattice', action='store', type='choice',
+                                      choices=('fcc','bcc','hex'), metavar='string',
+                                      help="type of neighborhood ('fcc','bcc','hex') [%default]")
+parser.add_option('--direction',      dest='forcedirection', action='store', type='int', nargs=3, metavar='int int int',
+                                      help='force direction in lab coordinates %default')
+parser.add_option('-n','--normal',    dest='stressnormal', action='store', type='int', nargs=3, metavar='int int int',
+                                      help='stress plane normal in lab coordinates ')
+parser.add_option('--trace',          dest='traceplane', action='store', type='int', nargs=3, metavar='int int int',
+                                      help='normal (in lab coordinates) of plane on which the plane trace of the Schmid factor(s) is reported')
+parser.add_option('--covera',         dest='CoverA', action='store', type='float', metavar='float',
+                                      help='C over A ratio for hexagonal systems')
+parser.add_option('-r','--rank',      dest='rank', action='store', type='int', nargs=3, metavar='int int int',
                                       help="report trace of r'th highest Schmid factor [%default]")
+parser.add_option('-e', '--eulers',   dest='eulers', action='store', type='string', metavar='string',
+                                      help='Euler angles label')
+parser.add_option('-d', '--degrees',  dest='degrees', action='store_true',
+                                      help = 'Euler angles are given in degrees [%default]')
 parser.set_defaults(lattice = 'fcc')
 parser.set_defaults(forcedirection = [0, 0, 1])
 parser.set_defaults(stressnormal = None)
 parser.set_defaults(traceplane = None)
 parser.set_defaults(rank = 0)
+parser.set_defaults(CoverA = 1.587)
+parser.set_defaults(eulers = 'eulerangles')
 
-(options,filename) = parser.parse_args()
+(options,filenames) = parser.parse_args()
 
 options.forcedirection = normalize(options.forcedirection)
 if options.stressnormal:
@@ -276,95 +288,105 @@ if options.traceplane:
   options.traceplane = normalize(options.traceplane)
 options.rank = min(options.rank,Nslipsystems[options.lattice])
 
-# read from standard input unless input file specified
-if filename == []:
-  file = sys.stdin
-elif os.path.exists(filename[0]):
-  file = open(filename[0])
+datainfo = {                                                                                        # list of requested labels per datatype
+             'vector':     {'len':3,
+                            'label':[]},
+           }
 
-# read data
-content = file.readlines()
-file.close()
+datainfo['vector']['label'] += [options.eulers]
 
-#  get labels by either read the first row, or - if keyword header is present - the last line of the header
-headerlines = 1
-m = re.search('(\d+)\s*head', content[0].lower())
-if m:
-  headerlines = int(m.group(1))+1
-labels = content[headerlines-1].split()
-data = content[headerlines:]
+toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 
-# Convert 4 Miller indices notation of hex to orthogonal 3 Miller indices notation
-if options.lattice=="hex":
+if options.lattice=='hex':                                                                          # Convert 4 Miller indices notation of hex to orthogonal 3 Miller indices notation
   for i in range(Nslipsystems[options.lattice]):
     slipnormal[options.lattice][i][0]=slipnormal_temp[i][0]
     slipnormal[options.lattice][i][1]=(slipnormal_temp[i][0]+2.0*slipnormal_temp[i][1])/math.sqrt(3.0)
-    slipnormal[options.lattice][i][2]=slipnormal_temp[i][3]/CoverA
-    slipdirection[options.lattice][i][0]=slipdirection_temp[i][0]*1.5 # direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)] ,
+    slipnormal[options.lattice][i][2]=slipnormal_temp[i][3]/options.CoverA
+    slipdirection[options.lattice][i][0]=slipdirection_temp[i][0]*1.5                               # direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)] ,
     slipdirection[options.lattice][i][1]=(slipdirection_temp[i][0]+2.0*slipdirection_temp[i][1])*(0.5*math.sqrt(3.0))
-    slipdirection[options.lattice][i][2]=slipdirection_temp[i][3]*CoverA
+    slipdirection[options.lattice][i][2]=slipdirection_temp[i][3]*options.CoverA
 
   for i in range(Nslipsystems[options.lattice]):
     slipnormal[options.lattice][i]=normalize(slipnormal[options.lattice][i])
     slipdirection[options.lattice][i]=normalize(slipdirection[options.lattice][i])
 
-for c in range(len(labels)):
-  m = re.search('.*([Pp]hi\d*).*', labels[c])
-  if m:
-    if m.group(1).lower() == "phi1":
-      phi1Column = c
-    elif m.group(1).lower() == "phi":
-      PhiColumn = c
-    elif m.group(1).lower() == "phi2":
-      phi2Column = c
-
-output = '1\theader\n' + \
-         '\t'.join(map(str,labels)) + \
-         '\t' + \
-         '\t'.join(['(%i)S(%i %i %i)[%i %i %i]'%(i+1,
-                                             slipnormal[options.lattice][i][0],
-                                             slipnormal[options.lattice][i][1],
-                                             slipnormal[options.lattice][i][2],
-                                             slipdirection[options.lattice][i][0],
-                                             slipdirection[options.lattice][i][1],
-                                             slipdirection[options.lattice][i][2],
-                                            ) for i in range(Nslipsystems[options.lattice])])
-if options.traceplane:
-  if options.rank > 0:
-    output += '\ttrace_x\ttrace_y\ttrace_z\tsystem'
-  else:
-    output += '\t' + '\t'.join(['(%i)tx\tty\ttz'%(i+1) for i in range(Nslipsystems[options.lattice])])
-output += '\n'
-
-for line in data:
-  items = line.split()[:len(labels)]
-  if items == []:
-    continue
-  phi1 = math.radians(float(items[phi1Column]))
-  Phi = math.radians(float(items[PhiColumn]))
-  phi2 = math.radians(float(items[phi2Column]))
-  S = [ sum( [applyEulers(phi1,Phi,phi2,normalize(   slipnormal[options.lattice][slipsystem]))[i]*options.stressnormal[i] for i in range(3)] ) * \
-        sum( [applyEulers(phi1,Phi,phi2,normalize(slipdirection[options.lattice][slipsystem]))[i]*options.forcedirection[i] for i in range(3)] ) \
-        for slipsystem in range(Nslipsystems[options.lattice]) ]
-  output += '\t'.join(items + map(str,S))
-  if options.traceplane:
-    trace = [crossproduct(options.traceplane,applyEulers(phi1,Phi,phi2,normalize(slipnormal[options.lattice][slipsystem]))) \
-               for slipsystem in range(Nslipsystems[options.lattice]) ]
-    if options.rank == 0:
-      output += '\t' + '\t'.join(map(lambda x:'%f\t%f\t%f'%(x[0],x[1],x[2]),trace))
-    elif options.rank > 0:
-      SabsSorted = sorted([(abs(S[i]),i) for i in range(len(S))])
-      output += '\t' + '\t'.join(map(str,trace[SabsSorted[-options.rank][1]])) + '\t%i'%(1+SabsSorted[-options.rank][1])
-      # for t in [normalize(crossproduct(options.traceplane,applyEulers(phi1,Phi,phi2,normalize(slipnormal[options.lattice][i])))) for i in range(12,24)]:
-        # print '\t'.join(map(str,t))
-        # print '\t'.join(map(lambda x: str(-x),t))
-        # print '\t'.join(['0','0','0'])
-      # print
-  output += '\n'
-
-if filename == []:
-  print output
+# ------------------------------------------ setup file handles ---------------------------------------
+files = []
+if filenames == []:
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
-  file = open(filename[0],'w')
-  file.write(output)
-  file.close()
+  for name in filenames:
+    if os.path.exists(name):
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+
+# ------------------------------------------ loop over input files ---------------------------------------
+for file in files:
+  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+
+  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
+  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+
+  active = defaultdict(list)
+  column = defaultdict(dict)
+
+  for datatype,info in datainfo.items():
+    for label in info['label']:
+      foundIt = False
+      for key in ['1_'+label,label]:
+        if key in table.labels:
+          foundIt = True
+          active[datatype].append(label)
+          column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
+      if not foundIt:
+        file['croak'].write('column %s not found...\n'%label)
+        break
+
+# ------------------------------------------ assemble header --------------------------------------- 
+
+  table.labels_append(['(%i)S(%i %i %i)[%i %i %i]'%(i+1,
+                       slipnormal[options.lattice][i][0],
+                       slipnormal[options.lattice][i][1],
+                       slipnormal[options.lattice][i][2],
+                       slipdirection[options.lattice][i][0],
+                       slipdirection[options.lattice][i][1],
+                       slipdirection[options.lattice][i][2],
+                     ) for i in range(Nslipsystems[options.lattice])])
+
+  if options.traceplane:
+    if options.rank > 0:
+      table.labels_append('trace_x trace_y trace_z system')
+    else:
+      table.labels_append(['(%i)tx\tty\ttz'%(i+1) for i in range(Nslipsystems[options.lattice])])
+  table.head_write()
+
+# ------------------------------------------ process data ----------------------------------------  
+  outputAlive = True
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+    [phi1,Phi,phi2] = Eulers=toRadians*np.array(map(\
+                           float,table.data[column['vector'][options.eulers]:\
+                                            column['vector'][options.eulers]+datainfo['vector']['len']]))
+    S = [ sum( [applyEulers(phi1,Phi,phi2,normalize( \
+                slipnormal[options.lattice][slipsystem]))[i]*options.stressnormal[i] for i in range(3)] ) * \
+          sum( [applyEulers(phi1,Phi,phi2,normalize( \
+                slipdirection[options.lattice][slipsystem]))[i]*options.forcedirection[i] for i in range(3)] ) \
+          for slipsystem in range(Nslipsystems[options.lattice]) ]
+    table.data_append(S)
+    if options.traceplane:
+      trace = [crossproduct(options.traceplane,applyEulers(phi1,Phi,phi2,normalize(slipnormal[options.lattice][slipsystem]))) \
+                 for slipsystem in range(Nslipsystems[options.lattice]) ]
+      if options.rank == 0:
+        table.data_append('\t'.join(map(lambda x:'%f\t%f\t%f'%(x[0],x[1],x[2]),trace)))
+      elif options.rank > 0:
+        SabsSorted = sorted([(abs(S[i]),i) for i in range(len(S))])
+        table.data_append('\t'.join(map(str,trace[SabsSorted[-options.rank][1]])) + '\t%i'%(1+SabsSorted[-options.rank][1]))
+    outputAlive = table.data_write()                                                                # output processed line
+
+# ------------------------------------------ output result ---------------------------------------  
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
+
+  file['input'].close()                                                                             # close input ASCII table (works for stdin)
+  file['output'].close()                                                                            # close output ASCII table (works for stdout)
+  if file['name'] != 'STDIN':
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
