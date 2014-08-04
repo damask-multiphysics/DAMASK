@@ -83,6 +83,7 @@ end module DAMASK_interface
 #include "material.f90"
 #include "lattice.f90"
 #include "damage_none.f90"
+#include "damage_local.f90"
 #include "damage_gradient.f90"
 #include "constitutive_damage.f90"
 #include "thermal_none.f90"
