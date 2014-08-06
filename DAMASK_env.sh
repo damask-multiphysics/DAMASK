@@ -16,11 +16,11 @@ if [[ "x$DAMASK_BIN" != "x" && ! `echo ":$PATH:" | grep $DAMASK_BIN:` ]]; then
   export PATH=$DAMASK_BIN:$PATH
 fi
 
-SOLVER=`which DAMASK_spectral`
+SOLVER=`which DAMASK_spectral >/dev/null 2>&1`
 if [ "x$SOLVER" == "x" ]; then
   export SOLVER='Not found!'
 fi
-PROCESSING=`which postResults`
+PROCESSING=`which postResults >/dev/null 2>&1`
 if [ "x$PROCESSING" == "x" ]; then
   export PROCESSING='Not found!'
 fi
@@ -60,9 +60,9 @@ if [ ! -z "$PS1" ]; then
   echo "FFTW               $FFTW_ROOT"
   echo "HDF5               $HDF5_ROOT (for future use)"
   echo
-  echo "heap size/kB       `ulimit -d`"
-  echo "stack size/kB      `ulimit -s`"
-  fi
+  echo -n "heap  size/GiB     "; echo "`ulimit -d`/1024/1024" | bc
+  echo -n "stack size/GiB     "; echo "`ulimit -s`/1024/1024" | bc
+fi
 
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
