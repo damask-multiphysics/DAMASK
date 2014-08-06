@@ -258,7 +258,7 @@ class ASCIItable():
       pass                                                                      # assume/hope we are at data start already...
     self.data = numpy.loadtxt(self.__IO__['in'], usecols=indices)
     if len(self.data.shape) < 2:                                                # single column
-      self.data = self.data.reshape(self.data.shape[0],1)
+      self.data = self.data.reshape(1,self.data.shape[0])
     return self.data.shape
     
 # ------------------------------------------------------------------
