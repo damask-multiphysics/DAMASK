@@ -6,7 +6,7 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 def unravel(item):
@@ -19,11 +19,12 @@ def unravel(item):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) with derived values according to user defined arithmetic operation between column(s).
-Columns can be specified either by label or index. Use ';' for ',' in functions. Numpy is available as np
+Columns can be specified either by label or index. Use ';' for ',' in functions.
+Numpy is available as np.
 
 Example: distance to IP coordinates -- "math.sqrt( #ip.x#**2 + #ip.y#**2 + round(#ip.z#;3)**2 )"
-""", version = string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-l','--label',   dest='labels', action='extend', type='string', metavar='<string LIST>',
                                     help='(list of) new column labels')
@@ -60,7 +61,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   evaluator = {}
   brokenFormula = {}

@@ -7,7 +7,7 @@ from optparse import OptionParser
 from vtk.util import numpy_support
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
             
 # -----------------------------
@@ -111,7 +111,7 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          string.replace('powered by %s'%scriptID,'\n','\\n'),
+          'powered by %s'%scriptID,
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i double'%N1,
@@ -228,7 +228,7 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
   
   cmds = [\
           '# vtk DataFile Version 3.1',
-          string.replace('powered by %s'%scriptID,'\n','\\n'),
+          'powered by %s'%scriptID,
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
           'POINTS %i float'%N,
@@ -257,10 +257,10 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
 # ----------------------- MAIN -------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] datafile[s]', description = """
-Produce VTK file from data field. Coordinates are taken from (consecutive) x, y, and z columns.
+Produce VTK file from data field.
+Coordinates are taken from (consecutive) x, y, and z columns.
 
-""",version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 sepChoices = ['n','t','s']
 parser.add_option('-s', '--scalar', dest='scalar', action='extend', type='string', metavar = '<string LIST>',

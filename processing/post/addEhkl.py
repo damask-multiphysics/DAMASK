@@ -7,7 +7,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 def normalize(vec):
@@ -32,11 +32,9 @@ def E_hkl(stiffness,vec):   # stiffness = (c11,c12,c44)
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing directional stiffness
-based on given cubic stiffness values C11, C12, and C44 in consecutive columns.
+Add column(s) containing directional stiffness based on given cubic stiffness values C11, C12, and C44 in consecutive columns.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-c','--stiffness',   dest='vector', action='extend', type='string', metavar='<string LIST>',
                                         help='heading of column containing C11 (followed by C12, C44) field values')
@@ -75,7 +73,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   active = []
   column = defaultdict(dict)

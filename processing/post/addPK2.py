@@ -7,7 +7,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
@@ -15,11 +15,9 @@ scriptName = scriptID.split()[1]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing Second Piola--Kirchhoff stress based on given column(s) of
-deformation gradient and first Piola--Kirchhoff stress.
+Add column(s) containing Second Piola--Kirchhoff stress based on given column(s) of deformation gradient and first Piola--Kirchhoff stress.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-f','--defgrad',     dest='defgrad', action='store', type='string', metavar='string',
                                         help='heading of columns containing deformation gradient [%default]')
@@ -56,7 +54,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   active = defaultdict(list)
   column = defaultdict(dict)

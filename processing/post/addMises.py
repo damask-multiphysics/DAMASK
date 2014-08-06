@@ -7,7 +7,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 def Mises(what,tensor):
@@ -27,8 +27,7 @@ def Mises(what,tensor):
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add vonMises equivalent values for symmetric part of requested strains and/or stresses.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-e','--strain', dest='strain', action='extend', type='string', metavar='<string LIST>',
                                    help='heading(s) of columns containing strain tensors')
@@ -68,7 +67,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   active = defaultdict(list)
   column = defaultdict(dict)

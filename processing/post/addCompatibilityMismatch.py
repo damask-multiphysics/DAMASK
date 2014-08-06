@@ -6,7 +6,7 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
@@ -14,11 +14,11 @@ scriptName = scriptID.split()[1]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options file[s]', description = """
-Add column containing debug information
+Add column containing debug information.
 Operates on periodic ordered three-dimensional data sets.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
+
 
 parser.add_option('--no-shape','-s',    dest='noShape', action='store_false',
                                         help='do not calcuate shape mismatch [%default]')
@@ -54,13 +54,13 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out dimension and resolution ----------------------------------------------
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate data found...\n'%key)
+    file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
     continue
 
   grid = [{},{},{}]

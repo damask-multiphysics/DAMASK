@@ -7,7 +7,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 slipnormal_temp = [
@@ -246,8 +246,7 @@ def crossproduct(x,y):
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add columns listing Schmid factors (and optional trace vector of selected system) for given Euler angles.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-l','--lattice',   dest='lattice', action='store', type='choice',
                                       choices=('fcc','bcc','hex'), metavar='string',
@@ -326,7 +325,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   active = defaultdict(list)
   column = defaultdict(dict)
@@ -345,7 +344,7 @@ for file in files:
 
 # ------------------------------------------ assemble header --------------------------------------- 
 
-  table.labels_append(['(%i)S(%i %i %i)[%i %i %i]'%(i+1,
+  table.labels_append(['%i_S(%i_%i_%i)[%i_%i_%i]'%(i+1,
                        slipnormal[options.lattice][i][0],
                        slipnormal[options.lattice][i][1],
                        slipnormal[options.lattice][i][2],

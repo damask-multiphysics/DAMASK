@@ -7,9 +7,8 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
-
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -20,8 +19,7 @@ Add column(s) containing divergence of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 Deals with both vector- and tensor-valued fields.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 accuracyChoices = ['2','4','6','8']
 parser.add_option('--fdm',              dest='accuracy', action='extend', type='string', metavar='<int LIST>',
@@ -73,13 +71,13 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],True)                                      # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out dimension and resolution ----------------------------------------------
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate data found...\n'%key)
+    file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
     continue
 
   grid = [{},{},{}]

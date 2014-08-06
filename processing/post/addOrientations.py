@@ -6,7 +6,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
@@ -15,11 +15,9 @@ scriptName = scriptID.split()[1]
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add quaternion and/or Bunge Euler angle representation of crystal lattice orientation.
-Orientation is given by quaternion, Euler angles,
-rotation matrix, or crystal frame coordinates (i.e. component vectors of rotation matrix).
+Orientation is given by quaternion, Euler angles, rotation matrix, or crystal frame coordinates (i.e. component vectors of rotation matrix).
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 outputChoices = ['quaternion','eulers']
 parser.add_option('-o', '--output',     dest='output', action='extend', type='string', metavar='<string LIST>',
@@ -96,7 +94,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   active = defaultdict(list)
   column = defaultdict(dict)

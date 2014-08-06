@@ -7,7 +7,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
@@ -17,8 +17,7 @@ scriptName = scriptID.split()[1]
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing eigenvalues and eigenvectors of requested tensor column(s).
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
@@ -48,7 +47,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],True)                                      # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   active = []
   column = defaultdict(dict)

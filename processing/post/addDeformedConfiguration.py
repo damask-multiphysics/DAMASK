@@ -7,7 +7,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
@@ -18,8 +18,7 @@ parser = OptionParser(option_class=damask.extendableOption, usage='%prog options
 Add column(s) containing deformed configuration of requested column(s).
 Operates on periodic ordered three-dimensional data sets.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
                                         help='column heading for coordinates [%default]')
@@ -52,13 +51,13 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out dimension and resolution ----------------------------------------------
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate data found...\n'%key)
+    file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
     continue
 
   grid = [{},{},{}]

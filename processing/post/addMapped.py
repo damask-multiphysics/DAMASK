@@ -5,7 +5,7 @@ import os,re,sys,math,string
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id: addCauchy.py 3301 2014-07-22 14:21:49Z MPIE\m.diehl $'
+scriptID   = string.replace('$Id: addCauchy.py 3331 2014-08-04 17:53:41Z MPIE\m.diehl $','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # --------------------------------------------------------------------
@@ -15,8 +15,7 @@ scriptName = scriptID.split()[1]
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add data in column(s) of second ASCIItable selected from row that is given by the value in a mapping column.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-a','--asciitable',  dest='asciitable', action='store', type='string', metavar='string',
                                         help='mapped ASCIItable')
@@ -100,7 +99,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   if options.map not in table.labels:
     file['croak'].write('column %s not found...\n'%options.map)

@@ -7,7 +7,7 @@ from optparse import OptionParser
 from scipy import ndimage
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 def periodic_3Dpad(array, rimdim=(1,1,1)):
@@ -83,11 +83,10 @@ neighborhoods = {
                 }
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add column(s) containing Euclidean distance to grain structural features:
-boundaries, triple lines, and quadruple points.
+Add column(s) containing Euclidean distance to grain structural features: boundaries, triple lines, and quadruple points.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
+
 parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
                                         help='column heading for coordinates [%default]')
 parser.add_option('-i','--identifier',  dest='id', action='store', type='string', metavar = 'string',
@@ -126,13 +125,13 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
 # --------------- figure out position of labels and coordinates ------------------------------------
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate data found...\n'%key)
+    file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
     continue
 
   if options.id not in table.labels:

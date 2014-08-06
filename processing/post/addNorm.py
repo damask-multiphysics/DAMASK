@@ -6,7 +6,7 @@ from collections import defaultdict
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1]
 
 # definition of element-wise p-norms for matrices
@@ -26,8 +26,7 @@ def normMax(object):        # p = infinity
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add column(s) containing norm of requested column(s) being either vectors or tensors.
 
-""", version = string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 normChoices = ['abs','frobenius','max']
 parser.add_option('-n','--norm',        dest='norm', action='store', type='choice', choices=normChoices, metavar='string',
@@ -80,7 +79,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                    # make unbuffered ASCII_table
   table.head_read()                                                                                # read ASCII header info
-  table.info_append(string.replace(scriptID,'\n','\\n') + '\t' + ' '.join(sys.argv[1:]))
+  table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
   active = defaultdict(list)
   column = defaultdict(dict)
