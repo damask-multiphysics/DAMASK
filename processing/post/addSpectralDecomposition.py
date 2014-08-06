@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,string
 import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
@@ -41,7 +41,7 @@ for name in filenames:
   if os.path.exists(name):
     files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-#--- loop over input files ------------------------------------------------------------------------
+#--- loop over input files -------------------------------------------------------------------------
 for file in files:
   file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
@@ -60,13 +60,13 @@ for file in files:
       active.append(label)
       column[label] = table.labels.index(key)                                                       # remember columns of requested data
 
-# ------------------------------------------ assemble header ---------------------------------------  
+# ------------------------------------------ assemble header ---------------------------------------
   for labels in active: 
     table.labels_append(['%i_eigval(%s)'%(i+1,label) for i in xrange(3)])                           # extend ASCII header with new labels
     table.labels_append(['%i_eigvec(%s)'%(i+1,label) for i in xrange(9)])                           # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ process data ----------------------------------------  
+# ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for labels in active:                                                                           # loop over requested data
@@ -77,7 +77,7 @@ for file in files:
       table.data_append(list(v.transpose().reshape(datainfo['tensor']['len'])))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)

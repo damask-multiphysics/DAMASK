@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,string
 from collections import defaultdict
 from optparse import OptionParser
 import damask
@@ -42,7 +42,7 @@ datainfo = {                                                                    
 
 datainfo['tensor']['label'] += options.tensor
 
-# ------------------------------------------ setup file handles -----------------------------------
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -51,7 +51,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-#--- loop over input files ------------------------------------------------------------------------
+#--- loop over input files -------------------------------------------------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
@@ -71,12 +71,12 @@ for file in files:
       active.append(label)
       column[label] = table.labels.index(key)                                                       # remember columns of requested data
 
-# ------------------------------------------ assemble header --------------------------------------- 
+# ------------------------------------------ assemble header ---------------------------------------
   for label in active:
     table.labels_append('det(%s)'%label)                                                            # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------  
+# ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for label in active:
@@ -84,7 +84,7 @@ for file in files:
                                                          column[label]+datainfo['tensor']['len']])))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)

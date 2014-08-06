@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,string
 import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
@@ -69,7 +69,7 @@ toRadians = math.pi/180.0 if options.degrees else 1.0                           
 pole = np.array(options.pole)
 pole /= np.linalg.norm(pole)
 
-# ------------------------------------------ setup file handles -----------------------------------
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -104,11 +104,11 @@ for file in files:
   if missingColumns:
     continue
 
-# ------------------------------------------ assemble header ---------------------------------------  
+# ------------------------------------------ assemble header ---------------------------------------
   table.labels_append(['%i_IPF_%g%g%g'%(i+1,options.pole[0],options.pole[1],options.pole[2]) for i in xrange(3)])
   table.head_write()
 
-# ------------------------------------------ process data ----------------------------------------  
+# ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if input == 'eulers':
@@ -136,7 +136,7 @@ for file in files:
     table.data_append(o.IPFcolor(pole))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)

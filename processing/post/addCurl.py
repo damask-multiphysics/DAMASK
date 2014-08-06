@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,string
 import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
@@ -52,7 +52,7 @@ for name in filenames:
   if os.path.exists(name):
     files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-#--- loop over input files ------------------------------------------------------------------------
+#--- loop over input files -------------------------------------------------------------------------
 for file in files:
   file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
@@ -60,30 +60,37 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-# --------------- figure out dimension and resolution ----------------------------------------------
+# --------------- figure out size and grid ---------------------------------------------------------
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
   except ValueError:
     file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
     continue
 
-  grid = [{},{},{}]
+  coords = [{},{},{}]
   while table.data_read():                                                                          # read next data line of ASCII table
     for j in xrange(3):
-      grid[j][str(table.data[locationCol+j])] = True                                                # remember coordinate along x,y,z
-  resolution = np.array([len(grid[0]),\
-                         len(grid[1]),\
-                         len(grid[2]),],'i')                                                        # resolution is number of distinct coordinates found
-  dimension = resolution/np.maximum(np.ones(3,'d'),resolution-1.0)* \
-              np.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
-                        max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
-                        max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
-                        ],'d')                                                                      # dimension from bounding box, corrected for cell-centeredness
-  if resolution[2] == 1:
-    dimension[2] = min(dimension[:2]/resolution[:2])
-  N = resolution.prod()
+      coords[j][str(table.data[locationCol+j])] = True                                              # remember coordinate along x,y,z
+  grid = np.array([len(coords[0]),\
+                   len(coords[1]),\
+                   len(coords[2]),],'i')                                                            # grid is number of distinct coordinates found
+  size = grid/np.maximum(np.ones(3,'d'),grid-1.0)* \
+            np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
+                      max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
+                      max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
+                      ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
+
+  for i, points in enumerate(grid):
+    if points == 1:
+      options.packing[i] = 1
+      options.shift[i]   = 0
+      mask = np.ones(3,dtype=bool)
+      mask[i]=0
+      size[i] = min(size[mask]/grid[mask])                                                          # third spacing equal to smaller of other spacing
   
-# --------------- figure out columns to process  --------------------------------------------------
+  N = grid.prod()
+
+# --------------- figure out columns to process  ---------------------------------------------------
   active = defaultdict(list)
   column = defaultdict(dict)
   values = defaultdict(dict)
@@ -98,11 +105,11 @@ for file in files:
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
         values[datatype][label] = np.array([0.0 for i in xrange(N*datainfo[datatype]['len'])]).\
-                                           reshape(list(resolution)+[datainfo[datatype]['len']//3,3])
+                                           reshape(list(grid)+[datainfo[datatype]['len']//3,3])
         curl[datatype][label]   = np.array([0.0 for i in xrange(N*datainfo[datatype]['len'])]).\
-                                           reshape(list(resolution)+[datainfo[datatype]['len']//3,3])
+                                           reshape(list(grid)+[datainfo[datatype]['len']//3,3])
         
-# ------------------------------------------ assemble header ---------------------------------------  
+# ------------------------------------------ assemble header ---------------------------------------
   for datatype,labels in active.items():                                                            # loop over vector,tensor
     for label in labels:
       table.labels_append(['%i_curlFFT(%s)'%(i+1,label) 
@@ -113,7 +120,7 @@ for file in files:
   table.data_rewind()
   idx = 0
   while table.data_read():                                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,resolution)                                              # figure out (x,y,z) position from line count
+    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
     idx += 1
     for datatype,labels in active.items():                                                          # loop over vector,tensor
       for label in labels:                                                                          # loop over all requested curls
@@ -125,23 +132,23 @@ for file in files:
 # ------------------------------------------ process value field -----------------------------------
   for datatype,labels in active.items():                                                           # loop over vector,tensor
     for label in labels:                                                                           # loop over all requested curls
-      curl[datatype][label] = damask.core.math.curlFFT(dimension,values[datatype][label])
+      curl[datatype][label] = damask.core.math.curlFFT(size,values[datatype][label])
 
-# ------------------------------------------ process data ---------------------------------------
+# ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
   idx = 0
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
-    (x,y,z) = damask.util.gridLocation(idx,resolution)                                              # figure out (x,y,z) position from line count
+    (x,y,z) = damask.util.gridLocation(idx,grid)                                                    # figure out (x,y,z) position from line count
     idx += 1
     for datatype,labels in active.items():                                                          # loop over vector,tensor
       for label in labels:                                                                          # loop over all requested norms
         table.data_append(list(curl[datatype][label][x,y,z].reshape(datainfo[datatype]['len'])))
-    outputAlive = table.data_write()                                                                 # output processed line
+    outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------  
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  file['input'].close()                                                                             # close input ASCII table (works for stdin)
-  file['output'].close()                                                                            # close output ASCII table (works for stdout)
+  file['input'].close()                                                                             # close input ASCII table
+  file['output'].close()                                                                            # close output ASCII table
   os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new

@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,itertools,re,math,numpy
+import os,sys,string,itertools
+import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
 import damask
@@ -60,12 +61,20 @@ datainfo = {                                                               # lis
 if not set(options.output).issubset(set(outputChoices)):
   parser.error('output must be chosen from %s...'%(', '.join(outputChoices)))
 
-if options.eulers     != None:  datainfo['vector']['label'] += [options.eulers];                input = 'eulers'
+if options.eulers     != None:
+  datainfo['vector']['label'] += [options.eulers]
+  input = 'eulers'
 if options.a          != None and \
    options.b          != None and \
-   options.c          != None:  datainfo['vector']['label'] += [options.a,options.b,options.c]; input = 'frame'
-if options.matrix     != None:  datainfo['tensor']['label'] += [options.matrix];                input = 'matrix'
-if options.quaternion != None:  datainfo['quaternion']['label'] += [options.quaternion];        input = 'quaternion'
+   options.c          != None:
+  datainfo['vector']['label'] += [options.a,options.b,options.c]
+  input = 'frame'
+if options.matrix     != None:
+  datainfo['tensor']['label'] += [options.matrix]
+  input = 'matrix'
+if options.quaternion != None:
+  datainfo['quaternion']['label'] += [options.quaternion]
+  input = 'quaternion'
 
 inputGiven = 0
 for datatype,info in datainfo.items():
@@ -77,7 +86,7 @@ options.output = map(lambda x: x.lower(), options.output)
 
 r = damask.Quaternion().fromAngleAxis(toRadians*options.rotation[0],options.rotation[1:])
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+# ------------------------------------------ setup file handles ------------------------------------
 
 files = []
 if filenames == []:
@@ -87,7 +96,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ----------------------------------
+# ------------------------------------------ loop over input files ---------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
@@ -113,7 +122,7 @@ for file in files:
   if missingColumns:
     continue
 
-# ------------------------------------------ assemble header --------------------------------------- 
+# ------------------------------------------ assemble header ---------------------------------------
   for output in options.output:
     if output == 'quaternion':
       table.labels_append(['%i_quaternion_%s'%(i+1,options.symmetry) for i in xrange(4)])
@@ -121,29 +130,33 @@ for file in files:
       table.labels_append(['%i_eulers_%s'%(i+1,options.symmetry) for i in xrange(3)])
   table.head_write()
 
-# ------------------------------------------ process data ----------------------------------------  
+# ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if input == 'eulers':
-      o = damask.Orientation(Eulers=toRadians*numpy.array(map(float,table.data[column['vector'][options.eulers]:\
-                                                                               column['vector'][options.eulers]+datainfo['vector']['len']])),
+      o = damask.Orientation(Eulers=toRadians*\
+                 np.array(map(float,table.data[column['vector'][options.eulers]:\
+                                               column['vector'][options.eulers]+datainfo['vector']['len']])),
                              symmetry=options.symmetry).reduced()
     elif input == 'matrix':
-      o = damask.Orientation(matrix=numpy.array([map(float,table.data[column['tensor'][options.matrix]:\
-                                                                      column['tensor'][options.matrix]+datainfo['tensor']['len']])]),
+      o = damask.Orientation(matrix=\
+                 np.array([map(float,table.data[column['tensor'][options.matrix]:\
+                                                column['tensor'][options.matrix]+datainfo['tensor']['len']])]),
                              symmetry=options.symmetry).reduced()
     elif input == 'frame':
-      o = damask.Orientation(matrix=numpy.array([map(float,table.data[column['vector'][options.a]:\
-                                                                      column['vector'][options.a]+datainfo['vector']['len']] + \
-                                                           table.data[column['vector'][options.b]:\
-                                                                      column['vector'][options.b]+datainfo['vector']['len']] + \
-                                                           table.data[column['vector'][options.c]:\
-                                                                      column['vector'][options.c]+datainfo['vector']['len']]
+      o = damask.Orientation(matrix=\
+                 np.array([map(float,table.data[column['vector'][options.a]:\
+                                                column['vector'][options.a]+datainfo['vector']['len']] + \
+                                     table.data[column['vector'][options.b]:\
+                                                column['vector'][options.b]+datainfo['vector']['len']] + \
+                                     table.data[column['vector'][options.c]:\
+                                                column['vector'][options.c]+datainfo['vector']['len']]
                                                     )]).reshape(3,3),
                              symmetry=options.symmetry).reduced()
     elif input == 'quaternion':
-      o = damask.Orientation(quaternion=numpy.array(map(float,table.data[column['quaternion'][options.quaternion]:\
-                                                                         column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
+      o = damask.Orientation(quaternion=\
+                 np.array(map(float,table.data[column['quaternion'][options.quaternion]:\
+                                               column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
                              symmetry=options.symmetry).reduced()
 
     o.quaternion = r*o.quaternion
@@ -155,7 +168,7 @@ for file in files:
         table.data_append(o.asEulers('Bunge'))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)

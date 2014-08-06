@@ -41,7 +41,7 @@ if len(options.labels) != len(options.formulas):
 for i in xrange(len(options.formulas)):
   options.formulas[i]=options.formulas[i].replace(';',',')
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -99,7 +99,7 @@ for file in files:
       for label in options.labels:
         labelLen[label] = np.size(eval(eval(evaluator[label])))
 
-# ------------------------------------------ assemble header ---------------------------------------  
+# ------------------------------------------ assemble header ---------------------------------------
       for label,formula in zip(options.labels,options.formulas):
         if labelLen[label] == 0:
           brokenFormula[label] = True
@@ -112,7 +112,7 @@ for file in files:
     for label in options.labels: table.data_append(unravel(eval(eval(evaluator[label]))))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)

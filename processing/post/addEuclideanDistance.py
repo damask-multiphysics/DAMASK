@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,string
 import numpy as np
 from optparse import OptionParser
 from scipy import ndimage
@@ -112,7 +112,7 @@ if 'biplane' in options.type and 'boundary' in options.type:
 feature_list = []
 for i,feature in enumerate(features):
   if feature['name'] in options.type: feature_list.append(i)                                        # remember valid features
-# ------------------------------------------ setup file handles -----------------------------------
+# ------------------------------------------ setup file handles ------------------------------------
 
 files = []
 for name in filenames:
@@ -138,29 +138,29 @@ for file in files:
     file['croak'].write('column %s not found...\n'%options.id)
     continue
 
-# ------------------------------------------ assemble header --------------------------------------- 
+# ------------------------------------------ assemble header ---------------------------------------
   for feature in feature_list:
     table.labels_append('ED_%s(%s)'%(features[feature]['name'],options.id))                         # extend ASCII header with new labels
 
   table.head_write()
 
-# ------------------------------------------ process data ---------------------------------------   
+# ------------------------------------------ process data ------------------------------------------
   
   table.data_readArray([options.coords+'.x',options.coords+'.y',options.coords+'.z',options.id])
 
-  grid = [{},{},{}]
+  coords = [{},{},{}]
   for i in xrange(len(table.data)):
     for j in xrange(3):
-      grid[j][str(table.data[i,j])] = True
+      coords[j][str(table.data[i,j])] = True
 
-  resolution = np.array(map(len,grid),'i')
+  grid = np.array(map(len,coords),'i')
   unitlength = 0.0
-  for i,r in enumerate(resolution):
-    if r > 1: unitlength = max(unitlength,(max(map(float,grid[i].keys()))-min(map(float,grid[i].keys())))/(r-1.0))
+  for i,r in enumerate(grid):
+    if r > 1: unitlength = max(unitlength,(max(map(float,coords[i].keys()))-min(map(float,coords[i].keys())))/(r-1.0))
 
   neighborhood = neighborhoods[options.neighborhood]
-  convoluted = np.empty([len(neighborhood)]+list(resolution+2),'i')
-  microstructure = periodic_3Dpad(np.array(table.data[:,3].reshape(resolution),'i'))
+  convoluted = np.empty([len(neighborhood)]+list(grid+2),'i')
+  microstructure = periodic_3Dpad(np.array(table.data[:,3].reshape(grid),'i'))
   
   for i,p in enumerate(neighborhood):
     stencil = np.zeros((3,3,3),'i')
@@ -171,11 +171,11 @@ for file in files:
 
     convoluted[i,:,:,:] = ndimage.convolve(microstructure,stencil)
   
-  distance = np.ones((len(feature_list),resolution[0],resolution[1],resolution[2]),'d')
+  distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
   
   convoluted = np.sort(convoluted,axis=0)
-  uniques = np.zeros(resolution)
-  check = np.empty(resolution)
+  uniques = np.zeros(grid)
+  check = np.empty(grid)
   check[:,:,:] = np.nan
   for i in xrange(len(neighborhood)):
     uniques += np.where(convoluted[i,1:-1,1:-1,1:-1] == check,0,1)
@@ -185,9 +185,9 @@ for file in files:
   
   for i in xrange(len(feature_list)):
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[unitlength]*3
-  distance.shape = (len(feature_list),resolution.prod())
+  distance.shape = (len(feature_list),grid.prod())
   
-# ------------------------------------------ process data ---------------------------------------
+# ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
   l = 0
   while table.data_read():
@@ -196,9 +196,9 @@ for file in files:
     l += 1
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  file['input'].close()                                                                             # close input ASCII table (works for stdin)
-  file['output'].close()                                                                            # close output ASCII table (works for stdout)
+  file['input'].close()                                                                             # close input ASCII table
+  file['output'].close()                                                                            # close output ASCII table
   os.rename(file['name']+'_tmp',file['name'])                                                       # overwrite old one with tmp new

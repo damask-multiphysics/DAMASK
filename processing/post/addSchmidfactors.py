@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,math,string
 import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
@@ -309,7 +309,7 @@ if options.lattice=='hex':                                                      
     slipnormal[options.lattice][i]=normalize(slipnormal[options.lattice][i])
     slipdirection[options.lattice][i]=normalize(slipdirection[options.lattice][i])
 
-# ------------------------------------------ setup file handles ---------------------------------------
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -318,7 +318,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------
+# ------------------------------------------ loop over input files ---------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
@@ -342,7 +342,7 @@ for file in files:
         file['croak'].write('column %s not found...\n'%label)
         break
 
-# ------------------------------------------ assemble header --------------------------------------- 
+# ------------------------------------------ assemble header ---------------------------------------
 
   table.labels_append(['%i_S(%i_%i_%i)[%i_%i_%i]'%(i+1,
                        slipnormal[options.lattice][i][0],
@@ -360,7 +360,7 @@ for file in files:
       table.labels_append(['(%i)tx\tty\ttz'%(i+1) for i in range(Nslipsystems[options.lattice])])
   table.head_write()
 
-# ------------------------------------------ process data ----------------------------------------  
+# ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     [phi1,Phi,phi2] = Eulers=toRadians*np.array(map(\
@@ -382,7 +382,7 @@ for file in files:
         table.data_append('\t'.join(map(str,trace[SabsSorted[-options.rank][1]])) + '\t%i'%(1+SabsSorted[-options.rank][1]))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,string
 from optparse import OptionParser
 import damask
 
@@ -57,7 +57,7 @@ if options.vector  != None:    datainfo['vector']['label']  += options.vector
 if options.tensor  != None:    datainfo['tensor']['label']  += options.tensor
 if options.special != None:    datainfo['special']['label'] += options.special
 
-# ------------------------------------------ processing mapping ASCIItable ---------------------------
+# ------------------------------------------ processing mapping ASCIItable -------------------------
 if options.asciitable != None and os.path.isfile(options.asciitable):
   mappedTable = damask.ASCIItable(open(options.asciitable),None,False) 
   mappedTable.head_read()                                                                           # read ASCII header info of mapped table
@@ -83,7 +83,7 @@ if options.asciitable != None and os.path.isfile(options.asciitable):
 else:
   parser.error('missing mapped ASCIItable...')
 
-# ------------------------------------------ setup file handles ---------------------------------------
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -92,7 +92,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------
+# ------------------------------------------ loop over input files ---------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
@@ -105,21 +105,21 @@ for file in files:
     file['croak'].write('column %s not found...\n'%options.map)
     continue
 
-# ------------------------------------------ assemble header ------------------------------------ 
+# ------------------------------------------ assemble header --------------------------------------
   for datatype,info in datainfo.items():
     for label in info['label']:
       table.labels_append({True:['%i_%s'%(i+1,label) for i in xrange(info['len'])],
                            False:table.labels_append(label)}[info['len']>1] )                      # extend ASCII header of current table with new labels
   table.head_write()
 
-# ------------------------------------------ process data ----------------------------------------
+# ------------------------------------------ process data ------------------------------------------
   mappedColumn = table.labels.index(options.map)
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     table.data_append(mappedTable.data[int(table.data[mappedColumn])+options.offset-1])             # add all mapped data types
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)

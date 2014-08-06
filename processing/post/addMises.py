@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string
+import os,sys,math,string
 import numpy as np
 from collections import defaultdict
 from optparse import OptionParser
@@ -51,7 +51,7 @@ datainfo = {                                                                    
 if options.strain != None:    datainfo['strain']['label'] += options.strain
 if options.stress != None:    datainfo['stress']['label'] += options.stress
 
-# ------------------------------------------ setup file handles ---------------------------------------
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -60,7 +60,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------------
+# ------------------------------------------ loop over input files ---------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
@@ -81,13 +81,13 @@ for file in files:
         active[datatype].append(label)
         column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
 
-# ------------------------------------------ assemble header --------------------------------------- 
+# ------------------------------------------ assemble header ---------------------------------------
   for datatype,labels in active.items():                                                            # loop over vector,tensor
     for label in labels:                                                                            # loop over all requested determinants
       table.labels_append('Mises(%s)'%label)                                                        # extend ASCII header with new labels
   table.head_write()
 
-# ------------------------------------------ process data ----------------------------------------  
+# ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     for datatype,labels in active.items():                                                          # loop over vector,tensor
@@ -97,7 +97,7 @@ for file in files:
                                                   column[datatype][label]+datainfo[datatype]['len']]),'d').reshape(3,3)))
     outputAlive = table.data_write()                                                                # output processed line
 
-# ------------------------------------------ output result ---------------------------------------  
+# ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table (works for stdin)
