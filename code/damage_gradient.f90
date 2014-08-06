@@ -26,7 +26,8 @@ module damage_gradient
    damage_gradient_Noutput                                                                   !< number of outputs per instance of this damage 
 
  real(pReal),                         dimension(:),     allocatable,         public :: &
-   damage_gradient_crack_mobility
+   damage_gradient_crack_mobility, &
+   damage_gradient_aTol
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -117,6 +118,7 @@ subroutine damage_gradient_init(fileUnit)
  allocate(damage_gradient_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_gradient_Noutput(maxNinstance),                             source=0_pInt) 
  allocate(damage_gradient_crack_mobility(maxNinstance),                      source=0.0_pReal) 
+ allocate(damage_gradient_aTol(maxNinstance),                                source=0.001_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -156,6 +158,9 @@ subroutine damage_gradient_init(fileUnit)
 
        case ('crack_mobility')
          damage_gradient_crack_mobility(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('atol_damage')
+         damage_gradient_aTol(instance) = IO_floatValue(line,positions,2_pInt)
      end select
    endif; endif
  enddo parsingFile
@@ -246,7 +251,7 @@ subroutine damage_gradient_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the damage
  real(pReal), dimension(damageState(phase)%sizeState) :: tempTol
 
- tempTol = 1.0_pReal
+ tempTol = damage_gradient_aTol(instance)
  damageState(phase)%aTolState = tempTol
 end subroutine damage_gradient_aTolState
  
@@ -291,7 +296,8 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
                                                       strain))
 
  damageState(phase)%state(2,constituent) = abs(strainEnergy)/ &
-                                           (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)
+                                           (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal) + &
+                                           damageState(phase)%state(1,constituent)
   
 end subroutine damage_gradient_microstructure
  
@@ -304,7 +310,10 @@ subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
    phase_damageInstance, &
    damageState
  use math, only: &
-   math_Mandel6to33
+   math_Mandel6to33, &
+   math_trace33
+ use lattice, only: &
+   lattice_surfaceEnergy33
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -323,8 +332,8 @@ subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
  instance = phase_damageInstance(phase)
  
  damageState(phase)%dotState(1,constituent) = &
-   0.0_pReal
-   !sum(abs(math_Mandel6to33(Tstar_v)*Lp))
+   sum(abs(math_Mandel6to33(Tstar_v)*Lp))/ &
+   (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)
   
 end subroutine damage_gradient_dotState
 
