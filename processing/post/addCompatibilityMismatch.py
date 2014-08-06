@@ -7,7 +7,7 @@ from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -74,7 +74,7 @@ for file in files:
             np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
                       max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
                       max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
-                      ],'d')                                                                        # dimension from bounding box, corrected for cell-centeredness
+                      ],'d')                                                                        # size from bounding box, corrected for cell-centeredness
 
   for i, points in enumerate(grid):
     if points == 1:
@@ -87,18 +87,12 @@ for file in files:
   N = grid.prod()
 
 # --------------- figure out columns to process  ---------------------------------------------------
-  missingColumns = False
-  
-  for label in datainfo['defgrad']['label']:
-    key = '1_%s'%label
-    if key not in table.labels:
-      file['croak'].write('column %s not found...\n'%key)
-      missingColumns = True
-    else:
-      column = table.labels.index(key)                                                              # remember columns of requested data
-
-  if missingColumns:
+  key = '1_%s'%datainfo['defgrad']['label'][0]
+  if key not in table.labels:
+    file['croak'].write('column %s not found...\n'%key)
     continue
+  else:
+    column = table.labels.index(key)                                                                # remember columns of requested data
 
 # ------------------------------------------ assemble header ---------------------------------------
   if not options.noShape:  table.labels_append(['shapeMismatch(%s)' %options.defgrad])

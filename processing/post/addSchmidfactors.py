@@ -3,12 +3,11 @@
 
 import os,sys,math,string
 import numpy as np
-from collections import defaultdict
 from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 slipnormal_temp = [
     [0,0,0,1],
@@ -327,20 +326,12 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-  active = defaultdict(list)
-  column = defaultdict(dict)
-
-  for datatype,info in datainfo.items():
-    for label in info['label']:
-      foundIt = False
-      for key in ['1_'+label,label]:
-        if key in table.labels:
-          foundIt = True
-          active[datatype].append(label)
-          column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
-      if not foundIt:
-        file['croak'].write('column %s not found...\n'%label)
-        break
+  key = '1_%s'%datainfo['vector']['label'][0]
+  if key not in table.labels:
+    file['croak'].write('column %s not found...\n'%key)
+    continue
+  else:
+    column = table.labels.index(key)                                                                # remember columns of requested data
 
 # ------------------------------------------ assemble header ---------------------------------------
 
@@ -364,8 +355,7 @@ for file in files:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     [phi1,Phi,phi2] = Eulers=toRadians*np.array(map(\
-                           float,table.data[column['vector'][options.eulers]:\
-                                            column['vector'][options.eulers]+datainfo['vector']['len']]))
+                           float,table.data[column:column+datainfo['vector']['len']]))
     S = [ sum( [applyEulers(phi1,Phi,phi2,normalize( \
                 slipnormal[options.lattice][slipsystem]))[i]*options.stressnormal[i] for i in range(3)] ) * \
           sum( [applyEulers(phi1,Phi,phi2,normalize( \

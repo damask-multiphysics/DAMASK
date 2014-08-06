@@ -7,7 +7,7 @@ from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 # definition of element-wise p-norms for matrices
 def normAbs(object):        # p = 1

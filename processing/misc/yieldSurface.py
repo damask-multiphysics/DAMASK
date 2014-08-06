@@ -199,7 +199,6 @@ def doSim(delay,thread):
   
   global stressAll
   stressAll=np.append(yieldStress,stressAll)
-  print np.shape(stressAll)
   print('starting fitting for sim %i from %s'%(me,thread))
   myFit.fit(stressAll.reshape(len(stressAll)//9,9).transpose())
   s.release()

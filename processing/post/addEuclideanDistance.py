@@ -8,7 +8,7 @@ from scipy import ndimage
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 def periodic_3Dpad(array, rimdim=(1,1,1)):
 

@@ -7,7 +7,7 @@ from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 def determinant(m):
   return  +m[0]*m[4]*m[8] \
@@ -63,6 +63,7 @@ for file in files:
   active = []
   column = defaultdict(dict)
 
+# --------------- figure out columns to process  ---------------------------------------------------
   for label in datainfo['tensor']['label']:
     key = '1_%s'%label
     if key not in table.labels:

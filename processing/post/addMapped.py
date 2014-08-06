@@ -6,7 +6,7 @@ from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id: addCauchy.py 3331 2014-08-04 17:53:41Z MPIE\m.diehl $','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -67,14 +67,12 @@ if options.asciitable != None and os.path.isfile(options.asciitable):
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      foundIt = False
-      for key in ['1_'+label,label]:
-        if key in mappedTable.labels:
-          foundIt = True
-          labels.append(label)                                                                      # extend labels
-          indices += range(mappedTable.labels.index(key),
-                           mappedTable.labels.index(key)+datainfo[datatype]['len'])
-      if not foundIt:
+      key  = {True:'1_'+label,False:label}[info['len']==1]
+      if key in mappedTable.labels:
+        labels.append(label)                                                                      # extend labels
+        indices += range(mappedTable.labels.index(key),
+                         mappedTable.labels.index(key)+datainfo[datatype]['len'])
+      else:
         file['croak'].write('column %s not found...\n'%label)
         break
 

@@ -3,12 +3,11 @@
 
 import os,sys,string,itertools
 import numpy as np
-from collections import defaultdict
 from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -105,8 +104,7 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-  active = defaultdict(list)
-  column = defaultdict(dict)
+  column = {}
   missingColumns = False
 
   for datatype,info in datainfo.items():
@@ -116,8 +114,7 @@ for file in files:
         file['croak'].write('column %s not found...\n'%key)
         missingColumns = True                                                                       # break if label not found
       else:
-        active[datatype].append(label)
-        column[datatype][label] = table.labels.index(key)                                           # remember columns of requested data
+        column[label] = table.labels.index(key)                                                     # remember columns of requested data
 
   if missingColumns:
     continue
@@ -135,28 +132,28 @@ for file in files:
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     if input == 'eulers':
       o = damask.Orientation(Eulers=toRadians*\
-                 np.array(map(float,table.data[column['vector'][options.eulers]:\
-                                               column['vector'][options.eulers]+datainfo['vector']['len']])),
+                 np.array(map(float,table.data[column[options.eulers]:\
+                                               column[options.eulers]+datainfo['vector']['len']])),
                              symmetry=options.symmetry).reduced()
     elif input == 'matrix':
       o = damask.Orientation(matrix=\
-                 np.array([map(float,table.data[column['tensor'][options.matrix]:\
-                                                column['tensor'][options.matrix]+datainfo['tensor']['len']])]),
+                 np.array([map(float,table.data[column[options.matrix]:\
+                                                column[options.matrix]+datainfo['tensor']['len']])]),
                              symmetry=options.symmetry).reduced()
     elif input == 'frame':
       o = damask.Orientation(matrix=\
-                 np.array([map(float,table.data[column['vector'][options.a]:\
-                                                column['vector'][options.a]+datainfo['vector']['len']] + \
-                                     table.data[column['vector'][options.b]:\
-                                                column['vector'][options.b]+datainfo['vector']['len']] + \
-                                     table.data[column['vector'][options.c]:\
-                                                column['vector'][options.c]+datainfo['vector']['len']]
+                 np.array([map(float,table.data[column[options.a]:\
+                                                column[options.a]+datainfo['vector']['len']] + \
+                                     table.data[column[options.b]:\
+                                                column[options.b]+datainfo['vector']['len']] + \
+                                     table.data[column[options.c]:\
+                                                column[options.c]+datainfo['vector']['len']]
                                                     )]).reshape(3,3),
                              symmetry=options.symmetry).reduced()
     elif input == 'quaternion':
       o = damask.Orientation(quaternion=\
-                 np.array(map(float,table.data[column['quaternion'][options.quaternion]:\
-                                               column['quaternion'][options.quaternion]+datainfo['quaternion']['len']])),
+                 np.array(map(float,table.data[column[options.quaternion]:\
+                                               column[options.quaternion]+datainfo['quaternion']['len']])),
                              symmetry=options.symmetry).reduced()
 
     o.quaternion = r*o.quaternion

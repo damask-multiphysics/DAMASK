@@ -7,7 +7,7 @@ from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -47,10 +47,9 @@ if np.any(options.shift != 0):
 files = []
 for name in filenames:
   if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'croak':sys.stderr,\
-                  'output':open(os.path.join(os.path.dirname(name),prefix+os.path.basename(name)),'w')})
+    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-#--- loop over input files ------------------------------------------------------------------------
+#--- loop over input files -------------------------------------------------------------------------
 for file in files:
   file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
@@ -58,7 +57,7 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-# --------------- figure out size and grid ----------------------------------------------
+# --------------- figure out size and grid ---------------------------------------------------------
   try:
     locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
     elemCol = table.labels.index('elem')
@@ -78,7 +77,7 @@ for file in files:
               np.array([max(map(float,coords[0].keys()))-min(map(float,coords[0].keys())),\
                         max(map(float,coords[1].keys()))-min(map(float,coords[1].keys())),\
                         max(map(float,coords[2].keys()))-min(map(float,coords[2].keys())),\
-                        ],'d')                                                                      # dimension from bounding box, corrected for cell-centeredness
+                        ],'d')                                                                      # size from bounding box, corrected for cell-centeredness
     origin = np.array([min(map(float,coords[0].keys())),\
                        min(map(float,coords[1].keys())),\
                        min(map(float,coords[2].keys())),\
@@ -104,7 +103,7 @@ for file in files:
 # ------------------------------------------ assemble header ---------------------------------------
   table.head_write()
 
-# ------------------------------------------ process data -----------------------------------------
+# ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
   data = np.zeros(outSize.tolist()+[len(table.labels)])
   p = np.zeros(3,'i')
@@ -128,11 +127,13 @@ for file in files:
           data[a,b,c,locationCol+i] = posOffset[i] + x*elementSize[i] + origin[i]
         data[a,b,c,elemCol] = elem
         table.data = data[a,b,c,:].tolist()
-        table.data_write()                                                                          # output processed line
+        outputAlive = table.data_write()                                                            # output processed line
         elem += 1
 
-# ------------------------------------------ output result ----------------------------------------  
-  table.output_flush()                                                                              # just in case of buffered ASCII table
+# ------------------------------------------ output result -----------------------------------------  
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
   file['input'].close()                                                                             # close input ASCII table
   file['output'].close()                                                                            # close output ASCII table
+  os.rename(file['name']+'_tmp',\
+            os.path.join(os.path.dirname(file['name']),prefix+os.path.basename(file['name'])))
