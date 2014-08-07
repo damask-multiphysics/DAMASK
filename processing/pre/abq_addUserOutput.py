@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
 '''
@@ -10,12 +10,12 @@ See Abaqus Keyword Reference Manual (AKRM) *DEPVAR for details.
 Original script: marc_addUserOutput.py modified by Benjamin Bode
 '''
 
-import sys,os,re
-import damask 
+import sys,os,re,string
 from optparse import OptionParser
+import damask 
 
 scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 # -----------------------------
 def ParseOutputFormat(filename,what,me):
@@ -69,8 +69,9 @@ that are written during the first run of the model.
 
 Specify which user block format you want to apply by stating the homogenization, crystallite, and phase identifiers.
 Or have an existing set of user variables copied over from another *.inp file.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version= scriptID)
+
 parser.add_option('-n','--number', dest='number', type='int', \
           help='maximum requested User Defined Variable [%default]')
 parser.add_option('--homogenization', dest='homog', type='string', \
