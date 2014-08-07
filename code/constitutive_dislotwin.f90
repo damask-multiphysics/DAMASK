@@ -1523,7 +1523,7 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  ns = constitutive_dislotwin_totalNslip(instance)
  nt = constitutive_dislotwin_totalNtwin(instance)
 
-! allocate(constitutive_dislotwin_dotState(plasticState(ph)%sizeDotState))
+
  !* Total twin volume fraction
  sumf = sum(plasticState(ph)%state((3_pInt*ns+1_pInt):(3_pInt*ns+nt), of)) ! safe for nt == 0
  plasticState(ph)%dotState(:,of) = 0.0_pReal
