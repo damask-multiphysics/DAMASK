@@ -436,7 +436,7 @@ subroutine crystallite_init(temperature)
    enddo
  !$OMP END PARALLEL DO
 
- call crystallite_stressAndItsTangent(.true.,.false.)                                               ! request elastic answers
+ call crystallite_stressAndItsTangent(.true.)                                                       ! request elastic answers
  crystallite_fallbackdPdF = crystallite_dPdF                                                        ! use initial elastic stiffness as fallback
  
 !--------------------------------------------------------------------------------------------------
@@ -495,7 +495,7 @@ end subroutine crystallite_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculate stress (P) and tangent (dPdF) for crystallites
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
+subroutine crystallite_stressAndItsTangent(updateJaco)
  use numerics, only: &
    subStepMinCryst, &
    subStepSizeCryst, &
@@ -530,7 +530,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
    math_Mandel33to6, &
    math_I3, &
    math_mul3333xx3333, &
-   math_mul33xx33
+   math_mul33xx33, &
+   math_invert
  use FEsolving, only: &
    FEsolving_execElem, & 
    FEsolving_execIP
@@ -550,12 +551,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
    mappingConstitutive, &
    homogenization_maxNgrains
  use constitutive, only:  &
-   constitutive_TandItsTangent
+   constitutive_TandItsTangent, &
+   constitutive_LpAndItsTangent
  
  implicit none
  logical, intent(in) :: &
-   updateJaco, &                                                                                    !< whether to update the Jacobian (stiffness) or not
-   rate_sensitivity                                                                                 !< rate sensitiv calculation
+   updateJaco                                                                                       !< whether to update the Jacobian (stiffness) or not
  real(pReal) :: &
    myPert, &                                                                                        ! perturbation with correct sign
    formerSubStep, &
@@ -602,7 +603,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
                                       dSdF, &
                                       dSdFdot, &
                                       dFp_invdFdot, &
-                                      junk2
+                                      junk2, &
+                                      dLpdS,dFpinvdF,rhs_3333,lhs_3333,temp_3333
+ real(pReal), dimension(9,9)::       temp_99
+ logical :: error
  real(pReal) :: counter
  
  
@@ -1099,65 +1103,61 @@ subroutine crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)
 
      ! --- ANALYTIC JACOBIAN ---
 
-     !$OMP PARALLEL DO PRIVATE(dFedF,dSdF,dSdFe,myNgrains)
+     !$OMP PARALLEL DO PRIVATE(dFedF,dSdF,dSdFe,dLpdS,dFpinvdF,rhs_3333,lhs_3333,temp_3333,temp_99,junk,myNgrains)
        elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
            do g = 1_pInt,myNgrains
+             call constitutive_TandItsTangent(junk,dSdFe,crystallite_Fe(1:3,1:3,g,i,e),g,i,e)      ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
+             call constitutive_LpAndItsTangent(junk,temp_99,crystallite_Tstar_v(1:6,g,i,e), &
+                                               crystallite_temperature(i,e),g,i,e)              
+             dLpdS = reshape(temp_99,shape=[3,3,3,3])
+             rhs_3333 = 0.0_pReal
+             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+               rhs_3333(p,o,1:3,1:3) = math_mul33x33(dSdFe(p,o,1:3,1:3), &
+                                                     math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))
+             junk = math_mul33x33(math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
+                                                crystallite_Fp(1:3,1:3,g,i,e)), &
+                                  math_inv33(crystallite_Fp0(1:3,1:3,g,i,e)))
+             temp_3333 = 0.0_pReal
+             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+               temp_3333(1:3,1:3,p,o) = math_mul33x33(junk,dLpdS(1:3,1:3,p,o))
+             lhs_3333 = crystallite_dt(g,i,e)*math_mul3333xx3333(dSdFe,temp_3333)
+             call math_invert(9_pInt,math_identity2nd(9_pInt)+reshape(lhs_3333,shape=[9,9]),temp_99,error)
+             if (error) call IO_error(error_ID=400_pInt,ext_msg='analytic tangent inversion')
+             dSdF = math_mul3333xx3333(reshape(temp_99,shape=[3,3,3,3]),rhs_3333)
+             temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
+             dFpinvdF = 0.0_pReal
+             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+               dFpinvdF(1:3,1:3,p,o) = -crystallite_dt(g,i,e)* &
+                                        math_mul33x33(math_inv33(crystallite_Fp0(1:3,1:3,g,i,e)), &
+                                                      temp_3333(1:3,1:3,p,o))
+             temp_3333 = 0.0_pReal
+             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
+               temp_3333(o,p,o,1:3) = crystallite_invFp(1:3,p,g,i,e)                                       ! dFe^T_ij/dF_kl = delta_jk * (Fp current^-1)_li
              dFedF = 0.0_pReal
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dFedF(o,p,o,1:3) = crystallite_invFp(1:3,p,g,i,e)                                       ! dFe^T_ij/dF_kl = delta_jk * (Fp current^-1)_li
-             call constitutive_TandItsTangent(junk,dSdFe,crystallite_subFe0(1:3,1:3,g,i,e),g,i,e)      ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
-             dSdF = math_mul3333xx3333(dSdFe,dFedF)                                                    ! dS/dF = dS/dFe * dFe/dF
+               dFedF(1:3,1:3,p,o) = temp_3333(1:3,1:3,p,o) + &
+                                    math_mul33x33(math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
+                                                                crystallite_Fp(1:3,1:3,g,i,e)), &
+                                                  dFpinvdF(1:3,1:3,p,o))     
+
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               crystallite_dPdF(1:3,1:3,o,p,g,i,e) = math_mul33x33(math_mul33x33(dFedF(1:3,1:3,o,p),&
-                      math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))),math_transpose33(&
-                      crystallite_invFp(1:3,1:3,g,i,e))) &                                             ! dP/dF = dFe/dF * S * Fp^-T...
-                      + math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e),&
-                      math_mul33x33(dSdF(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))) !         + Fe * dS/dF * Fp^-T         
+               crystallite_dPdF(1:3,1:3,o,p,g,i,e) = &
+                 math_mul33x33(math_mul33x33(dFedF(1:3,1:3,o,p),&
+                                             math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))), &
+                               math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))                + &                                             ! dP/dF = dFe/dF * S * Fp^-T...
+                 math_mul33x33(math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
+                                             crystallite_Fp(1:3,1:3,g,i,e)), &
+                               math_mul33x33(dSdF(1:3,1:3,o,p), &
+                                             math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))) + &!         + Fe * dS/dF * Fp^-T         
+                 math_mul33x33(math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
+                                             crystallite_Fp(1:3,1:3,g,i,e)), &
+                               math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)), &
+                                             math_transpose33(dFpinvdF(1:3,1:3,p,o))))               !         + Fe * dS/dF * Fp^-T         
          enddo; enddo
        enddo elementLooping6
      !$OMP END PARALLEL DO
-
-     rateSensitivity: if (rate_sensitivity) then
-     !$OMP PARALLEL DO PRIVATE(dFedFdot,dSdFdot,dSdFe,Fpinv_rate,FDot_inv,counter,dFp_invdFdot,myNgrains)
-       elementLooping11: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-         myNgrains = homogenization_Ngrains(mesh_element(3,e))
-         do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                                ! iterate over IPs of this element to be processed
-           do g = 1_pInt,myNgrains
-             Fpinv_rate = math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e))    ! dFp^-1 = dFp^-1/dt *dt... dFp may overshoot dF by small ammount as 
-             FDot_inv = crystallite_subF(1:3,1:3,g,i,e) - crystallite_F0(1:3,1:3,g,i,e)
-             counter = 0.0_pReal
-             do p=1_pInt,3_pInt; do o=1_pInt,3_pInt
-               if (abs(FDot_inv(o,p)) < relevantStrain) then
-                 FDot_inv(o,p) = 0.0_pReal
-               else  
-                 counter = counter + 1.0_pReal
-                 FDot_inv(o,p) = crystallite_dt(g,i,e)/FDot_inv(o,p)
-               endif 
-             enddo; enddo
-             if (counter > 0.0_pReal) FDot_inv = FDot_inv/counter
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dFp_invdFdot(o,p,1:3,1:3) = Fpinv_rate(o,p)*FDot_inv
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dFedFdot(1:3,1:3,o,p) = math_transpose33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
-                                       dFp_invdFdot(1:3,1:3,o,p)))
-             call constitutive_TandItsTangent(junk,dSdFe,crystallite_subFe0(1:3,1:3,g,i,e),g,i,e)            ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
-             dSdFdot = math_mul3333xx3333(dSdFe,dFedFdot)
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               crystallite_dPdF(1:3,1:3,o,p,g,i,e) = crystallite_dPdF(1:3,1:3,o,p,g,i,e) - &
-                      (math_mul33x33(math_mul33x33(dFedFdot(1:3,1:3,o,p), &
-                      math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))),math_transpose33( &
-                      crystallite_invFp(1:3,1:3,g,i,e))) + &                                                  ! dP/dFdot = dFe/dFdot * S * Fp^-T...
-                      math_mul33x33(math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
-                      math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))),math_transpose33(dFp_invdFdot(1:3,1:3,o,p))) &   !            + Fe * S * dFp^-T/dFdot...
-                      + math_mul33x33(crystallite_subFe0(1:3,1:3,g,i,e), &
-                      math_mul33x33(dSdFdot(1:3,1:3,o,p),math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))) !           + Fe * dS/dFdot * Fp^-T         
-         enddo; enddo; 
-       enddo elementLooping11
-     !$OMP END PARALLEL DO
-     endif rateSensitivity
-
 
    else jacobianMethod
      

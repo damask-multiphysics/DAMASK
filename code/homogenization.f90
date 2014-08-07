@@ -342,7 +342,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  implicit none
  real(pReal), intent(in) :: dt                                                                      !< time increment
  logical,     intent(in) :: updateJaco                                                              !< initiating Jacobian update
- logical                 :: rate_sensitivity
  integer(pInt) :: &
    NiterationHomog, &
    NiterationMPstate, &
@@ -540,8 +539,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
 ! crystallite integration
 ! based on crystallite_partionedF0,.._partionedF
 ! incrementing by crystallite_dt
-     rate_sensitivity = .false.                                                                      ! request rate sensitive contribution to dPdF
-     call crystallite_stressAndItsTangent(updateJaco,rate_sensitivity)                               ! request stress and tangent calculation for constituent grains
+     call crystallite_stressAndItsTangent(updateJaco)                                                ! request stress and tangent calculation for constituent grains
 
 !--------------------------------------------------------------------------------------------------
 ! state update
