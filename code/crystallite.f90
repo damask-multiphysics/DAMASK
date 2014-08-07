@@ -519,7 +519,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    debug_g, &
    debug_CrystalliteLoopDistribution
  use IO, only: &
-   IO_warning
+   IO_warning, &
+   IO_error
  use math, only: &
    math_inv33, &
    math_identity2nd, &
