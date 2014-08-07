@@ -2,11 +2,14 @@
 
 # $Id$
 
+import sys
+import numpy as np
+
 class ASCIItable():
   '''
      There should be a doc string here  :)
   '''
-  import sys,numpy
+
   __slots__ = ['__IO__',
                'info',
                'labels',
@@ -59,7 +62,6 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def output_flush(self,
                    clear = True):
-    import sys
     try:
       self.__IO__['output'] == [] or self.__IO__['out'].write('\n'.join(self.__IO__['output']) + '\n')
     except(IOError) as e:
@@ -244,7 +246,6 @@ class ASCIItable():
 # ------------------------------------------------------------------
   def data_readArray(self,
                      labels = []):
-    import numpy
     '''
        read whole data of all (given) labels as numpy array
     '''
@@ -256,9 +257,7 @@ class ASCIItable():
       self.data_rewind()                                                        # try to wind back to start of data
     except:
       pass                                                                      # assume/hope we are at data start already...
-    self.data = numpy.loadtxt(self.__IO__['in'], usecols=indices)
-    if len(self.data.shape) < 2:                                                # single column
-      self.data = self.data.reshape(1,self.data.shape[0])
+    self.data = np.loadtxt(self.__IO__['in'], usecols=indices,ndmin=2)
     return self.data.shape
     
 # ------------------------------------------------------------------
@@ -275,11 +274,10 @@ class ASCIItable():
 
 # ------------------------------------------------------------------
   def data_writeArray(self,format = '%g',delimiter = '\t'):
-    import numpy
     '''
        write whole numpy array data
     '''
-    return numpy.savetxt(self.__IO__['out'],self.data,fmt = format,delimiter = delimiter)
+    return np.savetxt(self.__IO__['out'],self.data,fmt = format,delimiter = delimiter)
 
 # ------------------------------------------------------------------
   def data_append(self,
