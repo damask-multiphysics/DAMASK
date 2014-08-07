@@ -60,8 +60,8 @@ if [ ! -z "$PS1" ]; then
   echo "FFTW               $FFTW_ROOT"
   echo "HDF5               $HDF5_ROOT (for future use)"
   echo
-  echo -n "heap  size/GiB     "; echo "`ulimit -d`/1024/1024" | bc
-  echo -n "stack size/GiB     "; echo "`ulimit -s`/1024/1024" | bc
+  echo -n "heap  size/MiB     "; echo "`ulimit -d`/1024" | bc
+  echo -n "stack size/MiB     "; echo "`ulimit -s`/1024" | bc
 fi
 
 export DAMASK_NUM_THREADS
