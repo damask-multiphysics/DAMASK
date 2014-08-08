@@ -15,10 +15,12 @@ module constitutive_damage
  integer(pInt), public, protected :: &
    constitutive_damage_maxSizePostResults, &
    constitutive_damage_maxSizeDotState
+
  public :: & 
    constitutive_damage_init, &
    constitutive_damage_microstructure, &
    constitutive_damage_collectDotState, &
+   constitutive_damage_getDamage, &
    constitutive_damage_postResults
  
 contains
@@ -201,6 +203,41 @@ subroutine constitutive_damage_collectDotState(Tstar_v, Fe, Lp, ipc, ip, el)
 
 end subroutine constitutive_damage_collectDotState
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on each damage model state layout 
+!--------------------------------------------------------------------------------------------------
+function constitutive_damage_getDamage(ipc, ip, el)
+ use material, only: &
+   material_phase, &
+   phase_damage, &
+   DAMAGE_none_ID, &
+   DAMAGE_local_ID, &
+   DAMAGE_gradient_ID
+ use damage_local, only: &
+   damage_local_getDamage
+ use damage_gradient, only: &
+   damage_gradient_getDamage
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: constitutive_damage_getDamage
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (DAMAGE_none_ID)
+     constitutive_damage_getDamage = 1.0_pReal
+   
+   case (DAMAGE_local_ID)
+     constitutive_damage_getDamage = damage_local_getDamage(ipc, ip, el)
+
+   case (DAMAGE_gradient_ID)
+     constitutive_damage_getDamage = damage_gradient_getDamage(ipc, ip, el)
+
+ end select
+
+end function constitutive_damage_getDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results

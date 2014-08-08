@@ -42,6 +42,7 @@ module damage_local
    damage_local_stateInit, &
    damage_local_aTolState, &
    damage_local_dotState, &
+   damage_local_getDamage, &
    damage_local_postResults
 
 contains
@@ -243,7 +244,8 @@ subroutine damage_local_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the damage
  real(pReal), dimension(damageState(phase)%sizeState) :: tempTol
 
- tempTol = damage_local_aTol(instance)
+ tempTol(1) = 100.0_pReal
+ tempTol(2) = damage_local_aTol(instance)
  damageState(phase)%aTolState = tempTol
 end subroutine damage_local_aTolState
  
@@ -257,6 +259,7 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
    damageState
  use math, only: &
    math_Mandel66to3333, &
+   math_Mandel6to33, &
    math_mul33x33, &
    math_mul3333xx33, &
    math_transpose33, &
@@ -292,14 +295,35 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
                     damageState(phase)%state(1,constituent)))
  
  damageState(phase)%dotState(1,constituent) = &
-   0.0_pReal
+   sum(abs(math_Mandel6to33(Tstar_v)*Lp))/ &
+   (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)
  damageState(phase)%dotState(2,constituent) = &
    damage_local_crack_mobility(instance)* &
    (trialDamage - damageState(phase)%state(2,constituent))
   
 end subroutine damage_local_dotState
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on local damage model state layout 
+!--------------------------------------------------------------------------------------------------
+function damage_local_getDamage(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: damage_local_getDamage
  
+ damage_local_getDamage = &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))* &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))
+
+end function damage_local_getDamage
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------

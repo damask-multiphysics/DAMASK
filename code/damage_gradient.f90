@@ -44,6 +44,7 @@ module damage_gradient
    damage_gradient_aTolState, &
    damage_gradient_microstructure, &
    damage_gradient_dotState, &
+   damage_gradient_getDamage, &
    damage_gradient_postResults
 
 contains
@@ -337,6 +338,26 @@ subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
   
 end subroutine damage_gradient_dotState
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on gradient damage model state layout 
+!--------------------------------------------------------------------------------------------------
+function damage_gradient_getDamage(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: damage_gradient_getDamage
+ 
+ damage_gradient_getDamage = &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(3,mappingConstitutive(1,ipc,ip,el))* &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(3,mappingConstitutive(1,ipc,ip,el))
+
+end function damage_gradient_getDamage
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

@@ -42,6 +42,7 @@ module thermal_adiabatic
    thermal_adiabatic_stateInit, &
    thermal_adiabatic_aTolState, &
    thermal_adiabatic_dotState, &
+   thermal_adiabatic_getTemperature, &
    thermal_adiabatic_postResults
 
 contains
@@ -279,6 +280,25 @@ subroutine thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
   
 end subroutine thermal_adiabatic_dotState
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on adiabatic thermal model state layout 
+!--------------------------------------------------------------------------------------------------
+function thermal_adiabatic_getTemperature(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   thermalState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: thermal_adiabatic_getTemperature
+ 
+ thermal_adiabatic_getTemperature = &
+   thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
+
+end function thermal_adiabatic_getTemperature
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
