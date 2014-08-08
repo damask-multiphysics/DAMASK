@@ -1031,9 +1031,9 @@ function constitutive_dislokmc_homogenizedC(ipc,ip,el)
  !* Homogenized elasticity matrix
  constitutive_dislokmc_homogenizedC = (1.0_pReal-sumf)*lattice_C66(1:6,1:6,ph)
  do i=1_pInt,nt
-    constitutive_dislokmc_homogenizedC = &
-      constitutive_dislokmc_homogenizedC + plasticState(ph)%state(3_pInt*ns+i, of)*lattice_Ctwin66(1:6,1:6,ph)
- enddo
+    constitutive_dislokmc_homogenizedC = constitutive_dislokmc_homogenizedC &
+                   + plasticState(ph)%state(3_pInt*ns+i, of)*constitutive_dislokmc_Ctwin66(1:6,1:6,i,instance)
+ enddo 
  
  end function constitutive_dislokmc_homogenizedC
  

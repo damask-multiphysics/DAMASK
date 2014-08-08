@@ -1056,8 +1056,8 @@ function constitutive_dislotwin_homogenizedC(ipc,ip,el)
  !* Homogenized elasticity matrix
  constitutive_dislotwin_homogenizedC = (1.0_pReal-sumf)*lattice_C66(1:6,1:6,ph)
  do i=1_pInt,nt
-    constitutive_dislotwin_homogenizedC = &
-      constitutive_dislotwin_homogenizedC + plasticState(ph)%state(3_pInt*ns+i, of)*lattice_Ctwin66(1:6,1:6,ph)
+    constitutive_dislotwin_homogenizedC = constitutive_dislotwin_homogenizedC &
+                   + plasticState(ph)%state(3_pInt*ns+i, of)*constitutive_dislotwin_Ctwin66(1:6,1:6,i,instance)
  enddo
  
  end function constitutive_dislotwin_homogenizedC
