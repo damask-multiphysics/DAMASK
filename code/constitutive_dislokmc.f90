@@ -1032,7 +1032,7 @@ function constitutive_dislokmc_homogenizedC(ipc,ip,el)
  constitutive_dislokmc_homogenizedC = (1.0_pReal-sumf)*lattice_C66(1:6,1:6,ph)
  do i=1_pInt,nt
     constitutive_dislokmc_homogenizedC = &
-      constitutive_dislokmc_homogenizedC + plasticState(ph)%state(3_pInt*ns+i, of)*lattice_C66(1:6,1:6,ph)
+      constitutive_dislokmc_homogenizedC + plasticState(ph)%state(3_pInt*ns+i, of)*lattice_Ctwin66(1:6,1:6,ph)
  enddo
  
  end function constitutive_dislokmc_homogenizedC
