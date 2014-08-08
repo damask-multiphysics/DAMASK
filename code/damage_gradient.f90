@@ -262,7 +262,6 @@ end subroutine damage_gradient_aTolState
 subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
    damageState
  use math, only: &
    math_Mandel66to3333, &
@@ -287,22 +286,16 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
  integer(pInt) :: &
    phase, constituent 
  real(pReal) :: &
-   strainEnergy, strain(3,3),strain_trace
+   strainEnergy, strain(3,3), negative_volStrain
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
 
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- strain_trace = math_trace33(strain)
+ negative_volStrain = min(0.0_pReal,math_trace33(strain)/3.0_pReal)
 
- if(strain_trace < 0.0_pReal) then
-  strain = strain  - (strain_trace/3.0_pReal)*math_I3
-  strainEnergy = 0.5_pReal*sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), &
-                                                      strain ))
- else
-  strainEnergy = 0.5_pReal*sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), &
-                                                      strain))
- endif
+ strainEnergy = 0.5_pReal*sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), &
+                                                      strain  - negative_volStrain*math_I3))
 
  damageState(phase)%state(2,constituent) = abs(strainEnergy)/ &
                                            (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal) + &
@@ -313,14 +306,19 @@ end subroutine damage_gradient_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
+subroutine damage_gradient_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
  use math, only: &
-   math_Mandel6to33, &
-   math_trace33
+   math_Mandel66to3333, &
+   math_mul33x33, &
+   math_mul3333xx33, &
+   math_transpose33, &
+   math_trace33, &
+   math_I3
  use lattice, only: &
+   lattice_C66, &
    lattice_surfaceEnergy33
 
  implicit none
@@ -331,15 +329,20 @@ subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in), dimension(3,3) :: &
-   Lp
+   Fe, Lp
  integer(pInt) :: &
-   instance, phase, constituent 
+   phase, constituent 
+ real(pReal), dimension(3,3) :: &
+   stress, strain
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  
+ strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+ stress = math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), strain)
+ 
  damageState(phase)%dotState(1,constituent) = &
-   sum(abs(math_Mandel6to33(Tstar_v)*Lp))/ &
+   sum(abs(stress*Lp))/ &
    (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)
   
 end subroutine damage_gradient_dotState

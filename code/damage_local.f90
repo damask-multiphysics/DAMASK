@@ -255,7 +255,6 @@ end subroutine damage_local_aTolState
 subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
    damageState
  use math, only: &
    math_Mandel66to3333, &
@@ -280,22 +279,23 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
    Lp, &
    Fe
  integer(pInt) :: &
-   phase, constituent, instance
+   phase, constituent
  real(pReal) :: &
-   trialDamage, strain(3,3)
+   trialDamage, strain(3,3), stress(3,3), negative_volStrain
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
 
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+ negative_volStrain = min(0.0_pReal,math_trace33(strain)/3.0_pReal)
+ stress = math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)),strain)
  trialDamage = min(1.0_pReal, &
                    (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)/ & 
-                   (abs(sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)),strain))) + &
+                   (abs(sum((strain - negative_volStrain*math_I3)*stress)) + &
                     damageState(phase)%state(1,constituent)))
  
  damageState(phase)%dotState(1,constituent) = &
-   sum(abs(math_Mandel6to33(Tstar_v)*Lp))
+   sum(abs(stress*Lp))
  damageState(phase)%dotState(2,constituent) = &
    damage_local_crack_mobility(instance)* &
    (trialDamage - damageState(phase)%state(2,constituent))

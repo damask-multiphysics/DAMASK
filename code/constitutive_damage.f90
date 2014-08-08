@@ -197,7 +197,7 @@ subroutine constitutive_damage_collectDotState(Tstar_v, Fe, Lp, ipc, ip, el)
      call damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
 
    case (DAMAGE_gradient_ID)
-     call damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
+     call damage_gradient_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
 
  end select
 
