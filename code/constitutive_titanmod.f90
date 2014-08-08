@@ -669,7 +669,7 @@ subroutine constitutive_titanmod_init(fileUnit)
  sanityChecks: do phase = 1_pInt, size(phase_plasticity)
    myPhase: if (phase_plasticity(phase) == PLASTICITY_TITANMOD_ID) then
      instance = phase_plasticityInstance(phase) 
-     if (sum(constitutive_titanmod_Nslip(:,instance)) <= 0_pInt) &
+     if (sum(constitutive_titanmod_Nslip(:,instance)) < 0_pInt) &
        call IO_error(211_pInt,el=instance,ext_msg='nslip ('//PLASTICITY_TITANMOD_label//')')
      if (sum(constitutive_titanmod_Ntwin(:,instance)) < 0_pInt) &
        call IO_error(211_pInt,el=instance,ext_msg='ntwin ('//PLASTICITY_TITANMOD_label//')')
@@ -718,7 +718,7 @@ subroutine constitutive_titanmod_init(fileUnit)
      if (constitutive_titanmod_twinhpconstant(instance) <= 0.0_pReal) &
        call IO_error(211_pInt,el=instance,ext_msg='twinhpconstant ('//PLASTICITY_TITANMOD_label//')')
      if (constitutive_titanmod_aTolRho(instance) <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_TITANMOD_label//')')
+       call IO_error(211_pInt,el=instance,ext_msg='aTol_rho ('//PLASTICITY_TITANMOD_label//')')
      
 !--------------------------------------------------------------------------------------------------
 ! determine total number of active slip or twin systems
