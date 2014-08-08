@@ -397,9 +397,9 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      Lp = 0.0_pReal
      dLp_dTstar = math_identity2nd(9)
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_LpAndItsTangent           (Lp,dLp_dTstar,Tstar_v,ipc,ip,el)
+     call constitutive_j2_LpAndItsTangent           (Lp,dLp_dTstar,Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,ipc,ip,el)
+     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      call constitutive_nonlocal_LpAndItsTangent     (Lp,dLp_dTstar,Tstar_v,temperature,    ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
@@ -455,8 +455,8 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    math_mul3333xx33, &
    math_Mandel66to3333, &
    math_transpose33, &
-   MATH_I3, &
-   math_trace33
+   math_trace33, &
+   math_I3
  use material, only: &
    mappingConstitutive
  use lattice, only: &
@@ -480,42 +480,30 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    dT_dFe                                                                                           !< dT/dFe
  
  integer(pInt) :: i, j, k, l
- real(pReal), dimension(3,3)     :: FeT,strain, CxxDel, CxxDel_undamaged
- real(pReal), dimension(3,3,3,3) :: C, C_undamged
- real(pReal) :: strain_trace
+ real(pReal)   :: damage, negative_volStrain, negative_volStress, Csum
+ real(pReal), dimension(3,3)     :: strain
+ real(pReal), dimension(3,3,3,3) :: C
 
- C_undamged = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
- C  = constitutive_damageValue(ipc,ip,el)*&
-     math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ damage = constitutive_damageValue(ipc,ip,el)
+ strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+ negative_volStrain = min(0.0_pReal,math_trace33(strain)/3.0_pReal)
+ negative_volStress = math_trace33(math_mul3333xx33(C,negative_volStrain*math_I3))/3.0_pReal
+ T = damage* &
+     math_mul3333xx33(C,strain - lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
+                                 (constitutive_temperature(ipc,ip,el) - &
+                                  lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))) + &
+     (1.0_pReal - damage)*negative_volStress*math_I3
+     
+ Csum = sum(math_I3*math_mul3333xx33(C,math_I3))/9.0_pReal
+ C = damage*C
+ forall (i = 1_pInt:3_pInt) &
+   C(1:3,1:3,i,i) = C(1:3,1:3,i,i) + (1.0_pReal - damage)*Csum*math_I3
 
- FeT = math_transpose33(Fe)
- strain = 0.5_pReal*(math_mul33x33(FeT,Fe)-MATH_I3)
- strain_trace = math_trace33(strain)
-
-
- if(strain_trace>=0.0_pReal) then
- T = math_mul3333xx33(C,strain) - &
-                        lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
-                        (constitutive_temperature(ipc,ip,el) - &
-                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
    dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3))                                            ! dT*_ij/dFe_kl
- else  
-  strain = strain - (strain_trace/3)*math_I3                                                        ! removing (negative) volumetric part
-  
- T = math_mul3333xx33(C,strain) + &
-           math_mul3333xx33(C_undamged,((strain_trace/3)*math_I3 )) - &
-                        lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
-                        (constitutive_temperature(ipc,ip,el) - &
-                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))
-  CxxDel           = math_mul3333xx33(C,math_I3)                                                    ! temporary variable C_ijxy * del_xy (damaged part)
-  CxxDel_undamaged = math_mul3333xx33(C_undamged,math_I3)                                                    ! temporary variable C_ijxy * del_xy (Undamaged part)
-  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
-    dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3)) - &
-                              0.5*CxxDel(i,j)*Fe(k,l) + &
-                               0.5*CxxDel_undamaged(i,j)*Fe(k,l)                                    ! dT*_ij/dFe_kl = C_ijlt*Fe_kt - 0.5*Cxxdel_ij*Fe_kl
- endif
+
 end subroutine constitutive_hooke_TandItsTangent
 
 
@@ -549,6 +537,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
+ use constitutive_damage, only: &
+   constitutive_damageValue  
  use constitutive_j2, only:  &
    constitutive_j2_dotState
  use constitutive_phenopowerlaw, only: &
@@ -587,9 +577,9 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
  
  select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_dotState           (Tstar_v,ipc,ip,el)
+     call constitutive_j2_dotState           (Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
+     call constitutive_phenopowerlaw_dotState(Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      call constitutive_dislotwin_dotState    (Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
@@ -697,6 +687,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
+ use constitutive_damage, only: &
+   constitutive_damageValue  
  use constitutive_j2, only: &
 #ifdef HDF
    constitutive_j2_postResults2,&
@@ -734,7 +726,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    case (PLASTICITY_J2_ID)
      constitutive_postResults= constitutive_j2_postResults            (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
+     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)

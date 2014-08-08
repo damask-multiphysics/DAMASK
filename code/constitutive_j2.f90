@@ -343,7 +343,7 @@ end subroutine constitutive_j2_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
+subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,damage,ipc,ip,el)
  use math, only: &
    math_mul6x6, &
    math_Mandel6to33, &
@@ -368,6 +368,8 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
 
  real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), intent(in) :: &
+   damage
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -395,7 +397,7 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    dLp_dTstar99 = 0.0_pReal
  else
    gamma_dot = constitutive_j2_gdot0(instance) &
-             * (sqrt(1.5_pReal) * norm_Tstar_dev / (constitutive_j2_fTaylor(instance) * &
+             * (sqrt(1.5_pReal) * norm_Tstar_dev / (damage * constitutive_j2_fTaylor(instance) * &
                plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
                                                   **constitutive_j2_n(instance)
 
@@ -419,7 +421,7 @@ end subroutine constitutive_j2_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
+subroutine constitutive_j2_dotState(Tstar_v,damage,ipc,ip,el)
  use math, only: &
    math_mul6x6
  use mesh, only: &
@@ -441,6 +443,8 @@ subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
    el                                                                                               !< element
  real(pReal), dimension(6) :: &
    Tstar_dev_v                                                                                      !< deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), intent(in) :: &
+   damage
  real(pReal) :: &
    gamma_dot, &                                                                                     !< strainrate
    hardening, &                                                                                     !< hardening coefficient
@@ -465,7 +469,7 @@ subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
 ! strain rate 
  gamma_dot = constitutive_j2_gdot0(instance) * ( sqrt(1.5_pReal) * norm_Tstar_dev & 
             / &!-----------------------------------------------------------------------------------
-           (constitutive_j2_fTaylor(instance)*plasticState(ph)%state(1,of)) )**constitutive_j2_n(instance)
+           (damage*constitutive_j2_fTaylor(instance)*plasticState(ph)%state(1,of)) )**constitutive_j2_n(instance)
  
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient

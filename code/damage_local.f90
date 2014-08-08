@@ -255,6 +255,7 @@ end subroutine damage_local_aTolState
 subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
+   phase_damageInstance, &
    damageState
  use math, only: &
    math_Mandel66to3333, &
@@ -279,12 +280,13 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
    Lp, &
    Fe
  integer(pInt) :: &
-   phase, constituent
+   phase, constituent, instance
  real(pReal) :: &
    trialDamage, strain(3,3), stress(3,3), negative_volStrain
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
+ instance = phase_damageInstance(phase)                                                     ! which instance of my damage is present phase
 
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
  negative_volStrain = min(0.0_pReal,math_trace33(strain)/3.0_pReal)
