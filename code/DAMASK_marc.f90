@@ -124,6 +124,7 @@ end module DAMASK_interface
 #include "constitutive_phenopowerlaw.f90"
 #include "constitutive_titanmod.f90"
 #include "constitutive_dislotwin.f90"
+#include "constitutive_dislokmc.f90"
 #include "constitutive_nonlocal.f90"
 #include "constitutive.f90"
 #include "crystallite.f90"

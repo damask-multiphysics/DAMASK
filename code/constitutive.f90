@@ -81,6 +81,7 @@ subroutine constitutive_init
    PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_DISLOTWIN_ID, &
+   PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID ,&
    ELASTICITY_HOOKE_label, &
@@ -88,15 +89,18 @@ subroutine constitutive_init
    PLASTICITY_J2_label, &
    PLASTICITY_PHENOPOWERLAW_label, &
    PLASTICITY_DISLOTWIN_label, &
+   PLASTICITY_DISLOKMC_label, &
    PLASTICITY_TITANMOD_label, &
+   PLASTICITY_NONLOCAL_label, &
    plasticState, &
-   mappingConstitutive, &
+   mappingConstitutive
  
-   PLASTICITY_NONLOCAL_label
+
  use constitutive_none
  use constitutive_j2
  use constitutive_phenopowerlaw
  use constitutive_dislotwin
+ use constitutive_dislokmc
  use constitutive_titanmod
  use constitutive_nonlocal
  implicit none
@@ -120,6 +124,7 @@ subroutine constitutive_init
  if (any(phase_plasticity == PLASTICITY_J2_ID))            call constitutive_j2_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_DISLOKMC_ID))      call constitutive_dislokmc_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call constitutive_titanmod_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
   call constitutive_nonlocal_init(FILEUNIT)
@@ -155,6 +160,10 @@ subroutine constitutive_init
        outputName = PLASTICITY_DISLOTWIN_label
        thisOutput => constitutive_dislotwin_output
        thisSize   => constitutive_dislotwin_sizePostResult
+     case (PLASTICITY_DISLOKMC_ID)
+       outputName = PLASTICITY_DISLOKMC_label
+       thisOutput => constitutive_dislokmc_output
+       thisSize   => constitutive_dislokmc_sizePostResult
      case (PLASTICITY_TITANMOD_ID)
        outputName = PLASTICITY_TITANMOD_label
        thisOutput => constitutive_titanmod_output
@@ -244,13 +253,17 @@ function constitutive_homogenizedC(ipc,ip,el)
    phase_plasticity, &
    material_phase, &
    PLASTICITY_TITANMOD_ID, &
+   PLASTICITY_DISLOTWIN_ID, &
+   PLASTICITY_DISLOKMC_ID, &
    plasticState,&
-   mappingConstitutive, &
-   PLASTICITY_DISLOTWIN_ID
+   mappingConstitutive
+
  use constitutive_titanmod, only: &
    constitutive_titanmod_homogenizedC
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_homogenizedC
+ use constitutive_dislokmc, only: &
+   constitutive_dislokmc_homogenizedC
  use lattice, only: &
    lattice_C66
 
@@ -264,7 +277,9 @@ function constitutive_homogenizedC(ipc,ip,el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(ipc,ip,el) 
+     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(ipc,ip,el)
+   case (PLASTICITY_DISLOKMC_ID)
+     constitutive_homogenizedC = constitutive_dislokmc_homogenizedC(ipc,ip,el) 
    case (PLASTICITY_TITANMOD_ID)
      constitutive_homogenizedC = constitutive_titanmod_homogenizedC (ipc,ip,el)
    case default
@@ -285,16 +300,20 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
    phase_plasticity, &
    material_phase, &
    PLASTICITY_DISLOTWIN_ID, &
-   plasticState, &
-   mappingConstitutive, &
+   PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
-   PLASTICITY_NONLOCAL_ID
+   PLASTICITY_NONLOCAL_ID, &
+   plasticState, &
+   mappingConstitutive
+
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_microstructure
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_microstructure
+ use constitutive_dislokmc, only: &
+   constitutive_dislokmc_microstructure
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -311,6 +330,8 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
        
    case (PLASTICITY_DISLOTWIN_ID)
      call constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
+   case (PLASTICITY_DISLOKMC_ID)
+     call constitutive_dislokmc_microstructure(temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
      call constitutive_titanmod_microstructure (temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
@@ -338,6 +359,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_DISLOTWIN_ID, &
+   PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
  use constitutive_j2, only: &
@@ -346,6 +368,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    constitutive_phenopowerlaw_LpAndItsTangent
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_LpAndItsTangent
+ use constitutive_dislokmc, only: &
+   constitutive_dislokmc_LpAndItsTangent
  use constitutive_titanmod, only: &
    constitutive_titanmod_LpAndItsTangent
  use constitutive_nonlocal, only: &
@@ -378,6 +402,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      call constitutive_nonlocal_LpAndItsTangent     (Lp,dLp_dTstar,Tstar_v,temperature,    ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      call constitutive_dislotwin_LpAndItsTangent    (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
+   case (PLASTICITY_DISLOKMC_ID)
+     call constitutive_dislokmc_LpAndItsTangent    (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
      call constitutive_titanmod_LpAndItsTangent     (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
 
@@ -526,6 +552,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_DISLOTWIN_ID, &
+   PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
  use constitutive_j2, only:  &
@@ -534,6 +561,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    constitutive_phenopowerlaw_dotState
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_dotState
+ use constitutive_dislokmc, only: &
+   constitutive_dislokmc_dotState
  use constitutive_titanmod, only: &
    constitutive_titanmod_dotState
  use constitutive_nonlocal, only: &
@@ -569,6 +598,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
      call constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      call constitutive_dislotwin_dotState    (Tstar_v,Temperature,ipc,ip,el)
+   case (PLASTICITY_DISLOKMC_ID)
+     call constitutive_dislokmc_dotState    (Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
      call constitutive_titanmod_dotState     (Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
@@ -669,6 +700,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    PLASTICITY_J2_ID, &
    PLASTICITY_PHENOPOWERLAW_ID, &
    PLASTICITY_DISLOTWIN_ID, &
+   PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
  use constitutive_j2, only: &
@@ -680,6 +712,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    constitutive_phenopowerlaw_postResults
  use constitutive_dislotwin, only: &
    constitutive_dislotwin_postResults
+ use constitutive_dislokmc, only: &
+   constitutive_dislokmc_postResults
  use constitutive_titanmod, only: &
    constitutive_titanmod_postResults
  use constitutive_nonlocal, only: &
@@ -709,6 +743,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
      constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
+   case (PLASTICITY_DISLOKMC_ID)
+     constitutive_postResults = constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_postResults = constitutive_nonlocal_postResults (Tstar_v,FeArray,        ip,el)
  end select

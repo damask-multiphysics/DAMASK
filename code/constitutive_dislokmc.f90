@@ -232,10 +232,6 @@ subroutine constitutive_dislokmc_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
 
- allocate(constitutive_dislotkmc_sizeDotState(maxNinstance),                       source=0_pInt)
- allocate(constitutive_dislotkmc_sizeState(maxNinstance),                          source=0_pInt)
- allocate(constitutive_dislokmc_sizeDotState(maxNinstance),                        source=0_pInt)
- allocate(constitutive_dislokmc_sizeState(maxNinstance),                           source=0_pInt)
  allocate(constitutive_dislokmc_sizePostResults(maxNinstance),                     source=0_pInt)
  allocate(constitutive_dislokmc_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
  allocate(constitutive_dislokmc_output(maxval(phase_Noutput),maxNinstance))
@@ -1316,7 +1312,7 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
  
         !* Shear rates due to slip                                                                                                                                              
         vel_slip(j) = exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislokmc_qPerSlipFamily(f,instance)) &
-                     * (1-constitutive_dislokmc_sPerSlipFamily(f,instance) &
+                     * (1.0_pReal-constitutive_dislokmc_sPerSlipFamily(f,instance) &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislokmc_qPerSlipFamily(f,instance)))
                        
         gdot_slip(j) = (1.0_pReal - sumf) * DotGamma0 &
@@ -1552,10 +1548,10 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
       (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
          **(constitutive_dislokmc_pPerSlipFamily(f,instance)-1.0_pReal)
 
-        StressRatio_u = ((abs(tau_slip(j))-state%p(6*ns+4*nt+j, of))/&
+        StressRatio_u = ((abs(tau_slip(j))-plasticState(ph)%state(6*ns+4*nt+j, of))/&
          (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
        **constitutive_dislokmc_uPerSlipFamily(f,instance)
-        StressRatio_uminus1 = ((abs(tau_slip(j))-state%p(6*ns+4*nt+j,of))/&
+        StressRatio_uminus1 = ((abs(tau_slip(j))-plasticState(ph)%state(6*ns+4*nt+j,of))/&
    (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
            **(constitutive_dislokmc_uPerSlipFamily(f,instance)-1.0_pReal)
 
@@ -1803,7 +1799,7 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
                 constitutive_dislokmc_postResults(c+j) = &
                   DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
                                constitutive_dislokmc_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau) & 
-                               * (1-constitutive_dislokmc_sPerSlipFamily(f,instance) &
+                               * (1.0_pReal-constitutive_dislokmc_sPerSlipFamily(f,instance) &
                                * exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**constitutive_dislokmc_qPerSlipFamily(f,instance)))
               else
                 constitutive_dislokmc_postResults(c+j) = 0.0_pReal
@@ -1844,8 +1840,6 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
                 (16.0_pReal*pi*abs(dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))))
               constitutive_dislokmc_postResults(c+j)=min(constitutive_dislokmc_postResults(c+j),&
                                                             plasticState(ph)%state(5*ns+3*nt+j, of))
- !            constitutive_dislokmc_postResults(c+j)=max(constitutive_dislokmc_postResults(c+j),&
- !                                                            plasticState(ph)%state(4*ns+2*nt+j, of))
         enddo; enddo
         c = c + ns
        case (resolved_stress_shearband_ID)
@@ -1904,10 +1898,10 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
                                         constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
                    **(constitutive_dislokmc_pPerSlipFamily(f,instance)-1.0_pReal)
 
-                 StressRatio_u = ((abs(tau)-state%p(6*ns+4*nt+j, of))/&
+                 StressRatio_u = ((abs(tau)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
      (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
             **constitutive_dislokmc_uPerSlipFamily(f,instance)
-                  StressRatio_uminus1 = ((abs(tau)-state%p(6*ns+4*nt+j, of))/&
+                  StressRatio_uminus1 = ((abs(tau)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
    (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
                **(constitutive_dislokmc_uPerSlipFamily(f,instance)-1.0_pReal)
 
@@ -1921,7 +1915,7 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
                !* Shear rates due to slip                                                                                                                                                      
                  gdot_slip(j) = DotGamma0*exp(-BoltzmannRatio*(1_pInt-StressRatio_p)**&
                                 constitutive_dislokmc_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau) &
-                     * (1_pInt-constitutive_dislokmc_sPerSlipFamily(f,instance) &
+                     * (1.0_pReal-constitutive_dislokmc_sPerSlipFamily(f,instance) &
                 * exp(-BoltzmannRatio*(1_pInt-StressRatio_p) ** constitutive_dislokmc_qPerSlipFamily(f,instance)) ) &
                 * StressRatio_u
                else
@@ -2010,10 +2004,10 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
                                      (constitutive_dislokmc_SolidSolutionStrength(instance)+&
                                       constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
                        **(constitutive_dislokmc_pPerSlipFamily(f,instance)-1.0_pReal)
-               StressRatio_u = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+               StressRatio_u = ((abs(tau)-plasticState(ph)%state(6*ns+4*nt+j,of))/&
            (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
                              **constitutive_dislokmc_uPerSlipFamily(f,instance)
-               StressRatio_uminus1 = ((abs(tau)-state%p(6*ns+4*nt+j))/&
+               StressRatio_uminus1 = ((abs(tau)-plasticState(ph)%state(6*ns+4*nt+j,of))/&
        (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
                          **(constitutive_dislokmc_uPerSlipFamily(f,instance)-1.0_pReal)
 
@@ -2026,7 +2020,7 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
 
              !* Shear rates due to slip                                                                                                                      
                vel_slip(j) = exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislokmc_qPerSlipFamily(f,instance)) &
-                     * (1-constitutive_dislokmc_sPerSlipFamily(f,instance) &
+                     * (1.0_pReal-constitutive_dislokmc_sPerSlipFamily(f,instance) &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislokmc_qPerSlipFamily(f,instance)))
 
                gdot_slip(j) = (1.0_pReal - sumf) * DotGamma0 &
