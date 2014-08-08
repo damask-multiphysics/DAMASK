@@ -30,6 +30,10 @@ module constitutive_dislotwin
    CONSTITUTIVE_DISLOTWIN_listBasicTwinStates = & 
    ['twinFraction',      'accsheartwin']
 
+ character(len=12),                   dimension(1),           parameter,           private :: &
+   CONSTITUTIVE_DISLOTWIN_listBasicTransStates = & 
+   ['transFraction']
+
  character(len=17),                   dimension(4),           parameter,           private :: &
    CONSTITUTIVE_DISLOTWIN_listDependentSlipStates = &
    ['invLambdaSlip    ', 'invLambdaSlipTwin', 'meanFreePathSlip ', 'tauSlipThreshold ']
@@ -212,7 +216,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
  integer(pInt), parameter :: MAXNCHUNKS = LATTICE_maxNinteraction + 1_pInt
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,maxTotalNtwin,&
-                  f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt, &
+                  f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt,nr, &
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                   Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_TransFamilies, &
                   index_myFamily, index_otherFamily
@@ -706,6 +710,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
  
      ns = constitutive_dislotwin_totalNslip(instance)
      nt = constitutive_dislotwin_totalNtwin(instance)
+     nr = constitutive_dislotwin_totalNtrans(instance)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -749,7 +754,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
      sizeDotState              =   int(size(CONSTITUTIVE_DISLOTWIN_listBasicSlipStates),pInt) * ns &
-                                 + int(size(CONSTITUTIVE_DISLOTWIN_listBasicTwinStates),pInt) * nt
+                                 + int(size(CONSTITUTIVE_DISLOTWIN_listBasicTwinStates),pInt) * nt &
+                                 + int(size(CONSTITUTIVE_DISLOTWIN_listBasicTransStates),pInt) * nr
      sizeState                 =   sizeDotState &
                                  + int(size(CONSTITUTIVE_DISLOTWIN_listDependentSlipStates),pInt) * ns &
                                  + int(size(CONSTITUTIVE_DISLOTWIN_listDependentTwinStates),pInt) * nt
@@ -913,7 +919,7 @@ subroutine constitutive_dislotwin_stateInit(ph,instance)
 
   real(pReal), dimension(plasticState(ph)%sizeState) :: tempState
 
- integer(pInt) :: i,j,f,ns,nt, index_myFamily
+ integer(pInt) :: i,j,f,ns,nt,nr, index_myFamily
  real(pReal), dimension(constitutive_dislotwin_totalNslip(instance)) :: &
    rhoEdge0, &
    rhoEdgeDip0, &
@@ -925,6 +931,7 @@ subroutine constitutive_dislotwin_stateInit(ph,instance)
  tempState = 0.0_pReal
  ns = constitutive_dislotwin_totalNslip(instance)
  nt = constitutive_dislotwin_totalNtwin(instance)
+ nr = constitutive_dislotwin_totalNtrans(instance)
 
 !--------------------------------------------------------------------------------------------------
 ! initialize basic slip state variables
@@ -958,7 +965,7 @@ subroutine constitutive_dislotwin_stateInit(ph,instance)
      lattice_mu(ph)*constitutive_dislotwin_burgersPerSlipSystem(i,instance) * &
      sqrt(dot_product((rhoEdge0+rhoEdgeDip0),constitutive_dislotwin_interactionMatrix_SlipSlip(i,1:ns,instance)))
 
- tempState(6_pInt*ns+4_pInt*nt+1:7_pInt*ns+4_pInt*nt) = tauSlipThreshold0
+ tempState(6_pInt*ns+4_pInt*nt+nr+1:7_pInt*ns+4_pInt*nt+nr) = tauSlipThreshold0
 
 
  
@@ -966,12 +973,12 @@ subroutine constitutive_dislotwin_stateInit(ph,instance)
 ! initialize dependent twin microstructural variables
  forall (j = 1_pInt:nt) &
    MeanFreePathTwin0(j) = constitutive_dislotwin_GrainSize(instance)
- tempState(6_pInt*ns+3_pInt*nt+1_pInt:6_pInt*ns+4_pInt*nt) = MeanFreePathTwin0
+ tempState(6_pInt*ns+3_pInt*nt+nr+1_pInt:6_pInt*ns+4_pInt*nt+nr) = MeanFreePathTwin0
  
  forall (j = 1_pInt:nt) &
    TwinVolume0(j) = &
      (pi/4.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(j,instance)*MeanFreePathTwin0(j)**(2.0_pReal)
- tempState(7_pInt*ns+5_pInt*nt+1_pInt:7_pInt*ns+6_pInt*nt) = TwinVolume0
+ tempState(7_pInt*ns+5_pInt*nt+nr+1_pInt:7_pInt*ns+6_pInt*nt+nr) = TwinVolume0
  
 plasticState(ph)%state0 = spread(tempState,2,size(plasticState(ph)%state(1,:)))
 
@@ -989,26 +996,31 @@ subroutine constitutive_dislotwin_aTolState(ph,instance)
    ph, &
    instance                                                                                         ! number specifying the current instance of the plasticity
  
+ integer(pInt) :: ns, nt, nr
+ 
+ ns = constitutive_dislotwin_totalNslip(instance)
+ nt = constitutive_dislotwin_totalNtwin(instance)
+ nr = constitutive_dislotwin_totalNtrans(instance) 
+
  ! Tolerance state for dislocation densities
- plasticState(ph)%aTolState(1_pInt:2_pInt*constitutive_dislotwin_totalNslip(instance)) = &
-   constitutive_dislotwin_aTolRho(instance)
+ plasticState(ph)%aTolState(1_pInt: &
+                            2_pInt*ns) = constitutive_dislotwin_aTolRho(instance)
 
  ! Tolerance state for accumulated shear due to slip 
- plasticState(ph)%aTolState(2_pInt*constitutive_dislotwin_totalNslip(instance)+1_pInt: &
-                                  3_pInt*constitutive_dislotwin_totalNslip(instance))=1e6_pReal
-   
+ plasticState(ph)%aTolState(2_pInt*ns+1_pInt: &
+                            3_pInt*ns)=1.0e6_pReal
  
  ! Tolerance state for twin volume fraction
- plasticState(ph)%aTolState(3_pInt*constitutive_dislotwin_totalNslip(instance)+1_pInt: &
-                                  3_pInt*constitutive_dislotwin_totalNslip(instance)+&
-                                   constitutive_dislotwin_totalNtwin(instance)) = &
-   constitutive_dislotwin_aTolTwinFrac(instance)
+ plasticState(ph)%aTolState(3_pInt*ns+1_pInt: &
+                            3_pInt*ns+nt) = constitutive_dislotwin_aTolTwinFrac(instance)
 
 ! Tolerance state for accumulated shear due to twin
- plasticState(ph)%aTolState(3_pInt*constitutive_dislotwin_totalNslip(instance)+ &
-                                  constitutive_dislotwin_totalNtwin(instance)+1_pInt: &
-                                  3_pInt*constitutive_dislotwin_totalNslip(instance)+ &
-                                  2_pInt*constitutive_dislotwin_totalNtwin(instance)) = 1e6_pReal
+ plasticState(ph)%aTolState(3_pInt*ns+nt+1_pInt: &
+                            3_pInt*ns+2_pInt*nt) = 1.0e6_pReal
+
+! Tolerance state for transformation volume fraction
+ plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+1_pInt: &
+                            3_pInt*ns+2_pInt*nt+nr) = 1.0e6_pReal !Todo
 
 end subroutine constitutive_dislotwin_aTolState
 
@@ -1097,7 +1109,7 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
 
  integer(pInt) :: &
    instance, &
-   ns,nt,s,t, &
+   ns,nt,nr,s,t, &
    ph, &
    of
  real(pReal) :: &
@@ -1110,19 +1122,23 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
  instance = phase_plasticityInstance(ph)
  ns = constitutive_dislotwin_totalNslip(instance)
  nt = constitutive_dislotwin_totalNtwin(instance)
- !* State: 1           :  ns         rho_edge
- !* State: ns+1        :  2*ns       rho_dipole
- !* State: 2*ns+1      :  3*ns       accumulated shear due to slip
- !* State: 3*ns+1      :  3*ns+nt    f
- !* State: 3*ns+nt+1   :  3*ns+2*nt  accumulated shear due to twin
- !* State: 3*ns+2*nt+1 :  4*ns+2*nt  1/lambda_slip
- !* State: 4*ns+2*nt+1 :  5*ns+2*nt  1/lambda_sliptwin
- !* State: 5*ns+2*nt+1 :  5*ns+3*nt  1/lambda_twin
- !* State: 5*ns+3*nt+1 :  6*ns+3*nt  mfp_slip
- !* State: 6*ns+3*nt+1 :  6*ns+4*nt  mfp_twin
- !* State: 6*ns+4*nt+1 :  7*ns+4*nt  threshold_stress_slip
- !* State: 7*ns+4*nt+1 :  7*ns+5*nt  threshold_stress_twin
- !* State: 7*ns+5*nt+1 :  7*ns+6*nt  twin volume
+ nr = constitutive_dislotwin_totalNtrans(instance)
+!BASIC STATES
+ !* State: 1              :  ns           rho_edge
+ !* State: ns+1           :  2*ns         rho_dipole
+ !* State: 2*ns+1         :  3*ns         accumulated shear due to slip
+ !* State: 3*ns+1         :  3*ns+nt      f
+ !* State: 3*ns+nt+1      :  3*ns+2*nt    accumulated shear due to twin
+ !* State: 3*ns+2*nt+1    :  3*ns+2*nt+nr transformed volume fraction
+!DEPENDENT STATES
+ !* State: 3*ns+2*nt+nr+1 :  4*ns+2*nt+nr  1/lambda_slip
+ !* State: 4*ns+2*nt+nr+1 :  5*ns+2*nt+nr  1/lambda_sliptwin
+ !* State: 5*ns+2*nt+nr+1 :  5*ns+3*nt+nr  1/lambda_twin
+ !* State: 5*ns+3*nt+nr+1 :  6*ns+3*nt+nr  mfp_slip
+ !* State: 6*ns+3*nt+nr+1 :  6*ns+4*nt+nr  mfp_twin
+ !* State: 6*ns+4*nt+nr+1 :  7*ns+4*nt+nr  threshold_stress_slip
+ !* State: 7*ns+4*nt+nr+1 :  7*ns+5*nt+nr  threshold_stress_twin
+ !* State: 7*ns+5*nt+nr+1 :  7*ns+6*nt+nr  twin volume
  
  !* Total twin volume fraction
  sumf = sum(plasticState(ph)%state((3*ns+1):(3*ns+nt), of)) ! safe for nt == 0
@@ -1138,54 +1154,54 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
  
  !* 1/mean free distance between 2 forest dislocations seen by a moving dislocation
  forall (s = 1_pInt:ns) &
-   plasticState(ph)%state(3_pInt*ns+2_pInt*nt+s, of) = &
+   plasticState(ph)%state(3_pInt*ns+2_pInt*nt+nr+s, of) = &
      sqrt(dot_product((plasticState(ph)%state(1:ns,of)+plasticState(ph)%state(ns+1_pInt:2_pInt*ns,of)),&
                       constitutive_dislotwin_forestProjectionEdge(1:ns,s,instance)))/ &
      constitutive_dislotwin_CLambdaSlipPerSlipSystem(s,instance)
  !* 1/mean free distance between 2 twin stacks from different systems seen by a moving dislocation
  !$OMP CRITICAL (evilmatmul)
- plasticState(ph)%state((4_pInt*ns+2_pInt*nt+1_pInt):(5_pInt*ns+2_pInt*nt), of) = 0.0_pReal
+ plasticState(ph)%state((4_pInt*ns+2_pInt*nt+nr+1_pInt):(5_pInt*ns+2_pInt*nt+nr), of) = 0.0_pReal
  if (nt > 0_pInt .and. ns > 0_pInt) &
-   plasticState(ph)%state((4_pInt*ns+2_pInt*nt+1):(5_pInt*ns+2_pInt*nt), of) = &
+   plasticState(ph)%state((4_pInt*ns+2_pInt*nt+nr+1):(5_pInt*ns+2_pInt*nt+nr), of) = &
      matmul(constitutive_dislotwin_interactionMatrix_SlipTwin(1:ns,1:nt,instance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
  !$OMP END CRITICAL (evilmatmul)
  
  !* 1/mean free distance between 2 twin stacks from different systems seen by a growing twin
  !$OMP CRITICAL (evilmatmul)
  if (nt > 0_pInt) &
-   plasticState(ph)%state((5_pInt*ns+2_pInt*nt+1_pInt):(5_pInt*ns+3_pInt*nt), of) = &
+   plasticState(ph)%state((5_pInt*ns+2_pInt*nt+nr+1_pInt):(5_pInt*ns+3_pInt*nt+nr), of) = &
      matmul(constitutive_dislotwin_interactionMatrix_TwinTwin(1:nt,1:nt,instance),fOverStacksize(1:nt))/(1.0_pReal-sumf)
  !$OMP END CRITICAL (evilmatmul)
  
  !* mean free path between 2 obstacles seen by a moving dislocation
  do s = 1_pInt,ns
     if (nt > 0_pInt) then
-       plasticState(ph)%state(5_pInt*ns+3_pInt*nt+s, of) = &
+       plasticState(ph)%state(5_pInt*ns+3_pInt*nt+nr+s, of) = &
          constitutive_dislotwin_GrainSize(instance)/(1.0_pReal+constitutive_dislotwin_GrainSize(instance)*&
-         (plasticState(ph)%state(3_pInt*ns+2_pInt*nt+s, of)+plasticState(ph)%state(4_pInt*ns+2_pInt*nt+s, of)))
+         (plasticState(ph)%state(3_pInt*ns+2_pInt*nt+nr+s, of)+plasticState(ph)%state(4_pInt*ns+2_pInt*nt+nr+s, of)))
     else
-       plasticState(ph)%state(5_pInt*ns+s, of) = &
+       plasticState(ph)%state(5_pInt*ns+nr+s, of) = &
          constitutive_dislotwin_GrainSize(instance)/&
-         (1.0_pReal+constitutive_dislotwin_GrainSize(instance)*(plasticState(ph)%state(3_pInt*ns+s, of)))
+         (1.0_pReal+constitutive_dislotwin_GrainSize(instance)*(plasticState(ph)%state(3_pInt*ns+nr+s, of)))
     endif
  enddo
 
  !* mean free path between 2 obstacles seen by a growing twin
  forall (t = 1_pInt:nt) &
-   plasticState(ph)%state(6_pInt*ns+3_pInt*nt+t, of) = &
+   plasticState(ph)%state(6_pInt*ns+3_pInt*nt+nr+t, of) = &
      (constitutive_dislotwin_Cmfptwin(instance)*constitutive_dislotwin_GrainSize(instance))/&
-     (1.0_pReal+constitutive_dislotwin_GrainSize(instance)*plasticState(ph)%state(5_pInt*ns+2_pInt*nt+t, of))
+     (1.0_pReal+constitutive_dislotwin_GrainSize(instance)*plasticState(ph)%state(5_pInt*ns+2_pInt*nt+nr+t, of))
  
  !* threshold stress for dislocation motion
  forall (s = 1_pInt:ns) &
-   plasticState(ph)%state(6_pInt*ns+4_pInt*nt+s, of) = &
+   plasticState(ph)%state(6_pInt*ns+4_pInt*nt+nr+s, of) = &
      lattice_mu(ph)*constitutive_dislotwin_burgersPerSlipSystem(s,instance)*&
      sqrt(dot_product((plasticState(ph)%state(1:ns, of)+plasticState(ph)%state(ns+1_pInt:2_pInt*ns, of)),&
                       constitutive_dislotwin_interactionMatrix_SlipSlip(s,1:ns,instance)))
  
  !* threshold stress for growing twin
  forall (t = 1_pInt:nt) &
-   plasticState(ph)%state(7_pInt*ns+4_pInt*nt+t, of) = &
+   plasticState(ph)%state(7_pInt*ns+4_pInt*nt+nr+t, of) = &
      constitutive_dislotwin_Cthresholdtwin(instance)*&
      (sfe/(3.0_pReal*constitutive_dislotwin_burgersPerTwinSystem(t,instance))+&
      3.0_pReal*constitutive_dislotwin_burgersPerTwinSystem(t,instance)*lattice_mu(ph)/&
@@ -1193,8 +1209,8 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
  
  !* final twin volume after growth
  forall (t = 1_pInt:nt) &
-   plasticState(ph)%state(7_pInt*ns+5_pInt*nt+t, of) = &
-     (pi/4.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(t,instance)*plasticState(ph)%state(6*ns+3*nt+t, of)**(2.0_pReal)
+   plasticState(ph)%state(7_pInt*ns+5_pInt*nt+nr+t, of) = &
+     (pi/4.0_pReal)*constitutive_dislotwin_twinsizePerTwinSystem(t,instance)*plasticState(ph)%state(6*ns+3*nt+nr+t, of)**(2.0_pReal)
 
  !* equilibrium seperation of partial dislocations
  do t = 1_pInt,nt
