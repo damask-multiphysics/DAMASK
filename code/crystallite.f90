@@ -595,20 +595,14 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                        convergenceFlag_backup
  ! local variables used for calculating analytic Jacobian
- real(pReal), dimension(3,3)::       Fpinv_rate, &
-                                     FDot_inv, &
-                                     junk
+ real(pReal), dimension(3,3)::       junk
  real(pReal), dimension(3,3,3,3) ::   dSdFe, &
                                       dFedF, &
-                                      dFedFdot, &
                                       dSdF, &
-                                      dSdFdot, &
-                                      dFp_invdFdot, &
                                       junk2, &
                                       dLpdS,dFpinvdF,rhs_3333,lhs_3333,temp_3333
  real(pReal), dimension(9,9)::       temp_99
  logical :: error
- real(pReal) :: counter
  
  
  if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt &
