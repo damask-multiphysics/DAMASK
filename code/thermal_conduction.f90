@@ -42,7 +42,7 @@ module thermal_conduction
    thermal_conduction_stateInit, &
    thermal_conduction_aTolState, &
    thermal_conduction_microstructure, &
-   thermal_conduction_getTemperature, &
+   thermal_conduction_temperature, &
    thermal_conduction_postResults
 
 contains
@@ -283,7 +283,7 @@ end subroutine thermal_conduction_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on conduction thermal model state layout 
 !--------------------------------------------------------------------------------------------------
-function thermal_conduction_getTemperature(ipc, ip, el)
+function thermal_conduction_temperature(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    thermalState
@@ -293,13 +293,13 @@ function thermal_conduction_getTemperature(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: thermal_conduction_getTemperature
+ real(pReal) :: thermal_conduction_temperature
  
- thermal_conduction_getTemperature = &
+ thermal_conduction_temperature = &
    thermalState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))
 
-end function thermal_conduction_getTemperature
- 
+end function thermal_conduction_temperature
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------

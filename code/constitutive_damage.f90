@@ -20,7 +20,7 @@ module constitutive_damage
    constitutive_damage_init, &
    constitutive_damage_microstructure, &
    constitutive_damage_collectDotState, &
-   constitutive_damage_getDamage, &
+   constitutive_damageValue, &
    constitutive_damage_postResults
  
 contains
@@ -206,7 +206,7 @@ end subroutine constitutive_damage_collectDotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on each damage model state layout 
 !--------------------------------------------------------------------------------------------------
-function constitutive_damage_getDamage(ipc, ip, el)
+function constitutive_damageValue(ipc, ip, el)
  use material, only: &
    material_phase, &
    phase_damage, &
@@ -214,30 +214,30 @@ function constitutive_damage_getDamage(ipc, ip, el)
    DAMAGE_local_ID, &
    DAMAGE_gradient_ID
  use damage_local, only: &
-   damage_local_getDamage
+   damage_local_damageValue
  use damage_gradient, only: &
-   damage_gradient_getDamage
+   damage_gradient_damageValue
 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_damage_getDamage
+ real(pReal) :: constitutive_damageValue
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (DAMAGE_none_ID)
-     constitutive_damage_getDamage = 1.0_pReal
+     constitutive_damageValue = 1.0_pReal
    
    case (DAMAGE_local_ID)
-     constitutive_damage_getDamage = damage_local_getDamage(ipc, ip, el)
+     constitutive_damageValue = damage_local_damageValue(ipc, ip, el)
 
    case (DAMAGE_gradient_ID)
-     constitutive_damage_getDamage = damage_gradient_getDamage(ipc, ip, el)
+     constitutive_damageValue = damage_gradient_damageValue(ipc, ip, el)
 
  end select
 
-end function constitutive_damage_getDamage
+end function constitutive_damageValue
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results

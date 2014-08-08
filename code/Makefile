@@ -403,9 +403,7 @@ homogenization_none.o:         homogenization_none.f90 \
                                crystallite.o
 
 crystallite.o:                 crystallite.f90 \
-                               constitutive.o \
-                               constitutive_thermal.o \
-                               constitutive_damage.o
+                               constitutive.o 
                             
 constitutive.o:                constitutive.f90 \
                                constitutive_nonlocal.o \
@@ -414,7 +412,9 @@ constitutive.o:                constitutive.f90 \
                                constitutive_dislokmc.o \
                                constitutive_phenopowerlaw.o \
                                constitutive_j2.o \
-                               constitutive_none.o
+                               constitutive_none.o \
+                               constitutive_thermal.o \
+                               constitutive_damage.o
 
 constitutive_nonlocal.o:       constitutive_nonlocal.f90 \
                                lattice.o

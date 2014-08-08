@@ -19,7 +19,7 @@ module constitutive_thermal
    constitutive_thermal_init, &
    constitutive_thermal_microstructure, &
    constitutive_thermal_collectDotState, &
-   constitutive_thermal_getTemperature, &
+   constitutive_temperature, &
    constitutive_thermal_postResults
  
 contains
@@ -189,7 +189,7 @@ end subroutine constitutive_thermal_collectDotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on each thermal model state layout 
 !--------------------------------------------------------------------------------------------------
-function constitutive_thermal_getTemperature(ipc, ip, el)
+function constitutive_temperature(ipc, ip, el)
  use material, only: &
    material_phase, &
    phase_thermal, &
@@ -199,30 +199,30 @@ function constitutive_thermal_getTemperature(ipc, ip, el)
  use lattice, only: &
    lattice_referenceTemperature
  use thermal_conduction, only: &
-   thermal_conduction_getTemperature
+   thermal_conduction_temperature
 ! use thermal_adiabatic, only: &
-!   thermal_adiabatic_getTemperature
+!   thermal_adiabatic_temperature
 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_thermal_getTemperature
+ real(pReal) :: constitutive_temperature
  
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (THERMAL_none_ID)
-     constitutive_thermal_getTemperature = lattice_referenceTemperature(material_phase(ipc,ip,el))
+     constitutive_temperature = lattice_referenceTemperature(material_phase(ipc,ip,el))
    
    case (THERMAL_adiabatic_ID)
-     !constitutive_thermal_getTemperature = thermal_adiabatic_getTemperature(ipc, ip, el)
+     !constitutive_temperature = thermal_adiabatic_temperature(ipc, ip, el)
 
    case (THERMAL_conduction_ID)
-     constitutive_thermal_getTemperature = thermal_conduction_getTemperature(ipc, ip, el)
+     constitutive_temperature = thermal_conduction_temperature(ipc, ip, el)
 
  end select
 
-end function constitutive_thermal_getTemperature
+end function constitutive_temperature
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results

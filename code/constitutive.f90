@@ -362,6 +362,8 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
+ use constitutive_damage, only: &
+   constitutive_damageValue  
  use constitutive_j2, only: &
    constitutive_j2_LpAndItsTangent
  use constitutive_phenopowerlaw, only: &
@@ -455,18 +457,14 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    math_transpose33, &
    MATH_I3
  use material, only: &
-   mappingConstitutive, &
-   damageState, &
-   phase_damage, &
-   DAMAGE_local_ID, &
-   DAMAGE_gradient_ID, &
-   thermalState, &
-   phase_thermal, &
-   THERMAL_conduction_ID, &
-   THERMAL_adiabatic_ID
+   mappingConstitutive
  use lattice, only: &
    lattice_referenceTemperature, &
    lattice_thermalExpansion33
+ use constitutive_damage, only: &
+   constitutive_damageValue  
+ use constitutive_thermal, only: &
+   constitutive_temperature  
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -483,44 +481,18 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  integer(pInt) :: i, j, k, l
  real(pReal), dimension(3,3)     :: FeT
  real(pReal), dimension(3,3,3,3) :: C
- real(pReal) :: damage
- integer(pInt) :: phase, constituent
 
-
- C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ C = constitutive_damageValue(ipc,ip,el)*&
+     math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
 
  FeT = math_transpose33(Fe)
- T = 0.5_pReal*math_mul3333xx33(C,math_mul33x33(FeT,Fe)-MATH_I3)
+ T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(FeT,Fe)-MATH_I3) - &
+                        lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
+                        (constitutive_temperature(ipc,ip,el) - &
+                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el))))
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
    dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3))                                            ! dT*_ij/dFe_kl
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- select case (phase_damage(phase))
-   case (DAMAGE_local_ID)
-     damage = damageState(phase)%state(2,constituent)* &
-              damageState(phase)%state(2,constituent)
-     T = damage*T
-     dT_dFe = damage*dT_dFe
-
-   case (DAMAGE_gradient_ID)
-     damage = damageState(phase)%state(3,constituent)* &
-              damageState(phase)%state(3,constituent)
-     T = damage*T
-     dT_dFe = damage*dT_dFe
-
- end select
- select case (phase_thermal(phase))
-   case (THERMAL_conduction_ID)
-     T = T - math_mul3333xx33(C,  (thermalState(phase)%state(2,constituent) - &
-                                   lattice_referenceTemperature(phase)) &
-                                * lattice_thermalExpansion33(1:3,1:3,phase))
-   case (THERMAL_adiabatic_ID)
-     T = T - math_mul3333xx33(C,  (thermalState(phase)%state(1,constituent) - &
-                                   lattice_referenceTemperature(phase)) &
-                                * lattice_thermalExpansion33(1:3,1:3,phase))
- end select
 
 end subroutine constitutive_hooke_TandItsTangent
 

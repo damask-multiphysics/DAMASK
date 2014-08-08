@@ -44,7 +44,7 @@ module damage_gradient
    damage_gradient_aTolState, &
    damage_gradient_microstructure, &
    damage_gradient_dotState, &
-   damage_gradient_getDamage, &
+   damage_gradient_damageValue, &
    damage_gradient_postResults
 
 contains
@@ -287,7 +287,7 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
  integer(pInt) :: &
    phase, constituent 
  real(pReal) :: &
-   strainEnergy, strain(3,3), phi
+   strainEnergy, strain(3,3)
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
@@ -308,7 +308,6 @@ end subroutine damage_gradient_microstructure
 subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
    damageState
  use math, only: &
    math_Mandel6to33, &
@@ -330,7 +329,6 @@ subroutine damage_gradient_dotState(Tstar_v, Lp, ipc, ip, el)
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
  
  damageState(phase)%dotState(1,constituent) = &
    sum(abs(math_Mandel6to33(Tstar_v)*Lp))/ &
@@ -341,7 +339,7 @@ end subroutine damage_gradient_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on gradient damage model state layout 
 !--------------------------------------------------------------------------------------------------
-function damage_gradient_getDamage(ipc, ip, el)
+function damage_gradient_damageValue(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -351,13 +349,13 @@ function damage_gradient_getDamage(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: damage_gradient_getDamage
+ real(pReal) :: damage_gradient_damageValue
  
- damage_gradient_getDamage = &
+ damage_gradient_damageValue = &
    damageState(mappingConstitutive(2,ipc,ip,el))%state(3,mappingConstitutive(1,ipc,ip,el))* &
    damageState(mappingConstitutive(2,ipc,ip,el))%state(3,mappingConstitutive(1,ipc,ip,el))
 
-end function damage_gradient_getDamage
+end function damage_gradient_damageValue
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
