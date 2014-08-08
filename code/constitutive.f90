@@ -455,7 +455,8 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    math_mul3333xx33, &
    math_Mandel66to3333, &
    math_transpose33, &
-   MATH_I3
+   MATH_I3, &
+   math_trace33
  use material, only: &
    mappingConstitutive
  use lattice, only: &
@@ -479,21 +480,42 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    dT_dFe                                                                                           !< dT/dFe
  
  integer(pInt) :: i, j, k, l
- real(pReal), dimension(3,3)     :: FeT
- real(pReal), dimension(3,3,3,3) :: C
+ real(pReal), dimension(3,3)     :: FeT,strain, CxxDel, CxxDel_undamaged
+ real(pReal), dimension(3,3,3,3) :: C, C_undamged
+ real(pReal) :: strain_trace
 
- C = constitutive_damageValue(ipc,ip,el)*&
+ C_undamged = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ C  = constitutive_damageValue(ipc,ip,el)*&
      math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
 
  FeT = math_transpose33(Fe)
- T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(FeT,Fe)-MATH_I3) - &
+ strain = 0.5_pReal*(math_mul33x33(FeT,Fe)-MATH_I3)
+ strain_trace = math_trace33(strain)
+
+
+ if(strain_trace>=0.0_pReal) then
+ T = math_mul3333xx33(C,strain) - &
                         lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
                         (constitutive_temperature(ipc,ip,el) - &
-                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el))))
+                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
    dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3))                                            ! dT*_ij/dFe_kl
-
+ else  
+  strain = strain - (strain_trace/3)*math_I3                                                        ! removing (negative) volumetric part
+  
+ T = math_mul3333xx33(C,strain) + &
+           math_mul3333xx33(C_undamged,((strain_trace/3)*math_I3 )) - &
+                        lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
+                        (constitutive_temperature(ipc,ip,el) - &
+                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))
+  CxxDel           = math_mul3333xx33(C,math_I3)                                                    ! temporary variable C_ijxy * del_xy (damaged part)
+  CxxDel_undamaged = math_mul3333xx33(C_undamged,math_I3)                                                    ! temporary variable C_ijxy * del_xy (Undamaged part)
+  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
+    dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3)) - &
+                              0.5*CxxDel(i,j)*Fe(k,l) + &
+                               0.5*CxxDel_undamaged(i,j)*Fe(k,l)                                    ! dT*_ij/dFe_kl = C_ijlt*Fe_kt - 0.5*Cxxdel_ij*Fe_kl
+ endif
 end subroutine constitutive_hooke_TandItsTangent
 
 

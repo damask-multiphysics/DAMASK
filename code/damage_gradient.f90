@@ -287,14 +287,22 @@ subroutine damage_gradient_microstructure(Tstar_v, Fe, ipc, ip, el)
  integer(pInt) :: &
    phase, constituent 
  real(pReal) :: &
-   strainEnergy, strain(3,3)
+   strainEnergy, strain(3,3),strain_trace
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
 
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- strainEnergy = 0.5_pReal*sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), &
+ strain_trace = math_trace33(strain)
+
+ if(strain_trace < 0.0_pReal) then
+  strain = strain  - (strain_trace/3.0_pReal)*math_I3
+  strainEnergy = 0.5_pReal*sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), &
+                                                      strain ))
+ else
+  strainEnergy = 0.5_pReal*sum(strain*math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)), &
                                                       strain))
+ endif
 
  damageState(phase)%state(2,constituent) = abs(strainEnergy)/ &
                                            (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal) + &
