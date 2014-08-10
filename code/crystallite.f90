@@ -1141,15 +1141,13 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                crystallite_dPdF(1:3,1:3,o,p,g,i,e) = &
                  math_mul33x33(math_mul33x33(dFedF(1:3,1:3,o,p),&
                                              math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))), &
-                               math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))                + &                                             ! dP/dF = dFe/dF * S * Fp^-T...
-                 math_mul33x33(math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
-                                             crystallite_Fp(1:3,1:3,g,i,e)), &
+                               math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))                + &     ! dP/dF = dFe/dF * S * Fp^-T...
+                 math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
                                math_mul33x33(dSdF(1:3,1:3,o,p), &
-                                             math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))) + &!         + Fe * dS/dF * Fp^-T         
-                 math_mul33x33(math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
-                                             crystallite_Fp(1:3,1:3,g,i,e)), &
+                                             math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))) + &     !         + Fe * dS/dF * Fp^-T         
+                 math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
                                math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)), &
-                                             math_transpose33(dFpinvdF(1:3,1:3,p,o))))               !         + Fe * dS/dF * Fp^-T         
+                                             math_transpose33(dFpinvdF(1:3,1:3,p,o))))                    !         + Fe * S * dFp^-T/dF         
          enddo; enddo
        enddo elementLooping6
      !$OMP END PARALLEL DO
