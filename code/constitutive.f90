@@ -480,30 +480,31 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    dT_dFe                                                                                           !< dT/dFe
  
  integer(pInt) :: i, j, k, l
- real(pReal)   :: damage, negative_volStrain, negative_volStress, Csum
- real(pReal), dimension(3,3)     :: strain
+ real(pReal)   :: damage, pressure
  real(pReal), dimension(3,3,3,3) :: C
 
  C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3) - &
+                        lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
+                        (constitutive_temperature(ipc,ip,el) - &
+                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el))))
+ 
+ pressure = math_trace33(T)/3.0_pReal
  damage = constitutive_damageValue(ipc,ip,el)
- strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- negative_volStrain = min(0.0_pReal,math_trace33(strain)/3.0_pReal)
- negative_volStress = math_trace33(math_mul3333xx33(C,negative_volStrain*math_I3))/3.0_pReal
- T = damage* &
-     math_mul3333xx33(C,strain - lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
-                                 (constitutive_temperature(ipc,ip,el) - &
-                                  lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))) + &
-     (1.0_pReal - damage)*negative_volStress*math_I3
-     
- Csum = sum(math_I3*math_mul3333xx33(C,math_I3))/9.0_pReal
- C = damage*C
- forall (i = 1_pInt:3_pInt) &
-   C(1:3,1:3,i,i) = C(1:3,1:3,i,i) + (1.0_pReal - damage)*Csum*math_I3
+ T = damage*T
+ if (pressure < 0.0_pReal) T = T + (1.0_pReal - damage)*pressure*math_I3
 
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
-   dT_dFe(i,j,k,l) = math_mul3x3(C(i,j,l,1:3),Fe(k,1:3))                                            ! dT*_ij/dFe_kl
-
+   dT_dFe(i,j,k,l) = sum(C(i,j,l,1:3)*Fe(k,1:3))                                            ! dT*_ij/dFe_kl
+ 
+ if (pressure < 0.0_pReal) then
+   do i=1_pInt, 3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do j=1_pInt,3_pInt
+     dT_dFe(i,i,k,l) = dT_dFe(i,i,k,l) + &
+                       (1.0_pReal - damage)*math_trace33(C(1:3,1:3,l,j))*Fe(k,j)/3.0_pReal
+   enddo; enddo; enddo; enddo
+ endif  
+ 
 end subroutine constitutive_hooke_TandItsTangent
 
 

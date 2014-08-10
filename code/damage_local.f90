@@ -282,18 +282,19 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
  integer(pInt) :: &
    phase, constituent, instance
  real(pReal) :: &
-   trialDamage, strain(3,3), stress(3,3), negative_volStrain
+   trialDamage, strain(3,3), stress(3,3), pressure
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_damageInstance(phase)                                                     ! which instance of my damage is present phase
 
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- negative_volStrain = min(0.0_pReal,math_trace33(strain)/3.0_pReal)
  stress = math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)),strain)
+ pressure = math_trace33(stress)/3.0_pReal
+ if (pressure < 0.0_pReal) stress = stress - pressure*math_I3
  trialDamage = min(1.0_pReal, &
                    (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)/ & 
-                   (abs(sum((strain - negative_volStrain*math_I3)*stress)) + &
+                   (abs(sum(strain*stress)) + &
                     damageState(phase)%state(1,constituent)))
  
  damageState(phase)%dotState(1,constituent) = &
