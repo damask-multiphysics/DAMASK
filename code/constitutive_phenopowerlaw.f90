@@ -821,7 +821,7 @@ end subroutine constitutive_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_phenopowerlaw_dotState(Tstar_v,damage,ipc,ip,el)
+subroutine constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -844,8 +844,6 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,damage,ipc,ip,el)
  implicit none
  real(pReal), dimension(6),  intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal), intent(in) :: &
-   damage
  integer(pInt),              intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -920,8 +918,8 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,damage,ipc,ip,el)
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
      enddo
      gdot_slip(j) = constitutive_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
-                  ((abs(tau_slip_pos(j))/(damage*plasticState(ph)%state(j,of)))**constitutive_phenopowerlaw_n_slip(instance) &
-                  +(abs(tau_slip_neg(j))/(damage*plasticState(ph)%state(j,of)))**constitutive_phenopowerlaw_n_slip(instance))&
+                  ((abs(tau_slip_pos(j))/(plasticState(ph)%state(j,of)))**constitutive_phenopowerlaw_n_slip(instance) &
+                  +(abs(tau_slip_neg(j))/(plasticState(ph)%state(j,of)))**constitutive_phenopowerlaw_n_slip(instance))&
                   *sign(1.0_pReal,tau_slip_pos(j)) 
    enddo
  enddo slipFamiliesLoop1
@@ -942,7 +940,7 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,damage,ipc,ip,el)
      tau_twin(j)  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph)) 
      gdot_twin(j) = (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                       ! 1-F
                     constitutive_phenopowerlaw_gdot0_twin(instance)*&
-                    (abs(tau_twin(j))/(damage*plasticState(ph)%state(nslip+j,of)))**&
+                    (abs(tau_twin(j))/(plasticState(ph)%state(nslip+j,of)))**&
                     constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau_twin(j)))
     enddo
   enddo twinFamiliesLoop1
@@ -953,7 +951,7 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,damage,ipc,ip,el)
  slipFamiliesLoop2: do f = 1_pInt,lattice_maxNslipFamily
    do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                       ! process each (active) slip system in family
      j = j+1_pInt
-     plasticState(ph)%dotState(j,of) = &                                                     ! evolution of slip resistance j
+     plasticState(ph)%dotState(j,of) = &                                                            ! evolution of slip resistance j
        c_SlipSlip * left_SlipSlip(j) * &
        dot_product(constitutive_phenopowerlaw_hardeningMatrix_SlipSlip(j,1:nSlip,instance), &
                    right_SlipSlip*abs(gdot_slip)) + &                                               ! dot gamma_slip modulated by right-side slip factor
@@ -968,7 +966,7 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,damage,ipc,ip,el)
 
  j = 0_pInt
  twinFamiliesLoop2: do f = 1_pInt,lattice_maxNtwinFamily
-   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                      ! at which index starts my family
+   index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                         ! at which index starts my family
    do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)                                       ! process each (active) twin system in family
      j = j+1_pInt
      plasticState(ph)%dotState(j+nSlip,of) = &                                                      ! evolution of twin resistance j

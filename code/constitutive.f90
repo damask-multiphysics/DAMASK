@@ -538,8 +538,6 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
- use constitutive_damage, only: &
-   constitutive_damageValue  
  use constitutive_j2, only:  &
    constitutive_j2_dotState
  use constitutive_phenopowerlaw, only: &
@@ -578,9 +576,9 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
  
  select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_dotState           (Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     call constitutive_j2_dotState           (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_dotState(Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     call constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      call constitutive_dislotwin_dotState    (Tstar_v,Temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
@@ -725,7 +723,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    case (PLASTICITY_TITANMOD_ID)
      constitutive_postResults = constitutive_titanmod_postResults             (ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults= constitutive_j2_postResults            (Tstar_v,ipc,ip,el)
+     constitutive_postResults= constitutive_j2_postResults            (Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
      constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
