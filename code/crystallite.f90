@@ -3945,11 +3945,17 @@ function crystallite_postResults(ipc, ip, el)
    ip, &                         !< integration point index
    ipc                           !< grain index
 
- real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &
-                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &! + &
-                       ! 1+damageState(material_phase(ipc,ip,el))%sizePostResults + &
-                       ! 1+thermalState(material_phase(ipc,ip,el))%sizePostResults) :: & 
+#ifdef multiphysicsOut
+ real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el))) + &
+                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
+                        1+damageState(material_phase(ipc,ip,el))%sizePostResults + &
+                        1+thermalState(material_phase(ipc,ip,el))%sizePostResults) :: & 
    crystallite_postResults
+#else
+ real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &
+                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults) :: 
+   crystallite_postResults
+#endif
  real(pReal), dimension(3,3) :: &
    Ee
  real(pReal), dimension(4) :: &
@@ -4073,6 +4079,7 @@ function crystallite_postResults(ipc, ip, el)
       constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe, &
                                crystallite_temperature(ip,el), ipc, ip, el)
  c = c + plasticState(material_phase(ipc,ip,el))%sizePostResults
+
 #ifdef multiphysicsOut
  crystallite_postResults(c+1) = real(damageState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
  c = c + 1_pInt
