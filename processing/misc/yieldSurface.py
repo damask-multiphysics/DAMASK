@@ -23,15 +23,10 @@ def execute(cmd,dir='./'):
     out += line
   os.chdir(initialPath)
 
-def asFullTensor(voigt):
-  return np.array([[voigt[0],voigt[3],voigt[5]],\
-          [voigt[3],voigt[1],voigt[4]],\
-          [voigt[5],voigt[4],voigt[2]]])
-
 
 def Hill48(x, F,G,H,L,M,N):
-  a = F*(x[1]-x[2])**2.0 + G*(x[2]-x[0])**2.0 + H*(x[0]-x[1])**2.0 + \
-         2.0*L*x[4]**2.0 + 2.0*M*x[5]**2.0 + 2.0*N*x[3]**2.0 -1.0
+  a = F*(x[4]-x[8])**2.0 + G*(x[8]-x[0])**2.0 + H*(x[0]-x[4])**2.0 + \
+         2.0*L*x[1]**2.0 + 2.0*M*x[2]**2.0 + 2.0*N*x[5]**2.0 -1.0
   return a.ravel()
 
 
@@ -107,18 +102,18 @@ class Criterion(object):
 
   def fit(self,stress):
     try:  
-      #popt1[0], pcov = curve_fit(self.vonMises, stress, np.zeros(np.shape(stress)[1]),p0=popt1[0])
+      #popt1[0], pcov = curve_fit(self.vonMises, stress, np.zeros(np.shape(stress)[1]),p0=popt1[0]) #use guessing?
       popt, pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[1]))
       perr = np.sqrt(np.diag(pcov))
-      print 'Mises', popt, perr
+      print 'Mises', popt, 'normalized Standard deviation', np.array(perr)/np.array(popt) #Variationskoeffizient
     except Exception as detail:
       print detail
       pass
     try:
       popt, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]))
-      #popt1[1], pcov = curve_fit(self.Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1[1])
+      #popt1[1], pcov = curve_fit(self.Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1[1]) #use guessing?
       perr = np.sqrt(np.diag(pcov))
-      print 'Hill48', popt, perr
+      print 'Hill48', popt, 'normalized Standard deviation', np.array(perr)/np.array(popt) #Variationskoeffizient
     except Exception as detail:
       print detail
       pass
@@ -188,15 +183,23 @@ def doSim(delay,thread):
     while table.data_read():
       if float(table.data[table.labels.index('Mises(ln(V))')]) > options.yieldValue:
         yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d')/10.e8
+        break
   elif options.fitting =='totalshear' :
     for l in ['totalshear','1_Cauchy']:
       if l not in table.labels: print '%s not found'%l
     while table.data_read():
       if float(table.data[table.labels.index('totalshear')]) > options.yieldValue:
         yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d')/10.e8
+        break
   
   s.acquire()
-  
+  try:
+    yieldStress
+  except NameError:
+    print('could not fit for sim %i from %s'%(me,thread))
+    s.release()
+    return
+
   global stressAll
   stressAll=np.append(yieldStress,stressAll)
   print('starting fitting for sim %i from %s'%(me,thread))
@@ -245,7 +248,7 @@ parser.set_defaults(min        = 12)
 parser.set_defaults(max        = 30)
 parser.set_defaults(threads    = 4)
 parser.set_defaults(yieldValue = 0.002)
-parser.set_defaults(load       = [0.008,80,80.0])
+parser.set_defaults(load       = [0.010,100,100.0])
 parser.set_defaults(criterion  = 'worst')
 parser.set_defaults(fitting    = 'totalshear')
 parser.set_defaults(geometry   = '20grains16x16x16')
