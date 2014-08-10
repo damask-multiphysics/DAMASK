@@ -395,7 +395,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
  
    case (PLASTICITY_NONE_ID)
      Lp = 0.0_pReal
-     dLp_dTstar = math_identity2nd(9)
+     dLp_dTstar = 0.0_pReal
    case (PLASTICITY_J2_ID)
      call constitutive_j2_LpAndItsTangent           (Lp,dLp_dTstar,Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
