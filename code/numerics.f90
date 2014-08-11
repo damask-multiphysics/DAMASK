@@ -107,8 +107,9 @@ module numerics
  real(pReal), protected, public :: &
    err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
    err_struct_tolRel          =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
-   err_thermal_tol            =  1.0e-6_pReal, &
-   err_damage_tol             =  1.0e-4_pReal   
+   err_thermal_tol            =  1.0_pReal, &
+   err_damage_tol             =  1.0e-4_pReal, &
+   residualStiffness          =  1.0_e-6_pReal                                                      !< non-zero residual damage   
  character(len=1024), protected, public :: &
    petsc_optionsFEM           = '-snes_type ngmres &
                                 &-snes_ngmres_anderson '
@@ -376,6 +377,8 @@ subroutine numerics_init
          err_thermal_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_damage_tol')
          err_damage_tol = IO_floatValue(line,positions,2_pInt)
+       case ('residualstiffness')
+         residualStiffness = IO_floatValue(line,positions,2_pInt)
        case ('itmaxfem')
          itmaxFEM = IO_intValue(line,positions,2_pInt)
        case ('itminfem')
@@ -400,7 +403,7 @@ subroutine numerics_init
          thermalDamageCoupling = IO_intValue(line,positions,2_pInt)  > 0_pInt
 #endif
 #ifndef FEM
-      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol',&             ! found spectral parameter for FEM build
+      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','residualstiffness',&             ! found spectral parameter for FEM build
             'itmaxfem', 'itminfem','maxcutbackfem','integrationorder','structorder','thermalorder', &
             'damageorder','petsc_optionsfem','structthermalcoupling','structdamagecoupling','thermaldamagecoupling')
          call IO_warning(40_pInt,ext_msg=tag)
@@ -533,6 +536,7 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
  write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
  write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
+ write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
  write(6,'(a24,1x,L8)')      ' structThermalCoupling:  ',structThermalCoupling
  write(6,'(a24,1x,L8)')      ' structDamageCoupling:   ',structDamageCoupling
  write(6,'(a24,1x,L8)')      ' thermalDamageCoupling:  ',thermalDamageCoupling
@@ -610,6 +614,7 @@ subroutine numerics_init
  if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
  if (err_thermal_tol <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_thermal_tol')
  if (err_damage_tol <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_damage_tol')
+ if (residualStiffness <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='residualStiffness')
 #endif
 
 end subroutine numerics_init
