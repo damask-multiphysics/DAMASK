@@ -3953,7 +3953,7 @@ function crystallite_postResults(ipc, ip, el)
    crystallite_postResults
 #else
  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &
-                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults) :: 
+                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
    crystallite_postResults
 #endif
  real(pReal), dimension(3,3) :: &
