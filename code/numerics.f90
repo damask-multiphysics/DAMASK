@@ -109,7 +109,7 @@ module numerics
    err_struct_tolRel          =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_thermal_tol            =  1.0_pReal, &
    err_damage_tol             =  1.0e-4_pReal, &
-   residualStiffness          =  1.0_e-6_pReal                                                      !< non-zero residual damage   
+   residualStiffness          =  1.0e-6_pReal                                                      !< non-zero residual damage   
  character(len=1024), protected, public :: &
    petsc_optionsFEM           = '-snes_type ngmres &
                                 &-snes_ngmres_anderson '
