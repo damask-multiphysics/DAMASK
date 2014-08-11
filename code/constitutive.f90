@@ -496,7 +496,7 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
 
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
-   dT_dFe(i,j,k,l) = sum(C(i,j,l,1:3)*Fe(k,1:3))                                            ! dT*_ij/dFe_kl
+   dT_dFe(i,j,k,l) = damage*sum(C(i,j,l,1:3)*Fe(k,1:3))                                            ! dT*_ij/dFe_kl
  
  if (pressure < 0.0_pReal) then
    do i=1_pInt, 3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do j=1_pInt,3_pInt
