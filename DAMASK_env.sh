@@ -16,11 +16,11 @@ if [[ "x$DAMASK_BIN" != "x" && ! `echo ":$PATH:" | grep $DAMASK_BIN:` ]]; then
   export PATH=$DAMASK_BIN:$PATH
 fi
 
-SOLVER=`which DAMASK_spectral >/dev/null 2>&1`
+SOLVER=`which DAMASK_spectral 2>/dev/null`
 if [ "x$SOLVER" == "x" ]; then
   export SOLVER='Not found!'
 fi
-PROCESSING=`which postResults >/dev/null 2>&1`
+PROCESSING=`which postResults 2>/dev/null`
 if [ "x$PROCESSING" == "x" ]; then
   export PROCESSING='Not found!'
 fi
