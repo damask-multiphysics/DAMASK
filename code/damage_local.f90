@@ -294,7 +294,7 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
  if (pressure < 0.0_pReal) stress = stress - pressure*math_I3
  trialDamage = min(1.0_pReal, &
                    (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)/ & 
-                   (abs(sum(strain*stress)) + &
+                   (sum(abs(strain*stress)) + &
                     damageState(phase)%state(1,constituent)))
  
  damageState(phase)%dotState(1,constituent) = &
