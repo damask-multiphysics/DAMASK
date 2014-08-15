@@ -1133,8 +1133,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              dFedF = 0.0_pReal
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                dFedF(1:3,1:3,p,o) = temp_3333(1:3,1:3,p,o) + &
-                                    math_mul33x33(math_mul33x33(crystallite_Fe(1:3,1:3,g,i,e), &
-                                                                crystallite_Fp(1:3,1:3,g,i,e)), &
+                                    math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
                                                   dFpinvdF(1:3,1:3,p,o))     
 
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
