@@ -397,17 +397,17 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      Lp = 0.0_pReal
      dLp_dTstar = 0.0_pReal
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_LpAndItsTangent           (Lp,dLp_dTstar,Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_LpAndItsTangent     (Lp,dLp_dTstar,Tstar_v,temperature,    ip,el)
+     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_LpAndItsTangent    (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_LpAndItsTangent    (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
+     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_LpAndItsTangent     (Lp,dLp_dTstar,Tstar_v,temperature,ipc,ip,el)
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ipc,ip,el)
 
  end select
  
@@ -492,18 +492,18 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  pressure = math_trace33(T)/3.0_pReal
  damage = constitutive_damageValue(ipc,ip,el)
  T = damage*T
- if (pressure < 0.0_pReal) T = T + (1.0_pReal - damage)*pressure*math_I3
+! if (pressure < 0.0_pReal) T = T + (1.0_pReal - damage)*pressure*math_I3
 
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
    dT_dFe(i,j,k,l) = damage*sum(C(i,j,l,1:3)*Fe(k,1:3))                                            ! dT*_ij/dFe_kl
  
- if (pressure < 0.0_pReal) then
-   do i=1_pInt, 3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do j=1_pInt,3_pInt
-     dT_dFe(i,i,k,l) = dT_dFe(i,i,k,l) + &
-                       (1.0_pReal - damage)*math_trace33(C(1:3,1:3,l,j))*Fe(k,j)/3.0_pReal
-   enddo; enddo; enddo; enddo
- endif  
+! if (pressure < 0.0_pReal) then
+!   do i=1_pInt, 3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do j=1_pInt,3_pInt
+!     dT_dFe(i,i,k,l) = dT_dFe(i,i,k,l) + &
+!                       (1.0_pReal - damage)*math_trace33(C(1:3,1:3,l,j))*Fe(k,j)/3.0_pReal
+!   enddo; enddo; enddo; enddo
+! endif  
  
 end subroutine constitutive_hooke_TandItsTangent
 
@@ -721,17 +721,21 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  
  select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_TITANMOD_ID)
-     constitutive_postResults = constitutive_titanmod_postResults             (ipc,ip,el)
+     constitutive_postResults = constitutive_titanmod_postResults(ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults= constitutive_j2_postResults            (Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     constitutive_postResults= constitutive_j2_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     constitutive_postResults = constitutive_phenopowerlaw_postResults(Tstar_v,constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     constitutive_postResults = &
+       constitutive_phenopowerlaw_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_postResults = constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
+     constitutive_postResults = &
+       constitutive_dislotwin_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),Temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     constitutive_postResults = constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
+     constitutive_postResults = &
+       constitutive_dislokmc_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     constitutive_postResults = constitutive_nonlocal_postResults (Tstar_v,FeArray,        ip,el)
+     constitutive_postResults = &
+       constitutive_nonlocal_postResults (Tstar_v/constitutive_damageValue(ipc,ip,el),FeArray,ip,el)
  end select
   
 end function constitutive_postResults
