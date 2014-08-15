@@ -32,8 +32,8 @@ heap=`expr $freeMem / 2`
 stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
 
 # http://superuser.com/questions/220059/what-parameters-has-ulimit             
-ulimit -s $heap       2>/dev/null # maximum stack size (kB)
-ulimit -d $stack      2>/dev/null # maximum heap size (kB)
+ulimit -s $stack      2>/dev/null # maximum stack size (kB)
+ulimit -d $heap       2>/dev/null # maximum heap size (kB)
 ulimit -c 2000        2>/dev/null # core  file size (512-byte blocks)
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
@@ -47,15 +47,15 @@ if [ ! -z "$PS1" ]; then
   echo
   echo Using environment with ...
   echo "DAMASK             $DAMASK_ROOT"
-  ([[ "x$SOLVER"       != "x" ]] && echo "Spectral Solver    $SOLVER") 
-  ([[ "x$PROCESSING"   != "x" ]] && echo "Post Processing    $PROCESSING")
+  [[ "x$SOLVER"       != "x" ]] && echo "Spectral Solver    $SOLVER" 
+  [[ "x$PROCESSING"   != "x" ]] && echo "Post Processing    $PROCESSING"
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
   echo "Compiler           F90=$F90"
-  ([[ "x$IMKL_ROOT"   != "x" ]] && echo "IMKL               $IMKL_ROOT") || \
-  ([[ "x$ACML_ROOT"   != "x" ]] && echo "ACML               $ACML_ROOT") || \
-  ([[ "x$LAPACK_ROOT" != "x" ]] && echo "LAPACK             $LAPACK_ROOT")
-  ([[ "x$PETSC_DIR"  != "x" ]] && echo "PETSc location     $PETSC_DIR")
-  ([[ "x$PETSC_ARCH"   != "x" ]] && echo "PETSc architecture $PETSC_ARCH")
+  [[ "x$IMKL_ROOT"   != "x" ]] && echo "IMKL               $IMKL_ROOT" || \
+  [[ "x$ACML_ROOT"   != "x" ]] && echo "ACML               $ACML_ROOT" || \
+  [[ "x$LAPACK_ROOT" != "x" ]] && echo "LAPACK             $LAPACK_ROOT"
+  [[ "x$PETSC_DIR"   != "x" ]] && echo "PETSc location     $PETSC_DIR"
+  [[ "x$PETSC_ARCH"  != "x" ]] && echo "PETSc architecture $PETSC_ARCH"
   echo "MSC.Marc/Mentat    $MSC_ROOT"
   echo "FFTW               $FFTW_ROOT"
   echo "HDF5               $HDF5_ROOT (for future use)"
