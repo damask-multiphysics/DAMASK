@@ -124,7 +124,7 @@ for file in files:
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = np.zeros(np.prod([2 if i == 1 else i for i in info['grid']]),'i')                                                # 2D structures do not work
+  microstructure = np.zeros(np.prod(info['grid']),'i')                                                # 2D structures do not work
   i = 0
 
   while theTable.data_read():                                  # read next data line of ASCII table
