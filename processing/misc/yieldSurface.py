@@ -39,7 +39,6 @@ def vonMises(x, S_y):
   ooo = (sv[:,2]-sv[:,1])**2+(sv[:,1]-sv[:,0])**2+(sv[:,0]-sv[:,2])**2-2*S_y**2
   return ooo.ravel()
 
-
 fittingCriteria = {
                    'vonMises':{'fit':np.ones(1,'d'),'err':np.inf},
                    'hill48'  :{'fit':np.ones(6,'d'),'err':np.inf},
@@ -102,18 +101,14 @@ class Criterion(object):
 
   def fit(self,stress):
     try:  
-      #popt1[0], pcov = curve_fit(self.vonMises, stress, np.zeros(np.shape(stress)[1]),p0=popt1[0]) #use guessing?
       popt, pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[1]))
-      perr = np.sqrt(np.diag(pcov))
-      print 'Mises', popt, 'normalized Standard deviation', np.array(perr)/np.array(popt) #Variationskoeffizient
+      print 'Mises', popt
     except Exception as detail:
       print detail
       pass
     try:
       popt, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]))
-      #popt1[1], pcov = curve_fit(self.Hill48, stress, np.zeros(np.shape(stress)[1]),p0=popt1[1]) #use guessing?
-      perr = np.sqrt(np.diag(pcov))
-      print 'Hill48', popt, 'normalized Standard deviation', np.array(perr)/np.array(popt) #Variationskoeffizient
+      print 'Hill48', popt
     except Exception as detail:
       print detail
       pass
@@ -177,33 +172,40 @@ def doSim(delay,thread):
   refFile = open('./postProc/%s_%i.txt'%(options.geometry,me))
   table = damask.ASCIItable(refFile)
   table.head_read()
-  if options.fitting =='equivalentStrain' :
-    for l in ['Mises(ln(V))','1_Cauchy']:
-      if l not in table.labels: print '%s not found'%l
-    while table.data_read():
-      if float(table.data[table.labels.index('Mises(ln(V))')]) > options.yieldValue:
-        yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d')/10.e8
+  if options.fitting =='equivalentStrain':
+    thresholdKey = 'Mises(ln(V))'
+  elif options.fitting =='totalshear':
+    thresholdKey = 'totalshear'
+  s.acquire()
+  for l in [thresholdKey,'1_Cauchy']:
+    if l not in table.labels: print '%s not found'%l
+  s.release()
+  table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey])
+
+  line = 0
+  lines = np.shape(table.data)[0]
+  yieldStress=[None for i in xrange(int(options.yieldValue[2]))]
+  for i,j in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
+    while line < lines:
+      if table.data[line,9]>= j:
+        upper,lower = table.data[line,9],table.data[line-1,9]                                          # weights for linear interpolation
+        yieldStress[i] = table.data[line,  0:9] * (upper-j)/(upper-lower) \
+                       + table.data[line-1,0:9] * (j-lower)/(upper-lower)                              # linear interpolation of stress values
         break
-  elif options.fitting =='totalshear' :
-    for l in ['totalshear','1_Cauchy']:
-      if l not in table.labels: print '%s not found'%l
-    while table.data_read():
-      if float(table.data[table.labels.index('totalshear')]) > options.yieldValue:
-        yieldStress = np.array(table.data[table.labels.index('1_Cauchy'):table.labels.index('9_Cauchy')+1],'d')/10.e8
-        break
+      else:
+        line+=1
   
   s.acquire()
+  global stressAll
+  print('starting fitting for sim %i from %s'%(me,thread))
   try:
-    yieldStress
-  except NameError:
+    for i in xrange(int(options.yieldValue[2])):
+      stressAll[i]=np.append(yieldStress[i]/10.e8,stressAll[i])
+      myFit.fit(stressAll[i].reshape(len(stressAll[i])//9,9).transpose())
+  except Exception:
     print('could not fit for sim %i from %s'%(me,thread))
     s.release()
     return
-
-  global stressAll
-  stressAll=np.append(yieldStress,stressAll)
-  print('starting fitting for sim %i from %s'%(me,thread))
-  myFit.fit(stressAll.reshape(len(stressAll)//9,9).transpose())
   s.release()
 
 def getLoadcase():
@@ -232,12 +234,12 @@ parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3,
                                      help='load: final strain; increments; time %default', metavar='float int float')
 parser.add_option('-g','--geometry', dest='geometry', type='string',
                                      help='name of the geometry file [%default]', metavar='string')
-parser.add_option('--criterion',     dest='criterion', action='store', choices=fittingCriteria.keys(),
+parser.add_option('--criterion',     dest='criterion', choices=fittingCriteria.keys(),
                                      help='criterion for stopping simulations [%default]', metavar='string')
-parser.add_option('--fitting',       dest='fitting', action='store', choices=thresholdParameter,
+parser.add_option('--fitting',       dest='fitting', choices=thresholdParameter,
                                      help='yield criterion [%default]', metavar='string')
-parser.add_option('--yieldvalue',    dest='yieldValue', action='store', type='float',
-                                     help='yield criterion [%default]', metavar='float')
+parser.add_option('--yieldvalue',    dest='yieldValue', type='float', nargs=3,
+                                     help='yield points: start; end; count %default', metavar='float float int')
 parser.add_option('--min',           dest='min', type='int',
                                      help='minimum number of simulations [%default]', metavar='int')
 parser.add_option('--max',           dest='max', type='int',
@@ -247,8 +249,8 @@ parser.add_option('--threads',       dest='threads', type='int',
 parser.set_defaults(min        = 12)
 parser.set_defaults(max        = 30)
 parser.set_defaults(threads    = 4)
-parser.set_defaults(yieldValue = 0.002)
-parser.set_defaults(load       = [0.010,100,100.0])
+parser.set_defaults(yieldValue = (0.002,0.002,1))
+parser.set_defaults(load       = (0.010,100,100.0))
 parser.set_defaults(criterion  = 'worst')
 parser.set_defaults(fitting    = 'totalshear')
 parser.set_defaults(geometry   = '20grains16x16x16')
@@ -264,15 +266,21 @@ if options.threads<1:
 if options.min<0:
   parser.error('invalid minimum number of simulations %i'%options.min)
 if options.max<options.min:
-  parser.error('invalid maximumb number of simulations (below minimum)')
-
+  parser.error('invalid maximum number of simulations (below minimum)')
+if options.yieldValue[0]>options.yieldValue[1]:
+  parser.error('invalid yield start (below yield end)')
+if options.yieldValue[2] != int(options.yieldValue[2]):
+  parser.error('count must be an integer')
 if not os.path.isfile('numerics.config'):
   print('numerics.config file not found')
+
+if not os.path.isfile('material.config'):
+  print('material.config file not found')
 
 N_simulations=0
 s=threading.Semaphore(1)
 
-stressAll=np.zeros(0,'d').reshape(0,0)
+stressAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 myLoad = Loadcase(options.load[0],options.load[1],options.load[2])
 myFit = Criterion(options.criterion)
 
