@@ -492,18 +492,20 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  pressure = math_trace33(T)/3.0_pReal
  damage = constitutive_damageValue(ipc,ip,el)
  T = damage*T
-! if (pressure < 0.0_pReal) T = T + (1.0_pReal - damage)*pressure*math_I3
 
- dT_dFe = 0.0_pReal
- forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
-   dT_dFe(i,j,k,l) = damage*sum(C(i,j,l,1:3)*Fe(k,1:3))                                            ! dT*_ij/dFe_kl
+ if(pressure >= 0.0_pReal) then
+   dT_dFe = 0.0_pReal
+   forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
+    dT_dFe(i,j,k,l) = damage*sum(C(i,j,l,1:3)*Fe(k,1:3))                                  ! dT*_ij/dFe_kl
  
-! if (pressure < 0.0_pReal) then
-!   do i=1_pInt, 3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt; do j=1_pInt,3_pInt
-!     dT_dFe(i,i,k,l) = dT_dFe(i,i,k,l) + &
-!                       (1.0_pReal - damage)*math_trace33(C(1:3,1:3,l,j))*Fe(k,j)/3.0_pReal
-!   enddo; enddo; enddo; enddo
-! endif  
+ else 
+    T = T + (1.0_pReal - damage)*pressure*math_I3
+    dT_dFe = 0.0_pReal
+    do i=1_pInt, 3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
+     dT_dFe(i,j,k,l) = dT_dFe(i,j,k,l) + damage*sum(C(i,j,l,1:3)*Fe(k,1:3)) + &
+                       (1.0_pReal - damage)*math_trace33(C(i,j,1:3,1:3))*Fe(l,k)/3.0_pReal
+   enddo; enddo; enddo; enddo
+ endif  
  
 end subroutine constitutive_hooke_TandItsTangent
 
