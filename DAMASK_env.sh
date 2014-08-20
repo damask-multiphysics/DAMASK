@@ -4,9 +4,9 @@
 if [ "$OSTYPE" == "linux-gnu" ] || [ "$OSTYPE" == 'linux' ]; then
   DAMASK_ROOT=$(readlink -f "`dirname $BASH_SOURCE`")
 else
-  STAT=$(stat "`dirname $BASH_SOURCE`")
+  [[ "${BASH_SOURCE::1}" == "/" ]] && BASE="" || BASE="`pwd`/"
+  STAT=$(stat "`dirname $BASE$BASH_SOURCE`")
   DAMASK_ROOT=${STAT##* }
-  unset STAT
 fi
 
 [[ -f $HOME/.damask/damask.conf ]] && source $HOME/.damask/damask.conf || source /etc/damask.conf
@@ -27,13 +27,16 @@ fi
 
 # according to http://software.intel.com/en-us/forums/topic/501500
 # this seems to make sense for the stack size
-freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
-heap=`expr $freeMem / 2`
-stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
+FREE=`which free 2>/dev/null`
+if [ "x$FREE" != "x" ]; then
+  freeMem=`free -k | grep -E '(Mem|Speicher):' | awk '{print $4;}'`
+  heap=`expr $freeMem / 2`
+  stack=`expr $freeMem / $DAMASK_NUM_THREADS / 2`
 
-# http://superuser.com/questions/220059/what-parameters-has-ulimit             
-ulimit -s $stack      2>/dev/null # maximum stack size (kB)
-ulimit -d $heap       2>/dev/null # maximum heap size (kB)
+  # http://superuser.com/questions/220059/what-parameters-has-ulimit             
+  ulimit -s $stack      2>/dev/null # maximum stack size (kB)
+  ulimit -d $heap       2>/dev/null # maximum heap size (kB)
+fi
 ulimit -c 2000        2>/dev/null # core  file size (512-byte blocks)
 ulimit -v unlimited   2>/dev/null # maximum virtual memory size
 ulimit -m unlimited   2>/dev/null # maximum physical memory size
@@ -67,6 +70,9 @@ fi
 export DAMASK_NUM_THREADS
 export PYTHONPATH=$DAMASK_ROOT/lib:$PYTHONPATH
 
+for var in BASE STAT SOLVER PROCESSING FREE; do
+  unset "${var}"
+done
 for var in DAMASK IMKL ACML LAPACK MSC FFTW HDF5; do
   unset "${var}_ROOT"
 done
