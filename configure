@@ -23,6 +23,18 @@ class extendableOption(Option):
 
 
 
+# -----------------------------
+def filePresent(paths,files,warning=False):
+
+  for path in paths:
+    for file in files:
+      if os.path.isfile(os.path.join(path,file)): return True
+
+  if warning: print "Warning: %s not found in %s"%(','.join(files),','.join(paths))
+
+  return False
+
+
 ########################################################
 # MAIN
 ########################################################
@@ -35,9 +47,9 @@ Configures the compilation and installation of DAMASK
 
 #--- determine default compiler ----------------------------------------------------------------------
 compiler = os.getenv('F90')
-if compiler == None: compiler ={True:'ifort',False:'gfortran'}[\
-                                subprocess.call(['which', 'ifort'],\
-                                stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0]
+if compiler == None:
+  compiler = 'ifort' if subprocess.call(['which', 'ifort'], stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0 \
+             else 'gfortran'
 
 #--- default option values  --------------------------------------------------------------------------
 BLAS_order = ['IMKL','ACML','LAPACK']
@@ -58,15 +70,14 @@ defaults={'DAMASK_BIN':'depending on access rights',
 
 
 #--- if local config file exists, read, otherwise assume global config file  ------------------------
-if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')):
-  configFile = os.path.join(os.getenv('HOME'),'.damask/damask.conf')
-else:
-  configFile = '/etc/damask.conf'
+configFile = os.path.join(os.getenv('HOME'),'.damask/damask.conf') \
+             if os.path.isfile(os.path.join(os.getenv('HOME'),'.damask/damask.conf')) \
+			 else '/etc/damask.conf'
 
 #--- set default values according to read in values  ------------------------------------------------
 try:
   with open(configFile,'r') as f:
-    print('\n-----\n reading default values from %s\n-----'%configFile)
+    print('\n<<<<< reading default values from %s\n'%configFile)
     for line in f:
       [key,value] = (re.split('[= ]',line)+[None,None])[:2]
       value = value.rstrip()
@@ -130,7 +141,7 @@ for i, arg in enumerate(sys.argv):
     else:
       blasType = sys.argv[i][17:].upper()
 if blasType not in BLAS_order:
-  blasType='LAPACK'
+  blasType = defaults['blasType'].upper()
 
 parser.set_defaults(blasRoot = defaults['blasRoot'][blasType])
 parser.set_defaults(spectraloptions = [])
@@ -138,56 +149,64 @@ parser.set_defaults(spectraloptions = [])
 (options,filenames) = parser.parse_args()
 
 #--- consistency checks --------------------------------------------------------------------------------
-options.compiler=options.compiler.lower()
-options.blasType=options.blasType.upper() 
-options.fftwRoot=options.fftwRoot.rstrip('/')
-options.mscRoot =options.mscRoot.rstrip('/')
-options.hdf5Root=options.hdf5Root.rstrip('/') 
-options.blasRoot=options.blasRoot.rstrip('/') 
+options.compiler = options.compiler.lower()
+options.blasType = options.blasType.upper() 
+options.fftwRoot = os.path.normpath(options.fftwRoot)
+options.mscRoot  = os.path.normpath(options.mscRoot)
+options.hdf5Root = os.path.normpath(options.hdf5Root) 
+options.blasRoot = os.path.normpath(options.blasRoot)
 
+locations = {
+              'FFTW' :    [os.path.join(options.fftwRoot,'lib64'),os.path.join(options.fftwRoot,'lib')],
+              'LAPACK' :  [os.path.join(options.blasRoot,'lib64'),os.path.join(options.blasRoot,'lib')],
+              'ACML' :    [os.path.join(options.blasRoot,'%s64/lib'%options.compiler)],
+              'ACML_mp' : [os.path.join(options.blasRoot,'%s64_mp/lib'%options.compiler)],
+              'IMKL' :    [os.path.join(options.blasRoot,'lib/intel64')],
+}
+
+libraries = {
+              'FFTW' : [
+                        'libfftw3.so','libfftw3.a',
+                        'libfftw3_threads.so','libfftw3_threads.a',
+                       ],
+              'LAPACK' : [
+                        'liblapack.so','liblapack.a','liblapack.dylib',
+                       ],
+              'ACML' : [
+                        'libacml.so','libacml.a',
+                       ],
+              'ACML_mp' : [
+                        'libacml_mp.so','libacml_mp.a',
+                       ],
+              'IMKL' : [
+                        'libmkl_core.so','libmkl_core.a',
+                        'libmkl_sequential.so','libmkl_sequential.a',
+                        'libmkl_intel_thread.so','libmkl_intel_thread.a',
+                        'libmkl_intel_lp64.so','libmkl_intel_lp64.a',
+                        'libmkl_gnu_thread.so','libmkl_gnu_thread.a',
+                        'libmkl_gf_lp64.so','libmkl_gf_lp64.a',
+                       ],
+
+            }
 if options.compiler not in ['ifort','gfortran']: 
   print('Error: Unknown compiler option: %s'%options.compiler)
   sys.exit(1)
 
-if not subprocess.call(['which', options.compiler],stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
+if not subprocess.call(['which', options.compiler], stdout=subprocess.PIPE, stderr=subprocess.PIPE) == 0:
   print('Compiler Warning: executable %s not found!'%options.compiler)
 
-fftwLocations =[os.path.join(options.fftwRoot,'lib'),os.path.join(options.fftwRoot,'lib64')]
-for lib in ['libfftw3.so','libfftw3.a',
-            'libfftw3_threads.so','libfftw3_threads.a']:
-  if (not os.path.isfile(os.path.join(fftwLocations[0],lib))) and \
-     (not os.path.isfile(os.path.join(fftwLocations[1],lib))):
-    print('FFTW Warning: %s not found in %s or %s!'%(lib,fftwLocations[0],fftwLocations[1]))
-
 if not os.path.isdir(options.mscRoot):
-  print('MSC.Marc/Mentat Warning: Root directory %s not found!'%options.mscRoot)
+  print('Warning: MSC root directory %s not found!'%options.mscRoot)
+
+filePresent(locations['FFTW'],libraries['FFTW'],warning=True)
 
 if options.blasType == 'LAPACK':
-  lapackLocations =[os.path.join(options.blasRoot,'lib'),os.path.join(options.blasRoot,'lib64')]
-  for lib in ['liblapack.so','liblapack.a']:
-    if (not os.path.isfile(os.path.join(lapackLocations[0],lib))) and \
-       (not os.path.isfile(os.path.join(lapackLocations[1],lib))):
-      print('LAPACK Warning: %s not found in %s or %s!'%(lib,lapackLocations[0],lapackLocations[1]))
+  filePresent(locations[options.blasType],libraries[options.blasType],warning=True)
 elif options.blasType == 'ACML':
-  blasLocationSerial=os.path.join(options.blasRoot,'%s64/lib'%options.compiler)
-  for lib in ['libacml.so','libacml.a']:
-    if not os.path.isfile(os.path.join(blasLocationSerial,lib)): 
-      print('ACML Warning: %s not found in %s!'%(lib,blasLocationSerial))
-  blasLocationParallel=os.path.join(options.blasRoot,'%s64_mp/lib'%options.compiler)
-  for lib in ['libacml_mp.so','libacml_mp.a']:
-    if not os.path.isfile(os.path.join(blasLocationParallel,lib)): 
-      print('ACML Warning: %s not found in %s!'%(lib,blasLocationParallel))
+  filePresent(locations[options.blasType],libraries[options.blasType],warning=True)
+  filePresent(locations[options.blasType+'_mp'],libraries[options.blasType+'_mp'],warning=True)
 elif options.blasType == 'IMKL':
-  blasLocation=os.path.join(options.blasRoot,'lib/intel64')
-  for lib in ['libmkl_core.so','libmkl_core.a',
-              'libmkl_sequential.so','libmkl_sequential.a',
-              'libmkl_intel_thread.so','libmkl_intel_thread.a',
-              'libmkl_intel_lp64.so','libmkl_intel_lp64.a',
-              'libmkl_gnu_thread.so','libmkl_gnu_thread.a',
-              'libmkl_gf_lp64.so','libmkl_gf_lp64.a',
-             ]:
-    if not os.path.isfile(os.path.join(blasLocation,lib)): 
-      print('IMKL Warning: %s not found in %s!'%(lib,blasLocation))
+  filePresent(locations[options.blasType],libraries[options.blasType],warning=True)
 else:
   print('Error: Unknown BLAS/LAPACK library: %s'%options.blasType)
   sys.exit(1)
@@ -202,35 +221,35 @@ try:
       if (not line.strip() or items[0].startswith('#')):
         pass
       if items[0] == 'DAMASK_BIN':
-        line = '%s=%s\n'%(items[0],options.prefix)
+        line = '%s=%s'%(items[0],options.prefix)
         options.prefix ='depending on access rights'
       if items[0] == 'F90':
-        line = '%s=%s\n'%(items[0],options.compiler)
+        line = '%s=%s'%(items[0],options.compiler)
         options.compiler =''
       if items[0] == 'FFTW_ROOT':
-        line = '%s=%s\n'%(items[0],options.fftwRoot)
+        line = '%s=%s'%(items[0],options.fftwRoot)
         options.fftwRoot =''
       if items[0] == 'MSC_ROOT':
-        line = '%s=%s\n'%(items[0],options.mscRoot)
+        line = '%s=%s'%(items[0],options.mscRoot)
         options.mscRoot =''
       if items[0] == 'HDF5_ROOT':
-        line = '%s=%s\n'%(items[0],options.hdf5Root)
+        line = '%s=%s'%(items[0],options.hdf5Root)
         options.hdf5Root =''
       if items[0] == 'DAMASK_NUM_THREADS':
-        line = '%s=%s\n'%(items[0],options.threads)
+        line = '%s=%s'%(items[0],options.threads)
         options.threads =''
       for blasType in defaults['blasRoot'].keys():
         if items[0] == '%s_ROOT'%blasType and items[0] == '%s_ROOT'%options.blasType:
-          line = '%s=%s\n'%(items[0],options.blasRoot)
+          line = '%s=%s'%(items[0],options.blasRoot)
           options.blasType=''
         elif items[0] == '#%s_ROOT'%blasType and items[0] == '#%s_ROOT'%options.blasType:
-          line = '%s=%s\n'%(items[0][1:],options.blasRoot)
+          line = '%s=%s'%(items[0][1:],options.blasRoot)
           options.blasType=''
         elif items[0] == '%s_ROOT'%blasType: line = '#'+line
       for spectralOption in options.spectraloptions:
         [key,value] = re.split('[= ]',spectralOption)[0:2]
         if key == items[0]:
-          line = '%s=%s\n'%(items[0],value)
+          line = '%s=%s'%(items[0],value)
           options.spectraloptions.remove(spectralOption)
       output.append(line)
 except IOError:
@@ -238,36 +257,34 @@ except IOError:
 
 #--- write remaining options --------------------------------------------------------------------------
 for opt, value in options.__dict__.items():
-  if opt == 'prefix' and value !='depending on access rights':
-    output.append('DAMASK_BIN=%s\n'%value)
-  if opt == 'compiler' and value !='':
-    output.append('F90=%s\n'%value)
-  if opt == 'fftwRoot' and value !='':
-    output.append('FFTW_ROOT=%s\n'%value)
-  if opt == 'mscRoot' and value !='':
-    output.append('MSC_ROOT=%s\n'%value)
-  if opt == 'hdf5Root' and value !='':
-    output.append('HDF5_ROOT=%s\n'%value)
-  if opt == 'threads' and value !='':
-    output.append('DAMASK_NUM_THREADS=%s\n'%value)
-  if opt == 'blasType' and value !='':
-    output.append('%s_ROOT=%s\n'%(options.blasType,options.blasRoot))
+  if opt == 'prefix' and value != 'depending on access rights':
+    output.append('DAMASK_BIN=%s'%value)
+  if opt == 'compiler' and value != '':
+    output.append('F90=%s'%value)
+  if opt == 'fftwRoot' and value != '':
+    output.append('FFTW_ROOT=%s'%value)
+  if opt == 'mscRoot' and value != '':
+    output.append('MSC_ROOT=%s'%value)
+  if opt == 'hdf5Root' and value != '':
+    output.append('HDF5_ROOT=%s'%value)
+  if opt == 'threads' and value != '':
+    output.append('DAMASK_NUM_THREADS=%s'%value)
+  if opt == 'blasType' and value != '':
+    output.append('%s_ROOT=%s'%(options.blasType,options.blasRoot))
 
 for spectralOption in options.spectraloptions:
-  output.append(spectralOption+'\n')
+  output.append(spectralOption)
 
 #--- decide where do save the data -------------------------------------------------------------------
-if os.access('/etc/', os.W_OK):                                                                       # super user (no home)
-  configDir = '/etc'
-else:                                                                                                 # normal user
-  configDir = os.path.join(os.getenv('HOME'),'.damask')
+configDir = '/etc' if os.access('/etc/', os.W_OK) \
+                   else os.path.join(os.getenv('HOME'),'.damask')           # use system-wide config if possible
 configFileNew = os.path.join(configDir,'damask.conf')
 
 if not os.path.isdir(configDir):
   os.mkdir(configDir)
 
-print('\n-----\n writing values to %s\n-----'%configFileNew)
+print('\n>>>>> writing values to %s\n'%configFileNew)
 with open(configFileNew,'w') as f:
   for line in output:
-    print(line.rstrip('\n'))
-    f.write(line)
+    print(line)
+    f.write(line+'\n')
