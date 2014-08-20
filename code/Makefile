@@ -37,8 +37,8 @@ INCLUDE_DIRS :=-I../lib
 LIBRARIES :=-lfftw3
 endif
 
-LIB_DIRS  :=-L$(FFTW_ROOT)/lib
-RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib
+LIB_DIRS  :=-L$(FFTW_ROOT)/lib64 -L$(FFTW_ROOT)/lib
+RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib64,-rpath,$(FFTW_ROOT)/lib
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -112,8 +112,8 @@ endif
 #hdf5
 ifeq "$(HDF5)" "ON"
 LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
-LIB_DIRS  +=-L$(HDF5_ROOT)/lib
-RUN_PATH  :=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib
+LIB_DIRS  +=-L$(HDF5_ROOT)/lib64 -L$(HDF5_ROOT)/lib
+RUN_PATH  :=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib64,-rpath,$(HDF5_ROOT)/lib
 INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
