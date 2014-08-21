@@ -9,7 +9,7 @@ scriptName = scriptID.split()[1]
 
 
 try:                                        # check for Python Image Lib
-  import Image,ImageDraw
+  from PIL import Image,ImageDraw
   ImageCapability = True
 except:
   ImageCapability = False
@@ -257,59 +257,55 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):   # parser for T
       print "Dead end at segment %i (%f,%f)"%(1+point['segments'][0],boxX[0]+point['coords'][0]/scalePatch,boxY[0]+point['coords'][1]/scalePatch,)
       crappyData = True
 
-  if crappyData:
-    sys.exit(-1)
-
   grains = {'draw': [], 'legs': []}
 
-  for pointId,point in enumerate(points):
-    while point['segments']:
-      myStart = pointId
-      grainDraw = [points[myStart]['coords']]
-      innerAngleSum = 0.0
-      myWalk = point['segments'].pop()
-      grainLegs = [myWalk]
-      if segments[myWalk][0] == myStart:
-        myEnd = segments[myWalk][1]
-      else:
-        myEnd = segments[myWalk][0]
+  if not crappyData:
 
-      while (myEnd != pointId):
-        myV = [points[myEnd]['coords'][0]-points[myStart]['coords'][0],\
-          points[myEnd]['coords'][1]-points[myStart]['coords'][1]]
-        myLen = math.sqrt(myV[0]**2+myV[1]**2)
-        best = {'product': -2.0, 'peek': -1, 'len': -1, 'point': -1}
-        for peek in points[myEnd]['segments']:                                                    # trying in turn all segments emanating from current endPoint
-          if peek == myWalk:
-            continue
-          if segments[peek][0] == myEnd:
-            peekEnd = segments[peek][1]
-          else:
-            peekEnd = segments[peek][0]
-          peekV = [points[myEnd]['coords'][0]-points[peekEnd]['coords'][0],\
-              points[myEnd]['coords'][1]-points[peekEnd]['coords'][1]]
-          peekLen = math.sqrt(peekV[0]**2+peekV[1]**2)
-          crossproduct = (myV[0]*peekV[1]-myV[1]*peekV[0])/myLen/peekLen
-          dotproduct = (myV[0]*peekV[0]+myV[1]*peekV[1])/myLen/peekLen
-          if crossproduct*(dotproduct+1.0) >= best['product']:
-            best['product'] = crossproduct*(dotproduct+1.0)
-            best['peek'] = peek
-            best['point'] = peekEnd
-        innerAngleSum += best['product']
-        myWalk = best['peek']
-        myStart = myEnd
-        myEnd = best['point']
-        if myWalk in points[myStart]['segments']:
-          points[myStart]['segments'].remove(myWalk)
+    for pointId,point in enumerate(points):
+      while point['segments']:
+        myStart = pointId
+        grainDraw = [points[myStart]['coords']]
+        innerAngleSum = 0.0
+        myWalk = point['segments'].pop()
+        grainLegs = [myWalk]
+        if segments[myWalk][0] == myStart:
+          myEnd = segments[myWalk][1]
         else:
-          sys.stderr.write(str(myWalk)+' not in segments of point '+str(myStart)+'\n')
-        grainDraw.append(points[myStart]['coords'])
-        grainLegs.append(myWalk)
-      if innerAngleSum > 0.0:
-        grains['draw'].append(grainDraw)
-        grains['legs'].append(grainLegs)
-      else:
-        grains['box'] = grainLegs
+          myEnd = segments[myWalk][0]
+
+        while (myEnd != pointId):
+          myV = [points[myEnd]['coords'][0]-points[myStart]['coords'][0],\
+            points[myEnd]['coords'][1]-points[myStart]['coords'][1]]
+          myLen = math.sqrt(myV[0]**2+myV[1]**2)
+          best = {'product': -2.0, 'peek': -1, 'len': -1, 'point': -1}
+          for peek in points[myEnd]['segments']:                                                    # trying in turn all segments emanating from current endPoint
+            if peek == myWalk:
+              continue
+            peekEnd = segments[peek][1] if segments[peek][0] == myEnd else segments[peek][0]
+            peekV = [points[myEnd]['coords'][0]-points[peekEnd]['coords'][0],
+                     points[myEnd]['coords'][1]-points[peekEnd]['coords'][1]]
+            peekLen = math.sqrt(peekV[0]**2+peekV[1]**2)
+            crossproduct = (myV[0]*peekV[1]-myV[1]*peekV[0])/myLen/peekLen
+            dotproduct = (myV[0]*peekV[0]+myV[1]*peekV[1])/myLen/peekLen
+            if crossproduct*(dotproduct+1.0) >= best['product']:
+              best['product'] = crossproduct*(dotproduct+1.0)
+              best['peek'] = peek
+              best['point'] = peekEnd
+          innerAngleSum += best['product']
+          myWalk = best['peek']
+          myStart = myEnd
+          myEnd = best['point']
+          if myWalk in points[myStart]['segments']:
+            points[myStart]['segments'].remove(myWalk)
+          else:
+            sys.stderr.write(str(myWalk)+' not in segments of point '+str(myStart)+'\n')
+          grainDraw.append(points[myStart]['coords'])
+          grainLegs.append(myWalk)
+        if innerAngleSum > 0.0:
+          grains['draw'].append(grainDraw)
+          grains['legs'].append(grainLegs)
+        else:
+          grains['box'] = grainLegs
 
   
 # build overall data structure
@@ -344,7 +340,7 @@ def rcbParser(content,M,size,tolerance,idcolumn,segmentcolumn):   # parser for T
       
   print "  found %i grains\n"%(len(rcData['grain']))
 
-  rcData['box'] = grains['box']
+  rcData['box'] = grains['box'] if 'box' in grains else []
   
   return rcData
 
@@ -858,12 +854,12 @@ parser.add_option("-M", "--coordtransformation", type="float", nargs=4, \
 parser.add_option("--scatter", type="float",\
         dest="scatter",\
         help="orientation scatter %default")
-parser.add_option("--id", type="int",\
-        dest="idcolumn",\
-        help="column holding the right hand grain ID in the rcb file %default")
 parser.add_option("--segment", type="int",\
         dest="segmentcolumn",\
-        help="column holding the first entry for the segment end points in the rcb file %default")
+        help="column holding the first entry for the segment end points in the rcb file [%default]")
+parser.add_option("--id", type="int",\
+        dest="idcolumn",\
+        help="column holding the right hand grain ID in the rcb file [%default]")
 
 parser.set_defaults(output = [])
 parser.set_defaults(size = 1.0)
@@ -881,8 +877,8 @@ parser.set_defaults(strainrate = 1.0e-3)
 parser.set_defaults(increments = 200)
 parser.set_defaults(mesh = 'dt_planar_trimesh')
 parser.set_defaults(twoD = False)
-parser.set_defaults(idcolumn = 13)
 parser.set_defaults(segmentcolumn = 9)
+parser.set_defaults(idcolumn = 13)
 
 (options, args) = parser.parse_args()
 
