@@ -52,25 +52,24 @@ datainfo = {                                                                    
                             'label':[]},
            }
 
+input = []
 if options.eulers     != None:
   datainfo['vector']['label'] += [options.eulers]
-  input = 'eulers'
+  input += ['eulers']
 if options.a          != None and \
    options.b          != None and \
    options.c          != None:
   datainfo['vector']['label'] += [options.a,options.b,options.c]
-  input = 'frame'
+  input += ['frame']
 if options.matrix     != None:
   datainfo['tensor']['label'] += [options.matrix]
-  input = 'matrix'
+  input += ['matrix']
 if options.quaternion != None:
   datainfo['quaternion']['label'] += [options.quaternion]
-  input = 'quaternion'
+  input += ['quaternion']
 
-inputGiven = 0
-for datatype,info in datainfo.items():
-  inputGiven += len(info['label'])
-if inputGiven != 1: parser.error('select exactly one input format...')
+if len(input) != 1: parser.error('needs exactly one input format...')
+input = input[0]
 
 toRadians = math.pi/180.0 if options.degrees else 1.0                                               # rescale degrees to radians
 pole = np.array(options.pole)
@@ -99,7 +98,7 @@ for file in files:
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = '1_%s'%label
+      key = '1_'+label
       if key not in table.labels:
         file['croak'].write('column %s not found...\n'%key)
         missingColumns = True                                                                       # break if label not found
@@ -124,7 +123,8 @@ for file in files:
     elif input == 'matrix':
       o = damask.Orientation(matrix=\
                  np.array([map(float,table.data[column[options.matrix]:\
-                                                column[options.matrix]+datainfo['tensor']['len']])]),
+                                                column[options.matrix]+datainfo['tensor']['len']])]).reshape(np.sqrt(datainfo['tensor']['len']),
+                                                                                                             np.sqrt(datainfo['tensor']['len'])).transpose(),
                              symmetry=options.symmetry).reduced()
     elif input == 'frame':
       o = damask.Orientation(matrix=\
