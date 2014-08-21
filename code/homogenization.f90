@@ -11,14 +11,16 @@ module homogenization
    pInt, &
    pReal, &
    p_vec
- 
+
 !--------------------------------------------------------------------------------------------------
 ! General variables for the homogenization at a  material point
  implicit none
  private
+#ifndef NEWSTATE
  type(p_vec),   dimension(:,:),         allocatable, public :: &
    homogenization_state0                                                                            !< pointer array to homogenization state at start of FE increment
- real(pReal),   dimension(:,:,:,:),     allocatable, public :: &
+#endif
+   real(pReal),   dimension(:,:,:,:),     allocatable, public :: &
    materialpoint_F0, &                                                                              !< def grad of IP at start of FE increment
    materialpoint_F, &                                                                               !< def grad of IP to be reached at end of FE increment
    materialpoint_P                                                                                  !< first P--K stress of IP
@@ -26,10 +28,11 @@ module homogenization
    materialpoint_dPdF                                                                               !< tangent of first P--K stress at IP
  real(pReal),   dimension(:,:,:),       allocatable, public :: &
    materialpoint_results                                                                            !< results array of material point
-
+#ifndef NEWSTATE
  type(p_vec),   dimension(:,:),         allocatable, public, protected :: &
    homogenization_state                                                                             !< pointer array to current homogenization state (end of converged time step)
- integer(pInt), dimension(:,:),         allocatable, public, protected  :: &
+#endif
+   integer(pInt), dimension(:,:),         allocatable, public, protected  :: &
    homogenization_sizeState                                                                         !< size of state array per grain
  integer(pInt),                                      public, protected  :: &
    materialpoint_sizeResults, &
@@ -175,9 +178,11 @@ subroutine homogenization_init()
  
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
+#ifndef NEWSTATE
  allocate(homogenization_state0(mesh_maxNips,mesh_NcpElems))
  allocate(homogenization_subState0(mesh_maxNips,mesh_NcpElems))
  allocate(homogenization_state(mesh_maxNips,mesh_NcpElems))
+#endif
  allocate(homogenization_sizeState(mesh_maxNips,mesh_NcpElems),         source=0_pInt)
  allocate(homogenization_sizePostResults(mesh_maxNips,mesh_NcpElems),   source=0_pInt)
  allocate(materialpoint_heat(mesh_maxNips,mesh_NcpElems),               source=0.0_pReal)
@@ -207,18 +212,34 @@ subroutine homogenization_init()
 #endif
      select case(homogenization_type(mesh_element(3,e)))
        case (HOMOGENIZATION_none_ID)
+#ifdef NEWSTATE
+         homogenization_sizePostResults(i,e) = homogState(mappingHomogenization(2,i,e))%sizePostResults
+#else
          homogenization_sizePostResults(i,e) = 0_pInt
+#endif
        case (HOMOGENIZATION_ISOSTRAIN_ID)
+#ifdef NEWSTATE
+         homogenization_sizePostResults(i,e) = homogState(mappingHomogenization(2,i,e))%sizePostResults
+#else
          homogenization_sizePostResults(i,e) = homogenization_isostrain_sizePostResults(myInstance)
+#endif
        case (HOMOGENIZATION_RGC_ID)
          if (homogenization_RGC_sizeState(myInstance) > 0_pInt) then
+#ifdef NEWSTATE
+           homogenization_sizeState(i,e) = homogState(mappingHomogenization(2,i,e))%sizeState
+#else
            allocate(homogenization_state0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
            allocate(homogenization_subState0(i,e)%p(homogenization_RGC_sizeState(myInstance)))
            allocate(homogenization_state(i,e)%p(homogenization_RGC_sizeState(myInstance)))
            homogenization_state0(i,e)%p  = 0.0_pReal
            homogenization_sizeState(i,e) = homogenization_RGC_sizeState(myInstance)
+#endif
          endif
+#ifdef NEWSTATE
+         homogenization_sizePostResults(i,e) = homogState(mappingHomogenization(2,i,e))%sizePostResults
+#else
          homogenization_sizePostResults(i,e) = homogenization_RGC_sizePostResults(myInstance)
+#endif
      end select
    enddo IpLooping
  enddo elementLooping
@@ -247,9 +268,11 @@ subroutine homogenization_init()
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
+#ifndef NEWSTATE
    write(6,'(a32,1x,7(i8,1x))')   'homogenization_state0:          ', shape(homogenization_state0)
    write(6,'(a32,1x,7(i8,1x))')   'homogenization_subState0:       ', shape(homogenization_subState0)
    write(6,'(a32,1x,7(i8,1x))')   'homogenization_state:           ', shape(homogenization_state)
+#endif
    write(6,'(a32,1x,7(i8,1x))')   'homogenization_sizeState:       ', shape(homogenization_sizeState)
    write(6,'(a32,1x,7(i8,1x),/)') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
@@ -301,6 +324,10 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    plasticState, &
    damageState, &
    thermalState, &
+#ifdef NEWSTATE
+   homogState, &
+   mappingHomogenization, &
+#endif   
    mappingConstitutive, &
    homogenization_Ngrains
   
@@ -388,8 +415,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      materialpoint_converged(i,e) = .false.                                                         ! pretend failed step of twice the required size
      materialpoint_requested(i,e) = .true.                                                          ! everybody requires calculation
    endforall
+#ifdef NEWSTATE
+   forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), homogenization_sizeState(i,e) > 0_pInt) &
+     homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               homogState(mappingHomogenization(2,i,e))%State0(:,mappingHomogenization(1,i,e))      ! ...internal homogenization state
+#else
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), homogenization_sizeState(i,e) > 0_pInt) &
      homogenization_subState0(i,e)%p = homogenization_state0(i,e)%p                                 ! ...internal homogenization state
+#endif
  enddo
  NiterationHomog = 0_pInt
  
@@ -437,7 +470,12 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
            end forall    
            if (homogenization_sizeState(i,e) > 0_pInt) &
-             homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
+#ifdef NEWSTATE
+             homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
+               homogState(mappingHomogenization(2,i,e))%state(:,mappingHomogenization(1,i,e))
+#else
+            homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
+#endif
            materialpoint_subF0(1:3,1:3,i,e) = materialpoint_subF(1:3,1:3,i,e)                             ! ...def grad
            !$OMP FLUSH(materialpoint_subF0)
          elseif (materialpoint_requested(i,e)) then steppingNeeded                                        ! already at final time (??)
@@ -491,7 +529,12 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
                thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
            end forall    
            if (homogenization_sizeState(i,e) > 0_pInt) &
+#ifdef NEWSTATE
+             homogState(mappingHomogenization(2,i,e))%state(:,mappingHomogenization(1,i,e)) = &
+               homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))
+#else
              homogenization_state(i,e)%p = homogenization_subState0(i,e)%p                                  ! ...internal state of homog scheme
+#endif
          endif       
        endif converged
      
@@ -703,12 +746,21 @@ subroutine homogenization_partitionDeformation(ip,el)
                           materialpoint_subF(1:3,1:3,ip,el),&
                           el)
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+#ifdef NEWSTATE
+     call homogenization_RGC_partitionDeformation(&
+                         crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                         materialpoint_subF(1:3,1:3,ip,el),&
+                         ip, &
+                         el)
+#else
      call homogenization_RGC_partitionDeformation(&
                          crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
                          materialpoint_subF(1:3,1:3,ip,el),&
                          homogenization_state(ip,el), &
                          ip, &
                          el)
+#endif
+
  end select chosenHomogenization
 
 end subroutine homogenization_partitionDeformation
@@ -743,7 +795,17 @@ function homogenization_updateState(ip,el)
 
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
      homogenization_updateState = &
-        homogenization_RGC_updateState( homogenization_state(ip,el), &
+#ifdef NEWSTATE
+        homogenization_RGC_updateState(crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                        crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                        crystallite_partionedF0(1:3,1:3,1:homogenization_maxNgrains,ip,el),&
+                                        materialpoint_subF(1:3,1:3,ip,el),&
+                                        materialpoint_subdt(ip,el), &
+                                        crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
+                                        ip, &
+                                        el)
+#else
+        homogenization_RGC_updateState(homogenization_state(ip,el), &
                                         homogenization_subState0(ip,el), &
                                         crystallite_P(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
                                         crystallite_partionedF(1:3,1:3,1:homogenization_maxNgrains,ip,el), &
@@ -753,6 +815,7 @@ function homogenization_updateState(ip,el)
                                         crystallite_dPdF(1:3,1:3,1:3,1:3,1:homogenization_maxNgrains,ip,el), &
                                         ip, &
                                         el)
+#endif
    case default chosenHomogenization
      homogenization_updateState = .true.
  end select chosenHomogenization
@@ -869,12 +932,22 @@ function homogenization_postResults(ip,el)
                                   materialpoint_P(1:3,1:3,ip,el), &
                                   materialpoint_F(1:3,1:3,ip,el))
    case (HOMOGENIZATION_RGC_ID) chosenHomogenization
+#ifdef NEWSTATE
+     homogenization_postResults = homogenization_RGC_postResults(&
+                                  ip, &
+                                  el, &
+                                  materialpoint_P(1:3,1:3,ip,el), &
+                                  materialpoint_F(1:3,1:3,ip,el))
+
+#else
      homogenization_postResults = homogenization_RGC_postResults(&
                                   homogenization_state(ip,el),&
                                   ip, &
                                   el, &
                                   materialpoint_P(1:3,1:3,ip,el), &
                                   materialpoint_F(1:3,1:3,ip,el))
+
+#endif
  end select chosenHomogenization
 
 end function homogenization_postResults

@@ -147,6 +147,10 @@ subroutine CPFEM_init
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
+#ifdef NEWSTATE
+   homogState, &
+   mappingHomogenization, &
+#endif   
    phase_plasticity, &
    plasticState
  use crystallite, only: &
@@ -157,8 +161,10 @@ subroutine CPFEM_init
    crystallite_Tstar0_v, &
    crystallite_localPlasticity
  use homogenization, only: &
-   homogenization_sizeState, &
-   homogenization_state0
+#ifndef NEWSTATE
+   homogenization_state0, &
+#endif
+   homogenization_sizeState
 
  implicit none
  integer(pInt) :: i,j,k,l,m,ph
@@ -222,7 +228,11 @@ subroutine CPFEM_init
    do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
      do l = 1,homogenization_sizeState(j,k)
        m = m+1_pInt
+#ifdef NEWSTATE
+       read(777,rec=m) homogState(mappingHomogenization(2,j,k))%state0(l,mappingHomogenization(1,j,k))
+#else
        read(777,rec=m) homogenization_state0(j,k)%p(l)
+#endif
      enddo
 
    enddo; enddo
@@ -304,6 +314,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    microstructure_elemhomo, &
    plasticState, &
    damageState, &
+#ifdef NEWSTATE
+   homogState, &
+   mappingHomogenization, &
+#endif   
    thermalState, &
    mappingConstitutive, &
    material_phase, &
@@ -322,8 +336,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_temperature
  use homogenization, only: &
    homogenization_sizeState, &
+#ifndef NEWSTATE
    homogenization_state, &
    homogenization_state0, &
+#endif
    materialpoint_F, &
    materialpoint_F0, &
    materialpoint_P, &
@@ -417,7 +433,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      do k = 1,mesh_NcpElems
        do j = 1,mesh_maxNips
          if (homogenization_sizeState(j,k) > 0_pInt) &
+#ifdef NEWSTATE
+           homogState(mappingHomogenization(2,j,k))%state0(:,mappingHomogenization(1,j,k)) =  &
+      homogState(mappingHomogenization(2,j,k))%state(:,mappingHomogenization(1,j,k))              ! internal state of homogenization scheme
+#else
            homogenization_state0(j,k)%p = homogenization_state(j,k)%p                          ! internal state of homogenization scheme
+#endif
        enddo
      enddo
    !$OMP END PARALLEL DO
@@ -468,7 +489,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
        do l = 1,homogenization_sizeState(j,k)
          m = m+1_pInt
+#ifdef NEWSTATE
+         write(777,rec=m) homogState(mappingHomogenization(2,j,k))%state0(l,mappingHomogenization(1,j,k))
+#else
          write(777,rec=m) homogenization_state0(j,k)%p(l)
+#endif
        enddo
      enddo; enddo
      close (777)

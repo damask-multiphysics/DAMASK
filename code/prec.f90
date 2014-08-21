@@ -77,6 +77,15 @@ module prec
                                                  RK4dotState
    real(pReal), allocatable, dimension(:,:,:) :: RKCK45dotState
  end type
+#ifdef NEWSTATE
+ type, public :: hState
+   integer(pInt)                              :: sizeState = 0_pInt , &
+                                                 sizePostResults = 0_pInt
+   real(pReal), allocatable, dimension(:,:)   :: state, &                                                     ! material points, state size
+                                                 state0, &
+                                                 subState0
+ end type 
+#endif
 
  public :: &
    prec_init

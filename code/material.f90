@@ -13,6 +13,9 @@ module material
    pReal, &
    pInt, &
    tState, &
+#ifdef NEWSTATE
+   hState, &
+#endif
    p_intvec
 
  implicit none
@@ -116,12 +119,19 @@ module material
 
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase (index) of each grain,IP,element
-
+#ifdef NEWSTATE
+ integer(pInt), dimension(:,:), allocatable, public :: &
+   material_homog                                                                                   !< homogenization (index) of each IP,element
+#endif   
  type(tState), allocatable, dimension(:), public :: &
    plasticState, &
    elasticState, &
    damageState, &
    thermalState
+#ifdef NEWSTATE  
+ type(hState), allocatable, dimension(:), public :: &
+   homogState
+#endif
 
 
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
@@ -177,8 +187,14 @@ module material
    
  integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: mappingConstitutive
  integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingCrystallite
+#ifdef NEWSTATE
+ integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingHomogenization
+#endif
  integer(pInt), dimension(:), allocatable :: ConstitutivePosition
  integer(pInt), dimension(:), allocatable :: CrystallitePosition
+#ifdef NEWSTATE
+ integer(pInt), dimension(:), allocatable :: HomogenizationPosition
+#endif
 
 
  public :: &
@@ -242,7 +258,7 @@ subroutine material_init
  
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
- integer(pInt)            :: m,c,h, myDebug
+ integer(pInt)            :: m,c,h, myDebug, myHomogInstance
  integer(pInt) :: &
   g, &                                                                                              !< grain number
   i, &                                                                                              !< integration point number
@@ -273,7 +289,9 @@ subroutine material_init
  allocate(elasticState(material_Nphase))
  allocate(damageState (material_Nphase))
  allocate(thermalState(material_Nphase))
- 
+#ifdef NEWSTATE
+ allocate(homogState(material_Nhomogenization))
+#endif
  do m = 1_pInt,material_Nmicrostructure
    if(microstructure_crystallite(m) < 1_pInt .or. &
       microstructure_crystallite(m) > material_Ncrystallite) & 
@@ -313,11 +331,22 @@ subroutine material_init
  call material_populateGrains
 
  allocate(mappingConstitutive(2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+#ifdef NEWSTATE
+ allocate(mappingHomogenization(2,mesh_maxNips,mesh_NcpElems),source=0_pInt)
+#endif
  allocate(mappingCrystallite (2,homogenization_maxNgrains,mesh_NcpElems),source=0_pInt)
  allocate(ConstitutivePosition(material_Nphase),source=0_pInt)
+#ifdef NEWSTATE
+ allocate(HomogenizationPosition(material_Nhomogenization),source=0_pInt)
+#endif
  allocate(CrystallitePosition(material_Nphase),source=0_pInt)
  ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
+ myHomogInstance = homogenization_typeInstance(mesh_element(3,e))
    IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
+#ifdef NEWSTATE
+       HomogenizationPosition(myHomogInstance) = HomogenizationPosition(myHomogInstance)+1_pInt
+       mappingHomogenization(1:2,i,e) = [HomogenizationPosition(myHomogInstance),myHomogInstance]
+#endif
      GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))                              ! loop over grains
        phase = material_phase(g,i,e)
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
@@ -941,9 +970,9 @@ subroutine material_populateGrains
  real(pReal), dimension (3)                  :: orientation
  real(pReal), dimension (3,3)                :: symOrientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
- integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
+ integer(pInt) :: t,e,i,ii,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
-                  grain,constituentGrain,ipGrain,symExtension, ip
+                  grain,constituentGrain,ipGrain,symExtension, ip, HomogInstType
  real(pReal) :: extreme,rnd
  integer(pInt),  dimension (:,:),   allocatable :: Nelems                                           ! counts number of elements in homog, micro array
  type(p_intvec), dimension (:,:), allocatable :: elemsOfHomogMicro                                  ! lists element number in homog, micro array
@@ -952,12 +981,25 @@ subroutine material_populateGrains
  
  allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
  allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),        source=0_pInt)
+#ifdef NEWSTATE
+ allocate(material_homog(mesh_maxNips,mesh_NcpElems),                                  source=0_pInt)
+#endif
  allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),      source=0_pInt)
  allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
  allocate(Ngrains(material_Nhomogenization,material_Nmicrostructure),                  source=0_pInt)
  allocate(Nelems(material_Nhomogenization,material_Nmicrostructure),                   source=0_pInt)
  
+#ifdef NEWSTATE 
+! populating homogenization schemes in each
+!--------------------------------------------------------------------------------------------------
+ do e = 1_pInt, mesh_NcpElems
+!  do i = 1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e)))
+    material_homog(1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))),e)=homogenization_typeInstance(mesh_element(3,e))
+!  enddo
+ enddo
+ 
+#endif
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair
  do e = 1_pInt, mesh_NcpElems

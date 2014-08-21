@@ -51,6 +51,9 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine homogenization_isostrain_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
+ use prec, only: &
+   pReal, &
+   pInt
  use IO
  use material
  
@@ -61,7 +64,15 @@ subroutine homogenization_isostrain_init(fileUnit)
  integer(pInt) :: &
    section = 0_pInt, i, j, output, mySize
  integer :: &
-   maxNinstance, k                                                                                  ! no pInt (stores a system dependen value from 'count'
+   maxNinstance, &
+#ifdef NEWSTATE
+   homog, &
+   NofMyHomog, &
+   instance, &
+   sizeHState, &
+#endif    
+   k                                            
+! no pInt (stores a system dependen value from 'count'
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -144,6 +155,24 @@ subroutine homogenization_isostrain_init(fileUnit)
    endif
  enddo
 
+#ifdef NEWSTATE
+  initializeInstances: do homog = 1_pInt, material_Nhomogenization
+   
+   myhomog: if (homogenization_type(homog) == HOMOGENIZATION_ISOSTRAIN_ID) then
+      NofMyHomog = count(material_homog == homog)
+!     instance = phase_plasticityInstance(phase)
+
+! allocate homogenization state arrays
+     sizeHState = 0_pInt
+     homogState(homog)%sizeState = sizeHState
+     homogState(homog)%sizePostResults = homogenization_isostrain_sizePostResults(homog)
+     allocate(homogState(homog)%state0             (   sizeHState,NofMyHomog), source=0.0_pReal)
+     allocate(homogState(homog)%subState0          (   sizeHState,NofMyHomog), source=0.0_pReal)
+     allocate(homogState(homog)%state              (   sizeHState,NofMyHomog), source=0.0_pReal)
+
+   endif myhomog
+ enddo initializeInstances
+#endif
  do i = 1,maxNinstance
 
    do j = 1_pInt,maxval(homogenization_Noutput)
