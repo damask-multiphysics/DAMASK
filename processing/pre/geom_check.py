@@ -53,6 +53,11 @@ Produce VTK rectilinear mesh of structure data from geom description
 """ + string.replace(scriptID,'\n','\\n')
 )
 
+parser.add_option('-n','--nodata',      dest='data', action='store_false',
+                                        help='omit microstructure data, just generate mesh')
+
+parser.set_defaults(data = True)
+
 (options, filenames) = parser.parse_args()
 
 #--- setup file handles --------------------------------------------------------------------------  
@@ -124,26 +129,28 @@ for file in files:
     temp.SetNumberOfTuples(info['grid'][i]+1)
     for j in xrange(info['grid'][i]+1):
       temp.InsertTuple1(j,j*info['size'][i]/info['grid'][i]+info['origin'][i])
-    if i == 0: grid.SetXCoordinates(temp)
-    if i == 1: grid.SetYCoordinates(temp)
-    if i == 2: grid.SetZCoordinates(temp)
+    if   i == 0: grid.SetXCoordinates(temp)
+    elif i == 1: grid.SetYCoordinates(temp)
+    elif i == 2: grid.SetZCoordinates(temp)
 
 #--- read microstructure information --------------------------------------------------------------
-  structure = vtk.vtkIntArray()
-  structure.SetName('Microstructures')
 
-  while theTable.data_read():
-    items = theTable.data
-    if len(items) > 2:
-      if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
-      elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
-      else:                          items = map(int,items)
-    else:                            items = map(int,items)
+  if options.data:
+    structure = vtk.vtkIntArray()
+    structure.SetName('Microstructures')
 
-    for item in items:
-      structure.InsertNextValue(item)
+    while theTable.data_read():
+      items = theTable.data
+      if len(items) > 2:
+        if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
+        elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
+        else:                          items = map(int,items)
+      else:                            items = map(int,items)
 
-  grid.GetCellData().AddArray(structure)
+      for item in items:
+        structure.InsertNextValue(item)
+
+    grid.GetCellData().AddArray(structure)
 
 #--- write data -----------------------------------------------------------------------------------
   if file['name'] == 'STDIN':
