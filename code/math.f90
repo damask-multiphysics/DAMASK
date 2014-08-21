@@ -155,6 +155,9 @@ module math
    math_pDecomposition, &
    math_hi, &
    math_eigenvalues33, &
+   math_factorial, &
+   math_binomial, &
+   math_multinomial, &
    math_volTetrahedron, &
    math_areaTriangle, &
    math_rotate_forward33, &
@@ -2558,6 +2561,52 @@ integer(pInt) function prime(n)
  end if
 
 end function prime
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief factorial
+!--------------------------------------------------------------------------------------------------
+integer(pInt) pure function math_factorial(n)
+
+ implicit none
+ integer(pInt), intent(in) :: n
+ integer(pInt) :: i
+ 
+ math_factorial = product((/(i, i=1,n)/))
+
+end function math_factorial
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief binomial coefficient
+!--------------------------------------------------------------------------------------------------
+integer(pInt) pure function math_binomial(n,k)
+
+ implicit none
+ integer(pInt), intent(in) :: n, k
+ integer(pInt) :: i, j
+ 
+ j = min(k,n-k)
+ math_binomial = product((/(i, i=n, n-j+1, -1)/))/math_factorial(j)
+
+end function math_binomial
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief multinomial coefficient
+!--------------------------------------------------------------------------------------------------
+integer(pInt) pure function math_multinomial(alpha)
+
+ implicit none
+ integer(pInt), intent(in) :: alpha(:)
+ integer(pInt) :: i
+ 
+ math_multinomial = 1.0_pInt
+ do i = 1, size(alpha)
+   math_multinomial = math_multinomial*math_binomial(sum(alpha(1:i)),alpha(i))
+ enddo  
+
+end function math_multinomial
 
 
 !--------------------------------------------------------------------------------------------------
