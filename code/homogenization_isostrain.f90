@@ -144,7 +144,7 @@ subroutine homogenization_isostrain_init(fileUnit)
    endif
  enddo
 
- do k = 1,maxNinstance
+ do i = 1,maxNinstance
 
    do j = 1_pInt,maxval(homogenization_Noutput)
      select case(homogenization_isostrain_outputID(j,i))
