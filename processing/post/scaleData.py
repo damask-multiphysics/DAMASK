@@ -19,8 +19,10 @@ Uniformly scale values of scalar, vector, or tensor columns by given factor.
 
 """, version = scriptID)
 
-parser.add_option('-s','--scalar',  dest='scalar', action='extend', metavar='<string LIST>',
-                                    help='column heading of scalar to scale')
+parser.add_option('-s','--special',     dest='special', action='extend', type='string', metavar='<string LIST>',
+                                        help='heading of columns containing field values of special dimension')
+parser.add_option('-d','--dimension',   dest='N', action='store', type='int', metavar='int',
+                                        help='dimension of special field values [%default]')
 parser.add_option('-v','--vector',  dest='vector', action='extend', metavar='<string LIST>',
                                     help='column heading of vector to scale')
 parser.add_option('-t','--tensor',  dest='tensor', action='extend', metavar='<string LIST>',
@@ -28,16 +30,17 @@ parser.add_option('-t','--tensor',  dest='tensor', action='extend', metavar='<st
 parser.add_option('-f','--factor',  dest='factor', action='extend', metavar='<float LIST>',
                                     help='list of scalar, vector, and tensor scaling factors (in this order!)')
 
-parser.set_defaults(scalar = [])
+parser.set_defaults(special = [])
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
 parser.set_defaults(factor  = [])
+parser.set_defaults(N = 1)
 
 (options,filenames) = parser.parse_args()
 
 options.factor = np.array(options.factor,'d')
 datainfo = {                                                               # list of requested labels per datatype
-             'scalar':     {'len':1,
+             'scalar':     {'len':options.N,
                             'label':[]},
              'vector':     {'len':3,
                             'label':[]},
@@ -46,9 +49,9 @@ datainfo = {                                                               # lis
            }
 
 length = 0
-if options.scalar != []: datainfo['scalar']['label'] += options.scalar; length += len(options.scalar)
-if options.vector != []: datainfo['vector']['label'] += options.vector; length += len(options.vector)
-if options.tensor != []: datainfo['tensor']['label'] += options.tensor; length += len(options.tensor)
+if options.special != []: datainfo['special']['label'] += options.special; length += len(options.scalar)*datainfo['special']['len']
+if options.vector  != []: datainfo['vector']['label']  += options.vector;  length += len(options.vector)*datainfo['vector']['len']
+if options.tensor  != []: datainfo['tensor']['label']  += options.tensor;  length += len(options.tensor)*datainfo['tensor']['len']
 if len(options.factor) != length:
   parser.error('length of scaling vector does not match column count...')
 
@@ -76,8 +79,7 @@ for file in files:
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = {True :'1_%s',
-             False:'%s'   }[info['len']>1]%label
+      key = '1_'+label if info['len'] > 1 else label
       if key in table.labels:
           active[datatype].append(label)
           column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
