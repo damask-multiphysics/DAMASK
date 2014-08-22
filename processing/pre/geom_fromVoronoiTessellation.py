@@ -266,8 +266,8 @@ for file in files:
 #--- output finalization --------------------------------------------------------------------------
 
   if file['name'] != 'STDIN':
-    file['input'].close()
-    file['output'].close()
+    table.input_close()  
+    table.output_close()  
     os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \
                                   {True: '_material.config',
                                    False:'.geom'}[options.config])

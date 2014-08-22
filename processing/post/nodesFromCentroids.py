@@ -148,7 +148,7 @@ for file in files:
     undeformedCentroids[x,y,z] = numpy.array(map(float,table.data[columnUndeformed:columnUndeformed+3]),'d')
     defgrad[x,y,z] = numpy.array(map(float,table.data[columnDefgrad:columnDefgrad+9]),'d').reshape(3,3)
 
-  file['input'].close()                                                     # close input ASCII table
+  table.input_close()                                                       # close input ASCII table
 
 
 # ------------------------------------------ process value field ----------------------------

@@ -1,30 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy
+import os,sys,string,re,math
+import numpy as np
+from optparse import OptionParser
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
-
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
 
 
 #--------------------------------------------------------------------------------------------------
@@ -47,29 +30,20 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 compress geometry files with ranges "a to b" and/or multiples "n of x".
-""" + string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 (options, filenames) = parser.parse_args()
 
-#--- setup file handles --------------------------------------------------------------------------- 
+# ------------------------------------------ setup file handles ---------------------------------------  
 files = []
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
-                    })
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
@@ -82,9 +56,9 @@ for file in files:
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':    numpy.zeros(3,'i'),
-          'size':    numpy.zeros(3,'d'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'size':    np.zeros(3,'d'),
+          'origin':  np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
@@ -111,10 +85,10 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
 
@@ -179,11 +153,10 @@ for file in files:
 
 
 # ------------------------------------------ output result ---------------------------------------  
-
   outputAlive and theTable.output_flush()                                   # just in case of buffered ASCII table
 
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    file['input'].close()                                                   # close input ASCII table
-    file['output'].close()                                                   # close input ASCII table
+    table.input_close()                                                     # close input ASCII table
+    table.output_close()                                                    # close input ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new

@@ -162,6 +162,6 @@ for file in files:
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    file['input'].close()                                                   # close input ASCII table
-    file['output'].close()                                                  # close input ASCII table
+    table.input_close()                                                     # close input ASCII table
+    table.output_close()                                                    # close input ASCII table
     os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new

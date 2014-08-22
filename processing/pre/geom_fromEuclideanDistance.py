@@ -284,4 +284,4 @@ for file in files:
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    file['input'].close()
+    table.input_close()  

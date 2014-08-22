@@ -192,4 +192,4 @@ else:
   
 
 #--- output finalization --------------------------------------------------------------------------  
-file['output'].close()
+table.output_close()  

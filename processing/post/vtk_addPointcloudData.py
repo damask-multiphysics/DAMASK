@@ -127,7 +127,7 @@ for file in files:
         elif datatype == 'scalar':
           array[datatype][label].InsertNextValue(float(theData[0]))
 
-  file['input'].close()                                                   # close input ASCII table
+  table.input_close()                                                     # close input ASCII table
 
 # ------------------------------------------ add data ---------------------------------------  
 

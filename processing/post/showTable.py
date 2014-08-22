@@ -59,4 +59,4 @@ for file in files:
   outputAlive and table.output_flush()
 
   if file['name'] != 'STDIN':
-    file['input'].close()
+    table.input_close()  

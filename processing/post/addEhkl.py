@@ -104,7 +104,7 @@ for file in files:
 # ------------------------------------------ output result -----------------------------------------
   outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
-  file['input'].close()                                                                             # close input ASCII table (works for stdin)
-  file['output'].close()                                                                            # close output ASCII table (works for stdout)
+  table.input_close()                                                                               # close input ASCII table (works for stdin)
+  table.output_close()                                                                              # close output ASCII table (works for stdout)
   if file['name'] != 'STDIN':
     os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new

@@ -189,6 +189,6 @@ for file in files:
 
   outputDead or theTable.output_flush()                                        # just in case of buffered ASCII table
 
-  file['input'].close()                                                     # close input ASCII table
+  table.input_close()                                                       # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close()                                                  # close output ASCII table
+    table.output_close()                                                    # close output ASCII table

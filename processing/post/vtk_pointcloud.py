@@ -112,4 +112,4 @@ for file in files:
       writer.SetInputData(Polydata)
   writer.Write()
 
-  file['input'].close()                                                   # close input ASCII table
+  table.input_close()                                                     # close input ASCII table

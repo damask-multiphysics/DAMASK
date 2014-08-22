@@ -166,4 +166,4 @@ myColormap = Colormap(leftColor,rightColor)
 for file in files:
   outColormap = myColormap.export(file['name'],file['outtype'],options.steps,list(options.trim))
   file['output'].write(outColormap)
-  file['output'].close()
+  table.output_close()  

@@ -217,6 +217,6 @@ for file in files:
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    file['input'].close()
-    file['output'].close()
+    table.input_close()  
+    table.output_close()  
     os.rename(file['name']+'_tmp',file['name'])

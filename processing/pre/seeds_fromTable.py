@@ -177,6 +177,6 @@ for file in files:
   theTable.data_writeArray()
   theTable.output_flush()
   
-  file['input'].close()                                                     # close input ASCII table
+  table.input_close()                                                       # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close()                                                  # close output ASCII table
+    table.output_close()                                                    # close output ASCII table

@@ -72,7 +72,7 @@ for file in files:
   skip = int(file['input'].readline().split()[0])
   for i in xrange(skip): headers = file['input'].readline().split()
   data = np.loadtxt(file['input'],usecols=np.array(options.data+((options.weight,) if options.weight != None else ()))-1)
-  file['input'].close()                                                                              # close input ASCII table
+  table.input_close()                                                                                # close input ASCII table
 
   for i in (0,1):                                                                                    # check data range for x and y
     if (range[i] == 0.0).all(): range[i] = [data[:,i].min(),data[:,i].max()]
@@ -113,7 +113,7 @@ for file in files:
   file['output'].write('1\thead\n')
   file['output'].write('bin_%s\tbin_%s\tz\n'%(headers[options.data[0]-1],headers[options.data[1]-1]))
   np.savetxt(file['output'],result)
-  file['output'].close()                                                                            # close output ASCII table
+  table.output_close()                                                                              # close output ASCII table
   if file['name'] != 'STDIN':
     os.rename(file['name']+'_tmp',\
               os.path.join(os.path.dirname(file['name']),prefix+os.path.basename(file['name'])))

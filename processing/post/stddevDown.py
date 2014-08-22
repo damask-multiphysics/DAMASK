@@ -188,6 +188,6 @@ for file in files:
 # ------------------------------------------ close file handles ---------------------------------------  
 
 for file in files:
-  file['input'].close()                                                     # close input ASCII table
+  table.input_close()                                                       # close input ASCII table
   if file['name'] != 'STDIN':
-    file['output'].close()                                                  # close output ASCII table
+    table.output_close()                                                    # close output ASCII table
