@@ -49,6 +49,25 @@ class Quaternion:
       return 'Quaternion(real=%+.4f, imag=<%+.4f, %+.4f, %+.4f>)' % \
           (self.w, self.x, self.y, self.z)
 
+    def __pow__(self, exponent):
+      omega = math.acos(self.w)
+      vRescale = math.sin(exponent*omega)/math.sin(omega)
+      Q = Quaternion()
+      Q.x = self.x * vRescale
+      Q.y = self.y * vRescale
+      Q.z = self.z * vRescale
+      Q.w = math.cos(exponent*omega)
+      return Q
+    
+    def __ipow__(self, exponent):
+      omega = math.acos(self.w)
+      vRescale = math.sin(exponent*omega)/math.sin(omega)
+      self.x *= vRescale
+      self.y *= vRescale
+      self.z *= vRescale
+      self.w = numpy.cos(exponent*omega)
+      return self
+    
     def __mul__(self, other):
       try:                                                          # quaternion
           Ax = self.x
@@ -97,7 +116,7 @@ class Quaternion:
           return self.copy()
 
     def __imul__(self, other):
-      try:                                                          # Quaternion
+      try:                                                        # Quaternion
           Ax = self.x
           Ay = self.y
           Az = self.z
@@ -267,6 +286,9 @@ class Quaternion:
     def asList(self):
       return [i for i in self]
 
+    def asM(self):                                                # to find Averaging Quaternions (see F. Landis Markley et al.)
+      return numpy.outer([i for i in self],[i for i in self])
+
     def asMatrix(self):
       return numpy.array([[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
                           [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
@@ -278,7 +300,7 @@ class Quaternion:
       angle = 2 * math.acos(self.w)
       s = math.sqrt(1 - self.w ** 2)
       if s < 0.001:
-          return angle, nunmpy.array([1.0, 0.0, 0.0])
+          return angle, numpy.array([1.0, 0.0, 0.0])
       else:
           return angle, numpy.array([self.x / s, self.y / s, self.z / s])
 
@@ -420,6 +442,8 @@ class Quaternion:
 
     @classmethod
     def new_interpolate(cls, q1, q2, t):
+# see http://ntrs.nasa.gov/archive/nasa/casi.ntrs.nasa.gov/20070017872_2007014421.pdf for (another?) way to interpolate quaternions
+
         assert isinstance(q1, Quaternion) and isinstance(q2, Quaternion)
         Q = cls()
 
@@ -757,14 +781,14 @@ class Orientation:
     for me in self.symmetry.equivalentQuaternions(self.quaternion):
       me.conjugate()
       for they in other.symmetry.equivalentQuaternions(other.quaternion):
-        theQ = (me * they).homomorph()
-        if theQ.x < 0.0 or theQ.y < 0.0 or theQ.z < 0.0: theQ.conjugate()                   # speed up scanning since minimum angle is usually found for positive x,y,z
-        if lowerSymmetry.inDisorientationSST(theQ.asRodrigues()):
-          breaker = True
-          break
+        theQ = me * they
+#        if theQ.x < 0.0 or theQ.y < 0.0 or theQ.z < 0.0: theQ.conjugate()                   # speed up scanning since minimum angle is usually found for positive x,y,z
+        breaker = lowerSymmetry.inDisorientationSST(theQ.asRodrigues()) \
+               or lowerSymmetry.inDisorientationSST(theQ.conjugated().asRodrigues())
+        if breaker: break
       if breaker: break
-      
-    return Orientation(quaternion=theQ,symmetry=self.symmetry.lattice)
+
+    return Orientation(quaternion=theQ,symmetry=self.symmetry.lattice) #, me.conjugated(), they
 
 
   def IPFcolor(self,axis):
