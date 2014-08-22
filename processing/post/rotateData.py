@@ -19,11 +19,11 @@ Uniformly scale values of scalar, vector, or tensor columns by given factor.
 
 """, version = scriptID)
 
-parser.add_option('-v','--vector',  dest = 'vector', action = 'extend', metavar='string',
+parser.add_option('-v','--vector',  dest = 'vector', action = 'extend', metavar = 'string',
                                     help = 'column heading of vector to scale')
-parser.add_option('-t','--tensor',  dest = 'tensor', action = 'extend', metavar='string',
+parser.add_option('-t','--tensor',  dest = 'tensor', action = 'extend', metavar = 'string',
                                     help = 'column heading of tensor to scale')
-parser.add_option('-r', '--rotation',dest = 'rotation', type = 'float', nargs = 4, metavar='int int int int',
+parser.add_option('-r', '--rotation',dest = 'rotation', type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
                                     help = 'angle and axis to rotate data %default')
 parser.add_option('-d', '--degrees', dest = 'degrees', action = 'store_true',
                                     help = 'angles are given in degrees [%default]')
@@ -86,21 +86,25 @@ for file in files:
 # ------------------------------------------ process data ------------------------------------------
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
+
     datatype = 'vector'
+
     for label in active[datatype] if datatype in active else []:                                    # loop over all requested labels
       table.data[column[datatype][label]:column[datatype][label]+datainfo[datatype]['len']] = \
         r * np.array(map(float,
-                            table.data[column[datatype][label]:\
-                                       column[datatype][label]+datainfo[datatype]['len']]))
+                         table.data[column[datatype][label]:\
+                                    column[datatype][label]+datainfo[datatype]['len']]))
 
     datatype = 'tensor'
 
     for label in active[datatype] if datatype in active else []:                                    # loop over all requested labels
-      table.data[column[datatype][label]:column[datatype][label]+datainfo[datatype]['len']] = \
-         (np.array(map(float,table.data[column[datatype][label]:\
-                                    column[datatype][label]+datainfo[datatype]['len']])).\
-                                   reshape(np.sqrt(datainfo[datatype]['len']),\
-                                           np.sqrt(datainfo[datatype]['len'])) * R).reshape(datainfo[datatype]['len'])
+      A = np.array(map(float,table.data[column[datatype][label]:\
+                                        column[datatype][label]+datainfo[datatype]['len']])).\
+                  reshape(np.sqrt(datainfo[datatype]['len']),
+                          np.sqrt(datainfo[datatype]['len']))
+      table.data[column[datatype][label]:\
+                 column[datatype][label]+datainfo[datatype]['len']] = \
+          np.dot(R,np.dot(A,R.transpose())).reshape(datainfo[datatype]['len'])
     outputAlive = table.data_write()                                                                # output processed line
 
 # ------------------------------------------ output result -----------------------------------------
