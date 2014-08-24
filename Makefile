@@ -7,7 +7,11 @@ all: spectral marc processing
 
 .PHONY: spectral
 spectral:
-	$(MAKE) -C code
+	$(MAKE) DAMASK_spectral.exe -C code
+
+.PHONY: FEM
+FEM:
+	$(MAKE) DAMASK_FEM.exe -C code
 
 .PHONY: marc
 marc:

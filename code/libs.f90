@@ -8,10 +8,7 @@ module libs
 !nothing in here
 end module libs
 
-#ifdef Spectral
-#include "../lib/kdtree2.f90"
-#endif
-#ifdef FEM
+#if defined(Spectral) || defined(FEM)
 #include "../lib/kdtree2.f90"
 #endif
 #include "../lib/IR_Precision.f90"

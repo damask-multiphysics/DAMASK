@@ -154,10 +154,7 @@ subroutine numerics_init
    IO_timeStamp, &
    IO_EOF
 
-#ifdef Spectral
-!$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
-#endif  
-#ifdef FEM
+#if defined(Spectral) || defined(FEM)
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
 #endif  
  implicit none

@@ -26,13 +26,15 @@ else
 	include /etc/damask.conf
 endif  
 
-COMPILERNAME ?= $(F90)
-
 ifdef PETSC_DIR
 include $(PETSC_DIR)/conf/variables
 INCLUDE_DIRS :=$(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    :=$(PETSC_WITH_EXTERNAL_LIB) -lfftw3
+COMPILERNAME ?= $(FC)
+LINKERNAME   ?= $(FLINKER)
 else
+COMPILERNAME ?= $(F90)
+LINKERNAME   ?= $(F90)
 INCLUDE_DIRS :=-I../lib
 LIBRARIES :=-lfftw3
 endif
@@ -348,48 +350,105 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 
 ###################################################################################################
-COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 ###################################################################################################
-COMPILED_FILES = prec.o DAMASK_spectral_interface.o IO.o libs.o numerics.o debug.o math.o \
+DAMAGE_FILES = \
+   damage_none.o damage_local.o damage_gradient.o 
+THERMAL_FILES = \
+   thermal_none.o thermal_conduction.o
+CONSTITUTIVE_FILES = \
+   constitutive_dislotwin.o constitutive_dislokmc.o constitutive_j2.o constitutive_phenopowerlaw.o \
+   constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o \
+   constitutive_damage.o constitutive_thermal.o constitutive.o
+HOMOGENIZATION_FILES = \
+   homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o
+
+#####################
+# Spectral Solver
+#####################
+DAMASK_spectral.exe: COMPILE         += -DSpectral
+DAMASK_spectral.exe: COMPILE_MAXOPTI += -DSpectral
+DAMASK_spectral.exe: MESHNAME        := mesh.f90
+DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
+
+
+SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 damage_none.o damage_local.o damage_gradient.o thermal_none.o thermal_conduction.o \
-                 constitutive_dislotwin.o constitutive_dislokmc.o constitutive_j2.o constitutive_phenopowerlaw.o \
-                 constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o \
-                 constitutive_damage.o constitutive_thermal.o constitutive.o crystallite.o \
-                 homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o CPFEM.o \
-                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o \
-
-
+                 $(DAMAGE_FILES) $(THERMAL_FILES) $(CONSTITUTIVE_FILES) \
+                 crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
+                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o
 ifdef PETSC_DIR
 PETSC_FILES = DAMASK_spectral_solverAL.o \
               DAMASK_spectral_solverBasicPETSc.o \
               DAMASK_spectral_solverPolarisation.o
-COMPILED_FILES += $(PETSC_FILES)
+SPECTRAL_FILES += $(PETSC_FILES)
 endif
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
-	$(PREFIX) $(COMPILERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
-  -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-  $(COMPILED_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
+	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
+    -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
+    $(SPECTRAL_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
 
-DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90\
+DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \
                                DAMASK_spectral_utilities.o
   
-DAMASK_spectral_solverBasic.o: DAMASK_spectral_solverBasic.f90\
+DAMASK_spectral_solverBasic.o: DAMASK_spectral_solverBasic.f90 \
                                DAMASK_spectral_utilities.o
   
-DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90\
+DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90 \
                                DAMASK_spectral_utilities.o
   
-DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90\
+DAMASK_spectral_solverBasicPETSc.o: DAMASK_spectral_solverBasicPETSc.f90 \
                                DAMASK_spectral_utilities.o
 
-DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90\
+DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90 \
                                CPFEM.o
+
+#####################
+# FEM Solver
+#####################
+VPATH           = ../private/FEM/code
+DAMASK_FEM.exe: COMPILE         += -DFEM -DmultiphysicsOut
+DAMASK_FEM.exe: COMPILE_MAXOPTI += -DFEM -DmultiphysicsOut
+DAMASK_FEM.exe: MESHNAME        := ../private/FEM/code/meshFEM.f90
+DAMASK_FEM.exe: INTERFACENAME   := ../private/FEM/code/DAMASK_FEM_interface.f90
+DAMASK_FEM.exe: INCLUDE_DIRS    += -I./
+
+FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.o math.o \
+                 FEsolving.o mesh.o material.o lattice.o \
+                 $(DAMAGE_FILES) $(THERMAL_FILES) $(CONSTITUTIVE_FILES) \
+                 crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
+                 FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o
+
+DAMASK_FEM.exe:                DAMASK_FEM_driver.o
+	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
+  -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
+  $(FEM_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
+
+DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 FEM_mech.o FEM_thermal.o FEM_damage.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
+
+FEM_mech.o:                    FEM_mech.f90 \
+                               FEM_utilities.o
+
+FEM_thermal.o:                 FEM_thermal.f90 \
+                               FEM_utilities.o
+
+FEM_damage.o:                  FEM_damage.f90 \
+                               FEM_utilities.o
+
+FEM_utilities.o:               FEM_utilities.f90 \
+                               CPFEM.o 
+
+FEZoo.o:                       FEZoo.f90 \
+                               IO.o
+
+
+
 CPFEM.o:                       CPFEM.f90\
                                homogenization.o
 
@@ -473,8 +532,11 @@ material.o:                    material.f90 \
                                mesh.o
 
 mesh.o:                        mesh.f90 \
+                               meshFEM.f90 \
                                FEsolving.o \
-                               math.o
+                               math.o \
+                               FEZoo.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(MESHNAME) -o mesh.o $(SUFFIX)
 
 FEsolving.o:                   FEsolving.f90 \
                                debug.o
@@ -492,23 +554,23 @@ libs.o:                        libs.f90 \
                                IO.o
 
 IO.o:                          IO.f90 \
-                               DAMASK_spectral_interface.o
+                               DAMASK_interface.o
 
 ifeq "$(F90)" "gfortran"
-DAMASK_spectral_interface.o:   DAMASK_spectral_interface.f90 \
+DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
+                               DAMASK_FEM_interface.f90 \
                                prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -fall-intrinsics DAMASK_spectral_interface.f90 $(SUFFIX)
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored 
 #                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
 #      -->   allows the use of 'getcwd'
 prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -fno-range-check prec.f90 $(SUFFIX)
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check $(SUFFIX)
 # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
 #      -->   allows the definition of DAMASK_NaN
 else
-DAMASK_spectral_interface.o:   DAMASK_spectral_interface.f90 \
-                               prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c -diag-remark 7410 -stand none -warn nostderrors DAMASK_spectral_interface.f90 $(SUFFIX)
+DAMASK_interface.o:            prec.o
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -diag-remark 7410 -stand none -warn nostderrors -o DAMASK_interface.o $(SUFFIX)
 # -diag-disable 7410 should disable warning about directory statement in inquire function, but does not work. hence the other 2 statements
 prec.o:                        prec.f90
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
