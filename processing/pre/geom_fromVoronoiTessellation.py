@@ -1,45 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string,re,numpy
-import damask 
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP 
+import os,re,sys,math,string
+import numpy as np
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-  
-
 def meshgrid2(*arrs):
   '''
-  code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
+  code inspired by http://stackoverflow.com/questions/1827489/np-meshgrid-in-3d
   '''
   arrs = tuple(reversed(arrs))
   arrs = tuple(arrs)
-  lens = numpy.array(map(len, arrs))
+  lens = np.array(map(len, arrs))
   dim = len(arrs)
   ans = []
   for i, arr in enumerate(arrs):
-     slc = numpy.ones(dim,'i')
+     slc = np.ones(dim,'i')
      slc[i] = lens[i]
-     arr2 = numpy.asarray(arr).reshape(slc)
+     arr2 = np.asarray(arr).reshape(slc)
      for j, sz in enumerate(lens):
          if j != i:
              arr2 = arr2.repeat(sz, axis=j)
@@ -48,9 +30,9 @@ def meshgrid2(*arrs):
   return tuple(ans)
 
 
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------
 #                                MAIN
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------
 synonyms = {
         'grid':              ['resolution'],
         'size':              ['dimension'],
@@ -68,11 +50,11 @@ mappings = {
         'homogenization':  lambda x: int(x),
         'microstructures': lambda x: int(x),
           }
-
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+          
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration by standard Voronoi tessellation of given seeds file.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int', \
                   help='a,b,c grid of hexahedral box [from seeds file]')
@@ -87,8 +69,8 @@ parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'in
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
                                    
-parser.set_defaults(grid = [0,0,0])
-parser.set_defaults(size = [0.0,0.0,0.0])
+parser.set_defaults(grid = (0,0,0))
+parser.set_defaults(size = (0.0,0.0,0.0))
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = 1)
 parser.set_defaults(crystallite    = 1)
@@ -119,14 +101,14 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],buffered = False)
-  theTable.head_read()
+  table = damask.ASCIItable(file['input'],file['output'],buffered = False)
+  table.head_read()
 
   labels = ['x','y','z']
   index = 0
 
-  hasEulers = numpy.all(theTable.labels_index(['phi1','Phi','phi2'])) != -1
-  hasGrains = theTable.labels_index('microstructure') != -1
+  hasEulers = np.all(table.labels_index(['phi1','Phi','phi2'])) != -1
+  hasGrains = table.labels_index('microstructure') != -1
 
   if hasEulers:
     labels += ['phi1','Phi','phi2']
@@ -140,18 +122,18 @@ for file in files:
 
   grainCol = index
 
-  theTable.data_readArray(labels)
-  coords = theTable.data[:,0:3]
-  eulers = theTable.data[:,eulerCol:eulerCol+3] if hasEulers else numpy.zeros(3*len(coords))
-  grain = theTable.data[:,grainCol] if hasGrains else 1+numpy.arange(len(eulers))
-  grainIDs = numpy.unique(grain).astype('i')
+  table.data_readArray(labels)
+  coords = table.data[:,0:3]
+  eulers = table.data[:,eulerCol:eulerCol+3] if hasEulers else np.zeros(3*len(coords))
+  grain = table.data[:,grainCol] if hasGrains else 1+np.arange(len(eulers))
+  grainIDs = np.unique(grain).astype('i')
 
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':    numpy.zeros(3,'i'),
-          'size':    numpy.array(options.size),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'size':    np.array(options.size),
+          'origin':  np.zeros(3,'d'),
           'microstructures':  0,
           'homogenization': options.homogenization,
          }
@@ -160,7 +142,7 @@ for file in files:
          }
   extra_header = []
 
-  for header in theTable.info:
+  for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue
     for synonym,alternatives in synonyms.iteritems():
@@ -180,7 +162,7 @@ for file in files:
     info['microstructures'] = len(grainIDs)
   
   if 0 not in options.grid:                                                                         # user-specified grid
-    info['grid'] = numpy.array(options.grid)
+    info['grid'] = np.array(options.grid)
 
   for i in xrange(3):
     if info['size'][i] <= 0.0:                                                                      # any invalid size?
@@ -193,10 +175,10 @@ for file in files:
                       'origin   x y z: %s\n'%(' : '.join(map(str,info['origin']))) + \
                       'homogenization: %i\n'%info['homogenization'])
   
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
   if info['microstructures'] == 0:
@@ -218,22 +200,22 @@ for file in files:
   
     file['output'].write('\n<texture>\n')
     for i in grainIDs:
-      eulerID = numpy.nonzero(grain == i)[0][0]                                                     # find first occurrence of this grain id
+      eulerID = np.nonzero(grain == i)[0][0]                                                     # find first occurrence of this grain id
       file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
                            '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,eulerID],
                                                                                              eulers[1,eulerID],
                                                                                              eulers[2,eulerID]))
 
   else:                                                                                             # write geometry file
-    x = (numpy.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
-    y = (numpy.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
-    z = (numpy.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
-    undeformed = numpy.vstack(map(numpy.ravel, meshgrid2(x, y, z)))
+    x = (np.arange(info['grid'][0])+0.5)*info['size'][0]/info['grid'][0]
+    y = (np.arange(info['grid'][1])+0.5)*info['size'][1]/info['grid'][1]
+    z = (np.arange(info['grid'][2])+0.5)*info['size'][2]/info['grid'][2]
+    undeformed = np.vstack(map(np.ravel, meshgrid2(x, y, z)))
 
     file['croak'].write('tessellating...\n')
     indices = damask.core.math.periodicNearestNeighbor(\
               info['size'],\
-              numpy.eye(3),\
+              np.eye(3),\
               undeformed,coords)//3**3 + 1                                                          # floor division to kill periodic images
     indices = grain[indices-1]
 
@@ -246,9 +228,9 @@ for file in files:
                         ' grains mapped.\n')
 
 #--- write header ---------------------------------------------------------------------------------
-    theTable.labels_clear()
-    theTable.info_clear()
-    theTable.info_append(extra_header+[
+    table.labels_clear()
+    table.info_clear()
+    table.info_append(extra_header+[
       scriptID + ' ' + ' '.join(sys.argv[1:]),
       "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
       "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
@@ -256,12 +238,12 @@ for file in files:
       "homogenization\t%i"%info['homogenization'],
       "microstructures\t%i"%(newInfo['microstructures']),
       ])
-    theTable.head_write()
+    table.head_write()
     
 # --- write microstructure information ------------------------------------------------------------
     formatwidth = 1+int(math.log10(newInfo['microstructures']))
-    theTable.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
-    theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+    table.data = indices.reshape(info['grid'][1]*info['grid'][2],info['grid'][0])
+    table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
     
 #--- output finalization --------------------------------------------------------------------------
 
