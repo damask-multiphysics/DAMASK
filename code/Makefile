@@ -532,10 +532,10 @@ material.o:                    material.f90 \
                                mesh.o
 
 mesh.o:                        mesh.f90 \
-                               meshFEM.f90 \
+                               $(wildcard meshFEM.f90) \
                                FEsolving.o \
                                math.o \
-                               FEZoo.o
+                               $(wildcard FEZoo.o)
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(MESHNAME) -o mesh.o $(SUFFIX)
 
 FEsolving.o:                   FEsolving.f90 \
@@ -558,7 +558,7 @@ IO.o:                          IO.f90 \
 
 ifeq "$(F90)" "gfortran"
 DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
-                               DAMASK_FEM_interface.f90 \
+                               $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored 
@@ -569,7 +569,9 @@ prec.o:                        prec.f90
 # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
 #      -->   allows the definition of DAMASK_NaN
 else
-DAMASK_interface.o:            prec.o
+DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
+                               $(wildcard DAMASK_FEM_interface.f90) \
+                               prec.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -diag-remark 7410 -stand none -warn nostderrors -o DAMASK_interface.o $(SUFFIX)
 # -diag-disable 7410 should disable warning about directory statement in inquire function, but does not work. hence the other 2 statements
 prec.o:                        prec.f90
