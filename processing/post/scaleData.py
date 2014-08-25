@@ -15,20 +15,20 @@ scriptName = scriptID.split()[1][:-3]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Uniformly scale values of scalar, vector, or tensor columns by given factor.
+Uniformly scale values scalar/special, vector, or tensor columns by given factor.
 
 """, version = scriptID)
 
-parser.add_option('-s','--special',     dest='special', action='extend', type='string', metavar='<string LIST>',
-                                        help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',   dest='N', action='store', type='int', metavar='int',
-                                        help='dimension of special field values [%default]')
-parser.add_option('-v','--vector',  dest='vector', action='extend', metavar='<string LIST>',
-                                    help='column heading of vector to scale')
-parser.add_option('-t','--tensor',  dest='tensor', action='extend', metavar='<string LIST>',
-                                    help='column heading of tensor to scale')
-parser.add_option('-f','--factor',  dest='factor', action='extend', metavar='<float LIST>',
-                                    help='list of scalar, vector, and tensor scaling factors (in this order!)')
+parser.add_option('-s','--special',  dest='special', action='extend', type='string', metavar='<string LIST>',
+                                     help='heading of columns containing field values of special dimension')
+parser.add_option('-d','--dimension',dest='N', type='int', metavar='int',
+                                     help='dimension of special field values [%default]')
+parser.add_option('-v','--vector',   dest='vector', action='extend', metavar='<string LIST>',
+                                     help='column heading of vector to scale')
+parser.add_option('-t','--tensor',   dest='tensor', action='extend', metavar='<string LIST>',
+                                     help='column heading of tensor to scale')
+parser.add_option('-f','--factor',   dest='factor', action='extend', metavar='<float LIST>',
+                                     help='list of scalar/special, vector, and tensor scaling factors (in this order!)')
 
 parser.set_defaults(special = [])
 parser.set_defaults(vector = [])
@@ -39,8 +39,8 @@ parser.set_defaults(N = 1)
 (options,filenames) = parser.parse_args()
 
 options.factor = np.array(options.factor,'d')
-datainfo = {                                                               # list of requested labels per datatype
-             'scalar':     {'len':options.N,
+datainfo = {                                                              # list of requested labels per datatype
+             'special':    {'len':options.N,
                             'label':[]},
              'vector':     {'len':3,
                             'label':[]},
@@ -49,9 +49,9 @@ datainfo = {                                                               # lis
            }
 
 length = 0
-if options.special != []: datainfo['special']['label'] += options.special; length += len(options.scalar)*datainfo['special']['len']
-if options.vector  != []: datainfo['vector']['label']  += options.vector;  length += len(options.vector)*datainfo['vector']['len']
-if options.tensor  != []: datainfo['tensor']['label']  += options.tensor;  length += len(options.tensor)*datainfo['tensor']['len']
+if options.special != []: datainfo['special']['label'] += options.special; length += len(options.special)
+if options.vector  != []: datainfo['vector']['label']  += options.vector;  length += len(options.vector)
+if options.tensor  != []: datainfo['tensor']['label']  += options.tensor;  length += len(options.tensor)
 if len(options.factor) != length:
   parser.error('length of scaling vector does not match column count...')
 
@@ -93,7 +93,7 @@ for file in files:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     i = 0
-    for datatype,labels in sorted(active.items(),key=lambda x:datainfo[x[0]]['len']):               # loop over scalar,vector,tensor
+    for datatype,labels in sorted(active.items(),key=lambda x:datainfo[x[0]]['len']):               # loop over special,vector,tensor
       for label in labels:                                                                          # loop over all requested labels
         for j in xrange(datainfo[datatype]['len']):                                                 # loop over entity elements
           table.data[column[datatype][label]+j] = float(table.data[column[datatype][label]+j]) * options.factor[i]

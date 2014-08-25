@@ -15,20 +15,20 @@ scriptName = scriptID.split()[1][:-3]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Shift values of scalar, vector, or tensor columns by given offset.
+Shift values of scalar/special, vector, or tensor columns by given offset.
 
 """, version = scriptID)
 
-parser.add_option('-s','--special',     dest='special', action='extend', type='string', metavar='<string LIST>',
-                                        help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',   dest='N', action='store', type='int', metavar='int',
-                                        help='dimension of special field values [%default]')
-parser.add_option('-v','--vector',  dest='vector', action='extend', metavar='<string LIST>',
-                                    help='column heading to shift by vector')
-parser.add_option('-t','--tensor',  dest='tensor', action='extend', metavar='<string LIST>',
-                                    help='column heading to shift by tensor')
-parser.add_option('-o','--offset',  dest='delta', action='extend', metavar='<float LIST>',
-                                    help='list of scalar/special, vector, and tensor shifts (in this order!)')
+parser.add_option('-s','--special',  dest='special', action='extend', type='string', metavar='<string LIST>',
+                                     help='heading of columns containing field values of special dimension')
+parser.add_option('-d','--dimension',dest='N', type='int', metavar='int',
+                                     help='dimension of special field values [%default]')
+parser.add_option('-v','--vector',   dest='vector', action='extend', metavar='<string LIST>',
+                                     help='column heading to shift by vector')
+parser.add_option('-t','--tensor',   dest='tensor', action='extend', metavar='<string LIST>',
+                                     help='column heading to shift by tensor')
+parser.add_option('-o','--offset',   dest='delta', action='extend', metavar='<float LIST>',
+                                     help='list of scalar/special, vector, and tensor shifts (in this order!)')
 
 parser.set_defaults(special = [])
 parser.set_defaults(vector = [])
@@ -49,9 +49,9 @@ datainfo = {                                                                    
            }
 
 length = 0
-if options.special != []: datainfo['special']['label'] += options.special; length += len(options.scalar)*datainfo['special']['len']
-if options.vector  != []: datainfo['vector']['label']  += options.vector;  length += len(options.vector)*datainfo['vector']['len']
-if options.tensor  != []: datainfo['tensor']['label']  += options.tensor;  length += len(options.tensor)*datainfo['tensor']['len']
+if options.special != []: datainfo['special']['label'] += options.special; length += len(options.special)
+if options.vector  != []: datainfo['vector']['label']  += options.vector;  length += len(options.vector)
+if options.tensor  != []: datainfo['tensor']['label']  += options.tensor;  length += len(options.tensor)
 if len(options.delta) != length:
   parser.error('length of offset vector does not match column types...')
 
@@ -79,7 +79,7 @@ for file in files:
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = '1_'+label if info['len'] > 1 else label                                                # non-scalar labels have to start with '1_'
+      key = '1_'+label if info['len'] > 1 else label                                                # non-special labels have to start with '1_'
       if key in table.labels:
           active[datatype].append(label)
           column[datatype][label] = table.labels.index(key)                                         # remember columns of requested data
