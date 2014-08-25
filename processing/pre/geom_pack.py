@@ -9,7 +9,6 @@ import damask
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
@@ -32,11 +31,12 @@ mappings = {
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 compress geometry files with ranges "a to b" and/or multiples "n of x".
+
 """, version = scriptID)
 
 (options, filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ---------------------------------------  
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -45,14 +45,13 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-#--- loop over input files ------------------------------------------------------------------------
+# ------------------------------------------ loop over input files ---------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
-  theTable.head_read()
-
+  table = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)           # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
@@ -64,7 +63,7 @@ for file in files:
          }
   extra_header = []
 
-  for header in theTable.info:
+  for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue
     for synonym,alternatives in synonyms.iteritems():
@@ -93,9 +92,9 @@ for file in files:
     continue
 
 #--- write header ---------------------------------------------------------------------------------
-  theTable.labels_clear()
-  theTable.info_clear()
-  theTable.info_append(extra_header+[
+  table.labels_clear()
+  table.info_clear()
+  table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %e\ty %e\tz %e"%(info['size'][0],info['size'][1],info['size'][2],),
@@ -103,7 +102,7 @@ for file in files:
     "homogenization\t%i"%info['homogenization'],
     "microstructures\t%i"%(info['microstructures']),
     ])
-  theTable.head_write()
+  table.head_write()
   
 # --- write packed microstructure information -----------------------------------------------------
   type = ''
@@ -112,8 +111,8 @@ for file in files:
   reps = 0
 
   outputAlive = True
-  while outputAlive and theTable.data_read():                                  # read next data line of ASCII table
-    items = theTable.data
+  while outputAlive and table.data_read():                                  # read next data line of ASCII table
+    items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
       elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
@@ -129,34 +128,34 @@ for file in files:
         reps += 1
       else:
         if   type == '':
-          theTable.data = []
+          table.data = []
         elif type == '.':
-          theTable.data = [str(former)]
+          table.data = [str(former)]
         elif type == 'to':
-          theTable.data = ['%i to %i'%(former-reps+1,former)]
+          table.data = ['%i to %i'%(former-reps+1,former)]
         elif type == 'of':
-          theTable.data = ['%i of %i'%(reps,former)]
+          table.data = ['%i of %i'%(reps,former)]
 
-        outputAlive = theTable.data_write(delimiter = ' ')                  # output processed line
+        outputAlive = table.data_write(delimiter = ' ')                  # output processed line
         type = '.'
         start = current
         reps = 1
 
       former = current
 
-  theTable.data = {
+  table.data = {
                    '.' : [str(former)],
                    'to': ['%i to %i'%(former-reps+1,former)],
                    'of': ['%i of %i'%(reps,former)],
                   }[type]
-  outputAlive = theTable.data_write(delimiter = ' ')                        # output processed line
+  outputAlive = table.data_write(delimiter = ' ')                        # output processed line
 
 
 # ------------------------------------------ output result ---------------------------------------  
-  outputAlive and theTable.output_flush()                                   # just in case of buffered ASCII table
+  outputAlive and table.output_flush()                                                           # just in case of buffered ASCII table
 
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    table.input_close()                                                     # close input ASCII table
-    table.output_close()                                                    # close input ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+    table.input_close()                                                                          # close input ASCII table
+    table.output_close()                                                                         # close input ASCII table
+    os.rename(file['name']+'_tmp',file['name'])                                                  # overwrite old one with tmp new

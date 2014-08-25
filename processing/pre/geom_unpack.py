@@ -1,31 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy
+import os,sys,string,re,math
+import numpy as np
+from optparse import OptionParser
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
-
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -47,10 +29,10 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-1', '--onedimensional', dest='oneD', action='store_true', \
                   help='output geom file with one-dimensional data arrangement [%default]')
@@ -59,43 +41,34 @@ parser.set_defaults(oneD = False)
 
 (options, filenames) = parser.parse_args()
 
-#--- setup file handles ---------------------------------------------------------------------------   
+# ------------------------------------------ setup file handles ------------------------------------
 files = []
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
+  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
 else:
   for name in filenames:
     if os.path.exists(name):
-      files.append({'name':name,
-                    'input':open(name),
-                    'output':open(name+'_tmp','w'),
-                    'croak':sys.stdout,
-                    })
+      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-#--- loop over input files ------------------------------------------------------------------------
+# ------------------------------------------ loop over input files ---------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
-  theTable.head_read()
-
+  table = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)           # make unbuffered ASCII_table
+  table.head_read()                                                                                 # read ASCII header info
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':    numpy.zeros(3,'i'),
-          'size':    numpy.zeros(3,'d'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'size':    np.zeros(3,'d'),
+          'origin':  np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
   extra_header = []
 
-  for header in theTable.info:
+  for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue
     for synonym,alternatives in synonyms.iteritems():
@@ -116,19 +89,19 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = numpy.zeros(info['grid'].prod(),'i')
+  microstructure = np.zeros(info['grid'].prod(),'i')
   i = 0
 
-  while theTable.data_read():                                  # read next data line of ASCII table
-    items = theTable.data
+  while table.data_read():                                  # read next data line of ASCII table
+    items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
       elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
@@ -140,9 +113,9 @@ for file in files:
     i += s
 
 #--- write header ---------------------------------------------------------------------------------
-  theTable.labels_clear()
-  theTable.info_clear()
-  theTable.info_append(extra_header+[
+  table.labels_clear()
+  table.info_clear()
+  table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
     "size\tx %e\ty %e\tz %e"%(info['size'][0],info['size'][1],info['size'][2],),
@@ -150,18 +123,18 @@ for file in files:
     "homogenization\t%i"%info['homogenization'],
     "microstructures\t%i"%(info['microstructures']),
     ])
-  theTable.head_write()
+  table.head_write()
   
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
   if options.oneD:
-    theTable.data = microstructure
+    table.data = microstructure
   else:
-    theTable.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-  theTable.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
+    table.data = microstructure.reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+  table.data_writeArray('%%%ii'%(formatwidth),delimiter = ' ')
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    table.input_close()                                                     # close input ASCII table
-    table.output_close()                                                    # close input ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                             # overwrite old one with tmp new
+    table.input_close()                                                                            # close input ASCII table
+    table.output_close()                                                                           # close input ASCII table
+    os.rename(file['name']+'_tmp',file['name'])                                                    # overwrite old one with tmp new
