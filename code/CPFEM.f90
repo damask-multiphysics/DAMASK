@@ -28,11 +28,11 @@ module CPFEM
    CPFEM_calc_done       = .false.                                                                   !< remember whether first ip has already calced the results
 
  integer(pInt), parameter,                      public :: &
-   CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
-   CPFEM_AGERESULTS      = 2_pInt**1_pInt, &
-   CPFEM_BACKUPJACOBIAN  = 2_pInt**2_pInt, &
-   CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt, &
-   CPFEM_COLLECT         = 2_pInt**4_pInt
+   CPFEM_COLLECT         = 2_pInt**0_pInt, &
+   CPFEM_CALCRESULTS     = 2_pInt**1_pInt, &
+   CPFEM_AGERESULTS      = 2_pInt**2_pInt, &
+   CPFEM_BACKUPJACOBIAN  = 2_pInt**3_pInt, &
+   CPFEM_RESTOREJACOBIAN = 2_pInt**4_pInt
 
 
  public :: &
