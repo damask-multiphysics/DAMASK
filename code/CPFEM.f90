@@ -26,7 +26,7 @@ module CPFEM
  logical,                                       public, protected :: &
    CPFEM_init_done       = .false., &                                                                !< remember whether init has been done already
    CPFEM_calc_done       = .false.                                                                   !< remember whether first ip has already calced the results
- 
+
  integer(pInt), parameter,                      public :: &
    CPFEM_CALCRESULTS     = 2_pInt**0_pInt, &
    CPFEM_AGERESULTS      = 2_pInt**1_pInt, &
@@ -34,8 +34,8 @@ module CPFEM
    CPFEM_RESTOREJACOBIAN = 2_pInt**3_pInt, &
    CPFEM_COLLECT         = 2_pInt**4_pInt
 
-  
- public :: & 
+
+ public :: &
    CPFEM_general, &
    CPFEM_initAll
 
@@ -378,15 +378,15 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #endif
 
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
-                                                     i, j, k, l, m, n, ph                        
+                                                     i, j, k, l, m, n, ph
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
- 
+
 #if defined(Marc4DAMASK) || defined(Abaqus)
  elCP = mesh_FEasCP('elem',elFE)
 #else
  elCP = elFE
 #endif
- 
+
  if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt &
      .and. elCP == debug_e .and. ip == debug_i) then
    write(6,'(/,a)') '#############################################'
@@ -415,7 +415,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
    crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
    crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
-   crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress 
+   crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
 
    forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
@@ -425,9 +425,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
        write(6,'(a,1x,i8,1x,i2,1x,i4,/,(12x,6(e20.8,1x)),/)') &
              '<< CPFEM >> aged state of elFE ip grain',debug_e, debug_i, 1, &
-              plasticState(mappingConstitutive(2,1,debug_i,debug_e))%state(:,mappingConstitutive(1,1,debug_i,debug_e))  
+              plasticState(mappingConstitutive(2,1,debug_i,debug_e))%state(:,mappingConstitutive(1,1,debug_i,debug_e))
        endif
-   endif 
+   endif
 
    !$OMP PARALLEL DO
      do k = 1,mesh_NcpElems
@@ -444,11 +444,11 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    !$OMP END PARALLEL DO
 
    ! * dump the last converged values of each essential variable to a binary file
-   
-   if (restartWrite) then 
+
+   if (restartWrite) then
      if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
         write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
-     
+
      call IO_write_jobRealFile(777,'recordedPhase',size(material_phase))
      write (777,rec=1) material_phase
      close (777)
@@ -456,23 +456,23 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      call IO_write_jobRealFile(777,'convergedF',size(crystallite_F0))
      write (777,rec=1) crystallite_F0
      close (777)
-     
+
      call IO_write_jobRealFile(777,'convergedFp',size(crystallite_Fp0))
      write (777,rec=1) crystallite_Fp0
      close (777)
-     
+
      call IO_write_jobRealFile(777,'convergedLp',size(crystallite_Lp0))
      write (777,rec=1) crystallite_Lp0
      close (777)
-     
+
      call IO_write_jobRealFile(777,'convergeddPdF',size(crystallite_dPdF0))
      write (777,rec=1) crystallite_dPdF0
      close (777)
-     
+
      call IO_write_jobRealFile(777,'convergedTstar',size(crystallite_Tstar0_v))
      write (777,rec=1) crystallite_Tstar0_v
      close (777)
-     
+
      call IO_write_jobRealFile(777,'convergedStateConst')
      m = 0_pInt
      writeInstances: do ph = 1_pInt, size(phase_plasticity)
@@ -511,7 +511,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 
  !*** collection of FEM input with returning of randomize odd stress and jacobian
  !*   In case that no parallel execution is required, there is no need to collect FEM input
- 
+
  if (.not. parallelExecution) then
    crystallite_temperature(ip,elCP) = temperature
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
@@ -530,16 +530,16 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    CPFEM_calc_done = .false.
  endif
 
- 
+
 
  !*** calculation of stress and jacobian
 
  if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
- 
+
    !*** deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
    if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then
-     if (any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then 
-       if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) then
+     if (any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then
+       if (iand(debug_level(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
            write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at elFE ip',elCP,ip
            write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',&
                                              math_transpose33(materialpoint_F(1:3,1:3,ip,elCP))
@@ -552,14 +552,14 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
      CPFEM_cs(1:6,ip,elCP) = rnd*CPFEM_odd_stress
      CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian*math_identity2nd(6)
-#endif  
-   
+#endif
+
    !*** deformation gradient is not outdated
-   
+
    else
-     updateJaco = mod(cycleCounter,iJacoStiffness) == 0 
+     updateJaco = mod(cycleCounter,iJacoStiffness) == 0
      !* no parallel computation, so we use just one single elFE and ip for computation
-     
+
      if (.not. parallelExecution) then
        FEsolving_execElem(1)     = elCP
        FEsolving_execElem(2)     = elCP
@@ -572,9 +572,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
          call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent
          call materialpoint_postResults()
        endif
-       
+
      !* parallel computation and calulation not yet done
-     
+
      elseif (.not. CPFEM_calc_done) then
        if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
          write(6,'(a,i8,a,i8)') '<< CPFEM >> calculation for elements ',FEsolving_execElem(1),&
@@ -583,15 +583,15 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
        call materialpoint_postResults()
        CPFEM_calc_done = .true.
      endif
-     
+
      !* map stress and stiffness (or return odd values if terminally ill)
-#if defined(Marc4DAMASK) || defined(Abaqus)   
+#if defined(Marc4DAMASK) || defined(Abaqus)
      if ( terminallyIll ) then
        call random_number(rnd)
        if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
        CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
        CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
-     else  
+     else
        if (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip > 1_pInt) then                    ! me homogenous? --> copy from first ip
          materialpoint_P(1:3,1:3,ip,elCP) = materialpoint_P(1:3,1:3,1,elCP)
          materialpoint_F(1:3,1:3,ip,elCP) = materialpoint_F(1:3,1:3,1,elCP)
@@ -625,7 +625,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #if defined(Marc4DAMASK) || defined(Abaqus)
    !* remember extreme values of stress and jacobian
    cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,ip,elCP))
-   if (maxval(cauchyStress33) > debug_stressMax) then                        
+   if (maxval(cauchyStress33) > debug_stressMax) then
      debug_stressMaxLocation = [elCP, ip]
      debug_stressMax = maxval(cauchyStress33)
    endif
@@ -644,7 +644,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    endif
 
 
-   !* report stress and stiffness 
+   !* report stress and stiffness
    if ((iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
         .and. ((debug_e == elCP .and. debug_i == ip) &
                .or. .not. iand(debug_level(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
