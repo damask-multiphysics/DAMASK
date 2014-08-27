@@ -79,20 +79,20 @@ try:
   with open(configFile,'r') as f:
     print('\n<<<<< reading default values from %s\n'%configFile)
     for line in f:
-      [key,value] = (re.split('[= ]',line)+[None,None])[:2]
-      value = value.rstrip()
-    
-      if (not line.strip() or key.startswith('#')):
+      line = line.strip()
+      if line.startswith('#') or line == '':
         pass
+
+      [key,value] = (re.split('[= ]',line)+[None,None])[:2]
+      
       if key == 'DAMASK_NUM_THREADS':
         defaults['DAMASK_NUM_THREADS'] = int(value)
       if key == 'DAMASK_BIN':
         defaults['DAMASK_BIN'] = value
-      for theKey in ['F90','FFTW_ROOT','HDF5_ROOT','MSC_ROOT','spectralOptions']:
-        if key == theKey:
-          defaults[key] = value
+      if key in ['F90','FFTW_ROOT','HDF5_ROOT','MSC_ROOT','spectralOptions']:
+        defaults[key] = value
       for theKey in reversed(BLAS_order):
-        if key == theKey+'_ROOT' and (value != None or value != ''):
+        if key == theKey+'_ROOT' and value != None and value != '':
           defaults['blasType'] = theKey
           defaults['blasRoot'][theKey] = value
 except IOError:
