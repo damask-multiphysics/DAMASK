@@ -608,7 +608,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  if (iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt &
      .and. FEsolving_execElem(1) <= debug_e &
      .and.                          debug_e <= FEsolving_execElem(2)) then
-     write(6,'(/,a,i8,1x,i2,1x,i3)')      '<< CRYST >> values at el ip g ', debug_e, debug_i, debug_g
+     write(6,'(/,a,i8,1x,a,i8,a,1x,i2,1x,i3)')      '<< CRYST >> values at el (elFE) ip g ', &
+       debug_e,'(',mesh_element(1,debug_e), ')',debug_i, debug_g
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F0 ', &
                                          math_transpose33(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp0', &
@@ -1067,7 +1068,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      do g = 1,myNgrains
        if (.not. crystallite_converged(g,i,e)) then                                                    ! respond fully elastically (might be not required due to becoming terminally ill anyway)
          if(iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-           write(6,'(a,i8,1x,i2,1x,i3,/)') '<< CRYST >> no convergence: respond fully elastic at el ip g ',e,i,g
+           write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> no convergence: respond fully elastic at el (elFE) ip g ', &
+             e,'(',mesh_element(1,e),')',i,g
          invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,g,i,e))
          Fe_guess = math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), invFp)
          call constitutive_TandItsTangent(Tstar, junk2, Fe_guess,g,i,e)
@@ -1078,7 +1080,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                   .or. .not. iand(debug_level(debug_crystallite),debug_levelSelective) /= 0_pInt)) then
          write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> central solution of cryst_StressAndTangent at el ip g ',e,i,g
          write(6,'(/,a,/,3(12x,3(f12.4,1x)/))') '<< CRYST >> P / MPa', &
-                                          math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1.0e6_pReal
+                                          math_transpose33(crystallite_P(1:3,1:3,g,i,e))*1.0e-6_pReal
          write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST >> Fp', &
                                           math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
          write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST >> Lp', &
@@ -2275,9 +2277,9 @@ subroutine crystallite_integrateStateRKCK45()
  ! --- nonlocal convergence check ---
 
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'    ! if not requesting Integration of just a single IP
+   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'      ! if not requesting Integration of just a single IP
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &  ! any non-local not yet converged (or broken)...
-   crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
+   crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                        ! ...restart all non-local as not converged
 
 end subroutine crystallite_integrateStateRKCK45
 
@@ -2655,7 +2657,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
    write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &     ! any non-local not yet converged (or broken)...
-    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
+    crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                          ! ...restart all non-local as not converged
 
 
 end subroutine crystallite_integrateStateAdaptiveEuler
@@ -3331,7 +3333,7 @@ endif
 
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
      write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
-                               ' grains converged after state integration no. ', NiterationState
+                               ' grains converged after state integration #', NiterationState
 
 
    ! --- NON-LOCAL CONVERGENCE CHECK ---
@@ -3345,7 +3347,7 @@ endif
      write(6,'(a,i8,a)')      '<< CRYST >> ', count(crystallite_converged(:,:,:)), &
                               ' grains converged after non-local check'
      write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_todo(:,:,:)), &
-                              ' grains todo after state integration no. ', NiterationState
+                              ' grains todo after state integration #', NiterationState
    endif
    ! --- CHECK IF DONE WITH INTEGRATION ---
 
@@ -3575,7 +3577,8 @@ logical function crystallite_integrateStress(&
  if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-     write(6,'(a,i8,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el ip g ',e,i,g
+     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
+       e,'(',mesh_element(1,e),')',i,g
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) > 0_pInt) &
        write(6,'(/,a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp_current',math_transpose33(Fp_current(1:3,1:3))
    endif
@@ -3598,7 +3601,8 @@ logical function crystallite_integrateStress(&
    loopsExeced: if (NiterationStress > nStress) then
 #ifndef _OPENMP
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-       write(6,'(a,i3,a,i8,1x,i2,1x,i3,/)') '<< CRYST >> integrateStress reached loop limit',nStress,' at el ip g ',e,i,g
+       write(6,'(a,i3,a,i8,1x,a,i8,a,1x,i2,1x,i3,/)') '<< CRYST >> integrateStress reached loop limit',nStress, &
+       ' at el (elFE) ip g ', e,mesh_element(1,e),i,g
 #endif
      return
    endif loopsExeced
@@ -3651,9 +3655,10 @@ logical function crystallite_integrateStress(&
    if (any(residuum /= residuum)) then                                                              ! NaN in residuum...
 #ifndef _OPENMP
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) &
-       write(6,'(a,i8,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el ip g ',e,i,g,&
-                                     ' ; iteration ', NiterationStress,&
-                                     ' >> returning..!'
+       write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3,a)') '<< CRYST >> integrateStress encountered NaN at el (elFE) ip g ', &
+         e,mesh_element(1,e),i,g, &
+                                                      ' ; iteration ', NiterationStress,&
+                                                      ' >> returning..!'
 #endif
      return                                                                                         ! ...me = .false. to inform integrator about problem
    elseif (math_norm33(residuum) < aTol) then                                                       ! converged if below absolute tolerance
@@ -3691,7 +3696,8 @@ logical function crystallite_integrateStress(&
      if (ierr /= 0_pInt) then
 #ifndef _OPENMP
        if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-         write(6,'(a,i8,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ',e,i,g
+         write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on dR/dLp inversion at el ip g ', &
+           e,mesh_element(1,e),i,g
          if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
              .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
                     .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
@@ -3726,8 +3732,8 @@ logical function crystallite_integrateStress(&
  if (error .or. any(Fp_new /= Fp_new)) then
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-     write(6,'(a,i8,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',&
-                                                      e,i,g, ' ; iteration ', NiterationStress
+     write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',&
+       e,mesh_element(1,e),i,g, ' ; iteration ', NiterationStress
      if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
          .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
                 .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) &
@@ -3761,9 +3767,9 @@ logical function crystallite_integrateStress(&
  if (iand(debug_level(debug_crystallite),debug_levelExtensive) /= 0_pInt &
      .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
              .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
-   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,g,i,e))/1.0e6_pReal
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> P / MPa',math_transpose33(crystallite_P(1:3,1:3,g,i,e))*1.0e-6_pReal
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Cauchy / MPa', &
-              math_mul33x33(crystallite_P(1:3,1:3,g,i,e), math_transpose33(Fg_new)) / 1.0e6_pReal / math_det33(Fg_new)
+              math_mul33x33(crystallite_P(1:3,1:3,g,i,e), math_transpose33(Fg_new)) * 1.0e-6_pReal / math_det33(Fg_new)
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fe Lp Fe^-1', &
               math_transpose33(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), math_inv33(Fe_new))))    ! transpose to get correct print out order
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp',math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
