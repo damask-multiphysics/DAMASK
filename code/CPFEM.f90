@@ -397,14 +397,18 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    write(6,'(a1,a22,1x,i8,a13)')   '#','theInc',         theInc,       '#'
    write(6,'(a1,a22,1x,i8,a13)')   '#','cycleCounter',   cycleCounter, '#'
    write(6,'(a1,a22,1x,i8,a13)')   '#','computationMode',mode,         '#'
+   if (terminallyIll) &
+   write(6,'(a,/)') '#           --- terminallyIll ---           #'
    write(6,'(a,/)') '#############################################'; flush (6)
  endif
 
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
- !*** backup or restore jacobian
+ !*** backup jacobian
  if (iand(mode, CPFEM_BACKUPJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde_knownGood = CPFEM_dcsde
+
+ !*** restore jacobian
  if (iand(mode, CPFEM_RESTOREJACOBIAN) /= 0_pInt) &
    CPFEM_dcsde = CPFEM_dcsde_knownGood
 #endif
@@ -505,12 +509,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #endif
 
    endif
- endif
+ endif                                                              ! results aging
 
 
 
  !*** collection of FEM input with returning of randomize odd stress and jacobian
- !*   In case that no parallel execution is required, there is no need to collect FEM input
+ !*   If no parallel execution is required, there is no need to collect FEM input
 
  if (.not. parallelExecution) then
    crystallite_temperature(ip,elCP) = temperature
@@ -528,7 +532,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
    CPFEM_calc_done = .false.
- endif
+ endif                                                              ! collection
 
 
 
@@ -537,10 +541,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  if (iand(mode, CPFEM_CALCRESULTS) /= 0_pInt) then
 
    !*** deformation gradient outdated or any actual deformation gradient differs more than relevantStrain from the stored one
-   if (terminallyIll .or. outdatedFFN1 .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then
+   validCalculation: if (terminallyIll &
+                    .or. outdatedFFN1 &
+                    .or. any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then
      if (any(abs(ffn1 - materialpoint_F(1:3,1:3,ip,elCP)) > defgradTolerance)) then
        if (iand(debug_level(debug_CPFEM), debug_levelBasic) /=  0_pInt) then
-           write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at elFE ip',elCP,ip
+           write(6,'(a,1x,i8,1x,i2)') '<< CPFEM >> OUTDATED at elFE ip',elFE,ip
            write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 old:',&
                                              math_transpose33(materialpoint_F(1:3,1:3,ip,elCP))
            write(6,'(a,/,3(12x,3(f10.6,1x),/))') '<< CPFEM >> FFN1 now:',math_transpose33(ffn1)
@@ -556,7 +562,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 
    !*** deformation gradient is not outdated
 
-   else
+   else validCalculation
      updateJaco = mod(cycleCounter,iJacoStiffness) == 0
      !* no parallel computation, so we use just one single elFE and ip for computation
 
@@ -568,7 +574,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
          FEsolving_execIP(1,elCP) = ip
          FEsolving_execIP(2,elCP) = ip
          if (iand(debug_level(debug_CPFEM), debug_levelExtensive) /=  0_pInt) &
-           write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elCP,ip
+           write(6,'(a,i8,1x,i2)') '<< CPFEM >> calculation for elFE ip ',elFE,ip
          call materialpoint_stressAndItsTangent(updateJaco, dt)                                     ! calculate stress and its tangent
          call materialpoint_postResults()
        endif
@@ -586,19 +592,23 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 
      !* map stress and stiffness (or return odd values if terminally ill)
 #if defined(Marc4DAMASK) || defined(Abaqus)
-     if ( terminallyIll ) then
+     terminalIllness: if ( terminallyIll ) then
+
        call random_number(rnd)
        if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
        CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
        CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
-     else
+
+     else terminalIllness
+
        if (microstructure_elemhomo(mesh_element(4,elCP)) .and. ip > 1_pInt) then                    ! me homogenous? --> copy from first ip
          materialpoint_P(1:3,1:3,ip,elCP) = materialpoint_P(1:3,1:3,1,elCP)
          materialpoint_F(1:3,1:3,ip,elCP) = materialpoint_F(1:3,1:3,1,elCP)
          materialpoint_dPdF(1:3,1:3,1:3,1:3,ip,elCP) = materialpoint_dPdF(1:3,1:3,1:3,1:3,1,elCP)
          materialpoint_results(1:materialpoint_sizeResults,ip,elCP) = &
-                                        materialpoint_results(1:materialpoint_sizeResults,1,elCP)
+         materialpoint_results(1:materialpoint_sizeResults,1,elCP)
        endif
+
        ! translate from P to CS
        Kirchhoff = math_mul33x33(materialpoint_P(1:3,1:3,ip,elCP), math_transpose33(materialpoint_F(1:3,1:3,ip,elCP)))
        J_inverse  = 1.0_pReal / math_det33(materialpoint_F(1:3,1:3,ip,elCP))
@@ -615,54 +625,65 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
                        0.5_pReal * (math_I3(i,k) * Kirchhoff(j,l) + math_I3(j,l) * Kirchhoff(i,k) + &
                                   math_I3(i,l) * Kirchhoff(j,k) + math_I3(j,k) * Kirchhoff(i,l))
        enddo; enddo; enddo; enddo; enddo; enddo
+
        forall(i=1:3, j=1:3,k=1:3,l=1:3) &
          H_sym(i,j,k,l) = 0.25_pReal * (H(i,j,k,l) + H(j,i,k,l) + H(i,j,l,k) + H(j,i,l,k))
+
        CPFEM_dcsde(1:6,1:6,ip,elCP) = math_Mandel3333to66(J_inverse * H_sym)
-     endif
+
+     endif terminalIllness
 #endif
-   endif
+
+   endif validCalculation
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
-   !* remember extreme values of stress and jacobian
-   cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,ip,elCP))
-   if (maxval(cauchyStress33) > debug_stressMax) then
-     debug_stressMaxLocation = [elCP, ip]
-     debug_stressMax = maxval(cauchyStress33)
-   endif
-   if (minval(cauchyStress33) < debug_stressMin) then
-     debug_stressMinLocation = [elCP, ip]
-     debug_stressMin = minval(cauchyStress33)
-   endif
-   jacobian3333 = math_Mandel66to3333(CPFEM_dcsdE(1:6,1:6,ip,elCP))
-   if (maxval(jacobian3333) > debug_jacobianMax) then
-     debug_jacobianMaxLocation = [elCP, ip]
-     debug_jacobianMax = maxval(jacobian3333)
-   endif
-   if (minval(jacobian3333) < debug_jacobianMin) then
-     debug_jacobianMinLocation = [elCP, ip]
-     debug_jacobianMin = minval(jacobian3333)
-   endif
-
-
    !* report stress and stiffness
    if ((iand(debug_level(debug_CPFEM), debug_levelExtensive) /= 0_pInt) &
         .and. ((debug_e == elCP .and. debug_i == ip) &
                .or. .not. iand(debug_level(debug_CPFEM), debug_levelSelective) /= 0_pInt)) then
-       write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)')    '<< CPFEM >> stress/MPa at elFE ip ', &
-                                     elCP, ip, CPFEM_cs(1:6,ip,elCP)/1.0e6_pReal
-       write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') '<< CPFEM >> Jacobian/GPa at elFE ip ', &
-                                     elCP, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))/1.0e9_pReal
+       write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') &
+         '<< CPFEM >> stress/MPa at elFE ip ',   elFE, ip, CPFEM_cs(1:6,ip,elCP)*1.0e-6_pReal
+       write(6,'(a,i8,1x,i2,/,6(12x,6(f10.3,1x)/))') &
+         '<< CPFEM >> Jacobian/GPa at elFE ip ', elFE, ip, transpose(CPFEM_dcsdE(1:6,1:6,ip,elCP))*1.0e-9_pReal
        flush(6)
    endif
 #endif
+
  endif
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
  !*** warn if stiffness close to zero
  if (all(abs(CPFEM_dcsdE(1:6,1:6,ip,elCP)) < 1e-10_pReal)) call IO_warning(601,elCP,ip)
+
  !*** copy to output if using commercial FEM solver
  cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
  jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
+
+ if (iand(mode, CPFEM_COLLECT) == 0_pInt &
+    .and. maxval(abs(cauchyStress)) > 1e10) &
+   write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') &
+     '<< CPFEM >> stress/MPa at elFE ip ',   elFE, ip, cauchyStress*1.0e-6_pReal
+
+ !*** remember extreme values of stress ...
+ cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,ip,elCP))
+ if (maxval(cauchyStress33) > debug_stressMax) then
+   debug_stressMaxLocation = [elCP, ip]
+   debug_stressMax = maxval(cauchyStress33)
+ endif
+ if (minval(cauchyStress33) < debug_stressMin) then
+   debug_stressMinLocation = [elCP, ip]
+   debug_stressMin = minval(cauchyStress33)
+ endif
+ !*** ... and Jacobian
+ jacobian3333 = math_Mandel66to3333(CPFEM_dcsdE(1:6,1:6,ip,elCP))
+ if (maxval(jacobian3333) > debug_jacobianMax) then
+   debug_jacobianMaxLocation = [elCP, ip]
+   debug_jacobianMax = maxval(jacobian3333)
+ endif
+ if (minval(jacobian3333) < debug_jacobianMin) then
+   debug_jacobianMinLocation = [elCP, ip]
+   debug_jacobianMin = minval(jacobian3333)
+ endif
 #endif
 
 end subroutine CPFEM_general
