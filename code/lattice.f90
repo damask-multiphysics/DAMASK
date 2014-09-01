@@ -1142,6 +1142,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    atr, ab
  real(pReal), dimension(3,3,3) :: &
    bainstr
+ real(pReal), dimension(3,3,lattice_maxNtrans) :: &
+   ub
  integer(pInt) :: &
   i,j, &
   myNslip, myNtwin, myNtrans
@@ -1186,24 +1188,25 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
        ts(i)     = lattice_fcc_shearTwin(i)
      enddo
      do i = 1_pInt,myNtrans
-       rtr(1:3,i) = lattice_fcc_systemTrans(1:3,i)
-       atr(i)     = lattice_fcc_systemTrans(4,i)
-       rb(1:3,i)  = lattice_fcc_bainRot(1:3,i)
-       ab(i)      = lattice_fcc_bainRot(4,i)
+       rtr(1:3,i)    = lattice_fcc_systemTrans(1:3,i)
+       atr(i)        = lattice_fcc_systemTrans(4,i)
+       rb(1:3,i)     = lattice_fcc_bainRot(1:3,i)
+       ab(i)         = lattice_fcc_bainRot(4,i)
+
+       bainstr = 0.0_pReal
+       if ((aA > 0.0_pReal) .and. (aM > 0.0_pReal) .and. (cM == 0.0_pReal)) then
+         bainstr(1,1,1) = aM/aA                                                                       ! 3 Bain strain variants for fcc to bcc transformation
+         bainstr(2,2,1) = sqrt(2.0_pReal)*aM/aA
+         bainstr(3,3,1) = sqrt(2.0_pReal)*aM/aA
+         bainstr(1,1,2) = sqrt(2.0_pReal)*aM/aA
+         bainstr(2,2,2) = aM/aA
+         bainstr(3,3,2) = sqrt(2.0_pReal)*aM/aA
+         bainstr(1,1,3) = sqrt(2.0_pReal)*aM/aA
+         bainstr(2,2,3) = sqrt(2.0_pReal)*aM/aA
+         bainstr(3,3,3) = aM/aA
+       endif
+       ub(1:3,1:3,i) = bainstr(1:3,1:3,LATTICE_fcc_bainVariant(i))                                   ! Pitsch OR
      enddo
-    
-     bainstr = 0.0_pReal
-     if ((aA > 0.0_pReal) .and. (aM > 0.0_pReal) .and. (cM == 0.0_pReal)) then
-        bainstr(1,1,1) = aM/aA                                                                       ! 3 Bain strain variants for fcc to bcc transformation
-        bainstr(2,2,1) = sqrt(2.0_pReal)*aM/aA
-        bainstr(3,3,1) = sqrt(2.0_pReal)*aM/aA
-        bainstr(1,1,2) = sqrt(2.0_pReal)*aM/aA
-        bainstr(2,2,2) = aM/aA
-        bainstr(3,3,2) = sqrt(2.0_pReal)*aM/aA
-        bainstr(1,1,3) = sqrt(2.0_pReal)*aM/aA
-        bainstr(2,2,3) = sqrt(2.0_pReal)*aM/aA
-        bainstr(3,3,3) = aM/aA
-     endif
 
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)    = lattice_fcc_NslipSystem
      lattice_NtwinSystem(1:lattice_maxNtwinFamily,myPhase)    = lattice_fcc_NtwinSystem
@@ -1346,16 +1349,13 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
  enddo
  do i = 1_pInt,myNtrans
    lattice_Rtrans(1:3,1:3,i,myPhase) = math_axisAngleToR(rtr(1:3,i),atr(i)*INRAD)
-   lattice_Utrans(1:3,1:3,i,myPhase) = bainstr(1:3,1:3,LATTICE_fcc_bainVariant(i))
+   lattice_Utrans(1:3,1:3,i,myPhase) = ub(1:3,1:3,i)
    lattice_Btrans(1:3,1:3,i,myPhase) = math_axisAngleToR(rb(1:3,i),ab(i)*INRAD)
    lattice_Qtrans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), & 
                                                      lattice_Btrans(1:3,1:3,i,myPhase))
-
-   if ((aA > 0.0_pReal) .and. (aM > 0.0_pReal) .and. (cM == 0.0_pReal)) then
-     lattice_NItrans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), &
-                                                        lattice_Utrans(1:3,1:3,i,myPhase)) - math_identity2nd(3)
-     lattice_NItrans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_NItrans(1:3,1:3,i,myPhase)))
-   endif
+   lattice_NItrans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), &
+                                                      lattice_Utrans(1:3,1:3,i,myPhase)) - math_identity2nd(3)
+   lattice_NItrans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_NItrans(1:3,1:3,i,myPhase)))
  enddo
       
 end subroutine lattice_initializeStructure
