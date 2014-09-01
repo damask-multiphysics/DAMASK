@@ -1219,6 +1219,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    case (LATTICE_bcc_ID)
      myNslip = lattice_bcc_Nslip
      myNtwin = lattice_bcc_Ntwin
+     myNtrans = lattice_bcc_Ntrans
      do i = 1_pInt,myNslip                                                                          ! assign slip system vectors
        sd(1:3,i) = lattice_bcc_systemSlip(1:3,i)
        sn(1:3,i) = lattice_bcc_systemSlip(4:6,i)
@@ -1260,6 +1261,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    case (LATTICE_hex_ID)
      myNslip = lattice_hex_Nslip
      myNtwin = lattice_hex_Ntwin
+     myNtrans = lattice_hex_Ntrans
      do i = 1_pInt,myNslip                                                                          ! assign slip system vectors                                                         
        sd(1,i) =  lattice_hex_systemSlip(1,i)*1.5_pReal                                             ! direction [uvtw]->[3u/2 (u+2v)*sqrt(3)/2 w*(c/a)]
        sd(2,i) = (lattice_hex_systemSlip(1,i)+2.0_pReal*lattice_hex_systemSlip(2,i))*&
@@ -1302,6 +1304,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    case (LATTICE_ort_ID, LATTICE_iso_ID)
      myNslip       = 0_pInt
      myNtwin       = 0_pInt
+     myNtrans      = 0_pInt
 
 !--------------------------------------------------------------------------------------------------
 ! something went wrong
