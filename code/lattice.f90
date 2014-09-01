@@ -217,12 +217,21 @@ module lattice
      0.0, 1.0, 0.0,    -10.26  &
      ],pReal),[ 4_pInt,LATTICE_fcc_Ntrans])
 
- integer(pInt), dimension(LATTICE_fcc_Ntrans), parameter, private :: &
+ integer(pInt), dimension(9,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fcc_bainVariant = reshape(int( [&
-     1, 1, 1, 1, &
-     2, 2, 2, 2, &
-     3, 3, 3, 3  &
-     ],pInt),[LATTICE_fcc_Ntrans])
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 1, 0, 1, 0, 0, 0, 0, 1, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0, &
+     0, 0, 1, 1, 0, 0, 0, 1, 0  & 
+     ],pInt),[ 9_pInt, LATTICE_fcc_Ntrans])
 
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fcc_bainRot = reshape(real( [&
@@ -1137,11 +1146,9 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
  real(pReal), dimension(lattice_maxNtwin) :: &
    ts
  real(pReal), dimension(3,lattice_maxNtrans) :: &
-   rtr, rb
+   rtr, rb, xb, yb, zb
  real(pReal), dimension(lattice_maxNtrans) :: &
    atr, ab
- real(pReal), dimension(3,3,3) :: &
-   bainstr
  real(pReal), dimension(3,3,lattice_maxNtrans) :: &
    ub
  integer(pInt) :: &
@@ -1193,19 +1200,16 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
        rb(1:3,i)     = lattice_fcc_bainRot(1:3,i)
        ab(i)         = lattice_fcc_bainRot(4,i)
 
-       bainstr = 0.0_pReal
+       xb(1:3,i)     = LATTICE_fcc_bainVariant(1:3,i)
+       yb(1:3,i)     = LATTICE_fcc_bainVariant(4:6,i)
+       zb(1:3,i)     = LATTICE_fcc_bainVariant(7:9,i)
+
+       ub(1:3,1:3,i) = 0.0_pReal
        if ((aA > 0.0_pReal) .and. (aM > 0.0_pReal) .and. (cM == 0.0_pReal)) then
-         bainstr(1,1,1) = aM/aA                                                                       ! 3 Bain strain variants for fcc to bcc transformation
-         bainstr(2,2,1) = sqrt(2.0_pReal)*aM/aA
-         bainstr(3,3,1) = sqrt(2.0_pReal)*aM/aA
-         bainstr(1,1,2) = sqrt(2.0_pReal)*aM/aA
-         bainstr(2,2,2) = aM/aA
-         bainstr(3,3,2) = sqrt(2.0_pReal)*aM/aA
-         bainstr(1,1,3) = sqrt(2.0_pReal)*aM/aA
-         bainstr(2,2,3) = sqrt(2.0_pReal)*aM/aA
-         bainstr(3,3,3) = aM/aA
+         ub(1:3,1:3,i) = (aM/aA)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
+                         sqrt(2.0_pReal)*(aM/aA)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
+                         sqrt(2.0_pReal)*(aM/aA)*math_tensorproduct(zb(1:3,i), zb(1:3,i))
        endif
-       ub(1:3,1:3,i) = bainstr(1:3,1:3,LATTICE_fcc_bainVariant(i))                                   ! Pitsch OR
      enddo
 
      lattice_NslipSystem(1:lattice_maxNslipFamily,myPhase)    = lattice_fcc_NslipSystem
@@ -1348,10 +1352,10 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
      call IO_error(301_pInt,myPhase,ext_msg = 'dilatational twin Schmid matrix')
  enddo
  do i = 1_pInt,myNtrans
-   lattice_Rtrans(1:3,1:3,i,myPhase) = math_axisAngleToR(rtr(1:3,i),atr(i)*INRAD)
-   lattice_Utrans(1:3,1:3,i,myPhase) = ub(1:3,1:3,i)
-   lattice_Btrans(1:3,1:3,i,myPhase) = math_axisAngleToR(rb(1:3,i),ab(i)*INRAD)
-   lattice_Qtrans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), & 
+   lattice_Rtrans(1:3,1:3,i,myPhase)  = math_axisAngleToR(rtr(1:3,i),atr(i)*INRAD)
+   lattice_Utrans(1:3,1:3,i,myPhase)  = ub(1:3,1:3,i)
+   lattice_Btrans(1:3,1:3,i,myPhase)  = math_axisAngleToR(rb(1:3,i),ab(i)*INRAD)
+   lattice_Qtrans(1:3,1:3,i,myPhase)  = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), & 
                                                      lattice_Btrans(1:3,1:3,i,myPhase))
    lattice_NItrans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), &
                                                       lattice_Utrans(1:3,1:3,i,myPhase)) - math_identity2nd(3)
