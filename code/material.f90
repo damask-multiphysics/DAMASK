@@ -125,7 +125,6 @@ module material
 #endif   
  type(tState), allocatable, dimension(:), public :: &
    plasticState, &
-   elasticState, &
    damageState, &
    thermalState
 #ifdef NEWSTATE  
@@ -286,7 +285,6 @@ subroutine material_init
  close(FILEUNIT)
 
  allocate(plasticState(material_Nphase))
- allocate(elasticState(material_Nphase))
  allocate(damageState (material_Nphase))
  allocate(thermalState(material_Nphase))
 #ifdef NEWSTATE
