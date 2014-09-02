@@ -395,12 +395,14 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
  do e = FEsolving_execElem(1),FEsolving_execElem(2)
    myNgrains = homogenization_Ngrains(mesh_element(3,e))
    forall(i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
+
      plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-       plasticState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
-     damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-       damageState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
+     plasticState(mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
+     damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+     damageState( mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
      thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-       thermalState(mappingConstitutive(2,g,i,e))%state0(:,mappingConstitutive(1,g,i,e))
+     thermalState(mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
+
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
      crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e)   ! ...stiffness
@@ -463,16 +465,16 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e) = crystallite_Tstar_v(1:6,1:myNgrains,i,e)  ! ...2nd PK stress
            forall (g = 1:myNgrains)
              plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-               plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
-             damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-               damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+             plasticState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
+             damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+             damageState( mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
              thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
-               thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+             thermalState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
            end forall    
            if (homogenization_sizeState(i,e) > 0_pInt) &
 #ifdef NEWSTATE
              homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
-               homogState(mappingHomogenization(2,i,e))%state(:,mappingHomogenization(1,i,e))
+             homogState(mappingHomogenization(2,i,e))%state(    :,mappingHomogenization(1,i,e))
 #else
             homogenization_subState0(i,e)%p = homogenization_state(i,e)%p                                ! ...internal state of homog scheme
 #endif
@@ -482,7 +484,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
              !$OMP CRITICAL (distributionHomog)
                debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) = &
-                 debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
+               debug_MaterialpointLoopDistribution(min(nHomog+1,NiterationHomog)) + 1
              !$OMP END CRITICAL (distributionHomog)
            endif
          endif steppingNeeded
@@ -521,17 +523,17 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
            crystallite_dPdF(1:3,1:3,1:3,1:3,1:myNgrains,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,1:myNgrains,i,e) ! ...stiffness
            crystallite_Tstar_v(1:6,1:myNgrains,i,e) = crystallite_partionedTstar0_v(1:6,1:myNgrains,i,e)    ! ...2nd PK stress
            forall (g = 1:myNgrains)
-             plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-               plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-             damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-               damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-             thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-               thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+             plasticState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
+             plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+             damageState( mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
+             damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+             thermalState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
+             thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
            end forall    
            if (homogenization_sizeState(i,e) > 0_pInt) &
 #ifdef NEWSTATE
-             homogState(mappingHomogenization(2,i,e))%state(:,mappingHomogenization(1,i,e)) = &
-               homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))
+             homogState(mappingHomogenization(2,i,e))%state(    :,mappingHomogenization(1,i,e)) = &
+             homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e))
 #else
              homogenization_state(i,e)%p = homogenization_subState0(i,e)%p                                  ! ...internal state of homog scheme
 #endif

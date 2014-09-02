@@ -2859,9 +2859,9 @@ subroutine mesh_marc_build_elements(fileUnit)
        myPos = IO_stringPos(line,maxNchunks)
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0_pInt) then                                                                        ! disregard non CP elems
+         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                        ! FE id
          t = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))                                      ! elem type
          mesh_element(2,e) = t
-         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                        ! FE id
          nNodesAlreadyRead = 0_pInt
          do j = 1_pInt,myPos(1)-2_pInt
            mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,myPos,j+2_pInt))          ! CP ids of nodes
