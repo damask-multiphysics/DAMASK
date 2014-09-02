@@ -53,9 +53,9 @@ module crystallite
    crystallite_Lp, &                                                                                !< current plastic velocitiy grad (end of converged time step)
    crystallite_Lp0, &                                                                               !< plastic velocitiy grad at start of FE inc
    crystallite_partionedLp0,&                                                                       !< plastic velocity grad at start of homog inc
-   crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
+   crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_subFe0,&                                                                             !< "elastic" def grad at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
@@ -173,7 +173,7 @@ subroutine crystallite_init(temperature)
  use lattice, only: &
    lattice_structure
  use constitutive, only: &
-   constitutive_microstructure
+   constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
  use constitutive_damage, only: &
    constitutive_damage_microstructure
  use constitutive_thermal, only: &
@@ -424,13 +424,14 @@ subroutine crystallite_init(temperature)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1_pInt,myNgrains
          call constitutive_microstructure(temperature, &
-                          crystallite_Fe(1:3,1:3,g,i,e), crystallite_Fp(1:3,1:3,g,i,e),g,i,e)       ! update dependent state variables to be consistent with basic states
+                          crystallite_Fe(1:3,1:3,g,i,e), &
+                          crystallite_Fp(1:3,1:3,g,i,e),g,i,e)                                      ! update dependent state variables to be consistent with basic states
          call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                                  crystallite_Fe(1:3,1:3,g,i,e), &
-                                                 g,i,e)     ! update dependent state variables to be consistent with basic states
+                                                 g,i,e)                                             ! update dependent state variables to be consistent with basic states
          call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                                   crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)     ! update dependent state variables to be consistent with basic states
+                                                  g,i,e)                                            ! update dependent state variables to be consistent with basic states
       enddo
      enddo
    enddo
@@ -629,12 +630,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), &
              g = 1_pInt:myNgrains, crystallite_requested(g,i,e))
-       plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
-         plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-       damageState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
-         damageState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-       thermalState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
-         thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+       plasticState(mappingConstitutive(2,g,i,e))%subState0(      :,mappingConstitutive(1,g,i,e)) = &
+       plasticState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+       damageState( mappingConstitutive(2,g,i,e))%subState0(      :,mappingConstitutive(1,g,i,e)) = &
+       damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+       thermalState(mappingConstitutive(2,g,i,e))%subState0(      :,mappingConstitutive(1,g,i,e)) = &
+       thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
        crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_partionedFp0(1:3,1:3,g,i,e)                  ! ...plastic def grad
        crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_partionedLp0(1:3,1:3,g,i,e)                  ! ...plastic velocity grad
        crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) ! ...stiffness
@@ -907,18 +908,17 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              if (crystallite_subStep(g,i,e) > 0.0_pReal) then
                crystallite_subF0(1:3,1:3,g,i,e) = crystallite_subF(1:3,1:3,g,i,e)                    ! ...def grad
                !$OMP FLUSH(crystallite_subF0)
-               crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                     ! ...plastic def grad
-               crystallite_subFe0(1:3,1:3,g,i,e) = &
-                    math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e)) ! only needed later on for stiffness calculation
                crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                     ! ...plastic velocity gradient
-
+               crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                     ! ...plastic def grad
+               crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
+                                                                 crystallite_invFp(1:3,1:3,g,i,e))   ! only needed later on for stiffness calculation
                !if abbrevation, make c and p private in omp
                plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
-                    plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
-               damageState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
-                    damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+               plasticState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e))
+               damageState( mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
+               damageState( mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e))
                thermalState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
-                    thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+               thermalState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e))
                crystallite_subTstar0_v(1:6,g,i,e) = crystallite_Tstar_v(1:6,g,i,e)                   ! ...2nd PK stress
                if (crystallite_syncSubFrac(i,e)) then                                                ! if we just did a synchronization of states, then we wind forward without any further time integration
                  crystallite_syncSubFracCompleted(i,e) = .true.
@@ -962,12 +962,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              crystallite_invFp(1:3,1:3,g,i,e) = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
              !$OMP FLUSH(crystallite_invFp)
              crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)                    ! ...plastic velocity grad
-             plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                    plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
-             damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                    damageState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
-             thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                    thermalState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
+             plasticState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
+             plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
+             damageState( mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
+             damageState( mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
+             thermalState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
+             thermalState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
              crystallite_Tstar_v(1:6,g,i,e)   = crystallite_subTstar0_v(1:6,g,i,e)                   ! ...2nd PK stress
 
                                                                                                      ! cant restore dotState here, since not yet calculated in first cutback after initialization
@@ -1091,6 +1091,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    enddo
  enddo elementLooping5
 
+
 ! --+>> STIFFNESS CALCULATION <<+--
 
  computeJacobian: if(updateJaco) then
@@ -1162,18 +1163,20 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        elementLooping7: do e = FEsolving_execElem(1),FEsolving_execElem(2)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
          forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
+
            plasticState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e)) = &
-             plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
-           plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e)) = &
-             plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e))
-           damageState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e)) = &
-             damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
-           damageState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e)) = &
-             damageState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e))
+           plasticState(mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e))
+           damageState( mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e)) = &
+           damageState( mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e))
            thermalState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e)) = &
-             thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e))
+           thermalState(mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e))
+
+           plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e)) = &
+           plasticState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e))
+           damageState( mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e)) = &
+           damageState( mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e))
            thermalState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e)) = &
-             thermalState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e))
+           thermalState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e))
 
            F_backup(1:3,1:3,g,i,e)       = crystallite_subF(1:3,1:3,g,i,e)                            ! ... and kinematics
            Fp_backup(1:3,1:3,g,i,e)      = crystallite_Fp(1:3,1:3,g,i,e)
@@ -1206,19 +1209,22 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                do e = FEsolving_execElem(1),FEsolving_execElem(2)
                  myNgrains = homogenization_Ngrains(mesh_element(3,e))
                  forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
-                   plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                     plasticState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-                   plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-                     plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                     damageState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-                   damageState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-                     damageState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                     thermalState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-                   thermalState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-                     thermalState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e)
+
+                   plasticState(mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
+                   plasticState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))  
+                   damageState( mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
+                   damageState( mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))  
+                   thermalState(mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
+                   thermalState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))  
+
+                   plasticState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+                   plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+                   damageState( mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+                   damageState( mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+                   thermalState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+                   thermalState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+
+                   crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e) 
                    crystallite_invFp(1:3,1:3,g,i,e) = InvFp_backup(1:3,1:3,g,i,e)
                    crystallite_Fe(1:3,1:3,g,i,e)    = Fe_backup(1:3,1:3,g,i,e)
                    crystallite_Lp(1:3,1:3,g,i,e)    = Lp_backup(1:3,1:3,g,i,e)
@@ -1231,19 +1237,22 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                do e = FEsolving_execElem(1),FEsolving_execElem(2)
                  myNgrains = homogenization_Ngrains(mesh_element(3,e))
                  forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
-                   plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                     plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
-                   plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-                     plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                     damageState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
-                   damageState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-                     damageState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-                     thermalState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
-                   thermalState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-                     thermalState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-                   crystallite_Fp(1:3,1:3,g,i,e)    = crystallite_subFp0(1:3,1:3,g,i,e)
+
+                   plasticState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
+                   plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
+                   damageState( mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
+                   damageState( mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
+                   thermalState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
+                   thermalState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
+
+                   plasticState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+                   plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+                   damageState( mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+                   damageState( mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+                   thermalState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+                   thermalState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+
+                   crystallite_Fp(1:3,1:3,g,i,e)    = crystallite_subFp0(1:3,1:3,g,i,e) 
                    crystallite_Fe(1:3,1:3,g,i,e)    = crystallite_subFe0(1:3,1:3,g,i,e)
                    crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)
                    crystallite_Tstar_v(1:6,g,i,e)   = crystallite_subTstar0_v(1:6,g,i,e)
@@ -1328,18 +1337,21 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      elementLooping10: do e = FEsolving_execElem(1),FEsolving_execElem(2)
        myNgrains = homogenization_Ngrains(mesh_element(3,e))
        forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1:myNgrains)
-         plasticState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-           plasticState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-         plasticState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-           plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-         damageState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-           damageState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-         damageState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-           damageState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
-         thermalState(mappingConstitutive(2,g,i,e))%state(:,mappingConstitutive(1,g,i,e)) = &
-           thermalState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
-         thermalState(mappingConstitutive(2,g,i,e))%dotState(:,mappingConstitutive(1,g,i,e)) = &
-           thermalState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+
+         plasticState(mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
+         plasticState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
+         damageState( mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
+         damageState( mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
+         thermalState(mappingConstitutive(2,g,i,e))%state(       :,mappingConstitutive(1,g,i,e)) = &
+         thermalState(mappingConstitutive(2,g,i,e))%state_backup(:,mappingConstitutive(1,g,i,e))
+
+         plasticState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+         plasticState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+         damageState( mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+         damageState( mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+         thermalState(mappingConstitutive(2,g,i,e))%dotState(       :,mappingConstitutive(1,g,i,e)) = &
+         thermalState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
+
          crystallite_subF(1:3,1:3,g,i,e)  = F_backup(1:3,1:3,g,i,e)
          crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e)
          crystallite_invFp(1:3,1:3,g,i,e) = InvFp_backup(1:3,1:3,g,i,e)
@@ -1420,7 +1432,7 @@ subroutine crystallite_integrateStateRK4()
  real(pReal), dimension(4), parameter :: &
    TIMESTEPFRACTION = [0.5_pReal, 0.5_pReal, 1.0_pReal, 1.0_pReal]                                   ! factor giving the fraction of the original timestep used for Runge Kutta Integration
  real(pReal), dimension(4), parameter :: &
-   WEIGHT = [1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal]                                             ! weight of slope used for Runge Kutta integration
+   WEIGHT = [1.0_pReal, 2.0_pReal, 2.0_pReal, 1.0_pReal/6.0_pReal]                                   ! weight of slope used for Runge Kutta integration (final weight divided by 6)
 
  integer(pInt) ::                              e, &                                                  ! element index in element loop
                                                i, &                                                  ! integration point index in ip loop
@@ -1428,7 +1440,6 @@ subroutine crystallite_integrateStateRK4()
                                                p, &                                                  ! phase loop
                                                c, &
                                                n, &
-                                               mySizeDotState, &
                                                mySizePlasticDotState, &
                                                mySizeDamageDotState, &
                                                mySizeThermalDotState
@@ -1449,15 +1460,15 @@ subroutine crystallite_integrateStateRK4()
 ! initialize dotState
  if (.not. singleRun) then
    forall(p = 1_pInt:size(plasticState)) plasticState(p)%RK4dotState = 0.0_pReal
-   forall(p = 1_pInt:size(damageState))  damageState(p)%RK4dotState = 0.0_pReal
+   forall(p = 1_pInt:size(damageState))  damageState(p)%RK4dotState  = 0.0_pReal
    forall(p = 1_pInt:size(thermalState)) thermalState(p)%RK4dotState = 0.0_pReal
  else
    e = eIter(1)
    i = iIter(1,e)
    do g = iIter(1,e), iIter(2,e)
-     plasticState(mappingConstitutive(2,g,i,e))%RK4dotState(:,mappingConstitutive(1,g,i,e)) = 0.0_pReal
-     damageState(mappingConstitutive(2,g,i,e))%RK4dotState(:,mappingConstitutive(1,g,i,e))  = 0.0_pReal
-     thermalState(mappingConstitutive(2,g,i,e))%RK4dotState(:,mappingConstitutive(1,g,i,e)) = 0.0_pReal
+     plasticState(mappingConstitutive(2,g,i,e))%RK4dotState(:,mappingConstitutive(1,g,i,e)) = 0.0_pReal  
+     damageState( mappingConstitutive(2,g,i,e))%RK4dotState(:,mappingConstitutive(1,g,i,e)) = 0.0_pReal  
+     thermalState(mappingConstitutive(2,g,i,e))%RK4dotState(:,mappingConstitutive(1,g,i,e)) = 0.0_pReal   
    enddo
  endif
 
@@ -1485,11 +1496,11 @@ subroutine crystallite_integrateStateRK4()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       c = mappingConstitutive(1,g,i,e)
-       p = mappingConstitutive(2,g,i,e)
-       if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
-            any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c)) .or.&
-            any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
+       c = mappingConstitutive(1,g,i,e) 
+       p = mappingConstitutive(2,g,i,e) 
+       if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or.&
+            any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c))  .or.&
+            any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c))) then                   ! NaN occured in dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                             ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                      ! ...all non-locals skipped
@@ -1514,29 +1525,18 @@ subroutine crystallite_integrateStateRK4()
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          c = mappingConstitutive(1,g,i,e)
-         first3steps: if (n < 4) then
 
-           plasticState(p)%RK4dotState(:,c) = plasticState(p)%RK4dotState(:,c) &
-                                            + weight(n)*plasticState(p)%dotState(:,c)
-           damageState(p)%RK4dotState(:,c)  = damageState(p)%RK4dotState(:,c) &
-                                            + weight(n)*damageState(p)%dotState(:,c)
-           thermalState(p)%RK4dotState(:,c) = thermalState(p)%RK4dotState(:,c) &
-                                            + weight(n)*thermalState(p)%dotState(:,c)
-         else first3steps
-
-           plasticState(p)%RK4dotState(:,c) = plasticState(p)%RK4dotState(:,c) &
-                                            + weight(n)*plasticState(p)%dotState(:,c) / 6.0_pReal
-           damageState(p)%RK4dotState(:,c)  = damageState(p)%RK4dotState(:,c) &
-                                            + weight(n)*damageState(p)%dotState(:,c) / 6.0_pReal
-           thermalState(p)%RK4dotState(:,c) = thermalState(p)%RK4dotState(:,c) &
-                                            + weight(n)*thermalState(p)%dotState(:,c) / 6.0_pReal
-
-         endif first3steps
+         plasticState(p)%RK4dotState(:,c) = plasticState(p)%RK4dotState(:,c) &
+                                          + weight(n)*plasticState(p)%dotState(:,c) 
+         damageState(p)%RK4dotState(:,c)  = damageState(p)%RK4dotState(:,c) &
+                                          + weight(n)*damageState(p)%dotState(:,c) 
+         thermalState(p)%RK4dotState(:,c) = thermalState(p)%RK4dotState(:,c) &
+                                          + weight(n)*thermalState(p)%dotState(:,c) 
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
 
-   !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
+   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
 
@@ -1554,18 +1554,18 @@ subroutine crystallite_integrateStateRK4()
          thermalState(p)%State(1:mySizeThermalDotState,c) = thermalState(p)%subState0(1:mySizeThermalDotState,c) &
                                                           + thermalState(p)%dotState (1:mySizeThermalDotState,c) &
                                                           * crystallite_subdt(g,i,e) * timeStepFraction(n)
-         if (n == 4) then                                                                                 ! final integration step
-#ifndef _OPENMP
-           if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
-               .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
-                      .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
 
-             write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> updateState at el ip g ',e,i,g
-             write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState',  plasticState(p)%dotState(:,c)
-             write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%State(:,c)
-           endif
-#endif
+#ifndef _OPENMP
+         if (n == 4 &
+             .and. iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
+             .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
+                    .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then ! final integration step
+
+           write(6,'(a,i8,1x,i2,1x,i3,/)')       '<< CRYST >> updateState at el ip g ',e,i,g
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState',  plasticState(p)%dotState(1:mySizePlasticDotState,c)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%state(1:mySizePlasticDotState,c)
          endif
+#endif
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -1594,14 +1594,15 @@ subroutine crystallite_integrateStateRK4()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
-         call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
+         call constitutive_microstructure(crystallite_temperature(i,e), &
+                                          crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                          ! update dependent state variables to be consistent with basic states
          call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                                  crystallite_Fe(1:3,1:3,g,i,e), &
-                                                 g,i,e)                   ! update dependent state variables to be consistent with basic states
+                                                 g,i,e)                                                    ! update dependent state variables to be consistent with basic states
          call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                                   crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)                  ! update dependent state variables to be consistent with basic states
+                                                  g,i,e)                                                   ! update dependent state variables to be consistent with basic states
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -1626,8 +1627,8 @@ subroutine crystallite_integrateStateRK4()
 
 
    ! --- dot state and RK dot state---
-
-   first3steps2: if (n < 4) then
+ 
+   first3steps: if (n < 4) then
      !$OMP DO
        do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                ! iterate over elements, ips and grains
          if (crystallite_todo(g,i,e)) then
@@ -1651,11 +1652,11 @@ subroutine crystallite_integrateStateRK4()
          !$OMP FLUSH(crystallite_todo)
          if (crystallite_todo(g,i,e)) then
 
-           p = mappingConstitutive(2,g,i,e)
-           c = mappingConstitutive(1,g,i,e)
-           if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
+           p = mappingConstitutive(2,g,i,e) 
+           c = mappingConstitutive(1,g,i,e)  
+           if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or.&
                 any(damageState(p)%dotState(:,c)  /=  damageState(p)%dotState(:,c)) .or.&
-                any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
+                any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
              if (.not. crystallite_localPlasticity(g,i,e)) then                                            ! if broken non-local...
                !$OMP CRITICAL (checkTodo)
                  crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                     ! ...all non-locals skipped
@@ -1667,7 +1668,7 @@ subroutine crystallite_integrateStateRK4()
          endif
        enddo; enddo; enddo
      !$OMP ENDDO
-   endif first3steps2
+   endif first3steps
  !$OMP END PARALLEL
 
  enddo
@@ -1774,8 +1775,7 @@ subroutine crystallite_integrateStateRKCK45()
    s, &                                                                                             ! state index
    p, &
    cc, &
-   mySizeDotState, &                                                                                ! size of dot State
-   mySizePlasticDotState, &
+   mySizePlasticDotState, &                                                                         ! size of dot States
    mySizeDamageDotState, &
    mySizeThermalDotState
  integer(pInt), dimension(2) :: &
@@ -1785,13 +1785,13 @@ subroutine crystallite_integrateStateRKCK45()
    gIter                                                                                            ! bounds for grain iteration
 
  real(pReal), dimension(constitutive_maxSizeDotState,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   stateResiduum, &                                                                                 ! residuum from evolution in micrstructure
+   stateResiduum, &                                                                                 ! residuum from evolution in microstructure
    relStateResiduum                                                                                 ! relative residuum from evolution in microstructure
  real(pReal), dimension(constitutive_damage_maxSizeDotState,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   damageStateResiduum, &                                                                           ! residuum from evolution in micrstructure
+   damageStateResiduum, &                                                                           ! residuum from evolution in microstructure
    relDamageStateResiduum                                                                           ! relative residuum from evolution in microstructure
  real(pReal), dimension(constitutive_thermal_maxSizeDotState,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
-   thermalStateResiduum, &                                                                          ! residuum from evolution in micrstructure
+   thermalStateResiduum, &                                                                          ! residuum from evolution in microstructure
    relThermalStateResiduum                                                                          ! relative residuum from evolution in microstructure
  logical :: &
    singleRun                                                                                        ! flag indicating computation for single (g,i,e) triple
@@ -1833,11 +1833,11 @@ subroutine crystallite_integrateStateRKCK45()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       cc = mappingConstitutive(1,g,i,e)
-       p = mappingConstitutive(2,g,i,e)
-       if ( any(plasticState(p)%dotState(:,cc)  /= plasticState(p)%dotState(:,cc)) .or.&
-            any(damageState(p)%dotState(:,cc)  /= damageState(p)%dotState(:,cc)) .or.&
-            any(thermalState(p)%dotState(:,cc)  /= thermalState(p)%dotState(:,cc))) then             ! NaN occured in dotState
+       cc = mappingConstitutive(1,g,i,e) 
+       p = mappingConstitutive(2,g,i,e) 
+       if ( any(plasticState(p)%dotState(:,cc) /= plasticState(p)%dotState(:,cc)) .or.&
+            any(damageState(p)%dotState(:,cc)  /= damageState(p)%dotState(:,cc))  .or.&
+            any(thermalState(p)%dotState(:,cc) /= thermalState(p)%dotState(:,cc))) then                    ! NaN occured in dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -1865,7 +1865,7 @@ subroutine crystallite_integrateStateRKCK45()
          p = mappingConstitutive(2,g,i,e)
          cc = mappingConstitutive(1,g,i,e)
          plasticState(p)%RKCK45dotState(n,:,cc) = plasticState(p)%dotState(:,cc)         ! store Runge-Kutta dotState
-         damageState(p)%RKCK45dotState(n,:,cc)  = damageState(p)%dotState(:,cc)         ! store Runge-Kutta dotState
+         damageState(p)%RKCK45dotState(n,:,cc)  = damageState(p)%dotState(:,cc)          ! store Runge-Kutta dotState
          thermalState(p)%RKCK45dotState(n,:,cc) = thermalState(p)%dotState(:,cc)         ! store Runge-Kutta dotState
        endif
      enddo; enddo; enddo
@@ -1877,58 +1877,58 @@ subroutine crystallite_integrateStateRKCK45()
          cc = mappingConstitutive(1,g,i,e)
          if (n == 1) then                                                                                  ! NEED TO DO THE ADDITION IN THIS LENGTHY WAY BECAUSE OF PARALLELIZATION (CAN'T USE A REDUCTION CLAUSE ON A POINTER OR USER DEFINED TYPE)
 
-           plasticState(p)%dotState(:,cc) =  A(1,1) * plasticState(p)%RKCK45dotState(1,:,cc)
-           damageState(p)%dotState(:,cc)  =  A(1,1) * damageState(p)%RKCK45dotState(1,:,cc)
-           thermalState(p)%dotState(:,cc) =  A(1,1) * thermalState(p)%RKCK45dotState(1,:,cc)
+           plasticState(p)%dotState(:,cc) = A(1,1) * plasticState(p)%RKCK45dotState(1,:,cc)
+           damageState( p)%dotState(:,cc) = A(1,1) * damageState( p)%RKCK45dotState(1,:,cc)
+           thermalState(p)%dotState(:,cc) = A(1,1) * thermalState(p)%RKCK45dotState(1,:,cc)
 
          elseif (n == 2) then
 
-           plasticState(p)%dotState(:,cc) =  A(1,2) * plasticState(p)%RKCK45dotState(1,:,cc) &
+           plasticState(p)%dotState(:,cc) = A(1,2) * plasticState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,2) * plasticState(p)%RKCK45dotState(2,:,cc)
-           damageState(p)%dotState(:,cc)  =  A(1,1) * damageState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,2) * damageState(p)%RKCK45dotState(2,:,cc)
-           thermalState(p)%dotState(:,cc) =  A(1,1) * thermalState(p)%RKCK45dotState(1,:,cc) &
+           damageState(p)%dotState(:,cc)  = A(1,2) * damageState( p)%RKCK45dotState(1,:,cc) &
+                                          + A(2,2) * damageState( p)%RKCK45dotState(2,:,cc)
+           thermalState(p)%dotState(:,cc) = A(1,2) * thermalState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,2) * thermalState(p)%RKCK45dotState(2,:,cc)
 
          elseif (n == 3) then
 
-           plasticState(p)%dotState(:,cc) =  A(1,3) * plasticState(p)%RKCK45dotState(1,:,cc) &
+           plasticState(p)%dotState(:,cc) = A(1,3) * plasticState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,3) * plasticState(p)%RKCK45dotState(2,:,cc) &
                                           + A(3,3) * plasticState(p)%RKCK45dotState(3,:,cc)
-           damageState(p)%dotState(:,cc)  =  A(1,1) * damageState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,3) * damageState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,3) * damageState(p)%RKCK45dotState(3,:,cc)
-           thermalState(p)%dotState(:,cc) =  A(1,1) * thermalState(p)%RKCK45dotState(1,:,cc) &
+           damageState(p)%dotState(:,cc)  = A(1,3) * damageState( p)%RKCK45dotState(1,:,cc) &
+                                          + A(2,3) * damageState( p)%RKCK45dotState(2,:,cc) &
+                                          + A(3,3) * damageState( p)%RKCK45dotState(3,:,cc)
+           thermalState(p)%dotState(:,cc) = A(1,3) * thermalState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,3) * thermalState(p)%RKCK45dotState(2,:,cc) &
                                           + A(3,3) * thermalState(p)%RKCK45dotState(3,:,cc)
 
          elseif (n == 4) then
 
-           plasticState(p)%dotState(:,cc) =  A(1,4) * plasticState(p)%RKCK45dotState(1,:,cc) &
+           plasticState(p)%dotState(:,cc) = A(1,4) * plasticState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,4) * plasticState(p)%RKCK45dotState(2,:,cc) &
                                           + A(3,4) * plasticState(p)%RKCK45dotState(3,:,cc) &
                                           + A(4,4) * plasticState(p)%RKCK45dotState(4,:,cc)
-           damageState(p)%dotState(:,cc)  =  A(1,1) * damageState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,4) * damageState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,4) * damageState(p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,4) * damageState(p)%RKCK45dotState(4,:,cc)
-           thermalState(p)%dotState(:,cc) =  A(1,1) * thermalState(p)%RKCK45dotState(1,:,cc) &
+           damageState(p)%dotState(:,cc)  = A(1,4) * damageState( p)%RKCK45dotState(1,:,cc) &
+                                          + A(2,4) * damageState( p)%RKCK45dotState(2,:,cc) &
+                                          + A(3,4) * damageState( p)%RKCK45dotState(3,:,cc) &
+                                          + A(4,4) * damageState( p)%RKCK45dotState(4,:,cc)
+           thermalState(p)%dotState(:,cc) = A(1,4) * thermalState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,4) * thermalState(p)%RKCK45dotState(2,:,cc) &
                                           + A(3,4) * thermalState(p)%RKCK45dotState(3,:,cc) &
                                           + A(4,4) * thermalState(p)%RKCK45dotState(4,:,cc)
 
          elseif (n == 5) then
-           plasticState(p)%dotState(:,cc) =  A(1,5) * plasticState(p)%RKCK45dotState(1,:,cc) &
+           plasticState(p)%dotState(:,cc) = A(1,5) * plasticState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,5) * plasticState(p)%RKCK45dotState(2,:,cc) &
                                           + A(3,5) * plasticState(p)%RKCK45dotState(3,:,cc) &
                                           + A(4,5) * plasticState(p)%RKCK45dotState(4,:,cc) &
                                           + A(5,5) * plasticState(p)%RKCK45dotState(5,:,cc)
-           damageState(p)%dotState(:,cc)  =  A(1,1) * damageState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,5) * damageState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,5) * damageState(p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,5) * damageState(p)%RKCK45dotState(4,:,cc) &
-                                          + A(5,5) * damageState(p)%RKCK45dotState(5,:,cc)
-           thermalState(p)%dotState(:,cc) =  A(1,1) * thermalState(p)%RKCK45dotState(1,:,cc) &
+           damageState(p)%dotState(:,cc)  = A(1,5) * damageState( p)%RKCK45dotState(1,:,cc) &
+                                          + A(2,5) * damageState( p)%RKCK45dotState(2,:,cc) &
+                                          + A(3,5) * damageState( p)%RKCK45dotState(3,:,cc) &
+                                          + A(4,5) * damageState( p)%RKCK45dotState(4,:,cc) &
+                                          + A(5,5) * damageState( p)%RKCK45dotState(5,:,cc)
+           thermalState(p)%dotState(:,cc) = A(1,5) * thermalState(p)%RKCK45dotState(1,:,cc) &
                                           + A(2,5) * thermalState(p)%RKCK45dotState(2,:,cc) &
                                           + A(3,5) * thermalState(p)%RKCK45dotState(3,:,cc) &
                                           + A(4,5) * thermalState(p)%RKCK45dotState(4,:,cc) &
@@ -1938,23 +1938,23 @@ subroutine crystallite_integrateStateRKCK45()
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
-    !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
+    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          cc = mappingConstitutive(1,g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
-         mySizeDamageDotState  = damageState(p)%sizeDotState
+         mySizeDamageDotState  = damageState( p)%sizeDotState
          mySizeThermalDotState = thermalState(p)%sizeDotState
-         plasticState(p)%state(1:mySizePlasticDotState,cc) = plasticState(p)%subState0(1:mySizePlasticDotState,cc)  &
-                                                          + plasticState(p)%dotState (1:mySizePlasticDotState,cc) &
-                                                          * crystallite_subdt(g,i,e)
-         damageState(p)%state(1:mySizeDamageDotState,cc)   = damageState(p)%subState0(1:mySizeDamageDotState,cc)  &
-                                                          + damageState(p)%dotState (1:mySizeDamageDotState,cc) &
-                                                          * crystallite_subdt(g,i,e)
-         thermalState(p)%state(1:mySizeThermalDotState,cc) = thermalState(p)%subState0(1:mySizeThermalDotState,cc)  &
-                                                          + thermalState(p)%dotState (1:mySizeThermalDotState,cc) &
-                                                          * crystallite_subdt(g,i,e)
+         plasticState(p)%state(1:mySizePlasticDotState,cc) = plasticState(p)%subState0(1:mySizePlasticDotState,cc) &
+                                                           + plasticState(p)%dotState (1:mySizePlasticDotState,cc) &
+                                                           * crystallite_subdt(g,i,e)
+         damageState(p)%state(1:mySizeDamageDotState,cc)   = damageState(p)%subState0( 1:mySizeDamageDotState,cc) &
+                                                           + damageState(p)%dotState ( 1:mySizeDamageDotState,cc) &
+                                                           * crystallite_subdt(g,i,e)
+         thermalState(p)%state(1:mySizeThermalDotState,cc) = thermalState(p)%subState0(1:mySizeThermalDotState,cc) &
+                                                           + thermalState(p)%dotState (1:mySizeThermalDotState,cc) &
+                                                           * crystallite_subdt(g,i,e)
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -2042,11 +2042,11 @@ subroutine crystallite_integrateStateRKCK45()
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
 
-         p = mappingConstitutive(2,g,i,e)
-         cc = mappingConstitutive(1,g,i,e)
-       if ( any(plasticState(p)%dotState(:,cc)  /= plasticState(p)%dotState(:,cc)) .or.&
-            any(damageState(p)%dotState(:,cc)  /= damageState(p)%dotState(:,cc)) .or.&
-            any(thermalState(p)%dotState(:,cc)  /= thermalState(p)%dotState(:,cc))) then             ! NaN occured in dotState
+         p = mappingConstitutive(2,g,i,e) 
+         cc = mappingConstitutive(1,g,i,e)  
+       if ( any(plasticState(p)%dotState(:,cc) /= plasticState(p)%dotState(:,cc)) .or.&
+            any(damageState(p)%dotState(:,cc)  /= damageState(p)%dotState(:,cc))  .or.&
+            any(thermalState(p)%dotState(:,cc) /= thermalState(p)%dotState(:,cc))) then                    ! NaN occured in dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
@@ -2073,100 +2073,121 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO PRIVATE(p,cc)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
-       p = mappingConstitutive(2,g,i,e)
-       cc = mappingConstitutive(1,g,i,e)
-       plasticState(p)%RKCK45dotState(6,:,cc) = plasticState(p)%dotState (:,cc)            ! store Runge-Kutta dotState
-       damageState(p)%RKCK45dotState(6,:,cc)  = damageState(p)%dotState (:,cc)            ! store Runge-Kutta dotState
-       thermalState(p)%RKCK45dotState(6,:,cc) = thermalState(p)%dotState (:,cc)            ! store Runge-Kutta dotState
+       p = mappingConstitutive(2,g,i,e) 
+       cc = mappingConstitutive(1,g,i,e)  
+       plasticState(p)%RKCK45dotState(6,:,cc) = plasticState(p)%dotState(:,cc)            ! store Runge-Kutta dotState
+       damageState( p)%RKCK45dotState(6,:,cc) = damageState( p)%dotState(:,cc)            ! store Runge-Kutta dotState
+       thermalState(p)%RKCK45dotState(6,:,cc) = thermalState(p)%dotState(:,cc)            ! store Runge-Kutta dotState
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
-
- !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
+       
+ !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
        p = mappingConstitutive(2,g,i,e)
        cc = mappingConstitutive(1,g,i,e)
        mySizePlasticDotState = plasticState(p)%sizeDotState
-       mySizeDamageDotState  = damageState(p)%sizeDotState
+       mySizeDamageDotState  = damageState( p)%sizeDotState
        mySizeThermalDotState = thermalState(p)%sizeDotState
 
        ! --- absolute residuum in state  ---
        ! NEED TO DO THE ADDITION IN THIS LENGTHY WAY BECAUSE OF PARALLELIZATION
        ! CAN'T USE A REDUCTION CLAUSE ON A POINTER OR USER DEFINED TYPE
-
-       stateResiduum(1:mySizePlasticDotState,g,i,e) = matmul(DB, &
-         plasticState(p)%RKCK45dotState(1:6,1:mySizePlasticDotState,cc))*crystallite_subdt(g,i,e)
-       damageStateResiduum(1:mySizeDamageDotState,g,i,e) = matmul(DB, &
-         damageState(p)%RKCK45dotState(1:6,1:mySizeDamageDotState,cc))*crystallite_subdt(g,i,e)
-       thermalStateResiduum(1:mySizeThermalDotState,g,i,e) = matmul(DB, &
-         thermalState(p)%RKCK45dotState(1:6,1:mySizeThermalDotState,cc))*crystallite_subdt(g,i,e)
-
+       
+       stateResiduum(1:mySizePlasticDotState,g,i,e) = &
+                 (   DB(1) * plasticState(p)%RKCK45dotState(1,1:mySizePlasticDotState,cc) &
+                   + DB(2) * plasticState(p)%RKCK45dotState(2,1:mySizePlasticDotState,cc) &
+                   + DB(3) * plasticState(p)%RKCK45dotState(3,1:mySizePlasticDotState,cc) &
+                   + DB(4) * plasticState(p)%RKCK45dotState(4,1:mySizePlasticDotState,cc) &
+                   + DB(5) * plasticState(p)%RKCK45dotState(5,1:mySizePlasticDotState,cc) &
+                   + DB(6) * plasticState(p)%RKCK45dotState(6,1:mySizePlasticDotState,cc) &
+                 ) * crystallite_subdt(g,i,e)
+       damageStateResiduum(1:mySizeDamageDotState,g,i,e) = &
+                 (   DB(1) * damageState(p)%RKCK45dotState(1,1:mySizeDamageDotState,cc) &
+                   + DB(2) * damageState(p)%RKCK45dotState(2,1:mySizeDamageDotState,cc) &
+                   + DB(3) * damageState(p)%RKCK45dotState(3,1:mySizeDamageDotState,cc) &
+                   + DB(4) * damageState(p)%RKCK45dotState(4,1:mySizeDamageDotState,cc) &
+                   + DB(5) * damageState(p)%RKCK45dotState(5,1:mySizeDamageDotState,cc) &
+                   + DB(6) * damageState(p)%RKCK45dotState(6,1:mySizeDamageDotState,cc) &
+                 ) * crystallite_subdt(g,i,e)
+       thermalStateResiduum(1:mySizethermalDotState,g,i,e) = &
+                 (   DB(1) * thermalState(p)%RKCK45dotState(1,1:mySizeThermalDotState,cc) &
+                   + DB(2) * thermalState(p)%RKCK45dotState(2,1:mySizeThermalDotState,cc) &
+                   + DB(3) * thermalState(p)%RKCK45dotState(3,1:mySizeThermalDotState,cc) &
+                   + DB(4) * thermalState(p)%RKCK45dotState(4,1:mySizeThermalDotState,cc) &
+                   + DB(5) * thermalState(p)%RKCK45dotState(5,1:mySizeThermalDotState,cc) &
+                   + DB(6) * thermalState(p)%RKCK45dotState(6,1:mySizeThermalDotState,cc) &
+                 ) * crystallite_subdt(g,i,e)
+ 
        ! --- dot state ---
 
        plasticState(p)%dotState (:,cc) = B(1) * plasticState(p)%RKCK45dotState(1,:,cc) &
-                                      + B(2) * plasticState(p)%RKCK45dotState(2,:,cc) &
-                                      + B(3) * plasticState(p)%RKCK45dotState(3,:,cc) &
-                                      + B(4) * plasticState(p)%RKCK45dotState(4,:,cc) &
-                                      + B(5) * plasticState(p)%RKCK45dotState(5,:,cc) &
-                                      + B(6) * plasticState(p)%RKCK45dotState(6,:,cc)
-       damageState(p)%dotState (:,cc)  = B(1) * damageState(p)%RKCK45dotState(1,:,cc) &
-                                      + B(2) * damageState(p)%RKCK45dotState(2,:,cc) &
-                                      + B(3) * damageState(p)%RKCK45dotState(3,:,cc) &
-                                      + B(4) * damageState(p)%RKCK45dotState(4,:,cc) &
-                                      + B(5) * damageState(p)%RKCK45dotState(5,:,cc) &
-                                      + B(6) * damageState(p)%RKCK45dotState(6,:,cc)
+                                       + B(2) * plasticState(p)%RKCK45dotState(2,:,cc) &
+                                       + B(3) * plasticState(p)%RKCK45dotState(3,:,cc) &
+                                       + B(4) * plasticState(p)%RKCK45dotState(4,:,cc) &
+                                       + B(5) * plasticState(p)%RKCK45dotState(5,:,cc) &
+                                       + B(6) * plasticState(p)%RKCK45dotState(6,:,cc) 
+       damageState(p)%dotState (:,cc)  = B(1) * damageState( p)%RKCK45dotState(1,:,cc) &
+                                       + B(2) * damageState( p)%RKCK45dotState(2,:,cc) &
+                                       + B(3) * damageState( p)%RKCK45dotState(3,:,cc) &
+                                       + B(4) * damageState( p)%RKCK45dotState(4,:,cc) &
+                                       + B(5) * damageState( p)%RKCK45dotState(5,:,cc) &
+                                       + B(6) * damageState( p)%RKCK45dotState(6,:,cc) 
        thermalState(p)%dotState (:,cc) = B(1) * thermalState(p)%RKCK45dotState(1,:,cc) &
-                                      + B(2) * thermalState(p)%RKCK45dotState(2,:,cc) &
-                                      + B(3) * thermalState(p)%RKCK45dotState(3,:,cc) &
-                                      + B(4) * thermalState(p)%RKCK45dotState(4,:,cc) &
-                                      + B(5) * thermalState(p)%RKCK45dotState(5,:,cc) &
-                                      + B(6) * thermalState(p)%RKCK45dotState(6,:,cc)
+                                       + B(2) * thermalState(p)%RKCK45dotState(2,:,cc) &
+                                       + B(3) * thermalState(p)%RKCK45dotState(3,:,cc) &
+                                       + B(4) * thermalState(p)%RKCK45dotState(4,:,cc) &
+                                       + B(5) * thermalState(p)%RKCK45dotState(5,:,cc) &
+                                       + B(6) * thermalState(p)%RKCK45dotState(6,:,cc) 
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
-
- ! --- state and update ---
-
- !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
+ 
+ ! --- state and update ---      
+ 
+ !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
 
          p = mappingConstitutive(2,g,i,e)
          cc = mappingConstitutive(1,g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
-         mySizeDamageDotState  = damageState(p)%sizeDotState
+         mySizeDamageDotState  = damageState( p)%sizeDotState
          mySizeThermalDotState = thermalState(p)%sizeDotState
          plasticState(p)%state(1:mySizePlasticDotState,cc) = plasticState(p)%subState0(1:mySizePlasticDotState,cc)&
-                                                          + plasticState(p)%dotState (1:mySizePlasticDotState,cc)&
-                                                          * crystallite_subdt(g,i,e)
+                                                           + plasticState(p)%dotState (1:mySizePlasticDotState,cc)&
+                                                           * crystallite_subdt(g,i,e)
          damageState(p)%state (1:mySizeDamageDotState,cc)  = damageState(p)%subState0(1:mySizeDamageDotState,cc)&
-                                                          + damageState(p)%dotState (1:mySizeDamageDotState,cc)&
-                                                          * crystallite_subdt(g,i,e)
+                                                           + damageState(p)%dotState (1:mySizeDamageDotState,cc)&
+                                                           * crystallite_subdt(g,i,e)
          thermalState(p)%state(1:mySizeThermalDotState,cc) = thermalState(p)%subState0(1:mySizeThermalDotState,cc)&
-                                                          + thermalState(p)%dotState (1:mySizeThermalDotState,cc)&
-                                                          * crystallite_subdt(g,i,e)
+                                                           + thermalState(p)%dotState (1:mySizeThermalDotState,cc)&
+                                                           * crystallite_subdt(g,i,e)
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
-
- ! --- relative residui and state convergence ---
-
- !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
+ 
+ ! --- relative residui and state convergence ---      
+ 
+ !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc,s)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
        p = mappingConstitutive(2,g,i,e)
        cc = mappingConstitutive(1,g,i,e)
        mySizePlasticDotState = plasticState(p)%sizeDotState
-       mySizeDamageDotState  = damageState(p)%sizeDotState
+       mySizeDamageDotState  = damageState( p)%sizeDotState
        mySizeThermalDotState = thermalState(p)%sizeDotState
        forall (s = 1_pInt:mySizePlasticDotState, abs(plasticState(p)%state(s,cc)) > 0.0_pReal) &
          relStateResiduum(s,g,i,e) = stateResiduum(s,g,i,e) / plasticState(p)%state(s,cc)
-       forall (s = 1_pInt:mySizeDamageDotState, abs(damageState(p)%state(s,cc)) > 0.0_pReal) &
+       forall (s = 1_pInt:mySizeDamageDotState,  abs(damageState( p)%state(s,cc)) > 0.0_pReal) &
          relDamageStateResiduum(s,g,i,e) = damageStateResiduum(s,g,i,e) / damageState(p)%state(s,cc)
        forall (s = 1_pInt:mySizeThermalDotState, abs(thermalState(p)%state(s,cc)) > 0.0_pReal) &
          relThermalStateResiduum(s,g,i,e) = thermalStateResiduum(s,g,i,e) / thermalState(p)%state(s,cc)
        !$OMP FLUSH(relStateResiduum)
+       !$OMP FLUSH(relDamageStateResiduum)
+       !$OMP FLUSH(relThermalStateResiduum)
+! @Martin: do we need flushing? why..?
        crystallite_todo(g,i,e) = &
            (      all(abs(relStateResiduum(1:mySizePlasticDotState,g,i,e)) < &
                       rTol_crystalliteState .or. &
@@ -2187,9 +2208,9 @@ subroutine crystallite_integrateStateRKCK45()
                   .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
          write(6,'(a,i8,1x,i3,1x,i3,/)') '<< CRYST >> updateState at el ip g ',e,i,g
          write(6,'(a,/,(12x,12(f12.1,1x)),/)') '<< CRYST >> absolute residuum tolerance', &
-               stateResiduum(1:mySizeDotState,g,i,e) / plasticState(p)%aTolState(1:mySizePlasticDotState)
+               stateResiduum(1:mySizePlasticDotState,g,i,e) / plasticState(p)%aTolState(1:mySizePlasticDotState)
          write(6,'(a,/,(12x,12(f12.1,1x)),/)') '<< CRYST >> relative residuum tolerance', &
-               relStateResiduum(1:mySizeDotState,g,i,e) / rTol_crystalliteState
+               relStateResiduum(1:mySizePlasticDotState,g,i,e) / rTol_crystalliteState
          write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState', &
               plasticState(p)%dotState(1:mySizePlasticDotState,cc)
          write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', &
@@ -2225,13 +2246,13 @@ subroutine crystallite_integrateStateRKCK45()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
        call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
-                                        crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                             ! update dependent state variables to be consistent with basic states
+                                        crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
        call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                                crystallite_Fe(1:3,1:3,g,i,e), &
-                                               g,i,e)                   ! update dependent state variables to be consistent with basic states
+                                               g,i,e)                                                      ! update dependent state variables to be consistent with basic states
        call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                                 crystallite_Lp(1:3,1:3,g,i,e), &
-                                                g,i,e)                  ! update dependent state variables to be consistent with basic states
+                                                g,i,e)                                                     ! update dependent state variables to be consistent with basic states
      endif
   enddo; enddo; enddo
  !$OMP ENDDO
@@ -2277,10 +2298,10 @@ subroutine crystallite_integrateStateRKCK45()
  ! --- nonlocal convergence check ---
 
  if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'      ! if not requesting Integration of just a single IP
+   write(6,'(a,i8,a,i2,/)') '<< CRYST >> ', count(crystallite_converged(:,:,:)), ' grains converged'    ! if not requesting Integration of just a single IP   
  if ((.not. singleRun) .and. any(.not. crystallite_converged .and. .not. crystallite_localPlasticity)) &  ! any non-local not yet converged (or broken)...
-   crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                        ! ...restart all non-local as not converged
-
+   crystallite_converged = crystallite_converged .and. crystallite_localPlasticity                       ! ...restart all non-local as not converged
+ 
 end subroutine crystallite_integrateStateRKCK45
 
 
@@ -2337,8 +2358,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    s, &                                                                                             ! state index
    p, &
    c, &
-   mySizeDotState, &                                                                                ! size of dot State
-   mySizePlasticDotState, &
+   mySizePlasticDotState, &                                                                         ! size of dot states
    mySizeDamageDotState, &
    mySizeThermalDotState
  integer(pInt), dimension(2) :: &
@@ -2403,11 +2423,11 @@ subroutine crystallite_integrateStateAdaptiveEuler()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
-         if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
-              any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c)) .or.&
-              any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
+         p = mappingConstitutive(2,g,i,e) 
+         c = mappingConstitutive(1,g,i,e)  
+         if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or. &
+              any(damageState( p)%dotState(:,c) /= damageState( p)%dotState(:,c)) .or. &
+              any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c))) then                      ! NaN occured in dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2422,14 +2442,14 @@ subroutine crystallite_integrateStateAdaptiveEuler()
 
 
    ! --- STATE UPDATE (EULER INTEGRATION) ---
-
-   !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
+ 
+   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          c = mappingConstitutive(1,g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
-         mySizeDamageDotState  = damageState(p)%sizeDotState
+         mySizeDamageDotState  = damageState( p)%sizeDotState
          mySizeThermalDotState = thermalState(p)%sizeDotState
          stateResiduum(1:mySizePlasticDotState,g,i,e) = - 0.5_pReal &
                                                         * plasticState(p)%dotstate(1:mySizePlasticDotState,c) &
@@ -2536,7 +2556,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
          p = mappingConstitutive(2,g,i,e)
          c = mappingConstitutive(1,g,i,e)
          if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
-              any(damageState(p)%dotState(:,c)   /= damageState(p)%dotState(:,c)) .or.&
+              any(damageState( p)%dotState(:,c)  /= damageState( p)%dotState(:,c)) .or.&
               any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
@@ -2559,7 +2579,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    relThermalStateResiduum = 0.0_pReal
    !$OMP END SINGLE
 
-   !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
+   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c,s)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                   ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
@@ -2580,8 +2600,10 @@ subroutine crystallite_integrateStateAdaptiveEuler()
                                                              * crystallite_subdt(g,i,e)                      ! contribution to absolute residuum in state
 
          !$OMP FLUSH(stateResiduum)
-
-         ! --- relative residui ---
+         !$OMP FLUSH(damageStateResiduum)
+         !$OMP FLUSH(thermalStateResiduum)
+ 
+         ! --- relative residui ---  
          forall (s = 1_pInt:mySizePlasticDotState, abs(plasticState(p)%dotState(s,c)) > 0.0_pReal) &
            relStateResiduum(s,g,i,e) = stateResiduum(s,g,i,e) / plasticState(p)%dotState(s,c)
          forall (s = 1_pInt:mySizeDamageDotState, abs(damageState(p)%dotState(s,c)) > 0.0_pReal) &
@@ -2589,8 +2611,10 @@ subroutine crystallite_integrateStateAdaptiveEuler()
          forall (s = 1_pInt:mySizeThermalDotState, abs(thermalState(p)%dotState(s,c)) > 0.0_pReal) &
            relThermalStateResiduum(s,g,i,e) = thermalStateResiduum(s,g,i,e) / thermalState(p)%dotState(s,c)
          !$OMP FLUSH(relStateResiduum)
-
-#ifndef _OPENMP
+         !$OMP FLUSH(relDamageStateResiduum)
+         !$OMP FLUSH(relthermalStateResiduum)
+ 
+#ifndef _OPENMP 
 
          if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
              .and. ((e == debug_e .and. i == debug_i .and. g == debug_g)&
@@ -2710,7 +2734,6 @@ subroutine crystallite_integrateStateEuler()
    g, &                                                                                             ! grain index in grain loop
    p, &                                                  ! phase loop
    c, &
-   mySizeDotState, &
    mySizePlasticDotState, &
    mySizeDamageDotState, &
    mySizeThermalDotState
@@ -2755,11 +2778,11 @@ eIter = FEsolving_execElem(1:2)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         c = mappingConstitutive(1,g,i,e)
-         p = mappingConstitutive(2,g,i,e)
-         if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
-              any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c)) .or.&
-              any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
+         c = mappingConstitutive(1,g,i,e) 
+         p = mappingConstitutive(2,g,i,e) 
+         if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or. &
+              any(damageState( p)%dotState(:,c)  /= damageState( p)%dotState(:,c)) .or. &
+              any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then                     ! NaN occured in dotState
            if (.not. crystallite_localPlasticity(g,i,e) .and. .not. numerics_timeSyncing) then               ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2774,23 +2797,23 @@ eIter = FEsolving_execElem(1:2)
 
 
    ! --- UPDATE STATE  ---
-
-   !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
+ 
+   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          c = mappingConstitutive(1,g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
-         mySizeDamageDotState  = damageState(p)%sizeDotState
+         mySizeDamageDotState  = damageState( p)%sizeDotState
          mySizeThermalDotState = thermalState(p)%sizeDotState
-         plasticState(p)%State(1:mySizePlasticDotState,c) = plasticState(p)%subState0(1:mySizePlasticDotState,c) &
-                                                          + plasticState(p)%dotState (1:mySizePlasticDotState,c) &
+         plasticState(p)%state(1:mySizePlasticDotState,c) = plasticState(p)%state(   1:mySizePlasticDotState,c) &
+                                                          + plasticState(p)%dotState(1:mySizePlasticDotState,c) &
                                                           * crystallite_subdt(g,i,e)
-         damageState(p)%State(1:mySizeDamageDotState,c)   = damageState(p)%subState0(1:mySizeDamageDotState,c) &
-                                                          + damageState(p)%dotState (1:mySizeDamageDotState,c) &
+         damageState( p)%state(1:mySizeDamageDotState,c)  = damageState( p)%state(   1:mySizeDamageDotState,c) &
+                                                          + damageState( p)%dotState(1:mySizeDamageDotState,c) &
                                                           * crystallite_subdt(g,i,e)
-         thermalState(p)%State(1:mySizeThermalDotState,c) = thermalState(p)%subState0(1:mySizeThermalDotState,c) &
-                                                          + thermalState(p)%dotState (1:mySizeThermalDotState,c) &
+         thermalState(p)%state(1:mySizeThermalDotState,c) = thermalState(p)%state(   1:mySizeThermalDotState,c) &
+                                                          + thermalState(p)%dotState(1:mySizeThermalDotState,c) &
                                                           * crystallite_subdt(g,i,e)
 
 #ifndef _OPENMP
@@ -2950,8 +2973,7 @@ subroutine crystallite_integrateStateFPI()
    g, &                                                                                             !< grain index in grain loop
    p, &
    c, &
-   mySizeDotState, &                                                                                ! size of dot State
-   mySizePlasticDotState, &
+   mySizePlasticDotState, &                                                                         ! size of dot states
    mySizeDamageDotState, &
    mySizeThermalDotState, &
    ss
@@ -2990,31 +3012,30 @@ subroutine crystallite_integrateStateFPI()
 !--------------------------------------------------------------------------------------------------
 ! initialize dotState
  if (.not. singleRun) then
-   forall(p = 1_pInt:size(plasticState))
-     plasticState(p)%previousDotState = 0.0_pReal
+   forall(p = 1_pInt:size(plasticState)) 
+     plasticState(p)%previousDotState  = 0.0_pReal
      plasticState(p)%previousDotState2 = 0.0_pReal
    end forall
-   forall(p = 1_pInt:size(damageState))
-     damageState(p)%previousDotState = 0.0_pReal
+   forall(p = 1_pInt:size(damageState)) 
+     damageState(p)%previousDotState  = 0.0_pReal
      damageState(p)%previousDotState2 = 0.0_pReal
    end forall
-   forall(p = 1_pInt:size(thermalState))
-     thermalState(p)%previousDotState = 0.0_pReal
+   forall(p = 1_pInt:size(thermalState)) 
+     thermalState(p)%previousDotState  = 0.0_pReal
      thermalState(p)%previousDotState2 = 0.0_pReal
    end forall
  else
    e = eIter(1)
    i = iIter(1,e)
    do g = gIter(1,e), gIter(2,e)
-     p = mappingConstitutive(2,g,i,e)
-     c = mappingConstitutive(1,g,i,e)
-
-     plasticState(p)%previousDotState (:,c) = 0.0_pReal
-     plasticState(p)%previousDotState2(:,c) = 0.0_pReal
-     damageState(p)%previousDotState (:,c) = 0.0_pReal
-     damageState(p)%previousDotState2(:,c) = 0.0_pReal
-     thermalState(p)%previousDotState (:,c) = 0.0_pReal
-     thermalState(p)%previousDotState2(:,c) = 0.0_pReal
+     p = mappingConstitutive(2,g,i,e) 
+     c = mappingConstitutive(1,g,i,e)  
+     plasticState(p)%previousDotState (:,c) = 0.0_pReal   
+     plasticState(p)%previousDotState2(:,c) = 0.0_pReal   
+     damageState( p)%previousDotState (:,c) = 0.0_pReal   
+     damageState( p)%previousDotState2(:,c) = 0.0_pReal   
+     thermalState(p)%previousDotState (:,c) = 0.0_pReal   
+     thermalState(p)%previousDotState2(:,c) = 0.0_pReal   
    enddo
  endif
 
@@ -3044,10 +3065,10 @@ subroutine crystallite_integrateStateFPI()
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      !$OMP FLUSH(crystallite_todo)
      if (crystallite_todo(g,i,e)) then
-       p = mappingConstitutive(2,g,i,e)
-       c = mappingConstitutive(1,g,i,e)
-       if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or.&
-            any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c)) .or.&
+       p = mappingConstitutive(2,g,i,e) 
+       c = mappingConstitutive(1,g,i,e)  
+       if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or. &
+            any(damageState( p)%dotState(:,c) /= damageState( p)%dotState(:,c)) .or. &
             any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c))) then                      !NaN occured in dotState
 
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
@@ -3063,20 +3084,20 @@ subroutine crystallite_integrateStateFPI()
  !$OMP ENDDO
 
  ! --- UPDATE STATE  ---
-
- !$OMP DO PRIVATE(mySizeDotState,mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
+ 
+ !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,c)
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) then
        p = mappingConstitutive(2,g,i,e)
        c = mappingConstitutive(1,g,i,e)
        mySizePlasticDotState = plasticState(p)%sizeDotState
-       mySizeDamageDotState  = damageState(p)%sizeDotState
+       mySizeDamageDotState  = damageState( p)%sizeDotState
        mySizeThermalDotState = thermalState(p)%sizeDotState
-       plasticState(p)%State(1:mySizePlasticDotState,c) = plasticState(p)%subState0(1:mySizePlasticDotState,c) &
+       plasticState(p)%state(1:mySizePlasticDotState,c) = plasticState(p)%subState0(1:mySizePlasticDotState,c) &
                                                         + plasticState(p)%dotState (1:mySizePlasticDotState,c) &
                                                         * crystallite_subdt(g,i,e)
-       damageState(p)%State(1:mySizeDamageDotState,c)   = damageState(p)%subState0(1:mySizeDamageDotState,c) &
-                                                        + damageState(p)%dotState (1:mySizeDamageDotState,c) &
+       damageState( p)%state(1:mySizeDamageDotState,c)  = damageState( p)%subState0(1:mySizeDamageDotState,c) &
+                                                        + damageState( p)%dotState (1:mySizeDamageDotState,c) &
                                                         * crystallite_subdt(g,i,e)
        thermalState(p)%State(1:mySizeThermalDotState,c) = thermalState(p)%subState0(1:mySizeThermalDotState,c) &
                                                         + thermalState(p)%dotState (1:mySizeThermalDotState,c) &
@@ -3100,24 +3121,24 @@ subroutine crystallite_integrateStateFPI()
 
    !$OMP DO PRIVATE(p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then   !ToDo: should this be independent of todo/converged?
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
-       call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                               crystallite_Fe(1:3,1:3,g,i,e), &
-                                               g,i,e)                   ! update dependent state variables to be consistent with basic states
-       call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                crystallite_Lp(1:3,1:3,g,i,e), &
-                                                g,i,e)                  ! update dependent state variables to be consistent with basic states
-endif
-       p = mappingConstitutive(2,g,i,e)
-       c = mappingConstitutive(1,g,i,e)
-       plasticState(p)%previousDotState2(:,c) = plasticState(p)%previousDotState(:,c)
-       plasticState(p)%previousDotState(:,c) =  plasticState(p)%dotState(:,c)
-       damageState(p)%previousDotState2(:,c)  = damageState(p)%previousDotState(:,c)
-       damageState(p)%previousDotState(:,c)  =  damageState(p)%dotState(:,c)
-       thermalState(p)%previousDotState2(:,c) = thermalState(p)%previousDotState(:,c)
-       thermalState(p)%previousDotState(:,c) =  thermalState(p)%dotState(:,c)
+         call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
+                                                 crystallite_Fe(1:3,1:3,g,i,e), &
+                                                 g,i,e)                                                      ! update dependent state variables to be consistent with basic states
+         call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
+                                                  crystallite_Lp(1:3,1:3,g,i,e), &
+                                                  g,i,e)                                                     ! update dependent state variables to be consistent with basic states
+       endif
+       p = mappingConstitutive(2,g,i,e) 
+       c = mappingConstitutive(1,g,i,e)  
+       plasticState(p)%previousDotState2(:,c) = plasticState(p)%previousDotState(:,c) 
+       damageState( p)%previousDotState2(:,c) = damageState( p)%previousDotState(:,c) 
+       thermalState(p)%previousDotState2(:,c) = thermalState(p)%previousDotState(:,c) 
+       plasticState(p)%previousDotState (:,c) = plasticState(p)%dotState(:,c)          
+       damageState( p)%previousDotState (:,c) = damageState( p)%dotState(:,c)          
+       thermalState(p)%previousDotState (:,c) = thermalState(p)%dotState(:,c)          
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -3150,7 +3171,7 @@ endif
 
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then   !ToDo: should this be independent of todo/converged?
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
@@ -3169,15 +3190,15 @@ endif
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         p = mappingConstitutive(2,g,i,e)
-         c = mappingConstitutive(1,g,i,e)
-         if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
-              any(damageState(p)%dotState(:,c)   /= damageState(p)%dotState(:,c)) .or.&
-              any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c))) then             ! NaN occured in dotState
-           crystallite_todo(g,i,e) = .false.                                                                                      ! ... skip me next time
-           if (.not. crystallite_localPlasticity(g,i,e)) then                                                                     ! if me is non-local...
+         p = mappingConstitutive(2,g,i,e) 
+         c = mappingConstitutive(1,g,i,e)  
+         if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or. &
+              any(damageState( p)%dotState(:,c) /= damageState( p)%dotState(:,c)) .or. &
+              any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c))) then                      ! NaN occured in dotState
+           crystallite_todo(g,i,e) = .false.                                                                 ! ... skip me next time
+           if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if me is non-local...
              !$OMP CRITICAL (checkTodo)
-               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                                              ! ...all non-locals skipped
+               crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
              !$OMP END CRITICAL (checkTodo)
            endif
          endif
@@ -3193,16 +3214,17 @@ endif
    !$OMP&           mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState, &
    !$OMP&           damageStateResiduum,thermalStateResiduum,damageStateDamper,thermalStateDamper, &
    !$OMP&           tempDamageState,tempThermalState,p,c, &
-   !$OMP&           statedamper,mySizeDotState,stateResiduum,tempState)
+   !$OMP&           statedamper,stateResiduum,tempState)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)           ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
 
          p = mappingConstitutive(2,g,i,e)
          c = mappingConstitutive(1,g,i,e)
          mySizePlasticDotState = plasticState(p)%sizeDotState
-         mySizeDamageDotState  = damageState(p)%sizeDotState
+         mySizeDamageDotState  = damageState( p)%sizeDotState
          mySizeThermalDotState = thermalState(p)%sizeDotState
-         dot_prod12 = dot_product(plasticState(p)%dotState(:,c)- plasticState(p)%previousDotState(:,c), &
+
+         dot_prod12 = dot_product(plasticState(p)%dotState(:,c)         - plasticState(p)%previousDotState(:,c), &
                                   plasticState(p)%previousDotState(:,c) - plasticState(p)%previousDotState2(:,c))
          dot_prod22 = dot_product(plasticState(p)%previousDotState(:,c) - plasticState(p)%previousDotState2(:,c), &
                                   plasticState(p)%previousDotState(:,c) - plasticState(p)%previousDotState2(:,c))
@@ -3214,7 +3236,8 @@ endif
          else
            stateDamper = 1.0_pReal
          endif
-         dot_prod12 = dot_product(damageState(p)%dotState(:,c)- damageState(p)%previousDotState(:,c), &
+
+         dot_prod12 = dot_product(damageState(p)%dotState(:,c)         - damageState(p)%previousDotState(:,c), &
                                   damageState(p)%previousDotState(:,c) - damageState(p)%previousDotState2(:,c))
          dot_prod22 = dot_product(damageState(p)%previousDotState(:,c) - damageState(p)%previousDotState2(:,c), &
                                   damageState(p)%previousDotState(:,c) - damageState(p)%previousDotState2(:,c))
@@ -3225,8 +3248,9 @@ endif
            damageStateDamper = 0.75_pReal + 0.25_pReal * tanh(2.0_pReal + 4.0_pReal * dot_prod12 / dot_prod22)
          else
            damageStateDamper = 1.0_pReal
-         endif
-         dot_prod12 = dot_product(thermalState(p)%dotState(:,c)- thermalState(p)%previousDotState(:,c), &
+         endif        
+
+         dot_prod12 = dot_product(thermalState(p)%dotState(:,c)         - thermalState(p)%previousDotState(:,c), &
                                   thermalState(p)%previousDotState(:,c) - thermalState(p)%previousDotState2(:,c))
          dot_prod22 = dot_product(thermalState(p)%previousDotState(:,c) - thermalState(p)%previousDotState2(:,c), &
                                   thermalState(p)%previousDotState(:,c) - thermalState(p)%previousDotState2(:,c))
@@ -3243,19 +3267,19 @@ endif
          stateResiduum(1:mySizePlasticDotState) = plasticState(p)%state(1:mySizePlasticDotState,c)      &
                                                 - plasticState(p)%subState0(1:mySizePlasticDotState,c)  &
                                                 - (plasticState(p)%dotState(1:mySizePlasticDotState,c) * stateDamper &
-                                                + plasticState(p)%previousDotState(1:mySizePlasticDotState,c) &
+                                                 + plasticState(p)%previousDotState(1:mySizePlasticDotState,c) &
                                                 * (1.0_pReal - stateDamper)) * crystallite_subdt(g,i,e)
 
          damageStateResiduum(1:mySizeDamageDotState) = damageState(p)%state(1:mySizeDamageDotState,c)      &
                                                      - damageState(p)%subState0(1:mySizeDamageDotState,c)  &
                                                      - (damageState(p)%dotState(1:mySizeDamageDotState,c) * damageStateDamper &
-                                                     + damageState(p)%previousDotState(1:mySizeDamageDotState,c) &
+                                                      + damageState(p)%previousDotState(1:mySizeDamageDotState,c) &
                                                      * (1.0_pReal - damageStatedamper)) * crystallite_subdt(g,i,e)
 
          thermalStateResiduum(1:mySizeThermalDotState) = thermalState(p)%state(1:mySizeThermalDotState,c)      &
                                                        - thermalState(p)%subState0(1:mySizeThermalDotState,c)  &
                                                        - (thermalState(p)%dotState(1:mySizeThermalDotState,c) * thermalStateDamper &
-                                                       + thermalState(p)%previousDotState(1:mySizeThermalDotState,c) &
+                                                        + thermalState(p)%previousDotState(1:mySizeThermalDotState,c) &
                                                        * (1.0_pReal - thermalStateDamper)) * crystallite_subdt(g,i,e)
          ! --- correct state with residuum ---
          tempState(1:mySizePlasticDotState) = plasticState(p)%state(1:mySizePlasticDotState,c) &
@@ -3279,7 +3303,7 @@ endif
          plasticState(p)%dotState(:,c) = plasticState(p)%dotState(:,c) * stateDamper &
                                        + plasticState(p)%previousDotState(:,c) &
                                        * (1.0_pReal - stateDamper)
-         damageState(p)%dotState(:,c)  = damageState(p)%dotState(:,c) * damageStateDamper &
+         damageState( p)%dotState(:,c) = damageState(p)%dotState(:,c) * damageStateDamper &
                                        + damageState(p)%previousDotState(:,c) &
                                        * (1.0_pReal - damageStateDamper)
          thermalState(p)%dotState(:,c) = thermalState(p)%dotState(:,c) * thermalStateDamper &
@@ -3304,9 +3328,9 @@ endif
              !$OMP END CRITICAL (distributionState)
            endif
          endif
-         plasticState(p)%dotState(1:mySizePlasticDotState,c) = tempState(1:mySizePlasticDotState)       ! copy local backup to global pointer
-         damageState(p)%dotState (1:mySizeDamageDotState, c) = tempDamageState(1:mySizeDamageDotState)       ! copy local backup to global pointer
-         thermalState(p)%dotState(1:mySizeThermalDotState,c) = tempThermalState(1:mySizeThermalDotState)       ! copy local backup to global pointer
+         plasticState(p)%state(1:mySizePlasticDotState,c) = tempState(1:mySizePlasticDotState)
+         damageState( p)%state(1:mySizeDamageDotState, c) = tempDamageState(1:mySizeDamageDotState)
+         thermalState(p)%state(1:mySizeThermalDotState,c) = tempThermalState(1:mySizeThermalDotState)
         endif
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -3402,10 +3426,7 @@ logical function crystallite_stateJump(g,i,e)
  integer(pInt) :: &
    c, &
    p, &
-   mySizeDotState, &
-   mySizePlasticDotState, &
-   mySizeDamageDotState, &
-   mySizeThermalDotState
+   mySizePlasticDotState
 
  c = mappingConstitutive(1,g,i,e)
  p = mappingConstitutive(2,g,i,e)
@@ -3802,7 +3823,7 @@ subroutine crystallite_orientations
  use material, only: &
    material_phase, &
    homogenization_Ngrains, &
-   phase_localPlasticity
+   plasticState
  use mesh, only: &
    mesh_element, &
    mesh_ipNeighborhood, &
@@ -3865,8 +3886,8 @@ subroutine crystallite_orientations
  !$OMP PARALLEL DO PRIVATE(myPhase,neighboring_e,neighboring_i,neighboringPhase)
    do e = FEsolving_execElem(1),FEsolving_execElem(2)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
-       myPhase = material_phase(1,i,e)                                                                     ! get my phase
-       if (.not. phase_localPlasticity(myPhase)) then                                                      ! if nonlocal model
+       myPhase = material_phase(1,i,e)                                                                     ! get my phase (non-local models make no sense with more than one grain per material point)   
+       if (plasticState(myPhase)%nonLocal) then                                                            ! if nonlocal model
          ! --- calculate disorientation between me and my neighbor ---
 
          do n = 1_pInt,FE_NipNeighbors(FE_celltype(FE_geomtype(mesh_element(2,e))))                        ! loop through my neighbors
@@ -3874,7 +3895,7 @@ subroutine crystallite_orientations
            neighboring_i = mesh_ipNeighborhood(2,n,i,e)
            if (neighboring_e > 0 .and. neighboring_i > 0) then                                             ! if neighbor exists
              neighboringPhase = material_phase(1,neighboring_i,neighboring_e)                              ! get my neighbor's phase
-             if (.not. phase_localPlasticity(neighboringPhase)) then                                       ! neighbor got also nonlocal plasticity
+             if (plasticState(neighboringPhase)%nonLocal) then                                             ! neighbor got also nonlocal plasticity
                if (lattice_structure(myPhase) == lattice_structure(neighboringPhase)) then                 ! if my neighbor has same crystal structure like me
                  crystallite_disorientation(:,n,1,i,e) = &
                    lattice_qDisorientation( crystallite_orientation(1:4,1,i,e), &
@@ -3937,8 +3958,8 @@ function crystallite_postResults(ipc, ip, el)
    material_texture, &
    homogenization_Ngrains
  use constitutive, only: &
-   constitutive_postResults, &
-   constitutive_homogenizedC
+   constitutive_homogenizedC, &
+   constitutive_postResults
  use constitutive_damage, only: &
    constitutive_damage_postResults
  use constitutive_thermal, only: &
@@ -3953,8 +3974,8 @@ function crystallite_postResults(ipc, ip, el)
 #ifdef multiphysicsOut
  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el))) + &
                         1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
-                        1+damageState(material_phase(ipc,ip,el))%sizePostResults + &
-                        1+thermalState(material_phase(ipc,ip,el))%sizePostResults) :: &
+                        1+damageState( material_phase(ipc,ip,el))%sizePostResults + &
+                        1+thermalState(material_phase(ipc,ip,el))%sizePostResults) :: & 
    crystallite_postResults
 #else
  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &
