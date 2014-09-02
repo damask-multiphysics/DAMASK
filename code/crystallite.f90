@@ -1545,13 +1545,13 @@ subroutine crystallite_integrateStateRK4()
          mySizePlasticDotState = plasticState(p)%sizeDotState
          mySizeDamageDotState  = damageState(p)%sizeDotState
          mySizeThermalDotState = thermalState(p)%sizeDotState
-         plasticState(p)%State(1:mySizePlasticDotState,c) = plasticState(p)%subState0(1:mySizePlasticDotState,c) &
+         plasticState(p)%state(1:mySizePlasticDotState,c) = plasticState(p)%subState0(1:mySizePlasticDotState,c) &
                                                           + plasticState(p)%dotState (1:mySizePlasticDotState,c) &
                                                           * crystallite_subdt(g,i,e) * timeStepFraction(n)
-         damageState(p)%State(1:mySizeDamageDotState,c)   = damageState(p)%subState0(1:mySizeDamageDotState,c) &
+         damageState( p)%state(1:mySizeDamageDotState,c)  = damageState(p)%subState0(1:mySizeDamageDotState,c) &
                                                           + damageState(p)%dotState (1:mySizeDamageDotState,c) &
                                                           * crystallite_subdt(g,i,e) * timeStepFraction(n)
-         thermalState(p)%State(1:mySizeThermalDotState,c) = thermalState(p)%subState0(1:mySizeThermalDotState,c) &
+         thermalState(p)%state(1:mySizeThermalDotState,c) = thermalState(p)%subState0(1:mySizeThermalDotState,c) &
                                                           + thermalState(p)%dotState (1:mySizeThermalDotState,c) &
                                                           * crystallite_subdt(g,i,e) * timeStepFraction(n)
 
@@ -1771,8 +1771,9 @@ subroutine crystallite_integrateStateRKCK45()
    e, &                                                                                             ! element index in element loop
    i, &                                                                                             ! integration point index in ip loop
    g, &                                                                                             ! grain index in grain loop
-   n, &                                                                                             ! stage index in integration stage loop
+   stage, &                                                                                         ! stage index in integration stage loop
    s, &                                                                                             ! state index
+   n, &
    p, &
    cc, &
    mySizePlasticDotState, &                                                                         ! size of dot States
@@ -1854,7 +1855,7 @@ subroutine crystallite_integrateStateRKCK45()
 
  ! --- SECOND TO SIXTH RUNGE KUTTA STEP ---
 
- do n = 1_pInt,5_pInt
+ do stage = 1_pInt,5_pInt
 
    ! --- state update ---
 
@@ -1864,81 +1865,35 @@ subroutine crystallite_integrateStateRKCK45()
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          cc = mappingConstitutive(1,g,i,e)
-         plasticState(p)%RKCK45dotState(n,:,cc) = plasticState(p)%dotState(:,cc)         ! store Runge-Kutta dotState
-         damageState(p)%RKCK45dotState(n,:,cc)  = damageState(p)%dotState(:,cc)          ! store Runge-Kutta dotState
-         thermalState(p)%RKCK45dotState(n,:,cc) = thermalState(p)%dotState(:,cc)         ! store Runge-Kutta dotState
+         plasticState(p)%RKCK45dotState(stage,:,cc) = plasticState(p)%dotState(:,cc)                       ! store Runge-Kutta dotState
+         damageState(p)%RKCK45dotState(stage,:,cc)  = damageState(p)%dotState(:,cc)                        ! store Runge-Kutta dotState
+         thermalState(p)%RKCK45dotState(stage,:,cc) = thermalState(p)%dotState(:,cc)                       ! store Runge-Kutta dotState
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
-   !$OMP DO PRIVATE(p,cc)
+
+   !$OMP DO PRIVATE(p,cc,n)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          cc = mappingConstitutive(1,g,i,e)
-         if (n == 1) then                                                                                  ! NEED TO DO THE ADDITION IN THIS LENGTHY WAY BECAUSE OF PARALLELIZATION (CAN'T USE A REDUCTION CLAUSE ON A POINTER OR USER DEFINED TYPE)
 
-           plasticState(p)%dotState(:,cc) = A(1,1) * plasticState(p)%RKCK45dotState(1,:,cc)
-           damageState( p)%dotState(:,cc) = A(1,1) * damageState( p)%RKCK45dotState(1,:,cc)
-           thermalState(p)%dotState(:,cc) = A(1,1) * thermalState(p)%RKCK45dotState(1,:,cc)
-
-         elseif (n == 2) then
-
-           plasticState(p)%dotState(:,cc) = A(1,2) * plasticState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,2) * plasticState(p)%RKCK45dotState(2,:,cc)
-           damageState(p)%dotState(:,cc)  = A(1,2) * damageState( p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,2) * damageState( p)%RKCK45dotState(2,:,cc)
-           thermalState(p)%dotState(:,cc) = A(1,2) * thermalState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,2) * thermalState(p)%RKCK45dotState(2,:,cc)
-
-         elseif (n == 3) then
-
-           plasticState(p)%dotState(:,cc) = A(1,3) * plasticState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,3) * plasticState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,3) * plasticState(p)%RKCK45dotState(3,:,cc)
-           damageState(p)%dotState(:,cc)  = A(1,3) * damageState( p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,3) * damageState( p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,3) * damageState( p)%RKCK45dotState(3,:,cc)
-           thermalState(p)%dotState(:,cc) = A(1,3) * thermalState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,3) * thermalState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,3) * thermalState(p)%RKCK45dotState(3,:,cc)
-
-         elseif (n == 4) then
-
-           plasticState(p)%dotState(:,cc) = A(1,4) * plasticState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,4) * plasticState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,4) * plasticState(p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,4) * plasticState(p)%RKCK45dotState(4,:,cc)
-           damageState(p)%dotState(:,cc)  = A(1,4) * damageState( p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,4) * damageState( p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,4) * damageState( p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,4) * damageState( p)%RKCK45dotState(4,:,cc)
-           thermalState(p)%dotState(:,cc) = A(1,4) * thermalState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,4) * thermalState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,4) * thermalState(p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,4) * thermalState(p)%RKCK45dotState(4,:,cc)
-
-         elseif (n == 5) then
-           plasticState(p)%dotState(:,cc) = A(1,5) * plasticState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,5) * plasticState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,5) * plasticState(p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,5) * plasticState(p)%RKCK45dotState(4,:,cc) &
-                                          + A(5,5) * plasticState(p)%RKCK45dotState(5,:,cc)
-           damageState(p)%dotState(:,cc)  = A(1,5) * damageState( p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,5) * damageState( p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,5) * damageState( p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,5) * damageState( p)%RKCK45dotState(4,:,cc) &
-                                          + A(5,5) * damageState( p)%RKCK45dotState(5,:,cc)
-           thermalState(p)%dotState(:,cc) = A(1,5) * thermalState(p)%RKCK45dotState(1,:,cc) &
-                                          + A(2,5) * thermalState(p)%RKCK45dotState(2,:,cc) &
-                                          + A(3,5) * thermalState(p)%RKCK45dotState(3,:,cc) &
-                                          + A(4,5) * thermalState(p)%RKCK45dotState(4,:,cc) &
-                                          + A(5,5) * thermalState(p)%RKCK45dotState(5,:,cc)
-
-         endif
+         plasticState(p)%dotState(:,cc) = A(1,stage) * plasticState(p)%RKCK45dotState(1,:,cc)
+         damageState( p)%dotState(:,cc) = A(1,stage) * damageState( p)%RKCK45dotState(1,:,cc)
+         thermalState(p)%dotState(:,cc) = A(1,stage) * thermalState(p)%RKCK45dotState(1,:,cc)
+         do n = 2_pInt, stage
+           plasticState(p)%dotState(:,cc) = &
+           plasticState(p)%dotState(:,cc) + A(n,stage) * plasticState(p)%RKCK45dotState(n,:,cc)
+           damageState( p)%dotState(:,cc) = &
+           damageState( p)%dotState(:,cc) + A(n,stage) * damageState( p)%RKCK45dotState(n,:,cc)
+           thermalState(p)%dotState(:,cc) = &
+           thermalState(p)%dotState(:,cc) + A(n,stage) * thermalState(p)%RKCK45dotState(n,:,cc)
+         enddo
        endif
      enddo; enddo; enddo
    !$OMP ENDDO
-    !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
+
+   !$OMP DO PRIVATE(mySizePlasticDotState,mySizeDamageDotState,mySizeThermalDotState,p,cc)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
@@ -2003,7 +1958,7 @@ subroutine crystallite_integrateStateRKCK45()
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        !$OMP FLUSH(crystallite_todo)
        if (crystallite_todo(g,i,e)) then
-         crystallite_todo(g,i,e) =  crystallite_integrateStress(g,i,e,c(n))                                ! fraction of original time step
+         crystallite_todo(g,i,e) =  crystallite_integrateStress(g,i,e,C(stage))                            ! fraction of original time step
          !$OMP FLUSH(crystallite_todo)
          if (.not. crystallite_todo(g,i,e) .and. .not. crystallite_localPlasticity(g,i,e)) then            ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
@@ -2018,14 +1973,14 @@ subroutine crystallite_integrateStateRKCK45()
    ! --- dot state and RK dot state---
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt) &
-     write(6,'(a,1x,i1)') '<< CRYST >> Runge--Kutta step',n+1_pInt
+     write(6,'(a,1x,i1)') '<< CRYST >> Runge--Kutta step',stage+1_pInt
 #endif
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) then
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                            crystallite_Fp, crystallite_temperature(i,e), &
-                                           C(n)*crystallite_subdt(g,i,e), & ! fraction of original timestep
+                                           C(stage)*crystallite_subdt(g,i,e), & ! fraction of original timestep
                                            crystallite_subFrac, g,i,e)
          call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
                                                   crystallite_Fe(1:3,1:3,g,i,e), &
@@ -2626,7 +2581,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
                  relStateResiduum(1:mySizePlasticDotState,g,i,e) / rTol_crystalliteState
            write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> dotState', plasticState(p)%dotState(1:mySizePlasticDotState,c) &
                  - 2.0_pReal * stateResiduum(1:mySizePlasticDotState,g,i,e) / crystallite_subdt(g,i,e)     ! calculate former dotstate from higher order solution and state residuum
-           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%State(1:mySizePlasticDotState,c)
+           write(6,'(a,/,(12x,12(e12.5,1x)),/)') '<< CRYST >> new state', plasticState(p)%state(1:mySizePlasticDotState,c)
          endif
 #endif
 
@@ -3099,7 +3054,7 @@ subroutine crystallite_integrateStateFPI()
        damageState( p)%state(1:mySizeDamageDotState,c)  = damageState( p)%subState0(1:mySizeDamageDotState,c) &
                                                         + damageState( p)%dotState (1:mySizeDamageDotState,c) &
                                                         * crystallite_subdt(g,i,e)
-       thermalState(p)%State(1:mySizeThermalDotState,c) = thermalState(p)%subState0(1:mySizeThermalDotState,c) &
+       thermalState(p)%state(1:mySizeThermalDotState,c) = thermalState(p)%subState0(1:mySizeThermalDotState,c) &
                                                         + thermalState(p)%dotState (1:mySizeThermalDotState,c) &
                                                         * crystallite_subdt(g,i,e)
      endif
