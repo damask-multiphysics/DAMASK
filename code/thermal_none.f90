@@ -40,10 +40,15 @@ subroutine thermal_none_init(fileUnit)
  use material, only: &
    phase_thermal, &
    phase_Noutput, &
+#ifdef NEWSTATE
+   LOCAL_THERMAL_NONE_label, &
+   LOCAL_THERMAL_NONE_ID, &
+#else
    THERMAL_NONE_label, &
+   THERMAL_NONE_ID, &
+#endif
    material_phase, &
    thermalState, &
-   THERMAL_NONE_ID, &
    MATERIAL_partPhase
 
  implicit none
@@ -55,13 +60,20 @@ subroutine thermal_none_init(fileUnit)
    NofMyPhase, &
    sizeState, &
    sizeDotState
- 
+#ifdef NEWSTATE
+ write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_NONE_label//' init  -+>>>'
+#else
  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_NONE_label//' init  -+>>>'
+#endif 
  write(6,'(a)')     ' $Id: thermal_none.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- 
+
+#ifdef NEWSTATE
+ maxNinstance = int(count(phase_thermal == LOCAL_THERMAL_NONE_ID),pInt)
+#else
  maxNinstance = int(count(phase_thermal == THERMAL_NONE_ID),pInt)
+#endif 
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -69,7 +81,12 @@ subroutine thermal_none_init(fileUnit)
    
  initializeInstances: do phase = 1_pInt, size(phase_thermal)
    NofMyPhase=count(material_phase==phase)
+   
+#ifdef NEWSTATE
+   if (phase_thermal(phase) == LOCAL_THERMAL_none_ID) then
+#else
    if (phase_thermal(phase) == THERMAL_none_ID) then
+#endif
      sizeState    = 0_pInt
      thermalState(phase)%sizeState = sizeState
      sizeDotState = sizeState

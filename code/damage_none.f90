@@ -40,10 +40,15 @@ subroutine damage_none_init(fileUnit)
  use material, only: &
    phase_damage, &
    phase_Noutput, &
+#ifdef NEWSTATE
+   LOCAL_DAMAGE_NONE_label, &
+   LOCAL_DAMAGE_NONE_ID, &
+#else
    DAMAGE_NONE_label, &
+   DAMAGE_NONE_ID, &
+#endif
    material_phase, &
    damageState, &
-   DAMAGE_NONE_ID, &
    MATERIAL_partPhase
 
  implicit none
@@ -55,13 +60,19 @@ subroutine damage_none_init(fileUnit)
    NofMyPhase, &
    sizeState, &
    sizeDotState
- 
+#ifdef NEWSTATE
+ write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_NONE_label//' init  -+>>>'
+#else
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_NONE_label//' init  -+>>>'
+#endif
  write(6,'(a)')     ' $Id: damage_none.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- 
+#ifdef NEWSTATE
+ maxNinstance = int(count(phase_damage == LOCAL_DAMAGE_NONE_ID),pInt)
+#else
  maxNinstance = int(count(phase_damage == DAMAGE_NONE_ID),pInt)
+#endif
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -69,7 +80,11 @@ subroutine damage_none_init(fileUnit)
 
  initializeInstances: do phase = 1_pInt, size(phase_damage)
    NofMyPhase=count(material_phase==phase)
+#ifdef NEWSTATE
+   if (phase_damage(phase) == LOCAL_DAMAGE_none_ID) then
+#else
    if (phase_damage(phase) == DAMAGE_none_ID) then
+#endif
      sizeState    = 0_pInt
      damageState(phase)%sizeState = sizeState
      sizeDotState = sizeState

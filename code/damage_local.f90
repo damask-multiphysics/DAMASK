@@ -32,7 +32,8 @@ module damage_local
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  local_damage_ID
- end enum
+ end enum                                                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11 ToDo
+ 
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
    damage_local_outputID                                                                  !< ID of each post result output
 
@@ -79,8 +80,13 @@ subroutine damage_local_init(fileUnit)
    phase_damage, &
    phase_damageInstance, &
    phase_Noutput, &
+#ifdef NEWSTATE
+   LOCAL_DAMAGE_BRITTLE_label, &
+   LOCAL_DAMAGE_BRITTLE_ID, &
+#else
    DAMAGE_LOCAL_label, &
    DAMAGE_local_ID, &
+#endif
    material_phase, &  
    damageState, &
    MATERIAL_partPhase
@@ -98,13 +104,20 @@ subroutine damage_local_init(fileUnit)
  character(len=65536) :: &
    tag  = '', &
    line = ''
-  
+#ifdef NEWSTATE
+ write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_BRITTLE_label//' init  -+>>>'
+#else
  write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_LOCAL_label//' init  -+>>>'
+#endif
  write(6,'(a)')     ' $Id: damage_local.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
+#ifdef NEWSTATE
+ maxNinstance = int(count(phase_damage == LOCAL_DAMAGE_BRITTLE_ID),pInt)
+#else
  maxNinstance = int(count(phase_damage == DAMAGE_local_ID),pInt)
+#endif 
  if (maxNinstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -136,14 +149,22 @@ subroutine damage_local_init(fileUnit)
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      cycle                                                                                          ! skip to next line
    endif
-   if (phase > 0_pInt ) then; if (phase_damage(phase) == DAMAGE_local_ID) then               ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+#ifdef NEWSTATE
+   if (phase > 0_pInt ) then; if (phase_damage(phase) == LOCAL_DAMAGE_BRITTLE_ID) then ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+#else
+   if (phase > 0_pInt ) then; if (phase_damage(phase) == DAMAGE_local_ID) then   ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+#endif
      instance = phase_damageInstance(phase)                                                     ! which instance of my damage is present phase
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+#ifdef NEWSTATE
+           case ('local_damage_brittle')
+#else
            case ('local_damage')
+#endif
              damage_local_Noutput(instance) = damage_local_Noutput(instance) + 1_pInt
              damage_local_outputID(damage_local_Noutput(instance),instance) = local_damage_ID
              damage_local_output(damage_local_Noutput(instance),instance) = &
@@ -161,7 +182,11 @@ subroutine damage_local_init(fileUnit)
  enddo parsingFile
  
  initializeInstances: do phase = 1_pInt, size(phase_damage)
+#ifdef NEWSTATE
+   if (phase_damage(phase) == LOCAL_DAMAGE_BRITTLE_ID) then
+#else
    if (phase_damage(phase) == DAMAGE_local_ID) then
+#endif
      NofMyPhase=count(material_phase==phase)
      instance = phase_damageInstance(phase)
 
