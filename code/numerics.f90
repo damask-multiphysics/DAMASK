@@ -84,8 +84,8 @@ module numerics
  character(len=64), private :: &
    fftw_plan_mode             = 'FFTW_PATIENT'                                                      !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
  character(len=64), protected, public :: & 
-   myspectralsolver           = 'basic'  , &                                                        !< spectral solution method 
-   myfilter                   = 'none'                                                              !< spectral filtering method
+   spectral_solver            = 'basic'  , &                                                        !< spectral solution method 
+   spectral_filter            = 'none'                                                              !< spectral filtering method
  character(len=1024), protected, public :: &
    petsc_options              = '-snes_type ngmres &
                                 &-snes_ngmres_anderson '
@@ -328,8 +328,8 @@ subroutine numerics_init
          fftw_timelimit = IO_floatValue(line,positions,2_pInt)
        case ('fftw_plan_mode')
          fftw_plan_mode = IO_lc(IO_stringValue(line,positions,2_pInt))
-       case ('myfilter')
-         myfilter = IO_lc(IO_stringValue(line,positions,2_pInt))
+       case ('spectralfilter','myfilter')
+         spectral_filter = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('divergence_correction')
          divergence_correction = IO_intValue(line,positions,2_pInt)
        case ('update_gamma')
@@ -337,8 +337,8 @@ subroutine numerics_init
 #ifdef PETSc
        case ('petsc_options')
          petsc_options = trim(line(positions(4):))
-       case ('myspectralsolver')
-         myspectralsolver = IO_lc(IO_stringValue(line,positions,2_pInt))
+       case ('spectralsolver','myspectralsolver')
+         spectral_solver = IO_lc(IO_stringValue(line,positions,2_pInt))
        case ('err_curl_tolabs')
          err_curl_tolAbs = IO_floatValue(line,positions,2_pInt)
        case ('err_curl_tolrel')
@@ -349,7 +349,7 @@ subroutine numerics_init
          polarBeta = IO_floatValue(line,positions,2_pInt)
 #endif 
 #ifndef PETSc
-       case ('myspectralsolver', 'petsc_options', &
+       case ('spectralsolver', 'myspectralsolver', 'petsc_options', &
              'err_curl_tolabs','err_curl_tolrel','polaralpha','polarBeta')                          ! found PETSc parameter, but compiled without PETSc
          call IO_warning(41_pInt,ext_msg=tag)
 #endif
@@ -357,7 +357,7 @@ subroutine numerics_init
 #ifndef Spectral
       case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
-            'divergence_correction','update_gamma','myfilter', &
+            'divergence_correction','update_gamma','spectralfilter','myfilter', &
             'err_curl_tolabs','err_curl_tolrel', &
             'maxcutback','polaralpha','polarbeta')
          call IO_warning(40_pInt,ext_msg=tag)
@@ -496,7 +496,7 @@ subroutine numerics_init
  write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
  write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
  write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
- write(6,'(a24,1x,a)')       ' myfilter:               ',trim(myfilter)
+ write(6,'(a24,1x,a)')       ' spectral filter:        ',trim(spectral_filter)
  if(fftw_timelimit<0.0_pReal) then
    write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
  else    
@@ -514,7 +514,7 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
  write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
  write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
- write(6,'(a24,1x,a)')       ' myspectralsolver:       ',trim(myspectralsolver)
+ write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
 #endif

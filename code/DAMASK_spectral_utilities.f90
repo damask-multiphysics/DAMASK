@@ -962,7 +962,7 @@ real(pReal) function utilities_getFilter(k)
  use IO, only: &
    IO_error
  use numerics, only: &                        
-   myfilter
+   spectral_filter
  use math, only: &
    PI
   
@@ -971,7 +971,7 @@ real(pReal) function utilities_getFilter(k)
   
  utilities_getFilter = 1.0_pReal
 
- select case (myfilter)
+ select case (spectral_filter)
     case ('none')                                                                                   ! default, no weighting
     case ('cosine')                                                                                 ! cosine curve with 1 for avg and zero for highest freq
       utilities_getFilter = product(1.0_pReal + cos(PI*k*scaledGeomSize/grid))/8.0_pReal
@@ -979,7 +979,7 @@ real(pReal) function utilities_getFilter(k)
       utilities_getFilter = 1.0_pReal/(1.0_pReal + &
                                        (k(1)*k(1) + k(2)*k(2) + k(3)*k(3)))
     case default
-      call IO_error(error_ID = 892_pInt, ext_msg = trim(myfilter))
+      call IO_error(error_ID = 892_pInt, ext_msg = trim(spectral_filter))
   end select 
 
 end function utilities_getFilter

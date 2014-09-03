@@ -1410,7 +1410,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    IO_write_jobFile, &
    IO_error
  use numerics, only: &
-   mySpectralSolver
+   spectral_solver
  use math, only: &
    math_periodicNearestNeighbor, &
    math_mul33x3
@@ -1482,7 +1482,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  
 !--------------------------------------------------------------------------------------------------
 ! read in deformation gradient to calculate coordinates, shape depend of selected solver
- select case(myspectralsolver)
+ select case(spectral_solver)
    case('basic')
      allocate(spectralF33(3,3,grid(1),grid(2),grid(3)))
      call IO_read_realFile(FILEUNIT,'F',trim(getSolverJobName()),size(spectralF33))
@@ -1634,7 +1634,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  
 !--------------------------------------------------------------------------------------------------
 ! set F to average values
- select case(myspectralsolver)
+ select case(spectral_solver)
    case('basic')
      allocate(spectralF33New(3,3,resNew(1),resNew(2),resNew(3)))
      spectralF33New = spread(spread(spread(Favg,3,resNew(1)),4,resNew(2)),5,resNew(3))

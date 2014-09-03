@@ -48,7 +48,7 @@ program DAMASK_spectral_Driver
    restartInc
  use numerics, only: &
    maxCutBack, &
-   mySpectralSolver, &
+   spectral_solver, &
    continueCalculation
  use homogenization, only: &
    materialpoint_sizeResults, &
@@ -92,8 +92,8 @@ program DAMASK_spectral_Driver
  integer(pInt), dimension(1_pInt + maxNchunks*2_pInt) :: positions                                  ! this is longer than needed for geometry parsing
  
  integer(pInt) :: &
-   N_t    = 0_pInt, &                                                                               !< # of time indicators found in load case file 
-   N_n    = 0_pInt, &                                                                               !< # of increment specifiers found in load case file
+   N_t   = 0_pInt, &                                                                                !< # of time indicators found in load case file 
+   N_n   = 0_pInt, &                                                                                !< # of increment specifiers found in load case file
    N_def = 0_pInt                                                                                   !< # of rate of deformation specifiers found in load case file
  character(len=65536) :: &
    line
@@ -121,12 +121,12 @@ program DAMASK_spectral_Driver
  integer(pInt) :: &
    currentLoadcase = 0_pInt, &                                                                      !< current load case
    inc, &                                                                                           !< current increment in current load case
-   totalIncsCounter = 0_pInt, &                                                                     !< total No. of increments
-   convergedCounter = 0_pInt, &                                                                     !< No. of converged increments
-   notConvergedCounter = 0_pInt, &                                                                  !< No. of non-converged increments
+   totalIncsCounter = 0_pInt, &                                                                     !< total # of increments
+   convergedCounter = 0_pInt, &                                                                     !< # of converged increments
+   notConvergedCounter = 0_pInt, &                                                                  !< # of non-converged increments
    resUnit = 0_pInt, &                                                                              !< file unit for results writing
    statUnit = 0_pInt, &                                                                             !< file unit for statistics output
-   lastRestartWritten = 0_pInt                                                                      !< total increment No. at which last restart information was written
+   lastRestartWritten = 0_pInt                                                                      !< total increment # at which last restart information was written
  character(len=6)  :: loadcase_string
  character(len=1024)  :: incInfo                                                                    !< string parsed to solution with information about current load case
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
@@ -313,7 +313,7 @@ program DAMASK_spectral_Driver
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on selected solver 
- select case (myspectralsolver)
+ select case (spectral_solver)
    case (DAMASK_spectral_SolverBasic_label)
      call basic_init(loadCases(1)%temperature)
 #ifdef PETSc
@@ -329,7 +329,7 @@ program DAMASK_spectral_Driver
      call Polarisation_init(loadCases(1)%temperature)
 #endif
    case default
-      call IO_error(error_ID = 891, ext_msg = trim(myspectralsolver))
+      call IO_error(error_ID = 891, ext_msg = trim(spectral_solver))
  end select 
  
 !--------------------------------------------------------------------------------------------------
@@ -350,8 +350,8 @@ program DAMASK_spectral_Driver
    write(resUnit) 'materialpoint_sizeResults', materialpoint_sizeResults
    write(resUnit) 'loadcases',  size(loadCases)
    write(resUnit) 'frequencies', loadCases%outputfrequency                                          ! one entry per currentLoadCase
-   write(resUnit) 'times', loadCases%time                                                           ! one entry per currentLoadCase
-   write(resUnit) 'logscales',  loadCases%logscale         
+   write(resUnit) 'times',      loadCases%time                                                      ! one entry per currentLoadCase
+   write(resUnit) 'logscales',  loadCases%logscale
    write(resUnit) 'increments', loadCases%incs                                                      ! one entry per currentLoadCase
    write(resUnit) 'startingIncrement', restartInc - 1_pInt                                          ! start with writing out the previous inc
    write(resUnit) 'eoh'                                                                             ! end of header
@@ -368,16 +368,12 @@ program DAMASK_spectral_Driver
 ! loopping over loadcases
  loadCaseLooping: do currentLoadCase = 1_pInt, size(loadCases)
    time0 = time                                                                                     ! currentLoadCase start time                
-   if (loadCases(currentLoadCase)%followFormerTrajectory) then
-     guess = .true.
-   else
-     guess = .false.                                                                                ! change of load case, homogeneous guess for the first inc
-   endif
+   guess = loadCases(currentLoadCase)%followFormerTrajectory                                        ! change of load case? homogeneous guess for the first inc
 
 !--------------------------------------------------------------------------------------------------
 ! loop oper incs defined in input file for current currentLoadCase
    incLooping: do inc = 1_pInt, loadCases(currentLoadCase)%incs
-     totalIncsCounter = totalIncsCounter + 1_pInt                                                 
+     totalIncsCounter = totalIncsCounter + 1_pInt
 
 !--------------------------------------------------------------------------------------------------
 ! forwarding time
@@ -412,7 +408,7 @@ program DAMASK_spectral_Driver
          remainingLoadCaseTime = time0 - time + loadCases(currentLoadCase)%time + timeInc
 !--------------------------------------------------------------------------------------------------
 ! forward solution 
-         select case(myspectralsolver)
+         select case(spectral_solver)
            case (DAMASK_spectral_SolverBasic_label)
 #ifdef PETSc
            case (DAMASK_spectral_SolverBasicPETSC_label)
@@ -454,7 +450,7 @@ program DAMASK_spectral_Driver
                ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
                'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
                '-',stepFraction, '/', subStepFactor**cutBackLevel
-         select case(myspectralsolver)
+         select case(spectral_solver)
          
 !--------------------------------------------------------------------------------------------------
 ! calculate solution 
@@ -550,7 +546,7 @@ program DAMASK_spectral_Driver
     enddo incLooping
  enddo loadCaseLooping
  
- select case (myspectralsolver)
+ select case (spectral_solver)
    case (DAMASK_spectral_SolverBasic_label)
      call basic_destroy()
 #ifdef PETSc
