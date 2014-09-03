@@ -88,8 +88,8 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels=False)
-  theTable.head_read()
+  table = damask.ASCIItable(file['input'],file['output'],labels=False)
+  table.head_read()
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
@@ -106,7 +106,7 @@ for file in files:
          }
   extra_header = []
 
-  for header in theTable.info:
+  for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue
     for synonym,alternatives in synonyms.iteritems():
@@ -137,9 +137,9 @@ for file in files:
 #--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'].prod(),'i')
   i = 0
-  theTable.data_rewind()
-  while theTable.data_read():
-    items = theTable.data
+  table.data_rewind()
+  while table.data_read():
+    items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
       elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
@@ -199,9 +199,9 @@ for file in files:
     continue
 
 #--- write header ---------------------------------------------------------------------------------
-  theTable.labels_clear()
-  theTable.info_clear()
-  theTable.info_append(extra_header+[
+  table.labels_clear()
+  table.info_clear()
+  table.info_append(extra_header+[
     scriptID + ' ' + ' '.join(sys.argv[1:]),
     "grid\ta %i\tb %i\tc %i"%(newInfo['grid'][0],newInfo['grid'][1],newInfo['grid'][2],),
     "size\tx %f\ty %f\tz %f"%(newInfo['size'][0],newInfo['size'][1],newInfo['size'][2],),
@@ -209,13 +209,13 @@ for file in files:
     "homogenization\t%i"%info['homogenization'],
     "microstructures\t%i"%(newInfo['microstructures']),
     ])
-  theTable.head_write()
-  theTable.output_flush()
+  table.head_write()
+  table.output_flush()
   
 # --- write microstructure information ------------------------------------------------------------
   formatwidth = int(math.floor(math.log10(microstructure.max())+1))
-  theTable.data = microstructure.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
-  theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+  table.data = microstructure.reshape((newInfo['grid'][0],newInfo['grid'][1]*newInfo['grid'][2]),order='F').transpose()
+  table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
