@@ -120,7 +120,7 @@ subroutine homogenization_init()
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
- integer(pInt) :: e,i,p,myInstance
+ integer(pInt) :: e,i,p,myInstance, NofMyField
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
@@ -175,6 +175,44 @@ subroutine homogenization_init()
    endif  
  enddo
  close(FILEUNIT)
+ 
+#ifdef NEWSTATE
+ do p = 1,material_Nhomogenization
+   NofMyField=count(material_homog==p)
+                                                
+   select case(field_damage_type(p))                                                   
+   
+     case (FIELD_DAMAGE_LOCAL_ID)
+      fieldDamage(p)%sizeState = 0_pInt
+      fieldDamage(p)%sizePostResults = 0_pInt
+      allocate(fieldDamage(p)%state(fieldDamage(p)%sizeState,NofMyField), source = 1.0_pReal)
+      
+     case (FIELD_DAMAGE_NONLOCAL_ID)
+      fieldDamage(p)%sizeState = 1_pInt
+      fieldDamage(p)%sizePostResults = 1_pInt
+      allocate(fieldDamage(p)%state(fieldDamage(p)%sizeState,NofMyField), source = 1.0_pReal)
+
+   end select   
+ enddo
+ 
+ do p = 1,material_Nhomogenization
+   NofMyField=count(material_homog==p)
+                                                
+   select case(field_thermal_type(p))                                                   
+   
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      fieldThermal(p)%sizeState = 0_pInt
+      fieldThermal(p)%sizePostResults = 0_pInt
+      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), source = 1.0_pReal)
+      
+     case (FIELD_THERMAL_CONDUCTION_ID)
+      fieldThermal(p)%sizeState = 1_pInt
+      fieldThermal(p)%sizePostResults = 1_pInt
+      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), source = 1.0_pReal)
+
+   end select   
+ enddo
+#endif
  
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables

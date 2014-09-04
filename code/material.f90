@@ -33,15 +33,10 @@ module material
 #ifdef NEWSTATE
    LOCAL_DAMAGE_NONE_label        = 'none', &
    LOCAL_DAMAGE_BRITTLE_label     = 'brittle', &
-
    LOCAL_THERMAL_NONE_label       = 'none', &
    LOCAL_THERMAL_HEATGEN_label    = 'heatgen', &
-   
-   FIELD_DAMAGE_NONE_label        = 'none', &
    FIELD_DAMAGE_LOCAL_label       = 'local', &
    FIELD_DAMAGE_NONLOCAL_label    = 'nonlocal', &
-   
-   FIELD_THERMAL_NONE_label       = 'none', &
    FIELD_THERMAL_ADIABATIC_label  = 'adiabatic', &
    FIELD_THERMAL_CONDUCTION_label = 'conduction', &
    
@@ -84,14 +79,12 @@ module material
                  LOCAL_THERMAL_HEATGEN_ID
  end enum
  enum, bind(c)
-   enumerator :: FIELD_DAMAGE_NONE_ID, &
-                 FIELD_DAMAGE_LOCAL_ID ,&
+   enumerator :: FIELD_DAMAGE_LOCAL_ID ,&
                  FIELD_DAMAGE_NONLOCAL_ID
                  
  end enum
  enum, bind(c)
-   enumerator :: FIELD_THERMAL_NONE_ID, &
-                 FIELD_THERMAL_ADIABATIC_ID, &
+   enumerator :: FIELD_THERMAL_ADIABATIC_ID, &
                  FIELD_THERMAL_CONDUCTION_ID
  end enum
 #else
@@ -132,9 +125,9 @@ module material
    phase_damage                                                                                     !< local damage of each phase  
  integer(kind(LOCAL_THERMAL_none_ID)), dimension(:),          allocatable, public, protected :: &
    phase_thermal                                                                                    !< local thermal of each phase  
- integer(kind(FIELD_DAMAGE_none_ID)), dimension(:),          allocatable, public, protected :: &
+ integer(kind(FIELD_DAMAGE_LOCAL_ID)), dimension(:),          allocatable, public, protected :: &
    field_damage_type                                                                                    !< field damage of each phase  
- integer(kind(FIELD_THERMAL_none_ID)), dimension(:),          allocatable, public, protected :: &
+ integer(kind(FIELD_THERMAL_ADIABATIC_ID)), dimension(:),          allocatable, public, protected :: &
    field_thermal_type                                                                                  !< field thermal of each phase  
 #else
  integer(kind(DAMAGE_none_ID)), dimension(:),           allocatable, public, protected :: &
@@ -268,6 +261,10 @@ module material
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_THERMAL_none_ID, &
    LOCAL_THERMAL_heatgen_ID, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID, &
+   FIELD_THERMAL_ADIABATIC_ID, &
+   FIELD_THERMAL_CONDUCTION_ID, &
 #else
    DAMAGE_none_ID, &
    DAMAGE_local_ID, &
@@ -462,8 +459,8 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  allocate(homogenization_name(Nsections));          homogenization_name = ''
  allocate(homogenization_type(Nsections),           source=HOMOGENIZATION_undefined_ID)
 #ifdef NEWSTATE
- allocate(FIELD_DAMAGE_type(Nsections),             source=FIELD_DAMAGE_none_ID)
- allocate(FIELD_THERMAL_type(Nsections),            source=FIELD_THERMAL_none_ID)
+ allocate(FIELD_DAMAGE_type(Nsections),             source=FIELD_DAMAGE_LOCAL_ID)
+ allocate(FIELD_THERMAL_type(Nsections),            source=FIELD_THERMAL_ADIABATIC_ID)
 #endif
  allocate(homogenization_typeInstance(Nsections),   source=0_pInt)
  allocate(homogenization_Ngrains(Nsections),        source=0_pInt)
@@ -514,8 +511,6 @@ subroutine material_parseHomogenization(fileUnit,myPart)
 #ifdef NEWSTATE
         case ('field_damage')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
-           case(FIELD_DAMAGE_NONE_label)
-             FIELD_DAMAGE_type(section) = FIELD_DAMAGE_NONE_ID
            case(FIELD_DAMAGE_LOCAL_label)
              FIELD_DAMAGE_type(section) = FIELD_DAMAGE_LOCAL_ID       
            case(FIELD_DAMAGE_NONLOCAL_label)
@@ -526,8 +521,6 @@ subroutine material_parseHomogenization(fileUnit,myPart)
                                           
         case ('field_thermal')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
-           case(FIELD_THERMAL_NONE_label)
-             FIELD_THERMAL_type(section) = FIELD_THERMAL_NONE_ID
            case(FIELD_THERMAL_ADIABATIC_label)
              FIELD_THERMAL_type(section) = FIELD_THERMAL_ADIABATIC_ID       
            case(FIELD_THERMAL_CONDUCTION_label)
