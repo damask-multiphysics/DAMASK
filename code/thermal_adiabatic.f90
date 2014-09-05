@@ -42,6 +42,9 @@ module thermal_adiabatic
    thermal_adiabatic_stateInit, &
    thermal_adiabatic_aTolState, &
    thermal_adiabatic_dotState, &
+#ifdef NEWSTATE
+   constitutive_heatgen_getThermal, &
+#endif
    thermal_adiabatic_temperature, &
    thermal_adiabatic_postResults
 
@@ -79,8 +82,13 @@ subroutine thermal_adiabatic_init(fileUnit)
    phase_thermal, &
    phase_thermalInstance, &
    phase_Noutput, &
+#ifdef NEWSTATE
+   LOCAL_THERMAL_HEATGEN_label, &
+   LOCAL_THERMAL_HEATGEN_ID, &
+#else
    THERMAL_ADIABATIC_label, &
    THERMAL_adiabatic_ID, &
+#endif
    material_phase, &  
    thermalState, &
    MATERIAL_partPhase
@@ -98,13 +106,21 @@ subroutine thermal_adiabatic_init(fileUnit)
  character(len=65536) :: &
    tag  = '', &
    line = ''
-  
+#ifdef NEWSTATE
+ write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_HEATGEN_label//' init  -+>>>'
+#else
  write(6,'(/,a)')   ' <<<+-  thermal_'//THERMAL_ADIABATIC_label//' init  -+>>>'
+#endif
+
  write(6,'(a)')     ' $Id: thermal_adiabatic.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
+#ifdef NEWSTATE
+ maxNinstance = int(count(phase_thermal == LOCAL_THERMAL_HEATGEN_ID),pInt)
+#else
  maxNinstance = int(count(phase_thermal == THERMAL_adiabatic_ID),pInt)
+#endif
  if (maxNinstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -136,7 +152,11 @@ subroutine thermal_adiabatic_init(fileUnit)
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      cycle                                                                                          ! skip to next line
    endif
+#ifdef NEWSTATE
+   if (phase > 0_pInt ) then; if (phase_thermal(phase) == LOCAL_THERMAL_HEATGEN_ID) then               ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+#else
    if (phase > 0_pInt ) then; if (phase_thermal(phase) == THERMAL_adiabatic_ID) then               ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+#endif
      instance = phase_thermalInstance(phase)                                                     ! which instance of my thermal is present phase
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
@@ -159,7 +179,11 @@ subroutine thermal_adiabatic_init(fileUnit)
  enddo parsingFile
  
  initializeInstances: do phase = 1_pInt, size(phase_thermal)
+#ifdef NEWSTATE
+   if (phase_thermal(phase) == LOCAL_THERMAL_HEATGEN_ID) then
+#else
    if (phase_thermal(phase) == THERMAL_adiabatic_ID) then
+#endif 
      NofMyPhase=count(material_phase==phase)
      instance = phase_thermalInstance(phase)
 
@@ -299,6 +323,29 @@ function thermal_adiabatic_temperature(ipc, ip, el)
    thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
 
 end function thermal_adiabatic_temperature
+
+#ifdef NEWSTATE
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on local damage model state layout 
+!--------------------------------------------------------------------------------------------------
+function constitutive_heatgen_getThermal(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   ThermalState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: constitutive_heatgen_getThermal
+ 
+ constitutive_heatgen_getThermal = &
+   thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))* &
+   thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
+ 
+end function constitutive_heatgen_getThermal
+#endif
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

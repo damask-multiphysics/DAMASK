@@ -44,6 +44,9 @@ module damage_local
    damage_local_aTolState, &
    damage_local_dotState, &
    damage_local_damageValue, &
+#ifdef NEWSTATE
+   constitutive_brittle_getDamage, &
+#endif
    damage_local_postResults
 
 contains
@@ -350,6 +353,29 @@ function damage_local_damageValue(ipc, ip, el)
    damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))
 
 end function damage_local_damageValue
+
+#ifdef NEWSTATE
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on local damage model state layout 
+!--------------------------------------------------------------------------------------------------
+function constitutive_brittle_getDamage(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: constitutive_brittle_getDamage
+ 
+ constitutive_brittle_getDamage = &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))* &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))
+ 
+end function constitutive_brittle_getDamage
+#endif
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

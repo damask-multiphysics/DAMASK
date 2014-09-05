@@ -62,6 +62,10 @@ module homogenization
  public ::  &
    homogenization_init, &
    materialpoint_stressAndItsTangent, &
+#ifdef NEWSTATE
+   field_getDAMAGE, &
+   field_putDAMAGE, &
+#endif
    materialpoint_postResults
  private :: &
    homogenization_partitionDeformation, &
@@ -937,7 +941,163 @@ real(pReal) function homogenization_averageHeat(ip,el)
 
 end function homogenization_averageHeat
 
+#ifdef NEWSTATE
+!--------------------------------------------------------------------------------------------------
+!> @brief ToDo
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getDAMAGE(ip,el)
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   material_homog, &
+   field_damage_type, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID, &
+   homogenization_Ngrains
 
+ use constitutive, only: &
+   constitutive_getLocalDamage
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains, ipc
+!--------------------------------------------------------------------------------------------------
+! computing the damage value needed to be passed to field solver
+   field_getDAMAGE =0.0_pReal
+                                                
+   select case(field_damage_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_DAMAGE_LOCAL_ID)
+      field_getDAMAGE = 1.0_pReal
+      
+     case (FIELD_DAMAGE_NONLOCAL_ID)
+      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getDAMAGE = field_getDAMAGE + constitutive_getLocalDamage(ipc,ip,el)
+      enddo
+      
+   end select   
+
+   field_getDAMAGE = field_getDAMAGE /homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getDAMAGE
+
+!--------------------------------------------------------------------------------------------------
+!> @brief ToDo, to be pushed in crystallite/material??
+!--------------------------------------------------------------------------------------------------
+subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   fieldDamage, &
+   mappingHomogenization, &
+   material_homog, &
+   field_damage_type, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el, &
+   fieldDamageValue          
+
+ integer(pInt) :: &
+   Ngrains, ipc
+
+   select case(field_damage_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_DAMAGE_LOCAL_ID)
+
+      
+     case (FIELD_DAMAGE_NONLOCAL_ID)
+      fieldDamage(material_homog(ip,el))% &
+        state(1:fieldDamage(material_homog(ip,el))%sizeState, &
+              mappingHomogenization(1,ip,el)) = fieldDamageValue 
+
+   end select 
+
+end subroutine field_putDAMAGE
+
+!--------------------------------------------------------------------------------------------------
+!> @brief ToDo
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getThermal(ip,el)
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   material_homog, &
+   field_thermal_type, &
+   FIELD_THERMAL_ADIABATIC_ID, &
+   FIELD_THERMAL_CONDUCTION_ID, &
+   homogenization_Ngrains
+
+ use constitutive, only: &
+   constitutive_getAdiabaticThermal
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains, ipc
+
+! computing the damage value needed to be passed to field solver
+   field_getThermal =1.0_pReal
+                                                
+   select case(field_thermal_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      field_getThermal = 1.0_pReal
+      
+     case (FIELD_THERMAL_CONDUCTION_ID)
+      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getThermal = field_getThermal + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
+      enddo
+      
+   end select   
+
+   field_getThermal = field_getThermal /homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getThermal
+
+!--------------------------------------------------------------------------------------------------
+!> @brief ToDo, to be pushed in crystallite/material??
+!--------------------------------------------------------------------------------------------------
+subroutine field_putThermal(ip,el,fieldThermalValue)  ! naming scheme
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   material_homog, &
+   fieldThermal, &
+   mappingHomogenization, &
+   field_thermal_type, &
+   FIELD_THERMAL_ADIABATIC_ID, &
+   FIELD_THERMAL_CONDUCTION_ID
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el, &
+   fieldThermalValue          
+ integer(pInt) :: &
+   Ngrains, ipc
+
+   select case(field_thermal_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      
+     case (FIELD_THERMAL_CONDUCTION_ID)
+      fieldThermal(material_homog(ip,el))% &
+        state(1:fieldThermal(material_homog(ip,el))%sizeState, &
+              mappingHomogenization(1,ip,el)) = fieldThermalValue 
+
+   end select 
+
+end subroutine field_putThermal
+#endif
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion. call only, 
 !> if homogenization_sizePostResults(i,e) > 0 !!
