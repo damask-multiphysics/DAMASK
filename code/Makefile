@@ -162,10 +162,10 @@ COMPILE_OPTIONS_ifort    +=-diag-enable sc3\
 endif
 ###################################################################################################
 #COMPILE SWITCHES
+#-shared-intel:            Link against shared Intel libraries instead of static ones
 #-fpp:                     preprocessor
 #-ftz:                     flush unterflow to zero, automatically set if O<0,1,2,3> >0
 #-assume byterecl          record length is given in bytes (also set by -standard-semantics)
-#-shared-intel:            Link against shared Intel libraries instead of static ones
 #-fimplicit-none:          assume "implicit-none" even if not present in source
 #-diag-disable:            disables warnings, where                           
 #   warning ID 5268:       the text exceeds right hand column allowed on the line (we have only comments there)
@@ -454,7 +454,7 @@ FEM_damage.o:                  FEM_damage.f90 \
 FEM_utilities.o:               FEM_utilities.f90 \
                                CPFEM.o 
 
-FEZoo.o:                       FEZoo.f90 \
+FEZoo.o:                       $(wildcard FEzoo.f90) \
                                IO.o
 
 
@@ -542,7 +542,7 @@ mesh.o:                        mesh.f90 \
                                $(wildcard meshFEM.f90) \
                                FEsolving.o \
                                math.o \
-                               $(wildcard FEZoo.o)
+                               FEZoo.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(MESHNAME) -o mesh.o $(SUFFIX)
 
 FEsolving.o:                   FEsolving.f90 \
