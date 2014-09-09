@@ -3460,6 +3460,7 @@ logical function crystallite_integrateStress(&
                          math_Plain3333to99, &
                          math_Plain33to9, &
                          math_Plain9to33
+ use mesh, only:         mesh_element
 
  implicit none
  integer(pInt), intent(in)::         e, &                          ! element index
