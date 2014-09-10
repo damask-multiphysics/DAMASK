@@ -421,7 +421,7 @@ DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90 \
 #####################
 # FEM Solver
 #####################
-VPATH           = ../private/FEM/code
+DAMASK_FEM.exe: VPATH           = ../private/FEM/code
 DAMASK_FEM.exe: COMPILE         += -DFEM -DmultiphysicsOut
 DAMASK_FEM.exe: COMPILE_MAXOPTI += -DFEM -DmultiphysicsOut
 DAMASK_FEM.exe: MESHNAME        := ../private/FEM/code/meshFEM.f90
