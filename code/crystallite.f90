@@ -115,6 +115,9 @@ module crystallite
    crystallite_init, &
    crystallite_stressAndItsTangent, &
    crystallite_orientations, &
+#ifdef NEWSTATE
+   crystallite_push33ToRef, &
+#endif
    crystallite_postResults
  private :: &
    crystallite_integrateStateFPI, &
@@ -3413,6 +3416,32 @@ logical function crystallite_stateJump(g,i,e)
 end function crystallite_stateJump
 
 
+#ifdef NEWSTATE
+!--------------------------------------------------------------------------------------------------
+!> @brief Map 2nd order tensor to reference config
+!--------------------------------------------------------------------------------------------------
+function crystallite_push33ToRef(g,i,e, tensor33)
+ use prec, only: &
+  pInt, &
+  pReal
+ use math, only: &
+  math_inv33
+
+ implicit none
+ real(pReal), dimension(3,3) :: crystallite_push33ToRef
+ real(pReal), dimension(3,3), intent(in) :: tensor33
+ real(pReal), dimension(3,3)              :: invFp
+ integer(pInt), intent(in):: &
+   e, &                      ! element index
+   i, &                      ! integration point index
+   g                         ! grain index
+
+ invFp = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
+ crystallite_push33ToRef = matmul(invFp,matmul(tensor33,transpose(invFp)))
+
+end function crystallite_push33ToRef
+
+#endif
 !--------------------------------------------------------------------------------------------------
 !> @brief calculation of stress (P) with time integration based on a residuum in Lp and
 !> intermediate acceleration of the Newton-Raphson correction

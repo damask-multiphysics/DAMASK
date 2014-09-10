@@ -65,6 +65,11 @@ module homogenization
 #ifdef NEWSTATE
    field_getDAMAGE, &
    field_putDAMAGE, &
+   field_getDamageMobility, &
+   field_getDamageDiffusion33, &
+   field_getThermalConductivity33, &
+   field_getMassDensity, &
+   field_getSpecificHeat, &
 #endif
    materialpoint_postResults
  private :: &
@@ -942,6 +947,216 @@ real(pReal) function homogenization_averageHeat(ip,el)
 end function homogenization_averageHeat
 
 #ifdef NEWSTATE
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns average specific heat at each integration point 
+!--------------------------------------------------------------------------------------------------
+function field_getSpecificHeat(ip,el)
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_specificHeat
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   field_thermal_type, &
+   FIELD_THERMAL_ADIABATIC_ID, &
+   FIELD_THERMAL_CONDUCTION_ID, &
+   homogenization_Ngrains
+
+ implicit none
+ real(pReal)  :: field_getSpecificHeat
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains, ipc
+
+   field_getSpecificHeat =0.0_pReal
+                                                
+   select case(field_thermal_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      field_getSpecificHeat = 0.0_pReal
+      
+     case (FIELD_THERMAL_CONDUCTION_ID)
+      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getSpecificHeat = field_getSpecificHeat + lattice_specificHeat(material_phase(ipc,ip,el))
+      enddo
+      
+   end select   
+
+   field_getSpecificHeat = field_getSpecificHeat /homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getSpecificHeat
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns average mass density at each integration point 
+!--------------------------------------------------------------------------------------------------
+function field_getMassDensity(ip,el)
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_massDensity
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   field_thermal_type, &
+   FIELD_THERMAL_ADIABATIC_ID, &
+   FIELD_THERMAL_CONDUCTION_ID, &
+   homogenization_Ngrains
+
+
+ implicit none
+ real(pReal)  :: field_getMassDensity
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains, ipc
+
+   field_getMassDensity =0.0_pReal
+                                                
+   select case(field_thermal_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      field_getMassDensity = 0.0_pReal
+      
+     case (FIELD_THERMAL_CONDUCTION_ID)
+      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getMassDensity = field_getMassDensity + lattice_massDensity(material_phase(ipc,ip,el))
+      enddo
+      
+   end select   
+
+   field_getMassDensity = field_getMassDensity /homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getMassDensity
+!-------------------------------------------------------------------------------------------
+!> @brief Returns average conductivity tensor for thermal field at each integration point 
+!-------------------------------------------------------------------------------------------
+function field_getThermalConductivity33(ip,el)
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_thermalConductivity33
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   field_thermal_type, &
+   FIELD_THERMAL_ADIABATIC_ID, &
+   FIELD_THERMAL_CONDUCTION_ID, &
+   homogenization_Ngrains
+ use crystallite, only: &
+   crystallite_push33ToRef
+
+
+ implicit none
+ real(pReal), dimension(3,3) :: field_getThermalConductivity33
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains, ipc
+
+   field_getThermalConductivity33 =0.0_pReal
+                                                
+   select case(field_thermal_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      field_getThermalConductivity33 = 0.0_pReal
+      
+     case (FIELD_THERMAL_CONDUCTION_ID)
+      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getThermalConductivity33 = field_getThermalConductivity33 + &
+        crystallite_push33ToRef(ipc,ip,el,lattice_thermalConductivity33(:,:,material_phase(ipc,ip,el)))
+      enddo
+      
+   end select   
+
+   field_getThermalConductivity33 = field_getThermalConductivity33 /homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getThermalConductivity33
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns average diffusion tensor for damage field at each integration point 
+!--------------------------------------------------------------------------------------------------
+function field_getDamageDiffusion33(ip,el)
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_DamageDiffusion33
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   field_damage_type, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID, &
+   homogenization_Ngrains
+
+ implicit none
+ real(pReal), dimension(3,3) :: field_getDamageDiffusion33
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains, ipc
+
+   field_getDamageDiffusion33 =0.0_pReal
+                                                
+   select case(field_damage_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_DAMAGE_LOCAL_ID)
+      field_getDamageDiffusion33 = 0.0_pReal
+      
+     case (FIELD_DAMAGE_NONLOCAL_ID)
+      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getDamageDiffusion33 = field_getDamageDiffusion33 + lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el))
+      enddo
+      
+   end select   
+
+   field_getDamageDiffusion33 = field_getDamageDiffusion33 /homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getDamageDiffusion33
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns average mobility for damage field at each integration point 
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getDamageMobility(ip,el)
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_damageMobility
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   field_damage_type, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID, &
+   homogenization_Ngrains
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   Ngrains, ipc
+   
+   field_getDamageMobility =0.0_pReal
+                                                
+   select case(field_damage_type(material_homog(ip,el)))                                                   
+   
+     case (FIELD_DAMAGE_LOCAL_ID)
+      field_getDamageMobility = 0.0_pReal
+      
+     case (FIELD_DAMAGE_NONLOCAL_ID)
+      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getDamageMobility = field_getDamageMobility + lattice_DamageMobility(material_phase(ipc,ip,el))
+      enddo
+      
+   end select   
+
+   field_getDamageMobility = field_getDamageMobility /homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getDamageMobility
 !--------------------------------------------------------------------------------------------------
 !> @brief ToDo
 !--------------------------------------------------------------------------------------------------
