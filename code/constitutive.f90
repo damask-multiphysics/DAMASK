@@ -670,9 +670,10 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  endif
 
 end function constitutive_collectDeltaState
+
 #ifdef NEWSTATE
 !--------------------------------------------------------------------------------------------------
-!> @brief returns temperature based on each damage model state layout 
+!> @brief Returns the local(unregularised)  damage 
 !--------------------------------------------------------------------------------------------------
 function constitutive_getLocalDamage(ipc, ip, el)
  use prec, only: &
@@ -702,7 +703,9 @@ function constitutive_getLocalDamage(ipc, ip, el)
 
 end function constitutive_getLocalDamage
 
-
+!--------------------------------------------------------------------------------------------------
+!> @brief returns nonlocal (regularised) damage
+!--------------------------------------------------------------------------------------------------
 function constitutive_getNonlocalDamage(ipc, ip, el)
  use prec, only: &
    pReal
@@ -725,16 +728,18 @@ function constitutive_getNonlocalDamage(ipc, ip, el)
    select case(field_damage_type(material_homog(ip,el)))                                                   
    
      case (FIELD_DAMAGE_LOCAL_ID)
-      constitutive_getNonlocalDamage = 1.0_pReal
+      constitutive_getNonlocalDamage = constitutive_getLocalDamage(ipc, ip, el)
       
      case (FIELD_DAMAGE_NONLOCAL_ID)
       constitutive_getNonlocalDamage =    fieldDamage(material_homog(ip,el))% &
-        state(1,mappingHomogenization(1,ip,el))                           ! Taylor type 
+        state(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
    end select
 
 end function constitutive_getNonlocalDamage
-
+!--------------------------------------------------------------------------------------------------
+!> @brief returns local (unregularised) temperature
+!--------------------------------------------------------------------------------------------------
 function constitutive_getAdiabaticThermal(ipc, ip, el)
  use prec, only: &
    pReal
@@ -765,7 +770,9 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
 
 end function constitutive_getAdiabaticThermal
 
-
+!--------------------------------------------------------------------------------------------------
+!> @brief returns nonlocal (regularised) temperature
+!--------------------------------------------------------------------------------------------------
 function constitutive_getConductionThermal(ipc, ip, el)
  use prec, only: &
    pReal
@@ -774,8 +781,8 @@ function constitutive_getConductionThermal(ipc, ip, el)
    material_phase, &
    fieldThermal, &
    field_thermal_type, &
-   FIELD_DAMAGE_LOCAL_ID, &
-   FIELD_DAMAGE_NONLOCAL_ID, &
+   FIELD_THERMAL_ADIABATIC_ID, &
+   FIELD_THERMAL_CONDUCTION_ID, &
    material_homog
  use lattice, only: &
    lattice_referenceTemperature
@@ -788,21 +795,18 @@ function constitutive_getConductionThermal(ipc, ip, el)
  
    select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_DAMAGE_LOCAL_ID)
-      constitutive_getConductionThermal = lattice_referenceTemperature(material_phase(ipc,ip,el))      ! check
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      constitutive_getConductionThermal = constitutive_getAdiabaticThermal(ipc, ip, el)      
       
-     case (FIELD_DAMAGE_NONLOCAL_ID)
+     case (FIELD_THERMAL_CONDUCTION_ID)
       constitutive_getConductionThermal =    fieldThermal(material_homog(ip,el))% &
-        state(1,mappingHomogenization(1,ip,el))                           ! Taylor type 
+        state(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
    end select
 
 end function constitutive_getConductionThermal
 
 #endif
-
-
-
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------

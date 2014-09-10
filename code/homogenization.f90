@@ -116,6 +116,10 @@ subroutine homogenization_init()
    mesh_element, & 
    FE_Nips, &
    FE_geomtype
+#ifdef NEWSTATE
+ use lattice, only: &
+   lattice_referenceTemperature
+#endif
  use constitutive, only: &
    constitutive_maxSizePostResults
  use constitutive_damage, only: &
@@ -214,12 +218,14 @@ subroutine homogenization_init()
      case (FIELD_THERMAL_ADIABATIC_ID)
       fieldThermal(p)%sizeState = 0_pInt
       fieldThermal(p)%sizePostResults = 0_pInt
-      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), source = 1.0_pReal)
+      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), &
+                                              source = 273.0_pReal)                ! ToDo: temporary fix for now 
       
      case (FIELD_THERMAL_CONDUCTION_ID)
       fieldThermal(p)%sizeState = 1_pInt
       fieldThermal(p)%sizePostResults = 1_pInt
-      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), source = 1.0_pReal)
+      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), &
+                                              source = 273.0_pReal)                ! ToDo: temporary fix for now 
 
    end select   
  enddo
@@ -1202,7 +1208,7 @@ real(pReal) function field_getDAMAGE(ip,el)
 end function field_getDAMAGE
 
 !--------------------------------------------------------------------------------------------------
-!> @brief ToDo
+!> @brief Sets the regularised damage value in field state
 !--------------------------------------------------------------------------------------------------
 subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
  use mesh, only: &
@@ -1225,10 +1231,6 @@ subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
    Ngrains, ipc
 
    select case(field_damage_type(material_homog(ip,el)))                                                   
-   
-     case (FIELD_DAMAGE_LOCAL_ID)
-
-      
      case (FIELD_DAMAGE_NONLOCAL_ID)
       fieldDamage(material_homog(ip,el))% &
         state(1:fieldDamage(material_homog(ip,el))%sizeState, &
@@ -1280,7 +1282,7 @@ real(pReal) function field_getThermal(ip,el)
 end function field_getThermal
 
 !--------------------------------------------------------------------------------------------------
-!> @brief ToDo,
+!> @brief Sets the regularised temperature value in field state
 !--------------------------------------------------------------------------------------------------
 subroutine field_putThermal(ip,el,fieldThermalValue) 
  use mesh, only: &
@@ -1302,9 +1304,6 @@ subroutine field_putThermal(ip,el,fieldThermalValue)
    Ngrains, ipc
 
    select case(field_thermal_type(material_homog(ip,el)))                                                   
-   
-     case (FIELD_THERMAL_ADIABATIC_ID)
-      
      case (FIELD_THERMAL_CONDUCTION_ID)
       fieldThermal(material_homog(ip,el))% &
         state(1:fieldThermal(material_homog(ip,el))%sizeState, &
