@@ -1,47 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy,random
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import os,sys,string,re,math,random
+import numpy as np
+from optparse import OptionParser
+import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
-#------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------
 #                                MAIN
-#--------------------------------------------------------------------------------------------------
-identifiers = {
-        'grid': ['a','b','c'],
-          }
-mappings = {
-        'grid': lambda x: int(x),
-          }
+# --------------------------------------------------------------------
 
-
-parser = OptionParser(option_class=extendedOption, usage='%prog [options]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options]', description = """
 Distribute given number of points randomly within the three-dimensional cube [0.0,0.0,0.0]--[1.0,1.0,1.0].
 Reports positions with random crystal orientations in seeds file format to STDOUT.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-N', dest='N', type='int', metavar='int', \
                   help='number of seed points to distribute [%default]')
@@ -51,7 +27,7 @@ parser.add_option('-r', '--rnd', dest='randomSeed', type='int', metavar='int', \
                   help='seed of random number generator [%default]')
 
 parser.set_defaults(randomSeed = None)
-parser.set_defaults(grid = [16,16,16])
+parser.set_defaults(grid = (16,16,16))
 parser.set_defaults(N = 20)
 
 (options, extras) = parser.parse_args()
@@ -66,21 +42,21 @@ if options.N > Npoints:
 if options.randomSeed == None:
   options.randomSeed = int(os.urandom(4).encode('hex'), 16)
 
-seeds = numpy.zeros((3,options.N),float)
-numpy.random.seed(options.randomSeed)
+seeds = np.zeros((3,options.N),float)
+np.random.seed(options.randomSeed)
 
-grainEuler = numpy.random.rand(3,options.N)
+grainEuler = np.random.rand(3,options.N)
 grainEuler[0,:] *= 360.0
-grainEuler[1,:] = numpy.arccos(2*grainEuler[1,:]-1)*180.0/math.pi
+grainEuler[1,:] = np.arccos(2*grainEuler[1,:]-1)*180.0/math.pi
 grainEuler[2,:] *= 360.0
 
-seedpoint = numpy.random.permutation(Npoints)[:options.N]
-seeds[0,:]=(numpy.mod(seedpoint                                   ,options.grid[0])\
-                                                            +numpy.random.random())/options.grid[0]
-seeds[1,:]=(numpy.mod(seedpoint//                  options.grid[0],options.grid[1])\
-                                                            +numpy.random.random())/options.grid[1]
-seeds[2,:]=(numpy.mod(seedpoint//(options.grid[1]*options.grid[0]),options.grid[2])\
-                                                            +numpy.random.random())/options.grid[2]
+seedpoint = np.random.permutation(Npoints)[:options.N]
+seeds[0,:]=(np.mod(seedpoint                                   ,options.grid[0])\
+                                                            +np.random.random())/options.grid[0]
+seeds[1,:]=(np.mod(seedpoint//                 options.grid[0] ,options.grid[1])\
+                                                            +np.random.random())/options.grid[1]
+seeds[2,:]=(np.mod(seedpoint//(options.grid[1]*options.grid[0]),options.grid[2])\
+                                                            +np.random.random())/options.grid[2]
 
 sys.stdout.write("5\theader\n")
 sys.stdout.write(scriptID + " " + " ".join(sys.argv[1:])+"\n")
@@ -89,4 +65,4 @@ sys.stdout.write("microstructures\t{}\n".format(options.N))
 sys.stdout.write("randomSeed\t{}\n".format(options.randomSeed))
 sys.stdout.write("x\ty\tz\tphi1\tPhi\tphi2\n")
 
-numpy.savetxt(sys.stdout,numpy.transpose(numpy.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')
+np.savetxt(sys.stdout,np.transpose(np.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')
