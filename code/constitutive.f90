@@ -771,6 +771,7 @@ function constitutive_getConductionThermal(ipc, ip, el)
    pReal
  use material, only: &
    mappingHomogenization, &
+   material_phase, &
    fieldThermal, &
    field_thermal_type, &
    FIELD_DAMAGE_LOCAL_ID, &
