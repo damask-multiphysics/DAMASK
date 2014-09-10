@@ -7,6 +7,7 @@ import damask
 bin_link = { \
             '.' : [
                     'DAMASK_spectral.exe',
+                    'DAMASK_FEM.exe'
                   ],
            }
 
