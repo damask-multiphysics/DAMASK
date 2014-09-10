@@ -65,6 +65,8 @@ module homogenization
 #ifdef NEWSTATE
    field_getDAMAGE, &
    field_putDAMAGE, &
+   field_getThermal, &
+   field_putThermal, &
    field_getDamageMobility, &
    field_getDamageDiffusion33, &
    field_getThermalConductivity33, &
@@ -1200,7 +1202,7 @@ real(pReal) function field_getDAMAGE(ip,el)
 end function field_getDAMAGE
 
 !--------------------------------------------------------------------------------------------------
-!> @brief ToDo, to be pushed in crystallite/material??
+!> @brief ToDo
 !--------------------------------------------------------------------------------------------------
 subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
  use mesh, only: &
@@ -1259,7 +1261,6 @@ real(pReal) function field_getThermal(ip,el)
  integer(pInt) :: &
    Ngrains, ipc
 
-! computing the damage value needed to be passed to field solver
    field_getThermal =1.0_pReal
                                                 
    select case(field_thermal_type(material_homog(ip,el)))                                                   
@@ -1279,9 +1280,9 @@ real(pReal) function field_getThermal(ip,el)
 end function field_getThermal
 
 !--------------------------------------------------------------------------------------------------
-!> @brief ToDo, to be pushed in crystallite/material??
+!> @brief ToDo,
 !--------------------------------------------------------------------------------------------------
-subroutine field_putThermal(ip,el,fieldThermalValue)  ! naming scheme
+subroutine field_putThermal(ip,el,fieldThermalValue) 
  use mesh, only: &
    mesh_element
  use material, only: &

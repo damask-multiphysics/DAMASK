@@ -725,7 +725,7 @@ function constitutive_getNonlocalDamage(ipc, ip, el)
    select case(field_damage_type(material_homog(ip,el)))                                                   
    
      case (FIELD_DAMAGE_LOCAL_ID)
-      constitutive_getNonlocalDamage = 1.0_pReal      ! doubt
+      constitutive_getNonlocalDamage = 1.0_pReal
       
      case (FIELD_DAMAGE_NONLOCAL_ID)
       constitutive_getNonlocalDamage =    fieldDamage(material_homog(ip,el))% &
@@ -743,8 +743,8 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
    LOCAL_THERMAL_none_ID, &
    LOCAL_THERMAL_HEATGEN_ID, &
    phase_thermal
-! use thermal_adiabatic, only: &
-!   constitutive_heatgen_getThermal
+ use thermal_adiabatic, only: &
+   constitutive_heatgen_getThermal
  use lattice, only: &
    lattice_referenceTemperature
 
@@ -757,10 +757,10 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
  
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_none_ID)
-!     constitutive_getAdiabaticThermal = lattice_referenceTemperature(material_phase(ipc,ip,el))
+     constitutive_getAdiabaticThermal = lattice_referenceTemperature(material_phase(ipc,ip,el))
      
    case (LOCAL_THERMAL_HEATGEN_ID)
-!     constitutive_getAdiabaticThermal = constitutive_heatgen_getThermal(ipc, ip, el)
+     constitutive_getAdiabaticThermal = constitutive_heatgen_getThermal(ipc, ip, el)
  end select
 
 end function constitutive_getAdiabaticThermal
@@ -788,11 +788,11 @@ function constitutive_getConductionThermal(ipc, ip, el)
    select case(field_thermal_type(material_homog(ip,el)))                                                   
    
      case (FIELD_DAMAGE_LOCAL_ID)
-!      constitutive_getConductionThermal = lattice_referenceTemperature(material_phase(ipc,ip,el))      ! check
+      constitutive_getConductionThermal = lattice_referenceTemperature(material_phase(ipc,ip,el))      ! check
       
      case (FIELD_DAMAGE_NONLOCAL_ID)
-!      constitutive_getConductionThermal =    fieldThermal(material_homog(ip,el))% &
-!        state(1,mappingHomogenization(1,ip,el))                           ! Taylor type 
+      constitutive_getConductionThermal =    fieldThermal(material_homog(ip,el))% &
+        state(1,mappingHomogenization(1,ip,el))                           ! Taylor type 
 
    end select
 

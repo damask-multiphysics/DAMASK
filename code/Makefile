@@ -362,7 +362,7 @@ DAMAGE_FILES = \
 endif
 ifeq "$(STATE)" "NEWH"
 THERMAL_FILES = \
-   thermal_none.o
+   thermal_none.o thermal_adiabatic.o
 else
 THERMAL_FILES = \
    thermal_none.o thermal_conduction.o
@@ -530,6 +530,9 @@ thermal_none.o:                thermal_none.f90 \
                                lattice.o
 
 thermal_conduction.o:          thermal_conduction.f90 \
+                               lattice.o
+
+thermal_adiabatic.o:           thermal_adiabatic.f90 \
                                lattice.o
 
 lattice.o:                     lattice.f90 \
