@@ -18,6 +18,10 @@ module homogenization_isostrain
  
  character(len=64),           dimension(:,:), allocatable, target, public :: &
   homogenization_isostrain_output                                                                   !< name of each post result output
+#ifdef NEWSTATE
+ integer(pInt),                       dimension(:),     allocatable,         private :: &
+   homogenization_isostrain_Noutput                                                                 !< number of outputs per homog instance
+#endif
  integer(pInt),               dimension(:),   allocatable,         private :: &
    homogenization_isostrain_Ngrains
  enum, bind(c) 
@@ -54,6 +58,12 @@ subroutine homogenization_isostrain_init(fileUnit)
  use prec, only: &
    pReal, &
    pInt
+#ifdef NEWSTATE
+ use debug, only: &
+   debug_HOMOGENIZATION, &
+   debug_level, &
+   debug_levelBasic
+#endif
  use IO
  use material
  
@@ -62,7 +72,7 @@ subroutine homogenization_isostrain_init(fileUnit)
  integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
  integer(pInt) :: &
-   section = 0_pInt, i, j, output, mySize
+   section = 0_pInt, i, j, output, mySize, o
  integer :: &
    maxNinstance, &
 #ifdef NEWSTATE
@@ -84,10 +94,16 @@ subroutine homogenization_isostrain_init(fileUnit)
 
  maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
  if (maxNinstance == 0) return
-
+#ifdef NEWSTATE
+  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
+   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+#endif
  allocate(homogenization_isostrain_sizePostResults(maxNinstance),          source=0_pInt)
  allocate(homogenization_isostrain_sizePostResult(maxval(homogenization_Noutput),maxNinstance), &
                                                                            source=0_pInt)
+#ifdef NEWSTATE
+ allocate(homogenization_isostrain_Noutput(maxNinstance),                 source=0_pInt)
+#endif
  allocate(homogenization_isostrain_Ngrains(maxNinstance),                  source=0_pInt)
  allocate(homogenization_isostrain_mapping(maxNinstance),                  source=average_ID)
  allocate(homogenization_isostrain_output(maxval(homogenization_Noutput),maxNinstance))
@@ -100,7 +116,7 @@ subroutine homogenization_isostrain_init(fileUnit)
    line = IO_read(fileUnit)
  enddo
 
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of homogenization part
+ parsingFile: do while (trim(line) /= IO_EOF)                                                                    ! read through sections of homogenization part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
@@ -124,14 +140,29 @@ subroutine homogenization_isostrain_init(fileUnit)
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(homogenization_isostrain_output(output,i))
              case('nconstituents','ngrains')
+#ifdef NEWSTATE
+               homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
+#endif
                homogenization_isostrain_outputID(output,i) = nconstituents_ID
              case('temperature')
+#ifdef NEWSTATE
+               homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
+#endif
                homogenization_isostrain_outputID(output,i) = temperature_ID
              case('ipcoords')
+#ifdef NEWSTATE
+               homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
+#endif
                homogenization_isostrain_outputID(output,i) = ipcoords_ID
              case('avgdefgrad','avgf')
+#ifdef NEWSTATE
+               homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
+#endif
                homogenization_isostrain_outputID(output,i) = avgdefgrad_ID
              case('avgp','avgfirstpiola','avg1stpiola')
+#ifdef NEWSTATE
+               homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
+#endif
                homogenization_isostrain_outputID(output,i) = avgfirstpiola_ID
              case default
                call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//&
@@ -153,26 +184,47 @@ subroutine homogenization_isostrain_init(fileUnit)
        end select
      endif
    endif
- enddo
+ enddo parsingFile
 
 #ifdef NEWSTATE
-  initializeInstances: do homog = 1_pInt, material_Nhomogenization
-   
-   myhomog: if (homogenization_type(homog) == HOMOGENIZATION_ISOSTRAIN_ID) then
-      NofMyHomog = count(material_homog == homog)
-!     instance = phase_plasticityInstance(phase)
+ initializeInstances: do homog = 1_pInt, material_Nhomogenization
+   myHomog: if (homogenization_type(homog) == HOMOGENIZATION_ISOSTRAIN_ID) then
+     NofMyHomog = count(material_homog == homog)
+     instance = homogenization_typeInstance(homog)
 
-! allocate homogenization state arrays
+! *  Determine size of postResults array
+     outputsLoop: do o = 1_pInt, homogenization_isostrain_Noutput(instance)
+       select case(homogenization_isostrain_outputID(o,instance))
+        case(nconstituents_ID, temperature_ID)
+          mySize = 1_pInt
+        case(ipcoords_ID)
+          mySize = 3_pInt
+        case(avgdefgrad_ID, avgfirstpiola_ID)
+          mySize = 9_pInt
+        case default
+          mySize = 0_pInt
+       end select
+
+       outputFound: if (mySize > 0_pInt) then
+        homogenization_isostrain_sizePostResult(o,instance) = mySize
+        homogenization_isostrain_sizePostResults(instance) = &
+          homogenization_isostrain_sizePostResults(instance) + mySize
+       endif outputFound
+     enddo outputsLoop
+
+! allocate state arrays
      sizeHState = 0_pInt
      homogState(homog)%sizeState = sizeHState
-     homogState(homog)%sizePostResults = homogenization_isostrain_sizePostResults(homog)
+     homogState(homog)%sizePostResults = homogenization_isostrain_sizePostResults(instance)
      allocate(homogState(homog)%state0             (   sizeHState,NofMyHomog), source=0.0_pReal)
      allocate(homogState(homog)%subState0          (   sizeHState,NofMyHomog), source=0.0_pReal)
      allocate(homogState(homog)%state              (   sizeHState,NofMyHomog), source=0.0_pReal)
 
-   endif myhomog
+   endif myHomog
  enddo initializeInstances
-#endif
+
+#else
+
  do i = 1,maxNinstance
 
    do j = 1_pInt,maxval(homogenization_Noutput)
@@ -194,6 +246,9 @@ subroutine homogenization_isostrain_init(fileUnit)
      endif outputFound
    enddo
  enddo
+ 
+#endif
+
 
 end subroutine homogenization_isostrain_init
 

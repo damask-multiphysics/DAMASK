@@ -21,7 +21,10 @@ module homogenization_RGC
    homogenization_RGC_sizePostResult
  character(len=64),          dimension(:,:),     allocatable,target, public :: &
    homogenization_RGC_output                                                                        ! name of each post result output
-
+#ifdef NEWSTATE
+ integer(pInt),                       dimension(:),     allocatable,         private :: &
+   homogenization_RGC_Noutput                                                                 !< number of outputs per homog instance
+#endif
  integer(pInt),              dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_Ngrains
  real(pReal),                dimension(:,:),     allocatable,        private :: &
@@ -107,6 +110,7 @@ subroutine homogenization_RGC_init(fileUnit)
  integer :: &
    homog, &
    NofMyHomog, &
+   o, &
    instance, &
    sizeHState
 #endif    
@@ -122,9 +126,15 @@ subroutine homogenization_RGC_init(fileUnit)
 
  maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
  if (maxNinstance == 0_pInt) return
-
+#ifdef NEWSTATE
+  if (iand(debug_level(debug_HOMOGENIZATION),debug_levelBasic) /= 0_pInt) &
+   write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
+#endif
  allocate(homogenization_RGC_sizeState(maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_sizePostResults(maxNinstance),                      source=0_pInt)
+#ifdef NEWSTATE
+ allocate(homogenization_RGC_Noutput(maxNinstance),                              source=0_pInt)
+#endif
  allocate(homogenization_RGC_Ngrains(3,maxNinstance),                            source=0_pInt)
  allocate(homogenization_RGC_ciAlpha(maxNinstance),                              source=0.0_pReal)
  allocate(homogenization_RGC_xiAlpha(maxNinstance),                              source=0.0_pReal)
@@ -143,7 +153,7 @@ subroutine homogenization_RGC_init(fileUnit)
    line = IO_read(fileUnit)
  enddo
 
- do while (trim(line) /= IO_EOF)                                                                    ! read through sections of homogenization part
+ parsingFile: do while (trim(line) /= IO_EOF)                                                                    ! read through sections of homogenization part
    line = IO_read(fileUnit)
    if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
    if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
@@ -167,24 +177,54 @@ subroutine homogenization_RGC_init(fileUnit)
            homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
            select case(homogenization_RGC_output(output,i))
              case('constitutivework')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = constitutivework_ID
              case('penaltyenergy')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = penaltyenergy_ID
              case('volumediscrepancy')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = volumediscrepancy_ID
              case('averagerelaxrate')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = averagerelaxrate_ID
              case('maximumrelaxrate')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = maximumrelaxrate_ID
              case('magnitudemismatch')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = magnitudemismatch_ID
              case('temperature')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = temperature_ID
              case('ipcoords')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = ipcoords_ID
              case('avgdefgrad','avgf')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = avgdefgrad_ID
              case('avgp','avgfirstpiola','avg1stpiola')
+#ifdef NEWSTATE
+               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
+#endif
                homogenization_RGC_outputID(output,i) = avgfirstpiola_ID
              case default
                call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//&
@@ -213,10 +253,10 @@ subroutine homogenization_RGC_init(fileUnit)
        end select
      endif  
    endif
- enddo
+ enddo parsingFile
 
 !--------------------------------------------------------------------------------------------------
-! assigning cluster orientations
+! * assigning cluster orientations
  elementLooping: do e = 1_pInt,mesh_NcpElems
    if (homogenization_type(mesh_element(3,e)) == HOMOGENIZATION_RGC_ID) then
      myInstance = homogenization_typeInstance(mesh_element(3,e))
@@ -248,6 +288,55 @@ subroutine homogenization_RGC_init(fileUnit)
      write(6,'(a25,3(1x,e10.3))') 'cluster orientation:  ',(homogenization_RGC_angles(j,i),j=1_pInt,3_pInt)
    enddo
  endif
+!--------------------------------------------------------------------------------------------------
+#ifdef NEWSTATE
+ initializeInstances: do homog = 1_pInt, material_Nhomogenization
+   myHomog: if (homogenization_type(homog) == HOMOGENIZATION_RGC_ID) then
+     NofMyHomog = count(material_homog == homog)
+     instance = homogenization_typeInstance(homog)
+
+! *  Determine size of postResults array
+     outputsLoop: do o = 1_pInt, homogenization_RGC_Noutput(instance)
+       select case(homogenization_RGC_outputID(o,instance))
+        case(temperature_ID,constitutivework_ID,penaltyenergy_ID,volumediscrepancy_ID, &
+            averagerelaxrate_ID,maximumrelaxrate_ID)
+         mySize = 1_pInt
+        case(ipcoords_ID,magnitudemismatch_ID)
+         mySize = 3_pInt
+        case(avgdefgrad_ID,avgfirstpiola_ID)
+         mySize = 9_pInt
+        case default
+         mySize = 0_pInt
+       end select
+
+       outputFound: if (mySize > 0_pInt) then
+        homogenization_RGC_sizePostResult(o,instance) = mySize
+        homogenization_RGC_sizePostResults(instance) = &
+          homogenization_RGC_sizePostResults(instance) + mySize
+       endif outputFound
+     enddo outputsLoop
+     
+     sizeHState = &
+         3_pInt*(homogenization_RGC_Ngrains(1,instance)-1_pInt)* &
+               homogenization_RGC_Ngrains(2,instance)*homogenization_RGC_Ngrains(3,instance) &
+         + 3_pInt*homogenization_RGC_Ngrains(1,instance)*(homogenization_RGC_Ngrains(2,instance)-1_pInt)* &
+               homogenization_RGC_Ngrains(3,instance) &
+         + 3_pInt*homogenization_RGC_Ngrains(1,instance)*homogenization_RGC_Ngrains(2,instance)* &
+              (homogenization_RGC_Ngrains(3,instance)-1_pInt) &
+         + 8_pInt   ! (1) Average constitutive work, (2-4) Overall mismatch, (5) Average penalty energy, 
+                    ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
+                    
+! allocate state arrays
+     homogState(homog)%sizeState = sizeHState
+     homogState(homog)%sizePostResults = homogenization_RGC_sizePostResults(instance)
+     allocate(homogState(homog)%state0             (   sizeHState,NofMyHomog), source=0.0_pReal)
+     allocate(homogState(homog)%subState0          (   sizeHState,NofMyHomog), source=0.0_pReal)
+     allocate(homogState(homog)%state              (   sizeHState,NofMyHomog), source=0.0_pReal)
+
+   endif myHomog
+ enddo initializeInstances
+ 
+#else
 
  do i = 1_pInt,maxNinstance
    do j = 1_pInt,maxval(homogenization_Noutput)
@@ -269,32 +358,10 @@ subroutine homogenization_RGC_init(fileUnit)
          homogenization_RGC_sizePostResults(i) + mySize
      endif outputFound
    enddo
-
-   homogenization_RGC_sizeState(i) &
-       = 3_pInt*(homogenization_RGC_Ngrains(1,i)-1_pInt)*homogenization_RGC_Ngrains(2,i)*homogenization_RGC_Ngrains(3,i) &
-         + 3_pInt*homogenization_RGC_Ngrains(1,i)*(homogenization_RGC_Ngrains(2,i)-1_pInt)*homogenization_RGC_Ngrains(3,i) &
-         + 3_pInt*homogenization_RGC_Ngrains(1,i)*homogenization_RGC_Ngrains(2,i)*(homogenization_RGC_Ngrains(3,i)-1_pInt) &
-         + 8_pInt   ! (1) Average constitutive work, (2-4) Overall mismatch, (5) Average penalty energy, 
-                    ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
  enddo
-#ifdef NEWSTATE
-  initializeInstances: do homog = 1_pInt, material_Nhomogenization
-   
-   myhomog: if (homogenization_type(homog) == HOMOGENIZATION_RGC_ID) then
-      NofMyHomog = count(material_homog == homog)
-!     instance = phase_plasticityInstance(phase)
-
-! allocate homogenization state arrays
-     sizeHState = homogenization_RGC_sizeState(homog)
-     homogState(homog)%sizeState = sizeHState
-     homogState(homog)%sizePostResults = homogenization_RGC_sizePostResults(homog)
-     allocate(homogState(homog)%state0             (   sizeHState,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%subState0          (   sizeHState,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%state              (   sizeHState,NofMyHomog), source=0.0_pReal)
-
-   endif myhomog
- enddo initializeInstances
+ 
 #endif
+
 end subroutine homogenization_RGC_init
 
 
