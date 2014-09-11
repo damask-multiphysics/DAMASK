@@ -17,9 +17,8 @@ module DAMASK_spectral_SolverBasicPETSc
 
  implicit none
  private
-#include <finclude/petscsys.h>
-#include <finclude/petscdmda.h>
-#include <finclude/petscsnes.h>
+#include <finclude/petsc.h90>
+
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'
    
@@ -125,16 +124,12 @@ subroutine basicPETSc_init(temperature)
  implicit none
  real(pReal), intent(inout) :: &
    temperature
-#include <finclude/petscdmda.h90>
-#include <finclude/petscsnes.h90>
-#include <finclude/petscvec.h>
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  PetscScalar,  dimension(:,:,:,:), pointer     ::  F
  PetscErrorCode :: ierr
  PetscObject    :: dummy
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
- KSP :: ksp
 
  call Utilities_init()
  write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverBasicPETSc init  -+>>>'
@@ -154,7 +149,7 @@ subroutine basicPETSc_init(temperature)
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call DMDACreate3d(PETSC_COMM_WORLD, &
-        DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
+        DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &
         DMDA_STENCIL_BOX,grid(1),grid(2),grid(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
         9,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
    CHKERRQ(ierr)
@@ -163,9 +158,6 @@ subroutine basicPETSc_init(temperature)
  CHKERRQ(ierr) 
  call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
  call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
- CHKERRQ(ierr)
- call SNESGetKSP(snes,ksp,ierr); CHKERRQ(ierr)
- call KSPSetConvergenceTest(ksp,BasicPETSC_convergedKSP,dummy,PETSC_NULL_FUNCTION,ierr)
  CHKERRQ(ierr)
  call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
 
@@ -461,59 +453,6 @@ subroutine BasicPETSc_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,du
 end subroutine BasicPETSc_converged
 
 !--------------------------------------------------------------------------------------------------
-!> @brief convergence check
-!--------------------------------------------------------------------------------------------------
-subroutine BasicPETSc_convergedKSP(ksp_local,PETScIter,fnorm,reason,dummy,ierr)
- use numerics, only: &
-   itmax, &
-   itmin, &
-   err_div_tolRel, &
-   err_div_tolAbs
- use FEsolving, only: &
-   terminallyIll
- use DAMASK_spectral_Utilities, only: &
-   wgt
- 
- implicit none
- KSP :: ksp_local
- PetscInt :: PETScIter, SNESIter
- PetscReal :: &
-   fnorm, &
-   SNESfnorm, &
-   estimatedErrDiv
- KSPConvergedReason :: reason
- PetscObject :: dummy
- PetscErrorCode :: ierr
- real(pReal) :: &
-   divTol, &
-   r_tol 
-
- call SNESGetIterationNumber(snes,SNESIter,ierr); CHKERRQ(ierr)
- call SNESGetFunctionNorm(snes,SNESfnorm,ierr); CHKERRQ(ierr)
- 
- if (SNESIter == 0_pInt) then                                                              ! Eisenstat-Walker calculation of relative tolerance for inexact newton 
-   r_tol = 0.3
- else
-   r_tol = (err_div/err_divPrev)**1.618
- endif     
- 
- divTol    = max(maxval(abs(P_av))*err_div_tolRel,err_div_tolAbs)
- estimatedErrDiv = fnorm*err_div/SNESfnorm                                                 ! Estimated error divergence
- 
- converged: if ((PETScIter >= itmin .and. &
-                 any([fnorm/snesFnorm/r_tol, &
-                     estimatedErrDiv/divTol] < 1.0_pReal)) &
-                .or. terminallyIll) then   
-   reason = 1
- elseif (totalIter >= itmax) then converged
-   reason = -1
- else converged
-   reason = 0
- endif converged
- 
-end subroutine BasicPETSc_convergedKSP
-
-!--------------------------------------------------------------------------------------------------
 !> @brief forwarding routine
 !--------------------------------------------------------------------------------------------------
 subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_BC)
@@ -536,7 +475,6 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
    restartWrite
 
  implicit none
-#include <finclude/petscdmda.h90>
  real(pReal), intent(in) :: &
    timeinc_old, &
    timeinc, &

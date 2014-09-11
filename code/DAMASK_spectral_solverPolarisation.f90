@@ -17,9 +17,7 @@ module DAMASK_spectral_solverPolarisation
  
  implicit none
  private
-#include <finclude/petscsys.h>
-#include <finclude/petscdmda.h>
-#include <finclude/petscsnes.h>
+#include <finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_solverPolarisation_label = 'polarisation'
@@ -139,9 +137,6 @@ subroutine Polarisation_init(temperature)
  implicit none
  real(pReal), intent(inout) :: &
    temperature
-#include <finclude/petscdmda.h90>
-#include <finclude/petscsnes.h90>
-#include <finclude/petscvec.h>
  real(pReal), dimension(:,:,:,:,:), allocatable :: P
  real(pReal), dimension(3,3) :: &
    temp33_Real = 0.0_pReal
@@ -169,8 +164,8 @@ subroutine Polarisation_init(temperature)
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
- call DMDACreate3d(PETSC_COMM_WORLD,                               &
-           DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &
+ call DMDACreate3d(PETSC_COMM_WORLD,                             &
+           DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &
            DMDA_STENCIL_BOX,grid(1),grid(2),grid(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
            18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
  CHKERRQ(ierr)
@@ -601,7 +596,6 @@ subroutine Polarisation_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC
    restartWrite
 
  implicit none
-#include <finclude/petscdmda.h90>
  real(pReal), intent(in) :: &
    timeinc_old, &
    timeinc, &
