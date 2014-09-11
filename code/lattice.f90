@@ -202,7 +202,7 @@ module lattice
      ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for fcc
      
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_systemTrans = reshape(real( [&
+   LATTICE_fcc_systemTrans = reshape( [&
      0.0, 1.0, 0.0,     10.26, &                                                                    ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
      0.0, 1.0, 0.0,    -10.26, &
      0.0, 0.0, 1.0,     10.26, &
@@ -215,7 +215,7 @@ module lattice
      1.0, 0.0, 0.0,    -10.26, &
      0.0, 1.0, 0.0,     10.26, &
      0.0, 1.0, 0.0,    -10.26  &
-     ],pReal),[ 4_pInt,LATTICE_fcc_Ntrans])
+     ],[ 4_pInt,LATTICE_fcc_Ntrans])
 
  integer(pInt), dimension(9,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fcc_bainVariant = reshape(int( [&
@@ -235,18 +235,18 @@ module lattice
 
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fcc_bainRot = reshape(real( [&
-     1.0, 0.0, 0.0,     45.0, &                                                                    ! Rotate fcc austensite to bain variant
-     1.0, 0.0, 0.0,     45.0, &
-     1.0, 0.0, 0.0,     45.0, &
-     1.0, 0.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 1.0, 0.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0, &
-     0.0, 0.0, 1.0,     45.0  &
+     1, 0, 0,     45, &                                                                    ! Rotate fcc austensite to bain variant
+     1, 0, 0,     45, &
+     1, 0, 0,     45, &
+     1, 0, 0,     45, &
+     0, 1, 0,     45, &
+     0, 1, 0,     45, &
+     0, 1, 0,     45, &
+     0, 1, 0,     45, &
+     0, 0, 1,     45, &
+     0, 0, 1,     45, &
+     0, 0, 1,     45, &
+     0, 0, 1,     45  &
      ],pReal),[ 4_pInt,LATTICE_fcc_Ntrans])
  
 !--------------------------------------------------------------------------------------------------
