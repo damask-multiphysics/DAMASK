@@ -377,6 +377,7 @@ HOMOGENIZATION_FILES = \
 #####################
 # Spectral Solver
 #####################
+DAMASK_spectral.exe: IGNORE          := \#
 DAMASK_spectral.exe: COMPILE         += -DSpectral
 DAMASK_spectral.exe: COMPILE_MAXOPTI += -DSpectral
 DAMASK_spectral.exe: MESHNAME        := mesh.f90
@@ -421,7 +422,7 @@ DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90 \
 #####################
 # FEM Solver
 #####################
-DAMASK_FEM.exe: VPATH           = ../private/FEM/code
+VPATH := ../private/FEM/code
 DAMASK_FEM.exe: COMPILE         += -DFEM -DmultiphysicsOut
 DAMASK_FEM.exe: COMPILE_MAXOPTI += -DFEM -DmultiphysicsOut
 DAMASK_FEM.exe: MESHNAME        := ../private/FEM/code/meshFEM.f90
@@ -454,10 +455,9 @@ FEM_damage.o:                  FEM_damage.f90 \
 FEM_utilities.o:               FEM_utilities.f90 \
                                CPFEM.o 
 
-FEZoo.o:                       $(wildcard FEzoo.f90) \
+FEZoo.o:                       $(wildcard FEZoo.f90) \
                                IO.o
-
-
+	$(IGNORE) $(PREFIX) $(COMPILERNAME) $(COMPILE) -c ../private/FEM/code/FEZoo.f90 $(SUFFIX)
 
 CPFEM.o:                       CPFEM.f90\
                                homogenization.o
