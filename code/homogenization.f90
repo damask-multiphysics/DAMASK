@@ -1224,17 +1224,16 @@ subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
  implicit none
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point number
-   el, &
-   fieldDamageValue          
-
+   el       
+ real(pReal), intent(in) :: &
+   fieldDamageValue   
  integer(pInt) :: &
    Ngrains, ipc
 
    select case(field_damage_type(material_homog(ip,el)))                                                   
      case (FIELD_DAMAGE_NONLOCAL_ID)
       fieldDamage(material_homog(ip,el))% &
-        state(1:fieldDamage(material_homog(ip,el))%sizeState, &
-              mappingHomogenization(1,ip,el)) = fieldDamageValue 
+        state(1, mappingHomogenization(1,ip,el)) = fieldDamageValue 
 
    end select 
 
@@ -1298,16 +1297,16 @@ subroutine field_putThermal(ip,el,fieldThermalValue)
  implicit none
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point number
-   el, &
-   fieldThermalValue          
+   el
+ real(pReal), intent(in) :: &
+   fieldThermalValue    
  integer(pInt) :: &
    Ngrains, ipc
 
    select case(field_thermal_type(material_homog(ip,el)))                                                   
      case (FIELD_THERMAL_CONDUCTION_ID)
       fieldThermal(material_homog(ip,el))% &
-        state(1:fieldThermal(material_homog(ip,el))%sizeState, &
-              mappingHomogenization(1,ip,el)) = fieldThermalValue 
+        state(1,mappingHomogenization(1,ip,el)) = fieldThermalValue 
 
    end select 
 

@@ -135,6 +135,9 @@ subroutine homogenization_isostrain_init(fileUnit)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case('type')
+#ifdef NEWSTATE
+         case('field_damage')
+#endif
          case ('(output)')
            output = output + 1_pInt
            homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
