@@ -56,6 +56,7 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
+# --------------- figure out columns to process  ---------------------------------------------------
   active = defaultdict(list)
   column = defaultdict(dict)
   missingColumns = False

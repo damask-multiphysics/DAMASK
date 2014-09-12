@@ -292,15 +292,15 @@ parser.add_option('--points',       dest='output_points', action='store_true',
 parser.add_option('--nopoints',     dest='output_points', action='store_false',
                                     help='omit VTK points file')
 parser.add_option('--separator',    dest='separator', type='choice', choices=sepChoices, metavar='string',
-                                    help='data separator (%s) [t]'%(','.join(map(str,sepChoices))))
-parser.add_option('--scaling',      dest='scaling', action='extend', type='string',
-                                    help='scaling of fluctuation', metavar = '<float LIST>')
+                                    help='data separator {%s} [t]'%(' '.join(map(str,sepChoices))))
+parser.add_option('--scaling',      dest='scaling', action='extend', metavar = '<float LIST>',
+                                    help='scaling of fluctuation')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', metavar = 'float',
                                     help='set unit length for 2D model [%default]')
 parser.add_option('--filenodalcoords', dest='filenodalcoords', metavar = 'string',
                                     help='ASCII table containing nodal coords')
 parser.add_option('--labelnodalcoords', dest='labelnodalcoords', nargs=3,
-                                    help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
+                                    help='labels of nodal coords in ASCII table {%s} '%(' '.join(map(str,%default))), metavar = 'string string string')
 parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',
                                     help='use linear reconstruction of geometry [%default]')
                   
@@ -319,7 +319,7 @@ parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)
 parser.set_defaults(filenodalcoords = '')
-parser.set_defaults(labelnodalcoords = ['coord.x','coord.y','coord.z'])
+parser.set_defaults(labelnodalcoords = ('coord.x','coord.y','coord.z'))
 parser.set_defaults(linearreconstruction = False)
 
 sep = {'n': '\n', 't': '\t', 's': ' '}
@@ -528,8 +528,8 @@ for filename in args:
              'quadruple': 4,\
             }
 
-  structure = vtk.vtkIntArray()
-  structure.SetName('Microstructures')
+#  structure = vtk.vtkIntArray()
+#  structure.SetName('Microstructures')
   for datatype in fields.keys():
     print '\n%s:'%datatype,
     fields[datatype]['_order_'] = []

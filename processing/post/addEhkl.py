@@ -42,7 +42,7 @@ parser.add_option('-d','--direction', \
                        '--hkl',         dest='hkl', type='int', nargs=3, metavar='int int int',
                                         help='direction of elastic modulus %default')
 parser.set_defaults(vector = [])
-parser.set_defaults(hkl = [1,1,1])
+parser.set_defaults(hkl = (1,1,1))
 
 (options,filenames) = parser.parse_args()
 

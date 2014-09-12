@@ -3,7 +3,7 @@
 
 import pdb, os, sys, gc, math, re, threading, time, struct, string
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
 
 
 fileExtensions = { \
@@ -257,27 +257,6 @@ class MPIEspectral_result:    # mimic py_post result object
 
   def element_tensors(self):
     return self.N_element_tensors
-
-
-
-# -----------------------------
-class MyOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
       
 # -----------------------------
 class backgroundMessage(threading.Thread):
@@ -644,7 +623,7 @@ def SummarizePostfile(stat,where=sys.stdout,format='marc'):
 
 # --- input parsing
 
-parser = OptionParser(option_class=MyOption, usage='%prog [options] resultfile', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] resultfile', description = """
 Extract data from a .t16 (MSC.Marc) or .spectralOut results file. 
 
 List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'. 
@@ -661,7 +640,7 @@ User mappings need to be formulated in an incremental fashion for each new data 
 and may use the current (incremental) result, b(ase), as well as the number, n(umber),
 of already processed data points for evaluation.
 
-""" + string.replace('$Id$','\n','\\n')
+""", version = string.replace('$Id$','\n','\\n')
 )
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
@@ -799,12 +778,12 @@ if options.nodalScalar and (   options.elemScalar or options.elemTensor
   parser.print_help()
   parser.error('not allowed to mix nodal with elemental results...')
 
-if not options.nodalScalar:     options.nodalScalar   = []
-if not options.elemScalar:      options.elemScalar    = []
-if not options.elemTensor:      options.elemTensor    = []
-if not options.homogenizationResult:     options.homogenizationResult   = []
+if not options.nodalScalar:           options.nodalScalar   = []
+if not options.elemScalar:            options.elemScalar    = []
+if not options.elemTensor:            options.elemTensor    = []
+if not options.homogenizationResult:  options.homogenizationResult   = []
 if not options.crystalliteResult:     options.crystalliteResult   = []
-if not options.constitutiveResult:   options.constitutiveResult = []
+if not options.constitutiveResult:    options.constitutiveResult = []
 
 options.sort.reverse()
 options.sep.reverse()

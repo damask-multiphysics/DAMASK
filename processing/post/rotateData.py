@@ -20,9 +20,9 @@ Uniformly scale values of scalar, vector, or tensor columns by given factor.
 """, version = scriptID)
 
 parser.add_option('-v','--vector',  dest = 'vector', action = 'extend', metavar = 'string',
-                                    help = 'column heading of vector to scale')
+                                    help = 'column heading of vector to rotate')
 parser.add_option('-t','--tensor',  dest = 'tensor', action = 'extend', metavar = 'string',
-                                    help = 'column heading of tensor to scale')
+                                    help = 'column heading of tensor to rotate')
 parser.add_option('-r', '--rotation',dest = 'rotation', type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
                                     help = 'angle and axis to rotate data %default')
 parser.add_option('-d', '--degrees', dest = 'degrees', action = 'store_true',
