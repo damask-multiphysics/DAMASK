@@ -36,10 +36,10 @@ Add column(s) containing directional stiffness based on given cubic stiffness va
 
 """, version = scriptID)
 
-parser.add_option('-c','--stiffness',   dest='vector', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-c','--stiffness',   dest='vector', action='extend', metavar='<string LIST>',
                                         help='heading of column containing C11 (followed by C12, C44) field values')
 parser.add_option('-d','--direction', \
-                       '--hkl',         dest='hkl', action='store', type='int', nargs=3, metavar='int int int',
+                       '--hkl',         dest='hkl', type='int', nargs=3, metavar='int int int',
                                         help='direction of elastic modulus %default')
 parser.set_defaults(vector = [])
 parser.set_defaults(hkl = [1,1,1])

@@ -34,15 +34,15 @@ Tag scalar, vectorial, and/or tensorial data header labels by specified suffix.
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-l','--tag',         dest='tag', type='string', \
+parser.add_option('-l','--tag',         dest='tag', \
                                         help='tag to use as suffix for labels')
-parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', \
+parser.add_option('-v','--vector',      dest='vector', action='extend', \
                                         help='heading of columns containing 3x1 vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', \
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', \
                                         help='heading of columns containing 3x3 tensor field values')
-parser.add_option('-s','--special',     dest='special', action='extend', type='string', \
+parser.add_option('-s','--special',     dest='special', action='extend', \
                                         help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',   dest='N', action='store', type='int', \
+parser.add_option('-d','--dimension',   dest='N', type='int', \
                                         help='dimension of special field values [%default]')
 
 parser.set_defaults(tag = '')

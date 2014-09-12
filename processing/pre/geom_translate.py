@@ -55,7 +55,7 @@ parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3, \
                   help='offset from old to new origin of grid', metavar='float float float')
 parser.add_option('-m', '--microstructure', dest='microstructure', type='int', \
                   help='offset from old to new microstructure indices', metavar='int')
-parser.add_option('-s', '--substitute', action='extend', dest='substitute', type='string', \
+parser.add_option('-s', '--substitute', action='extend', dest='substitute', \
                   help='substitutions of microstructure indices from,to,from,to,...', metavar='<string LIST>')
 
 parser.set_defaults(origin = [0.0,0.0,0.0])

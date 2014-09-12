@@ -62,7 +62,7 @@ parser.add_option('-f', '--fill',       dest='fill', type='int', metavar = 'int'
                   help='grain index to fill primitive. "0" selects maximum microstructure index + 1 [%default]')
 parser.add_option('-q', '--quaternion', dest='quaternion', type='float', nargs = 4, metavar=' '.join(['float']*4),
                   help = 'rotation of primitive as quaternion')
-parser.add_option('-a', '--angleaxis',  dest='angleaxis', type='string', nargs = 4, metavar=' '.join(['float']*4),
+parser.add_option('-a', '--angleaxis',  dest='angleaxis', nargs = 4, metavar=' '.join(['float']*4),
                   help = 'rotation of primitive as angle and axis')
 parser.add_option(     '--degrees',     dest='degrees', action='store_true',
                   help = 'angle is given in degrees [%default]')

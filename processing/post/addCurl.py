@@ -21,11 +21,11 @@ Deals with both vector- and tensor-valued fields.
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
+parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
 parser.set_defaults(coords = 'ip')
 parser.set_defaults(vector = [])

@@ -17,13 +17,13 @@ Remove column(s) containing scalar, vectorial, and/or tensorial data.
 
 """, version = scriptID)
 
-parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing 3x1 vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing 3x3 tensor field values')
-parser.add_option('-s','--special',     dest='special', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-s','--special',     dest='special', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',   dest='N', action='store', type='int', metavar='int',
+parser.add_option('-d','--dimension',   dest='N', type='int', metavar='int',
                                         help='dimension of special field values [%default]')
 
 parser.set_defaults(vector = [])

@@ -807,7 +807,7 @@ reconstructed boundary file
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option("-o", "--output", action='extend', dest='output', type='string', \
+parser.add_option("-o", "--output", action='extend', dest='output', \
         help="types of output [image, mentat, procedure, spectral]")
 parser.add_option("-p", "--port", type="int",\
         dest="port",\

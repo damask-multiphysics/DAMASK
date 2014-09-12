@@ -49,7 +49,7 @@ parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
 parser.add_option('--compress',            dest='compress', action='store_true', \
                   help='search for matching mircrostructure and texture and lump them [%default]')
-parser.add_option('-a', '--axes',         dest='axes', type='string', nargs = 3, metavar = 'string string string', \
+parser.add_option('-a', '--axes',         dest='axes', nargs = 3, metavar = 'string string string', \
                   help='axes assignement of eulerangles x,y,z = %default')
     
                   

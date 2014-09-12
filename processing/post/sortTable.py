@@ -40,7 +40,7 @@ With coordinates in columns "x", "y", and "z"; sorting with x slowest and z fast
 )
 
 
-parser.add_option('-l','--label',   dest='keys', action='extend', type='string', metavar='<LIST>',
+parser.add_option('-l','--label',   dest='keys', action='extend', metavar='<LIST>',
                                     help='list of column labels (a,b,c,...)')
 parser.add_option('-r','--reverse', dest='reverse', action='store_true',
                                     help='reverse sorting')

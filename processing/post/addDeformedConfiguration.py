@@ -20,9 +20,9 @@ Operates on periodic ordered three-dimensional data sets.
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
+parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-f','--defgrad',     dest='defgrad', action='store', type='string', metavar='string',
+parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
                                         help='heading of columns containing tensor field values')
 parser.add_option('-l', '--linear',     dest='linearreconstruction', action='store_true',
                                         help='use linear reconstruction of geometry [%default]')

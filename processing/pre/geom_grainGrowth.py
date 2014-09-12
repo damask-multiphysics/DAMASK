@@ -45,7 +45,7 @@ parser.add_option('-N', '--smooth', dest='N', type='int', metavar='int',
                  help='N for curvature flow [%default]')
 parser.add_option('-r', '--renumber', dest='renumber', action='store_true',
                   help='renumber microstructure indices from 1...N [%default]')
-parser.add_option('-i', '--immutable', action='extend', dest='immutable', type='string', metavar = '<LIST>',
+parser.add_option('-i', '--immutable', action='extend', dest='immutable', metavar = '<LIST>',
                   help='list of immutable microstructures')
 
 parser.set_defaults(d = 1)

@@ -26,7 +26,7 @@ Add column(s) containing determinant of requested tensor column(s).
 
 """, version = scriptID)
 
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
 parser.set_defaults(tensor = [])
 

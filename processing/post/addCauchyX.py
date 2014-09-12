@@ -38,11 +38,11 @@ deformation gradient and first Piola--Kirchhoff stress.
 )
 
 
-parser.add_option('-f','--defgrad',     dest='defgrad', type='string', \
+parser.add_option('-f','--defgrad',     dest='defgrad', \
                                         help='heading of columns containing deformation gradient [%default]')
-parser.add_option('-p','--stress',      dest='stress', type='string', \
+parser.add_option('-p','--stress',      dest='stress', \
                                         help='heading of columns containing first Piola--Kirchhoff stress [%default]')
-parser.add_option('-o','--output',      dest='output', type='string', \
+parser.add_option('-o','--output',      dest='output', \
                                         help='group containing requested data [%default]')
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(stress  = 'p')

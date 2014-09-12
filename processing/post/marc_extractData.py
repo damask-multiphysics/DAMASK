@@ -305,11 +305,11 @@ parser.add_option('-t','--type', dest='type', type='choice', choices=['ipbased',
 
 group_material = OptionGroup(parser,'Material identifier')
 
-group_material.add_option('--homogenization', dest='homog', type='string', \
+group_material.add_option('--homogenization', dest='homog', \
                           help='homogenization identifier (as string or integer [%default])', metavar='<ID>')
-group_material.add_option('--crystallite', dest='cryst', type='string', \
+group_material.add_option('--crystallite', dest='cryst', \
                           help='crystallite identifier (as string or integer [%default])', metavar='<ID>')
-group_material.add_option('--phase', dest='phase', type='string', \
+group_material.add_option('--phase', dest='phase', \
                           help='phase identifier (as string or integer [%default])', metavar='<ID>')
 
 parser.add_option_group(group_material)

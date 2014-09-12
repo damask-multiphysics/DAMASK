@@ -32,7 +32,7 @@ Add scalar and RGB tuples from ASCIItable to existing VTK point cloud (.vtp).
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-v', '--vtk',   dest='vtk', type='string', \
+parser.add_option('-v', '--vtk',   dest='vtk', \
                   help = 'VTK file name')
 parser.add_option('-s', '--scalar',   dest='scalar', action='extend', \
                   help = 'scalar values')

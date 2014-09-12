@@ -189,7 +189,7 @@ def doSim(delay,thread):
     while line < lines:
       if table.data[line,9]>= threshold:
         upper,lower = table.data[line,9],table.data[line-1,9]                                       # values for linear interpolation
-        yieldStress[i] = table.data[line-1 0:9] * (upper-threshold)/(upper-lower) \
+        yieldStress[i] = table.data[line-1,0:9] * (upper-threshold)/(upper-lower) \
                        + table.data[line  ,0:9] * (threshold-lower)/(upper-lower)                   # linear interpolation of stress values
         break
       else:

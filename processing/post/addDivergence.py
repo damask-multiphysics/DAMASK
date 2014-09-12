@@ -22,15 +22,15 @@ Deals with both vector- and tensor-valued fields.
 """, version = scriptID)
 
 accuracyChoices = ['2','4','6','8']
-parser.add_option('--fdm',              dest='accuracy', action='extend', type='string', metavar='<int LIST>',
+parser.add_option('--fdm',              dest='accuracy', action='extend', metavar='<int LIST>',
                                         help='degree of central difference accuracy (%s)'%(','.join(accuracyChoices)))
 parser.add_option('--fft',              dest='fft', action='store_true',
                                         help='calculate divergence in Fourier space')
-parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar = 'string',
+parser.add_option('-c','--coordinates', dest='coords', metavar = 'string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
 parser.set_defaults(coords = 'ip')
 parser.set_defaults(accuracy = [])

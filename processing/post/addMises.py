@@ -29,9 +29,9 @@ Add vonMises equivalent values for symmetric part of requested strains and/or st
 
 """, version = scriptID)
 
-parser.add_option('-e','--strain', dest='strain', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-e','--strain', dest='strain', action='extend', metavar='<string LIST>',
                                    help='heading(s) of columns containing strain tensors')
-parser.add_option('-s','--stress', dest='stress', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-s','--stress', dest='stress', action='extend', metavar='<string LIST>',
                                    help='heading(s) of columns containing stress tensors')
 parser.set_defaults(strain = [])
 parser.set_defaults(stress = [])

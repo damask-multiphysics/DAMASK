@@ -40,7 +40,7 @@ parser.add_option('-b','-1','--biot',   dest='biot', action='store_true',
                                         help='calculate biot strain tensor [%default]')
 parser.add_option('-g','-2','--green',  dest='green', action='store_true',
                                         help='calculate green strain tensor [%default]')
-parser.add_option('-f','--defgrad',     dest='defgrad', action='extend', type='string', metavar = '<string LIST>',
+parser.add_option('-f','--defgrad',     dest='defgrad', action='extend', metavar = '<string LIST>',
                                         help='heading(s) of columns containing deformation tensor values %default')
 parser.set_defaults(right       = False)
 parser.set_defaults(left        = False)

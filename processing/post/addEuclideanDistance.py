@@ -87,13 +87,13 @@ Add column(s) containing Euclidean distance to grain structural features: bounda
 
 """, version = scriptID)
 
-parser.add_option('-c','--coordinates', dest='coords', action='store', type='string', metavar='string',
+parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
-parser.add_option('-i','--identifier',  dest='id', action='store', type='string', metavar = 'string',
+parser.add_option('-i','--identifier',  dest='id', metavar = 'string',
                                         help='heading of column containing grain identifier [%default]')
-parser.add_option('-t','--type',        dest='type', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--type',        dest='type', action='extend', metavar='<string LIST>',
                                         help='feature type (%s)'%(', '.join(map(lambda x:', '.join([x['name']]),features))))
-parser.add_option('-n','--neighborhood',dest='neigborhood', action='store', type='choice', 
+parser.add_option('-n','--neighborhood',dest='neigborhood', type='choice', 
                                         choices=neighborhoods.keys(), metavar='string',
                                         help='type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
 parser.set_defaults(type = [])

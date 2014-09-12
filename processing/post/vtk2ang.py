@@ -83,9 +83,9 @@ Builds a ang files from a vtk file.
 )
 
 
-parser.add_option('--disp','--displacement',dest='dispLabel', type='string', \
+parser.add_option('--disp','--displacement',dest='dispLabel', \
                                             help='label of displacements [%default]')
-parser.add_option('--euler',                dest='eulerLabel', type='string', nargs=3, \
+parser.add_option('--euler',                dest='eulerLabel', nargs=3, \
                                             help='labels of euler angles [%default]')
 parser.add_option('-n','--normal',          dest='normal', type='float', nargs=3, \
                                             help='normal of slices in direction of increasing slice numbers [%default]')

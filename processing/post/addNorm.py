@@ -29,15 +29,15 @@ Add column(s) containing norm of requested column(s) being either vectors or ten
 """, version = scriptID)
 
 normChoices = ['abs','frobenius','max']
-parser.add_option('-n','--norm',        dest='norm', action='store', type='choice', choices=normChoices, metavar='string',
+parser.add_option('-n','--norm',        dest='norm', type='choice', choices=normChoices, metavar='string',
                                         help='type of element-wise p-norm (%s) [frobenius]'%(','.join(map(str,normChoices))))
-parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
-parser.add_option('-s','--special',     dest='special', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-s','--special',     dest='special', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',   dest='N', action='store', type='int', metavar='int',
+parser.add_option('-d','--dimension',   dest='N', type='int', metavar='int',
                                         help='dimension of special field values [%default]')
 parser.set_defaults(norm = 'frobenius')
 parser.set_defaults(vector = [])

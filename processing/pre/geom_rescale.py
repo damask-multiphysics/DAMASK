@@ -53,9 +53,9 @@ Either absolute values or relative factors (like "0.25x") can be used.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, metavar = 'string string string', \
+parser.add_option('-g', '--grid', dest='grid', nargs = 3, metavar = 'string string string', \
                   help='a,b,c grid of hexahedral box [unchanged]')
-parser.add_option('-s', '--size', dest='size', type='string', nargs = 3, metavar = 'string string string', \
+parser.add_option('-s', '--size', dest='size', nargs = 3, metavar = 'string string string', \
                   help='x,y,z size of hexahedral box [unchanged]')
 parser.add_option('-r', '--renumber', dest='renumber', action='store_true', \
                   help='renumber microstructure indices from 1...N [%default]')

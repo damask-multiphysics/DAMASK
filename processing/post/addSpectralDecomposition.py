@@ -19,7 +19,7 @@ Add column(s) containing eigenvalues and eigenvectors of requested tensor column
 
 """, version = scriptID)
 
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
 parser.set_defaults(tensor = [])
 

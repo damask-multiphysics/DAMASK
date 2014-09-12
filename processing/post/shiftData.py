@@ -19,7 +19,7 @@ Shift values of scalar/special, vector, or tensor columns by given offset.
 
 """, version = scriptID)
 
-parser.add_option('-s','--special',  dest='special', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-s','--special',  dest='special', action='extend', metavar='<string LIST>',
                                      help='heading of columns containing field values of special dimension')
 parser.add_option('-d','--dimension',dest='N', type='int', metavar='int',
                                      help='dimension of special field values [%default]')

@@ -32,7 +32,7 @@ Add grain index based on similitude of crystal lattice orientation.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-p', '--positions',   dest='pos', type='string', \
+parser.add_option('-p', '--positions',   dest='pos', \
                   help = 'coordinate label')
 
 parser.set_defaults(pos = 'pos')

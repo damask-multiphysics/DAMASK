@@ -17,19 +17,19 @@ Add data in column(s) of second ASCIItable selected from row that is given by th
 
 """, version = scriptID)
 
-parser.add_option('-a','--asciitable',  dest='asciitable', action='store', type='string', metavar='string',
+parser.add_option('-a','--asciitable',  dest='asciitable', metavar='string',
                                         help='mapped ASCIItable')
-parser.add_option('-c','--map',         dest='map', action='store', type='string', metavar='string',
+parser.add_option('-c','--map',         dest='map', metavar='string',
                                         help='heading of column containing row mapping')
-parser.add_option('-o','--offset',      dest='offset', action='store', type='int', metavar='int',
+parser.add_option('-o','--offset',      dest='offset', type='int', metavar='int',
                                         help='offset between mapped column value and row')
-parser.add_option('-v','--vector',      dest='vector', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-v','--vector',      dest='vector', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing vector field values')
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
-parser.add_option('-s','--special',     dest='special', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-s','--special',     dest='special', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing field values of special dimension')
-parser.add_option('-d','--dimension',   dest='N', action='store', type='int', metavar='int',
+parser.add_option('-d','--dimension',   dest='N', type='int', metavar='int',
                                         help='dimension of special field values [%default]')
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])

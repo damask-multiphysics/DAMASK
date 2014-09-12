@@ -68,17 +68,17 @@ Or have an existing set of user variables copied over from another *.dat file.
 """)
 parser.add_option('-n','--number', dest='number', type='int', \
           help='maximum requested User Defined Variable [%default]')
-parser.add_option('--homogenization', dest='homog', type='string', \
+parser.add_option('--homogenization', dest='homog', \
           help='homogenization identifier (as string or integer [%default])')
-parser.add_option('--crystallite', dest='cryst', type='string', \
+parser.add_option('--crystallite', dest='cryst', \
           help='crystallite identifier (as string or integer [%default])')
-parser.add_option('--phase', dest='phase', type='string', \
+parser.add_option('--phase', dest='phase', \
           help='phase identifier (as string or integer [%default])')
-parser.add_option('--use', dest='useFile', type='string', \
+parser.add_option('--use', dest='useFile', \
           help='Optionally parse output descriptors from '+
                'different <model_job>.outputZZZ file. Saves the effort '+
                'to start a calculation for each job [%default])')
-parser.add_option('--option', dest='damaskOption', type='string', \
+parser.add_option('--option', dest='damaskOption', \
           help='Add damask option to input file '+
                'for example: "periodic x z" [%default]')
 parser.set_defaults(number = 0)

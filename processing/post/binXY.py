@@ -18,19 +18,19 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 
 """, version = scriptID)
 
-parser.add_option('-d','--data',    dest='data', action='store', nargs=2, type='int', metavar='int int',
+parser.add_option('-d','--data',    dest='data', nargs=2, type='int', metavar='int int',
                                     help='columns containing x and y %default')
-parser.add_option('-w','--weight',  dest='weight', action='store', metavar='int',
+parser.add_option('-w','--weight',  dest='weight', metavar='int',
                                     help='column containing weight of (x,y) point [%default]')
-parser.add_option('-b','--bins',    dest='bins', action='store', nargs=2, type='int', metavar='int int',
+parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int', metavar='int int',
                                     help='number of bins in x and y direction %default')
-parser.add_option('-t','--type',    dest='type', action='store', nargs=3, type='string', metavar='string string string',
+parser.add_option('-t','--type',    dest='type', nargs=3, metavar='string string string',
                                     help='type (linear/log) of x, y, and z axis [linear]')
-parser.add_option('-x','--xrange',  dest='xrange', action='store', nargs=2, type='float', metavar='float float',
+parser.add_option('-x','--xrange',  dest='xrange', nargs=2, type='float', metavar='float float',
                                     help='value range in x direction [auto]')
-parser.add_option('-y','--yrange',  dest='yrange', action='store', nargs=2, type='float', metavar='float float',
+parser.add_option('-y','--yrange',  dest='yrange', nargs=2, type='float', metavar='float float',
                                     help='value range in y direction [auto]')
-parser.add_option('-z','--zrange',  dest='zrange', action='store', nargs=2, type='float', metavar='float float',
+parser.add_option('-z','--zrange',  dest='zrange', nargs=2, type='float', metavar='float float',
                                     help='value range in z direction [auto]')
 parser.add_option('-i','--invert',  dest='invert', action='store_true',
                                     help='invert probability density [%default]')

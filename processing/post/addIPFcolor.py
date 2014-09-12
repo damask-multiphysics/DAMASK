@@ -18,24 +18,24 @@ Add RGB color value corresponding to TSL-OIM scheme for inverse pole figures.
 
 """, version = scriptID)
 
-parser.add_option('-p', '--pole',       dest='pole', action='store', type='float', nargs=3, metavar='float float float',
+parser.add_option('-p', '--pole',       dest='pole', type='float', nargs=3, metavar='float float float',
                                         help = 'lab frame direction for inverse pole figure %default')
-parser.add_option('-s', '--symmetry',   dest='symmetry', action='store', type='choice', 
+parser.add_option('-s', '--symmetry',   dest='symmetry', type='choice', 
                                         choices=damask.Symmetry.lattices[1:], metavar='string',
                                         help = 'crystal symmetry (%s) [cubic]'%(', '.join(damask.Symmetry.lattices[1:])))
-parser.add_option('-e', '--eulers',     dest='eulers', action='store', type='string', metavar='string',
+parser.add_option('-e', '--eulers',     dest='eulers', metavar='string',
                                         help = 'Euler angles label')
 parser.add_option('-d', '--degrees',    dest='degrees', action='store_true',
                                         help = 'Euler angles are given in degrees [%default]')
-parser.add_option('-m', '--matrix',     dest='matrix', action='store', type='string', metavar='string',
+parser.add_option('-m', '--matrix',     dest='matrix', metavar='string',
                                         help = 'orientation matrix label')
-parser.add_option('-a',                 dest='a', action='store', type='string', metavar='string',
+parser.add_option('-a',                 dest='a', metavar='string',
                                         help = 'crystal frame a vector label')
-parser.add_option('-b',                 dest='b', action='store', type='string', metavar='string',
+parser.add_option('-b',                 dest='b', metavar='string',
                                         help = 'crystal frame b vector label')
-parser.add_option('-c',                 dest='c', action='store', type='string', metavar='string',
+parser.add_option('-c',                 dest='c', metavar='string',
                                         help = 'crystal frame c vector label')
-parser.add_option('-q', '--quaternion', dest='quaternion', action='store', type='string', metavar='string',
+parser.add_option('-q', '--quaternion', dest='quaternion', metavar='string',
                                         help = 'quaternion label')
 parser.set_defaults(pole = [0.0,0.0,1.0])
 parser.set_defaults(symmetry = 'cubic')

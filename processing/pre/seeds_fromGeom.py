@@ -56,9 +56,9 @@ Examples:
 )
 
 
-parser.add_option('-w','--white',   dest='whitelist', action='extend', type='string', \
+parser.add_option('-w','--white',   dest='whitelist', action='extend', \
                                     help='white list of grain IDs', metavar='<LIST>')
-parser.add_option('-b','--black',   dest='blacklist', action='extend', type='string', \
+parser.add_option('-b','--black',   dest='blacklist', action='extend', \
                                     help='black list of grain IDs', metavar='<LIST>')
 
 parser.set_defaults(whitelist = [])

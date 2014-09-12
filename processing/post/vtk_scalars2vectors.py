@@ -16,9 +16,9 @@ parser = OptionParser(usage='%prog [options] vtkfile', description = """
 """ + string.replace('$Id$','\n','\\n')
 )
 
-parser.add_option('-v','--vector', nargs=3, dest='vector', type='string', \
+parser.add_option('-v','--vector', nargs=3, dest='vector', \
                   help='suffices indicating vector components [%default]')
-parser.add_option('-s','--separator', dest='separator', type='string', \
+parser.add_option('-s','--separator', dest='separator', \
                   help='separator between label and suffix [%default]')
 
 parser.set_defaults(vector = ['x','y','z'])

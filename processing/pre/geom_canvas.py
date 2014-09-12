@@ -52,7 +52,7 @@ Changes the (three-dimensional) canvas of a spectral geometry description.
 """ + string.replace(scriptID,'\n','\\n')
 )
 
-parser.add_option('-g', '--grid', dest='grid', type='string', nargs = 3, metavar='int int int ', \
+parser.add_option('-g', '--grid', dest='grid', nargs = 3, metavar='int int int ', \
                   help='a,b,c grid of hexahedral box [unchanged]')
 parser.add_option('-o', '--offset', dest='offset', type='int', nargs = 3, metavar='int int int', \
                   help='a,b,c offset from old to new origin of grid %default')

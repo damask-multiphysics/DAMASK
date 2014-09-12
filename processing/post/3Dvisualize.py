@@ -263,19 +263,19 @@ Coordinates are taken from (consecutive) x, y, and z columns.
 """, version = scriptID)
 
 sepChoices = ['n','t','s']
-parser.add_option('-s', '--scalar', dest='scalar', action='extend', type='string', metavar = '<string LIST>',
+parser.add_option('-s', '--scalar', dest='scalar', action='extend', metavar = '<string LIST>',
                                     help='list of single scalars to visualize')
-parser.add_option(      '--double', dest='double', action='extend', type='string', metavar = '<string LIST>',
+parser.add_option(      '--double', dest='double', action='extend', metavar = '<string LIST>',
                                     help='list of two scalars to visualize')
-parser.add_option(      '--triple', dest='triple', action='extend', type='string', metavar = '<string LIST>',
+parser.add_option(      '--triple', dest='triple', action='extend', metavar = '<string LIST>',
                                     help='list of three scalars to visualize')
-parser.add_option(      '--quadruple', dest='quadruple', action='extend', type='string', metavar = '<string LIST>',
+parser.add_option(      '--quadruple', dest='quadruple', action='extend', metavar = '<string LIST>',
                                     help='list of four scalars to visualize')
-parser.add_option('-v', '--vector', dest='vector', action='extend', type='string', metavar = '<string LIST>', 
+parser.add_option('-v', '--vector', dest='vector', action='extend', metavar = '<string LIST>', 
                                     help='list of vectors to visualize')
-parser.add_option('-t', '--tensor', dest='tensor', action='extend', type='string', metavar = '<string LIST>',
+parser.add_option('-t', '--tensor', dest='tensor', action='extend', metavar = '<string LIST>',
                                     help='list of tensors to visualize')
-parser.add_option('-d', '--deformation', dest='defgrad', action='store', type='string', metavar = 'string',
+parser.add_option('-d', '--deformation', dest='defgrad', metavar = 'string',
                                     help='heading of deformation gradient columns [%default]')
 parser.add_option('--reference',    dest='undeformed', action='store_true',
                                     help='map results to reference (undeformed) configuration [%default]')
@@ -291,15 +291,15 @@ parser.add_option('--points',       dest='output_points', action='store_true',
                                     help='produce VTK points file [%default]')
 parser.add_option('--nopoints',     dest='output_points', action='store_false',
                                     help='omit VTK points file')
-parser.add_option('--separator',    dest='separator', action='store', type='choice', choices=sepChoices, metavar='string',
+parser.add_option('--separator',    dest='separator', type='choice', choices=sepChoices, metavar='string',
                                     help='data separator (%s) [t]'%(','.join(map(str,sepChoices))))
 parser.add_option('--scaling',      dest='scaling', action='extend', type='string',
                                     help='scaling of fluctuation', metavar = '<float LIST>')
-parser.add_option('-u', '--unitlength', dest='unitlength', action='store', type='float', metavar = 'float',
+parser.add_option('-u', '--unitlength', dest='unitlength', type='float', metavar = 'float',
                                     help='set unit length for 2D model [%default]')
-parser.add_option('--filenodalcoords', dest='filenodalcoords', action='store', type='string', metavar = 'string',
+parser.add_option('--filenodalcoords', dest='filenodalcoords', metavar = 'string',
                                     help='ASCII table containing nodal coords')
-parser.add_option('--labelnodalcoords', dest='labelnodalcoords', action='store', type='string', nargs=3,
+parser.add_option('--labelnodalcoords', dest='labelnodalcoords', nargs=3,
                                     help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
 parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',
                                     help='use linear reconstruction of geometry [%default]')

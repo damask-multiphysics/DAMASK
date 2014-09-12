@@ -19,9 +19,9 @@ Add column(s) containing Second Piola--Kirchhoff stress based on given column(s)
 
 """, version = scriptID)
 
-parser.add_option('-f','--defgrad',     dest='defgrad', action='store', type='string', metavar='string',
+parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
                                         help='heading of columns containing deformation gradient [%default]')
-parser.add_option('-p','--stress',      dest='stress', action='store', type='string', metavar='string',
+parser.add_option('-p','--stress',      dest='stress', metavar='string',
                                         help='heading of columns containing first Piola--Kirchhoff stress [%default]')
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(stress = 'p')

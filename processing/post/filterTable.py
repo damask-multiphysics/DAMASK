@@ -21,11 +21,11 @@ All rows where label 'foo' equals 'bar' -- " #foo# == \"bar\" "
 
 """, version = scriptID)
 
-parser.add_option('-w','--white',   dest='whitelist', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-w','--white',   dest='whitelist', action='extend', metavar='<string LIST>',
                                     help='white list of column labels (a,b,c,...)')
-parser.add_option('-b','--black',   dest='blacklist', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-b','--black',   dest='blacklist', action='extend', metavar='<string LIST>',
                                     help='black list of column labels (a,b,c,...)')
-parser.add_option('-c','--condition', dest='condition', type='string', metavar='string',
+parser.add_option('-c','--condition', dest='condition', metavar='string',
                                     help='condition to filter rows')
 
 parser.set_defaults(whitelist = [])
