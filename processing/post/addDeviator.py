@@ -11,12 +11,11 @@ scriptName = scriptID.split()[1][:-3]
 
 oneThird = 1.0/3.0
 
-def deviator(m):
+def deviator(m):                                                                                    # Carefull, do not change the value of m (its intent(inout)!)
   sph = oneThird*(m[0]+m[4]+m[8])
-  m[0] = m[0] - sph
-  m[4] = m[4] - sph
-  m[8] = m[8] - sph
-  return  m
+  return  [m[0] -sph, m[1],     m[2],
+           m[3],      m[4]-sph, m[5],
+           m[6],      m[7],     m[8]-sph]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -27,7 +26,7 @@ Add column(s) containing deviator of requested tensor column(s).
 
 """, version = scriptID)
 
-parser.add_option('-t','--tensor',      dest='tensor', action='extend', type='string', metavar='<string LIST>',
+parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
 parser.add_option('-s','--spherical',   dest='hydrostatic', action='store_true',
                                         help='also add sperical part of tensor (hydrostatic component, pressure)')
