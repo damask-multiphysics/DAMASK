@@ -59,14 +59,15 @@ module lattice
    lattice_tt
 
  real(pReal), allocatable, dimension(:,:,:), protected, public :: &
-   lattice_NItrans_v
+   lattice_NItrans_v, &                                                                             !< Eigendeformation tensor in vector form
+   lattice_projectionTrans                                                                          !< Matrix for projection of slip to fault-band (twin) systems for strain-induced martensite nucleation
 
  real(pReal), allocatable, dimension(:,:,:,:), protected, public :: &
-   lattice_Rtrans, &
-   lattice_Utrans, &
-   lattice_Btrans, &
-   lattice_Qtrans, &
-   lattice_NItrans
+   lattice_Rtrans, &                                                                                !< Pitsch rotation
+   lattice_Utrans, &                                                                                !< Bain deformation
+   lattice_Btrans, &                                                                                !< Rotation of fcc to Bain coordinate system
+   lattice_Qtrans, &                                                                                !< Total rotation: Q = R*B
+   lattice_NItrans                                                                                  !< Eigendeformation tensor for phase transformation
 
  real(pReal), allocatable, dimension(:,:), protected, public :: &
    lattice_shearTwin                                                                                !< characteristic twin shear
@@ -202,7 +203,7 @@ module lattice
      ],pInt),[lattice_fcc_Ntwin,lattice_fcc_Ntwin],order=[2,1])                                     !< Twin--twin interaction types for fcc
      
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_systemTrans = reshape( [&
+   LATTICE_fcc_systemTrans = reshape([&
      0.0, 1.0, 0.0,     10.26, &                                                                    ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
      0.0, 1.0, 0.0,    -10.26, &
      0.0, 0.0, 1.0,     10.26, &
@@ -219,7 +220,7 @@ module lattice
 
  integer(pInt), dimension(9,LATTICE_fcc_Ntrans), parameter, private :: &
    LATTICE_fcc_bainVariant = reshape(int( [&
-     1, 0, 0, 0, 1, 0, 0, 0, 1, &
+     1, 0, 0, 0, 1, 0, 0, 0, 1, &                                                                   ! Pitsch OR (Ma & Hartmaier 2014, Table 3)
      1, 0, 0, 0, 1, 0, 0, 0, 1, &
      1, 0, 0, 0, 1, 0, 0, 0, 1, &
      1, 0, 0, 0, 1, 0, 0, 0, 1, &
@@ -234,20 +235,52 @@ module lattice
      ],pInt),[ 9_pInt, LATTICE_fcc_Ntrans])
 
  real(pReal), dimension(4,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_bainRot = reshape(real( [&
-     1, 0, 0,     45, &                                                                    ! Rotate fcc austensite to bain variant
-     1, 0, 0,     45, &
-     1, 0, 0,     45, &
-     1, 0, 0,     45, &
-     0, 1, 0,     45, &
-     0, 1, 0,     45, &
-     0, 1, 0,     45, &
-     0, 1, 0,     45, &
-     0, 0, 1,     45, &
-     0, 0, 1,     45, &
-     0, 0, 1,     45, &
-     0, 0, 1,     45  &
-     ],pReal),[ 4_pInt,LATTICE_fcc_Ntrans])
+   LATTICE_fcc_bainRot = reshape([&
+     1.0, 0.0, 0.0,     45.0, &                                                                    ! Rotate fcc austensite to bain variant
+     1.0, 0.0, 0.0,     45.0, &
+     1.0, 0.0, 0.0,     45.0, &
+     1.0, 0.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 1.0, 0.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0, &
+     0.0, 0.0, 1.0,     45.0  &
+     ],[ 4_pInt,LATTICE_fcc_Ntrans])
+
+ real(pReal), dimension(12,LATTICE_fcc_Ntrans), parameter, private :: &
+   LATTICE_fcc_projectionTrans = reshape([&
+     0, 1,-1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &                                                                    
+    -1, 0, 1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
+     1,-1, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
+     0, 0, 0,  0, 1,-1,  0, 0, 0,  0, 0, 0, &
+     0, 0, 0, -1, 0, 1,  0, 0, 0,  0, 0, 0, &
+     0, 0, 0,  1,-1, 0,  0, 0, 0,  0, 0, 0, &
+     0, 0, 0,  0, 0, 0,  0, 1,-1,  0, 0, 0, &
+     0, 0, 0,  0, 0, 0, -1, 0, 1,  0, 0, 0, &
+     0, 0, 0,  0, 0, 0,  1,-1, 0,  0, 0, 0, &
+     0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1,-1, &
+     0, 0, 0,  0, 0, 0,  0, 0, 0, -1, 0, 1, &
+     0, 0, 0,  0, 0, 0,  0, 0, 0,  1,-1, 0  &
+     ],[ 12_pInt,LATTICE_fcc_Ntrans])
+
+ integer(pInt), dimension(2_pInt,LATTICE_fcc_Ntrans), parameter, public :: &
+   LATTICE_fcc_transNucleationTwinPair = reshape(int( [&
+     4,  7, &
+     1, 10, &
+     1,  4, &
+     7, 10, &
+     2,  8, &
+     5, 11, &
+     8, 11, &
+     2,  5, &
+     6, 12, &
+     3,  9, &
+     3, 12, &
+     6,  9  &
+     ],pInt),[2_pInt,LATTICE_fcc_Ntrans])
  
 !--------------------------------------------------------------------------------------------------
 ! bcc
@@ -1005,6 +1038,7 @@ subroutine lattice_init
  allocate(lattice_Qtrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_NItrans(3,3,lattice_maxNtrans,Nphases),source=0.0_pReal)
  allocate(lattice_NItrans_v(6,lattice_maxNtrans,Nphases),source=0.0_pReal)
+ allocate(lattice_projectionTrans(lattice_maxNtrans,lattice_maxNtrans,Nphases),source=0.0_pReal)
 
  allocate(lattice_NslipSystem(lattice_maxNslipFamily,Nphases),source=0_pInt)
  allocate(lattice_NtwinSystem(lattice_maxNtwinFamily,Nphases),source=0_pInt)
@@ -1261,6 +1295,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
      lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase) = lattice_fcc_interactionSlipTwin
      lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase) = lattice_fcc_interactionTwinSlip
      lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase) = lattice_fcc_interactionTwinTwin
+     lattice_projectionTrans(1:myNtrans,1:myNtrans,myPhase)   = LATTICE_fcc_projectionTrans
 
 !--------------------------------------------------------------------------------------------------
 ! bcc
@@ -1397,7 +1432,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    lattice_Utrans(1:3,1:3,i,myPhase)  = ub(1:3,1:3,i)
    lattice_Btrans(1:3,1:3,i,myPhase)  = math_axisAngleToR(rb(1:3,i),ab(i)*INRAD)
    lattice_Qtrans(1:3,1:3,i,myPhase)  = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), & 
-                                                     lattice_Btrans(1:3,1:3,i,myPhase))
+                                                      lattice_Btrans(1:3,1:3,i,myPhase))
    lattice_NItrans(1:3,1:3,i,myPhase) = math_mul33x33(lattice_Rtrans(1:3,1:3,i,myPhase), &
                                                       lattice_Utrans(1:3,1:3,i,myPhase)) - math_identity2nd(3)
    lattice_NItrans_v(1:6,i,myPhase)   = math_Mandel33to6(math_symmetric33(lattice_NItrans(1:3,1:3,i,myPhase)))
