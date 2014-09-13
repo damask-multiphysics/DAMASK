@@ -977,23 +977,23 @@ function field_getSpecificHeat(ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  integer(pInt) :: &
-   Ngrains, ipc
+   ipc
 
-   field_getSpecificHeat =0.0_pReal
+ field_getSpecificHeat =0.0_pReal
                                                 
-   select case(field_thermal_type(material_homog(ip,el)))                                                   
+ select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_THERMAL_ADIABATIC_ID)
-      field_getSpecificHeat = 0.0_pReal
+   case (FIELD_THERMAL_ADIABATIC_ID)
+    field_getSpecificHeat = 0.0_pReal
       
-     case (FIELD_THERMAL_CONDUCTION_ID)
-      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getSpecificHeat = field_getSpecificHeat + lattice_specificHeat(material_phase(ipc,ip,el))
-      enddo
+   case (FIELD_THERMAL_CONDUCTION_ID)
+    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+     field_getSpecificHeat = field_getSpecificHeat + lattice_specificHeat(material_phase(ipc,ip,el))
+    enddo
       
-   end select   
+ end select   
 
-   field_getSpecificHeat = field_getSpecificHeat /homogenization_Ngrains(mesh_element(3,el))
+ field_getSpecificHeat = field_getSpecificHeat /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getSpecificHeat
 
@@ -1020,23 +1020,23 @@ function field_getMassDensity(ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  integer(pInt) :: &
-   Ngrains, ipc
+   ipc
 
-   field_getMassDensity =0.0_pReal
+ field_getMassDensity =0.0_pReal
                                                 
-   select case(field_thermal_type(material_homog(ip,el)))                                                   
+ select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_THERMAL_ADIABATIC_ID)
-      field_getMassDensity = 0.0_pReal
+   case (FIELD_THERMAL_ADIABATIC_ID)
+    field_getMassDensity = 0.0_pReal
       
-     case (FIELD_THERMAL_CONDUCTION_ID)
-      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getMassDensity = field_getMassDensity + lattice_massDensity(material_phase(ipc,ip,el))
-      enddo
+   case (FIELD_THERMAL_CONDUCTION_ID)
+    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+     field_getMassDensity = field_getMassDensity + lattice_massDensity(material_phase(ipc,ip,el))
+    enddo
       
-   end select   
+ end select   
 
-   field_getMassDensity = field_getMassDensity /homogenization_Ngrains(mesh_element(3,el))
+ field_getMassDensity = field_getMassDensity /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getMassDensity
 !-------------------------------------------------------------------------------------------
@@ -1064,24 +1064,24 @@ function field_getThermalConductivity33(ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  integer(pInt) :: &
-   Ngrains, ipc
+   ipc
 
-   field_getThermalConductivity33 =0.0_pReal
+ field_getThermalConductivity33 =0.0_pReal
                                                 
-   select case(field_thermal_type(material_homog(ip,el)))                                                   
+ select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_THERMAL_ADIABATIC_ID)
-      field_getThermalConductivity33 = 0.0_pReal
+   case (FIELD_THERMAL_ADIABATIC_ID)
+    field_getThermalConductivity33 = 0.0_pReal
       
-     case (FIELD_THERMAL_CONDUCTION_ID)
-      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   case (FIELD_THERMAL_CONDUCTION_ID)
+     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
        field_getThermalConductivity33 = field_getThermalConductivity33 + &
         crystallite_push33ToRef(ipc,ip,el,lattice_thermalConductivity33(:,:,material_phase(ipc,ip,el)))
-      enddo
+    enddo
       
-   end select   
+ end select   
 
-   field_getThermalConductivity33 = field_getThermalConductivity33 /homogenization_Ngrains(mesh_element(3,el))
+ field_getThermalConductivity33 = field_getThermalConductivity33 /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getThermalConductivity33
 !--------------------------------------------------------------------------------------------------
@@ -1106,23 +1106,23 @@ function field_getDamageDiffusion33(ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  integer(pInt) :: &
-   Ngrains, ipc
+   ipc
 
-   field_getDamageDiffusion33 =0.0_pReal
+ field_getDamageDiffusion33 =0.0_pReal
                                                 
-   select case(field_damage_type(material_homog(ip,el)))                                                   
+ select case(field_damage_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_DAMAGE_LOCAL_ID)
-      field_getDamageDiffusion33 = 0.0_pReal
+ case (FIELD_DAMAGE_LOCAL_ID)
+   field_getDamageDiffusion33 = 0.0_pReal
       
-     case (FIELD_DAMAGE_NONLOCAL_ID)
-      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getDamageDiffusion33 = field_getDamageDiffusion33 + lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el))
-      enddo
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+     field_getDamageDiffusion33 = field_getDamageDiffusion33 + lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el))
+    enddo
       
-   end select   
+ end select   
 
-   field_getDamageDiffusion33 = field_getDamageDiffusion33 /homogenization_Ngrains(mesh_element(3,el))
+ field_getDamageDiffusion33 = field_getDamageDiffusion33 /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getDamageDiffusion33
 !--------------------------------------------------------------------------------------------------
@@ -1146,23 +1146,24 @@ real(pReal) function field_getDamageMobility(ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  integer(pInt) :: &
-   Ngrains, ipc
+   ipc
    
-   field_getDamageMobility =0.0_pReal
+ 
+ field_getDamageMobility =0.0_pReal
                                                 
-   select case(field_damage_type(material_homog(ip,el)))                                                   
+ select case(field_damage_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_DAMAGE_LOCAL_ID)
-      field_getDamageMobility = 0.0_pReal
+   case (FIELD_DAMAGE_LOCAL_ID)
+     field_getDamageMobility = 0.0_pReal
       
-     case (FIELD_DAMAGE_NONLOCAL_ID)
-      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
        field_getDamageMobility = field_getDamageMobility + lattice_DamageMobility(material_phase(ipc,ip,el))
-      enddo
+     enddo
       
-   end select   
+ end select   
 
-   field_getDamageMobility = field_getDamageMobility /homogenization_Ngrains(mesh_element(3,el))
+ field_getDamageMobility = field_getDamageMobility /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getDamageMobility
 !--------------------------------------------------------------------------------------------------
@@ -1186,24 +1187,25 @@ real(pReal) function field_getDAMAGE(ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  integer(pInt) :: &
-   Ngrains, ipc
+   ipc
+
 !--------------------------------------------------------------------------------------------------
 ! computing the damage value needed to be passed to field solver
-   field_getDAMAGE =0.0_pReal
+ field_getDAMAGE =0.0_pReal
                                                 
-   select case(field_damage_type(material_homog(ip,el)))                                                   
+ select case(field_damage_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_DAMAGE_LOCAL_ID)
-      field_getDAMAGE = 1.0_pReal
+   case (FIELD_DAMAGE_LOCAL_ID)
+    field_getDAMAGE = 1.0_pReal
       
-     case (FIELD_DAMAGE_NONLOCAL_ID)
-      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getDAMAGE = field_getDAMAGE + constitutive_getLocalDamage(ipc,ip,el)
-      enddo
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+     field_getDAMAGE = field_getDAMAGE + constitutive_getLocalDamage(ipc,ip,el)
+    enddo
       
-   end select   
+ end select   
 
-   field_getDAMAGE = field_getDAMAGE /homogenization_Ngrains(mesh_element(3,el))
+ field_getDAMAGE = field_getDAMAGE /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getDAMAGE
 
@@ -1211,14 +1213,10 @@ end function field_getDAMAGE
 !> @brief Sets the regularised damage value in field state
 !--------------------------------------------------------------------------------------------------
 subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
- use mesh, only: &
-   mesh_element
  use material, only: &
    fieldDamage, &
    mappingHomogenization, &
-   material_homog, &
    field_damage_type, &
-   FIELD_DAMAGE_LOCAL_ID, &
    FIELD_DAMAGE_NONLOCAL_ID
 
  implicit none
@@ -1227,15 +1225,13 @@ subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
    el       
  real(pReal), intent(in) :: &
    fieldDamageValue   
- integer(pInt) :: &
-   Ngrains, ipc
 
-   select case(field_damage_type(material_homog(ip,el)))                                                   
-     case (FIELD_DAMAGE_NONLOCAL_ID)
-      fieldDamage(material_homog(ip,el))% &
-        state(1, mappingHomogenization(1,ip,el)) = fieldDamageValue 
+ select case(field_damage_type(material_homog(ip,el)))                                                   
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+    fieldDamage(material_homog(ip,el))% &
+      state(1, mappingHomogenization(1,ip,el)) = fieldDamageValue 
 
-   end select 
+ end select 
 
 end subroutine field_putDAMAGE
 
@@ -1260,23 +1256,24 @@ real(pReal) function field_getThermal(ip,el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  integer(pInt) :: &
-   Ngrains, ipc
+   ipc
 
-   field_getThermal =1.0_pReal
+ 
+ field_getThermal = 1.0_pReal
                                                 
-   select case(field_thermal_type(material_homog(ip,el)))                                                   
+ select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-     case (FIELD_THERMAL_ADIABATIC_ID)
-      field_getThermal = 1.0_pReal
+   case (FIELD_THERMAL_ADIABATIC_ID)
+    field_getThermal = 1.0_pReal
       
-     case (FIELD_THERMAL_CONDUCTION_ID)
-      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getThermal = field_getThermal + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
-      enddo
+   case (FIELD_THERMAL_CONDUCTION_ID)
+    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+     field_getThermal = field_getThermal + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
+    enddo
       
-   end select   
+ end select   
 
-   field_getThermal = field_getThermal /homogenization_Ngrains(mesh_element(3,el))
+ field_getThermal = field_getThermal /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getThermal
 
@@ -1284,14 +1281,11 @@ end function field_getThermal
 !> @brief Sets the regularised temperature value in field state
 !--------------------------------------------------------------------------------------------------
 subroutine field_putThermal(ip,el,fieldThermalValue) 
- use mesh, only: &
-   mesh_element
  use material, only: &
    material_homog, &
    fieldThermal, &
    mappingHomogenization, &
    field_thermal_type, &
-   FIELD_THERMAL_ADIABATIC_ID, &
    FIELD_THERMAL_CONDUCTION_ID
 
  implicit none
@@ -1299,16 +1293,14 @@ subroutine field_putThermal(ip,el,fieldThermalValue)
    ip, &                                                                                            !< integration point number
    el
  real(pReal), intent(in) :: &
-   fieldThermalValue    
- integer(pInt) :: &
-   Ngrains, ipc
+   fieldThermalValue
 
-   select case(field_thermal_type(material_homog(ip,el)))                                                   
-     case (FIELD_THERMAL_CONDUCTION_ID)
-      fieldThermal(material_homog(ip,el))% &
+ select case(field_thermal_type(material_homog(ip,el)))                                                   
+   case (FIELD_THERMAL_CONDUCTION_ID)
+     fieldThermal(material_homog(ip,el))% &
         state(1,mappingHomogenization(1,ip,el)) = fieldThermalValue 
 
-   end select 
+ end select 
 
 end subroutine field_putThermal
 #endif

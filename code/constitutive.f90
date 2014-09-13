@@ -717,7 +717,6 @@ function constitutive_getNonlocalDamage(ipc, ip, el)
     FIELD_DAMAGE_LOCAL_ID, &
     FIELD_DAMAGE_NONLOCAL_ID
 
-
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number

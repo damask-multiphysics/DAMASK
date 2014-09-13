@@ -3421,9 +3421,6 @@ end function crystallite_stateJump
 !> @brief Map 2nd order tensor to reference config
 !--------------------------------------------------------------------------------------------------
 function crystallite_push33ToRef(g,i,e, tensor33)
- use prec, only: &
-  pInt, &
-  pReal
  use math, only: &
   math_inv33
 

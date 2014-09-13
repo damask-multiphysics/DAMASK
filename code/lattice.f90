@@ -251,7 +251,7 @@ module lattice
      ],[ 4_pInt,LATTICE_fcc_Ntrans])
 
  real(pReal), dimension(12,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_projectionTrans = reshape([&
+   LATTICE_fcc_projectionTrans = reshape(real([&
      0, 1,-1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &                                                                    
     -1, 0, 1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
      1,-1, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
@@ -264,7 +264,7 @@ module lattice
      0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1,-1, &
      0, 0, 0,  0, 0, 0,  0, 0, 0, -1, 0, 1, &
      0, 0, 0,  0, 0, 0,  0, 0, 0,  1,-1, 0  &
-     ],[ 12_pInt,LATTICE_fcc_Ntrans])
+     ],pReal),[ 12_pInt,LATTICE_fcc_Ntrans])
 
  integer(pInt), dimension(2_pInt,LATTICE_fcc_Ntrans), parameter, public :: &
    LATTICE_fcc_transNucleationTwinPair = reshape(int( [&
