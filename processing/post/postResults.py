@@ -3,7 +3,7 @@
 
 import pdb, os, sys, gc, math, re, threading, time, struct, string
 import damask
-from optparse import OptionParser
+from optparse import OptionParser, OptionGroup
 
 
 fileExtensions = { \
