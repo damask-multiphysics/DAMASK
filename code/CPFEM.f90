@@ -150,7 +150,7 @@ subroutine CPFEM_init
 #ifdef NEWSTATE
    homogState, &
    mappingHomogenization, &
-#endif   
+#endif
    phase_plasticity, &
    plasticState
  use crystallite, only: &
@@ -317,7 +317,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #ifdef NEWSTATE
    homogState, &
    mappingHomogenization, &
-#endif   
+#endif
    thermalState, &
    mappingConstitutive, &
    material_phase, &
@@ -659,10 +659,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  cauchyStress = CPFEM_cs   (1:6,    ip,elCP)
  jacobian     = CPFEM_dcsdE(1:6,1:6,ip,elCP)
 
- if (iand(mode, CPFEM_COLLECT) == 0_pInt &
-    .and. maxval(abs(cauchyStress)) > 1e10) &
-   write(6,'(a,i8,1x,i2,/,12x,6(f10.3,1x)/)') &
-     '<< CPFEM >> stress/MPa at elFE ip ',   elFE, ip, cauchyStress*1.0e-6_pReal
 
  !*** remember extreme values of stress ...
  cauchyStress33 = math_Mandel6to33(CPFEM_cs(1:6,ip,elCP))
