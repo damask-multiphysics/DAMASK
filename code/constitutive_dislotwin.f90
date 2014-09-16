@@ -769,6 +769,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
                 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizePostResults = constitutive_dislotwin_sizePostResults(instance)
      allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
      allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
