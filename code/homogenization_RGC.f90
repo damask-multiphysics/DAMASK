@@ -358,6 +358,12 @@ subroutine homogenization_RGC_init(fileUnit)
          homogenization_RGC_sizePostResults(i) + mySize
      endif outputFound
    enddo
+   homogenization_RGC_sizeState(i) &
+       = 3_pInt*(homogenization_RGC_Ngrains(1,i)-1_pInt)*homogenization_RGC_Ngrains(2,i)*homogenization_RGC_Ngrains(3,i) &
+         + 3_pInt*homogenization_RGC_Ngrains(1,i)*(homogenization_RGC_Ngrains(2,i)-1_pInt)*homogenization_RGC_Ngrains(3,i) &
+         + 3_pInt*homogenization_RGC_Ngrains(1,i)*homogenization_RGC_Ngrains(2,i)*(homogenization_RGC_Ngrains(3,i)-1_pInt) &
+         + 8_pInt   ! (1) Average constitutive work, (2-4) Overall mismatch, (5) Average penalty energy, 
+                    ! (6) Volume discrepancy, (7) Avg relaxation rate component, (8) Max relaxation rate component
  enddo
  
 #endif

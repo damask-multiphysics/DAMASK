@@ -2572,7 +2572,7 @@ integer(pInt) pure function math_factorial(n)
  integer(pInt), intent(in) :: n
  integer(pInt) :: i
  
- math_factorial = product((/(i, i=1,n)/))
+ math_factorial = product([(i, i=1,n)])
 
 end function math_factorial
 
@@ -2587,7 +2587,7 @@ integer(pInt) pure function math_binomial(n,k)
  integer(pInt) :: i, j
  
  j = min(k,n-k)
- math_binomial = product((/(i, i=n, n-j+1, -1)/))/math_factorial(j)
+ math_binomial = product([(i, i=n, n-j+1, -1)])/math_factorial(j)
 
 end function math_binomial
 
