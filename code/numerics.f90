@@ -111,8 +111,38 @@ module numerics
    err_damage_tol             =  1.0e-4_pReal, &
    residualStiffness          =  1.0e-6_pReal                                                      !< non-zero residual damage   
  character(len=1024), protected, public :: &
-   petsc_optionsFEM           = '-snes_type ngmres &
-                                &-snes_ngmres_anderson '
+   petsc_optionsFEM           = '-mech_snes_type newtonls &
+                                &-mech_snes_linesearch_type cp &
+                                &-mech_snes_ksp_ew &
+                                &-mech_snes_ksp_ew_rtol0 0.01 &
+                                &-mech_snes_ksp_ew_rtolmax 0.01 &
+                                &-mech_ksp_type fgmres &
+                                &-mech_ksp_max_it 50 &
+                                &-mech_pc_type ml &
+                                &-mech_pc_ml_maxNlevels 2 &
+                                &-mech_mg_coarse_ksp_type preonly &
+                                &-mech_mg_coarse_pc_type lu &
+                                &-mech_mg_coarse_pc_factor_mat_solver_package superlu_dist &
+                                &-mech_mg_levels_ksp_type chebyshev &
+                                &-mech_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                                &-mech_mg_levels_pc_type sor &
+                                &-mech_pc_ml_nullspace user &
+                                &-damage_snes_type vinewtonssls &
+                                &-damage_snes_linesearch_type cp &
+                                &-damage_ksp_type fgmres &
+                                &-damage_snes_atol 1e-8 &
+                                &-damage_pc_type ml &
+                                &-damage_mg_levels_ksp_type chebyshev &
+                                &-damage_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                                &-damage_mg_levels_pc_type sor &
+                                &-thermal_snes_type newtonls &
+                                &-thermal_snes_linesearch_type cp &
+                                &-thermal_ksp_type fgmres &
+                                &-thermal_snes_atol 1e-8 &
+                                &-thermal_pc_type ml &
+                                &-thermal_mg_levels_ksp_type chebyshev &
+                                &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                                &-thermal_mg_levels_pc_type sor'
  integer(pInt), protected, public :: &
    itmaxFEM                   =  250_pInt, &                                                        !< maximum number of iterations
    itminFEM                   =  2_pInt, &                                                          !< minimum number of iterations
@@ -123,10 +153,6 @@ module numerics
    damageOrder                =  2_pInt, &
    worldrank                  =  0_pInt, &
    worldsize                  =  0_pInt
- logical, protected, public :: &
-   structThermalCoupling      = .false., &
-   structDamageCoupling       = .false., &
-   thermalDamageCoupling      = .false. 
 #endif
 
  public :: numerics_init
@@ -392,17 +418,11 @@ subroutine numerics_init
          damageorder = IO_intValue(line,positions,2_pInt)
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
-       case ('structthermalcoupling')
-         structThermalCoupling = IO_intValue(line,positions,2_pInt)  > 0_pInt
-       case ('structdamagecoupling')
-         structDamageCoupling = IO_intValue(line,positions,2_pInt)  > 0_pInt
-       case ('thermaldamagecoupling')
-         thermalDamageCoupling = IO_intValue(line,positions,2_pInt)  > 0_pInt
 #endif
 #ifndef FEM
       case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','residualstiffness',&             ! found spectral parameter for FEM build
             'itmaxfem', 'itminfem','maxcutbackfem','integrationorder','structorder','thermalorder', &
-            'damageorder','petsc_optionsfem','structthermalcoupling','structdamagecoupling','thermaldamagecoupling')
+            'damageorder','petsc_optionsfem')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                ! found unknown keyword
@@ -534,9 +554,6 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
  write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
  write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
- write(6,'(a24,1x,L8)')      ' structThermalCoupling:  ',structThermalCoupling
- write(6,'(a24,1x,L8)')      ' structDamageCoupling:   ',structDamageCoupling
- write(6,'(a24,1x,L8)')      ' thermalDamageCoupling:  ',thermalDamageCoupling
  write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
 #endif
 
