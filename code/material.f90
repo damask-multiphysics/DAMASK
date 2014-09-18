@@ -165,17 +165,15 @@ module material
 
  integer(pInt), dimension(:,:,:), allocatable, public :: &
    material_phase                                                                                   !< phase (index) of each grain,IP,element
-#ifdef NEWSTATE
  integer(pInt), dimension(:,:), allocatable, public :: &
-   material_homog                                                                                   !< homogenization (index) of each IP,element
-#endif   
+   material_homog                                                                                   !< homogenization (index) of each IP,element 
  type(tState), allocatable, dimension(:), public :: &
    plasticState, &
    damageState, &
-   thermalState
-#ifdef NEWSTATE  
- type(hState), allocatable, dimension(:), public :: &
+   thermalState,&
    homogState
+
+#ifdef NEWSTATE
  type(fState), allocatable, dimension(:), public :: &
    fieldDamage
  type(fState), allocatable, dimension(:), public :: &
@@ -236,14 +234,11 @@ module material
    
  integer(pInt), dimension(:,:,:,:), allocatable, public, protected :: mappingConstitutive
  integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingCrystallite
-#ifdef NEWSTATE
  integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingHomogenization
-#endif
+
  integer(pInt), dimension(:), allocatable :: ConstitutivePosition
  integer(pInt), dimension(:), allocatable :: CrystallitePosition
-#ifdef NEWSTATE
  integer(pInt), dimension(:), allocatable :: HomogenizationPosition
-#endif
 
 
  public :: &
@@ -348,8 +343,8 @@ subroutine material_init
  allocate(plasticState(material_Nphase))
  allocate(damageState (material_Nphase))
  allocate(thermalState(material_Nphase))
-#ifdef NEWSTATE
  allocate(homogState  (material_Nhomogenization))
+#ifdef NEWSTATE
  allocate(fieldDamage (material_Nhomogenization))
  allocate(fieldThermal(material_Nhomogenization))
 #endif
@@ -392,22 +387,19 @@ subroutine material_init
  call material_populateGrains
 
  allocate(mappingConstitutive(2,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0_pInt)
-#ifdef NEWSTATE
  allocate(mappingHomogenization(2,mesh_maxNips,mesh_NcpElems),source=0_pInt)
-#endif
+
  allocate(mappingCrystallite (2,homogenization_maxNgrains,mesh_NcpElems),source=0_pInt)
  allocate(ConstitutivePosition(material_Nphase),source=0_pInt)
-#ifdef NEWSTATE
+
  allocate(HomogenizationPosition(material_Nhomogenization),source=0_pInt)
-#endif
  allocate(CrystallitePosition(material_Nphase),source=0_pInt)
+
  ElemLoop:do e = 1_pInt,mesh_NcpElems                                                               ! loop over elements
  myHomog = mesh_element(3,e)
    IPloop:do i = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,e)))                                     ! loop over IPs
-#ifdef NEWSTATE
-       HomogenizationPosition(myHomog) = HomogenizationPosition(myHomog) + 1_pInt
-       mappingHomogenization(1:2,i,e) = [HomogenizationPosition(myHomog),myHomog]
-#endif
+     HomogenizationPosition(myHomog) = HomogenizationPosition(myHomog) + 1_pInt
+     mappingHomogenization(1:2,i,e) = [HomogenizationPosition(myHomog),myHomog]
      GrainLoop:do g = 1_pInt,homogenization_Ngrains(mesh_element(3,e))                              ! loop over grains
        phase = material_phase(g,i,e)
        ConstitutivePosition(phase) = ConstitutivePosition(phase)+1_pInt                             ! not distinguishing between instances of same phase
@@ -1090,23 +1082,19 @@ subroutine material_populateGrains
  
  allocate(material_volume(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
  allocate(material_phase(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),        source=0_pInt)
-#ifdef NEWSTATE
  allocate(material_homog(mesh_maxNips,mesh_NcpElems),                                  source=0_pInt)
-#endif
  allocate(material_texture(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),      source=0_pInt)
  allocate(material_EulerAngles(3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems),source=0.0_pReal)
  
  allocate(Ngrains(material_Nhomogenization,material_Nmicrostructure),                  source=0_pInt)
  allocate(Nelems(material_Nhomogenization,material_Nmicrostructure),                   source=0_pInt)
  
-#ifdef NEWSTATE 
 ! populating homogenization schemes in each
 !--------------------------------------------------------------------------------------------------
  do e = 1_pInt, mesh_NcpElems
-    material_homog(1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))),e) = mesh_element(3,e)
+   material_homog(1_pInt:FE_Nips(FE_geomtype(mesh_element(2,e))),e) = mesh_element(3,e)
  enddo
  
-#endif
 !--------------------------------------------------------------------------------------------------
 ! precounting of elements for each homog/micro pair
  do e = 1_pInt, mesh_NcpElems
