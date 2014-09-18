@@ -29,7 +29,7 @@ endif
 ifdef PETSC_DIR
 include $(PETSC_DIR)/conf/variables
 INCLUDE_DIRS :=$(PETSC_FC_INCLUDES) -DPETSc -I../lib
-LIBRARIES    :=$(PETSC_WITH_EXTERNAL_LIB) -lfftw3
+LIBRARIES    :=$(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
 else
@@ -84,7 +84,7 @@ IMKL_COMPILER_gfortran :=gf
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
 OPENMP_FLAG_gfortran =-fopenmp
-LIBRARIES +=-lfftw3_threads -lpthread
+LIBRARIES +=-lpthread
 ifeq "$(F90)" "ifort"
 LIBRARIES +=-liomp5
 endif

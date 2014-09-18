@@ -227,11 +227,6 @@ subroutine utilities_init()
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
  if (pReal /= C_DOUBLE .or. pInt /= C_INT) call IO_error(0_pInt,ext_msg='Fortran to C')             ! check for correct precision in C
-!$ if(DAMASK_NumThreadsInt > 0_pInt) then
-!$   i = fftw_init_threads()                                                                        ! returns 0 in case of problem
-!$   if (i == 0_pInt) call IO_error(error_ID = 809_pInt)
-!$   call fftw_plan_with_nthreads(DAMASK_NumThreadsInt) 
-!$ endif
  call fftw_set_timelimit(fftw_timelimit)                                                            ! set timelimit for plan creation
 
 !--------------------------------------------------------------------------------------------------
