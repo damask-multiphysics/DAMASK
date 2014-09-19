@@ -91,8 +91,8 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
-  theTable.head_read()
+  table = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
+  table.head_read()
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
@@ -109,7 +109,7 @@ for file in files:
          }
   extra_header = []
 
-  for header in theTable.info:
+  for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue                                                              # skip blank lines
     for synonym,alternatives in synonyms.iteritems():
@@ -142,8 +142,8 @@ for file in files:
 #--- read data ------------------------------------------------------------------------------------
   microstructure = numpy.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
   i = 0
-  while theTable.data_read():
-    items = theTable.data
+  while table.data_read():
+    items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
       elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
@@ -157,18 +157,18 @@ for file in files:
 
 # ------------------------------------------ assemble header ---------------------------------------  
 
-  theTable.info = [
+  table.info = [
                    scriptID,
                    "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
                    "size\tx %i\ty %i\tz %i"%(info['size'][0],info['size'][1],info['size'][2],),
                    "origin\tx %i\ty %i\tz %i"%(info['origin'][0],info['origin'][1],info['origin'][2],),
                   ]
-  theTable.labels_clear()
-  theTable.labels_append(['x','y','z','microstructure'])                                  # implicitly switching label processing/writing on
-  theTable.head_write()
+  table.labels_clear()
+  table.labels_append(['x','y','z','microstructure'])                                  # implicitly switching label processing/writing on
+  table.head_write()
   
 #--- filtering of grain voxels ------------------------------------------------------------------------------------
-  theTable.data_clear()
+  table.data_clear()
   i = 0
   outputDead = False
   coord = numpy.zeros(3,'d')
@@ -178,8 +178,8 @@ for file in files:
         if (options.whitelist == [] and options.blacklist == []) or \
            (options.whitelist != [] and microstructure[i]     in options.whitelist) or \
            (options.blacklist != [] and microstructure[i] not in options.blacklist):
-          theTable.data = list((coord+0.5)/info['grid'])+[microstructure[i]]
-          outputDead = not theTable.data_write()
+          table.data = list((coord+0.5)/info['grid'])+[microstructure[i]]
+          outputDead = not table.data_write()
         i += 1
         if outputDead: break
       if outputDead: break
@@ -187,7 +187,7 @@ for file in files:
 
 # ------------------------------------------ output result ---------------------------------------  
 
-  outputDead or theTable.output_flush()                                        # just in case of buffered ASCII table
+  outputDead or table.output_flush()                                        # just in case of buffered ASCII table
 
   table.input_close()                                                       # close input ASCII table
   if file['name'] != 'STDIN':
