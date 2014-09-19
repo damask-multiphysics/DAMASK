@@ -458,6 +458,7 @@ FEM_utilities.o:               FEM_utilities.f90 \
 FEZoo.o:                       $(wildcard FEZoo.f90) \
                                IO.o
 	$(IGNORE) $(PREFIX) $(COMPILERNAME) $(COMPILE) -c ../private/FEM/code/FEZoo.f90 $(SUFFIX)
+	touch FEZoo.o
 
 CPFEM.o:                       CPFEM.f90\
                                homogenization.o

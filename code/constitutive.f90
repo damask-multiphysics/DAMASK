@@ -216,16 +216,9 @@ subroutine constitutive_init
 
 #ifdef TODO
 !--------------------------------------------------------------------------------------------------
-! write out state size file
- call IO_write_jobIntFile(777,'sizeStateConst', size(constitutive_sizeState))
- write (777,rec=1) constitutive_sizeState
- close(777)
-
-!--------------------------------------------------------------------------------------------------
 ! report
  constitutive_maxSizeState       = maxval(constitutive_sizeState)
  constitutive_maxSizeDotState    = maxval(constitutive_sizeDotState)
- constitutive_maxSizePostResults = maxval(constitutive_sizePostResults)
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) then
    write(6,'(a32,1x,7(i8,1x))')   'constitutive_state0:          ', shape(constitutive_state0)

@@ -147,12 +147,11 @@ subroutine CPFEM_init
  use material, only: &
    homogenization_maxNgrains, &
    material_phase, &
-#ifdef NEWSTATE
    homogState, &
    mappingHomogenization, &
-#endif
    phase_plasticity, &
-   plasticState
+   plasticState, &
+   material_Nhomogenization
  use crystallite, only: &
    crystallite_F0, &
    crystallite_Fp0, &
@@ -160,14 +159,9 @@ subroutine CPFEM_init
    crystallite_dPdF0, &
    crystallite_Tstar0_v, &
    crystallite_localPlasticity
- use homogenization, only: &
-#ifndef NEWSTATE
-   homogenization_state0, &
-#endif
-   homogenization_sizeState
 
  implicit none
- integer(pInt) :: i,j,k,l,m,ph
+ integer(pInt) :: i,j,k,l,m,ph,homog
 
  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -214,29 +208,26 @@ subroutine CPFEM_init
 
    call IO_read_realFile(777,'convergedStateConst',modelName)
    m = 0_pInt
-   readInstances: do ph = 1_pInt, size(phase_plasticity)
+   readPlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
      do k = 1_pInt, plasticState(ph)%sizeState
        do l = 1, size(plasticState(ph)%state0(1,:))
          m = m+1_pInt
          read(777,rec=m) plasticState(ph)%state0(k,l)
      enddo; enddo
-   enddo readInstances
+   enddo readPlasticityInstances
    close (777)
 
    call IO_read_realFile(777,'convergedStateHomog',modelName)
    m = 0_pInt
-   do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
-     do l = 1,homogenization_sizeState(j,k)
-       m = m+1_pInt
-#ifdef NEWSTATE
-       read(777,rec=m) homogState(mappingHomogenization(2,j,k))%state0(l,mappingHomogenization(1,j,k))
-#else
-       read(777,rec=m) homogenization_state0(j,k)%p(l)
-#endif
-     enddo
-
-   enddo; enddo
+   readHomogInstances: do homog = 1_pInt, material_Nhomogenization
+     do k = 1_pInt, homogState(homog)%sizeState
+       do l = 1, size(homogState(homog)%state0(1,:))
+         m = m+1_pInt
+         read(777,rec=m) homogState(homog)%state0(k,l)
+     enddo; enddo
+   enddo readHomogInstances
    close (777)
+
 #if defined(Marc4DAMASK) || defined(Abaqus)
    call IO_read_realFile(777,'convergeddcsdE',modelName,size(CPFEM_dcsdE))
    read (777,rec=1) CPFEM_dcsdE
@@ -314,14 +305,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    microstructure_elemhomo, &
    plasticState, &
    damageState, &
-#ifdef NEWSTATE
    homogState, &
-   mappingHomogenization, &
-#endif
    thermalState, &
    mappingConstitutive, &
    material_phase, &
-   phase_plasticity
+   phase_plasticity, &
+   material_Nhomogenization
  use crystallite, only: &
    crystallite_partionedF,&
    crystallite_F0, &
@@ -334,13 +323,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_Tstar0_v, &
    crystallite_Tstar_v, &
    crystallite_temperature
- use homogenization, only: &
-   homogenization_sizeState, &
-#ifndef NEWSTATE
-   homogenization_state, &
-   homogenization_state0, &
-#endif
-   materialpoint_F, &
+ use homogenization, only: &   materialpoint_F, &
    materialpoint_F0, &
    materialpoint_P, &
    materialpoint_dPdF, &
@@ -378,7 +361,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #endif
 
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
-                                                     i, j, k, l, m, n, ph
+                                                     i, j, k, l, m, n, ph, homog
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
@@ -433,19 +416,10 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
        endif
    endif
 
-   !$OMP PARALLEL DO
-     do k = 1,mesh_NcpElems
-       do j = 1,mesh_maxNips
-         if (homogenization_sizeState(j,k) > 0_pInt) &
-#ifdef NEWSTATE
-           homogState(mappingHomogenization(2,j,k))%state0(:,mappingHomogenization(1,j,k)) =  &
-      homogState(mappingHomogenization(2,j,k))%state(:,mappingHomogenization(1,j,k))              ! internal state of homogenization scheme
-#else
-           homogenization_state0(j,k)%p = homogenization_state(j,k)%p                          ! internal state of homogenization scheme
-#endif
-       enddo
-     enddo
-   !$OMP END PARALLEL DO
+   do homog = 1_pInt, material_Nhomogenization
+     homogState(homog)%state0 =  homogState(homog)%state
+   enddo
+  
 
    ! * dump the last converged values of each essential variable to a binary file
 
@@ -479,27 +453,24 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 
      call IO_write_jobRealFile(777,'convergedStateConst')
      m = 0_pInt
-     writeInstances: do ph = 1_pInt, size(phase_plasticity)
+     writePlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
        do k = 1_pInt, plasticState(ph)%sizeState
          do l = 1, size(plasticState(ph)%state0(1,:))
            m = m+1_pInt
            write(777,rec=m) plasticState(ph)%state0(k,l)
        enddo; enddo
-     enddo writeInstances
+     enddo writePlasticityInstances
      close (777)
 
      call IO_write_jobRealFile(777,'convergedStateHomog')
      m = 0_pInt
-     do k = 1,mesh_NcpElems; do j = 1,mesh_maxNips
-       do l = 1,homogenization_sizeState(j,k)
-         m = m+1_pInt
-#ifdef NEWSTATE
-         write(777,rec=m) homogState(mappingHomogenization(2,j,k))%state0(l,mappingHomogenization(1,j,k))
-#else
-         write(777,rec=m) homogenization_state0(j,k)%p(l)
-#endif
-       enddo
-     enddo; enddo
+     writeHomogInstances: do homog = 1_pInt, material_Nhomogenization
+       do k = 1_pInt, homogState(homog)%sizeState
+         do l = 1, size(homogState(homog)%state0(1,:))
+           m = m+1_pInt
+           write(777,rec=m) homogState(homog)%state0(k,l)
+       enddo; enddo
+     enddo writeHomogInstances
      close (777)
 
 #if defined(Marc4DAMASK) || defined(Abaqus)

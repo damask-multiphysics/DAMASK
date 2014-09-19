@@ -29,36 +29,28 @@ subroutine homogenization_none_init()
  use material
  
  implicit none
-#ifdef NEWSTATE
- integer :: &
+ integer(pInt) :: &
    homog, &
-   NofMyHomog, &
-   instance, &
-   sizeHState
-#endif 
+   NofMyHomog
+
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
-#ifdef NEWSTATE
   initializeInstances: do homog = 1_pInt, material_Nhomogenization
    
    myhomog: if (homogenization_type(homog) == HOMOGENIZATION_none_ID) then
-      NofMyHomog = count(material_homog == homog)
-!     instance = phase_plasticityInstance(phase)
-
-! allocate homogenization state arrays
-     sizeHState = 0_pInt
-     homogState(homog)%sizeState = sizeHState
+     NofMyHomog = count(material_homog == homog)
+     homogState(homog)%sizeState = 0_pInt
      homogState(homog)%sizePostResults = 0_pInt
-     allocate(homogState(homog)%state0             (   sizeHState,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%subState0          (   sizeHState,NofMyHomog), source=0.0_pReal)
-     allocate(homogState(homog)%state              (   sizeHState,NofMyHomog), source=0.0_pReal)
+     allocate(homogState(homog)%state0   (0_pInt,NofMyHomog), source=0.0_pReal)
+     allocate(homogState(homog)%subState0(0_pInt,NofMyHomog), source=0.0_pReal)
+     allocate(homogState(homog)%state    (0_pInt,NofMyHomog), source=0.0_pReal)
 
    endif myhomog
  enddo initializeInstances
-#endif
+
 
 end subroutine homogenization_none_init
 
