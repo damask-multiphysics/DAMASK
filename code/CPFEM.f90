@@ -323,7 +323,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_Tstar0_v, &
    crystallite_Tstar_v, &
    crystallite_temperature
- use homogenization, only: &   materialpoint_F, &
+ use homogenization, only: &  
+   materialpoint_F, &
    materialpoint_F0, &
    materialpoint_P, &
    materialpoint_dPdF, &
