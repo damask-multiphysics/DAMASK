@@ -300,7 +300,7 @@ parser.add_option('-u', '--unitlength', dest='unitlength', type='float', metavar
 parser.add_option('--filenodalcoords', dest='filenodalcoords', metavar = 'string',
                                     help='ASCII table containing nodal coords')
 parser.add_option('--labelnodalcoords', dest='labelnodalcoords', nargs=3,
-                                    help='labels of nodal coords in ASCII table {%s} '%(' '.join(map(str,%default))), metavar = 'string string string')
+                                    help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
 parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',
                                     help='use linear reconstruction of geometry [%default]')
                   
