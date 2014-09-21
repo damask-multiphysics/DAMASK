@@ -20,7 +20,7 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 
 parser.add_option('-d','--data',    dest='data', nargs=2, type='int', metavar='int int',
                                     help='columns containing x and y %default')
-parser.add_option('-w','--weight',  dest='weight', metavar='int',
+parser.add_option('-w','--weight',  dest='weight', metavar='int', type='int',
                                     help='column containing weight of (x,y) point [%default]')
 parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int', metavar='int int',
                                     help='number of bins in x and y direction %default')
