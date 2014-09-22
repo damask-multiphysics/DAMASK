@@ -25,9 +25,8 @@ module thermal_adiabatic
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    thermal_adiabatic_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         private :: &
-   thermal_adiabatic_specific_heat, &
-   thermal_adiabatic_density
+ real(pReal),                         dimension(:),     allocatable,         public :: &
+   thermal_adiabatic_aTol
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -44,7 +43,6 @@ module thermal_adiabatic
    thermal_adiabatic_dotState, &
    constitutive_heatgen_getThermal, &
    constitutive_heatgen_putThermal, &
-   thermal_adiabatic_temperature, &
    thermal_adiabatic_postResults
 
 contains
@@ -117,8 +115,7 @@ subroutine thermal_adiabatic_init(fileUnit)
           thermal_adiabatic_output = ''
  allocate(thermal_adiabatic_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(thermal_adiabatic_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(thermal_adiabatic_specific_heat(maxNinstance),                       source=0.0_pReal) 
- allocate(thermal_adiabatic_density(maxNinstance),                             source=0.0_pReal) 
+ allocate(thermal_adiabatic_aTol(maxNinstance),                       source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -153,10 +150,9 @@ subroutine thermal_adiabatic_init(fileUnit)
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
 
-       case ('specific_heat')
-         thermal_adiabatic_specific_heat(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('density')
-         thermal_adiabatic_density(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('atol_adiabatic')
+         thermal_adiabatic_aTol(instance) = IO_floatValue(line,positions,2_pInt)
+
      end select
    endif; endif
  enddo parsingFile
@@ -245,7 +241,7 @@ subroutine thermal_adiabatic_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the thermal
  real(pReal), dimension(thermalState(phase)%sizeState) :: tempTol
 
- tempTol = 0.0_pReal
+ tempTol = thermal_adiabatic_aTol
  thermalState(phase)%aTolState = tempTol
 end subroutine thermal_adiabatic_aTolState
  
@@ -253,6 +249,9 @@ end subroutine thermal_adiabatic_aTolState
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
+ use lattice, only: &
+   lattice_massDensity, &
+   lattice_specificHeat
  use material, only: &
    mappingConstitutive, &
    phase_thermalInstance, &
@@ -279,29 +278,9 @@ subroutine thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
  thermalState(phase)%dotState(1,constituent) = &
     0.95_pReal &
   * sum(abs(math_Mandel6to33(Tstar_v)*Lp)) &
-  / (thermal_adiabatic_density(phase)*thermal_adiabatic_specific_heat(phase))
+  / (lattice_massDensity(phase)*lattice_specificHeat(phase))
   
 end subroutine thermal_adiabatic_dotState
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns temperature based on adiabatic thermal model state layout 
-!--------------------------------------------------------------------------------------------------
-function thermal_adiabatic_temperature(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   thermalState
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal) :: thermal_adiabatic_temperature
-
- thermal_adiabatic_temperature = &
-   thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
-
-end function thermal_adiabatic_temperature
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on local damage model state layout 
@@ -319,7 +298,6 @@ function constitutive_heatgen_getThermal(ipc, ip, el)
  real(pReal) :: constitutive_heatgen_getThermal
  
  constitutive_heatgen_getThermal = &
-   thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))* &
    thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
 end function constitutive_heatgen_getThermal
