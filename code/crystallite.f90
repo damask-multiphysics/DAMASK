@@ -2931,8 +2931,7 @@ subroutine crystallite_integrateStateFPI()
    c, &
    mySizePlasticDotState, &                                                                         ! size of dot states
    mySizeDamageDotState, &
-   mySizeThermalDotState, &
-   ss
+   mySizeThermalDotState
  integer(pInt), dimension(2) :: &
    eIter                                                                                            ! bounds for element iteration
  integer(pInt), dimension(2,mesh_NcpElems) :: &

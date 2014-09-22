@@ -67,7 +67,7 @@ subroutine homogenization_isostrain_init(fileUnit)
  integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
  integer(pInt) :: &
-   section = 0_pInt, i, j, output, mySize, o
+   section = 0_pInt, i, output, mySize, o
  integer :: &
    maxNinstance, &
    homog, &

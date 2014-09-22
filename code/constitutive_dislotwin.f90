@@ -1331,8 +1331,6 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
     gdot_slip,dgdot_dtauslip,tau_slip
  real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
     gdot_twin,dgdot_dtautwin,tau_twin
- real(pReal), dimension(constitutive_dislotwin_totalNtrans(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-    nIdot_trans,dnIdot_dtautrans,tau_trans,f_trans,nI_trans
  real(pReal), dimension(6) :: gdot_sb,dgdot_dtausb,tau_sb
  real(pReal), dimension(3,3) :: eigVectors, sb_Smatrix
  real(pReal), dimension(3)   :: eigValues, sb_s, sb_m
@@ -1596,8 +1594,6 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  ClimbVelocity,DotRhoEdgeDipClimb,DotRhoDipFormation
  real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
               tau_twin
- real(pReal), dimension(constitutive_dislotwin_totalNtrans(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-              tau_trans, f_trans, nI_trans
 
  !* Shortened notation
 
@@ -1800,7 +1796,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  real(pReal), dimension(constitutive_dislotwin_sizePostResults(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
                                            constitutive_dislotwin_postResults
  integer(pInt) :: &
-   instance,phase,&
+   instance,&
    ns,nt,nr,&
    f,o,i,c,j,index_myFamily,&
    s1,s2, &

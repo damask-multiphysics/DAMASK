@@ -161,7 +161,7 @@ subroutine CPFEM_init
    crystallite_localPlasticity
 
  implicit none
- integer(pInt) :: i,j,k,l,m,ph,homog
+ integer(pInt) :: k,l,m,ph,homog
 
  write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
  write(6,'(a)')     ' $Id$'
@@ -362,7 +362,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #endif
 
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
-                                                     i, j, k, l, m, n, ph, homog
+                                                     i, k, l, m, ph, homog
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
 
 #if defined(Marc4DAMASK) || defined(Abaqus)

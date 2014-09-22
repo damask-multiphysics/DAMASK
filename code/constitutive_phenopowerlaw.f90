@@ -704,7 +704,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ip
  integer(pInt) :: &
    instance, & 
    nSlip, &
-   nTwin,phase,index_Gamma,index_F,index_myFamily, &
+   nTwin,index_Gamma,index_F,index_myFamily, &
    f,i,j,k,l,m,n, &
    of, &
    ph

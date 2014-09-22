@@ -1720,7 +1720,7 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
                                            constitutive_dislokmc_postResults
 
  integer(pInt) :: &
-   instance,phase,&
+   instance,&
    ns,nt,&
    f,o,i,c,j,index_myFamily,&
    s1,s2, &

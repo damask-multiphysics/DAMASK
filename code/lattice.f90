@@ -1499,7 +1499,7 @@ pure function lattice_symmetrize33(struct,T33)
  integer(kind(LATTICE_undefined_ID)), intent(in) :: struct
  real(pReal), dimension(3,3), intent(in) :: T33
  real(pReal), dimension(3,3) :: lattice_symmetrize33
- integer(pInt) :: j,k
+ integer(pInt) :: k
 
  lattice_symmetrize33 = 0.0_pReal
  
