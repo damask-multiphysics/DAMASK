@@ -78,13 +78,11 @@ module prec
    real(pReal), allocatable, dimension(:,:,:) :: RKCK45dotState
  end type
 
-#ifdef NEWSTATE  
  type, public :: tFieldData
    integer(pInt)                              :: sizeField = 0_pInt , &
                                                  sizePostResults = 0_pInt
    real(pReal), allocatable, dimension(:,:)   :: field                                              ! material points, state size
  end type 
-#endif
 
  public :: &
    prec_init

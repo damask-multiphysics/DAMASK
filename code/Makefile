@@ -353,20 +353,12 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 ###################################################################################################
-ifeq "$(STATE)" "NEWH"
 DAMAGE_FILES = \
    damage_none.o damage_local.o
-else
-DAMAGE_FILES = \
-   damage_none.o damage_local.o damage_gradient.o 
-endif
-ifeq "$(STATE)" "NEWH"
+
 THERMAL_FILES = \
    thermal_none.o thermal_adiabatic.o
-else
-THERMAL_FILES = \
-   thermal_none.o thermal_conduction.o
-endif
+
 CONSTITUTIVE_FILES = \
    constitutive_dislotwin.o constitutive_dislokmc.o constitutive_j2.o constitutive_phenopowerlaw.o \
    constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o \
@@ -521,16 +513,10 @@ damage_none.o:                 damage_none.f90 \
 damage_local.o:                damage_local.f90 \
                                lattice.o
 
-damage_gradient.o:             damage_gradient.f90 \
-                               lattice.o
-
 constitutive_thermal.o:        constitutive_thermal.f90 \
                                $(THERMAL_FILES)
 
 thermal_none.o:                thermal_none.f90 \
-                               lattice.o
-
-thermal_conduction.o:          thermal_conduction.f90 \
                                lattice.o
 
 thermal_adiabatic.o:           thermal_adiabatic.f90 \

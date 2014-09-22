@@ -741,16 +741,12 @@ module lattice
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
-#ifdef NEWSTATE
    lattice_damageDiffusion33, &
-#endif
    lattice_surfaceEnergy33
  real(pReal),                              dimension(:),       allocatable, public, protected :: &
-#ifdef NEWSTATE
    lattice_damageMobility, &
    lattice_massDensity, &
    lattice_specificHeat, &
-#endif
    lattice_referenceTemperature
  enum, bind(c)
    enumerator :: LATTICE_undefined_ID, &
@@ -1004,12 +1000,10 @@ subroutine lattice_init
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
  allocate(lattice_thermalConductivity33(3,3,Nphases), source=0.0_pReal)
  allocate(lattice_thermalExpansion33   (3,3,Nphases), source=0.0_pReal)
-#ifdef NEWSTATE
  allocate(lattice_damageDiffusion33   (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_damageMobility      (    Nphases), source=0.0_pReal)
  allocate(lattice_massDensity         (    Nphases), source=0.0_pReal)
  allocate(lattice_specificHeat        (    Nphases), source=0.0_pReal)
-#endif
  allocate(lattice_surfaceEnergy33      (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_referenceTemperature     (Nphases), source=0.0_pReal)
 
@@ -1136,7 +1130,6 @@ subroutine lattice_init
        lattice_surfaceEnergy33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('reference_temperature')
        lattice_referenceTemperature(section) = IO_floatValue(line,positions,2_pInt)
-#ifdef NEWSTATE
      case ('k_d11')
        lattice_DamageDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
      case ('k_d12')
@@ -1155,14 +1148,12 @@ subroutine lattice_init
        lattice_DamageDiffusion33(3,2,section) = IO_floatValue(line,positions,2_pInt)
      case ('k_d33')
        lattice_DamageDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
-     case ('mobility_d')
+     case ('damage_mobility')
        lattice_DamageMobility(section) = IO_floatValue(line,positions,2_pInt)
      case ('specific_heat')
        lattice_specificHeat(section) = IO_floatValue(line,positions,2_pInt)
      case ('mass_density')
        lattice_massDensity(section) = IO_floatValue(line,positions,2_pInt)
-       
-#endif
      end select
    endif
  enddo

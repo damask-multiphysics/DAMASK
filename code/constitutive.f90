@@ -23,12 +23,12 @@ module constitutive
    constitutive_TandItsTangent, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
-#ifdef NEWSTATE
    constitutive_getLocalDamage, &
+   constitutive_putLocalDamage, & 
    constitutive_getNonLocalDamage, &
    constitutive_getAdiabaticThermal, &
+   constitutive_putAdiabaticThermal, &
    constitutive_getConductionThermal, &
-#endif
    constitutive_postResults
  
  private :: &
@@ -361,8 +361,6 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
- use constitutive_damage, only: &
-   constitutive_damageValue  
  use constitutive_j2, only: &
    constitutive_j2_LpAndItsTangent
  use constitutive_phenopowerlaw, only: &
@@ -396,17 +394,23 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
      Lp = 0.0_pReal
      dLp_dTstar = 0.0_pReal
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar, &
+                               Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar, &
+                               Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ip,el)
+     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,&
+                       Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ipc,ip,el)
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar, &
+                   Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ipc,ip,el)
+     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,&
+                    Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v/constitutive_damageValue(ipc,ip,el),temperature,ipc,ip,el)
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar, &
+                    Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ipc,ip,el)
 
  end select
  
@@ -461,10 +465,6 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  use lattice, only: &
    lattice_referenceTemperature, &
    lattice_thermalExpansion33
- use constitutive_damage, only: &
-   constitutive_damageValue  
- use constitutive_thermal, only: &
-   constitutive_temperature  
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -485,11 +485,11 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
  T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3) - &
                         lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
-                        (constitutive_temperature(ipc,ip,el) - &
+                        (constitutive_getConductionThermal(ipc,ip,el) - &
                          lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el))))
  
  pressure = math_trace33(T)/3.0_pReal
- damage = constitutive_damageValue(ipc,ip,el)
+ damage = constitutive_getNonlocalDamage(ipc,ip,el)
  T = damage*T
 
  if(pressure >= 0.0_pReal) then
@@ -619,10 +619,8 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
  use material, only: &
    phase_plasticity, &
    material_phase, &
-#ifdef NEWSTATE   
    plasticState, &
    mappingConstitutive, &
-#endif
    PLASTICITY_NONLOCAL_ID 
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_deltaState
@@ -664,7 +662,7 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
 
 end function constitutive_collectDeltaState
 
-#ifdef NEWSTATE
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns the local(unregularised)  damage 
 !--------------------------------------------------------------------------------------------------
@@ -697,6 +695,35 @@ function constitutive_getLocalDamage(ipc, ip, el)
 end function constitutive_getLocalDamage
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Returns the local(unregularised)  damage 
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
+ use prec, only: &
+   pReal
+ use material, only: &
+   material_phase, &
+   LOCAL_DAMAGE_BRITTLE_ID, &
+   phase_damage
+ use damage_local, only: &
+   constitutive_brittle_putDamage
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in) :: &
+   localDamage
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_BRITTLE_ID)
+     call constitutive_brittle_putDamage(ipc, ip, el, localDamage)
+
+ end select
+
+end subroutine constitutive_putLocalDamage
+
+!--------------------------------------------------------------------------------------------------
 !> @brief returns nonlocal (regularised) damage
 !--------------------------------------------------------------------------------------------------
 function constitutive_getNonlocalDamage(ipc, ip, el)
@@ -724,7 +751,7 @@ function constitutive_getNonlocalDamage(ipc, ip, el)
       
      case (FIELD_DAMAGE_NONLOCAL_ID)
       constitutive_getNonlocalDamage =    fieldDamage(material_homog(ip,el))% &
-        state(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+        field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
    end select
 
@@ -763,6 +790,35 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
 end function constitutive_getAdiabaticThermal
 
 !--------------------------------------------------------------------------------------------------
+!> @brief Returns the local(unregularised)  damage 
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_putAdiabaticThermal(ipc, ip, el, localTemperature)
+ use prec, only: &
+   pReal
+ use material, only: &
+   material_phase, &
+   LOCAL_THERMAL_HEATGEN_ID, &
+   phase_thermal
+ use thermal_adiabatic, only: &
+   constitutive_heatgen_putThermal
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in) :: &
+   localTemperature
+ 
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_HEATGEN_ID)
+     call constitutive_heatgen_putThermal(ipc, ip, el, localTemperature)
+
+ end select
+
+end subroutine constitutive_putAdiabaticThermal
+
+!--------------------------------------------------------------------------------------------------
 !> @brief returns nonlocal (regularised) temperature
 !--------------------------------------------------------------------------------------------------
 function constitutive_getConductionThermal(ipc, ip, el)
@@ -792,13 +848,11 @@ function constitutive_getConductionThermal(ipc, ip, el)
       
      case (FIELD_THERMAL_CONDUCTION_ID)
       constitutive_getConductionThermal =    fieldThermal(material_homog(ip,el))% &
-        state(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+        field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
    end select
 
 end function constitutive_getConductionThermal
-
-#endif
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
@@ -821,8 +875,6 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
- use constitutive_damage, only: &
-   constitutive_damageValue  
  use constitutive_j2, only: &
 #ifdef HDF
    constitutive_j2_postResults2,&
@@ -858,19 +910,19 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    case (PLASTICITY_TITANMOD_ID)
      constitutive_postResults = constitutive_titanmod_postResults(ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults= constitutive_j2_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+     constitutive_postResults= constitutive_j2_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
      constitutive_postResults = &
-       constitutive_phenopowerlaw_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),ipc,ip,el)
+       constitutive_phenopowerlaw_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_postResults = &
-       constitutive_dislotwin_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),Temperature,ipc,ip,el)
+       constitutive_dislotwin_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),Temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
      constitutive_postResults = &
-       constitutive_dislokmc_postResults(Tstar_v/constitutive_damageValue(ipc,ip,el),Temperature,ipc,ip,el)
+       constitutive_dislokmc_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_postResults = &
-       constitutive_nonlocal_postResults (Tstar_v/constitutive_damageValue(ipc,ip,el),FeArray,ip,el)
+       constitutive_nonlocal_postResults (Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),FeArray,ip,el)
  end select
   
 end function constitutive_postResults

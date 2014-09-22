@@ -26,7 +26,6 @@ module damage_local
    damage_local_Noutput                                                                   !< number of outputs per instance of this damage 
 
  real(pReal),                         dimension(:),     allocatable,         public :: &
-   damage_local_crack_mobility, &
    damage_local_aTol
 
  enum, bind(c) 
@@ -43,10 +42,9 @@ module damage_local
    damage_local_stateInit, &
    damage_local_aTolState, &
    damage_local_dotState, &
-   damage_local_damageValue, &
-#ifdef NEWSTATE
+   damage_local_microstructure, &
    constitutive_brittle_getDamage, &
-#endif
+   constitutive_brittle_putDamage, &
    damage_local_postResults
 
 contains
@@ -83,13 +81,8 @@ subroutine damage_local_init(fileUnit)
    phase_damage, &
    phase_damageInstance, &
    phase_Noutput, &
-#ifdef NEWSTATE
    LOCAL_DAMAGE_BRITTLE_label, &
    LOCAL_DAMAGE_BRITTLE_ID, &
-#else
-   DAMAGE_LOCAL_label, &
-   DAMAGE_local_ID, &
-#endif
    material_phase, &  
    damageState, &
    MATERIAL_partPhase
@@ -107,20 +100,12 @@ subroutine damage_local_init(fileUnit)
  character(len=65536) :: &
    tag  = '', &
    line = ''
-#ifdef NEWSTATE
  write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_BRITTLE_label//' init  -+>>>'
-#else
- write(6,'(/,a)')   ' <<<+-  damage_'//DAMAGE_LOCAL_label//' init  -+>>>'
-#endif
  write(6,'(a)')     ' $Id: damage_local.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- 
-#ifdef NEWSTATE
+
  maxNinstance = int(count(phase_damage == LOCAL_DAMAGE_BRITTLE_ID),pInt)
-#else
- maxNinstance = int(count(phase_damage == DAMAGE_local_ID),pInt)
-#endif 
  if (maxNinstance == 0_pInt) return
  
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -132,7 +117,6 @@ subroutine damage_local_init(fileUnit)
           damage_local_output = ''
  allocate(damage_local_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_local_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(damage_local_crack_mobility(maxNinstance),                      source=0.0_pReal) 
  allocate(damage_local_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -152,30 +136,19 @@ subroutine damage_local_init(fileUnit)
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      cycle                                                                                          ! skip to next line
    endif
-#ifdef NEWSTATE
    if (phase > 0_pInt ) then; if (phase_damage(phase) == LOCAL_DAMAGE_BRITTLE_ID) then ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-#else
-   if (phase > 0_pInt ) then; if (phase_damage(phase) == DAMAGE_local_ID) then   ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
-#endif
      instance = phase_damageInstance(phase)                                                     ! which instance of my damage is present phase
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
      select case(tag)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
-#ifdef NEWSTATE
            case ('local_damage_brittle')
-#else
-           case ('local_damage')
-#endif
              damage_local_Noutput(instance) = damage_local_Noutput(instance) + 1_pInt
              damage_local_outputID(damage_local_Noutput(instance),instance) = local_damage_ID
              damage_local_output(damage_local_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
-
-       case ('crack_mobility')
-         damage_local_crack_mobility(instance) = IO_floatValue(line,positions,2_pInt)
 
        case ('atol_damage')
          damage_local_aTol(instance) = IO_floatValue(line,positions,2_pInt)
@@ -185,11 +158,7 @@ subroutine damage_local_init(fileUnit)
  enddo parsingFile
  
  initializeInstances: do phase = 1_pInt, size(phase_damage)
-#ifdef NEWSTATE
    if (phase_damage(phase) == LOCAL_DAMAGE_BRITTLE_ID) then
-#else
-   if (phase_damage(phase) == DAMAGE_local_ID) then
-#endif
      NofMyPhase=count(material_phase==phase)
      instance = phase_damageInstance(phase)
 
@@ -207,7 +176,7 @@ subroutine damage_local_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   2_pInt
+     sizeDotState              =   1_pInt
      sizeState                 =   2_pInt
                 
      damageState(phase)%sizeState = sizeState
@@ -272,8 +241,7 @@ subroutine damage_local_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the damage
  real(pReal), dimension(damageState(phase)%sizeState) :: tempTol
 
- tempTol(1) = 100.0_pReal
- tempTol(2) = damage_local_aTol(instance)
+ tempTol = damage_local_aTol(instance)
  damageState(phase)%aTolState = tempTol
 end subroutine damage_local_aTolState
  
@@ -281,6 +249,40 @@ end subroutine damage_local_aTolState
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   phase_damageInstance, &
+   damageState
+ use lattice, only: &
+   lattice_DamageMobility
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
+ real(pReal),  intent(in), dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+ real(pReal),  intent(in), dimension(3,3) :: &
+   Lp, &
+   Fe
+ integer(pInt) :: &
+   phase, constituent
+
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ 
+ damageState(phase)%dotState(1,constituent) = &
+   (1.0_pReal/lattice_DamageMobility(phase))* &
+   (damageState(phase)%state(2,constituent) - &
+    damageState(phase)%state(1,constituent))
+  
+end subroutine damage_local_dotState
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates derived quantities from state
+!--------------------------------------------------------------------------------------------------
+subroutine damage_local_microstructure(Tstar_v, Fe, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -294,7 +296,7 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
    math_trace33, &
    math_I3
  use lattice, only: &
-   lattice_surfaceEnergy33, &
+   lattice_damageDiffusion33, &
    lattice_C66
 
  implicit none
@@ -305,56 +307,23 @@ subroutine damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in), dimension(3,3) :: &
-   Lp, &
    Fe
  integer(pInt) :: &
-   phase, constituent, instance
+   phase, constituent
  real(pReal) :: &
-   trialDamage, strain(3,3), stress(3,3), pressure
+   strain(3,3), stress(3,3)
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)                                                     ! which instance of my damage is present phase
-
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
  stress = math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)),strain)
- pressure = math_trace33(stress)/3.0_pReal
- if (pressure < 0.0_pReal) stress = stress - pressure*math_I3
- trialDamage = min(1.0_pReal, &
-                   (math_trace33(lattice_surfaceEnergy33(1:3,1:3,phase))/3.0_pReal)/ & 
-                   (sum(abs(strain*stress)) + &
-                    damageState(phase)%state(1,constituent)))
- 
- damageState(phase)%dotState(1,constituent) = &
-   sum(abs(stress*Lp))
- damageState(phase)%dotState(2,constituent) = &
-   damage_local_crack_mobility(instance)* &
-   (trialDamage - damageState(phase)%state(2,constituent))
-  
-end subroutine damage_local_dotState
 
-!--------------------------------------------------------------------------------------------------
-!> @brief returns temperature based on local damage model state layout 
-!--------------------------------------------------------------------------------------------------
-function damage_local_damageValue(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   damageState
+ damageState(phase)%state(2,constituent) = min(1.0_pReal, &
+                                               math_trace33(lattice_damageDiffusion33(1:3,1:3,phase))/ &
+                                               sum(abs(stress*strain)))
 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal) :: damage_local_damageValue
- 
- damage_local_damageValue = &
-   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))* &
-   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))
+end subroutine damage_local_microstructure
 
-end function damage_local_damageValue
-
-#ifdef NEWSTATE
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on local damage model state layout 
 !--------------------------------------------------------------------------------------------------
@@ -371,11 +340,30 @@ function constitutive_brittle_getDamage(ipc, ip, el)
  real(pReal) :: constitutive_brittle_getDamage
  
  constitutive_brittle_getDamage = &
-   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))* &
-   damageState(mappingConstitutive(2,ipc,ip,el))%state(2,mappingConstitutive(1,ipc,ip,el))
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))* &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
 end function constitutive_brittle_getDamage
-#endif
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns temperature based on local damage model state layout 
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_brittle_putDamage(ipc, ip, el, localDamage)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in) :: localDamage
+ 
+ damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)) = &
+  localDamage
+ 
+end subroutine constitutive_brittle_putDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
@@ -407,7 +395,7 @@ function damage_local_postResults(ipc,ip,el)
  do o = 1_pInt,damage_local_Noutput(instance)
     select case(damage_local_outputID(o,instance))
       case (local_damage_ID)
-        damage_local_postResults(c+1_pInt) = damageState(phase)%state(2,constituent)
+        damage_local_postResults(c+1_pInt) = damageState(phase)%state(1,constituent)
         c = c + 1
 
     end select

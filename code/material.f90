@@ -13,10 +13,7 @@ module material
    pReal, &
    pInt, &
    tState, &
-#ifdef NEWSTATE
-   hState, &
-   fState, &
-#endif
+   tFieldData, &
    p_intvec
 
  implicit none
@@ -30,7 +27,6 @@ module material
    PLASTICITY_DISLOKMC_label      = 'dislokmc', &
    PLASTICITY_TITANMOD_label      = 'titanmod', &
    PLASTICITY_NONLOCAL_label      = 'nonlocal', &
-#ifdef NEWSTATE
    LOCAL_DAMAGE_NONE_label        = 'none', &
    LOCAL_DAMAGE_BRITTLE_label     = 'brittle', &
    LOCAL_THERMAL_NONE_label       = 'none', &
@@ -39,16 +35,6 @@ module material
    FIELD_DAMAGE_NONLOCAL_label    = 'nonlocal', &
    FIELD_THERMAL_ADIABATIC_label  = 'adiabatic', &
    FIELD_THERMAL_CONDUCTION_label = 'conduction', &
-   
-#else
-   DAMAGE_NONE_label              = 'none', &
-   DAMAGE_LOCAL_label             = 'local', &
-   DAMAGE_GRADIENT_label          = 'gradient', &
-   THERMAL_NONE_label             = 'none', &
-   THERMAL_ISO_label              = 'isothermal', &
-   THERMAL_CONDUCTION_label       = 'conduction', &
-   THERMAL_ADIABATIC_label        = 'adiabatic', &
-#endif
    HOMOGENIZATION_NONE_label      = 'none', &
    HOMOGENIZATION_ISOSTRAIN_label = 'isostrain', &
    HOMOGENIZATION_RGC_label       = 'rgc' 
@@ -69,7 +55,6 @@ module material
                  PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
  end enum
-#ifdef NEWSTATE
  enum, bind(c)
    enumerator :: LOCAL_DAMAGE_NONE_ID, &
                  LOCAL_DAMAGE_BRITTLE_ID
@@ -87,19 +72,6 @@ module material
    enumerator :: FIELD_THERMAL_ADIABATIC_ID, &
                  FIELD_THERMAL_CONDUCTION_ID
  end enum
-#else
- enum, bind(c)
-   enumerator :: DAMAGE_none_ID, &
-                 DAMAGE_local_ID, &
-                 DAMAGE_gradient_ID
- end enum
- enum, bind(c)
-   enumerator :: THERMAL_none_ID, &
-                 THERMAL_iso_ID, &
-                 THERMAL_conduction_ID, &
-                 THERMAL_adiabatic_ID
- end enum
-#endif
  enum, bind(c)
    enumerator :: HOMOGENIZATION_undefined_ID, &
                  HOMOGENIZATION_none_ID, &
@@ -120,7 +92,6 @@ module material
    phase_elasticity                                                                                 !< elasticity of each phase  
  integer(kind(PLASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
    phase_plasticity                                                                                 !< plasticity of each phase  
-#ifdef NEWSTATE
  integer(kind(LOCAL_DAMAGE_none_ID)), dimension(:),           allocatable, public, protected :: &
    phase_damage                                                                                     !< local damage of each phase  
  integer(kind(LOCAL_THERMAL_none_ID)), dimension(:),          allocatable, public, protected :: &
@@ -129,12 +100,6 @@ module material
    field_damage_type                                                                                    !< field damage of each phase  
  integer(kind(FIELD_THERMAL_ADIABATIC_ID)), dimension(:),          allocatable, public, protected :: &
    field_thermal_type                                                                                  !< field thermal of each phase  
-#else
- integer(kind(DAMAGE_none_ID)), dimension(:),           allocatable, public, protected :: &
-   phase_damage                                                                                     !< damage of each phase  
- integer(kind(THERMAL_none_ID)), dimension(:),          allocatable, public, protected :: &
-   phase_thermal                                                                                    !< thermal of each phase  
-#endif
 
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
@@ -173,12 +138,10 @@ module material
    thermalState,&
    homogState
 
-#ifdef NEWSTATE
- type(fState), allocatable, dimension(:), public :: &
+ type(tFieldData), allocatable, dimension(:), public :: &
    fieldDamage
- type(fState), allocatable, dimension(:), public :: &
+ type(tFieldData), allocatable, dimension(:), public :: &
    fieldThermal
-#endif
 
 
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
@@ -251,7 +214,6 @@ module material
    PLASTICITY_dislokmc_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
-#ifdef NEWSTATE
    LOCAL_DAMAGE_none_ID, &
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_THERMAL_none_ID, &
@@ -260,15 +222,6 @@ module material
    FIELD_DAMAGE_NONLOCAL_ID, &
    FIELD_THERMAL_ADIABATIC_ID, &
    FIELD_THERMAL_CONDUCTION_ID, &
-#else
-   DAMAGE_none_ID, &
-   DAMAGE_local_ID, &
-   DAMAGE_gradient_ID, &
-   THERMAL_none_ID, &
-   THERMAL_iso_ID, &
-   THERMAL_conduction_ID, &
-   THERMAL_adiabatic_ID, &
-#endif
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
 #ifdef HDF
@@ -344,10 +297,8 @@ subroutine material_init
  allocate(damageState (material_Nphase))
  allocate(thermalState(material_Nphase))
  allocate(homogState  (material_Nhomogenization))
-#ifdef NEWSTATE
  allocate(fieldDamage (material_Nhomogenization))
  allocate(fieldThermal(material_Nhomogenization))
-#endif
  do m = 1_pInt,material_Nmicrostructure
    if(microstructure_crystallite(m) < 1_pInt .or. &
       microstructure_crystallite(m) > material_Ncrystallite) & 
@@ -450,10 +401,8 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  
  allocate(homogenization_name(Nsections));          homogenization_name = ''
  allocate(homogenization_type(Nsections),           source=HOMOGENIZATION_undefined_ID)
-#ifdef NEWSTATE
  allocate(FIELD_DAMAGE_type(Nsections),             source=FIELD_DAMAGE_LOCAL_ID)
  allocate(FIELD_THERMAL_type(Nsections),            source=FIELD_THERMAL_ADIABATIC_ID)
-#endif
  allocate(homogenization_typeInstance(Nsections),   source=0_pInt)
  allocate(homogenization_Ngrains(Nsections),        source=0_pInt)
  allocate(homogenization_Noutput(Nsections),        source=0_pInt)
@@ -500,7 +449,6 @@ subroutine material_parseHomogenization(fileUnit,myPart)
          end select
          homogenization_typeInstance(section) = &
                                           count(homogenization_type==homogenization_type(section))  ! count instances
-#ifdef NEWSTATE
         case ('field_damage')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case(FIELD_DAMAGE_LOCAL_label)
@@ -520,8 +468,6 @@ subroutine material_parseHomogenization(fileUnit,myPart)
            case default
              call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-#endif                                   
-                                         
        case ('nconstituents','ngrains')
          homogenization_Ngrains(section) = IO_intValue(line,positions,2_pInt)
      end select
@@ -729,17 +675,9 @@ subroutine material_parsePhase(fileUnit,myPart)
  allocate(phase_elasticityInstance(Nsections),   source=0_pInt)
  allocate(phase_plasticity(Nsections) ,          source=PLASTICITY_undefined_ID)
  allocate(phase_plasticityInstance(Nsections),   source=0_pInt)
-#ifdef NEWSTATE
  allocate(phase_damage(Nsections) ,              source=LOCAL_DAMAGE_none_ID)
-#else
- allocate(phase_damage(Nsections) ,              source=DAMAGE_none_ID)
-#endif
  allocate(phase_damageInstance(Nsections),       source=0_pInt)
-#ifdef NEWSTATE
  allocate(phase_thermal(Nsections) ,             source=LOCAL_THERMAL_none_ID)
-#else
- allocate(phase_thermal(Nsections) ,             source=THERMAL_none_ID)
-#endif
  allocate(phase_thermalInstance(Nsections),      source=0_pInt)
  allocate(phase_Noutput(Nsections),              source=0_pInt)
  allocate(phase_localPlasticity(Nsections),      source=.false.)
@@ -801,40 +739,20 @@ subroutine material_parsePhase(fileUnit,myPart)
          phase_plasticityInstance(section) = count(phase_plasticity(1:section) == phase_plasticity(section))   ! count instances
        case ('damage')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
-#ifdef NEWSTATE
            case (LOCAL_DAMAGE_NONE_label)
              phase_damage(section) = LOCAL_DAMAGE_none_ID
            case (LOCAL_DAMAGE_BRITTLE_label)
              phase_damage(section) = LOCAL_DAMAGE_BRITTLE_ID
-#else
-           case (DAMAGE_NONE_label)
-             phase_damage(section) = DAMAGE_none_ID
-           case (DAMAGE_LOCAL_label)
-             phase_damage(section) = DAMAGE_local_ID
-           case (DAMAGE_GRADIENT_label)
-             phase_damage(section) = DAMAGE_gradient_ID
-#endif
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
          phase_damageInstance(section) = count(phase_damage(1:section) == phase_damage(section))               ! count instances
        case ('thermal')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
-#ifdef NEWSTATE
            case (LOCAL_THERMAL_NONE_label)
              phase_thermal(section) = LOCAL_THERMAL_none_ID
            case (LOCAL_THERMAL_HEATGEN_label)
              phase_thermal(section) = LOCAL_THERMAL_HEATGEN_ID
-#else
-           case (THERMAL_NONE_label)
-             phase_thermal(section) = THERMAL_none_ID
-           case (THERMAL_ISO_label)
-             phase_thermal(section) = THERMAL_iso_ID
-           case (THERMAL_CONDUCTION_label)
-             phase_thermal(section) = THERMAL_conduction_ID
-           case (THERMAL_ADIABATIC_label)
-             phase_thermal(section) = THERMAL_adiabatic_ID
-#endif
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select

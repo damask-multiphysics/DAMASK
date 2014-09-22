@@ -49,7 +49,6 @@ module homogenization
  public ::  &
    homogenization_init, &
    materialpoint_stressAndItsTangent, &
-#ifdef NEWSTATE
    field_getDAMAGE, &
    field_putDAMAGE, &
    field_getThermal, &
@@ -59,7 +58,6 @@ module homogenization
    field_getThermalConductivity33, &
    field_getMassDensity, &
    field_getSpecificHeat, &
-#endif
    materialpoint_postResults
  private :: &
    homogenization_partitionDeformation, &
@@ -103,10 +101,8 @@ subroutine homogenization_init()
    mesh_element, & 
    FE_Nips, &
    FE_geomtype
-#ifdef NEWSTATE
  use lattice, only: &
    lattice_referenceTemperature
-#endif
  use constitutive, only: &
    constitutive_maxSizePostResults
  use constitutive_damage, only: &
@@ -178,21 +174,20 @@ subroutine homogenization_init()
  enddo
  close(FILEUNIT)
  
-#ifdef NEWSTATE
  do p = 1,material_Nhomogenization
    NofMyField=count(material_homog==p)
                                                 
    select case(field_damage_type(p))                                                   
    
      case (FIELD_DAMAGE_LOCAL_ID)
-      fieldDamage(p)%sizeState = 0_pInt
+      fieldDamage(p)%sizeField = 0_pInt
       fieldDamage(p)%sizePostResults = 0_pInt
-      allocate(fieldDamage(p)%state(fieldDamage(p)%sizeState,NofMyField), source = 1.0_pReal)
+      allocate(fieldDamage(p)%field(fieldDamage(p)%sizeField,NofMyField), source = 1.0_pReal)
       
      case (FIELD_DAMAGE_NONLOCAL_ID)
-      fieldDamage(p)%sizeState = 1_pInt
+      fieldDamage(p)%sizeField = 1_pInt
       fieldDamage(p)%sizePostResults = 1_pInt
-      allocate(fieldDamage(p)%state(fieldDamage(p)%sizeState,NofMyField), source = 1.0_pReal)
+      allocate(fieldDamage(p)%field(fieldDamage(p)%sizeField,NofMyField), source = 1.0_pReal)
 
    end select   
  enddo
@@ -203,21 +198,20 @@ subroutine homogenization_init()
    select case(field_thermal_type(p))                                                   
    
      case (FIELD_THERMAL_ADIABATIC_ID)
-      fieldThermal(p)%sizeState = 0_pInt
+      fieldThermal(p)%sizeField = 0_pInt
       fieldThermal(p)%sizePostResults = 0_pInt
-      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), &
+      allocate(fieldThermal(p)%field(fieldThermal(p)%sizeField,NofMyField), &
                                               source = 273.0_pReal)                ! ToDo: temporary fix for now 
       
      case (FIELD_THERMAL_CONDUCTION_ID)
-      fieldThermal(p)%sizeState = 1_pInt
+      fieldThermal(p)%sizeField = 1_pInt
       fieldThermal(p)%sizePostResults = 1_pInt
-      allocate(fieldThermal(p)%state(fieldThermal(p)%sizeState,NofMyField), &
+      allocate(fieldThermal(p)%field(fieldThermal(p)%sizeField,NofMyField), &
                                               source = 273.0_pReal)                ! ToDo: temporary fix for now 
 
    end select   
  enddo
-#endif
- 
+
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
  allocate(homogenization_sizePostResults(mesh_maxNips,mesh_NcpElems),   source=0_pInt)
@@ -860,7 +854,6 @@ real(pReal) function homogenization_averageHeat(ip,el)
 
 end function homogenization_averageHeat
 
-#ifdef NEWSTATE
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns average specific heat at each integration point 
 !--------------------------------------------------------------------------------------------------
@@ -1079,12 +1072,7 @@ real(pReal) function field_getDAMAGE(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
-   material_homog, &
-   field_damage_type, &
-   FIELD_DAMAGE_LOCAL_ID, &
-   FIELD_DAMAGE_NONLOCAL_ID, &
    homogenization_Ngrains
-
  use constitutive, only: &
    constitutive_getLocalDamage
 
@@ -1099,17 +1087,9 @@ real(pReal) function field_getDAMAGE(ip,el)
 ! computing the damage value needed to be passed to field solver
  field_getDAMAGE =0.0_pReal
                                                 
- select case(field_damage_type(material_homog(ip,el)))                                                   
-   
-   case (FIELD_DAMAGE_LOCAL_ID)
-    field_getDAMAGE = 1.0_pReal
-      
-   case (FIELD_DAMAGE_NONLOCAL_ID)
-    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-     field_getDAMAGE = field_getDAMAGE + constitutive_getLocalDamage(ipc,ip,el)
-    enddo
-      
- end select   
+ do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   field_getDAMAGE = field_getDAMAGE + constitutive_getLocalDamage(ipc,ip,el)
+ enddo
 
  field_getDAMAGE = field_getDAMAGE /homogenization_Ngrains(mesh_element(3,el))
 
@@ -1136,7 +1116,7 @@ subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
  select case(field_damage_type(material_homog(ip,el)))                                                   
    case (FIELD_DAMAGE_NONLOCAL_ID)
     fieldDamage(material_homog(ip,el))% &
-      state(1, mappingHomogenization(1,ip,el)) = fieldDamageValue 
+      field(1, mappingHomogenization(1,ip,el)) = fieldDamageValue 
 
  end select 
 
@@ -1149,12 +1129,7 @@ real(pReal) function field_getThermal(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
-   material_homog, &
-   field_thermal_type, &
-   FIELD_THERMAL_ADIABATIC_ID, &
-   FIELD_THERMAL_CONDUCTION_ID, &
    homogenization_Ngrains
-
  use constitutive, only: &
    constitutive_getAdiabaticThermal
 
@@ -1166,20 +1141,10 @@ real(pReal) function field_getThermal(ip,el)
    ipc
 
  
- field_getThermal = 1.0_pReal
-                                                
- select case(field_thermal_type(material_homog(ip,el)))                                                   
-   
-   case (FIELD_THERMAL_ADIABATIC_ID)
-    field_getThermal = 1.0_pReal
-      
-   case (FIELD_THERMAL_CONDUCTION_ID)
-    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-     field_getThermal = field_getThermal + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
-    enddo
-      
- end select   
-
+ field_getThermal = 0.0_pReal
+ do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   field_getThermal = field_getThermal + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
+ enddo
  field_getThermal = field_getThermal /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getThermal
@@ -1205,12 +1170,12 @@ subroutine field_putThermal(ip,el,fieldThermalValue)
  select case(field_thermal_type(material_homog(ip,el)))                                                   
    case (FIELD_THERMAL_CONDUCTION_ID)
      fieldThermal(material_homog(ip,el))% &
-        state(1,mappingHomogenization(1,ip,el)) = fieldThermalValue 
+        field(1,mappingHomogenization(1,ip,el)) = fieldThermalValue 
 
  end select 
 
 end subroutine field_putThermal
-#endif
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion. call only, 
 !> if homogenization_sizePostResults(i,e) > 0 !!

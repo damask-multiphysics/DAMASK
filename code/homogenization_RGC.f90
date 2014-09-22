@@ -164,6 +164,7 @@ subroutine homogenization_RGC_init(fileUnit)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
          case ('nconstituents','ngrains','type')
+         case('field_damage')
          case ('(output)')
            output = output + 1_pInt
            homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -607,22 +608,22 @@ function homogenization_RGC_updateState(P,F,F0,avgF,dt,dPdF,ip,el)
      enddo
    enddo
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+1,mappingHomogenization(1,ip,el)) = constitutiveWork                                                      ! the bulk mechanical/constitutive work
+                        state(3*nIntFaceTot+1,mappingHomogenization(1,ip,el)) = constitutiveWork                 ! the bulk mechanical/constitutive work
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+2,mappingHomogenization(1,ip,el)) = sum(NN(1,:))/real(nGrain,pReal)                                       ! the overall mismatch of all interface normal to e1-direction
+                        state(3*nIntFaceTot+2,mappingHomogenization(1,ip,el)) = sum(NN(1,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e1-direction
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+3,mappingHomogenization(1,ip,el)) = sum(NN(2,:))/real(nGrain,pReal)                                       ! the overall mismatch of all interface normal to e2-direction
+                        state(3*nIntFaceTot+3,mappingHomogenization(1,ip,el)) = sum(NN(2,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e2-direction
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+4,mappingHomogenization(1,ip,el)) = sum(NN(3,:))/real(nGrain,pReal)                                       ! the overall mismatch of all interface normal to e3-direction
+                        state(3*nIntFaceTot+4,mappingHomogenization(1,ip,el)) = sum(NN(3,:))/real(nGrain,pReal)  ! the overall mismatch of all interface normal to e3-direction
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+5,mappingHomogenization(1,ip,el)) = penaltyEnergy                                                         ! the overall penalty energy
+                        state(3*nIntFaceTot+5,mappingHomogenization(1,ip,el)) = penaltyEnergy                    ! the overall penalty energy
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+6,mappingHomogenization(1,ip,el)) = volDiscrep                                                            ! the overall volume discrepancy
+                        state(3*nIntFaceTot+6,mappingHomogenization(1,ip,el)) = volDiscrep                       ! the overall volume discrepancy
    homogState(mappingHomogenization(2,ip,el))% &
                         state(3*nIntFaceTot+7,mappingHomogenization(1,ip,el)) = &
-                                        sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)                    ! the average rate of relaxation vectors
+                                        sum(abs(drelax))/dt/real(3_pInt*nIntFaceTot,pReal)                       ! the average rate of relaxation vectors
    homogState(mappingHomogenization(2,ip,el))% &
-                        state(3*nIntFaceTot+8,mappingHomogenization(1,ip,el)) = maxval(abs(drelax))/dt                                                ! the maximum rate of relaxation vectors
+                        state(3*nIntFaceTot+8,mappingHomogenization(1,ip,el)) = maxval(abs(drelax))/dt           ! the maximum rate of relaxation vectors
 
    if (iand(debug_level(debug_homogenization),debug_levelExtensive) /= 0_pInt &
         .and. debug_e == el .and. debug_i == ip) then
