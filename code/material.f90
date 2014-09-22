@@ -199,11 +199,6 @@ module material
  integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingCrystallite
  integer(pInt), dimension(:,:,:),   allocatable, public, protected :: mappingHomogenization
 
- integer(pInt), dimension(:), allocatable :: ConstitutivePosition
- integer(pInt), dimension(:), allocatable :: CrystallitePosition
- integer(pInt), dimension(:), allocatable :: HomogenizationPosition
-
-
  public :: &
    material_init, &
    ELASTICITY_hooke_ID ,&
@@ -271,7 +266,13 @@ subroutine material_init
   g, &                                                                                              !< grain number
   i, &                                                                                              !< integration point number
   e, &                                                                                              !< element number
-  phase
+  phase, &
+  homog, &
+  NofMyField
+ integer(pInt), dimension(:), allocatable :: ConstitutivePosition
+ integer(pInt), dimension(:), allocatable :: CrystallitePosition
+ integer(pInt), dimension(:), allocatable :: HomogenizationPosition
+
  myDebug = debug_level(debug_material)
  
  write(6,'(/,a)') ' <<<+-  material init  -+>>>'
@@ -358,6 +359,40 @@ subroutine material_init
      enddo GrainLoop
    enddo IPloop
  enddo ElemLoop
+
+ do homog = 1,material_Nhomogenization
+   NofMyField=count(material_homog==homog)
+   select case(field_damage_type(homog))                                                   
+     case (FIELD_DAMAGE_LOCAL_ID)
+      fieldDamage(homog)%sizeField = 0_pInt
+      fieldDamage(homog)%sizePostResults = 0_pInt
+      allocate(fieldDamage(homog)%field(fieldDamage(homog)%sizeField,NofMyField), source = 1.0_pReal)
+      
+     case (FIELD_DAMAGE_NONLOCAL_ID)
+      fieldDamage(homog)%sizeField = 1_pInt
+      fieldDamage(homog)%sizePostResults = 1_pInt
+      allocate(fieldDamage(homog)%field(fieldDamage(homog)%sizeField,NofMyField), source = 1.0_pReal)
+
+   end select   
+ enddo
+ 
+ do homog = 1,material_Nhomogenization
+   NofMyField=count(material_homog==homog)
+   select case(field_thermal_type(homog))                                                   
+     case (FIELD_THERMAL_ADIABATIC_ID)
+      fieldThermal(homog)%sizeField = 0_pInt
+      fieldThermal(homog)%sizePostResults = 0_pInt
+      allocate(fieldThermal(homog)%field(fieldThermal(homog)%sizeField,NofMyField), &
+                                              source = 300.0_pReal)                ! ToDo: temporary fix for now 
+      
+     case (FIELD_THERMAL_CONDUCTION_ID)
+      fieldThermal(homog)%sizeField = 1_pInt
+      fieldThermal(homog)%sizePostResults = 1_pInt
+      allocate(fieldThermal(homog)%field(fieldThermal(homog)%sizeField,NofMyField), &
+                                              source = 300.0_pReal)                ! ToDo: temporary fix for now 
+
+   end select   
+ enddo
 
 end subroutine material_init
 
@@ -989,9 +1024,9 @@ subroutine material_populateGrains
  real(pReal), dimension (3)                  :: orientation
  real(pReal), dimension (3,3)                :: symOrientation
  integer(pInt), dimension (:),   allocatable :: phaseOfGrain, textureOfGrain
- integer(pInt) :: t,e,i,ii,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
+ integer(pInt) :: t,e,i,g,j,m,c,r,homog,micro,sgn,hme, myDebug, &
                   phaseID,textureID,dGrains,myNgrains,myNorientations,myNconstituents, &
-                  grain,constituentGrain,ipGrain,symExtension, ip, HomogInstType
+                  grain,constituentGrain,ipGrain,symExtension, ip
  real(pReal) :: extreme,rnd
  integer(pInt),  dimension (:,:),   allocatable :: Nelems                                           ! counts number of elements in homog, micro array
  type(p_intvec), dimension (:,:), allocatable :: elemsOfHomogMicro                                  ! lists element number in homog, micro array

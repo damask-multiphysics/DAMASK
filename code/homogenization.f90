@@ -118,7 +118,7 @@ subroutine homogenization_init()
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
- integer(pInt) :: e,i,p,myInstance, NofMyField
+ integer(pInt) :: e,i,p,myInstance
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
@@ -173,44 +173,6 @@ subroutine homogenization_init()
    endif  
  enddo
  close(FILEUNIT)
- 
- do p = 1,material_Nhomogenization
-   NofMyField=count(material_homog==p)
-                                                
-   select case(field_damage_type(p))                                                   
-   
-     case (FIELD_DAMAGE_LOCAL_ID)
-      fieldDamage(p)%sizeField = 0_pInt
-      fieldDamage(p)%sizePostResults = 0_pInt
-      allocate(fieldDamage(p)%field(fieldDamage(p)%sizeField,NofMyField), source = 1.0_pReal)
-      
-     case (FIELD_DAMAGE_NONLOCAL_ID)
-      fieldDamage(p)%sizeField = 1_pInt
-      fieldDamage(p)%sizePostResults = 1_pInt
-      allocate(fieldDamage(p)%field(fieldDamage(p)%sizeField,NofMyField), source = 1.0_pReal)
-
-   end select   
- enddo
- 
- do p = 1,material_Nhomogenization
-   NofMyField=count(material_homog==p)
-                                                
-   select case(field_thermal_type(p))                                                   
-   
-     case (FIELD_THERMAL_ADIABATIC_ID)
-      fieldThermal(p)%sizeField = 0_pInt
-      fieldThermal(p)%sizePostResults = 0_pInt
-      allocate(fieldThermal(p)%field(fieldThermal(p)%sizeField,NofMyField), &
-                                              source = 273.0_pReal)                ! ToDo: temporary fix for now 
-      
-     case (FIELD_THERMAL_CONDUCTION_ID)
-      fieldThermal(p)%sizeField = 1_pInt
-      fieldThermal(p)%sizePostResults = 1_pInt
-      allocate(fieldThermal(p)%field(fieldThermal(p)%sizeField,NofMyField), &
-                                              source = 273.0_pReal)                ! ToDo: temporary fix for now 
-
-   end select   
- enddo
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
