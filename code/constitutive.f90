@@ -387,30 +387,27 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(out), dimension(9,9) :: &
    dLp_dTstar                                                                                       !< derivative of Lp with respect to Tstar (4th-order tensor)
+ real(pReal) :: damage, Tstar_v_effective(6)
  
+ damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ Tstar_v_effective = damage*damage*Tstar_v
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_NONE_ID)
      Lp = 0.0_pReal
      dLp_dTstar = 0.0_pReal
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar, &
-                               Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
+     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar, &
-                               Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
+     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,&
-                       Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ip,el)
+     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar, &
-                   Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ipc,ip,el)
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,&
-                    Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ipc,ip,el)
+     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar, &
-                    Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),temperature,ipc,ip,el)
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ipc,ip,el)
 
  end select
  
@@ -479,32 +476,19 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    dT_dFe                                                                                           !< dT/dFe
  
  integer(pInt) :: i, j, k, l
- real(pReal)   :: damage, pressure
+ real(pReal)   :: damage
  real(pReal), dimension(3,3,3,3) :: C
 
- C = math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ C = damage*damage*math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
  T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3) - &
                         lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
                         (constitutive_getConductionThermal(ipc,ip,el) - &
                          lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el))))
  
- pressure = math_trace33(T)/3.0_pReal
- damage = constitutive_getNonlocalDamage(ipc,ip,el)
- T = damage*T
-
- if(pressure >= 0.0_pReal) then
-   dT_dFe = 0.0_pReal
-   forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
-    dT_dFe(i,j,k,l) = damage*sum(C(i,j,l,1:3)*Fe(k,1:3))                                  ! dT*_ij/dFe_kl
- 
- else 
-    T = T + (1.0_pReal - damage)*pressure*math_I3
-    dT_dFe = 0.0_pReal
-    do i=1_pInt, 3_pInt; do j=1_pInt,3_pInt; do k=1_pInt,3_pInt; do l=1_pInt,3_pInt
-     dT_dFe(i,j,k,l) = dT_dFe(i,j,k,l) + damage*sum(C(i,j,l,1:3)*Fe(k,1:3)) + &
-                       (1.0_pReal - damage)*math_trace33(C(i,j,1:3,1:3))*Fe(l,k)/3.0_pReal
-   enddo; enddo; enddo; enddo
- endif  
+ dT_dFe = 0.0_pReal
+ forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
+   dT_dFe(i,j,k,l) = sum(C(i,j,l,1:3)*Fe(k,1:3))                                                     ! dT*_ij/dFe_kl
  
 end subroutine constitutive_hooke_TandItsTangent
 
@@ -903,6 +887,10 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+ real(pReal) :: damage, Tstar_v_effective(6)
+ 
+ damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ Tstar_v_effective = damage*damage*Tstar_v
 
  constitutive_postResults = 0.0_pReal
  
@@ -910,19 +898,19 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    case (PLASTICITY_TITANMOD_ID)
      constitutive_postResults = constitutive_titanmod_postResults(ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults= constitutive_j2_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
+     constitutive_postResults= constitutive_j2_postResults(Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
      constitutive_postResults = &
-       constitutive_phenopowerlaw_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),ipc,ip,el)
+       constitutive_phenopowerlaw_postResults(Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_postResults = &
-       constitutive_dislotwin_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),Temperature,ipc,ip,el)
+       constitutive_dislotwin_postResults(Tstar_v_effective,Temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
      constitutive_postResults = &
-       constitutive_dislokmc_postResults(Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),Temperature,ipc,ip,el)
+       constitutive_dislokmc_postResults(Tstar_v_effective,Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_postResults = &
-       constitutive_nonlocal_postResults (Tstar_v/constitutive_getNonlocalDamage(ipc,ip,el),FeArray,ip,el)
+       constitutive_nonlocal_postResults (Tstar_v_effective,FeArray,ip,el)
  end select
   
 end function constitutive_postResults

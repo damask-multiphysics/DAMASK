@@ -221,8 +221,8 @@ subroutine damage_local_stateInit(phase,instance)
 
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
- tempState(1) = 0.0_pReal
- tempState(2) = 1.0_pReal
+ tempState(1) = 1.0_pReal
+ tempState(2) = 0.0_pReal
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
  damageState(phase)%partionedState0 = damageState(phase)%state
@@ -340,7 +340,6 @@ function constitutive_brittle_getDamage(ipc, ip, el)
  real(pReal) :: constitutive_brittle_getDamage
  
  constitutive_brittle_getDamage = &
-   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))* &
    damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
 end function constitutive_brittle_getDamage
@@ -361,7 +360,7 @@ subroutine constitutive_brittle_putDamage(ipc, ip, el, localDamage)
  real(pReal),   intent(in) :: localDamage
  
  damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)) = &
-  localDamage
+   localDamage
  
 end subroutine constitutive_brittle_putDamage
 
