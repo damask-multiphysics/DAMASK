@@ -974,10 +974,10 @@ function field_getDamageDiffusion33(ip,el)
  case (FIELD_DAMAGE_LOCAL_ID)
    field_getDamageDiffusion33 = 0.0_pReal
       
-   case (FIELD_DAMAGE_NONLOCAL_ID)
-    do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-     field_getDamageDiffusion33 = field_getDamageDiffusion33 + lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el))
-    enddo
+ case (FIELD_DAMAGE_NONLOCAL_ID)
+  do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   field_getDamageDiffusion33 = field_getDamageDiffusion33 + lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el))
+  enddo
       
  end select   
 

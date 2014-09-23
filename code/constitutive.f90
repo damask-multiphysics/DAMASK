@@ -424,6 +424,10 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
+ real(pReal) :: damage, Tstar_v_effective(6)
+ 
+ damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ Tstar_v_effective = Tstar_v/damage*damage
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
@@ -440,7 +444,7 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
-     call damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
+     call damage_brittle_microstructure(Tstar_v_effective, Fe, ipc, ip, el)
 
  end select
 
@@ -496,7 +500,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
  real(pReal) :: damage, Tstar_v_effective(6)
  
  damage = constitutive_getNonlocalDamage(ipc,ip,el)
- Tstar_v_effective = damage*damage*Tstar_v
+ Tstar_v_effective = Tstar_v/damage*damage
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_NONE_ID)
@@ -851,16 +855,16 @@ function constitutive_getNonlocalDamage(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal) :: constitutive_getNonlocalDamage
  
-   select case(field_damage_type(material_homog(ip,el)))                                                   
-   
-     case (FIELD_DAMAGE_LOCAL_ID)
-      constitutive_getNonlocalDamage = constitutive_getLocalDamage(ipc, ip, el)
-      
-     case (FIELD_DAMAGE_NONLOCAL_ID)
-      constitutive_getNonlocalDamage =    fieldDamage(material_homog(ip,el))% &
-        field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+ select case(field_damage_type(material_homog(ip,el)))                                                   
+ 
+   case (FIELD_DAMAGE_LOCAL_ID)
+    constitutive_getNonlocalDamage = constitutive_getLocalDamage(ipc, ip, el)
+    
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+    constitutive_getNonlocalDamage =    fieldDamage(material_homog(ip,el))% &
+      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
-   end select
+ end select
 
 end function constitutive_getNonlocalDamage
 !--------------------------------------------------------------------------------------------------

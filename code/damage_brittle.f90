@@ -25,8 +25,9 @@ module damage_brittle
  integer(pInt),                       dimension(:),           allocatable,         private :: &
    damage_brittle_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         public :: &
-   damage_brittle_aTol
+ real(pReal),                         dimension(:),     allocatable,         private :: &
+   damage_brittle_aTol, &
+   damage_brittle_critStrainEnergy
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -117,6 +118,7 @@ subroutine damage_brittle_init(fileUnit)
           damage_brittle_output = ''
  allocate(damage_brittle_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_brittle_Noutput(maxNinstance),                             source=0_pInt) 
+ allocate(damage_brittle_critStrainEnergy(maxNinstance),                    source=0.0_pReal) 
  allocate(damage_brittle_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -149,6 +151,9 @@ subroutine damage_brittle_init(fileUnit)
              damage_brittle_output(damage_brittle_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
+
+       case ('critical_strain_energy')
+         damage_brittle_critStrainEnergy(instance) = IO_floatValue(line,positions,2_pInt)
 
        case ('atol_damage')
          damage_brittle_aTol(instance) = IO_floatValue(line,positions,2_pInt)
@@ -222,7 +227,7 @@ subroutine damage_brittle_stateInit(phase,instance)
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
  tempState(1) = 1.0_pReal
- tempState(2) = 0.0_pReal
+ tempState(2) = 1.0_pReal
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
  damageState(phase)%partionedState0 = damageState(phase)%state
@@ -283,16 +288,10 @@ subroutine damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
    phase_damageInstance, &
    damageState
  use math, only: &
-   math_Mandel66to3333, &
    math_Mandel6to33, &
    math_mul33x33, &
-   math_mul3333xx33, &
    math_transpose33, &
-   math_trace33, &
    math_I3
- use lattice, only: &
-   lattice_damageDiffusion33, &
-   lattice_C66
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -311,11 +310,10 @@ subroutine damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- stress = math_mul3333xx33(math_Mandel66to3333(lattice_C66(1:6,1:6,phase)),strain)
 
- damageState(phase)%state(2,constituent) = min(1.0_pReal, &
-                                               math_trace33(lattice_damageDiffusion33(1:3,1:3,phase))/ &
-                                               sum(abs(stress*strain)))
+ damageState(phase)%state(2,constituent) = min(damageState(phase)%state(2,constituent), &
+                                               damage_brittle_critStrainEnergy(phase)/ &
+                                               sum(abs(math_Mandel6to33(Tstar_v)*strain)))
 
 end subroutine damage_brittle_microstructure
 
