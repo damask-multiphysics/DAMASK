@@ -362,7 +362,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #endif
 
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
-                                                     i, k, l, m, ph, homog
+                                                     i, j, k, l, m, n, ph, homog
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
