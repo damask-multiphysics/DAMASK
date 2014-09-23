@@ -81,11 +81,10 @@ module constitutive_dislotwin
    constitutive_dislotwin_dipoleFormationFactor, &                                                  !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
    constitutive_dislotwin_aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
    constitutive_dislotwin_aTolTwinFrac, &                                                           !< absolute tolerance for integration of twin volume fraction
-   constitutive_dislotwin_c1, &                                                                     !< strain induced martensite nucleation coefficient
-   constitutive_dislotwin_c2, &                                                                     !< phase boundary energy
-   constitutive_dislotwin_c3, &                                                                     !< Lagrange multiplier
-   constitutive_dislotwin_c5, &                                                                     !< phase transformation rate coefficient
-   constitutive_dislotwin_deltaG                                                                    !< free energy difference between austensite and martensite [MPa]
+   constitutive_dislotwin_Cnuc, &                                                                   !< Coefficient for strain-induced martensite nucleation  
+   constitutive_dislotwin_Cdwp, &                                                                   !< Coefficient for double well potential 
+   constitutive_dislotwin_Cgro, &                                                                   !< Coefficient for stress-assisted martensite growth  
+   constitutive_dislotwin_deltaG                                                                    !< Free energy difference between austensite and martensite [MPa]
 
  real(pReal),                         dimension(:,:,:,:),     allocatable,         private :: &
    constitutive_dislotwin_Ctwin66                                                                   !< twin elasticity matrix in Mandel notation for each instance
@@ -276,10 +275,9 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_SFE_0K(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_dislotwin_dSFE_dT(maxNinstance),                             source=0.0_pReal)
  allocate(constitutive_dislotwin_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
- allocate(constitutive_dislotwin_c1(maxNinstance),                                  source=0.0_pReal)
- allocate(constitutive_dislotwin_c2(maxNinstance),                                  source=0.0_pReal)
- allocate(constitutive_dislotwin_c3(maxNinstance),                                  source=0.0_pReal)
- allocate(constitutive_dislotwin_c5(maxNinstance),                                  source=0.0_pReal)
+ allocate(constitutive_dislotwin_Cnuc(maxNinstance),                                source=0.0_pReal)
+ allocate(constitutive_dislotwin_Cdwp(maxNinstance),                                source=0.0_pReal)
+ allocate(constitutive_dislotwin_Cgro(maxNinstance),                                source=0.0_pReal)
  allocate(constitutive_dislotwin_deltaG(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_dislotwin_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(constitutive_dislotwin_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
@@ -592,14 +590,12 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_sbVelocity(instance) = IO_floatValue(line,positions,2_pInt)
        case ('qedgepersbsystem')
          constitutive_dislotwin_sbQedge(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('c1')
-         constitutive_dislotwin_c1(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('c2')
-         constitutive_dislotwin_c2(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('c3')
-         constitutive_dislotwin_c3(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('c5')
-         constitutive_dislotwin_c5(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cnuc')
+         constitutive_dislotwin_Cnuc(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cdwp')
+         constitutive_dislotwin_Cdwp(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cgro')
+         constitutive_dislotwin_Cgro(instance) = IO_floatValue(line,positions,2_pInt)
        case ('deltag')
          constitutive_dislotwin_deltaG(instance) = IO_floatValue(line,positions,2_pInt)
      end select

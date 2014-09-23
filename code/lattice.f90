@@ -250,8 +250,8 @@ module lattice
      0.0, 0.0, 1.0,     45.0  &
      ],[ 4_pInt,LATTICE_fcc_Ntrans])
 
- real(pReal), dimension(12,LATTICE_fcc_Ntrans), parameter, private :: &
-   LATTICE_fcc_projectionTrans = reshape(real([&
+ real(pReal), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans), parameter, private :: &            ! Matrix for projection of shear from slip system to fault-band (twin) systems
+   LATTICE_fcc_projectionTrans = reshape([&                                                        ! For ns = nt = nr
      0, 1,-1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &                                                                    
     -1, 0, 1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
      1,-1, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
@@ -264,7 +264,13 @@ module lattice
      0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1,-1, &
      0, 0, 0,  0, 0, 0,  0, 0, 0, -1, 0, 1, &
      0, 0, 0,  0, 0, 0,  0, 0, 0,  1,-1, 0  &
-     ],pReal),[ 12_pInt,LATTICE_fcc_Ntrans])
+     ],[LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans],order=[2,1])
+
+ real(pReal), parameter, private  :: &
+   LATTICE_fcc_projectionTransFactor = sqrt(3.0_pReal/4.0_pReal)
+
+ real(pReal), parameter, public  :: &
+   LATTICE_fcc_shearCritTrans = 0.0224
 
  integer(pInt), dimension(2_pInt,LATTICE_fcc_Ntrans), parameter, public :: &
    LATTICE_fcc_transNucleationTwinPair = reshape(int( [&
@@ -741,7 +747,8 @@ module lattice
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
-   lattice_damageDiffusion33
+   lattice_damageDiffusion33, &
+   lattice_surfaceEnergy33
  real(pReal),                              dimension(:),       allocatable, public, protected :: &
    lattice_damageMobility, &
    lattice_massDensity, &
@@ -1003,6 +1010,7 @@ subroutine lattice_init
  allocate(lattice_damageMobility      (    Nphases), source=0.0_pReal)
  allocate(lattice_massDensity         (    Nphases), source=0.0_pReal)
  allocate(lattice_specificHeat        (    Nphases), source=0.0_pReal)
+ allocate(lattice_surfaceEnergy33      (3,3,Nphases), source=0.0_pReal)
  allocate(lattice_referenceTemperature     (Nphases), source=0.0_pReal)
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
@@ -1108,11 +1116,11 @@ subroutine lattice_init
        aM(section) = IO_floatValue(line,positions,2_pInt)
      case ('cm', 'c_m', 'c_martensite')
        cM(section) = IO_floatValue(line,positions,2_pInt)
-     case ('thermal_conductivity11')
+     case ('k11')
        lattice_thermalConductivity33(1,1,section) = IO_floatValue(line,positions,2_pInt)
-     case ('thermal_conductivity22')
+     case ('k22')
        lattice_thermalConductivity33(2,2,section) = IO_floatValue(line,positions,2_pInt)
-     case ('thermal_conductivity33')
+     case ('k33')
        lattice_thermalConductivity33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('thermal_expansion11')
        lattice_thermalExpansion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
@@ -1120,20 +1128,38 @@ subroutine lattice_init
        lattice_thermalExpansion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
      case ('thermal_expansion33')
        lattice_thermalExpansion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('g11')
+       lattice_surfaceEnergy33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('g22')
+       lattice_surfaceEnergy33(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('g33')
+       lattice_surfaceEnergy33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('reference_temperature')
+       lattice_referenceTemperature(section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d11')
+       lattice_DamageDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d12')
+       lattice_DamageDiffusion33(1,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d13')
+       lattice_DamageDiffusion33(1,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d21')
+       lattice_DamageDiffusion33(2,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d22')
+       lattice_DamageDiffusion33(2,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d23')
+       lattice_DamageDiffusion33(2,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d31')
+       lattice_DamageDiffusion33(3,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d32')
+       lattice_DamageDiffusion33(3,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('k_d33')
+       lattice_DamageDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('damage_mobility')
+       lattice_DamageMobility(section) = IO_floatValue(line,positions,2_pInt)
      case ('specific_heat')
        lattice_specificHeat(section) = IO_floatValue(line,positions,2_pInt)
      case ('mass_density')
        lattice_massDensity(section) = IO_floatValue(line,positions,2_pInt)
-     case ('reference_temperature')
-       lattice_referenceTemperature(section) = IO_floatValue(line,positions,2_pInt)
-     case ('damage_diffusion11')
-       lattice_DamageDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
-     case ('damage_diffusion22')
-       lattice_DamageDiffusion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
-     case ('damage_diffusion33')
-       lattice_DamageDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
-     case ('damage_mobility')
-       lattice_DamageMobility(section) = IO_floatValue(line,positions,2_pInt)
      end select
    endif
  enddo
@@ -1221,8 +1247,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
                                                                        lattice_thermalConductivity33(1:3,1:3,myPhase))
  lattice_thermalExpansion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                     lattice_thermalExpansion33(1:3,1:3,myPhase))
- lattice_DamageDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
-                                                                 lattice_DamageDiffusion33(1:3,1:3,myPhase))
+ lattice_surfaceEnergy33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                 lattice_surfaceEnergy33(1:3,1:3,myPhase))
  
  select case(lattice_structure(myPhase))
 !--------------------------------------------------------------------------------------------------
@@ -1266,7 +1292,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
      lattice_interactionSlipTwin(1:myNslip,1:myNtwin,myPhase) = lattice_fcc_interactionSlipTwin
      lattice_interactionTwinSlip(1:myNtwin,1:myNslip,myPhase) = lattice_fcc_interactionTwinSlip
      lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase) = lattice_fcc_interactionTwinTwin
-     lattice_projectionTrans(1:myNtrans,1:myNtrans,myPhase)   = LATTICE_fcc_projectionTrans
+     lattice_projectionTrans(1:myNtrans,1:myNtrans,myPhase)   = LATTICE_fcc_projectionTrans*LATTICE_fcc_projectionTransFactor
 
 !--------------------------------------------------------------------------------------------------
 ! bcc
