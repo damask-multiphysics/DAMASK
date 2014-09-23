@@ -248,7 +248,7 @@ end subroutine damage_brittle_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_brittle_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
+subroutine damage_brittle_dotState(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -261,11 +261,6 @@ subroutine damage_brittle_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- real(pReal),  intent(in), dimension(3,3) :: &
-   Lp, &
-   Fe
  integer(pInt) :: &
    phase, constituent
 

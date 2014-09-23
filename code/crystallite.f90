@@ -175,10 +175,6 @@ subroutine crystallite_init(temperature)
    lattice_structure
  use constitutive, only: &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
- use constitutive_damage, only: &
-   constitutive_damage_microstructure
- use constitutive_thermal, only: &
-   constitutive_thermal_microstructure
 
  implicit none
  real(pReal),   intent(in) :: temperature
@@ -425,14 +421,9 @@ subroutine crystallite_init(temperature)
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1_pInt,myNgrains
          call constitutive_microstructure(temperature, &
+                          crystallite_Tstar_v(1:6,g,i,e), &
                           crystallite_Fe(1:3,1:3,g,i,e), &
                           crystallite_Fp(1:3,1:3,g,i,e),g,i,e)                                      ! update dependent state variables to be consistent with basic states
-         call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Fe(1:3,1:3,g,i,e), &
-                                                 g,i,e)                                             ! update dependent state variables to be consistent with basic states
-         call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)                                            ! update dependent state variables to be consistent with basic states
       enddo
      enddo
    enddo
@@ -1422,12 +1413,6 @@ subroutine crystallite_integrateStateRK4()
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure
- use constitutive_damage, only: &
-   constitutive_damage_collectDotState, &
-   constitutive_damage_microstructure
- use constitutive_thermal, only: &
-   constitutive_thermal_collectDotState, &
-   constitutive_thermal_microstructure
 
  implicit none
  real(pReal), dimension(4), parameter :: &
@@ -1478,18 +1463,10 @@ subroutine crystallite_integrateStateRK4()
  !$OMP PARALLEL
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                 ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) then
+     if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                          crystallite_Fp, crystallite_temperature(i,e), &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-       call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                crystallite_Fe(1:3,1:3,g,i,e), &
-                                                crystallite_Lp(1:3,1:3,g,i,e), &
-                                                g,i,e)
-       call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Lp(1:3,1:3,g,i,e), &
-                                                 g,i,e)
-     endif
    enddo; enddo; enddo
  !$OMP ENDDO
 
@@ -1594,17 +1571,11 @@ subroutine crystallite_integrateStateRK4()
 
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) then
+       if (crystallite_todo(g,i,e)) &
          call constitutive_microstructure(crystallite_temperature(i,e), &
+                                          crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                          ! update dependent state variables to be consistent with basic states
-         call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Fe(1:3,1:3,g,i,e), &
-                                                 g,i,e)                                                    ! update dependent state variables to be consistent with basic states
-         call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)                                                   ! update dependent state variables to be consistent with basic states
-       endif
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -1632,19 +1603,11 @@ subroutine crystallite_integrateStateRK4()
    first3steps: if (n < 4) then
      !$OMP DO
        do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                ! iterate over elements, ips and grains
-         if (crystallite_todo(g,i,e)) then
+         if (crystallite_todo(g,i,e)) &
            call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                              crystallite_Fp, crystallite_temperature(i,e), &
                                              timeStepFraction(n)*crystallite_subdt(g,i,e), &               ! fraction of original timestep
                                              crystallite_subFrac, g,i,e)
-           call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                    crystallite_Fe(1:3,1:3,g,i,e), &
-                                                    crystallite_Lp(1:3,1:3,g,i,e), &
-                                                    g,i,e)
-           call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                     crystallite_Lp(1:3,1:3,g,i,e), &
-                                                     g,i,e)
-         endif
        enddo; enddo; enddo
      !$OMP ENDDO
 
@@ -1736,15 +1699,9 @@ subroutine crystallite_integrateStateRKCK45()
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_maxSizeDotState, &
+   constitutive_damage_maxSizeDotState, &
+   constitutive_thermal_maxSizeDotState, &
    constitutive_microstructure
- use constitutive_damage, only: &
-   constitutive_damage_collectDotState, &
-   constitutive_damage_microstructure, &
-   constitutive_damage_maxSizeDotState
- use constitutive_thermal, only: &
-   constitutive_thermal_collectDotState, &
-   constitutive_thermal_microstructure, &
-   constitutive_thermal_maxSizeDotState
 
  implicit none
 
@@ -1817,18 +1774,10 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP PARALLEL
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) then
+     if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                          crystallite_Fp, crystallite_temperature(i,e), &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-       call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                crystallite_Fe(1:3,1:3,g,i,e), &
-                                                crystallite_Lp(1:3,1:3,g,i,e), &
-                                                g,i,e)
-       call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Lp(1:3,1:3,g,i,e), &
-                                                 g,i,e)
-     endif
    enddo; enddo; enddo
  !$OMP ENDDO
  !$OMP DO PRIVATE(p,cc)
@@ -1938,17 +1887,11 @@ subroutine crystallite_integrateStateRKCK45()
 
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) then
-         call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
+       if (crystallite_todo(g,i,e)) &
+         call constitutive_microstructure(crystallite_temperature(i,e), &
+                                          crystallite_Tstar_v(1:6,g,i,e), &
+                                          crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                           ! update dependent state variables to be consistent with basic states
-         call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Fe(1:3,1:3,g,i,e), &
-                                                 g,i,e)                   ! update dependent state variables to be consistent with basic states
-         call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)                  ! update dependent state variables to be consistent with basic states
-
-       endif
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -1978,19 +1921,11 @@ subroutine crystallite_integrateStateRKCK45()
 #endif
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) then
+       if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            C(stage)*crystallite_subdt(g,i,e), & ! fraction of original timestep
                                            crystallite_subFrac, g,i,e)
-         call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Fe(1:3,1:3,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)
-         call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                   crystallite_Lp(1:3,1:3,g,i,e), &
-                                                   g,i,e)
-       endif
      enddo; enddo; enddo
    !$OMP ENDDO
    !$OMP DO PRIVATE(p,cc)
@@ -2200,16 +2135,11 @@ subroutine crystallite_integrateStateRKCK45()
 ! --- UPDATE DEPENDENT STATES IF RESIDUUM BELOW TOLERANCE ---
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) then
-       call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
+     if (crystallite_todo(g,i,e)) &
+       call constitutive_microstructure(crystallite_temperature(i,e), &
+                                        crystallite_Tstar_v(1:6,g,i,e), &
+                                        crystallite_Fe(1:3,1:3,g,i,e), &
                                         crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
-       call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                               crystallite_Fe(1:3,1:3,g,i,e), &
-                                               g,i,e)                                                      ! update dependent state variables to be consistent with basic states
-       call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                crystallite_Lp(1:3,1:3,g,i,e), &
-                                                g,i,e)                                                     ! update dependent state variables to be consistent with basic states
-     endif
   enddo; enddo; enddo
  !$OMP ENDDO
 
@@ -2296,14 +2226,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure, &
-   constitutive_maxSizeDotState
- use constitutive_damage, only: &
-   constitutive_damage_collectDotState, &
-   constitutive_damage_microstructure, &
-   constitutive_damage_maxSizeDotState
- use constitutive_thermal, only: &
-   constitutive_thermal_collectDotState, &
-   constitutive_thermal_microstructure, &
+   constitutive_maxSizeDotState, &
+   constitutive_damage_maxSizeDotState, &
    constitutive_thermal_maxSizeDotState
 
  implicit none
@@ -2361,18 +2285,10 @@ subroutine crystallite_integrateStateAdaptiveEuler()
 
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e)) then
+       if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-         call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Fe(1:3,1:3,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e )
-         call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                   crystallite_Lp(1:3,1:3,g,i,e), &
-                                                   g,i,e)
-       endif
     enddo; enddo; enddo
    !$OMP ENDDO
    !$OMP DO PRIVATE(p,c)
@@ -2453,14 +2369,10 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) &
-         call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
+         call constitutive_microstructure(crystallite_temperature(i,e), &
+                                          crystallite_Tstar_v(1:6,g,i,e), & 
+                                          crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                          ! update dependent state variables to be consistent with basic states
-       call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                               crystallite_Fe(1:3,1:3,g,i,e), &
-                                               g,i,e)                   ! update dependent state variables to be consistent with basic states
-       call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                crystallite_Lp(1:3,1:3,g,i,e), &
-                                                g,i,e)                  ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
  !$OMP END PARALLEL
@@ -2496,13 +2408,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-         call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Fe(1:3,1:3,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)
-         call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                   crystallite_Lp(1:3,1:3,g,i,e), &
-                                                   g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
    !$OMP DO PRIVATE(p,c)
@@ -2675,12 +2580,6 @@ subroutine crystallite_integrateStateEuler()
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure
- use constitutive_damage, only: &
-   constitutive_damage_collectDotState, &
-   constitutive_damage_microstructure
- use constitutive_thermal, only: &
-   constitutive_thermal_collectDotState, &
-   constitutive_thermal_microstructure
 
  implicit none
 
@@ -2721,13 +2620,6 @@ eIter = FEsolving_execElem(1:2)
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-         call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Fe(1:3,1:3,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)
-         call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                   crystallite_Lp(1:3,1:3,g,i,e), &
-                                                   g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
    !$OMP DO PRIVATE(p,c)
@@ -2812,14 +2704,10 @@ eIter = FEsolving_execElem(1:2)
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
+         call constitutive_microstructure(crystallite_temperature(i,e), &
+                                          crystallite_Tstar_v(1:6,g,i,e), &
+                                          crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
-         call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Fe(1:3,1:3,g,i,e), &
-                                                 g,i,e)                   ! update dependent state variables to be consistent with basic states
-         call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)                  ! update dependent state variables to be consistent with basic states
    enddo; enddo; enddo
    !$OMP ENDDO
   !$OMP END PARALLEL
@@ -2910,14 +2798,8 @@ subroutine crystallite_integrateStateFPI()
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure, &
-   constitutive_maxSizeDotState
- use constitutive_damage, only: &
-   constitutive_damage_collectDotState, &
-   constitutive_damage_microstructure, &
-   constitutive_damage_maxSizeDotState
- use constitutive_thermal, only: &
-   constitutive_thermal_collectDotState, &
-   constitutive_thermal_microstructure, &
+   constitutive_maxSizeDotState, &
+   constitutive_damage_maxSizeDotState, &
    constitutive_thermal_maxSizeDotState
 
  implicit none
@@ -3001,18 +2883,10 @@ subroutine crystallite_integrateStateFPI()
  !$OMP PARALLEL
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)             ! iterate over elements, ips and grains
-     if (crystallite_todo(g,i,e)) then
+     if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                          crystallite_Fp, crystallite_temperature(i,e), &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-       call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                crystallite_Fe(1:3,1:3,g,i,e), &
-                                                crystallite_Lp(1:3,1:3,g,i,e), &
-                                                g,i,e)
-       call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Lp(1:3,1:3,g,i,e), &
-                                                 g,i,e)
-     endif
    enddo; enddo; enddo
 
  !$OMP ENDDO
@@ -3076,16 +2950,11 @@ subroutine crystallite_integrateStateFPI()
 
    !$OMP DO PRIVATE(p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
-         call constitutive_microstructure(crystallite_temperature(i,e), crystallite_Fe(1:3,1:3,g,i,e), &
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
+         call constitutive_microstructure(crystallite_temperature(i,e), &
+                                          crystallite_Tstar_v(1:6,g,i,e), &
+                                          crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
-         call constitutive_damage_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                 crystallite_Fe(1:3,1:3,g,i,e), &
-                                                 g,i,e)                                                      ! update dependent state variables to be consistent with basic states
-         call constitutive_thermal_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)                                                     ! update dependent state variables to be consistent with basic states
-       endif
        p = mappingConstitutive(2,g,i,e) 
        c = mappingConstitutive(1,g,i,e)  
        plasticState(p)%previousDotState2(:,c) = plasticState(p)%previousDotState(:,c) 
@@ -3126,18 +2995,10 @@ subroutine crystallite_integrateStateFPI()
 
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
-       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
+       if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Fe, &
                                            crystallite_Fp, crystallite_temperature(i,e), &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
-         call constitutive_damage_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                  crystallite_Fe(1:3,1:3,g,i,e), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e), &
-                                                  g,i,e)
-         call constitutive_thermal_collectDotState(crystallite_Tstar_v(1:6,g,i,e), &
-                                                   crystallite_Lp(1:3,1:3,g,i,e), &
-                                                   g,i,e)
-       endif
      enddo; enddo; enddo
    !$OMP ENDDO
 
@@ -3934,10 +3795,6 @@ function crystallite_postResults(ipc, ip, el)
  use constitutive, only: &
    constitutive_homogenizedC, &
    constitutive_postResults
- use constitutive_damage, only: &
-   constitutive_damage_postResults
- use constitutive_thermal, only: &
-   constitutive_thermal_postResults
 
  implicit none
  integer(pInt), intent(in):: &
@@ -3968,6 +3825,7 @@ function crystallite_postResults(ipc, ip, el)
    crystID, &
    mySize, &
    n
+   
 
  crystID = microstructure_crystallite(mesh_element(4,el))
 
@@ -4074,27 +3932,10 @@ function crystallite_postResults(ipc, ip, el)
 
  crystallite_postResults(c+1) = real(plasticState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
  c = c + 1_pInt
- if (plasticState(material_phase(ipc,ip,el))%sizePostResults > 0_pInt) &
-   crystallite_postResults(c+1:c+plasticState(material_phase(ipc,ip,el))%sizePostResults) = &
+ if (size(crystallite_postResults)-c > 0_pInt) &
+   crystallite_postResults(c+1:size(crystallite_postResults)) = &
       constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe, &
                                crystallite_temperature(ip,el), ipc, ip, el)
- c = c + plasticState(material_phase(ipc,ip,el))%sizePostResults
-
-#ifdef multiphysicsOut
- crystallite_postResults(c+1) = real(damageState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
- c = c + 1_pInt
- if (damageState(material_phase(ipc,ip,el))%sizePostResults > 0_pInt) &
-   crystallite_postResults(c+1:c+damageState(material_phase(ipc,ip,el))%sizePostResults) = &
-      constitutive_damage_postResults(ipc, ip, el)
- c = c + damageState(material_phase(ipc,ip,el))%sizePostResults
-
- crystallite_postResults(c+1) = real(thermalState(material_phase(ipc,ip,el))%sizePostResults,pReal)             ! size of constitutive results
- c = c + 1_pInt
- if (thermalState(material_phase(ipc,ip,el))%sizePostResults > 0_pInt) &
-   crystallite_postResults(c+1:c+thermalState(material_phase(ipc,ip,el))%sizePostResults) = &
-      constitutive_thermal_postResults(ipc, ip, el)
- c = c + thermalState(material_phase(ipc,ip,el))%sizePostResults
-#endif
 
 end function crystallite_postResults
 

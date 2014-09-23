@@ -75,10 +75,6 @@ subroutine CPFEM_initAll(temperature,el,ip)
  use FEZoo, only: &
    FEZoo_init
 #endif
- use constitutive_thermal, only: &
-   constitutive_thermal_init
- use constitutive_damage, only: &
-   constitutive_damage_init
 
  implicit none
  integer(pInt), intent(in) ::                        el, &                                         ! FE el number
@@ -103,8 +99,6 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call lattice_init
      call material_init
      call constitutive_init
-     call constitutive_thermal_init
-     call constitutive_damage_init
      call crystallite_init(temperature)                                                            ! (have to) use temperature of first ip for whole model
      call homogenization_init
      call CPFEM_init

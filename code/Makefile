@@ -361,8 +361,8 @@ THERMAL_FILES = \
 
 CONSTITUTIVE_FILES = \
    constitutive_dislotwin.o constitutive_dislokmc.o constitutive_j2.o constitutive_phenopowerlaw.o \
-   constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o \
-   constitutive_damage.o constitutive_thermal.o constitutive.o
+   constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o
+
 HOMOGENIZATION_FILES = \
    homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o
 
@@ -480,8 +480,8 @@ constitutive.o:                constitutive.f90 \
                                constitutive_phenopowerlaw.o \
                                constitutive_j2.o \
                                constitutive_none.o \
-                               constitutive_thermal.o \
-                               constitutive_damage.o
+                               $(DAMAGE_FILES) \
+                               $(THERMAL_FILES)
 
 constitutive_nonlocal.o:       constitutive_nonlocal.f90 \
                                lattice.o
@@ -504,17 +504,11 @@ constitutive_j2.o:             constitutive_j2.f90 \
 constitutive_none.o:           constitutive_none.f90 \
                                lattice.o
 
-constitutive_damage.o:         constitutive_damage.f90 \
-                               $(DAMAGE_FILES)
-
 damage_none.o:                 damage_none.f90 \
                                lattice.o
 
 damage_brittle.o:              damage_brittle.f90 \
                                lattice.o
-
-constitutive_thermal.o:        constitutive_thermal.f90 \
-                               $(THERMAL_FILES)
 
 thermal_none.o:                thermal_none.f90 \
                                lattice.o

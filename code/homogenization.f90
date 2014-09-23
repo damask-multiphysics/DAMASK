@@ -104,10 +104,8 @@ subroutine homogenization_init()
  use lattice, only: &
    lattice_referenceTemperature
  use constitutive, only: &
-   constitutive_maxSizePostResults
- use constitutive_damage, only: &
-   constitutive_damage_maxSizePostResults
- use constitutive_thermal, only: &
+   constitutive_maxSizePostResults, &
+   constitutive_damage_maxSizePostResults, &
    constitutive_thermal_maxSizePostResults
  use crystallite, only: &
    crystallite_maxSizePostResults

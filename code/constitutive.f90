@@ -13,7 +13,11 @@ module constitutive
  private
  integer(pInt), public, protected :: &
    constitutive_maxSizePostResults, &
-   constitutive_maxSizeDotState
+   constitutive_maxSizeDotState, &
+   constitutive_damage_maxSizePostResults, &
+   constitutive_damage_maxSizeDotState, &
+   constitutive_thermal_maxSizePostResults, &
+   constitutive_thermal_maxSizeDotState
 
  public :: & 
    constitutive_init, &
@@ -79,6 +83,10 @@ subroutine constitutive_init
    phase_elasticity, &
    phase_plasticity, &
    phase_plasticityInstance, &
+   phase_damage, &
+   phase_damageInstance, &
+   phase_thermal, &
+   phase_thermalInstance, &
    phase_Noutput, &
    homogenization_Ngrains, &
    homogenization_maxNgrains, &
@@ -98,7 +106,17 @@ subroutine constitutive_init
    PLASTICITY_DISLOKMC_label, &
    PLASTICITY_TITANMOD_label, &
    PLASTICITY_NONLOCAL_label, &
+   LOCAL_DAMAGE_NONE_ID, &
+   LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_THERMAL_none_ID, &
+   LOCAL_THERMAL_HEATGEN_ID, &
+   LOCAL_DAMAGE_NONE_label, &
+   LOCAL_DAMAGE_BRITTLE_label, &
+   LOCAL_THERMAL_none_label, &
+   LOCAL_THERMAL_HEATGEN_label, &
    plasticState, &
+   damageState, &
+   thermalState, &
    mappingConstitutive
  
 
@@ -109,6 +127,10 @@ subroutine constitutive_init
  use constitutive_dislokmc
  use constitutive_titanmod
  use constitutive_nonlocal
+ use damage_none
+ use damage_brittle
+ use thermal_none
+ use thermal_adiabatic
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
@@ -119,7 +141,7 @@ subroutine constitutive_init
  integer(pInt), dimension(:,:), pointer :: thisSize
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
- logical :: knownPlasticity, nonlocalConstitutionPresent
+ logical :: knownPlasticity, knownDamage, knownThermal, nonlocalConstitutionPresent
  nonlocalConstitutionPresent = .false.
  
 !--------------------------------------------------------------------------------------------------
@@ -137,7 +159,23 @@ subroutine constitutive_init
   call constitutive_nonlocal_stateInit()
  endif
  close(FILEUNIT)
+
+!--------------------------------------------------------------------------------------------------
+! parse damage from config file
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ if (any(phase_damage == LOCAL_DAMAGE_NONE_ID))       call damage_none_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_BRITTLE_ID))    call damage_brittle_init(FILEUNIT)
+ close(FILEUNIT)
  
+!--------------------------------------------------------------------------------------------------
+! parse thermal from config file
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ if (any(phase_thermal == LOCAL_THERMAL_none_ID))       call thermal_none_init(FILEUNIT)
+! if (any(phase_thermal == LOCAL_THERMAL_HEATGEN_ID)) call thermal_heatgen_init(FILEUNIT)
+ close(FILEUNIT)
+
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -190,17 +228,75 @@ subroutine constitutive_init
        enddo
      endif
    endif
+#ifdef multiphysicsOut
+   instance = phase_damageInstance(phase)                                                           ! which instance of a plasticity is present phase
+   knownDamage = .true.
+   select case(phase_damage(phase))                                                                 ! split per constititution
+     case (LOCAL_DAMAGE_none_ID)
+       outputName = LOCAL_DAMAGE_NONE_label
+       thisOutput => null()
+       thisSize   => null()
+     case (LOCAL_DAMAGE_BRITTLE_ID)
+       outputName = LOCAL_DAMAGE_BRITTLE_label
+       thisOutput => damage_brittle_output
+       thisSize   => damage_brittle_sizePostResult
+     case default
+       knownDamage = .false.
+   end select   
+   if (knownDamage) then
+     write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
+     if (phase_damage(phase) /= LOCAL_DAMAGE_none_ID) then
+       do e = 1_pInt,phase_Noutput(phase)
+         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+       enddo
+     endif
+   endif
+   instance = phase_thermalInstance(phase)                                                              ! which instance is present phase
+   knownThermal = .true.
+   select case(phase_thermal(phase))                                                                 ! split per constititution
+     case (LOCAL_THERMAL_none_ID)
+       outputName = LOCAL_THERMAL_NONE_label
+       thisOutput => null()
+       thisSize   => null()
+     case (LOCAL_THERMAL_heatgen_ID)
+       outputName = LOCAL_THERMAL_HEATGEN_label
+       thisOutput => null()
+       thisSize   => null()
+     case default
+       knownThermal = .false.
+   end select   
+   if (knownThermal) then
+     write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
+     if (phase_thermal(phase) /= LOCAL_THERMAL_none_ID) then
+       do e = 1_pInt,phase_Noutput(phase)
+         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+       enddo
+     endif
+   endif
+#endif
  enddo
  close(FILEUNIT)
  
  constitutive_maxSizeDotState = 0_pInt
  constitutive_maxSizePostResults = 0_pInt
+ constitutive_damage_maxSizePostResults = 0_pInt
+ constitutive_damage_maxSizeDotState = 0_pInt
+ constitutive_thermal_maxSizePostResults = 0_pInt
+ constitutive_thermal_maxSizeDotState = 0_pInt
 
  PhaseLoop2:do phase = 1_pInt,material_Nphase
    plasticState(phase)%partionedState0 = plasticState(phase)%State0
    plasticState(phase)%State = plasticState(phase)%State0
    constitutive_maxSizeDotState = max(constitutive_maxSizeDotState, plasticState(phase)%sizeDotState)
    constitutive_maxSizePostResults = max(constitutive_maxSizePostResults, plasticState(phase)%sizePostResults)
+   damageState(phase)%partionedState0 = damageState(phase)%State0
+   damageState(phase)%State = damageState(phase)%State0
+   constitutive_damage_maxSizeDotState = max(constitutive_damage_maxSizeDotState, damageState(phase)%sizeDotState)
+   constitutive_damage_maxSizePostResults = max(constitutive_damage_maxSizePostResults, damageState(phase)%sizePostResults)
+   thermalState(phase)%partionedState0 = thermalState(phase)%State0
+   thermalState(phase)%State = thermalState(phase)%State0
+   constitutive_thermal_maxSizeDotState = max(constitutive_thermal_maxSizeDotState, thermalState(phase)%sizeDotState)
+   constitutive_thermal_maxSizePostResults = max(constitutive_thermal_maxSizePostResults, thermalState(phase)%sizePostResults)
  enddo PhaseLoop2
 
 #ifdef HDF
@@ -292,18 +388,18 @@ end function constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
+subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el)
  use prec, only: &
    pReal 
  use material, only: &
    phase_plasticity, &
+   phase_damage, &
    material_phase, &
    PLASTICITY_DISLOTWIN_ID, &
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID, &
-   plasticState, &
-   mappingConstitutive
+   LOCAL_DAMAGE_BRITTLE_ID
 
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
@@ -313,6 +409,8 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
    constitutive_dislotwin_microstructure
  use constitutive_dislokmc, only: &
    constitutive_dislokmc_microstructure
+ use damage_brittle, only: &
+   damage_brittle_microstructure
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -321,6 +419,8 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
    temperature
+ real(pReal),  intent(in), dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
@@ -335,6 +435,12 @@ subroutine constitutive_microstructure(temperature, Fe, Fp, ipc, ip, el)
      call constitutive_titanmod_microstructure (temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      call constitutive_nonlocal_microstructure (Fe,Fp,          ip,el)
+
+ end select
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_BRITTLE_ID)
+     call damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
 
  end select
 
@@ -512,8 +618,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    mesh_maxNips
  use material, only: &
    phase_plasticity, &
-   plasticState, &
-   mappingConstitutive, &  
+   phase_damage, &
+   phase_thermal, &
    material_phase, &
    homogenization_maxNgrains, &
    PLASTICITY_NONE_ID, &
@@ -522,7 +628,9 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    PLASTICITY_DISLOTWIN_ID, &
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
-   PLASTICITY_NONLOCAL_ID
+   PLASTICITY_NONLOCAL_ID, &
+   LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_THERMAL_HEATGEN_ID
  use constitutive_j2, only:  &
    constitutive_j2_dotState
  use constitutive_phenopowerlaw, only: &
@@ -535,6 +643,10 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    constitutive_titanmod_dotState
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_dotState
+ use damage_brittle, only: &
+   damage_brittle_dotState
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_dotState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -575,6 +687,17 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
                                               subfracArray,ip,el)
  end select
  
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_BRITTLE_ID)
+     call damage_brittle_dotState(ipc, ip, el)
+
+ end select
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_HEATGEN_ID)
+!     call thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
+ end select
+
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
    call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
    !$OMP CRITICAL (debugTimingDotState)
@@ -848,8 +971,11 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    mesh_maxNips
  use material, only: &
    plasticState, &
-   mappingConstitutive, &
+   damageState, &
+   thermalState, &
    phase_plasticity, &
+   phase_damage, &
+   phase_thermal, &
    material_phase, &
    homogenization_maxNgrains, &
    PLASTICITY_NONE_ID, &
@@ -858,7 +984,9 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    PLASTICITY_DISLOTWIN_ID, &
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
-   PLASTICITY_NONLOCAL_ID
+   PLASTICITY_NONLOCAL_ID, &
+   LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_THERMAL_HEATGEN_ID
  use constitutive_j2, only: &
 #ifdef HDF
    constitutive_j2_postResults2,&
@@ -874,13 +1002,27 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    constitutive_titanmod_postResults
  use constitutive_nonlocal, only: &
    constitutive_nonlocal_postResults
+#ifdef multiphysicsOut
+ use damage_brittle, only: &
+   damage_brittle_postResults
+! use thermal_adiabatic, only: &
+!   thermal_adiabatic_postResults
+#endif
+
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
+#ifdef multiphysicsOut
+ real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults + &
+                        damageState( material_phase(ipc,ip,el))%sizePostResults + &
+                        thermalState(material_phase(ipc,ip,el))%sizePostResults) :: & 
+   constitutive_postResults
+#else
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
    constitutive_postResults
+#endif
  real(pReal),  intent(in) :: &
    temperature
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
@@ -888,30 +1030,49 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal) :: damage, Tstar_v_effective(6)
+ integer(pInt) :: startPos, endPos
  
  damage = constitutive_getNonlocalDamage(ipc,ip,el)
  Tstar_v_effective = damage*damage*Tstar_v
 
  constitutive_postResults = 0.0_pReal
  
+ startPos = 1_pInt
+ endPos = plasticState(material_phase(ipc,ip,el))%sizePostResults
  select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_TITANMOD_ID)
-     constitutive_postResults = constitutive_titanmod_postResults(ipc,ip,el)
+     constitutive_postResults(startPos:endPos) = constitutive_titanmod_postResults(ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults= constitutive_j2_postResults(Tstar_v_effective,ipc,ip,el)
+     constitutive_postResults(startPos:endPos) = constitutive_j2_postResults(Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     constitutive_postResults = &
+     constitutive_postResults(startPos:endPos) = &
        constitutive_phenopowerlaw_postResults(Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_postResults = &
+     constitutive_postResults(startPos:endPos) = &
        constitutive_dislotwin_postResults(Tstar_v_effective,Temperature,ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     constitutive_postResults = &
+     constitutive_postResults(startPos:endPos) = &
        constitutive_dislokmc_postResults(Tstar_v_effective,Temperature,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     constitutive_postResults = &
+     constitutive_postResults(startPos:endPos) = &
        constitutive_nonlocal_postResults (Tstar_v_effective,FeArray,ip,el)
  end select
+
+#ifdef multiphysicsOut
+ startPos = endPos + 1_pInt
+ endPos = endPos + damageState(material_phase(ipc,ip,el))%sizePostResults
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_BRITTLE_ID)
+     constitutive_postResults(startPos:endPos) = damage_brittle_postResults(ipc, ip, el)
+ end select
+
+ startPos = endPos + 1_pInt
+ endPos = endPos + thermalState(material_phase(ipc,ip,el))%sizePostResults
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_HEATGEN_ID)
+!     constitutive_postResults(startPos:endPos) = thermal_adiabatic_postResults(ipc, ip, el)
+ end select
+#endif
   
 end function constitutive_postResults
 
