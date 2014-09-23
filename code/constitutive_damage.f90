@@ -60,7 +60,7 @@ subroutine constitutive_damage_init
    LOCAL_DAMAGE_BRITTLE_ID, &
    LOCAL_DAMAGE_BRITTLE_label
 use damage_none
-use damage_local
+use damage_brittle
    
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
@@ -79,7 +79,7 @@ use damage_local
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(phase_damage == LOCAL_DAMAGE_NONE_ID))       call damage_none_init(FILEUNIT)
- if (any(phase_damage == LOCAL_DAMAGE_BRITTLE_ID))      call damage_local_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_BRITTLE_ID))    call damage_brittle_init(FILEUNIT)
  close(FILEUNIT)
  
  write(6,'(/,a)')   ' <<<+-  constitutive_damage init  -+>>>'
@@ -100,8 +100,8 @@ use damage_local
        thisSize   => null()
      case (LOCAL_DAMAGE_BRITTLE_ID)
        outputName = LOCAL_DAMAGE_BRITTLE_label
-       thisOutput => damage_local_output
-       thisSize   => damage_local_sizePostResult
+       thisOutput => damage_brittle_output
+       thisSize   => damage_brittle_sizePostResult
      case default
        knownDamage = .false.
    end select   
@@ -137,8 +137,8 @@ subroutine constitutive_damage_microstructure(Tstar_v, Fe, ipc, ip, el)
    material_phase, &
    LOCAL_DAMAGE_BRITTLE_ID, &
    phase_damage
- use damage_local, only:  &
-   damage_local_microstructure
+ use damage_brittle, only:  &
+   damage_brittle_microstructure
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -152,7 +152,7 @@ subroutine constitutive_damage_microstructure(Tstar_v, Fe, ipc, ip, el)
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
-     call damage_local_microstructure(Tstar_v, Fe, ipc, ip, el)
+     call damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
 
  end select
 
@@ -167,8 +167,8 @@ subroutine constitutive_damage_collectDotState(Tstar_v, Fe, Lp, ipc, ip, el)
    material_phase, &
    LOCAL_DAMAGE_BRITTLE_ID, &
    phase_damage
- use damage_local, only:  &
-   damage_local_dotState
+ use damage_brittle, only:  &
+   damage_brittle_dotState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -183,7 +183,7 @@ subroutine constitutive_damage_collectDotState(Tstar_v, Fe, Lp, ipc, ip, el)
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
-     call damage_local_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
+     call damage_brittle_dotState(Tstar_v, Fe, Lp, ipc, ip, el)
 
  end select
 
@@ -198,8 +198,8 @@ function constitutive_damage_postResults(ipc, ip, el)
    material_phase, &
    LOCAL_DAMAGE_BRITTLE_ID, &
    phase_damage
- use damage_local, only:  &
-   damage_local_postResults
+ use damage_brittle, only:  &
+   damage_brittle_postResults
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -213,7 +213,7 @@ function constitutive_damage_postResults(ipc, ip, el)
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
-     constitutive_damage_postResults = damage_local_postResults(ipc, ip, el)
+     constitutive_damage_postResults = damage_brittle_postResults(ipc, ip, el)
  end select
   
 end function constitutive_damage_postResults

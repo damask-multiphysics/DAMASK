@@ -658,7 +658,7 @@ function constitutive_getLocalDamage(ipc, ip, el)
    LOCAL_DAMAGE_none_ID, &
    LOCAL_DAMAGE_BRITTLE_ID, &
    phase_damage
- use damage_local, only: &
+ use damage_brittle, only: &
    constitutive_brittle_getDamage
 
  implicit none
@@ -688,7 +688,7 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
    material_phase, &
    LOCAL_DAMAGE_BRITTLE_ID, &
    phase_damage
- use damage_local, only: &
+ use damage_brittle, only: &
    constitutive_brittle_putDamage
 
  implicit none

@@ -354,7 +354,7 @@ COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHEC
 COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
 ###################################################################################################
 DAMAGE_FILES = \
-   damage_none.o damage_local.o
+   damage_none.o damage_brittle.o
 
 THERMAL_FILES = \
    thermal_none.o thermal_adiabatic.o
@@ -510,7 +510,7 @@ constitutive_damage.o:         constitutive_damage.f90 \
 damage_none.o:                 damage_none.f90 \
                                lattice.o
 
-damage_local.o:                damage_local.f90 \
+damage_brittle.o:              damage_brittle.f90 \
                                lattice.o
 
 constitutive_thermal.o:        constitutive_thermal.f90 \
