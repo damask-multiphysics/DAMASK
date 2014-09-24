@@ -149,7 +149,10 @@ module constitutive_dislotwin
                  resolved_stress_shearband_ID, &
                  shear_rate_shearband_ID, &
                  sb_eigenvalues_ID, &
-                 sb_eigenvectors_ID
+                 sb_eigenvectors_ID, &
+                 stress_trans_fraction_ID, &
+                 strain_trans_fraction_ID, &
+                 trans_fraction_ID
  end enum
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
    constitutive_dislotwin_outputID                                                                  !< ID of each post result output
@@ -440,6 +443,21 @@ subroutine constitutive_dislotwin_init(fileUnit)
            case ('sb_eigenvectors')
              constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
              constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = sb_eigenvectors_ID
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+           case ('stress_trans_fraction')
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = stress_trans_fraction_ID
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+           case ('strain_trans_fraction')
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = strain_trans_fraction_ID
+             constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+           case ('trans_fraction','total_trans_fraction')
+             constitutive_dislotwin_Noutput(instance) = constitutive_dislotwin_Noutput(instance) + 1_pInt
+             constitutive_dislotwin_outputID(constitutive_dislotwin_Noutput(instance),instance) = trans_fraction_ID
              constitutive_dislotwin_output(constitutive_dislotwin_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
@@ -746,6 +764,11 @@ subroutine constitutive_dislotwin_init(fileUnit)
            mySize = 3_pInt  
          case(sb_eigenvectors_ID)
            mySize = 9_pInt  
+         case(stress_trans_fraction_ID, &
+              strain_trans_fraction_ID, &
+              trans_fraction_ID &
+              )
+           mySize = nr
        end select
  
        if (mySize > 0_pInt) then  ! any meaningful output found
@@ -1046,11 +1069,11 @@ subroutine constitutive_dislotwin_aTolState(ph,instance)
 
 ! Tolerance state for stress-assisted martensite volume fraction
  plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+nr) = 1.0e-5        !Todo
+                            3_pInt*ns+2_pInt*nt+nr) = 1.0e-6
 
 ! Tolerance state for strain-induced martensite volume fraction
  plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+nr+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+2_pInt*nr) = 1.0e-6 !Todo
+                            3_pInt*ns+2_pInt*nt+2_pInt*nr) = 1.0e-6
 
 end subroutine constitutive_dislotwin_aTolState
 
@@ -1154,7 +1177,7 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
    ph, &
    of
  real(pReal) :: &
-   sumf,sfe,x0
+   sumf,sfe,x0,sumftr
  real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: fOverStacksize
 
  !* Shortened notation
@@ -1186,6 +1209,10 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
  !* Total twin volume fraction
  sumf = sum(plasticState(ph)%state((3*ns+1):(3*ns+nt), of)) ! safe for nt == 0
  
+ !* Total transformed volume fraction
+ sumftr = sum(plasticState(ph)%state((3_pInt*ns+2_pInt*nt+1_pInt):(3_pInt*ns+2_pInt*nt+nr), of)) + &
+          sum(plasticState(ph)%state((3_pInt*ns+2_pInt*nt+nr+1_pInt):(3_pInt*ns+2_pInt*nt+2_pInt*nr), of))
+
  !* Stacking fault energy
  sfe = constitutive_dislotwin_SFE_0K(instance) + & 
        constitutive_dislotwin_dSFE_dT(instance) * Temperature
@@ -2097,6 +2124,19 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
       case (sb_eigenvectors_ID)
         constitutive_dislotwin_postResults(c+1_pInt:c+9_pInt) = reshape(eigVectors,[9])
         c = c + 9_pInt
+      case (stress_trans_fraction_ID)
+        constitutive_dislotwin_postResults(c+1_pInt:c+nr) = &
+          plasticState(ph)%state((3_pInt*ns+2_pInt*nt+1_pInt):(3_pInt*ns+2_pInt*nt+nr), of)
+        c = c + nr
+      case (strain_trans_fraction_ID)
+        constitutive_dislotwin_postResults(c+1_pInt:c+nr) = &
+          plasticState(ph)%state((3_pInt*ns+2_pInt*nt+nr+1_pInt):(3_pInt*ns+2_pInt*nt+2_pInt*nr), of)
+        c = c + nr
+      case (trans_fraction_ID)
+        constitutive_dislotwin_postResults(c+1_pInt:c+nr) = &
+          plasticState(ph)%state((3_pInt*ns+2_pInt*nt+1_pInt):(3_pInt*ns+2_pInt*nt+nr), of) + &
+          plasticState(ph)%state((3_pInt*ns+2_pInt*nt+nr+1_pInt):(3_pInt*ns+2_pInt*nt+2_pInt*nr), of)
+        c = c + nr
     end select
  enddo
 end function constitutive_dislotwin_postResults
