@@ -31,38 +31,55 @@ parser.set_defaults(grid = (16,16,16))
 parser.set_defaults(N = 20)
 
 (options, extras) = parser.parse_args()
+options.grid = np.array(options.grid)
 
-Npoints = reduce(lambda x, y: x * y, options.grid)
-if 0 in options.grid: 
-  file['croak'].write('invalid grid a b c.\n')
+sys.stderr.write('\033[1m'+scriptName+'\033[0m\n')
+
+gridSize = options.grid.prod()
+if gridSize == 0:
+  sys.stderr.write('zero grid dimension for %s.\n'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
   sys.exit()
-if options.N > Npoints: 
-  sys.stderr.write('Warning: more seeds than grid points at minimum resolution.\n')
-  options.N = Npoints
+if options.N > gridSize: 
+  sys.stderr.write('accommodating only %i seeds on grid.\n'%gridSize)
+  options.N = gridSize
 if options.randomSeed == None:
   options.randomSeed = int(os.urandom(4).encode('hex'), 16)
+np.random.seed(options.randomSeed)                                                      # init random generators
+random.seed(options.randomSeed)
 
-seeds = np.zeros((3,options.N),float)
-np.random.seed(options.randomSeed)
+grainEuler = np.random.rand(3,options.N)                                                # create random Euler triplets
+grainEuler[0,:] *= 360.0                                                                # phi_1    is uniformly distributed
+grainEuler[1,:] = np.arccos(2*grainEuler[1,:]-1)*180.0/math.pi                          # cos(Phi) is uniformly distributed
+grainEuler[2,:] *= 360.0                                                                # phi_2    is uniformly distributed
 
-grainEuler = np.random.rand(3,options.N)
-grainEuler[0,:] *= 360.0
-grainEuler[1,:] = np.arccos(2*grainEuler[1,:]-1)*180.0/math.pi
-grainEuler[2,:] *= 360.0
+seedpoints = -np.ones(options.N,dtype='int')                                            # init grid positions of seed points
 
-seedpoint = np.random.permutation(Npoints)[:options.N]
-seeds[0,:]=(np.mod(seedpoint                                   ,options.grid[0])\
-                                                            +np.random.random())/options.grid[0]
-seeds[1,:]=(np.mod(seedpoint//                 options.grid[0] ,options.grid[1])\
-                                                            +np.random.random())/options.grid[1]
-seeds[2,:]=(np.mod(seedpoint//(options.grid[1]*options.grid[0]),options.grid[2])\
-                                                            +np.random.random())/options.grid[2]
+if options.N * 1024 < gridSize:                                                         # heuristic limit for random search
+  i = 0
+  while i < options.N:                                                                  # until all (unique) points determined
+    p = np.random.randint(gridSize)                                                     # pick a location
+    if p not in seedpoints:                                                             # not yet taken?
+      seedpoints[i] = p                                                                 # take it
+      i += 1                                                                            # advance stepper
+else:
+  seedpoints = np.array(random.sample(range(gridSize),options.N))                       # create random permutation of all grid positions and choose first N
 
-sys.stdout.write("5\theader\n")
-sys.stdout.write(scriptID + " " + " ".join(sys.argv[1:])+"\n")
-sys.stdout.write("grid\ta {}\tb {}\tc {}\n".format(options.grid[0],options.grid[1],options.grid[2]))
-sys.stdout.write("microstructures\t{}\n".format(options.N))
-sys.stdout.write("randomSeed\t{}\n".format(options.randomSeed))
-sys.stdout.write("x\ty\tz\tphi1\tPhi\tphi2\n")
+seeds = np.zeros((3,options.N),float)                                                   # init seed positions
+seeds[0,:] = (np.mod(seedpoints                                   ,options.grid[0])\
+             +np.random.random())/options.grid[0]
+seeds[1,:] = (np.mod(seedpoints//                 options.grid[0] ,options.grid[1])\
+             +np.random.random())/options.grid[1]
+seeds[2,:] = (np.mod(seedpoints//(options.grid[1]*options.grid[0]),options.grid[2])\
+             +np.random.random())/options.grid[2]
 
+header = ["5\theader",
+          scriptID + " " + " ".join(sys.argv[1:]),
+          "grid\ta {}\tb {}\tc {}".format(options.grid[0],options.grid[1],options.grid[2]),
+          "microstructures\t{}".format(options.N),
+          "randomSeed\t{}".format(options.randomSeed),
+          "x\ty\tz\tphi1\tPhi\tphi2",
+         ]
+
+for line in header:
+  sys.stdout.write(line+"\n")
 np.savetxt(sys.stdout,np.transpose(np.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')
