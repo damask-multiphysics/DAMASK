@@ -125,7 +125,9 @@ module constitutive_dislotwin
    constitutive_dislotwin_interactionMatrix_SlipTwin, &                                             !< interaction matrix of slip systems with twin systems for each instance
    constitutive_dislotwin_interactionMatrix_TwinSlip, &                                             !< interaction matrix of twin systems with slip systems for each instance
    constitutive_dislotwin_interactionMatrix_TwinTwin, &                                             !< interaction matrix of the different twin systems for each instance
-   constitutive_dislotwin_forestProjectionEdge                                                      !< matrix of forest projections of edge dislocations for each instance
+   constitutive_dislotwin_forestProjectionEdge, &                                                   !< matrix of forest projections of edge dislocations for each instance
+   constitutive_dislotwin_projectionMatrix_Trans                                                    !< matrix for projection of slip system shear on fault band (twin) systems for each instance
+
  real(pReal),                         dimension(:,:,:,:,:),   allocatable,         private :: &
    constitutive_dislotwin_sbSv
 
@@ -623,6 +625,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
  sanityChecks: do phase = 1_pInt, size(phase_plasticity)
     myPhase: if (phase_plasticity(phase) == PLASTICITY_dislotwin_ID) then
       instance = phase_plasticityInstance(phase)
+
       if (sum(constitutive_dislotwin_Nslip(:,instance)) < 0_pInt) &
         call IO_error(211_pInt,el=instance,ext_msg='Nslip ('//PLASTICITY_DISLOTWIN_label//')')
       if (sum(constitutive_dislotwin_Ntwin(:,instance)) < 0_pInt) &
@@ -719,6 +722,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
                                                             maxNinstance), source=0.0_pReal)
  allocate(constitutive_dislotwin_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
+ allocate(constitutive_dislotwin_projectionMatrix_Trans(maxTotalNtrans,maxTotalNtrans,maxNinstance), &
+                                                                                       source=0.0_pReal)
  allocate(constitutive_dislotwin_Ctwin66(6,6,maxTotalNtwin,maxNinstance),              source=0.0_pReal)
  allocate(constitutive_dislotwin_Ctwin3333(3,3,3,3,maxTotalNtwin,maxNinstance),        source=0.0_pReal)
  allocate(constitutive_dislotwin_Ctrans66(6,6,maxTotalNtrans,maxNinstance),            source=0.0_pReal)
@@ -807,6 +812,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
        allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+
     !* Process slip related parameters ------------------------------------------------ 
      slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
        index_myFamily = sum(constitutive_dislotwin_Nslip(1:f-1_pInt,instance))                      ! index in truncated slip system list
@@ -831,7 +837,6 @@ subroutine constitutive_dislotwin_init(fileUnit)
   
        !* Calculation of forest projections for edge dislocations
        !* Interaction matrices
-  
          do o = 1_pInt,lattice_maxNslipFamily
            index_otherFamily = sum(constitutive_dislotwin_Nslip(1:o-1_pInt,instance))
            do k = 1_pInt,constitutive_dislotwin_Nslip(o,instance)                                   ! loop over (active) systems in other family (slip)
@@ -878,7 +883,6 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_twinsizePerTwinFamily(f,instance)
  
        !* Rotate twin elasticity matrices
- 
          index_otherFamily = sum(lattice_NtwinSystem(1:f-1_pInt,phase))                             ! index in full lattice twin list
          do l = 1_pInt,3_pInt; do m = 1_pInt,3_pInt; do n = 1_pInt,3_pInt; do o = 1_pInt,3_pInt
            do p = 1_pInt,3_pInt; do q = 1_pInt,3_pInt; do r = 1_pInt,3_pInt; do s = 1_pInt,3_pInt
@@ -919,6 +923,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
      enddo twinFamiliesLoop
 
     !* Process transformation related parameters ------------------------------------------------
+
      transFamiliesLoop: do f = 1_pInt,lattice_maxNtransFamily
        index_myFamily = sum(constitutive_dislotwin_Ntrans(1:f-1_pInt,instance))                      ! index in truncated trans system list
        transSystemsLoop: do j = 1_pInt,constitutive_dislotwin_Ntrans(f,instance)
@@ -938,6 +943,15 @@ subroutine constitutive_dislotwin_init(fileUnit)
          enddo; enddo; enddo; enddo
          constitutive_dislotwin_Ctrans66(1:6,1:6,index_myFamily+j,instance) = &
            math_Mandel3333to66(constitutive_dislotwin_Ctrans3333(1:3,1:3,1:3,1:3,index_myFamily+j,instance))
+
+         !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
+         do o = 1_pInt,lattice_maxNtransFamily
+           index_otherFamily = sum(constitutive_dislotwin_Ntrans(1:o-1_pInt,instance))
+           do k = 1_pInt,constitutive_dislotwin_Ntrans(o,instance)                                   ! loop over (active) systems in other family (trans)
+             constitutive_dislotwin_projectionMatrix_Trans(index_myFamily+j,index_otherFamily+k,instance) = &
+                   lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,phase))+j, &
+                                                sum(lattice_NtransSystem(1:o-1,phase))+k, phase)
+         enddo; enddo
  
        enddo transSystemsLoop
      enddo transFamiliesLoop
