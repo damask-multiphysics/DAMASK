@@ -427,7 +427,7 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
  real(pReal) :: damage, Tstar_v_effective(6)
  
  damage = constitutive_getNonlocalDamage(ipc,ip,el)
- Tstar_v_effective = Tstar_v/damage*damage
+ Tstar_v_effective = Tstar_v/(damage*damage)
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
@@ -500,7 +500,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
  real(pReal) :: damage, Tstar_v_effective(6)
  
  damage = constitutive_getNonlocalDamage(ipc,ip,el)
- Tstar_v_effective = Tstar_v/damage*damage
+ Tstar_v_effective = Tstar_v/(damage*damage)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_NONE_ID)
