@@ -5,7 +5,7 @@ import os,sys,string
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id: addCauchy.py 3331 2014-08-04 17:53:41Z MPIE\m.diehl $','\n','\\n')
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
 
 # --------------------------------------------------------------------
