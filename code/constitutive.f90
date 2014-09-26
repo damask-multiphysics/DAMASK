@@ -108,10 +108,12 @@ subroutine constitutive_init
    PLASTICITY_NONLOCAL_label, &
    LOCAL_DAMAGE_NONE_ID, &
    LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_DAMAGE_DUCTILE_ID, &
    LOCAL_THERMAL_none_ID, &
    LOCAL_THERMAL_HEATGEN_ID, &
    LOCAL_DAMAGE_NONE_label, &
    LOCAL_DAMAGE_BRITTLE_label, &
+   LOCAL_DAMAGE_DUCTILE_label, &
    LOCAL_THERMAL_none_label, &
    LOCAL_THERMAL_HEATGEN_label, &
    plasticState, &
@@ -129,6 +131,7 @@ subroutine constitutive_init
  use constitutive_nonlocal
  use damage_none
  use damage_brittle
+ use damage_ductile
  use thermal_none
  use thermal_adiabatic
  implicit none
@@ -167,6 +170,7 @@ subroutine constitutive_init
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(phase_damage == LOCAL_DAMAGE_NONE_ID))       call damage_none_init(FILEUNIT)
  if (any(phase_damage == LOCAL_DAMAGE_BRITTLE_ID))    call damage_brittle_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_DUCTILE_ID))    call damage_ductile_init(FILEUNIT)
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
@@ -250,6 +254,10 @@ subroutine constitutive_init
        thisNoutput => damage_brittle_Noutput
        thisOutput => damage_brittle_output
        thisSize   => damage_brittle_sizePostResult
+     case (LOCAL_DAMAGE_DUCTILE_ID)
+       outputName = LOCAL_DAMAGE_DUCTILE_label
+       thisOutput => damage_ductile_output
+       thisSize   => damage_ductile_sizePostResult
      case default
        knownDamage = .false.
    end select   
@@ -411,7 +419,8 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID, &
-   LOCAL_DAMAGE_BRITTLE_ID
+   LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_DAMAGE_DUCTILE_ID
 
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
@@ -423,6 +432,8 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
    constitutive_dislokmc_microstructure
  use damage_brittle, only: &
    damage_brittle_microstructure
+ use damage_ductile, only: &
+   damage_ductile_microstructure
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -457,6 +468,8 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
      call damage_brittle_microstructure(Tstar_v_effective, Fe, ipc, ip, el)
+   case (LOCAL_DAMAGE_DUCTILE_ID)
+     call damage_ductile_microstructure(Tstar_v_effective, Fe, Fp, ipc, ip, el)
 
  end select
 
@@ -646,6 +659,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID, &
    LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_DAMAGE_DUCTILE_ID, &
    LOCAL_THERMAL_HEATGEN_ID
  use constitutive_j2, only:  &
    constitutive_j2_dotState
@@ -661,6 +675,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    constitutive_nonlocal_dotState
  use damage_brittle, only: &
    damage_brittle_dotState
+ use damage_ductile, only: &
+   damage_ductile_dotState
  use thermal_adiabatic, only: &
    thermal_adiabatic_dotState
 
@@ -706,6 +722,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
      call damage_brittle_dotState(ipc, ip, el)
+   case (LOCAL_DAMAGE_DUCTILE_ID)
+     call damage_ductile_dotState(ipc, ip, el)
 
  end select
 
@@ -796,9 +814,12 @@ function constitutive_getLocalDamage(ipc, ip, el)
    material_phase, &
    LOCAL_DAMAGE_none_ID, &
    LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_DAMAGE_DUCTILE_ID, &
    phase_damage
  use damage_brittle, only: &
    constitutive_brittle_getDamage
+ use damage_ductile, only: &
+   constitutive_ductile_getDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -813,6 +834,9 @@ function constitutive_getLocalDamage(ipc, ip, el)
      
    case (LOCAL_DAMAGE_BRITTLE_ID)
      constitutive_getLocalDamage = constitutive_brittle_getDamage(ipc, ip, el)
+   
+   case (LOCAL_DAMAGE_DUCTILE_ID)
+     constitutive_getLocalDamage = constitutive_ductile_getDamage(ipc, ip, el)
  end select
 
 end function constitutive_getLocalDamage
@@ -826,9 +850,12 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
  use material, only: &
    material_phase, &
    LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_DAMAGE_DUCTILE_ID, &
    phase_damage
  use damage_brittle, only: &
    constitutive_brittle_putDamage
+ use damage_ductile, only: &
+   constitutive_ductile_putDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -841,6 +868,8 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
      call constitutive_brittle_putDamage(ipc, ip, el, localDamage)
+   case (LOCAL_DAMAGE_DUCTILE_ID)
+     call constitutive_ductile_putDamage(ipc, ip, el, localDamage)
 
  end select
 
@@ -1002,6 +1031,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID, &
    LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_DAMAGE_DUCTILE_ID, &
    LOCAL_THERMAL_HEATGEN_ID
  use constitutive_j2, only: &
 #ifdef HDF
@@ -1021,6 +1051,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
 #ifdef multiphysicsOut
  use damage_brittle, only: &
    damage_brittle_postResults
+ use damage_ductile, only: &
+   damage_ductile_postResults
 ! use thermal_adiabatic, only: &
 !   thermal_adiabatic_postResults
 #endif
@@ -1080,6 +1112,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
      constitutive_postResults(startPos:endPos) = damage_brittle_postResults(ipc, ip, el)
+   case (LOCAL_DAMAGE_DUCTILE_ID)
+     constitutive_postResults(startPos:endPos) = damage_ductile_postResults(ipc, ip, el)
  end select
 
  startPos = endPos + 1_pInt

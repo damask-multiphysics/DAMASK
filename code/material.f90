@@ -29,6 +29,7 @@ module material
    PLASTICITY_NONLOCAL_label      = 'nonlocal', &
    LOCAL_DAMAGE_NONE_label        = 'none', &
    LOCAL_DAMAGE_BRITTLE_label     = 'brittle', &
+   LOCAL_DAMAGE_DUCTILE_label     = 'ductile', &
    LOCAL_THERMAL_NONE_label       = 'none', &
    LOCAL_THERMAL_HEATGEN_label    = 'heatgen', &
    FIELD_DAMAGE_LOCAL_label       = 'local', &
@@ -55,10 +56,13 @@ module material
                  PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
  end enum
+
  enum, bind(c)
    enumerator :: LOCAL_DAMAGE_NONE_ID, &
-                 LOCAL_DAMAGE_BRITTLE_ID
+                 LOCAL_DAMAGE_BRITTLE_ID, &
+                 LOCAL_DAMAGE_DUCTILE_ID
  end enum
+
  enum, bind(c)
    enumerator :: LOCAL_THERMAL_NONE_ID, &
                  LOCAL_THERMAL_HEATGEN_ID
@@ -211,6 +215,7 @@ module material
    PLASTICITY_nonlocal_ID, &
    LOCAL_DAMAGE_none_ID, &
    LOCAL_DAMAGE_brittle_ID, &
+   LOCAL_DAMAGE_ductile_ID, &
    LOCAL_THERMAL_none_ID, &
    LOCAL_THERMAL_heatgen_ID, &
    FIELD_DAMAGE_LOCAL_ID, &
@@ -778,6 +783,8 @@ subroutine material_parsePhase(fileUnit,myPart)
              phase_damage(section) = LOCAL_DAMAGE_none_ID
            case (LOCAL_DAMAGE_BRITTLE_label)
              phase_damage(section) = LOCAL_DAMAGE_BRITTLE_ID
+           case (LOCAL_DAMAGE_DUCTILE_label)
+             phase_damage(section) = LOCAL_DAMAGE_DUCTILE_ID
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
