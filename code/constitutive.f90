@@ -632,7 +632,7 @@ end subroutine constitutive_hooke_TandItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, subdt, subfracArray,&
+subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, Temperature, subdt, subfracArray,&
                                                                                         ipc, ip, el)
  use prec, only: &
    pReal, &
@@ -696,6 +696,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    FpArray                                                                                          !< plastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+ real(pReal),  intent(in), dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
  integer(pLongInt) :: &
    tick, tock, & 
    tickrate, &
@@ -730,7 +732,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
 
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_HEATGEN_ID)
-     !call thermal_heatGen_dotState(Tstar_v, Lp, ipc, ip, el)
+     call thermal_heatGen_dotState(Tstar_v, Lp, ipc, ip, el)
  end select
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
