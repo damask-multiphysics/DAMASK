@@ -29,7 +29,7 @@ module constitutive_j2
  character(len=64),                   dimension(:,:),   allocatable, target, public :: &
    constitutive_j2_output                                                                           !< name of each post result output
  
- integer(pInt),                       dimension(:),     allocatable,         private :: &
+ integer(pInt),                       dimension(:),     allocatable, target, public :: &
    constitutive_j2_Noutput                                                                          !< number of outputs per instance
  real(pReal),                         dimension(:),     allocatable,         private :: &
    constitutive_j2_fTaylor, &                                                                       !< Taylor factor

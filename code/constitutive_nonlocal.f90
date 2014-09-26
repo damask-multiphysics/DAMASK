@@ -55,7 +55,7 @@ module constitutive_nonlocal
  character(len=64), dimension(:,:), allocatable, target, public :: &
    constitutive_nonlocal_output                                                                     !< name of each post result output
  
- integer(pInt), dimension(:), allocatable, private :: &
+ integer(pInt), dimension(:), allocatable, target, public :: &
    constitutive_nonlocal_Noutput                                                                    !< number of outputs per instance of this plasticity 
  
  integer(pInt), dimension(:,:), allocatable, private :: &

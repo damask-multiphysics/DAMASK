@@ -45,7 +45,7 @@ module constitutive_dislotwin
  real(pReal),                                                 parameter,           private :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
 
- integer(pInt),                       dimension(:),           allocatable,         private :: &
+ integer(pInt),                       dimension(:),           allocatable, target, public :: &
    constitutive_dislotwin_Noutput                                                                   !< number of outputs per instance of this plasticity 
 
  integer(pInt),                       dimension(:),           allocatable,         private :: &

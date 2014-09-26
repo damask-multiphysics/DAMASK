@@ -139,6 +139,7 @@ subroutine constitutive_init
   instance
 
  integer(pInt), dimension(:,:), pointer :: thisSize
+ integer(pInt), dimension(:)  , pointer :: thisNoutput
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownPlasticity, knownDamage, knownThermal, nonlocalConstitutionPresent
@@ -190,30 +191,37 @@ subroutine constitutive_init
    select case(phase_plasticity(phase))                                                             ! split per constititution
      case (PLASTICITY_NONE_ID)
        outputName = PLASTICITY_NONE_label
+       thisNoutput => null()
        thisOutput => null()                                                                         ! constitutive_none_output
        thisSize   => null()                                                                         ! constitutive_none_sizePostResult
      case (PLASTICITY_J2_ID)
        outputName = PLASTICITY_J2_label
+       thisNoutput => constitutive_j2_Noutput
        thisOutput => constitutive_j2_output
        thisSize   => constitutive_j2_sizePostResult
      case (PLASTICITY_PHENOPOWERLAW_ID)
        outputName = PLASTICITY_PHENOPOWERLAW_label
+       thisNoutput => constitutive_phenopowerlaw_Noutput
        thisOutput => constitutive_phenopowerlaw_output
        thisSize   => constitutive_phenopowerlaw_sizePostResult
      case (PLASTICITY_DISLOTWIN_ID)
        outputName = PLASTICITY_DISLOTWIN_label
+       thisNoutput => constitutive_dislotwin_Noutput
        thisOutput => constitutive_dislotwin_output
        thisSize   => constitutive_dislotwin_sizePostResult
      case (PLASTICITY_DISLOKMC_ID)
        outputName = PLASTICITY_DISLOKMC_label
+       thisNoutput => constitutive_dislokmc_Noutput
        thisOutput => constitutive_dislokmc_output
        thisSize   => constitutive_dislokmc_sizePostResult
      case (PLASTICITY_TITANMOD_ID)
        outputName = PLASTICITY_TITANMOD_label
+       thisNoutput => constitutive_titanmod_Noutput
        thisOutput => constitutive_titanmod_output
        thisSize   => constitutive_titanmod_sizePostResult
      case (PLASTICITY_NONLOCAL_ID)
        outputName = PLASTICITY_NONLOCAL_label
+       thisNoutput => constitutive_nonlocal_Noutput
        thisOutput => constitutive_nonlocal_output
        thisSize   => constitutive_nonlocal_sizePostResult
      case default
@@ -223,7 +231,7 @@ subroutine constitutive_init
    if (knownPlasticity) then
      write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
      if (phase_plasticity(phase) /= PLASTICITY_NONE_ID) then
-       do e = 1_pInt,phase_Noutput(phase)
+       do e = 1_pInt,thisNoutput(instance)
          write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
        enddo
      endif
@@ -234,10 +242,12 @@ subroutine constitutive_init
    select case(phase_damage(phase))                                                                 ! split per constititution
      case (LOCAL_DAMAGE_none_ID)
        outputName = LOCAL_DAMAGE_NONE_label
+       thisNoutput => null()
        thisOutput => null()
        thisSize   => null()
      case (LOCAL_DAMAGE_BRITTLE_ID)
        outputName = LOCAL_DAMAGE_BRITTLE_label
+       thisNoutput => damage_brittle_Noutput
        thisOutput => damage_brittle_output
        thisSize   => damage_brittle_sizePostResult
      case default
@@ -246,7 +256,7 @@ subroutine constitutive_init
    if (knownDamage) then
      write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
      if (phase_damage(phase) /= LOCAL_DAMAGE_none_ID) then
-       do e = 1_pInt,phase_Noutput(phase)
+       do e = 1_pInt,thisNoutput(instance)
          write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
        enddo
      endif
@@ -256,10 +266,12 @@ subroutine constitutive_init
    select case(phase_thermal(phase))                                                                 ! split per constititution
      case (LOCAL_THERMAL_none_ID)
        outputName = LOCAL_THERMAL_NONE_label
+       thisNoutput => null()
        thisOutput => null()
        thisSize   => null()
      case (LOCAL_THERMAL_heatgen_ID)
        outputName = LOCAL_THERMAL_HEATGEN_label
+       thisNoutput => null()
        thisOutput => null()
        thisSize   => null()
      case default
@@ -268,7 +280,7 @@ subroutine constitutive_init
    if (knownThermal) then
      write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
      if (phase_thermal(phase) /= LOCAL_THERMAL_none_ID) then
-       do e = 1_pInt,phase_Noutput(phase)
+       do e = 1_pInt,thisNoutput(instance)
          write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
        enddo
      endif

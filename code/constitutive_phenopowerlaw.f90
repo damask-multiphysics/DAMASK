@@ -22,8 +22,10 @@ module constitutive_phenopowerlaw
  character(len=64),                   dimension(:,:),   allocatable, target, public :: & 
    constitutive_phenopowerlaw_output                                                                !< name of each post result output
 
+ integer(pInt),                       dimension(:),     allocatable, target, public :: &
+   constitutive_phenopowerlaw_Noutput                                                               !< number of outputs per instance of this constitution 
+
  integer(pInt),                       dimension(:),     allocatable,         private :: &
-   constitutive_phenopowerlaw_Noutput, &                                                            !< number of outputs per instance of this constitution 
    constitutive_phenopowerlaw_totalNslip, &                                                         !< no. of slip system used in simulation
    constitutive_phenopowerlaw_totalNtwin                                                            !< no. of twin system used in simulation
 

@@ -42,7 +42,7 @@ module constitutive_titanmod
  character(len=64), dimension(:,:), allocatable, target, public :: &
    constitutive_titanmod_output                                                                     !<  name of each post result output
 
- integer(pInt),     dimension(:),          allocatable,         private :: & 
+ integer(pInt),     dimension(:),          allocatable, target, public :: & 
    constitutive_titanmod_Noutput                                                                    !<  number of outputs per instance of this plasticity                                                            !< ID of the lattice structure
 
  integer(pInt),     dimension(:),          allocatable,         private :: & 
