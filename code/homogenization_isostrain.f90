@@ -18,14 +18,13 @@ module homogenization_isostrain
  
  character(len=64),           dimension(:,:), allocatable, target, public :: &
   homogenization_isostrain_output                                                                   !< name of each post result output
- integer(pInt),               dimension(:),   allocatable,         private :: &
+ integer(pInt),               dimension(:),   allocatable, target, public :: &
    homogenization_isostrain_Noutput                                                                 !< number of outputs per homog instance
  integer(pInt),               dimension(:),   allocatable,         private :: &
    homogenization_isostrain_Ngrains
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  nconstituents_ID, &
-                 temperature_ID, &
                  ipcoords_ID, &
                  avgdefgrad_ID, &
                  avgfirstpiola_ID
@@ -67,7 +66,7 @@ subroutine homogenization_isostrain_init(fileUnit)
  integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
  integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
  integer(pInt) :: &
-   section = 0_pInt, i, output, mySize, o
+   section = 0_pInt, i, mySize, o
  integer :: &
    maxNinstance, &
    homog, &
@@ -113,7 +112,6 @@ subroutine homogenization_isostrain_init(fileUnit)
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
-     output = 0_pInt                                                                                ! reset output counter
      cycle
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
@@ -122,30 +120,29 @@ subroutine homogenization_isostrain_init(fileUnit)
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
-         case('type')
-         case('field_damage')
          case ('(output)')
-           output = output + 1_pInt
-           homogenization_isostrain_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-           select case(homogenization_isostrain_output(output,i))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
              case('nconstituents','ngrains')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
-               homogenization_isostrain_outputID(output,i) = nconstituents_ID
-             case('temperature')
-               homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
-               homogenization_isostrain_outputID(output,i) = temperature_ID
+               homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = nconstituents_ID
+               homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('ipcoords')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
-               homogenization_isostrain_outputID(output,i) = ipcoords_ID
+               homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = ipcoords_ID
+               homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('avgdefgrad','avgf')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
-               homogenization_isostrain_outputID(output,i) = avgdefgrad_ID
+               homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = avgdefgrad_ID
+               homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('avgp','avgfirstpiola','avg1stpiola')
                homogenization_isostrain_Noutput(i) = homogenization_isostrain_Noutput(i) + 1_pInt
-               homogenization_isostrain_outputID(output,i) = avgfirstpiola_ID
-             case default
-               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//&
-                                                        ' ('//HOMOGENIZATION_isostrain_label//')')
+               homogenization_isostrain_outputID(homogenization_isostrain_Noutput(i),i) = avgfirstpiola_ID
+               homogenization_isostrain_output(homogenization_isostrain_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
+
            end select
          case ('nconstituents','ngrains')
            homogenization_isostrain_Ngrains(i) = IO_intValue(line,positions,2_pInt)
@@ -158,8 +155,7 @@ subroutine homogenization_isostrain_init(fileUnit)
              case default
                call IO_error(211_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
            end select
-         case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_isostrain_label//')')
+
        end select
      endif
    endif
@@ -173,7 +169,7 @@ subroutine homogenization_isostrain_init(fileUnit)
 ! *  Determine size of postResults array
      outputsLoop: do o = 1_pInt, homogenization_isostrain_Noutput(instance)
        select case(homogenization_isostrain_outputID(o,instance))
-        case(nconstituents_ID, temperature_ID)
+        case(nconstituents_ID)
           mySize = 1_pInt
         case(ipcoords_ID)
           mySize = 3_pInt
@@ -277,8 +273,6 @@ pure function homogenization_isostrain_postResults(ip,el,avgP,avgF)
  use material, only: &
    homogenization_typeInstance, &
    homogenization_Noutput
- use crystallite, only: &
-   crystallite_temperature
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -303,9 +297,6 @@ pure function homogenization_isostrain_postResults(ip,el,avgP,avgF)
    select case(homogenization_isostrain_outputID(o,homID))
      case (nconstituents_ID)
        homogenization_isostrain_postResults(c+1_pInt) = real(homogenization_isostrain_Ngrains(homID),pReal)
-       c = c + 1_pInt
-     case (temperature_ID)
-       homogenization_isostrain_postResults(c+1_pInt) = crystallite_temperature(ip,el)
        c = c + 1_pInt
      case (avgdefgrad_ID)
        homogenization_isostrain_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])

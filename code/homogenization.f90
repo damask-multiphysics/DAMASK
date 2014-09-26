@@ -25,7 +25,8 @@ module homogenization
    materialpoint_results                                                                            !< results array of material point
  integer(pInt),                                      public, protected  :: &
    materialpoint_sizeResults, &
-   homogenization_maxSizePostResults
+   homogenization_maxSizePostResults, &
+   field_maxSizePostResults
  real(pReal),   dimension(:,:),         allocatable, public, protected :: &
    materialpoint_heat
 
@@ -43,6 +44,22 @@ module homogenization
    materialpoint_converged
  logical,       dimension(:,:,:),       allocatable, private :: &
    materialpoint_doneAndHappy
+ enum, bind(c) 
+   enumerator :: undefined_ID, &
+                 temperature_ID, &
+                 damage_ID
+ end enum
+ integer(pInt),               dimension(:),   allocatable, private, protected :: &
+   field_sizePostResults
+ integer(pInt),               dimension(:,:), allocatable, private :: &
+   field_sizePostResult
+ 
+ character(len=64),           dimension(:,:), allocatable, private :: &
+  field_output                                                                   !< name of each post result output
+ integer(pInt),               dimension(:),   allocatable, private :: &
+   field_Noutput                                                                 !< number of outputs per homog instance
+ integer(kind(undefined_ID)), dimension(:,:), allocatable, private :: &
+  field_outputID                                                                 !< ID of each post result output
 
  public ::  &
    homogenization_init, &
@@ -56,7 +73,8 @@ module homogenization
    field_getThermalConductivity33, &
    field_getMassDensity, &
    field_getSpecificHeat, &
-   materialpoint_postResults
+   materialpoint_postResults, &
+   field_postResults
  private :: &
    homogenization_partitionDeformation, &
    homogenization_updateState, &
@@ -86,13 +104,6 @@ subroutine homogenization_init()
    debug_levelBasic, &
    debug_e, &
    debug_g
- use IO, only: &
-   IO_error, &
-   IO_open_file, &
-   IO_open_jobFile_stat, &
-   IO_write_jobFile, &
-   IO_write_jobIntFile, &
-   IO_timeStamp 
  use mesh, only: &
    mesh_maxNips, &
    mesh_NcpElems, &
@@ -111,11 +122,13 @@ subroutine homogenization_init()
  use homogenization_none
  use homogenization_isostrain
  use homogenization_RGC
+ use IO
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: e,i,p,myInstance
  integer(pInt), dimension(:,:), pointer :: thisSize
+ integer(pInt), dimension(:)  , pointer :: thisNoutput
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
  logical :: knownHomogenization
@@ -125,6 +138,13 @@ subroutine homogenization_init()
  allocate(mapping(mesh_ncpelems,4),source=0_pInt)
  allocate(InstancePosition(material_Nhomogenization),source=0_pInt)
 #endif
+ integer(pInt),                                      parameter  :: MAXNCHUNKS = 2_pInt
+ integer(pInt), dimension(1_pInt+2_pInt*MAXNCHUNKS)             :: positions
+ integer(pInt) :: section = 0_pInt
+ character(len=65536) :: &
+   tag  = '', &
+   line = ''
+
 !--------------------------------------------------------------------------------------------------
 ! parse homogenization from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
@@ -138,6 +158,61 @@ subroutine homogenization_init()
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
+! parse field from config file
+ allocate(field_sizePostResults(material_Nhomogenization),          source=0_pInt)
+ allocate(field_sizePostResult(maxval(homogenization_Noutput),material_Nhomogenization), &
+                                                                    source=0_pInt)
+ allocate(field_Noutput(material_Nhomogenization),                  source=0_pInt)
+ allocate(field_outputID(maxval(homogenization_Noutput),material_Nhomogenization), &
+                                                                    source=undefined_ID)
+ allocate(field_output(maxval(homogenization_Noutput),material_Nhomogenization))
+ field_output = ''
+
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ rewind(FILEUNIT)
+ do while (trim(line) /= IO_EOF .and. IO_lc(IO_getTag(line,'<','>')) /= material_partHomogenization)! wind forward to <homogenization>
+   line = IO_read(FILEUNIT)
+ enddo
+
+ parsingFile: do while (trim(line) /= IO_EOF)                                                       ! read through sections of homogenization part
+   line = IO_read(FILEUNIT)
+   if (IO_isBlank(line)) cycle                                                                      ! skip empty lines
+   if (IO_getTag(line,'<','>') /= '') then                                                          ! stop at next part
+     line = IO_read(FILEUNIT, .true.)                                                               ! reset IO_read
+     exit                                                                                           
+   endif
+   if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
+     section = section + 1_pInt
+     cycle
+   endif
+   if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
+     positions = IO_stringPos(line,MAXNCHUNKS)
+     tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
+     select case(tag)
+       case ('(output)')
+         select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case('temperature')
+             field_Noutput(section) = field_Noutput(section) + 1_pInt
+             field_outputID(field_Noutput(section),section) = temperature_ID
+             field_sizePostResult(field_Noutput(section),section) = 1_pInt
+             field_sizePostResults(section) = field_sizePostResults(section) + 1_pInt
+             field_output(field_Noutput(section),section) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           case('damage')
+             field_Noutput(section) = field_Noutput(section) + 1_pInt
+             field_outputID(field_Noutput(section),section) = damage_ID
+             field_sizePostResult(field_Noutput(section),section) = 1_pInt
+             field_sizePostResults(section) = field_sizePostResults(section) + 1_pInt
+             field_output(field_Noutput(section),section) = IO_lc(IO_stringValue(line,positions,2_pInt))
+
+         end select
+
+     end select
+   endif
+ enddo parsingFile
+ close(FILEUNIT)
+
+!--------------------------------------------------------------------------------------------------
 ! write description file for homogenization output
  call IO_write_jobFile(FILEUNIT,'outputHomogenization')
  do p = 1,material_Nhomogenization
@@ -146,14 +221,17 @@ subroutine homogenization_init()
    select case(homogenization_type(p))                                                              ! split per homogenization type
      case (HOMOGENIZATION_NONE_ID)
        outputName = HOMOGENIZATION_NONE_label
+       thisNoutput => null()
        thisOutput => null()
        thisSize   => null()
      case (HOMOGENIZATION_ISOSTRAIN_ID)
        outputName = HOMOGENIZATION_ISOSTRAIN_label
+       thisNoutput => homogenization_isostrain_Noutput
        thisOutput => homogenization_isostrain_output
        thisSize   => homogenization_isostrain_sizePostResult
      case (HOMOGENIZATION_RGC_ID)
        outputName = HOMOGENIZATION_RGC_label
+       thisNoutput => homogenization_RGC_Noutput
        thisOutput => homogenization_RGC_output
        thisSize   => homogenization_RGC_sizePostResult
      case default
@@ -163,10 +241,16 @@ subroutine homogenization_init()
    if (knownHomogenization) then
      write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
      write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-     do e = 1,homogenization_Noutput(p)
+     do e = 1,thisNoutput(i)
        write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
      enddo
    endif  
+#ifdef multiphysicsOut
+   write(FILEUNIT,'(a)') '(field)'
+   do e = 1_pInt,field_Noutput(p)
+     write(FILEUNIT,'(a,i4)') trim(field_output(e,p))//char(9),field_sizePostResult(e,p)
+   enddo
+#endif
  enddo
  close(FILEUNIT)
 
@@ -204,11 +288,16 @@ subroutine homogenization_init()
 #endif
 
  homogenization_maxSizePostResults = 0_pInt
+ field_maxSizePostResults = 0_pInt
  do p = 1,material_Nhomogenization
    homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState(p)%sizePostResults)
+   field_maxSizePostResults = max(field_maxSizePostResults,field_Noutput(p))
  enddo  
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
+#ifdef multiphysicsOut
+                           + 1 + field_maxSizePostResults &                                         ! field size & field result  
+#endif
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
 #ifdef multiphysicsOut
                                                         + 1 + constitutive_damage_maxSizePostResults &     
@@ -625,6 +714,17 @@ subroutine materialpoint_postResults
          materialpoint_results(thePos+1:thePos+theSize,i,e) = homogenization_postResults(i,e)       ! tell homogenization results
          thePos = thePos + theSize
        endif
+
+#ifdef multiphysicsOut
+       theSize = field_Noutput(mappingHomogenization(2,i,e))
+       materialpoint_results(thePos+1,i,e) = real(theSize,pReal)                                    ! tell size of field results
+       thePos = thePos + 1_pInt
+
+       if (theSize > 0_pInt) then                                                                   ! any homogenization results to mention?
+         materialpoint_results(thePos+1:thePos+theSize,i,e) = field_postResults(i,e)                ! tell field results 
+         thePos = thePos + theSize
+       endif
+#endif
        
        materialpoint_results(thePos+1,i,e) = real(myNgrains,pReal)                                  ! tell number of grains at materialpoint
        thePos = thePos + 1_pInt
@@ -1183,5 +1283,37 @@ function homogenization_postResults(ip,el)
  end select chosenHomogenization
 
 end function homogenization_postResults
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return array of homogenization results for post file inclusion. call only, 
+!> if homogenization_sizePostResults(i,e) > 0 !!
+!--------------------------------------------------------------------------------------------------
+function field_postResults(ip,el)
+ use material, only: &
+   mappingHomogenization
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element number
+ real(pReal), dimension(field_sizePostResults(mappingHomogenization(2,ip,el))) :: &
+   field_postResults
+ integer(pInt) :: &
+   c = 0_pInt, homog, o 
+
+ field_postResults = 0.0_pReal
+ homog = mappingHomogenization(2,ip,el)
+ do o = 1_pInt,field_Noutput(homog)
+   select case(field_outputID(o,homog))
+     case (temperature_ID)
+       field_postResults(c+1_pInt) = field_getThermal(ip,el)
+       c = c + 1_pInt
+     case (damage_ID)
+       field_postResults(c+1_pInt) = field_getDAMAGE(ip,el)
+       c = c + 1_pInt
+    end select
+ enddo
+
+end function field_postResults
 
 end module homogenization

@@ -21,7 +21,7 @@ module homogenization_RGC
    homogenization_RGC_sizePostResult
  character(len=64),          dimension(:,:),     allocatable,target, public :: &
    homogenization_RGC_output                                                                        ! name of each post result output
- integer(pInt),                       dimension(:),     allocatable,         private :: &
+ integer(pInt),              dimension(:),       allocatable,target, public :: &
    homogenization_RGC_Noutput                                                                 !< number of outputs per homog instance
  integer(pInt),              dimension(:,:),     allocatable,        private :: &
    homogenization_RGC_Ngrains
@@ -35,7 +35,6 @@ module homogenization_RGC
    homogenization_RGC_ciAlpha
  enum, bind(c) 
    enumerator :: undefined_ID, &
-                 temperature_ID, &
                  constitutivework_ID, &
                  penaltyenergy_ID, &
                  volumediscrepancy_ID, &
@@ -110,7 +109,7 @@ subroutine homogenization_RGC_init(fileUnit)
    o, &
    instance, &
    sizeHState
- integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, output=-1_pInt, mySize, myInstance
+ integer(pInt) :: section=0_pInt, maxNinstance, i,j,e, mySize, myInstance
  character(len=65536) :: &
    tag = '', &
    line = ''
@@ -154,7 +153,6 @@ subroutine homogenization_RGC_init(fileUnit)
    endif
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next section
      section = section + 1_pInt
-     output = 0_pInt                                                                                ! reset output counter
      cycle
    endif
    if (section > 0_pInt ) then                                                                      ! do not short-circuit here (.and. with next if-statement). It's not safe in Fortran
@@ -163,45 +161,54 @@ subroutine homogenization_RGC_init(fileUnit)
        positions = IO_stringPos(line,MAXNCHUNKS)
        tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                           ! extract key
        select case(tag)
-         case ('nconstituents','ngrains','type')
-         case('field_damage')
          case ('(output)')
-           output = output + 1_pInt
-           homogenization_RGC_output(output,i) = IO_lc(IO_stringValue(line,positions,2_pInt))
-           select case(homogenization_RGC_output(output,i))
+           select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
              case('constitutivework')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = constitutivework_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = constitutivework_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('penaltyenergy')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = penaltyenergy_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = penaltyenergy_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('volumediscrepancy')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = volumediscrepancy_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = volumediscrepancy_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('averagerelaxrate')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = averagerelaxrate_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = averagerelaxrate_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('maximumrelaxrate')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = maximumrelaxrate_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = maximumrelaxrate_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('magnitudemismatch')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = magnitudemismatch_ID
-             case('temperature')
-               homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = temperature_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = magnitudemismatch_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('ipcoords')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = ipcoords_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = ipcoords_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('avgdefgrad','avgf')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = avgdefgrad_ID
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = avgdefgrad_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
              case('avgp','avgfirstpiola','avg1stpiola')
                homogenization_RGC_Noutput(i) = homogenization_RGC_Noutput(i) + 1_pInt
-               homogenization_RGC_outputID(output,i) = avgfirstpiola_ID
-             case default
-               call IO_error(105_pInt,ext_msg=IO_stringValue(line,positions,2_pInt)//&
-                                                        ' ('//HOMOGENIZATION_RGC_label//')')
+               homogenization_RGC_outputID(homogenization_RGC_Noutput(i),i) = avgfirstpiola_ID
+               homogenization_RGC_output(homogenization_RGC_Noutput(i),i) = &
+                 IO_lc(IO_stringValue(line,positions,2_pInt))
+
            end select
          case ('clustersize')
            homogenization_RGC_Ngrains(1,i) = IO_intValue(line,positions,2_pInt)
@@ -221,8 +228,7 @@ subroutine homogenization_RGC_init(fileUnit)
            homogenization_RGC_angles(1,i) = IO_floatValue(line,positions,2_pInt)
            homogenization_RGC_angles(2,i) = IO_floatValue(line,positions,3_pInt)
            homogenization_RGC_angles(3,i) = IO_floatValue(line,positions,4_pInt)
-         case default
-           call IO_error(210_pInt,ext_msg=trim(tag)//' ('//HOMOGENIZATION_RGC_label//')')
+
        end select
      endif  
    endif
@@ -270,7 +276,7 @@ subroutine homogenization_RGC_init(fileUnit)
 ! *  Determine size of postResults array
      outputsLoop: do o = 1_pInt, homogenization_RGC_Noutput(instance)
        select case(homogenization_RGC_outputID(o,instance))
-        case(temperature_ID,constitutivework_ID,penaltyenergy_ID,volumediscrepancy_ID, &
+        case(constitutivework_ID,penaltyenergy_ID,volumediscrepancy_ID, &
             averagerelaxrate_ID,maximumrelaxrate_ID)
          mySize = 1_pInt
         case(ipcoords_ID,magnitudemismatch_ID)
@@ -949,8 +955,6 @@ pure function homogenization_RGC_postResults(ip,el,avgP,avgF)
    homogState, &
    mappingHomogenization, &  
    homogenization_Noutput
- use crystallite, only: &
-   crystallite_temperature
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -973,9 +977,6 @@ pure function homogenization_RGC_postResults(ip,el,avgP,avgF)
  homogenization_RGC_postResults = 0.0_pReal
  do o = 1_pInt,homogenization_Noutput(mesh_element(3,el))
    select case(homogenization_RGC_outputID(o,homID))
-     case (temperature_ID)
-       homogenization_RGC_postResults(c+1_pInt) = crystallite_temperature(ip,el)
-       c = c + 1_pInt
      case (avgdefgrad_ID)
        homogenization_RGC_postResults(c+1_pInt:c+9_pInt) = reshape(avgF,[9])
        c = c + 9_pInt
