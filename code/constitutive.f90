@@ -29,10 +29,10 @@ module constitutive
    constitutive_collectDeltaState, &
    constitutive_getLocalDamage, &
    constitutive_putLocalDamage, & 
-   constitutive_getNonLocalDamage, &
-   constitutive_getAdiabaticThermal, &
-   constitutive_putAdiabaticThermal, &
-   constitutive_getConductionThermal, &
+   constitutive_getDamage, &
+   constitutive_getAdiabaticTemperature, &
+   constitutive_putAdiabaticTemperature, &
+   constitutive_getTemperature, &
    constitutive_postResults
  
  private :: &
@@ -133,7 +133,7 @@ subroutine constitutive_init
  use damage_brittle
  use damage_ductile
  use thermal_isothermal
- use thermal_adiabatic
+ use thermal_heatGen
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
@@ -178,7 +178,7 @@ subroutine constitutive_init
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
  if (any(phase_thermal == LOCAL_THERMAL_ISOTHERMAL_ID)) call thermal_isothermal_init(FILEUNIT)
-! if (any(phase_thermal == LOCAL_THERMAL_HEATGEN_ID)) call thermal_heatgen_init(FILEUNIT)
+ if (any(phase_thermal == LOCAL_THERMAL_HEATGEN_ID))    call thermal_heatGen_init(FILEUNIT)
  close(FILEUNIT)
 
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
@@ -280,9 +280,9 @@ subroutine constitutive_init
        thisSize   => null()
      case (LOCAL_THERMAL_heatgen_ID)
        outputName = LOCAL_THERMAL_HEATGEN_label
-       thisNoutput => null()
-       thisOutput => null()
-       thisSize   => null()
+       thisNoutput => thermal_heatGen_Noutput
+       thisOutput => thermal_heatGen_output
+       thisSize   => thermal_heatGen_sizePostResult
      case default
        knownThermal = .false.
    end select   
@@ -450,7 +450,7 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
    Fp                                                                                               !< plastic deformation gradient
  real(pReal) :: damage, Tstar_v_effective(6)
  
- damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ damage = constitutive_getDamage(ipc,ip,el)
  Tstar_v_effective = Tstar_v/(damage*damage)
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
@@ -525,7 +525,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    dLp_dTstar                                                                                       !< derivative of Lp with respect to Tstar (4th-order tensor)
  real(pReal) :: damage, Tstar_v_effective(6)
  
- damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ damage = constitutive_getDamage(ipc,ip,el)
  Tstar_v_effective = Tstar_v/(damage*damage)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
@@ -615,11 +615,11 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
  real(pReal)   :: damage
  real(pReal), dimension(3,3,3,3) :: C
 
- damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ damage = constitutive_getDamage(ipc,ip,el)
  C = damage*damage*math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
  T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3) - &
                         lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
-                        (constitutive_getConductionThermal(ipc,ip,el) - &
+                        (constitutive_getTemperature(ipc,ip,el) - &
                          lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el))))
  
  dT_dFe = 0.0_pReal
@@ -678,8 +678,8 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
    damage_brittle_dotState
  use damage_ductile, only: &
    damage_ductile_dotState
- use thermal_adiabatic, only: &
-   thermal_adiabatic_dotState
+ use thermal_heatGen, only: &
+   thermal_heatGen_dotState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -730,7 +730,7 @@ subroutine constitutive_collectDotState(Tstar_v, FeArray, FpArray, Temperature, 
 
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_HEATGEN_ID)
-!     call thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
+     !call thermal_heatGen_dotState(Tstar_v, Lp, ipc, ip, el)
  end select
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
@@ -879,7 +879,7 @@ end subroutine constitutive_putLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns nonlocal (regularised) damage
 !--------------------------------------------------------------------------------------------------
-function constitutive_getNonlocalDamage(ipc, ip, el)
+function constitutive_getDamage(ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
@@ -895,24 +895,24 @@ function constitutive_getNonlocalDamage(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_getNonlocalDamage
+ real(pReal) :: constitutive_getDamage
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
  
    case (FIELD_DAMAGE_LOCAL_ID)
-    constitutive_getNonlocalDamage = constitutive_getLocalDamage(ipc, ip, el)
+    constitutive_getDamage = constitutive_getLocalDamage(ipc, ip, el)
     
    case (FIELD_DAMAGE_NONLOCAL_ID)
-    constitutive_getNonlocalDamage =    fieldDamage(material_homog(ip,el))% &
+    constitutive_getDamage =    fieldDamage(material_homog(ip,el))% &
       field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
  end select
 
-end function constitutive_getNonlocalDamage
+end function constitutive_getDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local (unregularised) temperature
 !--------------------------------------------------------------------------------------------------
-function constitutive_getAdiabaticThermal(ipc, ip, el)
+function constitutive_getAdiabaticTemperature(ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
@@ -920,8 +920,8 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
    LOCAL_THERMAL_ISOTHERMAL_ID, &
    LOCAL_THERMAL_HEATGEN_ID, &
    phase_thermal
- use thermal_adiabatic, only: &
-   constitutive_heatgen_getThermal
+ use thermal_heatGen, only: &
+   thermal_heatGen_getTemperature
  use lattice, only: &
    lattice_referenceTemperature
 
@@ -930,30 +930,30 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_getAdiabaticThermal
+ real(pReal) :: constitutive_getAdiabaticTemperature
  
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_ISOTHERMAL_ID)
-     constitutive_getAdiabaticThermal = lattice_referenceTemperature(material_phase(ipc,ip,el))
+     constitutive_getAdiabaticTemperature = lattice_referenceTemperature(material_phase(ipc,ip,el))
      
    case (LOCAL_THERMAL_HEATGEN_ID)
-     constitutive_getAdiabaticThermal = constitutive_heatgen_getThermal(ipc, ip, el)
+     constitutive_getAdiabaticTemperature = thermal_heatGen_getTemperature(ipc, ip, el)
  end select
 
-end function constitutive_getAdiabaticThermal
+end function constitutive_getAdiabaticTemperature
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns the local(unregularised)  damage 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_putAdiabaticThermal(ipc, ip, el, localTemperature)
+subroutine constitutive_putAdiabaticTemperature(ipc, ip, el, localTemperature)
  use prec, only: &
    pReal
  use material, only: &
    material_phase, &
    LOCAL_THERMAL_HEATGEN_ID, &
    phase_thermal
- use thermal_adiabatic, only: &
-   constitutive_heatgen_putThermal
+ use thermal_heatGen, only: &
+   thermal_heatGen_putTemperature
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -965,16 +965,16 @@ subroutine constitutive_putAdiabaticThermal(ipc, ip, el, localTemperature)
  
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_HEATGEN_ID)
-     call constitutive_heatgen_putThermal(ipc, ip, el, localTemperature)
+     call thermal_heatGen_putTemperature(ipc, ip, el, localTemperature)
 
  end select
 
-end subroutine constitutive_putAdiabaticThermal
+end subroutine constitutive_putAdiabaticTemperature
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns nonlocal (regularised) temperature
 !--------------------------------------------------------------------------------------------------
-function constitutive_getConductionThermal(ipc, ip, el)
+function constitutive_getTemperature(ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
@@ -992,20 +992,20 @@ function constitutive_getConductionThermal(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_getConductionThermal
+ real(pReal) :: constitutive_getTemperature
  
    select case(field_thermal_type(material_homog(ip,el)))                                                   
    
      case (FIELD_THERMAL_ADIABATIC_ID)
-      constitutive_getConductionThermal = constitutive_getAdiabaticThermal(ipc, ip, el)      
+      constitutive_getTemperature = constitutive_getAdiabaticTemperature(ipc, ip, el)      
       
      case (FIELD_THERMAL_CONDUCTION_ID)
-      constitutive_getConductionThermal =    fieldThermal(material_homog(ip,el))% &
+      constitutive_getTemperature =    fieldThermal(material_homog(ip,el))% &
         field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
    end select
 
-end function constitutive_getConductionThermal
+end function constitutive_getTemperature
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
@@ -1054,8 +1054,8 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
    damage_brittle_postResults
  use damage_ductile, only: &
    damage_ductile_postResults
-! use thermal_adiabatic, only: &
-!   thermal_adiabatic_postResults
+ use thermal_heatGen, only: &
+   thermal_heatGen_postResults
 #endif
 
  implicit none
@@ -1081,7 +1081,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  real(pReal) :: damage, Tstar_v_effective(6)
  integer(pInt) :: startPos, endPos
  
- damage = constitutive_getNonlocalDamage(ipc,ip,el)
+ damage = constitutive_getDamage(ipc,ip,el)
  Tstar_v_effective = damage*damage*Tstar_v
 
  constitutive_postResults = 0.0_pReal
@@ -1121,7 +1121,7 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  endPos = endPos + thermalState(material_phase(ipc,ip,el))%sizePostResults
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_HEATGEN_ID)
-!     constitutive_postResults(startPos:endPos) = thermal_adiabatic_postResults(ipc, ip, el)
+     constitutive_postResults(startPos:endPos) = thermal_heatGen_postResults(ipc, ip, el)
  end select
 #endif
   

@@ -1,12 +1,12 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: thermal_adiabatic.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $
+! $Id: thermal_heatGen.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine incoprorating dislocation and twinning physics
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
-module thermal_adiabatic
+module thermal_heatGen
  use prec, only: &
    pReal, &
    pInt
@@ -14,36 +14,36 @@ module thermal_adiabatic
  implicit none
  private
  integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
-   thermal_adiabatic_sizePostResults                                                           !< cumulative size of post results
+   thermal_heatGen_sizePostResults                                                           !< cumulative size of post results
 
  integer(pInt),                       dimension(:,:),         allocatable, target, public :: &
-   thermal_adiabatic_sizePostResult                                                            !< size of each post result output
+   thermal_heatGen_sizePostResult                                                            !< size of each post result output
 
  character(len=64),                   dimension(:,:),         allocatable, target, public :: &
-   thermal_adiabatic_output                                                                    !< name of each post result output
+   thermal_heatGen_output                                                                    !< name of each post result output
    
- integer(pInt),                       dimension(:),           allocatable,         private :: &
-   thermal_adiabatic_Noutput                                                                   !< number of outputs per instance of this damage 
+ integer(pInt),                       dimension(:),           allocatable, target, public :: &
+   thermal_heatGen_Noutput                                                                   !< number of outputs per instance of this damage 
 
  real(pReal),                         dimension(:),     allocatable,         public :: &
-   thermal_adiabatic_aTol
+   thermal_heatGen_aTol
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  temperature_ID
  end enum
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   thermal_adiabatic_outputID                                                                  !< ID of each post result output
+   thermal_heatGen_outputID                                                                  !< ID of each post result output
 
 
  public :: &
-   thermal_adiabatic_init, &
-   thermal_adiabatic_stateInit, &
-   thermal_adiabatic_aTolState, &
-   thermal_adiabatic_dotState, &
-   constitutive_heatgen_getThermal, &
-   constitutive_heatgen_putThermal, &
-   thermal_adiabatic_postResults
+   thermal_heatGen_init, &
+   thermal_heatGen_stateInit, &
+   thermal_heatGen_aTolState, &
+   thermal_heatGen_dotState, &
+   thermal_heatgen_getTemperature, &
+   thermal_heatgen_putTemperature, &
+   thermal_heatGen_postResults
 
 contains
 
@@ -52,7 +52,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_init(fileUnit)
+subroutine thermal_heatGen_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level,&
@@ -100,7 +100,7 @@ subroutine thermal_adiabatic_init(fileUnit)
    line = ''
 
  write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_HEATGEN_label//' init  -+>>>'
- write(6,'(a)')     ' $Id: thermal_adiabatic.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
+ write(6,'(a)')     ' $Id: thermal_heatGen.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  
@@ -109,13 +109,13 @@ subroutine thermal_adiabatic_init(fileUnit)
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
    write(6,'(a16,1x,i5,/)') '# instances:',maxNinstance
  
- allocate(thermal_adiabatic_sizePostResults(maxNinstance),                     source=0_pInt)
- allocate(thermal_adiabatic_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
- allocate(thermal_adiabatic_output(maxval(phase_Noutput),maxNinstance))
-          thermal_adiabatic_output = ''
- allocate(thermal_adiabatic_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
- allocate(thermal_adiabatic_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(thermal_adiabatic_aTol(maxNinstance),                       source=0.0_pReal) 
+ allocate(thermal_heatGen_sizePostResults(maxNinstance),                     source=0_pInt)
+ allocate(thermal_heatGen_sizePostResult(maxval(phase_Noutput),maxNinstance),source=0_pInt)
+ allocate(thermal_heatGen_output(maxval(phase_Noutput),maxNinstance))
+          thermal_heatGen_output = ''
+ allocate(thermal_heatGen_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
+ allocate(thermal_heatGen_Noutput(maxNinstance),                             source=0_pInt) 
+ allocate(thermal_heatGen_aTol(maxNinstance),                       source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -144,14 +144,14 @@ subroutine thermal_adiabatic_init(fileUnit)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
            case ('temperature')
-             thermal_adiabatic_Noutput(instance) = thermal_adiabatic_Noutput(instance) + 1_pInt
-             thermal_adiabatic_outputID(thermal_adiabatic_Noutput(instance),instance) = temperature_ID
-             thermal_adiabatic_output(thermal_adiabatic_Noutput(instance),instance) = &
+             thermal_heatGen_Noutput(instance) = thermal_heatGen_Noutput(instance) + 1_pInt
+             thermal_heatGen_outputID(thermal_heatGen_Noutput(instance),instance) = temperature_ID
+             thermal_heatGen_output(thermal_heatGen_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
 
-       case ('atol_adiabatic')
-         thermal_adiabatic_aTol(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('atol_heatGen')
+         thermal_heatGen_aTol(instance) = IO_floatValue(line,positions,2_pInt)
 
      end select
    endif; endif
@@ -164,15 +164,15 @@ subroutine thermal_adiabatic_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,thermal_adiabatic_Noutput(instance)
-       select case(thermal_adiabatic_outputID(o,instance))
+     outputsLoop: do o = 1_pInt,thermal_heatGen_Noutput(instance)
+       select case(thermal_heatGen_outputID(o,instance))
          case(temperature_ID)
            mySize = 1_pInt
        end select
  
        if (mySize > 0_pInt) then  ! any meaningful output found
-          thermal_adiabatic_sizePostResult(o,instance) = mySize
-          thermal_adiabatic_sizePostResults(instance)  = thermal_adiabatic_sizePostResults(instance) + mySize
+          thermal_heatGen_sizePostResult(o,instance) = mySize
+          thermal_heatGen_sizePostResults(instance)  = thermal_heatGen_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
 ! Determine size of state array
@@ -180,7 +180,7 @@ subroutine thermal_adiabatic_init(fileUnit)
      sizeState                 =   1_pInt
      thermalState(phase)%sizeState = sizeState
      thermalState(phase)%sizeDotState = sizeDotState
-     thermalState(phase)%sizePostResults = thermal_adiabatic_sizePostResults(instance)
+     thermalState(phase)%sizePostResults = thermal_heatGen_sizePostResults(instance)
      allocate(thermalState(phase)%aTolState           (sizeState),                source=0.0_pReal)
      allocate(thermalState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(thermalState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -200,17 +200,17 @@ subroutine thermal_adiabatic_init(fileUnit)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(thermalState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
 
-     call thermal_adiabatic_stateInit(phase,instance)
-     call thermal_adiabatic_aTolState(phase,instance)
+     call thermal_heatGen_stateInit(phase,instance)
+     call thermal_heatGen_aTolState(phase,instance)
    endif
  
  enddo initializeInstances
-end subroutine thermal_adiabatic_init
+end subroutine thermal_heatGen_init
 
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant  NEW state values for a given instance of this thermal
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_stateInit(phase,instance)
+subroutine thermal_heatGen_stateInit(phase,instance)
  use material, only: &
    thermalState
  use lattice, only: &
@@ -226,12 +226,12 @@ subroutine thermal_adiabatic_stateInit(phase,instance)
  thermalState(phase)%state = spread(tempState,2,size(thermalState(phase)%state(1,:)))
  thermalState(phase)%state0 = thermalState(phase)%state
  thermalState(phase)%partionedState0 = thermalState(phase)%state
-end subroutine thermal_adiabatic_stateInit
+end subroutine thermal_heatGen_stateInit
 
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant state values for a given instance of this thermal
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_aTolState(phase,instance)
+subroutine thermal_heatGen_aTolState(phase,instance)
  use material, only: &
   thermalState
 
@@ -241,14 +241,14 @@ subroutine thermal_adiabatic_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the thermal
  real(pReal), dimension(thermalState(phase)%sizeState) :: tempTol
 
- tempTol = thermal_adiabatic_aTol
+ tempTol = thermal_heatGen_aTol
  thermalState(phase)%aTolState = tempTol
-end subroutine thermal_adiabatic_aTolState
+end subroutine thermal_heatGen_aTolState
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
+subroutine thermal_heatGen_dotState(Tstar_v, Lp, ipc, ip, el)
  use lattice, only: &
    lattice_massDensity, &
    lattice_specificHeat
@@ -280,12 +280,12 @@ subroutine thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
   * sum(abs(math_Mandel6to33(Tstar_v)*Lp)) &
   / (lattice_massDensity(phase)*lattice_specificHeat(phase))
   
-end subroutine thermal_adiabatic_dotState
+end subroutine thermal_heatGen_dotState
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on local damage model state layout 
 !--------------------------------------------------------------------------------------------------
-function constitutive_heatgen_getThermal(ipc, ip, el)
+function thermal_heatgen_getTemperature(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    ThermalState
@@ -295,17 +295,17 @@ function constitutive_heatgen_getThermal(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_heatgen_getThermal
+ real(pReal) :: thermal_heatgen_getTemperature
  
- constitutive_heatgen_getThermal = &
+ thermal_heatgen_getTemperature = &
    thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
-end function constitutive_heatgen_getThermal
+end function thermal_heatgen_getTemperature
  
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on local damage model state layout 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_heatgen_putThermal(ipc, ip, el, localTemperature)
+subroutine thermal_heatgen_putTemperature(ipc, ip, el, localTemperature)
  use material, only: &
    mappingConstitutive, &
    ThermalState
@@ -321,12 +321,12 @@ subroutine constitutive_heatgen_putThermal(ipc, ip, el, localTemperature)
  thermalState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))= &
    localTemperature
  
-end subroutine constitutive_heatgen_putThermal
+end subroutine thermal_heatgen_putTemperature
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function thermal_adiabatic_postResults(ipc,ip,el)
+function thermal_heatGen_postResults(ipc,ip,el)
  use material, only: &
    mappingConstitutive, &
    phase_thermalInstance, &
@@ -337,8 +337,8 @@ function thermal_adiabatic_postResults(ipc,ip,el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(thermal_adiabatic_sizePostResults(phase_thermalInstance(mappingConstitutive(2,ipc,ip,el)))) :: &
-   thermal_adiabatic_postResults
+ real(pReal), dimension(thermal_heatGen_sizePostResults(phase_thermalInstance(mappingConstitutive(2,ipc,ip,el)))) :: &
+   thermal_heatGen_postResults
 
  integer(pInt) :: &
    instance, phase, constituent, o, c
@@ -348,16 +348,16 @@ function thermal_adiabatic_postResults(ipc,ip,el)
  instance  = phase_thermalInstance(phase)
 
  c = 0_pInt
- thermal_adiabatic_postResults = 0.0_pReal
+ thermal_heatGen_postResults = 0.0_pReal
 
- do o = 1_pInt,thermal_adiabatic_Noutput(instance)
-    select case(thermal_adiabatic_outputID(o,instance))
+ do o = 1_pInt,thermal_heatGen_Noutput(instance)
+    select case(thermal_heatGen_outputID(o,instance))
  
       case (temperature_ID)
-        thermal_adiabatic_postResults(c+1_pInt) = thermalState(phase)%state(1,constituent)
+        thermal_heatGen_postResults(c+1_pInt) = thermalState(phase)%state(1,constituent)
         c = c + 1
     end select
  enddo
-end function thermal_adiabatic_postResults
+end function thermal_heatGen_postResults
 
-end module thermal_adiabatic
+end module thermal_heatGen

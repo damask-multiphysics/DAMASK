@@ -1152,7 +1152,7 @@ real(pReal) function field_getLocalDamage(ip,el)
    field_getLocalDamage = field_getLocalDamage + constitutive_getLocalDamage(ipc,ip,el)
  enddo
 
- field_getLocalDamage = field_getLocalDamage /homogenization_Ngrains(mesh_element(3,el))
+ field_getLocalDamage = field_getLocalDamage/homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getLocalDamage
 
@@ -1192,7 +1192,7 @@ real(pReal) function field_getLocalTemperature(ip,el)
  use material, only: &
    homogenization_Ngrains
  use constitutive, only: &
-   constitutive_getAdiabaticThermal
+   constitutive_getAdiabaticTemperature
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1204,9 +1204,10 @@ real(pReal) function field_getLocalTemperature(ip,el)
  
  field_getLocalTemperature = 0.0_pReal
  do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getLocalTemperature = field_getLocalTemperature + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
+   field_getLocalTemperature = field_getLocalTemperature + &
+                               constitutive_getAdiabaticTemperature(ipc,ip,el)                     ! array/function/subroutine which is faster
  enddo
- field_getLocalTemperature = field_getLocalTemperature /homogenization_Ngrains(mesh_element(3,el))
+ field_getLocalTemperature = field_getLocalTemperature/homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getLocalTemperature
 

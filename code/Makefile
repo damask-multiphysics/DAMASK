@@ -357,7 +357,7 @@ DAMAGE_FILES = \
    damage_none.o damage_brittle.o damage_ductile.o
 
 THERMAL_FILES = \
-   thermal_isothermal.o thermal_adiabatic.o
+   thermal_isothermal.o thermal_heatGen.o
 
 CONSTITUTIVE_FILES = \
    constitutive_dislotwin.o constitutive_dislokmc.o constitutive_j2.o constitutive_phenopowerlaw.o \
@@ -516,7 +516,7 @@ damage_ductile.o:              damage_ductile.f90 \
 thermal_isothermal.o:          thermal_isothermal.f90 \
                                lattice.o
 
-thermal_adiabatic.o:           thermal_adiabatic.f90 \
+thermal_heatGen.o:             thermal_heatGen.f90 \
                                lattice.o
 
 lattice.o:                     lattice.f90 \
