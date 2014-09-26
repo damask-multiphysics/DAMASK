@@ -109,12 +109,12 @@ subroutine constitutive_init
    LOCAL_DAMAGE_NONE_ID, &
    LOCAL_DAMAGE_BRITTLE_ID, &
    LOCAL_DAMAGE_DUCTILE_ID, &
-   LOCAL_THERMAL_none_ID, &
+   LOCAL_THERMAL_ISOTHERMAL_ID, &
    LOCAL_THERMAL_HEATGEN_ID, &
    LOCAL_DAMAGE_NONE_label, &
    LOCAL_DAMAGE_BRITTLE_label, &
    LOCAL_DAMAGE_DUCTILE_label, &
-   LOCAL_THERMAL_none_label, &
+   LOCAL_THERMAL_ISOTHERMAL_label, &
    LOCAL_THERMAL_HEATGEN_label, &
    plasticState, &
    damageState, &
@@ -132,7 +132,7 @@ subroutine constitutive_init
  use damage_none
  use damage_brittle
  use damage_ductile
- use thermal_none
+ use thermal_isothermal
  use thermal_adiabatic
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
@@ -177,7 +177,7 @@ subroutine constitutive_init
 ! parse thermal from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_thermal == LOCAL_THERMAL_none_ID))       call thermal_none_init(FILEUNIT)
+ if (any(phase_thermal == LOCAL_THERMAL_ISOTHERMAL_ID)) call thermal_isothermal_init(FILEUNIT)
 ! if (any(phase_thermal == LOCAL_THERMAL_HEATGEN_ID)) call thermal_heatgen_init(FILEUNIT)
  close(FILEUNIT)
 
@@ -273,8 +273,8 @@ subroutine constitutive_init
    instance = phase_thermalInstance(phase)                                                              ! which instance is present phase
    knownThermal = .true.
    select case(phase_thermal(phase))                                                                 ! split per constititution
-     case (LOCAL_THERMAL_none_ID)
-       outputName = LOCAL_THERMAL_NONE_label
+     case (LOCAL_THERMAL_ISOTHERMAL_ID)
+       outputName = LOCAL_THERMAL_ISOTHERMAL_label
        thisNoutput => null()
        thisOutput => null()
        thisSize   => null()
@@ -288,7 +288,7 @@ subroutine constitutive_init
    end select   
    if (knownThermal) then
      write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
-     if (phase_thermal(phase) /= LOCAL_THERMAL_none_ID) then
+     if (phase_thermal(phase) /= LOCAL_THERMAL_ISOTHERMAL_ID) then
        do e = 1_pInt,thisNoutput(instance)
          write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
        enddo
@@ -917,7 +917,7 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
    pReal
  use material, only: &
    material_phase, &
-   LOCAL_THERMAL_none_ID, &
+   LOCAL_THERMAL_ISOTHERMAL_ID, &
    LOCAL_THERMAL_HEATGEN_ID, &
    phase_thermal
  use thermal_adiabatic, only: &
@@ -933,7 +933,7 @@ function constitutive_getAdiabaticThermal(ipc, ip, el)
  real(pReal) :: constitutive_getAdiabaticThermal
  
  select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_none_ID)
+   case (LOCAL_THERMAL_ISOTHERMAL_ID)
      constitutive_getAdiabaticThermal = lattice_referenceTemperature(material_phase(ipc,ip,el))
      
    case (LOCAL_THERMAL_HEATGEN_ID)

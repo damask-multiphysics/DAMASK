@@ -1,24 +1,24 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: thermal_none.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $
+! $Id: thermal_isothermal.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for purely elastic material
 !--------------------------------------------------------------------------------------------------
-module thermal_none
+module thermal_isothermal
  use prec, only: &
    pInt
 
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
-   thermal_none_sizePostResults
+   thermal_isothermal_sizePostResults
 
  integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
-   thermal_none_sizePostResult                                                                 !< size of each post result output
+   thermal_isothermal_sizePostResult                                                                 !< size of each post result output
 
  public :: &
-   thermal_none_init
+   thermal_isothermal_init
 
 contains
 
@@ -27,7 +27,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_none_init(fileUnit)
+subroutine thermal_isothermal_init(fileUnit)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
@@ -40,8 +40,8 @@ subroutine thermal_none_init(fileUnit)
  use material, only: &
    phase_thermal, &
    phase_Noutput, &
-   LOCAL_THERMAL_NONE_label, &
-   LOCAL_THERMAL_NONE_ID, &
+   LOCAL_THERMAL_ISOTHERMAL_label, &
+   LOCAL_THERMAL_ISOTHERMAL_ID, &
    material_phase, &
    thermalState, &
    MATERIAL_partPhase
@@ -56,12 +56,12 @@ subroutine thermal_none_init(fileUnit)
    sizeState, &
    sizeDotState
 
- write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_NONE_label//' init  -+>>>'
- write(6,'(a)')     ' $Id: thermal_none.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
+ write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_ISOTHERMAL_label//' init  -+>>>'
+ write(6,'(a)')     ' $Id: thermal_isothermal.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
 
- maxNinstance = int(count(phase_thermal == LOCAL_THERMAL_NONE_ID),pInt)
+ maxNinstance = int(count(phase_thermal == LOCAL_THERMAL_ISOTHERMAL_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
  if (iand(debug_level(debug_constitutive),debug_levelBasic) /= 0_pInt) &
@@ -70,7 +70,7 @@ subroutine thermal_none_init(fileUnit)
  initializeInstances: do phase = 1_pInt, size(phase_thermal)
    NofMyPhase=count(material_phase==phase)
    
-   if (phase_thermal(phase) == LOCAL_THERMAL_none_ID) then
+   if (phase_thermal(phase) == LOCAL_THERMAL_ISOTHERMAL_ID) then
      sizeState    = 0_pInt
      thermalState(phase)%sizeState = sizeState
      sizeDotState = sizeState
@@ -94,8 +94,8 @@ subroutine thermal_none_init(fileUnit)
        allocate(thermalState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase))
    endif
  enddo initializeInstances
- allocate(thermal_none_sizePostResults(maxNinstance), source=0_pInt)
+ allocate(thermal_isothermal_sizePostResults(maxNinstance), source=0_pInt)
 
-end subroutine thermal_none_init
+end subroutine thermal_isothermal_init
 
-end module thermal_none
+end module thermal_isothermal

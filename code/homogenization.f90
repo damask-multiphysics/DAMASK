@@ -64,10 +64,10 @@ module homogenization
  public ::  &
    homogenization_init, &
    materialpoint_stressAndItsTangent, &
-   field_getDAMAGE, &
-   field_putDAMAGE, &
-   field_getThermal, &
-   field_putThermal, &
+   field_getLocalDamage, &
+   field_putFieldDamage, &
+   field_getLocalTemperature, &
+   field_putFieldTemperature, &
    field_getDamageMobility, &
    field_getDamageDiffusion33, &
    field_getThermalConductivity33, &
@@ -1129,7 +1129,7 @@ end function field_getDamageMobility
 !--------------------------------------------------------------------------------------------------
 !> @brief ToDo
 !--------------------------------------------------------------------------------------------------
-real(pReal) function field_getDAMAGE(ip,el)
+real(pReal) function field_getLocalDamage(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -1146,20 +1146,20 @@ real(pReal) function field_getDAMAGE(ip,el)
 
 !--------------------------------------------------------------------------------------------------
 ! computing the damage value needed to be passed to field solver
- field_getDAMAGE =0.0_pReal
+ field_getLocalDamage =0.0_pReal
                                                 
  do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getDAMAGE = field_getDAMAGE + constitutive_getLocalDamage(ipc,ip,el)
+   field_getLocalDamage = field_getLocalDamage + constitutive_getLocalDamage(ipc,ip,el)
  enddo
 
- field_getDAMAGE = field_getDAMAGE /homogenization_Ngrains(mesh_element(3,el))
+ field_getLocalDamage = field_getLocalDamage /homogenization_Ngrains(mesh_element(3,el))
 
-end function field_getDAMAGE
+end function field_getLocalDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Sets the regularised damage value in field state
 !--------------------------------------------------------------------------------------------------
-subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
+subroutine field_putFieldDamage(ip,el,fieldDamageValue)  ! naming scheme
  use material, only: &
    fieldDamage, &
    material_homog, &
@@ -1181,12 +1181,12 @@ subroutine field_putDAMAGE(ip,el,fieldDamageValue)  ! naming scheme
 
  end select 
 
-end subroutine field_putDAMAGE
+end subroutine field_putFieldDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief ToDo
 !--------------------------------------------------------------------------------------------------
-real(pReal) function field_getThermal(ip,el)
+real(pReal) function field_getLocalTemperature(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -1202,18 +1202,18 @@ real(pReal) function field_getThermal(ip,el)
    ipc
 
  
- field_getThermal = 0.0_pReal
+ field_getLocalTemperature = 0.0_pReal
  do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getThermal = field_getThermal + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
+   field_getLocalTemperature = field_getLocalTemperature + constitutive_getAdiabaticThermal(ipc,ip,el)  ! array/function/subroutine which is faster
  enddo
- field_getThermal = field_getThermal /homogenization_Ngrains(mesh_element(3,el))
+ field_getLocalTemperature = field_getLocalTemperature /homogenization_Ngrains(mesh_element(3,el))
 
-end function field_getThermal
+end function field_getLocalTemperature
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Sets the regularised temperature value in field state
 !--------------------------------------------------------------------------------------------------
-subroutine field_putThermal(ip,el,fieldThermalValue) 
+subroutine field_putFieldTemperature(ip,el,fieldThermalValue) 
  use material, only: &
    material_homog, &
    fieldThermal, &
@@ -1235,7 +1235,7 @@ subroutine field_putThermal(ip,el,fieldThermalValue)
 
  end select 
 
-end subroutine field_putThermal
+end subroutine field_putFieldTemperature
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion. call only, 

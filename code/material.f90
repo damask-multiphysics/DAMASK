@@ -30,7 +30,7 @@ module material
    LOCAL_DAMAGE_NONE_label        = 'none', &
    LOCAL_DAMAGE_BRITTLE_label     = 'brittle', &
    LOCAL_DAMAGE_DUCTILE_label     = 'ductile', &
-   LOCAL_THERMAL_NONE_label       = 'none', &
+   LOCAL_THERMAL_ISOTHERMAL_label = 'isothermal', &
    LOCAL_THERMAL_HEATGEN_label    = 'heatgen', &
    FIELD_DAMAGE_LOCAL_label       = 'local', &
    FIELD_DAMAGE_NONLOCAL_label    = 'nonlocal', &
@@ -64,7 +64,7 @@ module material
  end enum
 
  enum, bind(c)
-   enumerator :: LOCAL_THERMAL_NONE_ID, &
+   enumerator :: LOCAL_THERMAL_ISOTHERMAL_ID, &
                  LOCAL_THERMAL_HEATGEN_ID
  end enum
  enum, bind(c)
@@ -96,13 +96,13 @@ module material
    phase_elasticity                                                                                 !< elasticity of each phase  
  integer(kind(PLASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
    phase_plasticity                                                                                 !< plasticity of each phase  
- integer(kind(LOCAL_DAMAGE_none_ID)), dimension(:),           allocatable, public, protected :: &
+ integer(kind(LOCAL_DAMAGE_none_ID)), dimension(:),          allocatable, public, protected :: &
    phase_damage                                                                                     !< local damage of each phase  
- integer(kind(LOCAL_THERMAL_none_ID)), dimension(:),          allocatable, public, protected :: &
+ integer(kind(LOCAL_THERMAL_isothermal_ID)), dimension(:),   allocatable, public, protected :: &
    phase_thermal                                                                                    !< local thermal of each phase  
- integer(kind(FIELD_DAMAGE_LOCAL_ID)), dimension(:),          allocatable, public, protected :: &
+ integer(kind(FIELD_DAMAGE_LOCAL_ID)), dimension(:),         allocatable, public, protected :: &
    field_damage_type                                                                                    !< field damage of each phase  
- integer(kind(FIELD_THERMAL_ADIABATIC_ID)), dimension(:),          allocatable, public, protected :: &
+ integer(kind(FIELD_THERMAL_ADIABATIC_ID)), dimension(:),    allocatable, public, protected :: &
    field_thermal_type                                                                                  !< field thermal of each phase  
 
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
@@ -216,7 +216,7 @@ module material
    LOCAL_DAMAGE_none_ID, &
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
-   LOCAL_THERMAL_none_ID, &
+   LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_heatgen_ID, &
    FIELD_DAMAGE_LOCAL_ID, &
    FIELD_DAMAGE_NONLOCAL_ID, &
@@ -717,7 +717,7 @@ subroutine material_parsePhase(fileUnit,myPart)
  allocate(phase_plasticityInstance(Nsections),   source=0_pInt)
  allocate(phase_damage(Nsections) ,              source=LOCAL_DAMAGE_none_ID)
  allocate(phase_damageInstance(Nsections),       source=0_pInt)
- allocate(phase_thermal(Nsections) ,             source=LOCAL_THERMAL_none_ID)
+ allocate(phase_thermal(Nsections) ,             source=LOCAL_THERMAL_isothermal_ID)
  allocate(phase_thermalInstance(Nsections),      source=0_pInt)
  allocate(phase_Noutput(Nsections),              source=0_pInt)
  allocate(phase_localPlasticity(Nsections),      source=.false.)
@@ -791,8 +791,8 @@ subroutine material_parsePhase(fileUnit,myPart)
          phase_damageInstance(section) = count(phase_damage(1:section) == phase_damage(section))               ! count instances
        case ('thermal')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
-           case (LOCAL_THERMAL_NONE_label)
-             phase_thermal(section) = LOCAL_THERMAL_none_ID
+           case (LOCAL_THERMAL_ISOTHERMAL_label)
+             phase_thermal(section) = LOCAL_THERMAL_isothermal_ID
            case (LOCAL_THERMAL_HEATGEN_label)
              phase_thermal(section) = LOCAL_THERMAL_HEATGEN_ID
            case default
