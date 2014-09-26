@@ -24,7 +24,7 @@ module damage_ductile
  character(len=64),                   dimension(:,:),         allocatable, target, public :: &
    damage_ductile_output                                                                            !< name of each post result output
    
- integer(pInt),                       dimension(:),           allocatable,         private :: &
+ integer(pInt),                       dimension(:),           allocatable, target, public :: &
    damage_ductile_Noutput                                                                           !< number of outputs per instance of this damage 
 
  real(pReal),                         dimension(:),     allocatable,         private :: &

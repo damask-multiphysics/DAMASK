@@ -256,6 +256,7 @@ subroutine constitutive_init
        thisSize   => damage_brittle_sizePostResult
      case (LOCAL_DAMAGE_DUCTILE_ID)
        outputName = LOCAL_DAMAGE_DUCTILE_label
+       thisNoutput => damage_ductile_Noutput
        thisOutput => damage_ductile_output
        thisSize   => damage_ductile_sizePostResult
      case default
