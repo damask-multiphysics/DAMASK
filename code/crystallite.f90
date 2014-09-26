@@ -3805,8 +3805,8 @@ function crystallite_postResults(ipc, ip, el)
 #ifdef multiphysicsOut
  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el))) + &
                         1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
-                        1+damageState( material_phase(ipc,ip,el))%sizePostResults + &
-                        1+thermalState(material_phase(ipc,ip,el))%sizePostResults) :: & 
+                          damageState( material_phase(ipc,ip,el))%sizePostResults + &
+                          thermalState(material_phase(ipc,ip,el))%sizePostResults) :: & 
    crystallite_postResults
 #else
  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &

@@ -241,9 +241,11 @@ subroutine homogenization_init()
    if (knownHomogenization) then
      write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
      write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-     do e = 1,thisNoutput(i)
-       write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-     enddo
+     if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID) then
+       do e = 1,thisNoutput(i)
+         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+       enddo
+     endif  
    endif  
 #ifdef multiphysicsOut
    write(FILEUNIT,'(a)') '(field)'
@@ -291,17 +293,17 @@ subroutine homogenization_init()
  field_maxSizePostResults = 0_pInt
  do p = 1,material_Nhomogenization
    homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState(p)%sizePostResults)
-   field_maxSizePostResults = max(field_maxSizePostResults,field_Noutput(p))
+   field_maxSizePostResults          = max(field_maxSizePostResults,field_sizePostResults(p))
  enddo  
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
 #ifdef multiphysicsOut
-                           + 1 + field_maxSizePostResults &                                         ! field size & field result  
+                               + field_maxSizePostResults &                                         ! field size & field result  
 #endif
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
 #ifdef multiphysicsOut
-                                                        + 1 + constitutive_damage_maxSizePostResults &     
-                                                        + 1 + constitutive_thermal_maxSizePostResults &    
+                                                            + constitutive_damage_maxSizePostResults &     
+                                                            + constitutive_thermal_maxSizePostResults &    
 #endif
                                                         + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
@@ -716,10 +718,7 @@ subroutine materialpoint_postResults
        endif
 
 #ifdef multiphysicsOut
-       theSize = field_Noutput(mappingHomogenization(2,i,e))
-       materialpoint_results(thePos+1,i,e) = real(theSize,pReal)                                    ! tell size of field results
-       thePos = thePos + 1_pInt
-
+       theSize = field_sizePostResults(mappingHomogenization(2,i,e))
        if (theSize > 0_pInt) then                                                                   ! any homogenization results to mention?
          materialpoint_results(thePos+1:thePos+theSize,i,e) = field_postResults(i,e)                ! tell field results 
          thePos = thePos + theSize
@@ -731,10 +730,10 @@ subroutine materialpoint_postResults
 
        grainLooping :do g = 1,myNgrains
 #ifdef multiphysicsOut
-         theSize = (1 + crystallite_sizePostResults(myCrystallite)) + &
-                   (1 + plasticState(material_phase(g,i,e))%sizePostResults) + &                    !ToDo
-                   (1 + damageState(material_phase(g,i,e))%sizePostResults) + &     
-                   (1 + thermalState(material_phase(g,i,e))%sizePostResults)    
+         theSize = 1 + crystallite_sizePostResults(myCrystallite) + &
+                   1 + plasticState(material_phase(g,i,e))%sizePostResults + &                    !ToDo
+                       damageState(material_phase(g,i,e))%sizePostResults + &     
+                       thermalState(material_phase(g,i,e))%sizePostResults    
 #else
          theSize = (1 + crystallite_sizePostResults(myCrystallite)) + &
                    (1 + plasticState(material_phase(g,i,e))%sizePostResults)  
@@ -1290,7 +1289,9 @@ end function homogenization_postResults
 !--------------------------------------------------------------------------------------------------
 function field_postResults(ip,el)
  use material, only: &
-   mappingHomogenization
+   mappingHomogenization, &
+   fieldThermal, &
+   fieldDamage
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -1299,19 +1300,21 @@ function field_postResults(ip,el)
  real(pReal), dimension(field_sizePostResults(mappingHomogenization(2,ip,el))) :: &
    field_postResults
  integer(pInt) :: &
-   c = 0_pInt, homog, o 
+   c, homog, pos, o 
 
  field_postResults = 0.0_pReal
  homog = mappingHomogenization(2,ip,el)
+ pos   = mappingHomogenization(1,ip,el)
+ c = 0_pInt
  do o = 1_pInt,field_Noutput(homog)
    select case(field_outputID(o,homog))
      case (temperature_ID)
-       field_postResults(c+1_pInt) = field_getThermal(ip,el)
+       field_postResults(c+1_pInt) = fieldThermal(homog)%field(1,pos)
        c = c + 1_pInt
      case (damage_ID)
-       field_postResults(c+1_pInt) = field_getDAMAGE(ip,el)
+       field_postResults(c+1_pInt) = fieldDamage(homog)%field(1,pos)
        c = c + 1_pInt
-    end select
+   end select
  enddo
 
 end function field_postResults
