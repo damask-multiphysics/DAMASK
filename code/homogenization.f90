@@ -36,8 +36,6 @@ module homogenization
    materialpoint_subFrac, &
    materialpoint_subStep, &
    materialpoint_subdt
- integer(pInt), dimension(:,:),         allocatable, private :: &
-   homogenization_sizePostResults                                                                   !< size of postResults array per material point
  integer(pInt),                                      private :: &
    homogenization_maxSizeState
  logical,       dimension(:,:),         allocatable, private :: &
@@ -174,7 +172,6 @@ subroutine homogenization_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
- allocate(homogenization_sizePostResults(mesh_maxNips,mesh_NcpElems),   source=0_pInt)
  allocate(materialpoint_heat(mesh_maxNips,mesh_NcpElems),               source=0.0_pReal)
  allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
  allocate(materialpoint_F0(3,3,mesh_maxNips,mesh_NcpElems),             source=0.0_pReal)
@@ -200,19 +197,23 @@ subroutine homogenization_init()
        InstancePosition(myInstance) = InstancePosition(myInstance)+1_pInt
        mapping(e,1:4) = [instancePosition(myinstance),myinstance,e,i]
 #endif
-     homogenization_sizePostResults(i,e) = homogState(mappingHomogenization(2,i,e))%sizePostResults
    enddo IpLooping
  enddo elementLooping
 #ifdef HDF
  call  HDF5_mappingHomogenization(mapping)
 #endif
 
- homogenization_maxSizePostResults = maxval(homogenization_sizePostResults)  
+ homogenization_maxSizePostResults = 0_pInt
+ do p = 1,material_Nhomogenization
+   homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState(p)%sizePostResults)
+ enddo  
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
+#ifdef multiphysicsOut
                                                         + 1 + constitutive_damage_maxSizePostResults &     
                                                         + 1 + constitutive_thermal_maxSizePostResults &    
+#endif
                                                         + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
  
@@ -226,7 +227,6 @@ subroutine homogenization_init()
    write(6,'(a32,1x,7(i8,1x))')   'homogenization_subState0:       ', shape(homogenization_subState0)
    write(6,'(a32,1x,7(i8,1x))')   'homogenization_state:           ', shape(homogenization_state)
 #endif
-   write(6,'(a32,1x,7(i8,1x),/)') 'homogenization_sizePostResults: ', shape(homogenization_sizePostResults)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_dPdF:             ', shape(materialpoint_dPdF)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F0:               ', shape(materialpoint_F0)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_F:                ', shape(materialpoint_F)
@@ -586,6 +586,8 @@ subroutine materialpoint_postResults
  use mesh, only: &
    mesh_element
  use material, only: &
+   mappingHomogenization, &
+   homogState, &
    plasticState, &
    damageState, &
    thermalState, &
@@ -615,7 +617,7 @@ subroutine materialpoint_postResults
      IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        thePos = 0_pInt
        
-       theSize = homogenization_sizePostResults(i,e)
+       theSize = homogState(mappingHomogenization(2,i,e))%sizePostResults
        materialpoint_results(thePos+1,i,e) = real(theSize,pReal)                                    ! tell size of homogenization results
        thePos = thePos + 1_pInt
 
@@ -1144,6 +1146,8 @@ function homogenization_postResults(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
+   mappingHomogenization, &
+   homogState, &
    homogenization_type, &
    HOMOGENIZATION_NONE_ID, &
    HOMOGENIZATION_ISOSTRAIN_ID, &
@@ -1157,7 +1161,8 @@ function homogenization_postResults(ip,el)
  integer(pInt), intent(in) :: &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element number
- real(pReal), dimension(homogenization_sizePostResults(ip,el)) :: homogenization_postResults
+ real(pReal), dimension(homogState(mappingHomogenization(2,ip,el))%sizePostResults) :: &
+   homogenization_postResults
 
  homogenization_postResults = 0.0_pReal
  chosenHomogenization: select case (homogenization_type(mesh_element(3,el)))
