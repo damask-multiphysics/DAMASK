@@ -8,7 +8,7 @@ from operator import mul
 from cStringIO import StringIO
 import damask
 
-scriptID = '$Id: yieldSurface.py 3390 2014-08-18 20:09:09Z MPIE\m.diehl $'
+scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 mismatch = None
 currentSeedsName = None
