@@ -138,7 +138,7 @@ module numerics
                                 &-thermal_snes_type newtonls &
                                 &-thermal_snes_linesearch_type cp &
                                 &-thermal_ksp_type fgmres &
-                                &-thermal_snes_atol 1e-8 &
+                                &-thermal_snes_atol 1e-1 &
                                 &-thermal_pc_type ml &
                                 &-thermal_mg_levels_ksp_type chebyshev &
                                 &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
