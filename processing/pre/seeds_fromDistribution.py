@@ -37,7 +37,6 @@ class myThread (threading.Thread):
     self.threadID = threadID
 
   def run(self):
-    global mismatch
     global bestSeedsUpdate
     global bestSeedsVFile
     global nMicrostructures
@@ -48,7 +47,7 @@ class myThread (threading.Thread):
     global baseFile
 
     s.acquire()
-    myMatch = match
+    bestMatch = match
     s.release()
     
     random.seed(options.randomSeed+self.threadID)
@@ -59,11 +58,11 @@ class myThread (threading.Thread):
     perturbedSeedsVFile = StringIO()
     perturbedGeomVFile  = StringIO()
 
-    while not match:
+    while bestMatch < options.threshold:
 # if a better seed file exist, read it into a virtual file
       s.acquire()
       if bestSeedsUpdate > knownSeedsUpdate:
-        print 'Thread %i: '%self.threadID+'Reading new best seeds from', bestSeedsUpdate
+        #print 'Thread %i: '%self.threadID+'Reading new best seeds from', bestSeedsUpdate
         knownSeedsUpdate = bestSeedsUpdate
         bestSeedsVFile.reset()
         myBestSeedsVFile.close()
@@ -95,8 +94,8 @@ class myThread (threading.Thread):
         if ms == selectedMs:
           direction+=direction
           newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction)
-          np.where(newCoords>=1.0,newCoords-1.0,newCoords)
-          np.where(newCoords <1.0,newCoords+1.0,newCoords)
+          newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)
+          newCoords=np.where(newCoords <1.0,newCoords+1.0,newCoords)
           #print ms,perturbedSeedsTable.data[0:3],'-->',[format(f, '8.6f') for f in newCoords]
           perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
         ms+=1
@@ -123,45 +122,49 @@ class myThread (threading.Thread):
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
 
       s.acquire()
-      myMatch = match
-      print 'Thread %i: finished tessellation (%i microstructures)'%(self.threadID, myNmicrostructures)
-      if currentError[nMicrostructures-1] == 0.0:
-        print 'finished'
-        match = True
-      if match: return
+      bestMatch = match
+      #print 'Thread %i: finished tessellation (%i microstructures)'%(self.threadID, myNmicrostructures)
+      myMatch=0
+      for i in xrange(nMicrostructures):
+        if currentError[i] > 0.0: break
+        myMatch = i+1
 
       if myNmicrostructures != nMicrostructures:
-        print 'microstructure mismatch %i'%myNmicrostructures
+        print 'Thread %i: Microstructure mismatch (%i microstructures mapped)'%(self.threadID,myNmicrostructures)
         randReset = True
       else:
         for i in xrange(nMicrostructures):
-          ratio = target[i]['error']/currentError[i]
 
           if currentError[i] > target[i]['error']:
-            print '%i decreased quality to %8.6f'%(i+2,ratio)
-            print 'target',target[i]['histogram']
-            print 'current',currentHist[i]
+            #print '%i decreased quality to %8.6f'%(i+1,ratio)
+            #print 'target',target[i]['histogram']
+            #print 'current',currentHist[i]
             randReset = True
             break
           elif currentError[i] < target[i]['error']:
             bestSeedsUpdate = time.time()
-            print '%i increased quality to %8.6f'%(i+2,ratio)
-            print 'target',target[i]['histogram']
-            print 'current',currentHist[i]
-            print 'Thread', self.threadID, 'new best fit. time,', bestSeedsUpdate
+            print 'Thread %i: Better match (%i bins, %6.4f --> %6.4f)'%(self.threadID,i+1,target[i]['error'],currentError[i])
+            print '          target: ',target[i]['histogram']
+            print '          best:   ',currentHist[i]
             currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
             bestSeedsVFile = StringIO()
+            sys.stdout.flush()
             with open(currentSeedsName+'.seeds','w') as currentSeedsFile:
               for line in perturbedSeedsVFile:
                 currentSeedsFile.write(line)
                 bestSeedsVFile.write(line)
             for j in xrange(nMicrostructures):
               target[j]['error'] = currentError[j]
+            if myMatch > match:
+              print 'Stage %i cleared'%(myMatch)
+              match=myMatch
+              sys.stdout.flush()
             break
-          if i == nMicrostructures-1: print 'continue along trajectory '
-
+          if i == nMicrostructures-1:
+            print 'Thread %i: Continue along trajectory'%(self.threadID)
+      
       s.release()
 
 
@@ -185,8 +188,8 @@ parser.add_option('-r', '--rnd',     dest='randomSeed', type='int', metavar='int
                                      help='seed of random number generator [%default]')
 parser.add_option('--target',        dest='target', metavar='string',
                                      help='name of the geom file with target distribution [%default]')
-parser.add_option('--tolerance',     dest='threshold', type='float', metavar='float',
-                                     help='stopping criterion [%default]')
+parser.add_option('--tolerance',     dest='threshold', type='int', metavar='int',
+                                     help='stopping criterion (bin number) [%default]')
 parser.add_option('--scale',         dest='scale',type='float', metavar='float',                                     
                                      help='maximum moving distance of perturbed seed in pixel [%default]')
 
@@ -196,7 +199,7 @@ parser.set_defaults(grid        = (64,64,64))
 parser.set_defaults(threads     = 2)
 parser.set_defaults(randomSeed  = None)
 parser.set_defaults(target      = 'geom')
-parser.set_defaults(threshold   = 1.0)
+parser.set_defaults(threshold   = 20)
 parser.set_defaults(scale       = 1.0)
 
 
@@ -211,24 +214,19 @@ points = float(reduce(mul,options.grid))
 
 
 # ----------- calculate target distribution and bin edges
-targetGeomVFile=StringIO()
 with open(os.path.splitext(os.path.basename(options.target))[0]+'.geom') as targetGeomFile:
-  targetGeomTable = damask.ASCIItable(targetGeomFile,targetGeomVFile,labels=False)
+  targetGeomTable = damask.ASCIItable(targetGeomFile,labels=False)
   targetGeomTable.head_read()
-  targetGeomTable.head_write()
   for i in targetGeomTable.info:
     if i.startswith('microstructures'): nMicrostructures = int(i.split()[1])
-    if i.startswith('grid'):            targetPoints = float(int(i.split()[2])*\
-                                                       int(i.split()[4])*\
-                                                       int(i.split()[6]))
+    if i.startswith('grid'):            targetPoints     = np.array(map(float,i.split()[2:7:2])).prod()
+
   targetGeomTable.data_readArray()
-  targetGeomTable.data_writeArray()
-  targetData = np.bincount(targetGeomTable.data.astype(int).ravel())[1:nMicrostructures]/targetPoints
+  targetVolFrac = np.bincount(targetGeomTable.data.astype(int).ravel())[1:nMicrostructures+1]/targetPoints
   target=[]
   for i in xrange(1,nMicrostructures+1):
-    targetHist,targetBins = np.histogram(targetData,bins=i)
+    targetHist,targetBins = np.histogram(targetVolFrac,bins=i) #bin boundaries
     target.append({'histogram':targetHist,'bins':targetBins})
-targetGeomVFile.close()
 
 # ----------- create initial seed file or open existing one
 bestSeedsVFile = StringIO()
@@ -258,11 +256,16 @@ initialData = np.bincount(initialGeomTable.data.astype(int).ravel())[1:]/points
 for i in xrange(nMicrostructures):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
-  print target[i]['histogram']
-  print initialHist
-  print target[i]['error'],'\n-----------------------------------'
+  #print target[i]['histogram']
+  #print initialHist
+  #print target[i]['error'],'\n-----------------------------------'
 
-match = target[nMicrostructures-1]==0.0
+match=0
+for i in xrange(nMicrostructures):
+  if target[i]['error'] > 0.0: break
+  match = i+1
+
+print 'Stage %i cleared'%match
 initialGeomVFile.close()
 
 
