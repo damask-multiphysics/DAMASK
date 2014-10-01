@@ -726,7 +726,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, Temperatu
    case (LOCAL_DAMAGE_BRITTLE_ID)
      call damage_brittle_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_DUCTILE_ID)
-     call damage_ductile_dotState(ipc, ip, el)
+     call damage_ductile_dotState(Lp, ipc, ip, el)
 
  end select
 

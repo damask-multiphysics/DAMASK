@@ -29,7 +29,7 @@ module damage_ductile
 
  real(pReal),                         dimension(:),     allocatable,         private :: &
    damage_ductile_aTol, &
-   damage_ductile_critstrain
+   damage_ductile_critpStrain
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -120,7 +120,7 @@ subroutine damage_ductile_init(fileUnit)
           damage_ductile_output = ''
  allocate(damage_ductile_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_ductile_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(damage_ductile_critStrain(maxNinstance),                    source=0.0_pReal) 
+ allocate(damage_ductile_critpStrain(maxNinstance),                    source=0.0_pReal) 
  allocate(damage_ductile_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -154,8 +154,8 @@ subroutine damage_ductile_init(fileUnit)
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
 
-       case ('critical_strain_energy')
-         damage_ductile_critStrain(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('critical_plastic_strain')
+         damage_ductile_critpStrain(instance) = IO_floatValue(line,positions,2_pInt)
 
        case ('atol_damage')
          damage_ductile_aTol(instance) = IO_floatValue(line,positions,2_pInt)
@@ -183,8 +183,8 @@ subroutine damage_ductile_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   1_pInt
-     sizeState                 =   2_pInt
+     sizeDotState              =   2_pInt
+     sizeState                 =   3_pInt
                 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
@@ -229,7 +229,8 @@ subroutine damage_ductile_stateInit(phase,instance)
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
  tempState(1) = 1.0_pReal
- tempState(2) = 1.0_pReal
+ tempState(2) = 0.0_pReal
+ tempState(3) = 1.0_pReal
 
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
@@ -250,21 +251,26 @@ subroutine damage_ductile_aTolState(phase,instance)
  real(pReal), dimension(damageState(phase)%sizeState) :: tempTol
 
  tempTol = damage_ductile_aTol(instance)
+ tempTol(2) = 0.000001_pReal
  damageState(phase)%aTolState = tempTol
 end subroutine damage_ductile_aTolState
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_ductile_dotState(ipc, ip, el)
+subroutine damage_ductile_dotState(Lp,ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
+ use math, only: &
+   math_norm33
  use lattice, only: &
    lattice_DamageMobility
 
  implicit none
+ real(pReal), intent(in), dimension(3,3) :: &
+   Lp
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -279,6 +285,9 @@ subroutine damage_ductile_dotState(ipc, ip, el)
    (1.0_pReal/lattice_DamageMobility(phase))* &
    (damageState(phase)%state(2,constituent) - &
     damageState(phase)%state(1,constituent))
+
+ damageState(phase)%dotState(2,constituent) = &
+   math_norm33(Lp)
   
 end subroutine damage_ductile_dotState
  
@@ -315,9 +324,9 @@ subroutine damage_ductile_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  plasticStrain = math_mul33x33(math_transpose33(Fp),Fp)-math_I3
- damageState(phase)%state(2,constituent) = min(damageState(phase)%state(2,constituent), &
-                                                     damage_ductile_critstrain(phase)/ &
-                                                       math_norm33(plasticStrain))   
+ damageState(phase)%state(3,constituent) = min(damageState(phase)%state(3,constituent), &
+                                                     damage_ductile_critpStrain(phase)/ &
+                                                      damageState(phase)%state(2,constituent))       !< akin to damage surface
                                                        
 end subroutine damage_ductile_microstructure
 
