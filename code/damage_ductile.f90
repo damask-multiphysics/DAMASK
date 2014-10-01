@@ -283,7 +283,7 @@ subroutine damage_ductile_dotState(Lp,ipc, ip, el)
  
  damageState(phase)%dotState(1,constituent) = &
    (1.0_pReal/lattice_DamageMobility(phase))* &
-   (damageState(phase)%state(2,constituent) - &
+   (damageState(phase)%state(3,constituent) - &
     damageState(phase)%state(1,constituent))
 
  damageState(phase)%dotState(2,constituent) = &
