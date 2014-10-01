@@ -942,9 +942,8 @@ subroutine lattice_init
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNslip')
  if (LATTICE_maxNtwin /= maxval([LATTICE_fcc_Ntwin,LATTICE_bcc_Ntwin,LATTICE_hex_Ntwin])) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNtwin')
- if (LATTICE_maxNtrans /= maxval([LATTICE_fcc_Ntrans,LATTICE_bcc_Ntrans,LATTICE_hex_Ntrans])) then
+ if (LATTICE_maxNtrans /= maxval([LATTICE_fcc_Ntrans,LATTICE_bcc_Ntrans,LATTICE_hex_Ntrans])) &
    call IO_error(0_pInt,ext_msg = 'LATTICE_maxNtrans')
- endif
  if (LATTICE_maxNnonSchmid /= maxval([lattice_fcc_NnonSchmid,lattice_bcc_NnonSchmid,&
    lattice_hex_NnonSchmid])) call IO_error(0_pInt,ext_msg = 'LATTICE_maxNnonSchmid')
 
