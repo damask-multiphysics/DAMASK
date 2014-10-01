@@ -1368,6 +1368,8 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
     gdot_slip,dgdot_dtauslip,tau_slip
  real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
     gdot_twin,dgdot_dtautwin,tau_twin
+ real(pReal), dimension(constitutive_dislotwin_totalNtrans(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+    V_trans,Vdot_trans,dVdot_dtautrans,tau_trans,fstress_trans
  real(pReal), dimension(6) :: gdot_sb,dgdot_dtausb,tau_sb
  real(pReal), dimension(3,3) :: eigVectors, sb_Smatrix
  real(pReal), dimension(3)   :: eigValues, sb_s, sb_m
@@ -1529,7 +1531,6 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  
       !* Calculation of Lp
       !* Resolved shear stress on twin system
-
       tau_twin(j) = dot_product(Tstar_v,lattice_Stwin_v(:,index_myFamily+i,ph))
 
       !* Stress ratios
@@ -1571,6 +1572,47 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
    enddo twinSystemsLoop
  enddo twinFamiliesLoop
 
+ !* Phase transformation part
+ Vdot_trans = 0.0_pReal
+ dVdot_dtautrans = 0.0_pReal
+ j = 0_pInt
+ transFamiliesLoop: do f = 1_pInt,lattice_maxNtransFamily
+   index_myFamily = sum(lattice_NtransSystem(1:f-1_pInt,ph)) ! at which index starts my family
+   transSystemsLoop: do i = 1_pInt,constitutive_dislotwin_Ntrans(f,instance)
+      j = j+1_pInt
+
+      !* Resolved shear stress on transformation system
+      tau_trans(j) = dot_product(Tstar_v,lattice_NItrans_v(:,index_myFamily+i,ph))
+
+      !* Total martensite volume fraction for transformation system
+      V_trans(j) = plasticState(ph)%state(3*ns+2*nt+j, of) + plasticState(ph)%state(3*ns+2*nt+nr+j, of)
+
+      !* Driving force for stress-assisted martensite growth on transformation system
+      fstress_trans(j) = tau_trans(j) - &
+        constitutive_dislotwin_Cdwp(instance)*(2*V_trans(j) - 6*V_trans(j)**2 + 4*V_trans(j)**3) - &
+        12*constitutive_dislotwin_deltaG(instance)*(V_trans(j)**2 - V_trans(j)**3)
+
+      !* Transformation rate of stress-assisted martensite and its derivative
+      if (fstress_trans(j) > tol_math_check) then
+        Vdot_trans(j) = constitutive_dislotwin_Cgro(instance)*(1.0_pReal - sumf - sumftr)*fstress_trans(j)
+        dVdot_dtautrans(j) = constitutive_dislotwin_Cgro(instance)*(1.0_pReal - sumf - sumftr)
+      endif
+
+      !* Plastic velocity gradient for phase transformation
+      Lp = Lp + Vdot_trans(j)*lattice_NItrans(:,:,index_myFamily+i,ph)
+
+      !* Calculation of the tangent of Lp
+      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
+        dLp_dTstar3333(k,l,m,n) = &
+        dLp_dTstar3333(k,l,m,n) + dVdot_dtautrans(j)*&
+                                  lattice_NItrans(k,l,index_myFamily+i,ph)*&
+                                  lattice_NItrans(m,n,index_myFamily+i,ph)
+
+   enddo transSystemsLoop
+ enddo transFamiliesLoop
+
+
+
  dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
  
 end subroutine constitutive_dislotwin_LpAndItsTangent
@@ -1608,6 +1650,8 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    lattice_mu, &
    lattice_structure, &
    lattice_fcc_twinNucleationSlipPair, &
+   lattice_fcc_transNucleationTwinPair, &
+   lattice_fcc_shearCritTrans, &
    LATTICE_fcc_ID, &
    LATTICE_bcc_ID
 
@@ -1621,7 +1665,7 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- integer(pInt) :: instance,ns,nt,nr,f,i,j,index_myFamily,s1,s2, &
+ integer(pInt) :: instance,ns,nt,nr,f,i,j,index_myFamily,s1,s2,a,b,sa,sb,ssa,ssb, &
                   ph, &
                   of
  real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
@@ -1631,9 +1675,10 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  ClimbVelocity,DotRhoEdgeDipClimb,DotRhoDipFormation
  real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
               tau_twin
+ real(pReal), dimension(constitutive_dislotwin_totalNtrans(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
+              V_trans,Vdot_trans,dVdot_dtautrans,tau_trans,fstress_trans,shear_trans,shearrate_trans,probrate_trans
 
  !* Shortened notation
-
  of = mappingConstitutive(1,ipc,ip,el)
  ph = mappingConstitutive(2,ipc,ip,el)
  instance  = phase_plasticityInstance(ph)
@@ -1778,6 +1823,69 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         plasticState(ph)%dotState(3_pInt*ns+nt+j, of) = plasticState(ph)%dotState(3_pInt*ns+j, of) * &
                                                           lattice_sheartwin(index_myfamily+i,ph)
       endif
+   enddo
+ enddo
+
+ !* Transformation volume fraction evolution
+ shear_trans     = 0.0_pReal
+ shearrate_trans = 0.0_pReal
+ probrate_trans  = 0.0_pReal
+ j = 0_pInt
+ do f = 1_pInt,lattice_maxNtransFamily                                 ! loop over all trans families
+   index_myFamily = sum(lattice_NtransSystem(1:f-1_pInt,ph))           ! at which index starts my family
+
+   !* Projection of shear and shear rate on fault band (twin) systems
+   shear_trans     = matmul(constitutive_dislotwin_projectionMatrix_Trans(:,:,instance), &
+     plasticState(ph)%state(2_pInt*ns+1_pInt:3_pInt*ns, of))
+   shearrate_trans = matmul(constitutive_dislotwin_projectionMatrix_Trans(:,:,instance), &
+     plasticState(ph)%dotState(2_pInt*ns+1_pInt:3_pInt*ns, of))
+
+   do i = 1_pInt,constitutive_dislotwin_Ntrans(f,instance)             ! process each (active) trans system in family
+      j = j+1_pInt
+
+      !* Resolved shear stress on transformation system
+      tau_trans(j) = dot_product(Tstar_v,lattice_NItrans_v(:,index_myFamily+i,ph))
+
+      !* Total martensite volume fraction for transformation system
+      V_trans(j) = plasticState(ph)%state(3*ns+2*nt+j, of) + plasticState(ph)%state(3*ns+2*nt+nr+j, of)
+
+      !* Driving force for stress-assisted martensite growth
+      fstress_trans(j) = tau_trans(j) - &
+        constitutive_dislotwin_Cdwp(instance)*(2*V_trans(j) - 6*V_trans(j)**2 + 4*V_trans(j)**3) - &
+        12*constitutive_dislotwin_deltaG(instance)*(V_trans(j)**2 - V_trans(j)**3)
+
+      !* Dotstate for stress-assisted martensite volume fraction
+      if (fstress_trans(j) > tol_math_check) then
+        plasticState(ph)%dotState(3_pInt*ns+2_pInt*nt+j, of) = constitutive_dislotwin_Cgro(instance)*&
+                                                                 (1.0_pReal - sumf - sumftr)*fstress_trans(j)
+      else
+        plasticState(ph)%dotState(3_pInt*ns+2_pInt*nt+j, of) = 0.0_pReal
+      endif
+
+      !* Probability rate of fault band intersection for strain-induced martensite nucleation
+      select case(lattice_structure(ph))
+        case (LATTICE_fcc_ID)
+          a = lattice_fcc_transNucleationTwinPair(1,j)
+          b = lattice_fcc_transNucleationTwinPair(2,j)
+          sa  = sign(1, a)
+          sb  = sign(1, b)
+          ssa = sign(1.0, shearrate_trans(a))
+          ssb = sign(1.0, shearrate_trans(b))
+
+          if (sa == ssa .and. sb == ssb) then
+            probrate_trans(j) = (abs(shear_trans(a)*shearrate_trans(b)) + abs(shear_trans(b)*shearrate_trans(a)))
+          else
+            probrate_trans(j) = 0.0_pReal
+          endif
+          probrate_trans(j) = probrate_trans(j)/lattice_fcc_shearCritTrans**2
+
+          !* Dotstate for strain-induced martensite volume fraction
+          plasticState(ph)%dotState(3_pInt*ns+2_pInt*nt+nr+j, of) = constitutive_dislotwin_Cnuc(instance)*&
+          (1.0_pReal - sumf - sumftr)*probrate_trans(j)
+        case default
+          plasticState(ph)%dotState(3_pInt*ns+2_pInt*nt+nr+j, of) = 0.0_pReal
+      end select
+
    enddo
  enddo
 
