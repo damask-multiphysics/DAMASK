@@ -1717,8 +1717,6 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
    msg = 'could not get $DAMASK_NUM_THREADS'
  case (40_pInt)
    msg = 'found spectral solver parameter'
- case (41_pInt)
-   msg = 'found PETSc solver parameter'
  case (42_pInt)
    msg = 'parameter has no effect'
  case (43_pInt)

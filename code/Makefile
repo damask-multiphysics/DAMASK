@@ -26,18 +26,11 @@ else
 	include /etc/damask.conf
 endif  
 
-ifdef PETSC_DIR
 include $(PETSC_DIR)/conf/variables
 INCLUDE_DIRS :=$(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    :=$(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
-else
-COMPILERNAME ?= $(F90)
-LINKERNAME   ?= $(F90)
-INCLUDE_DIRS :=-I../lib
-LIBRARIES :=-lfftw3
-endif
 
 LIB_DIRS  :=-L$(FFTW_ROOT)/lib64 -L$(FFTW_ROOT)/lib
 RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib64,-rpath,$(FFTW_ROOT)/lib
@@ -87,27 +80,6 @@ OPENMP_FLAG_gfortran =-fopenmp
 LIBRARIES +=-lpthread
 ifeq "$(F90)" "ifort"
 LIBRARIES +=-liomp5
-endif
-endif
-
-ifndef PETSC_DIR                                                #petsc provides linking options agains selected blas/lapack already
-ifneq  "x$(IMKL_ROOT)" "x"
-LIB_DIRS  +=-L$(IMKL_ROOT)/lib/intel64
-RUN_PATH  :=$(RUN_PATH),-rpath,$(IMKL_ROOT)/lib/intel64
-INCLUDE_DIRS +=-I$(IMKL_ROOT)/include
-LIBRARIES +=-lmkl_$(IMKL_COMPILER_$(F90))_lp64 -lmkl_core -lmkl_sequential -lm
-else
-ifneq  "x$(ACML_ROOT)" "x"
-LIB_DIRS  +=-L$(ACML_ROOT)/$(F90)64/lib
-RUN_PATH  :=$(RUN_PATH),-rpath,$(ACML_ROOT)/$(F90)64/lib
-LIBRARIES +=-lacml
-else
-ifneq  "x$(LAPACK_ROOT)" "x"
-LIB_DIRS  +=-L$(LAPACK_ROOT)/lib64 -L$(LAPACK_ROOT)/lib
-RUN_PATH  :=$(RUN_PATH),-rpath,$(LAPACK_ROOT)/lib64,-rpath,$(LAPACK_ROOT)/lib
-LIBRARIES +=-llapack
-endif
-endif
 endif
 endif
 
@@ -380,20 +352,18 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  FEsolving.o mesh.o material.o lattice.o \
                  $(DAMAGE_FILES) $(THERMAL_FILES) $(CONSTITUTIVE_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
-                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o
-ifdef PETSC_DIR
-PETSC_FILES = DAMASK_spectral_solverAL.o \
-              DAMASK_spectral_solverBasicPETSc.o \
-              DAMASK_spectral_solverPolarisation.o
-SPECTRAL_FILES += $(PETSC_FILES)
-endif
+                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o \
+                 DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
     -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
     $(SPECTRAL_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
-DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o $(PETSC_FILES)
+DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o \
+                                                     DAMASK_spectral_solverAL.o \
+                                                     DAMASK_spectral_solverBasicPETSc.o \
+                                                     DAMASK_spectral_solverPolarisation.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
 
 DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \

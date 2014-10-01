@@ -61,11 +61,15 @@ module numerics
    maxVolDiscr_RGC            =  1.0e-5_pReal, &                                                    !< threshold of maximum volume discrepancy allowed
    volDiscrMod_RGC            =  1.0e+12_pReal, &                                                   !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
    volDiscrPow_RGC            =  5.0_pReal, &                                                       !< powerlaw penalty for volume discrepancy
-   charLength                =  1.0_pReal                                                          !< characteristic length scale for gradient problems
+   charLength                 =  1.0_pReal                                                          !< characteristic length scale for gradient problems
  logical, protected, public :: &                                                   
-   analyticJaco               = .false., &                                                         !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+#ifdef Spectral
+   analyticJaco               = .true.,  &                                                          !< use analytic Jacobian or perturbation, Default for Spectral solver .true.:
+#else
+   analyticJaco               = .false., &                                                          !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
+#endif
    usePingPong                = .true., & 
-   numerics_timeSyncing       = .false.                                                            !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
+   numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters:
@@ -182,13 +186,11 @@ subroutine numerics_init
 
 #if defined(Spectral) || defined(FEM)
 !$ use OMP_LIB, only: omp_set_num_threads                                                           ! Use the standard conforming module file for omp if using the spectral solver
-#endif  
  implicit none
-#ifndef Spectral
-#ifndef FEM
+#else  
+ implicit none
 !$ include "omp_lib.h"                                                                              ! use the not F90 standard conforming include file to prevent crashes with some versions of MSC.Marc
 #endif
-#endif  
  integer(pInt), parameter ::                 FILEUNIT = 300_pInt ,&
                                              maxNchunks = 2_pInt
 !$ integer ::                                gotDAMASK_NUM_THREADS = 1
@@ -360,7 +362,6 @@ subroutine numerics_init
          divergence_correction = IO_intValue(line,positions,2_pInt)
        case ('update_gamma')
          update_gamma = IO_intValue(line,positions,2_pInt)  > 0_pInt
-#ifdef PETSc
        case ('petsc_options')
          petsc_options = trim(line(positions(4):))
        case ('spectralsolver','myspectralsolver')
@@ -373,14 +374,7 @@ subroutine numerics_init
          polarAlpha = IO_floatValue(line,positions,2_pInt)
        case ('polarbeta')
          polarBeta = IO_floatValue(line,positions,2_pInt)
-#endif 
-#ifndef PETSc
-       case ('spectralsolver', 'myspectralsolver', 'petsc_options', &
-             'err_curl_tolabs','err_curl_tolrel','polaralpha','polarBeta')                          ! found PETSc parameter, but compiled without PETSc
-         call IO_warning(41_pInt,ext_msg=tag)
-#endif
-#endif
-#ifndef Spectral
+#else
       case ('err_div_tolabs','err_div_tolrel','err_stress_tolrel','err_stress_tolabs',&             ! found spectral parameter for FEM build
             'itmax', 'itmin','memory_efficient','fftw_timelimit','fftw_plan_mode', &
             'divergence_correction','update_gamma','spectralfilter','myfilter', &
@@ -418,8 +412,7 @@ subroutine numerics_init
          damageorder = IO_intValue(line,positions,2_pInt)
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
-#endif
-#ifndef FEM
+#else
       case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','residualstiffness',&             ! found spectral parameter for FEM build
             'itmaxfem', 'itminfem','maxcutbackfem','integrationorder','structorder','thermalorder', &
             'damageorder','petsc_optionsfem')
@@ -529,14 +522,12 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
  write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
-#ifdef PETSc
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
  write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
  write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
  write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
  write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
  write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
-#endif
 #endif
 
 !--------------------------------------------------------------------------------------------------
@@ -610,14 +601,12 @@ subroutine numerics_init
  if (err_stress_tolabs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_stress_tolAbs')
  if (err_div_tolRel <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolRel')
  if (err_div_tolAbs <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_div_tolAbs')
-#ifdef PETSc
  if (err_curl_tolRel <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolRel')
  if (err_curl_tolAbs <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_curl_tolAbs')
  if (polarAlpha <= 0.0_pReal .or. &
      polarAlpha >  2.0_pReal)              call IO_error(301_pInt,ext_msg='polarAlpha')
  if (polarBeta < 0.0_pReal .or. &
      polarBeta >  2.0_pReal)               call IO_error(301_pInt,ext_msg='polarBeta')
-#endif
 #endif
 #ifdef FEM
  if (itmaxFEM <= 1_pInt)                   call IO_error(301_pInt,ext_msg='itmaxFEM')

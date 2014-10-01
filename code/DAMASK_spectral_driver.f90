@@ -60,11 +60,9 @@ program DAMASK_spectral_Driver
    tSolutionState, &
    cutBack
  use DAMASK_spectral_SolverBasic
-#ifdef PETSc
  use DAMASK_spectral_SolverBasicPETSC
  use DAMASK_spectral_SolverAL
  use DAMASK_spectral_SolverPolarisation
-#endif
 
  implicit none
  type tLoadCase
@@ -316,7 +314,6 @@ program DAMASK_spectral_Driver
  select case (spectral_solver)
    case (DAMASK_spectral_SolverBasic_label)
      call basic_init(loadCases(1)%temperature)
-#ifdef PETSc
    case (DAMASK_spectral_SolverBasicPETSc_label)
      call basicPETSc_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverAL_label)
@@ -327,7 +324,6 @@ program DAMASK_spectral_Driver
      if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
      call Polarisation_init(loadCases(1)%temperature)
-#endif
    case default
       call IO_error(error_ID = 891, ext_msg = trim(spectral_solver))
  end select 
@@ -410,7 +406,6 @@ program DAMASK_spectral_Driver
 ! forward solution 
          select case(spectral_solver)
            case (DAMASK_spectral_SolverBasic_label)
-#ifdef PETSc
            case (DAMASK_spectral_SolverBasicPETSC_label)
              call BasicPETSC_forward (&
                  guess,timeinc,timeIncOld,remainingLoadCaseTime, &
@@ -431,7 +426,6 @@ program DAMASK_spectral_Driver
                  P_BC               = loadCases(currentLoadCase)%P, &
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  rotation_BC        = loadCases(currentLoadCase)%rotation)
-#endif
          end select
            
 !--------------------------------------------------------------------------------------------------
@@ -461,7 +455,6 @@ program DAMASK_spectral_Driver
                  F_BC               = loadCases(currentLoadCase)%deformation, &
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
                  rotation_BC        = loadCases(currentLoadCase)%rotation)
-#ifdef PETSc
            case (DAMASK_spectral_SolverBasicPETSC_label)
              solres = BasicPETSC_solution (&
                  incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
@@ -486,7 +479,6 @@ program DAMASK_spectral_Driver
                  temperature_bc     = loadCases(currentLoadCase)%temperature, &
                  rotation_BC        = loadCases(currentLoadCase)%rotation, &
                  density            = loadCases(currentLoadCase)%density)
-#endif
          end select 
 
 !--------------------------------------------------------------------------------------------------
@@ -549,14 +541,12 @@ program DAMASK_spectral_Driver
  select case (spectral_solver)
    case (DAMASK_spectral_SolverBasic_label)
      call basic_destroy()
-#ifdef PETSc
    case (DAMASK_spectral_SolverBasicPETSC_label)
      call BasicPETSC_destroy()
    case (DAMASK_spectral_SolverAL_label)
      call AL_destroy()
    case (DAMASK_spectral_SolverPolarisation_label)
      call Polarisation_destroy()
-#endif 
  end select
  
 !--------------------------------------------------------------------------------------------------
