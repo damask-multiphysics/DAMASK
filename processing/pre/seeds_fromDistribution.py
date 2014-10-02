@@ -8,8 +8,8 @@ from operator import mul
 from cStringIO import StringIO
 import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 mismatch = None
 currentSeedsName = None
 

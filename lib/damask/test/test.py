@@ -225,19 +225,23 @@ class Test():
         logging.critical('Current2Current: Unable to copy file %s'%file)
 
 
-  def execute_inCurrentDir(self,cmd):
-    
+  def execute_inCurrentDir(self,cmd,streamIn=None):
+
     initialPath=os.getcwd()
     os.chdir(self.dirCurrent())
     logging.info(cmd)
-    line = True
-    out = ''
-    process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.STDOUT)
-    while line:
-      line = process.stdout.readline()
-      out += line
-    logging.debug(out)
+    process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
+    if streamIn != None:
+      out,error = process.communicate(streamIn.read())
+    else:
+      out,error = process.communicate()
     os.chdir(initialPath)
+
+    logging.info(error)
+    logging.debug(out)
+    
+    return out,error
+    
 
     
   def compare_Array(self,File1,File2):

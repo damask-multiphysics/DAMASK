@@ -8,36 +8,163 @@ from scipy.linalg import svd
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
-def execute(cmd,dir='./'):
-      
+def execute(cmd,streamIn=None,wd='./'):
+  '''
+    executes a command in given directory and returns stdout and stderr for optional stdin
+  '''
   initialPath=os.getcwd()
-  os.chdir(dir)
-  out = ''
-  line = True
-  process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.STDOUT)
-  while line:
-    line = process.stdout.readline()
-    out += line
+  os.chdir(wd)
+  process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
+  if streamIn != None:
+    out,error = process.communicate(streamIn.read())
+  else:
+    out,error = process.communicate()
   os.chdir(initialPath)
 
+  return out,error
 
-def Hill48(x, F,G,H,L,M,N):
-  a = F*(x[4]-x[8])**2.0 + G*(x[8]-x[0])**2.0 + H*(x[0]-x[4])**2.0 + \
-         2.0*L*x[1]**2.0 + 2.0*M*x[2]**2.0 + 2.0*N*x[5]**2.0 -1.0
-  return a.ravel()
+def principalStresses(sigmas):
+  '''
+    computes principal stresses (i.e. eigenvalues) for a set of Cauchy stresses.
+    sorted in descending order.
+  '''
+  lambdas=np.zeros(0,'d')
+  for i in xrange(np.shape(sigmas[1]):
+    eigenvalues = eigvalsh(np.array(x[:,i]).reshape(3,3)
+    lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
+  lambdas = lambdas.reshape(np.shape(sigmas)[1],3) 
+
+  return labmdas
+
+def stressInvariants(lambdas):
+  '''
+    computes stress invariants (i.e. eigenvalues) for a set of principal Cauchy stresses.
+  '''
+  Is=np.zeros(0,'d')
+  for i in xrange(np.shape(lambdas[1]):
+    I = np.array([lambdas[0:i]+lambdas[1:i]+lambdas[2:i],\
+                  lambdas[0:i]*lambdas[1:i]+lambdas[1:i]*lambdas[2:i]+lambdas[2:i]*lambdas[0:i],\
+                  lambdas[0:i]*lambdas[1:i]*lambdas[2:i]])
+    Is = np.append(Is,I)
+  Is = Is.reshape(np.shape(lambdas)[1],3) 
+
+  return Is
 
 
-def vonMises(x, S_y):
-  sv=np.zeros(0,'d')
-  for i in xrange(np.shape(x)[1]):
-    U, l, Vh = svd(np.array(x[:,i]).reshape(3,3))
-    sv = np.append(sv,l)
-  sv = sv.reshape(np.shape(x)[1],3)
-  ooo = (sv[:,2]-sv[:,1])**2+(sv[:,1]-sv[:,0])**2+(sv[:,0]-sv[:,2])**2-2*S_y**2
-  return ooo.ravel()
+# ---------------------------------------------------------------------------------------------
+# isotropic yield surfaces
+# ---------------------------------------------------------------------------------------------
+
+def Tresca(sigmas,sigma0):
+  '''
+    residuum of Tresca yield criterion (eq. 2.26)
+  '''
+  lambdas = principalStresses(sigmas)
+  r = np.amax(np.array([abs(lambdas[:,2]-lambdas[:,1]),\
+                        abs(lambdas[:,1]-lambdas[:,0]),\
+                        abs(lambdas[:,0]-lambdas[:,2])]),1) - sigma0
+  return r.ravel()
+
+
+def HuberHencyMises(sigmas, sigma0):
+  '''
+    residuum of Huber-Mises-Hencky yield criterion (eq. 2.37)
+  '''
+
+  return Hosford(sigmas, sigma0, 2.0)
+
+
+def generalDrucker(sigmas, sigma0, C_D, p):
+  '''
+    residuum of general Drucker yield criterion (eq. 2.42, F = sigma0)
+  '''
+  Is = stressInvariants(principalStresses(sigmas))
+  r  = (Is[:,1]**(3.0*p)-C_D*Is[:,3])**2) - sigma0
+
+  return r.ravel()
+
+
+def Drucker(sigmas, sigma0, C_D):
+  '''
+    residuum of Drucker yield criterion (eq. 2.41, F = sigma0)
+  '''
+
+  return generalDrucker(sigmas, sigma0, C_D, 1.0)
+
+def Hosford(sigmas, sigma0, a):
+  '''
+    residuum of Hershey yield criterion (eq. 2.43, Y = sigma0)
+  '''
+  lambdas = principalStresses(sigmas)
+  r   = (lambdas[:,2]-lambdas[:,1])**a\
+      + (lambdas[:,1]-lambdas[:,0])**a\
+      + (lambdas[:,0]-lambdas[:,2])**a\
+      -2.0*sigma0**a
+  return r.ravel()
+
+#more to do
+# KarafillisAndBoyce
+
+# ---------------------------------------------------------------------------------------------
+# isotropic yield surfaces
+# ---------------------------------------------------------------------------------------------
+
+def vonMises
+  '''
+    residuum of von Mises quadratic yield criterion (eq. 2.47, theta = sigma0)
+  '''
+  return None
+
+def Hill1948(sigmas, F,G,H,L,M,N):
+  '''
+    residuum of Hill 1948 quadratic yield criterion (eq. 2.48)
+  '''
+  r =     F*(sigmas[4]-sigmas[8])**2.0\
+    +     G*(sigmas[8]-sigmas[0])**2.0\
+    +     H*(sigmas[0]-sigmas[4])**2.0\
+    + 2.0*L* sigmas[1]**2.0\
+    + 2.0*M* sigmas[2]**2.0\
+    + 2.0*N* sigmas[5]**2.0 
+    - 1.0
+  return r.ravel()/2.0
+
+#more to do
+# Hill 1979
+
+# Hill 1990,1993 need special stresses to fit
+
+def generalHosford(sigmas, sigma0, a):
+  '''
+    residuum of Hershey yield criterion (eq. 2.104, sigma = sigma0)
+  '''
+  lambdas = principalStresses(sigmas)
+  r = np.amax(np.array([F*(abs(lambdas[:,1]-lambdas[:,2]))**a,\
+                        G*(abs(lambdas[:,2]-lambdas[:,0]))**a,\
+                        H*(abs(lambdas[:,0]-lambdas[:,1]))**a]),1) - sigma0**a
+  return r.ravel()
+
+
+
+def Barlat1991(sigmas, sigma0, a):
+  '''
+    residuum of Hershey yield criterion (eq. 2.104, sigma_e = sigma0)
+  '''
+
+  return None
+
+def Barlat1994(sigmas, sigma0, a):
+  '''
+    residuum of Hershey yield criterion (eq. 2.104, sigma_e = sigma0)
+  '''
+
+  return None
+
+
+
+
 
 fittingCriteria = {
                    'vonMises':{'fit':np.ones(1,'d'),'err':np.inf},
