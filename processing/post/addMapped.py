@@ -67,17 +67,18 @@ if options.asciitable != None and os.path.isfile(options.asciitable):
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key  = {True:'1_'+label,False:label}[info['len']==1]
+      key = '1_'+label if info['len'] > 1 else label
       if key in mappedTable.labels:
-        labels.append(label)                                                                      # extend labels
+        labels.append(label)                                                                        # extend labels
         indices += range(mappedTable.labels.index(key),
                          mappedTable.labels.index(key)+datainfo[datatype]['len'])
       else:
-        file['croak'].write('column %s not found...\n'%label)
+        sys.stderr.write('column %s not found...\n'%label)
         break
 
   mappedTable.data_readArray(indices)
-  mappedTable.__IO__['in'].close()                                                                   # close mapped input ASCII table
+  mappedTable.input_close()                                                                        # close mapped input ASCII table
+
 else:
   parser.error('missing mapped ASCIItable...')
 
@@ -106,8 +107,8 @@ for file in files:
 # ------------------------------------------ assemble header --------------------------------------
   for datatype,info in datainfo.items():
     for label in info['label']:
-      table.labels_append({True:['%i_%s'%(i+1,label) for i in xrange(info['len'])],
-                           False:table.labels_append(label)}[info['len']>1] )                      # extend ASCII header of current table with new labels
+      table.labels_append(label if info['len'] == 1 else \
+                          ['%i_%s'%(i+1,label) for i in xrange(info['len'])])                       # extend ASCII header of current table with new labels
   table.head_write()
 
 # ------------------------------------------ process data ------------------------------------------
