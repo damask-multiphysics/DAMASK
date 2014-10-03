@@ -32,8 +32,8 @@ def principalStresses(sigmas):
     sorted in descending order.
   '''
   lambdas=np.zeros(0,'d')
-  for i in xrange(np.shape(sigmas[1]):
-    eigenvalues = eigvalsh(np.array(x[:,i]).reshape(3,3)
+  for i in xrange(np.shape(sigmas[1])):
+    eigenvalues = eigvalsh(np.array(x[:,i]).reshape(3,3))
     lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
   lambdas = lambdas.reshape(np.shape(sigmas)[1],3) 
 
@@ -44,7 +44,7 @@ def stressInvariants(lambdas):
     computes stress invariants (i.e. eigenvalues) for a set of principal Cauchy stresses.
   '''
   Is=np.zeros(0,'d')
-  for i in xrange(np.shape(lambdas[1]):
+  for i in xrange(np.shape(lambdas[1])):
     I = np.array([lambdas[0:i]+lambdas[1:i]+lambdas[2:i],\
                   lambdas[0:i]*lambdas[1:i]+lambdas[1:i]*lambdas[2:i]+lambdas[2:i]*lambdas[0:i],\
                   lambdas[0:i]*lambdas[1:i]*lambdas[2:i]])
@@ -58,7 +58,7 @@ def stressInvariants(lambdas):
 # isotropic yield surfaces
 # ---------------------------------------------------------------------------------------------
 
-def Tresca(sigmas,sigma0):
+def Tresca(sigmas, sigma0):
   '''
     residuum of Tresca yield criterion (eq. 2.26)
   '''
@@ -69,22 +69,12 @@ def Tresca(sigmas,sigma0):
   return r.ravel()
 
 
-def HuberHencyMises(sigmas, sigma0):
+def HuberHenckyMises(sigmas, sigma0):
   '''
     residuum of Huber-Mises-Hencky yield criterion (eq. 2.37)
   '''
 
   return Hosford(sigmas, sigma0, 2.0)
-
-
-def generalDrucker(sigmas, sigma0, C_D, p):
-  '''
-    residuum of general Drucker yield criterion (eq. 2.42, F = sigma0)
-  '''
-  Is = stressInvariants(principalStresses(sigmas))
-  r  = (Is[:,1]**(3.0*p)-C_D*Is[:,3])**2) - sigma0
-
-  return r.ravel()
 
 
 def Drucker(sigmas, sigma0, C_D):
@@ -93,6 +83,17 @@ def Drucker(sigmas, sigma0, C_D):
   '''
 
   return generalDrucker(sigmas, sigma0, C_D, 1.0)
+
+
+def generalDrucker(sigmas, sigma0, C_D, p):
+  '''
+    residuum of general Drucker yield criterion (eq. 2.42, F = sigma0)
+  '''
+  Is = stressInvariants(principalStresses(sigmas))
+  r  = (Is[:,1]**(3.0*p)-C_D*Is[:,3]**(2.0*I)) - sigma0
+
+  return r.ravel()
+
 
 def Hosford(sigmas, sigma0, a):
   '''
@@ -112,7 +113,7 @@ def Hosford(sigmas, sigma0, a):
 # isotropic yield surfaces
 # ---------------------------------------------------------------------------------------------
 
-def vonMises
+def vonMises():
   '''
     residuum of von Mises quadratic yield criterion (eq. 2.47, theta = sigma0)
   '''
@@ -127,7 +128,7 @@ def Hill1948(sigmas, F,G,H,L,M,N):
     +     H*(sigmas[0]-sigmas[4])**2.0\
     + 2.0*L* sigmas[1]**2.0\
     + 2.0*M* sigmas[2]**2.0\
-    + 2.0*N* sigmas[5]**2.0 
+    + 2.0*N* sigmas[5]**2.0\
     - 1.0
   return r.ravel()/2.0
 
@@ -228,8 +229,23 @@ class Criterion(object):
 
   def fit(self,stress):
     try:  
-      popt, pcov = curve_fit(vonMises, stress, np.zeros(np.shape(stress)[1]))
-      print 'Mises', popt
+      popt, pcov = curve_fit(Tresca, stress, np.zeros(np.shape(stress)[1]))
+      print '--\nTresca:'
+      print 'sigma0 %f'%popt
+    except Exception as detail:
+      print detail
+      pass
+    try:  
+      popt, pcov = curve_fit(HuberHenckyMises, stress, np.zeros(np.shape(stress)[1]))
+      print '--\nHuberHenckyMises:'
+      print 'sigma0 %f'%popt
+    except Exception as detail:
+      print detail
+      pass
+    try:  
+      popt, pcov = curve_fit(Drucker, stress, np.zeros(np.shape(stress)[1]))
+      print '--\nDrucker:'
+      print 'sigma0 %f, C_D'%(popt[0].popt[1])
     except Exception as detail:
       print detail
       pass
