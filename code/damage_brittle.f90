@@ -305,7 +305,7 @@ subroutine damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
  integer(pInt) :: &
    phase, constituent
  real(pReal) :: &
-   strain(3,3), stress(3,3)
+   strain(3,3)
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)

@@ -470,7 +470,7 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
    case (LOCAL_DAMAGE_BRITTLE_ID)
      call damage_brittle_microstructure(Tstar_v_effective, Fe, ipc, ip, el)
    case (LOCAL_DAMAGE_DUCTILE_ID)
-     call damage_ductile_microstructure(Tstar_v_effective, Fe, Fp, ipc, ip, el)
+     call damage_ductile_microstructure(ipc, ip, el)
 
  end select
 
@@ -871,6 +871,7 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
      call constitutive_brittle_putDamage(ipc, ip, el, localDamage)
+   
    case (LOCAL_DAMAGE_DUCTILE_ID)
      call constitutive_ductile_putDamage(ipc, ip, el, localDamage)
 

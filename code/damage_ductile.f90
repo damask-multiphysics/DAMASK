@@ -3,9 +3,7 @@
 !--------------------------------------------------------------------------------------------------
 !> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief material subroutine incoprorating dislocation and twinning physics
+!> @brief material subroutine incoprorating ductile damage
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module damage_ductile
@@ -27,7 +25,7 @@ module damage_ductile
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    damage_ductile_Noutput                                                                           !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         private :: &
+ real(pReal),                         dimension(:),           allocatable,         private :: &
    damage_ductile_aTol, &
    damage_ductile_critpStrain
 
@@ -197,7 +195,7 @@ subroutine damage_ductile_init(fileUnit)
      allocate(damageState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(damageState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(damageState(phase)%deltaState          (sizeDotState,NofMyPhase),     source=0.0_pReal)
+     allocate(damageState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(damageState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(damageState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
@@ -251,17 +249,15 @@ subroutine damage_ductile_aTolState(phase,instance)
  real(pReal), dimension(damageState(phase)%sizeState) :: tempTol
 
  tempTol = damage_ductile_aTol(instance)
- tempTol(2) = 0.000001_pReal
  damageState(phase)%aTolState = tempTol
 end subroutine damage_ductile_aTolState
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_ductile_dotState(Lp,ipc, ip, el)
+subroutine damage_ductile_dotState(Lp, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
    damageState
  use math, only: &
    math_norm33
@@ -294,7 +290,7 @@ end subroutine damage_ductile_dotState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_ductile_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
+subroutine damage_ductile_microstructure(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -311,19 +307,11 @@ subroutine damage_ductile_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- real(pReal),  intent(in), dimension(3,3) :: &
-   Fe, &
-   Fp
  integer(pInt) :: &
    phase, constituent
- real(pReal) :: &
-   plasticStrain(3,3)
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- plasticStrain = math_mul33x33(math_transpose33(Fp),Fp)-math_I3
  damageState(phase)%state(3,constituent) = min(damageState(phase)%state(3,constituent), &
                                                      damage_ductile_critpStrain(phase)/ &
                                                       damageState(phase)%state(2,constituent))       !< akin to damage surface
