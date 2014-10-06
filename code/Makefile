@@ -322,8 +322,8 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 
 ###################################################################################################
-COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
-COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90)) -DSpectral
+COMPILE         =$(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
+COMPILE_MAXOPTI =$(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 ###################################################################################################
 DAMAGE_FILES = \
    damage_none.o damage_brittle.o damage_ductile.o
@@ -342,8 +342,8 @@ HOMOGENIZATION_FILES = \
 # Spectral Solver
 #####################
 DAMASK_spectral.exe: IGNORE          := \#
-DAMASK_spectral.exe: COMPILE         += -DSpectral
-DAMASK_spectral.exe: COMPILE_MAXOPTI += -DSpectral
+DAMASK_spectral.exe: COMPILE         += $(OPENMP_FLAG_$(F90)) -DSpectral
+DAMASK_spectral.exe: COMPILE_MAXOPTI += $(OPENMP_FLAG_$(F90)) -DSpectral
 DAMASK_spectral.exe: MESHNAME        := mesh.f90
 DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
@@ -398,7 +398,7 @@ FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.
                  FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o
 
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
-	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
+	$(PREFIX) $(LINKERNAME) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
   $(FEM_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
