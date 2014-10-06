@@ -32,25 +32,23 @@ def principalStresses(sigmas):
     sorted in descending order.
   '''
   lambdas=np.zeros(0,'d')
-  for i in xrange(np.shape(sigmas[1])):
-    eigenvalues = eigvalsh(np.array(x[:,i]).reshape(3,3))
+  for i in xrange(np.shape(sigmas)[1]):
+    eigenvalues = np.linalg.eigvalsh(np.array(sigmas[:,i]).reshape(3,3))
     lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
-  lambdas = lambdas.reshape(np.shape(sigmas)[1],3) 
-
-  return labmdas
+  lambdas = lambdas.reshape(3,np.shape(sigmas)[1]) 
+  return lambdas
 
 def stressInvariants(lambdas):
   '''
     computes stress invariants (i.e. eigenvalues) for a set of principal Cauchy stresses.
   '''
   Is=np.zeros(0,'d')
-  for i in xrange(np.shape(lambdas[1])):
-    I = np.array([lambdas[0:i]+lambdas[1:i]+lambdas[2:i],\
-                  lambdas[0:i]*lambdas[1:i]+lambdas[1:i]*lambdas[2:i]+lambdas[2:i]*lambdas[0:i],\
-                  lambdas[0:i]*lambdas[1:i]*lambdas[2:i]])
+  for i in xrange(np.shape(lambdas)[1]):
+    I = np.array([lambdas[0,i]+lambdas[1,i]+lambdas[2,i],\
+                  lambdas[0,i]*lambdas[1,i]+lambdas[1,i]*lambdas[2,i]+lambdas[2,i]*lambdas[0,i],\
+                  lambdas[0,i]*lambdas[1,i]*lambdas[2,i]])
     Is = np.append(Is,I)
-  Is = Is.reshape(np.shape(lambdas)[1],3) 
-
+  Is = Is.reshape(3,np.shape(lambdas)[1])
   return Is
 
 
@@ -63,9 +61,9 @@ def Tresca(sigmas, sigma0):
     residuum of Tresca yield criterion (eq. 2.26)
   '''
   lambdas = principalStresses(sigmas)
-  r = np.amax(np.array([abs(lambdas[:,2]-lambdas[:,1]),\
-                        abs(lambdas[:,1]-lambdas[:,0]),\
-                        abs(lambdas[:,0]-lambdas[:,2])]),1) - sigma0
+  r = np.amax(np.array([abs(lambdas[2,:]-lambdas[1,:]),\
+                        abs(lambdas[1,:]-lambdas[0,:]),\
+                        abs(lambdas[0,:]-lambdas[2,:])]),0) - sigma0
   return r.ravel()
 
 
@@ -90,8 +88,7 @@ def generalDrucker(sigmas, sigma0, C_D, p):
     residuum of general Drucker yield criterion (eq. 2.42, F = sigma0)
   '''
   Is = stressInvariants(principalStresses(sigmas))
-  r  = (Is[:,1]**(3.0*p)-C_D*Is[:,3]**(2.0*I)) - sigma0
-
+  r  = (Is[1,:]**(3.0*p)-C_D*Is[2,:]**(2.0*p)) - sigma0
   return r.ravel()
 
 
@@ -100,9 +97,9 @@ def Hosford(sigmas, sigma0, a):
     residuum of Hershey yield criterion (eq. 2.43, Y = sigma0)
   '''
   lambdas = principalStresses(sigmas)
-  r   = (lambdas[:,2]-lambdas[:,1])**a\
-      + (lambdas[:,1]-lambdas[:,0])**a\
-      + (lambdas[:,0]-lambdas[:,2])**a\
+  r   = (lambdas[2,:]-lambdas[1,:])**a\
+      + (lambdas[1,:]-lambdas[0,:])**a\
+      + (lambdas[0,:]-lambdas[2,:])**a\
       -2.0*sigma0**a
   return r.ravel()
 
@@ -118,6 +115,7 @@ def vonMises():
     residuum of von Mises quadratic yield criterion (eq. 2.47, theta = sigma0)
   '''
   return None
+
 
 def Hill1948(sigmas, F,G,H,L,M,N):
   '''
@@ -148,7 +146,6 @@ def generalHosford(sigmas, sigma0, a):
   return r.ravel()
 
 
-
 def Barlat1991(sigmas, sigma0, a):
   '''
     residuum of Hershey yield criterion (eq. 2.104, sigma_e = sigma0)
@@ -156,14 +153,13 @@ def Barlat1991(sigmas, sigma0, a):
 
   return None
 
+
 def Barlat1994(sigmas, sigma0, a):
   '''
     residuum of Hershey yield criterion (eq. 2.104, sigma_e = sigma0)
   '''
 
   return None
-
-
 
 
 
@@ -235,6 +231,7 @@ class Criterion(object):
     except Exception as detail:
       print detail
       pass
+
     try:  
       popt, pcov = curve_fit(HuberHenckyMises, stress, np.zeros(np.shape(stress)[1]))
       print '--\nHuberHenckyMises:'
@@ -242,15 +239,17 @@ class Criterion(object):
     except Exception as detail:
       print detail
       pass
+
     try:  
       popt, pcov = curve_fit(Drucker, stress, np.zeros(np.shape(stress)[1]))
       print '--\nDrucker:'
-      print 'sigma0 %f, C_D'%(popt[0].popt[1])
+      print 'sigma0 , C_D ', popt
     except Exception as detail:
       print detail
       pass
+
     try:
-      popt, pcov = curve_fit(Hill48, stress, np.zeros(np.shape(stress)[1]))
+      popt, pcov = curve_fit(Hill1948, stress, np.zeros(np.shape(stress)[1]))
       print 'Hill48', popt
     except Exception as detail:
       print detail
@@ -340,6 +339,7 @@ def doSim(delay,thread):
   
   s.acquire()
   global stressAll
+  print len(yieldStress)
   print('starting fitting for sim %i from %s'%(me,thread))
   try:
     for i in xrange(int(options.yieldValue[2])):
@@ -392,7 +392,7 @@ parser.add_option('--threads',       dest='threads', type='int',
 parser.set_defaults(min        = 12)
 parser.set_defaults(max        = 30)
 parser.set_defaults(threads    = 4)
-parser.set_defaults(yieldValue = (0.002,0.002,1))
+parser.set_defaults(yieldValue = (0.002,0.004,2))
 parser.set_defaults(load       = (0.010,100,100.0))
 parser.set_defaults(criterion  = 'worst')
 parser.set_defaults(fitting    = 'totalshear')
