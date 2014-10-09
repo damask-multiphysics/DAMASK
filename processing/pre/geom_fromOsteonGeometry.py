@@ -1,40 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math,numpy,time
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import os,sys,string,re,math
+import numpy as np
+from optparse import OptionParser
+import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
-#------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------
 #                                MAIN
-#--------------------------------------------------------------------------------------------------
-parser = OptionParser(option_class=extendedOption, usage='%prog', description = """
+# --------------------------------------------------------------------
+
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options]', description = """
 Generate a geometry file of an osteon enclosing the Harvesian canal and separated by interstitial tissue.
 The osteon phase is lamellar with a twisted plywood structure.
 Its fiber orientation is oscillating by +/- amplitude within one period.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
+
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs=2, metavar = 'int int', \
                   help='a,b grid of hexahedral box %default')
@@ -67,41 +52,40 @@ parser.set_defaults(aspect = 1.0)
 parser.set_defaults(omega = 0.0)
 parser.set_defaults(period = 5e-6)
 parser.set_defaults(amplitude = 60)
-parser.set_defaults(size = numpy.array([300e-6,300e-6],'d'))
-parser.set_defaults(grid = numpy.array([512,512],'i'))
+parser.set_defaults(size = np.array([300e-6,300e-6],'d'))
+parser.set_defaults(grid = np.array([512,512],'i'))
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(crystallite = 1)
 parser.set_defaults(config = False)
 parser.set_defaults(twoD = False)
 
-(options, args) = parser.parse_args()
+(options,filename) = parser.parse_args()
 
-#--- setup file handles ---------------------------------------------------------------------------
-file = {'name':'STDIN',
-        'input':sys.stdin,
-        'output':sys.stdout,
-        'croak':sys.stderr,
-       }
+# ------------------------------------------ setup file handle -------------------------------------
+if filename == []:
+  file = {'output':sys.stdout, 'croak':sys.stderr}
+else:
+  file = {'output':open(filename[0],'w'), 'croak':sys.stderr}
 
-if numpy.any(options.grid < 2):
+if np.any(options.grid < 2):
   file['croak'].write('grid too small...\n')
   sys.exit()
 
-if numpy.any(options.size <= 0.0):
+if np.any(options.size <= 0.0):
   file['croak'].write('size too small...\n')
   sys.exit()
 
 options.omega  *= math.pi/180.0                                                                     # rescale ro radians
-rotation = numpy.array([[ math.cos(options.omega),math.sin(options.omega),],
+rotation = np.array([[ math.cos(options.omega),math.sin(options.omega),],
                         [-math.sin(options.omega),math.cos(options.omega),]],'d')
 
-box = numpy.dot(numpy.array([[options.canal,0.],[0.,options.aspect*options.canal]]).transpose(),rotation)
+box = np.dot(np.array([[options.canal,0.],[0.,options.aspect*options.canal]]).transpose(),rotation)
 
 
 info = {
-        'grid':   numpy.ones(3,'i'),
-        'size':   numpy.ones(3,'d'),
-        'origin': numpy.zeros(3,'d'),
+        'grid':   np.ones(3,'i'),
+        'size':   np.ones(3,'d'),
+        'origin': np.zeros(3,'d'),
         'microstructures': 3,
         'homogenization':  options.homogenization,
        }
@@ -112,21 +96,21 @@ info['size'][2]  = min(info['size'][0]/info['grid'][0],info['size'][1]/info['gri
 info['origin']   = -info['size']/2.0
 
 X0 = info['size'][0]/info['grid'][0]*\
-     (numpy.tile(numpy.arange(info['grid'][0]),(info['grid'][1],1))             - info['grid'][0]/2 + 0.5)
+     (np.tile(np.arange(info['grid'][0]),(info['grid'][1],1))             - info['grid'][0]/2 + 0.5)
 Y0 = info['size'][1]/info['grid'][1]*\
-     (numpy.tile(numpy.arange(info['grid'][1]),(info['grid'][0],1)).transpose() - info['grid'][1]/2 + 0.5)
+     (np.tile(np.arange(info['grid'][1]),(info['grid'][0],1)).transpose() - info['grid'][1]/2 + 0.5)
 
 X = X0*rotation[0,0] + Y0*rotation[0,1]                                                             # rotate by omega
 Y = X0*rotation[1,0] + Y0*rotation[1,1]                                                             # rotate by omega
 
-radius = numpy.sqrt(X*X + Y*Y/options.aspect/options.aspect)
-alpha = numpy.degrees(numpy.arctan2(Y/options.aspect,X))
-beta = options.amplitude*numpy.sin(2.0*math.pi*(radius-options.canal)/options.period)
+radius = np.sqrt(X*X + Y*Y/options.aspect/options.aspect)
+alpha = np.degrees(np.arctan2(Y/options.aspect,X))
+beta = options.amplitude*np.sin(2.0*math.pi*(radius-options.canal)/options.period)
 
-microstructure = numpy.where(radius < float(options.canal),1,0) + numpy.where(radius > float(options.osteon),2,0)
+microstructure = np.where(radius < float(options.canal),1,0) + np.where(radius > float(options.osteon),2,0)
 
-alphaOfGrain = numpy.zeros(info['grid'][0]*info['grid'][1],'d')
-betaOfGrain  = numpy.zeros(info['grid'][0]*info['grid'][1],'d')
+alphaOfGrain = np.zeros(info['grid'][0]*info['grid'][1],'d')
+betaOfGrain  = np.zeros(info['grid'][0]*info['grid'][1],'d')
 for y in xrange(info['grid'][1]):
   for x in xrange(info['grid'][0]):
     if microstructure[y,x] == 0:
@@ -141,12 +125,12 @@ file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) 
                     'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
                     'microstructures: %i\n'%info['microstructures'] + \
                     'homogenization:  %i\n'%info['homogenization'])
-file['croak'].write("bounding box:    %s\n"%(numpy.sqrt(numpy.sum(box*box,0))))
+file['croak'].write("bounding box:    %s\n"%(np.sqrt(np.sum(box*box,0))))
 
-if numpy.any(info['grid'] < 1):
+if np.any(info['grid'] < 1):
   file['croak'].write('invalid grid a b c.\n')
   sys.exit()
-if numpy.any(info['size'] <= 0.0):
+if np.any(info['size'] <= 0.0):
   file['croak'].write('invalid size x y z.\n')
   sys.exit()
 
@@ -189,7 +173,4 @@ else:
           str(microstructure[y,x]).rjust(formatwidth) + \
           {True:' ',False:'\n'}[options.twoD] )
     file['output'].write({True:'\n',False:''}[options.twoD])
-  
-
-#--- output finalization --------------------------------------------------------------------------  
-table.output_close()  
+ 

@@ -1,39 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string,numpy as np
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import os,sys,math,string
+import numpy as np
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
 #--------------------------------------------------------------------------------------------------
-class extendableOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-#--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+
 Generate geometry description and material configuration from EBSD data in given square-gridded 'ang' file.
 Two phases can be discriminated based on threshold value in a given data column.
-""" + string.replace(scriptID,'\n','\\n')
-)
 
+""", version = scriptID)
 
 parser.add_option('--column',              dest='column', type='int', metavar = 'int', \
                   help='data column to discriminate phase 1 from 2 [%default]')
@@ -208,7 +192,7 @@ for file in files:
   
 #--- output finalization -------------------------------------------------------------------------- 
   if file['name'] != 'STDIN':
-    table.output_close()  
+    file['output'].close()  
     os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \
                                   {True: '_material.config',
                                    False:'.geom'}[options.config])

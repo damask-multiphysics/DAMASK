@@ -1,34 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,math,numpy
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import os,sys,string,re,math,random
+import numpy as np
+from optparse import OptionParser
+import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------
 #                                MAIN
-#--------------------------------------------------------------------------------------------------
+# --------------------------------------------------------------------
+
 minimal_surfaces = ['primitive','gyroid','diamond',]
 
 surface = {
@@ -37,11 +21,11 @@ surface = {
             'diamond':   lambda x,y,z: math.cos(x-y)*math.cos(z)+math.sin(x+y)*math.sin(z),
           }
 
-
-parser = OptionParser(option_class=extendedOption, usage='%prog', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog', description = """
 Generate a geometry file of a bicontinuous structure of given type.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
+
 
 parser.add_option('-t','--type', dest='type', choices=minimal_surfaces, metavar='string', \
                   help='type of minimal surface (%s) [primitive]' %(','.join(minimal_surfaces)))
@@ -63,24 +47,24 @@ parser.add_option('-2', '--twodimensional', dest='twoD', action='store_true', \
 parser.set_defaults(type = minimal_surfaces[0])
 parser.set_defaults(threshold = 0.0)
 parser.set_defaults(periods = 1)
-parser.set_defaults(grid = numpy.array([16,16,16]))
-parser.set_defaults(size = numpy.array([1.0,1.0,1.0]))
+parser.set_defaults(grid = np.array([16,16,16]))
+parser.set_defaults(size = np.array([1.0,1.0,1.0]))
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(microstructure = [1,2])
 parser.set_defaults(twoD  = False)
 
-(options, args) = parser.parse_args()
+(options,filename) = parser.parse_args()
 
-#--- setup file handles ---------------------------------------------------------------------------
-file = {'name':'STDIN',
-        'input':sys.stdin,
-        'output':sys.stdout,
-        'croak':sys.stderr,
-       }
+# ------------------------------------------ setup file handle -------------------------------------
+if filename == []:
+  file = {'output':sys.stdout, 'croak':sys.stderr}
+else:
+  file = {'output':open(filename[0],'w'), 'croak':sys.stderr}
+
 info = {
-        'grid':   numpy.array(options.grid),
-        'size':   numpy.array(options.size),
-        'origin': numpy.zeros(3,'d'),
+        'grid':   np.array(options.grid),
+        'size':   np.array(options.size),
+        'origin': np.zeros(3,'d'),
         'microstructures': max(options.microstructure),
         'homogenization':  options.homogenization
        }
@@ -93,10 +77,10 @@ file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) 
                     'homogenization:  %i\n'%info['homogenization'] + \
                     'microstructures: %i\n\n'%info['microstructures'])
 
-if numpy.any(info['grid'] < 1):
+if np.any(info['grid'] < 1):
   file['croak'].write('invalid grid a b c.\n')
   sys.exit()
-if numpy.any(info['size'] <= 0.0):
+if np.any(info['size'] <= 0.0):
   file['croak'].write('invalid size x y z.\n')
   sys.exit()
 

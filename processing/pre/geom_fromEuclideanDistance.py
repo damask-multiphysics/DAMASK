@@ -1,42 +1,25 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,numpy,string,damask
+import os,sys,string,re,math
+import numpy as np
 from scipy import ndimage
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
+import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
-
-#--------------------------------------------------------------------------------------------------
-class extendableOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 def periodic_3Dpad(array, rimdim=(1,1,1)):
 
-  rimdim = numpy.array(rimdim,'i')
-  size = numpy.array(array.shape,'i')
-  padded = numpy.empty(size+2*rimdim,array.dtype)
+  rimdim = np.array(rimdim,'i')
+  size = np.array(array.shape,'i')
+  padded = np.empty(size+2*rimdim,array.dtype)
   padded[rimdim[0]:rimdim[0]+size[0],
          rimdim[1]:rimdim[1]+size[1],
          rimdim[2]:rimdim[2]+size[2]] = array
 
-  p = numpy.zeros(3,'i')
+  p = np.zeros(3,'i')
   for side in xrange(3):
     for p[(side+2)%3] in xrange(padded.shape[(side+2)%3]):
       for p[(side+1)%3] in xrange(padded.shape[(side+1)%3]):
@@ -75,7 +58,7 @@ features = [
            ]
 
 neighborhoods = {
-                  'neumann':numpy.array([
+                  'neumann':np.array([
                                         [-1, 0, 0],
                                         [ 1, 0, 0],
                                         [ 0,-1, 0],
@@ -83,7 +66,7 @@ neighborhoods = {
                                         [ 0, 0,-1],
                                         [ 0, 0, 1],
                                       ]),
-                  'moore':numpy.array([
+                  'moore':np.array([
                                         [-1,-1,-1],
                                         [ 0,-1,-1],
                                         [ 1,-1,-1],
@@ -116,11 +99,11 @@ neighborhoods = {
                                       ])
                 }
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Produce geom files containing Euclidean distance to grain structural features:
 boundaries, triple lines, and quadruple points.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-t','--type',          dest = 'type', action = 'extend', type = 'string', metavar = '<string LIST>',
                   help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
@@ -166,25 +149,25 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
-  theTable = damask.ASCIItable(file['input'],file['output'][0],labels = False)
-  theTable.head_read()
+  table = damask.ASCIItable(file['input'],file['output'][0],labels = False)
+  table.head_read()
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':    numpy.zeros(3,'i'),
-          'size':    numpy.zeros(3,'d'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'size':    np.zeros(3,'d'),
+          'origin':  np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
   newInfo = {
-          'grid':    numpy.zeros(3,'i'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'origin':  np.zeros(3,'d'),
           'microstructures': 0,
          }
   extra_header = []
 
-  for header in theTable.info:
+  for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue                                                              # skip blank lines
     for synonym,alternatives in synonyms.iteritems():
@@ -205,19 +188,19 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = numpy.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
+  microstructure = np.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
   i = 0
 
-  while theTable.data_read():
-    items = theTable.data
+  while table.data_read():
+    items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
       elif items[1].lower() == 'to': items = xrange(int(items[0]),1+int(items[2]))
@@ -230,30 +213,30 @@ for file in files:
 
   
   neighborhood = neighborhoods[options.neighborhood]
-  convoluted = numpy.empty([len(neighborhood)]+list(info['grid']+2),'i')
+  convoluted = np.empty([len(neighborhood)]+list(info['grid']+2),'i')
   structure = periodic_3Dpad(microstructure.reshape(info['grid'],order='F'))
   
   for i,p in enumerate(neighborhood):
-    stencil = numpy.zeros((3,3,3),'i')
+    stencil = np.zeros((3,3,3),'i')
     stencil[1,1,1] = -1
     stencil[p[0]+1,
             p[1]+1,
             p[2]+1] = 1
     convoluted[i,:,:,:] = ndimage.convolve(structure,stencil)
   
-  distance = numpy.ones((len(feature_list),info['grid'][0],info['grid'][1],info['grid'][2]),'d')
+  distance = np.ones((len(feature_list),info['grid'][0],info['grid'][1],info['grid'][2]),'d')
   
-  convoluted = numpy.sort(convoluted,axis = 0)
-  uniques = numpy.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                   # initialize unique value counter (exclude myself [= 0])
+  convoluted = np.sort(convoluted,axis = 0)
+  uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                   # initialize unique value counter (exclude myself [= 0])
 
   for i in xrange(1,len(neighborhood)):                                           # check remaining points in neighborhood
-    uniques += numpy.where(numpy.logical_and(
+    uniques += np.where(np.logical_and(
                            convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],    # flip of ID difference detected?
                            convoluted[i,1:-1,1:-1,1:-1] != 0),                                # not myself?
                            1,0)                                                   # count flip
 
   for i,feature_id in enumerate(feature_list):
-    distance[i,:,:,:] = numpy.where(uniques >= features[feature_id]['aliens'],0.0,1.0) # seed with 0.0 when enough unique neighbor IDs are present
+    distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0) # seed with 0.0 when enough unique neighbor IDs are present
 
   for i in xrange(len(feature_list)):
     distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
@@ -262,10 +245,10 @@ for file in files:
     newInfo['microstructures'] = int(math.ceil(distance[i,:,:,:].max()))
 
 #--- write header ---------------------------------------------------------------------------------
-    theTable = damask.ASCIItable(file['input'],file['output'][i],labels = False)
-    theTable.labels_clear()
-    theTable.info_clear()
-    theTable.info_append(extra_header+[
+    table = damask.ASCIItable(file['input'],file['output'][i],labels = False)
+    table.labels_clear()
+    table.info_clear()
+    table.info_append(extra_header+[
       scriptID + ' ' + ' '.join(sys.argv[1:]),
       "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
       "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
@@ -273,13 +256,13 @@ for file in files:
       "homogenization\t%i"%info['homogenization'],
       "microstructures\t%i"%(newInfo['microstructures']),
       ])
-    theTable.head_write()
-    theTable.output_flush()
+    table.head_write()
+    table.output_flush()
     
 # --- write microstructure information ------------------------------------------------------------
     formatwidth = int(math.floor(math.log10(distance[i,:,:,:].max())+1))
-    theTable.data = distance[i,:,:,:].reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
-    theTable.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
+    table.data = distance[i,:,:,:].reshape((info['grid'][0],info['grid'][1]*info['grid'][2]),order='F').transpose()
+    table.data_writeArray('%%%ii'%(formatwidth),delimiter=' ')
     file['output'][i].close()
     
 #--- output finalization --------------------------------------------------------------------------

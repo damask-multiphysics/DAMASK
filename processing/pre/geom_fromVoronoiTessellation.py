@@ -9,9 +9,10 @@ import damask
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
+
 def meshgrid2(*arrs):
   '''
-  code inspired by http://stackoverflow.com/questions/1827489/np-meshgrid-in-3d
+  code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
   '''
   arrs = tuple(reversed(arrs))
   arrs = tuple(arrs)
@@ -50,10 +51,9 @@ mappings = {
         'homogenization':  lambda x: int(x),
         'microstructures': lambda x: int(x),
           }
-          
+
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration by standard Voronoi tessellation of given seeds file.
-
 """, version = scriptID)
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int', \
