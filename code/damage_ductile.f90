@@ -314,7 +314,7 @@ subroutine damage_ductile_microstructure(ipc, ip, el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  damageState(phase)%state(3,constituent) = min(damageState(phase)%state(3,constituent), &
                                                      damage_ductile_critpStrain(phase)/ &
-                                                      damageState(phase)%state(2,constituent))       !< akin to damage surface
+                                                      damageState(phase)%state(2,constituent))      !< akin to damage surface
                                                        
 end subroutine damage_ductile_microstructure
 

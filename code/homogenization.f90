@@ -927,8 +927,8 @@ function field_getSpecificHeat(ip,el)
    material_phase, &
    material_homog, &
    field_thermal_type, &
-   FIELD_THERMAL_ADIABATIC_ID, &
-   FIELD_THERMAL_CONDUCTION_ID, &
+   FIELD_THERMAL_local_ID, &
+   FIELD_THERMAL_nonlocal_ID, &
    homogenization_Ngrains
 
  implicit none
@@ -943,10 +943,10 @@ function field_getSpecificHeat(ip,el)
                                                 
  select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-   case (FIELD_THERMAL_ADIABATIC_ID)
+   case (FIELD_THERMAL_local_ID)
     field_getSpecificHeat = 0.0_pReal
       
-   case (FIELD_THERMAL_CONDUCTION_ID)
+   case (FIELD_THERMAL_nonlocal_ID)
     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
      field_getSpecificHeat = field_getSpecificHeat + lattice_specificHeat(material_phase(ipc,ip,el))
     enddo
@@ -969,8 +969,8 @@ function field_getMassDensity(ip,el)
    material_phase, &
    material_homog, &
    field_thermal_type, &
-   FIELD_THERMAL_ADIABATIC_ID, &
-   FIELD_THERMAL_CONDUCTION_ID, &
+   FIELD_THERMAL_local_ID, &
+   FIELD_THERMAL_nonlocal_ID, &
    homogenization_Ngrains
 
 
@@ -986,10 +986,10 @@ function field_getMassDensity(ip,el)
                                                 
  select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-   case (FIELD_THERMAL_ADIABATIC_ID)
+   case (FIELD_THERMAL_local_ID)
      field_getMassDensity = 0.0_pReal
       
-   case (FIELD_THERMAL_CONDUCTION_ID)
+   case (FIELD_THERMAL_nonlocal_ID)
     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
       field_getMassDensity = field_getMassDensity + lattice_massDensity(material_phase(ipc,ip,el))
     enddo
@@ -1011,8 +1011,8 @@ function field_getThermalConductivity33(ip,el)
    material_phase, &
    material_homog, &
    field_thermal_type, &
-   FIELD_THERMAL_ADIABATIC_ID, &
-   FIELD_THERMAL_CONDUCTION_ID, &
+   FIELD_THERMAL_local_ID, &
+   FIELD_THERMAL_nonlocal_ID, &
    homogenization_Ngrains
  use crystallite, only: &
    crystallite_push33ToRef
@@ -1030,10 +1030,10 @@ function field_getThermalConductivity33(ip,el)
                                                 
  select case(field_thermal_type(material_homog(ip,el)))                                                   
    
-   case (FIELD_THERMAL_ADIABATIC_ID)
+   case (FIELD_THERMAL_local_ID)
     field_getThermalConductivity33 = 0.0_pReal
       
-   case (FIELD_THERMAL_CONDUCTION_ID)
+   case (FIELD_THERMAL_nonlocal_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
        field_getThermalConductivity33 = field_getThermalConductivity33 + &
         crystallite_push33ToRef(ipc,ip,el,lattice_thermalConductivity33(:,:,material_phase(ipc,ip,el)))
@@ -1220,7 +1220,7 @@ subroutine field_putFieldTemperature(ip,el,fieldThermalValue)
    fieldThermal, &
    mappingHomogenization, &
    field_thermal_type, &
-   FIELD_THERMAL_CONDUCTION_ID
+   FIELD_THERMAL_nonlocal_ID
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1230,7 +1230,7 @@ subroutine field_putFieldTemperature(ip,el,fieldThermalValue)
    fieldThermalValue
 
  select case(field_thermal_type(material_homog(ip,el)))                                                   
-   case (FIELD_THERMAL_CONDUCTION_ID)
+   case (FIELD_THERMAL_nonlocal_ID)
      fieldThermal(material_homog(ip,el))% &
         field(1,mappingHomogenization(1,ip,el)) = fieldThermalValue 
 

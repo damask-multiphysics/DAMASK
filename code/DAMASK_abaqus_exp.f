@@ -86,7 +86,7 @@ end module DAMASK_interface
 #include "damage_brittle.f90"
 #include "damage_ductile.f90"
 #include "thermal_isothermal.f90"
-#include "thermal_heatGen.f90"
+#include "thermal_adiabatic.f90"
 #include "constitutive_none.f90"
 #include "constitutive_j2.f90"
 #include "constitutive_phenopowerlaw.f90"

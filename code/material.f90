@@ -19,26 +19,26 @@ module material
  implicit none
  private
  character(len=*),                         parameter,            public :: &
-   ELASTICITY_HOOKE_label         = 'hooke', &
-   PLASTICITY_NONE_label          = 'none', &
-   PLASTICITY_J2_label            = 'j2', &
-   PLASTICITY_PHENOPOWERLAW_label = 'phenopowerlaw', &
-   PLASTICITY_DISLOTWIN_label     = 'dislotwin', &
-   PLASTICITY_DISLOKMC_label      = 'dislokmc', &
-   PLASTICITY_TITANMOD_label      = 'titanmod', &
-   PLASTICITY_NONLOCAL_label      = 'nonlocal', &
-   LOCAL_DAMAGE_NONE_label        = 'none', &
-   LOCAL_DAMAGE_BRITTLE_label     = 'brittle', &
-   LOCAL_DAMAGE_DUCTILE_label     = 'ductile', &
-   LOCAL_THERMAL_ISOTHERMAL_label = 'isothermal', &
-   LOCAL_THERMAL_HEATGEN_label    = 'heatgen', &
-   FIELD_DAMAGE_LOCAL_label       = 'local', &
-   FIELD_DAMAGE_NONLOCAL_label    = 'nonlocal', &
-   FIELD_THERMAL_ADIABATIC_label  = 'adiabatic', &
-   FIELD_THERMAL_CONDUCTION_label = 'conduction', &
-   HOMOGENIZATION_NONE_label      = 'none', &
-   HOMOGENIZATION_ISOSTRAIN_label = 'isostrain', &
-   HOMOGENIZATION_RGC_label       = 'rgc' 
+   ELASTICITY_hooke_label         = 'hooke', &
+   PLASTICITY_none_label          = 'none', &
+   PLASTICITY_j2_label            = 'j2', &
+   PLASTICITY_phenopowerlaw_label = 'phenopowerlaw', &
+   PLASTICITY_dislotwin_label     = 'dislotwin', &
+   PLASTICITY_dislokmc_label      = 'dislokmc', &
+   PLASTICITY_titanmod_label      = 'titanmod', &
+   PLASTICITY_nonlocal_label      = 'nonlocal', &
+   LOCAL_DAMAGE_none_label        = 'none', &
+   LOCAL_DAMAGE_brittle_label     = 'brittle', &
+   LOCAL_DAMAGE_ductile_label     = 'ductile', &
+   LOCAL_THERMAL_isothermal_label = 'isothermal', &
+   LOCAL_THERMAL_adiabatic_label  = 'adiabatic', &
+   FIELD_DAMAGE_local_label       = 'local', &
+   FIELD_DAMAGE_nonlocal_label    = 'nonlocal', &
+   FIELD_THERMAL_local_label      = 'local', &
+   FIELD_THERMAL_nonlocal_label   = 'nonlocal', &
+   HOMOGENIZATION_none_label      = 'none', &
+   HOMOGENIZATION_isostrain_label = 'isostrain', &
+   HOMOGENIZATION_rgc_label       = 'rgc' 
    
    
 
@@ -49,7 +49,7 @@ module material
  enum, bind(c)
    enumerator :: PLASTICITY_undefined_ID, &
                  PLASTICITY_none_ID, &
-                 PLASTICITY_J2_ID, &
+                 PLASTICITY_j2_ID, &
                  PLASTICITY_phenopowerlaw_ID, &
                  PLASTICITY_dislotwin_ID, &
                  PLASTICITY_dislokmc_ID, &
@@ -58,29 +58,29 @@ module material
  end enum
 
  enum, bind(c)
-   enumerator :: LOCAL_DAMAGE_NONE_ID, &
-                 LOCAL_DAMAGE_BRITTLE_ID, &
-                 LOCAL_DAMAGE_DUCTILE_ID
+   enumerator :: LOCAL_DAMAGE_none_ID, &
+                 LOCAL_DAMAGE_brittle_ID, &
+                 LOCAL_DAMAGE_ductile_ID
  end enum
 
  enum, bind(c)
-   enumerator :: LOCAL_THERMAL_ISOTHERMAL_ID, &
-                 LOCAL_THERMAL_HEATGEN_ID
+   enumerator :: LOCAL_THERMAL_isothermal_ID, &
+                 LOCAL_THERMAL_adiabatic_ID
  end enum
  enum, bind(c)
-   enumerator :: FIELD_DAMAGE_LOCAL_ID ,&
-                 FIELD_DAMAGE_NONLOCAL_ID
+   enumerator :: FIELD_DAMAGE_local_ID ,&
+                 FIELD_DAMAGE_nonlocal_ID
                  
  end enum
  enum, bind(c)
-   enumerator :: FIELD_THERMAL_ADIABATIC_ID, &
-                 FIELD_THERMAL_CONDUCTION_ID
+   enumerator :: FIELD_THERMAL_local_ID, &
+                 FIELD_THERMAL_nonlocal_ID
  end enum
  enum, bind(c)
    enumerator :: HOMOGENIZATION_undefined_ID, &
                  HOMOGENIZATION_none_ID, &
                  HOMOGENIZATION_isostrain_ID, &
-                 HOMOGENIZATION_RGC_ID
+                 HOMOGENIZATION_rgc_ID
  end enum
 
  character(len=*), parameter, public  :: &
@@ -100,9 +100,9 @@ module material
    phase_damage                                                                                     !< local damage of each phase  
  integer(kind(LOCAL_THERMAL_isothermal_ID)), dimension(:),   allocatable, public, protected :: &
    phase_thermal                                                                                    !< local thermal of each phase  
- integer(kind(FIELD_DAMAGE_LOCAL_ID)), dimension(:),         allocatable, public, protected :: &
+ integer(kind(FIELD_DAMAGE_local_ID)), dimension(:),         allocatable, public, protected :: &
    field_damage_type                                                                                    !< field damage of each phase  
- integer(kind(FIELD_THERMAL_ADIABATIC_ID)), dimension(:),    allocatable, public, protected :: &
+ integer(kind(FIELD_THERMAL_local_ID)), dimension(:),    allocatable, public, protected :: &
    field_thermal_type                                                                                  !< field thermal of each phase  
 
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
@@ -217,11 +217,11 @@ module material
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
    LOCAL_THERMAL_isothermal_ID, &
-   LOCAL_THERMAL_heatgen_ID, &
-   FIELD_DAMAGE_LOCAL_ID, &
-   FIELD_DAMAGE_NONLOCAL_ID, &
-   FIELD_THERMAL_ADIABATIC_ID, &
-   FIELD_THERMAL_CONDUCTION_ID, &
+   LOCAL_THERMAL_adiabatic_ID, &
+   FIELD_DAMAGE_local_ID, &
+   FIELD_DAMAGE_nonlocal_ID, &
+   FIELD_THERMAL_local_ID, &
+   FIELD_THERMAL_nonlocal_ID, &
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
 #ifdef HDF
@@ -384,13 +384,13 @@ subroutine material_init
  do homog = 1,material_Nhomogenization
    NofMyField=count(material_homog==homog)
    select case(field_thermal_type(homog))                                                   
-     case (FIELD_THERMAL_ADIABATIC_ID)
+     case (FIELD_THERMAL_local_ID)
       fieldThermal(homog)%sizeField = 0_pInt
       fieldThermal(homog)%sizePostResults = 0_pInt
       allocate(fieldThermal(homog)%field(fieldThermal(homog)%sizeField,NofMyField), &
                                               source = 300.0_pReal)                ! ToDo: temporary fix for now 
       
-     case (FIELD_THERMAL_CONDUCTION_ID)
+     case (FIELD_THERMAL_nonlocal_ID)
       fieldThermal(homog)%sizeField = 1_pInt
       fieldThermal(homog)%sizePostResults = 1_pInt
       allocate(fieldThermal(homog)%field(fieldThermal(homog)%sizeField,NofMyField), &
@@ -441,8 +441,8 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  
  allocate(homogenization_name(Nsections));          homogenization_name = ''
  allocate(homogenization_type(Nsections),           source=HOMOGENIZATION_undefined_ID)
- allocate(FIELD_DAMAGE_type(Nsections),             source=FIELD_DAMAGE_LOCAL_ID)
- allocate(FIELD_THERMAL_type(Nsections),            source=FIELD_THERMAL_ADIABATIC_ID)
+ allocate(FIELD_DAMAGE_type(Nsections),             source=FIELD_DAMAGE_local_ID)
+ allocate(FIELD_THERMAL_type(Nsections),            source=FIELD_THERMAL_local_ID)
  allocate(homogenization_typeInstance(Nsections),   source=0_pInt)
  allocate(homogenization_Ngrains(Nsections),        source=0_pInt)
  allocate(homogenization_Noutput(Nsections),        source=0_pInt)
@@ -501,10 +501,10 @@ subroutine material_parseHomogenization(fileUnit,myPart)
                                           
         case ('field_thermal')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
-           case(FIELD_THERMAL_ADIABATIC_label)
-             FIELD_THERMAL_type(section) = FIELD_THERMAL_ADIABATIC_ID       
-           case(FIELD_THERMAL_CONDUCTION_label)
-             FIELD_THERMAL_type(section) = FIELD_THERMAL_CONDUCTION_ID
+           case(FIELD_THERMAL_local_label)
+             FIELD_THERMAL_type(section) = FIELD_THERMAL_local_ID       
+           case(FIELD_THERMAL_nonlocal_label)
+             FIELD_THERMAL_type(section) = FIELD_THERMAL_nonlocal_ID
            case default
              call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
@@ -793,8 +793,8 @@ subroutine material_parsePhase(fileUnit,myPart)
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (LOCAL_THERMAL_ISOTHERMAL_label)
              phase_thermal(section) = LOCAL_THERMAL_isothermal_ID
-           case (LOCAL_THERMAL_HEATGEN_label)
-             phase_thermal(section) = LOCAL_THERMAL_HEATGEN_ID
+           case (LOCAL_THERMAL_ADIABATIC_label)
+             phase_thermal(section) = LOCAL_THERMAL_adiabatic_ID
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
