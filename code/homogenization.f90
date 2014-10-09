@@ -1059,6 +1059,8 @@ function field_getDamageDiffusion33(ip,el)
    FIELD_DAMAGE_LOCAL_ID, &
    FIELD_DAMAGE_NONLOCAL_ID, &
    homogenization_Ngrains
+ use crystallite, only: &
+   crystallite_push33ToRef
 
  implicit none
  real(pReal), dimension(3,3) :: field_getDamageDiffusion33
@@ -1072,13 +1074,14 @@ function field_getDamageDiffusion33(ip,el)
                                                 
  select case(field_damage_type(material_homog(ip,el)))                                                   
    
- case (FIELD_DAMAGE_LOCAL_ID)
-   field_getDamageDiffusion33 = 0.0_pReal
+   case (FIELD_DAMAGE_LOCAL_ID)
+     field_getDamageDiffusion33 = 0.0_pReal
       
- case (FIELD_DAMAGE_NONLOCAL_ID)
-  do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-   field_getDamageDiffusion33 = field_getDamageDiffusion33 + lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el))
-  enddo
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+      field_getDamageDiffusion33 = field_getDamageDiffusion33 + &
+        crystallite_push33ToRef(ipc,ip,el,lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el)))
+     enddo
       
  end select   
 
