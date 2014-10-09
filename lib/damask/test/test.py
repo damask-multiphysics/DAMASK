@@ -248,13 +248,14 @@ class Test():
   
     import numpy
     logging.info('comparing\n '+File1+'\n '+File2)
-    refFile = open(File1)
-    table = damask.ASCIItable(refFile)
-    table.head_read()
-    refFile.close()
-    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+1,autostrip=True))
-    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+1,autostrip=True))
-    if len(curArray) ==  len(refArray):
+    with open(File1) as refFile:
+      table = damask.ASCIItable(refFile)
+      table.head_read()
+
+    refArray = numpy.nan_to_num(numpy.genfromtxt(File1,missing_values='n/a',skip_header = len(table.info)+2,autostrip=True))
+    curArray = numpy.nan_to_num(numpy.genfromtxt(File2,missing_values='n/a',skip_header = len(table.info)+2,autostrip=True))
+
+    if len(curArray) == len(refArray):
       refArrayNonZero = refArray[refArray.nonzero()]
       curArray = curArray[refArray.nonzero()]
       max_err=numpy.max(abs(refArrayNonZero[curArray.nonzero()]/curArray[curArray.nonzero()]-1.))
