@@ -14,7 +14,9 @@ mismatch = None
 currentSeedsName = None
 
 def execute(cmd,streamIn=None,dir='./'):
-      
+  '''
+    executes a command in given directory and returns stdout and stderr for optional stdin
+  ''' 
   initialPath=os.getcwd()
   os.chdir(dir)
   process = subprocess.Popen(shlex.split(cmd),stdout=subprocess.PIPE,stderr = subprocess.PIPE,stdin=subprocess.PIPE)
@@ -30,7 +32,7 @@ def execute(cmd,streamIn=None,dir='./'):
 class myThread (threading.Thread):
 #---------------------------------------------------------------------------------------------------
   '''
-     Runner class
+     perturbes seed in seed file, performes Voronoi tessellation, evaluates, and updates best match
   '''
   def __init__(self, threadID):
     threading.Thread.__init__(self)
@@ -50,19 +52,18 @@ class myThread (threading.Thread):
     bestMatch = match
     s.release()
     
-    random.seed(options.randomSeed+self.threadID)
-    knownSeedsUpdate = bestSeedsUpdate -1.0
-    randReset = True
+    random.seed(options.randomSeed+self.threadID)                                                   # initializes to given seeds
+    knownSeedsUpdate = bestSeedsUpdate -1.0                                                         # trigger update of local best seeds (time when the best seed file was found known to thread)
+    randReset = True                                                                                # aquire new direction
     
-    myBestSeedsVFile    = StringIO()
-    perturbedSeedsVFile = StringIO()
-    perturbedGeomVFile  = StringIO()
+    myBestSeedsVFile    = StringIO()                                                                # in-memory file to store local copy of best seeds file
+    perturbedSeedsVFile = StringIO()                                                                # in-memory file for perturbed best seeds file
+    perturbedGeomVFile  = StringIO()                                                                # in-memory file for tessellated geom file
 
+#--- still not matching desired bin class ----------------------------------------------------------
     while bestMatch < options.threshold:
-# if a better seed file exist, read it into a virtual file
-      s.acquire()
-      if bestSeedsUpdate > knownSeedsUpdate:
-        #print 'Thread %i: '%self.threadID+'Reading new best seeds from', bestSeedsUpdate
+      s.acquire()                                                                                   # accessing global data, ensure only one thread does it per time
+      if bestSeedsUpdate > knownSeedsUpdate:                                                        # if a newer best seed file exist, read it into a virtual file
         knownSeedsUpdate = bestSeedsUpdate
         bestSeedsVFile.reset()
         myBestSeedsVFile.close()
@@ -71,43 +72,41 @@ class myThread (threading.Thread):
         for line in bestSeedsVFile:
           myBestSeedsVFile.write(line)
       s.release()
-# new direction if current one is not good
-      if randReset:
+      
+      if randReset:                                                                                 # new direction because current one led to worse fit
         selectedMs = random.randrange(1,nMicrostructures)
         direction = np.array(((random.random()-0.5)*delta[0],
                               (random.random()-0.5)*delta[1],
                               (random.random()-0.5)*delta[2]))
         randReset = False
-# set virtual file pointer to the beginning
-      perturbedSeedsVFile.close()
+        
+      perturbedSeedsVFile.close()                                                                   # reset virtual file
       perturbedSeedsVFile = StringIO()
       myBestSeedsVFile.reset()
-# perturbe current best fitting seed file  (virtual file lastSeedsVFile)
-      perturbedSeedsTable = damask.ASCIItable(myBestSeedsVFile,
-                                              perturbedSeedsVFile,
-                                              labels=True)
-      perturbedSeedsTable.head_read()                                                                                 # read ASCII header info
+
+      perturbedSeedsTable = damask.ASCIItable(myBestSeedsVFile,perturbedSeedsVFile,labels=True)     # read current best fitting seed file and to perturbed seed file
+      perturbedSeedsTable.head_read()
       perturbedSeedsTable.head_write()
       outputAlive=True
       ms = 1
-      while outputAlive and perturbedSeedsTable.data_read():   
+      while outputAlive and perturbedSeedsTable.data_read():                                        # perturbe selecte microstructure
         if ms == selectedMs:
           direction+=direction
           newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction)
           newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)
           newCoords=np.where(newCoords <1.0,newCoords+1.0,newCoords)
-          #print ms,perturbedSeedsTable.data[0:3],'-->',[format(f, '8.6f') for f in newCoords]
           perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
         ms+=1
         perturbedSeedsTable.data_write()
 
-# do tesselation with perturbed seed file and evaluate geometry
+#--- do tesselation with perturbed seed file ----------------------------------------------------------
       perturbedGeomVFile.close()
       perturbedGeomVFile = StringIO()
       perturbedSeedsVFile.reset()
       perturbedGeomVFile.write(execute('geom_fromVoronoiTessellation '+
                      ' -g '+' '.join(map(str, options.grid)),streamIn=perturbedSeedsVFile)[0])
       perturbedGeomVFile.reset()
+#--- evaluate current seeds file ----------------------------------------------------------------------
       perturbedGeomTable = damask.ASCIItable(perturbedGeomVFile,labels=False)
       perturbedGeomTable.head_read()
       for i in perturbedGeomTable.info:
@@ -123,22 +122,15 @@ class myThread (threading.Thread):
 
       s.acquire()
       bestMatch = match
-      #print 'Thread %i: finished tessellation (%i microstructures)'%(self.threadID, myNmicrostructures)
+#--- count bin classes with no mismatch ----------------------------------------------------------------------
       myMatch=0
       for i in xrange(nMicrostructures):
         if currentError[i] > 0.0: break
         myMatch = i+1
 
-      if myNmicrostructures != nMicrostructures:
-        print 'Thread %i: Microstructure mismatch (%i microstructures mapped)'%(self.threadID,myNmicrostructures)
-        randReset = True
-      else:
+      if myNmicrostructures == nMicrostructures:
         for i in xrange(nMicrostructures):
-
           if currentError[i] > target[i]['error']:
-            #print '%i decreased quality to %8.6f'%(i+1,ratio)
-            #print 'target',target[i]['histogram']
-            #print 'current',currentHist[i]
             randReset = True
             break
           elif currentError[i] < target[i]['error']:
@@ -164,6 +156,10 @@ class myThread (threading.Thread):
             break
           if i == nMicrostructures-1:
             print 'Thread %i: Continue along trajectory'%(self.threadID)
+      else:                                                                                                #--- not all grains are tessellated
+        print 'Thread %i: Microstructure mismatch (%i microstructures mapped)'%(self.threadID,myNmicrostructures)
+        randReset = True
+
       
       s.release()
 
