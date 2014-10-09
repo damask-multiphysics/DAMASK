@@ -123,6 +123,10 @@ subroutine homogenization_init()
  use homogenization_isostrain
  use homogenization_RGC
  use IO
+#ifdef FEM
+ use numerics, only: &
+   worldrank
+#endif  
 
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
@@ -308,10 +312,17 @@ subroutine homogenization_init()
                                                         + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
  
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
+
  if (iand(debug_level(debug_homogenization), debug_levelBasic) /= 0_pInt) then
 #ifdef TODO
    write(6,'(a32,1x,7(i8,1x))')   'homogenization_state0:          ', shape(homogenization_state0)

@@ -36,6 +36,9 @@ subroutine constitutive_none_init(fileUnit)
  use IO, only: &
    IO_timeStamp
  use numerics, only: &
+#ifdef FEM
+   worldrank, &
+#endif  
    numerics_integrator
  use material, only: &
    phase_plasticity, &
@@ -56,10 +59,16 @@ subroutine constitutive_none_init(fileUnit)
    sizeState, &
    sizeDotState
  
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_none_ID),pInt)
  if (maxNinstance == 0_pInt) return

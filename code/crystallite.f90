@@ -141,6 +141,9 @@ subroutine crystallite_init(temperature)
    debug_crystallite, &
    debug_levelBasic
  use numerics, only: &
+#ifdef FEM
+   worldrank, &
+#endif  
    usePingPong
  use math, only: &
    math_I3, &
@@ -202,10 +205,16 @@ subroutine crystallite_init(temperature)
    tag = '', &
    line= ''
 
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  crystallite init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
 
  gMax = homogenization_maxNgrains
  iMax = mesh_maxNips

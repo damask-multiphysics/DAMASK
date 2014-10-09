@@ -201,10 +201,18 @@ subroutine numerics_init
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
+#ifdef FEM
+ call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+ call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
  write(6,'(a)')   ' $Id$'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
@@ -216,16 +224,17 @@ subroutine numerics_init
 !$ endif
 !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                   ! set number of threads for parallel execution
 
-#ifdef FEM
- call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
- call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
-#endif  
-
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
  fileExists: if(IO_open_file_stat(FILEUNIT,numerics_configFile)) then 
+#ifdef FEM
+   if (worldrank == 0) then
+#endif  
    write(6,'(a,/)') ' using values from config file'
    flush(6)
+#ifdef FEM
+   endif
+#endif  
     
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
@@ -425,8 +434,14 @@ subroutine numerics_init
    close(FILEUNIT)
 
  else fileExists
+#ifdef FEM
+   if (worldrank == 0) then
+#endif  
    write(6,'(a,/)') ' using standard values'
    flush(6)
+#ifdef FEM
+   endif
+#endif  
  endif fileExists
 
 #ifdef Spectral
@@ -447,6 +462,9 @@ subroutine numerics_init
 
  numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                 ! timeSyncing only allowed for explicit Euler integrator
 
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
  write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
@@ -547,6 +565,9 @@ subroutine numerics_init
  write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
  write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
 #endif
+#ifdef FEM
+ endif
+#endif  
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks

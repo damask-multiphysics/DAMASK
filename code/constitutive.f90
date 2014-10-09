@@ -60,6 +60,9 @@ subroutine constitutive_init
    debug_constitutive, &
    debug_levelBasic
  use numerics, only: &
+#ifdef FEM
+   worldrank, &
+#endif  
    numerics_integrator
  use IO, only: &
    IO_error, &
@@ -181,10 +184,16 @@ subroutine constitutive_init
  if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))  call thermal_adiabatic_init(FILEUNIT)
  close(FILEUNIT)
 
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
  
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output

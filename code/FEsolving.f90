@@ -75,6 +75,10 @@ subroutine FE_init
    IO_warning, &
    IO_timeStamp
  use DAMASK_interface
+#ifdef FEM
+ use numerics, only: &
+   worldrank
+#endif  
  
  implicit none
 #ifndef Spectral
@@ -89,10 +93,16 @@ subroutine FE_init
 #endif
 #endif
 
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)') ' <<<+-  FEsolving init  -+>>>'
  write(6,'(a)')   ' $Id$'
  write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
 
  modelName = getSolverJobName()
 #ifdef Spectral

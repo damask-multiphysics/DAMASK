@@ -219,6 +219,9 @@ subroutine constitutive_titanmod_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
+#ifdef FEM
+   worldrank, &
+#endif  
    numerics_integrator
  
  implicit none
@@ -243,10 +246,16 @@ subroutine constitutive_titanmod_init(fileUnit)
    tag  = '', &
    line = ''  
  
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_TITANMOD_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
 
  maxNinstance = int(count(phase_plasticity == PLASTICITY_TITANMOD_ID),pInt)
  if (maxNinstance == 0_pInt) return

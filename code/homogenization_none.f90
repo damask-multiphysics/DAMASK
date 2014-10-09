@@ -27,16 +27,26 @@ subroutine homogenization_none_init()
  use IO, only: &
    IO_timeStamp
  use material
+#ifdef FEM
+ use numerics, only: &
+   worldrank
+#endif  
  
  implicit none
  integer(pInt) :: &
    homog, &
    NofMyHomog
 
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
 
   initializeInstances: do homog = 1_pInt, material_Nhomogenization
    

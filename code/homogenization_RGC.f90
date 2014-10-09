@@ -98,6 +98,10 @@ subroutine homogenization_RGC_init(fileUnit)
    FE_geomtype
  use IO
  use material
+#ifdef FEM
+ use numerics, only: &
+   worldrank
+#endif  
 
  implicit none
  integer(pInt), intent(in) :: fileUnit                                                              !< file pointer to material configuration
@@ -114,10 +118,16 @@ subroutine homogenization_RGC_init(fileUnit)
    tag = '', &
    line = ''
  
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_RGC_label//' init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
 
  maxNinstance = int(count(homogenization_type == HOMOGENIZATION_RGC_ID),pInt)
  if (maxNinstance == 0_pInt) return

@@ -210,7 +210,11 @@ subroutine math_init
 
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use prec,     only: tol_math_check
- use numerics, only: fixedSeed
+ use numerics, only: &
+#ifdef FEM
+   worldrank, &
+#endif  
+   fixedSeed
  use IO,       only: IO_error, IO_timeStamp
 
  implicit none
@@ -224,10 +228,16 @@ subroutine math_init
                                                                                                     ! comment the first random_seed call out, set randSize to 1, and use ifort
  character(len=64) :: error_msg
 
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  math init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
 
  call random_seed(size=randSize)
  if (allocated(randInit)) deallocate(randInit)
@@ -246,12 +256,18 @@ subroutine math_init
    call random_number(randTest(i))
  enddo
 
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,*) 'size  of random seed:    ', randSize
  do i =1, randSize
    write(6,*) 'value of random seed:    ', i, randInit(i)
  enddo
  write(6,'(a,4(/,26x,f17.14))') ' start of random sequence: ', randTest
  write(6,*) ''
+#ifdef FEM
+ endif
+#endif  
 
  call random_seed(put = randInit)
 

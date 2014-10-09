@@ -36,6 +36,9 @@ subroutine damage_none_init(fileUnit)
  use IO, only: &
    IO_timeStamp
  use numerics, only: &
+#ifdef FEM
+   worldrank, &
+#endif  
    numerics_integrator
  use material, only: &
    phase_damage, &
@@ -55,10 +58,18 @@ subroutine damage_none_init(fileUnit)
    NofMyPhase, &
    sizeState, &
    sizeDotState
+
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
  write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_NONE_label//' init  -+>>>'
  write(6,'(a)')     ' $Id: damage_none.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+#ifdef FEM
+ endif
+#endif  
+
  maxNinstance = int(count(phase_damage == LOCAL_DAMAGE_NONE_ID),pInt)
  if (maxNinstance == 0_pInt) return
 
