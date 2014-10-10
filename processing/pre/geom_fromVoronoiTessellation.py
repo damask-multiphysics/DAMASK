@@ -20,14 +20,14 @@ def meshgrid2(*arrs):
   dim = len(arrs)
   ans = []
   for i, arr in enumerate(arrs):
-     slc = np.ones(dim,'i')
-     slc[i] = lens[i]
-     arr2 = np.asarray(arr).reshape(slc)
-     for j, sz in enumerate(lens):
-         if j != i:
-             arr2 = arr2.repeat(sz, axis=j)
+    slc = np.ones(dim,'i')
+    slc[i] = lens[i]
+    arr2 = np.asarray(arr).reshape(slc)
+    for j, sz in enumerate(lens):
+      if j != i:
+        arr2 = arr2.repeat(sz, axis=j)
    
-     ans.insert(0,arr2)
+    ans.insert(0,arr2)
   return tuple(ans)
 
 
@@ -54,6 +54,7 @@ mappings = {
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration by standard Voronoi tessellation of given seeds file.
+
 """, version = scriptID)
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int', \

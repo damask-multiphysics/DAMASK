@@ -1,40 +1,21 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,math,string,numpy
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import os,sys,math,string
+import numpy as np
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
 
-
-#--------------------------------------------------------------------------------------------------
-class extendableOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Generate geometry description and material configuration from input files used by R.A. Lebensohn
-""" + string.replace('$Id$','\n','\\n')
-)
 
+""", version = scriptID)
 
 parser.add_option('--column',          dest='column', type='int', metavar = 'int', \
                   help='data column to discriminate phase 1 from 2 [%default]')
@@ -81,9 +62,9 @@ for file in files:
   if file['name'] != 'STDIN': file['croak'].write(file['name']+'\n')
 
   info = {
-          'grid':   numpy.zeros(3,'i'),
-          'size':   numpy.zeros(3,'d'),
-          'origin': numpy.zeros(3,'d'),
+          'grid':   np.zeros(3,'i'),
+          'size':   np.zeros(3,'d'),
+          'origin': np.zeros(3,'d'),
           'microstructures': 0,
           'homogenization':  options.homogenization
          }
@@ -120,10 +101,10 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     sys.exit()
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     sys.exit()
 
@@ -143,7 +124,7 @@ for file in files:
 
 #--- output finalization --------------------------------------------------------------------------  
   if file['name'] != 'STDIN':
-    table.output_close()  
+    file['output'].close()  
     os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \
                                   {True: '_material.config',
                                    False:'.geom'}[options.config])

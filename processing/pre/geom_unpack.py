@@ -31,7 +31,6 @@ mappings = {
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Unpack geometry files containing ranges "a to b" and/or "n of x" multiples (exclusively in one line).
-
 """, version = scriptID)
 
 parser.add_option('-1', '--onedimensional', dest='oneD', action='store_true', \
@@ -57,6 +56,7 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)           # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
+
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
@@ -100,7 +100,7 @@ for file in files:
   microstructure = np.zeros(info['grid'].prod(),'i')
   i = 0
 
-  while table.data_read():                                  # read next data line of ASCII table
+  while table.data_read():                                                                         # read next data line of ASCII table
     items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])

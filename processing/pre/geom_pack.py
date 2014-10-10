@@ -36,7 +36,7 @@ compress geometry files with ranges "a to b" and/or multiples "n of x".
 
 (options, filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ------------------------------------
+# ------------------------------------------ setup file handles -----------------------------------
 files = []
 if filenames == []:
   files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
@@ -45,7 +45,7 @@ else:
     if os.path.exists(name):
       files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
-# ------------------------------------------ loop over input files ---------------------------------
+# ------------------------------------------ loop over input files --------------------------------
 for file in files:
   if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
   else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
@@ -53,7 +53,7 @@ for file in files:
   table = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)           # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
 
-#--- interpret header ----------------------------------------------------------------------------
+#--- interpret header -----------------------------------------------------------------------------
   info = {
           'grid':    np.zeros(3,'i'),
           'size':    np.zeros(3,'d'),
@@ -111,7 +111,7 @@ for file in files:
   reps = 0
 
   outputAlive = True
-  while outputAlive and table.data_read():                                  # read next data line of ASCII table
+  while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     items = table.data
     if len(items) > 2:
       if   items[1].lower() == 'of': items = [int(items[2])]*int(items[0])
@@ -136,7 +136,7 @@ for file in files:
         elif type == 'of':
           table.data = ['%i of %i'%(reps,former)]
 
-        outputAlive = table.data_write(delimiter = ' ')                  # output processed line
+        outputAlive = table.data_write(delimiter = ' ')                                             # output processed line
         type = '.'
         start = current
         reps = 1
@@ -148,14 +148,14 @@ for file in files:
                    'to': ['%i to %i'%(former-reps+1,former)],
                    'of': ['%i of %i'%(reps,former)],
                   }[type]
-  outputAlive = table.data_write(delimiter = ' ')                        # output processed line
+  outputAlive = table.data_write(delimiter = ' ')                                                   # output processed line
 
 
 # ------------------------------------------ output result ---------------------------------------  
-  outputAlive and table.output_flush()                                                           # just in case of buffered ASCII table
+  outputAlive and table.output_flush()                                                              # just in case of buffered ASCII table
 
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    table.input_close()                                                                          # close input ASCII table
-    table.output_close()                                                                         # close input ASCII table
-    os.rename(file['name']+'_tmp',file['name'])                                                  # overwrite old one with tmp new
+    table.input_close()                                                                             # close input ASCII table
+    table.output_close()                                                                            # close input ASCII table
+    os.rename(file['name']+'_tmp',file['name'])                                                     # overwrite old one with tmp new
