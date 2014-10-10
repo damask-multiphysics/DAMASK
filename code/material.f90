@@ -266,10 +266,8 @@ subroutine material_init
    mesh_element, &
    FE_Nips, &
    FE_geomtype   
-#ifdef FEM
  use numerics, only: &
    worldrank
-#endif  
  
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
@@ -287,16 +285,12 @@ subroutine material_init
 
  myDebug = debug_level(debug_material)
  
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)') ' <<<+-  material init  -+>>>'
- write(6,'(a)') ' $Id$'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)') ' <<<+-  material init  -+>>>'
+   write(6,'(a)') ' $Id$'
+   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess
 
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ...open material.config file

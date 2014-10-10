@@ -202,9 +202,7 @@ subroutine constitutive_dislokmc_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
-#ifdef FEM
    worldrank, &
-#endif  
    numerics_integrator
  
  implicit none
@@ -224,16 +222,12 @@ subroutine constitutive_dislokmc_init(fileUnit)
    line = ''
  real(pReal), dimension(:), allocatable :: tempPerSlip, tempPerTwin
   
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOKMC_label//' init  -+>>>'
- write(6,'(a)')     ' $Id$'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_DISLOKMC_label//' init  -+>>>'
+   write(6,'(a)')     ' $Id$'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_DISLOKMC_ID),pInt)
  if (maxNinstance == 0_pInt) return

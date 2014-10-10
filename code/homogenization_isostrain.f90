@@ -60,10 +60,8 @@ subroutine homogenization_isostrain_init(fileUnit)
    debug_levelBasic
  use IO
  use material
-#ifdef FEM
  use numerics, only: &
    worldrank
-#endif  
  
  implicit none
  integer(pInt),                                      intent(in) :: fileUnit
@@ -81,16 +79,12 @@ subroutine homogenization_isostrain_init(fileUnit)
    tag  = '', &
    line = ''
  
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
- write(6,'(a)')     ' $Id$'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)')   ' <<<+-  homogenization_'//HOMOGENIZATION_ISOSTRAIN_label//' init  -+>>>'
+   write(6,'(a)')     ' $Id$'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess
 
  maxNinstance = count(homogenization_type == HOMOGENIZATION_ISOSTRAIN_ID)
  if (maxNinstance == 0) return

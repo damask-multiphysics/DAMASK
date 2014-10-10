@@ -88,9 +88,7 @@ subroutine damage_brittle_init(fileUnit)
    damageState, &
    MATERIAL_partPhase
  use numerics,only: &
-#ifdef FEM
    worldrank, &
-#endif  
    numerics_integrator
 
  implicit none
@@ -105,16 +103,12 @@ subroutine damage_brittle_init(fileUnit)
    tag  = '', &
    line = ''
 
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_BRITTLE_label//' init  -+>>>'
- write(6,'(a)')     ' $Id: damage_brittle.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_BRITTLE_label//' init  -+>>>'
+   write(6,'(a)')     ' $Id: damage_brittle.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess
 
  maxNinstance = int(count(phase_damage == LOCAL_DAMAGE_BRITTLE_ID),pInt)
  if (maxNinstance == 0_pInt) return

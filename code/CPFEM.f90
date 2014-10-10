@@ -125,9 +125,7 @@ subroutine CPFEM_init
    IO_timeStamp, &
    IO_error
  use numerics, only: &
-#ifdef FEM
    worldrank, &
-#endif  
    DAMASK_NumThreadsInt
  use debug, only: &
    debug_level, &
@@ -160,16 +158,12 @@ subroutine CPFEM_init
  implicit none
  integer(pInt) :: k,l,m,ph,homog
 
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
- write(6,'(a)')     ' $Id$'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
+   write(6,'(a)')     ' $Id$'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
  ! initialize stress and jacobian to zero

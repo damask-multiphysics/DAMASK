@@ -85,9 +85,7 @@ subroutine thermal_adiabatic_init(fileUnit)
    thermalState, &
    MATERIAL_partPhase
  use numerics,only: &
-#ifdef FEM
    worldrank, &
-#endif  
    numerics_integrator
 
  implicit none
@@ -102,16 +100,12 @@ subroutine thermal_adiabatic_init(fileUnit)
    tag  = '', &
    line = ''
 
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_ADIABATIC_label//' init  -+>>>'
- write(6,'(a)')     ' $Id: thermal_adiabatic.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_ADIABATIC_label//' init  -+>>>'
+   write(6,'(a)')     ' $Id: thermal_adiabatic.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess
  
  maxNinstance = int(count(phase_thermal == LOCAL_THERMAL_adiabatic_ID),pInt)
  if (maxNinstance == 0_pInt) return

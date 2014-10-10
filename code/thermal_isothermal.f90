@@ -36,9 +36,7 @@ subroutine thermal_isothermal_init(fileUnit)
  use IO, only: &
    IO_timeStamp
  use numerics, only: &
-#ifdef FEM
    worldrank, &
-#endif  
    numerics_integrator
  use material, only: &
    phase_thermal, &
@@ -59,16 +57,12 @@ subroutine thermal_isothermal_init(fileUnit)
    sizeState, &
    sizeDotState
 
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_ISOTHERMAL_label//' init  -+>>>'
- write(6,'(a)')     ' $Id: thermal_isothermal.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_ISOTHERMAL_label//' init  -+>>>'
+   write(6,'(a)')     ' $Id: thermal_isothermal.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess
 
  maxNinstance = int(count(phase_thermal == LOCAL_THERMAL_ISOTHERMAL_ID),pInt)
  if (maxNinstance == 0_pInt) return
