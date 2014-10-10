@@ -9,16 +9,14 @@
 !>           by DAMASK. Interpretating the command line arguments or, in case of called from f2py, 
 !>           the arguments parsed to the init routine to get load case, geometry file, working 
 !>           directory, etc.
-!-----------------------------------------------------------`---------------------------------------
+!--------------------------------------------------------------------------------------------------
 module DAMASK_interface
  use prec, only: &
    pInt
 
  implicit none
  private
-#ifdef PETSc
 #include <finclude/petscsys.h>
-#endif
 
  logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
  integer(pInt),       public, protected :: spectralRestartInc = 1_pInt                              !< Increment at which calculation starts
@@ -65,31 +63,33 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    userName, &                                                                                      !< name of user calling DAMASK_spectral.exe
    tag
  integer :: &
-   i
+   i, &
+   worldrank = 0
  integer, parameter :: &
    maxNchunks = 128                                                                                 !< DAMASK_spectral + (l,g,w,r)*2 + h
  integer, dimension(1+ 2* maxNchunks) :: &
    positions
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
+ PetscErrorCode :: ierr
  external :: &
-   quit
-#ifdef PETSc
- external :: &
+   quit,&
+   MPI_Comm_rank,&
    PETScInitialize, &
    MPI_abort
- PetscErrorCode :: ierr
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
-#endif
 
  open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
- write(6,'(a)')   ' $Id$'
+ call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+ mainProcess: if (worldrank == 0) then
+   write(6,'(/,a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
+   write(6,'(a)')   ' $Id$'
 #include "compilation_info.f90"
+ endif mainProcess
 
  if ( present(loadcaseParameterIn) .and. present(geometryParameterIn)) then                         ! both mandatory parameters given in function call 
    geometryArg = geometryParameterIn
@@ -102,60 +102,62 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
      tag = IIO_lc(IIO_stringValue(commandLine,positions,i))                                         ! extract key
      select case(tag)
        case ('-h','--help')
-         write(6,'(a)')  ' #######################################################################'
-         write(6,'(a)')  ' DAMASK_spectral:'
-         write(6,'(a)')  ' The spectral method boundary value problem solver for'
-         write(6,'(a)')  ' the Düsseldorf Advanced Material Simulation Kit'
-         write(6,'(a,/)')' #######################################################################'
-         write(6,'(a,/)')' Valid command line switches:'
-         write(6,'(a)')  '    --geom         (-g, --geometry)'
-         write(6,'(a)')  '    --load         (-l, --loadcase)'
-         write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
-         write(6,'(a)')  '    --restart      (-r, --rs)'
-         write(6,'(a)')  '    --regrid       (--rg)'
-         write(6,'(a)')  '    --help         (-h)'
-         write(6,'(/,a)')' -----------------------------------------------------------------------'
-         write(6,'(a)')  ' Mandatory arguments:'
-         write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom.geom'
-         write(6,'(a)')  '        Specifies the location of the geometry definition file,' 
-         write(6,'(a)')  '            if no extension is given, .geom will be appended.' 
-         write(6,'(a)')  '        "PathToGeomFile" will be the working directory if not specified'
-         write(6,'(a)')  '            via --workingdir.'
-         write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-         write(6,'(a)')  '            directory.'   
-         write(6,'(a)')  '        For further configuration place "numerics.config"'
-         write(6,'(a)')'            and "numerics.config" in that directory.'
-         write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile.load'
-         write(6,'(a)')  '        Specifies the location of the load case definition file,' 
-         write(6,'(a)')  '            if no extension is given, .load will be appended.' 
-         write(6,'(/,a)')' -----------------------------------------------------------------------'
-         write(6,'(a)')  ' Optional arguments:'
-         write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
-         write(6,'(a)')  '        Specifies the working directory and overwrites the default'
-         write(6,'(a)')  '            "PathToGeomFile".'
-         write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
-         write(6,'(a)')  '            directory.'   
-         write(6,'(a)')  '        For further configuration place "numerics.config"'
-         write(6,'(a)')'            and "numerics.config" in that directory.'
-         write(6,'(/,a)')'   --restart XX'
-         write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
-         write(6,'(a)')  '            calculate total increment No. XX.'
-         write(6,'(a)')  '        Appends to existing results file '
-         write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
-         write(6,'(a)')  '        Works only if the restart information for total increment'
-         write(6,'(a)')  '             No. XX-1 is available in the working directory.'
-         write(6,'(/,a)')'   --regrid XX'
-         write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
-         write(6,'(a)')  '            calculate total increment No. XX.'
-         write(6,'(a)')  '        Attention: Overwrites existing results file '
-         write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
-         write(6,'(a)')  '        Works only if the restart information for total increment'
-         write(6,'(a)')  '             No. XX-1 is available in the working directory.'
-         write(6,'(/,a)')' -----------------------------------------------------------------------'
-         write(6,'(a)')  ' Help:'
-         write(6,'(/,a)')'   --help'
-         write(6,'(a,/)')'        Prints this message and exits'
-         call quit(0_pInt)                                                                                ! normal Termination
+         mainProcess2: if (worldrank == 0) then
+           write(6,'(a)')  ' #######################################################################'
+           write(6,'(a)')  ' DAMASK_spectral:'
+           write(6,'(a)')  ' The spectral method boundary value problem solver for'
+           write(6,'(a)')  ' the Düsseldorf Advanced Material Simulation Kit'
+           write(6,'(a,/)')' #######################################################################'
+           write(6,'(a,/)')' Valid command line switches:'
+           write(6,'(a)')  '    --geom         (-g, --geometry)'
+           write(6,'(a)')  '    --load         (-l, --loadcase)'
+           write(6,'(a)')  '    --workingdir   (-w, --wd, --workingdirectory, -d, --directory)'
+           write(6,'(a)')  '    --restart      (-r, --rs)'
+           write(6,'(a)')  '    --regrid       (--rg)'
+           write(6,'(a)')  '    --help         (-h)'
+           write(6,'(/,a)')' -----------------------------------------------------------------------'
+           write(6,'(a)')  ' Mandatory arguments:'
+           write(6,'(/,a)')'   --geom PathToGeomFile/NameOfGeom.geom'
+           write(6,'(a)')  '        Specifies the location of the geometry definition file,' 
+           write(6,'(a)')  '            if no extension is given, .geom will be appended.' 
+           write(6,'(a)')  '        "PathToGeomFile" will be the working directory if not specified'
+           write(6,'(a)')  '            via --workingdir.'
+           write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
+           write(6,'(a)')  '            directory.'   
+           write(6,'(a)')  '        For further configuration place "numerics.config"'
+           write(6,'(a)')'            and "numerics.config" in that directory.'
+           write(6,'(/,a)')'   --load PathToLoadFile/NameOfLoadFile.load'
+           write(6,'(a)')  '        Specifies the location of the load case definition file,' 
+           write(6,'(a)')  '            if no extension is given, .load will be appended.' 
+           write(6,'(/,a)')' -----------------------------------------------------------------------'
+           write(6,'(a)')  ' Optional arguments:'
+           write(6,'(/,a)')'   --workingdirectory PathToWorkingDirectory'
+           write(6,'(a)')  '        Specifies the working directory and overwrites the default'
+           write(6,'(a)')  '            "PathToGeomFile".'
+           write(6,'(a)')  '        Make sure the file "material.config" exists in the working'
+           write(6,'(a)')  '            directory.'   
+           write(6,'(a)')  '        For further configuration place "numerics.config"'
+           write(6,'(a)')'            and "numerics.config" in that directory.'
+           write(6,'(/,a)')'   --restart XX'
+           write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
+           write(6,'(a)')  '            calculate total increment No. XX.'
+           write(6,'(a)')  '        Appends to existing results file '
+           write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
+           write(6,'(a)')  '        Works only if the restart information for total increment'
+           write(6,'(a)')  '             No. XX-1 is available in the working directory.'
+           write(6,'(/,a)')'   --regrid XX'
+           write(6,'(a)')  '        Reads in total increment No. XX-1 and continues to'
+           write(6,'(a)')  '            calculate total increment No. XX.'
+           write(6,'(a)')  '        Attention: Overwrites existing results file '
+           write(6,'(a)')  '            "NameOfGeom_NameOfLoadFile.spectralOut".'
+           write(6,'(a)')  '        Works only if the restart information for total increment'
+           write(6,'(a)')  '             No. XX-1 is available in the working directory.'
+           write(6,'(/,a)')' -----------------------------------------------------------------------'
+           write(6,'(a)')  ' Help:'
+           write(6,'(/,a)')'   --help'
+           write(6,'(a,/)')'        Prints this message and exits'
+           call quit(0_pInt)                                                                              ! normal Termination
+         endif mainProcess2
        case ('-l', '--load', '--loadcase')
          loadcaseArg = IIO_stringValue(commandLine,positions,i+1_pInt)
        case ('-g', '--geom', '--geometry')
@@ -184,28 +186,29 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
  call get_environment_variable('HOSTNAME',hostName)
  call get_environment_variable('USER',userName)
  call date_and_time(values = dateAndTime)
-
- write(6,'(a,2(i2.2,a),i4.4)') ' Date:                  ',dateAndTime(3),'/',&
-                                                          dateAndTime(2),'/',&
-                                                          dateAndTime(1) 
- write(6,'(a,2(i2.2,a),i2.2)') ' Time:                  ',dateAndTime(5),':',&
-                                                          dateAndTime(6),':',&
-                                                          dateAndTime(7)  
- write(6,'(a,a)')    ' Host name:             ', trim(hostName)
- write(6,'(a,a)')    ' User name:             ', trim(userName)
- write(6,'(a,a)')    ' Path separator:        ', getPathSep()
- write(6,'(a,a)')    ' Command line call:     ', trim(commandLine)
- if (len(trim(workingDirArg))>0) &
- write(6,'(a,a)')    ' Working dir argument:  ', trim(workingDirArg)
- write(6,'(a,a)')    ' Geometry argument:     ', trim(geometryArg)
- write(6,'(a,a)')    ' Loadcase argument:     ', trim(loadcaseArg)
- write(6,'(a,a)')    ' Working directory:     ', trim(getSolverWorkingDirectoryName())
- write(6,'(a,a)')    ' Geometry file:         ', trim(geometryFile)
- write(6,'(a,a)')    ' Loadcase file:         ', trim(loadCaseFile)
- write(6,'(a,a)')    ' Solver job name:       ', trim(getSolverJobName())
- if (SpectralRestartInc > 1_pInt) write(6,'(a,i6.6)') &
-                     ' Restart at increment:  ', spectralRestartInc
- write(6,'(a,l1,/)') ' Append to result file: ', appendToOutFile
+ mainProcess3: if (worldrank == 0) then
+   write(6,'(a,2(i2.2,a),i4.4)') ' Date:                  ',dateAndTime(3),'/',&
+                                                            dateAndTime(2),'/',&
+                                                            dateAndTime(1) 
+   write(6,'(a,2(i2.2,a),i2.2)') ' Time:                  ',dateAndTime(5),':',&
+                                                            dateAndTime(6),':',&
+                                                            dateAndTime(7)  
+   write(6,'(a,a)')      ' Host name:             ', trim(hostName)
+   write(6,'(a,a)')      ' User name:             ', trim(userName)
+   write(6,'(a,a)')      ' Path separator:        ', getPathSep()
+   write(6,'(a,a)')      ' Command line call:     ', trim(commandLine)
+   if (len(trim(workingDirArg))>0) &
+     write(6,'(a,a)')    ' Working dir argument:  ', trim(workingDirArg)
+   write(6,'(a,a)')      ' Geometry argument:     ', trim(geometryArg)
+   write(6,'(a,a)')      ' Loadcase argument:     ', trim(loadcaseArg)
+   write(6,'(a,a)')      ' Working directory:     ', trim(getSolverWorkingDirectoryName())
+   write(6,'(a,a)')      ' Geometry file:         ', trim(geometryFile)
+   write(6,'(a,a)')      ' Loadcase file:         ', trim(loadCaseFile)
+   write(6,'(a,a)')      ' Solver job name:       ', trim(getSolverJobName())
+   if (SpectralRestartInc > 1_pInt) &
+     write(6,'(a,i6.6)') ' Restart at increment:  ', spectralRestartInc
+   write(6,'(a,l1,/)')   ' Append to result file: ', appendToOutFile
+ endif mainProcess3
 
 end subroutine DAMASK_interface_init
 

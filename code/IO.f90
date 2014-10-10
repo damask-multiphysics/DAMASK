@@ -102,23 +102,22 @@ contains
 !--------------------------------------------------------------------------------------------------
 subroutine IO_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
-#ifdef FEM
+ 
+ implicit none
+ integer(pInt) :: worldrank
+#ifdef PETSc
 #include <finclude/petscsys.h>
- PetscInt :: worldrank
  PetscErrorCode :: ierr
 #endif
 
-#ifdef FEM
+#ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)') ' <<<+-  IO init  -+>>>'
- write(6,'(a)')   ' $Id$'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)') ' <<<+-  IO init  -+>>>'
+   write(6,'(a)')   ' $Id$'
+   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
+ endif 
 
 #ifdef HDF 
  call HDF5_createJobFile

@@ -96,29 +96,28 @@ subroutine prec_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  
  implicit none
-#ifdef FEM
+ integer(pInt) :: worldrank = 0_pInt
+#ifdef PETSc
 #include <finclude/petscsys.h>
- PetscInt :: worldrank
  PetscErrorCode :: ierr
 #endif
  external :: &
    quit
    
-#ifdef FEM
+#ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
- write(6,'(a)') ' $Id$'
+#endif
+
+ mainProcess: if (worldrank == 0) then
+   write(6,'(/,a)') ' <<<+-  prec init  -+>>>'
+   write(6,'(a)') ' $Id$'
 #include "compilation_info.f90"
- write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
- write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
- write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
- write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
- write(6,'(a,l3,/)')  ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
-#ifdef FEM
- endif
-#endif  
+   write(6,'(a,i3)')    ' Bytes for pReal:    ',pReal
+   write(6,'(a,i3)')    ' Bytes for pInt:     ',pInt
+   write(6,'(a,i3)')    ' Bytes for pLongInt: ',pLongInt
+   write(6,'(a,e10.3)') ' NaN:           ',     DAMASK_NaN
+   write(6,'(a,l3,/)')  ' NaN /= NaN:         ',DAMASK_NaN/=DAMASK_NaN
+ endif mainProcess
 
  if (DAMASK_NaN == DAMASK_NaN) call quit(9000)
 

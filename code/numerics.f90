@@ -12,7 +12,7 @@ module numerics
 
  implicit none
  private
-#ifdef FEM
+#ifdef PETSc
 #include <finclude/petsc.h90>
 #endif
  character(len=64), parameter, private :: &
@@ -27,7 +27,9 @@ module numerics
    nState                     = 10_pInt, &                                                          !< state loop limit
    nStress                    = 40_pInt, &                                                          !< stress loop limit
    pert_method                =  1_pInt, &                                                          !< method used in perturbation technique for tangent
-   fixedSeed                  =  0_pInt                                                             !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+   fixedSeed                  =  0_pInt, &                                                          !< fixed seeding for pseudo-random number generator, Default 0: use random seed
+   worldrank                  =  0_pInt, &                                                          !< MPI worldrank (/=0 for MPI simulations only)
+   worldsize                  =  0_pInt                                                             !< MPI worldsize (/=0 for MPI simulations only)
  integer, protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  integer(pInt), public :: &
@@ -154,9 +156,7 @@ module numerics
    integrationOrder           =  1_pInt, &
    structOrder                =  2_pInt, &
    thermalOrder               =  2_pInt, &
-   damageOrder                =  2_pInt, &
-   worldrank                  =  0_pInt, &
-   worldsize                  =  0_pInt
+   damageOrder                =  2_pInt
 #endif
 
  public :: numerics_init
@@ -201,19 +201,17 @@ subroutine numerics_init
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
 
-#ifdef FEM
+#ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
  call MPI_Comm_size(PETSC_COMM_WORLD,worldsize,ierr);CHKERRQ(ierr)
- if (worldrank == 0) then
-#endif  
- write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
- write(6,'(a)')   ' $Id$'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+#endif
+ mainProcess: if (worldrank == 0) then
+   write(6,'(/,a)') ' <<<+-  numerics init  -+>>>'
+   write(6,'(a)')   ' $Id$'
+   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
-#ifdef FEM
- endif
-#endif  
-
+ endif mainProcess
+ 
 !$ call GET_ENVIRONMENT_VARIABLE(NAME='DAMASK_NUM_THREADS',VALUE=DAMASK_NumThreadsString,STATUS=gotDAMASK_NUM_THREADS)   ! get environment variable DAMASK_NUM_THREADS...
 !$ if(gotDAMASK_NUM_THREADS /= 0) then                                                              ! could not get number of threads, set it to 1
 !$   call IO_warning(35_pInt,ext_msg='BEGIN:'//DAMASK_NumThreadsString//':END')
@@ -227,14 +225,10 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! try to open the config file
  fileExists: if(IO_open_file_stat(FILEUNIT,numerics_configFile)) then 
-#ifdef FEM
-   if (worldrank == 0) then
-#endif  
-   write(6,'(a,/)') ' using values from config file'
-   flush(6)
-#ifdef FEM
-   endif
-#endif  
+   mainProcess2: if (worldrank == 0) then
+     write(6,'(a,/)') ' using values from config file'
+     flush(6)
+   endif mainProcess2
     
 !--------------------------------------------------------------------------------------------------
 ! read variables from config file and overwrite default parameters if keyword is present
@@ -422,9 +416,9 @@ subroutine numerics_init
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
 #else
-      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','residualstiffness',&             ! found spectral parameter for FEM build
-            'itmaxfem', 'itminfem','maxcutbackfem','integrationorder','structorder','thermalorder', &
-            'damageorder','petsc_optionsfem')
+      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol',&           ! found FEM parameter for spectral/Abaqus/Marc build
+            'residualstiffness', 'itmaxfem', 'itminfem','maxcutbackfem','integrationorder',&
+            'structorder','thermalorder', 'damageorder','petsc_optionsfem')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                ! found unknown keyword
@@ -446,7 +440,7 @@ subroutine numerics_init
 
 #ifdef Spectral
  select case(IO_lc(fftw_plan_mode))                                                                ! setting parameters for the plan creation of FFTW. Basically a translation from fftw3.f
-   case('estimate','fftw_estimate')                                                                 ! ordered from slow execution (but fast plan creation) to fast execution
+   case('estimate','fftw_estimate')                                                                ! ordered from slow execution (but fast plan creation) to fast execution
      fftw_planner_flag = 64_pInt
    case('measure','fftw_measure')
      fftw_planner_flag = 0_pInt
@@ -462,58 +456,56 @@ subroutine numerics_init
 
  numerics_timeSyncing = numerics_timeSyncing .and. all(numerics_integrator==2_pInt)                 ! timeSyncing only allowed for explicit Euler integrator
 
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
 !--------------------------------------------------------------------------------------------------
 ! writing parameters to output
- write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
- write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
- write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
- write(6,'(a24,1x,i8)')     ' iJacoLpresiduum:        ',iJacoLpresiduum
- write(6,'(a24,1x,es8.1)')  ' pert_Fg:                ',pert_Fg
- write(6,'(a24,1x,i8)')     ' pert_method:            ',pert_method
- write(6,'(a24,1x,i8)')     ' nCryst:                 ',nCryst
- write(6,'(a24,1x,es8.1)')  ' subStepMinCryst:        ',subStepMinCryst
- write(6,'(a24,1x,es8.1)')  ' subStepSizeCryst:       ',subStepSizeCryst
- write(6,'(a24,1x,es8.1)')  ' stepIncreaseCryst:      ',stepIncreaseCryst
- write(6,'(a24,1x,i8)')     ' nState:                 ',nState
- write(6,'(a24,1x,i8)')     ' nStress:                ',nStress
- write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
- write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
- write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
- write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
- write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
- write(6,'(a24,1x,L8)')     ' analytic Jacobian:      ',analyticJaco
- write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
- write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
+ mainProcess3: if (worldrank == 0) then
+   write(6,'(a24,1x,es8.1)')  ' relevantStrain:         ',relevantStrain
+   write(6,'(a24,1x,es8.1)')  ' defgradTolerance:       ',defgradTolerance
+   write(6,'(a24,1x,i8)')     ' iJacoStiffness:         ',iJacoStiffness
+   write(6,'(a24,1x,i8)')     ' iJacoLpresiduum:        ',iJacoLpresiduum
+   write(6,'(a24,1x,es8.1)')  ' pert_Fg:                ',pert_Fg
+   write(6,'(a24,1x,i8)')     ' pert_method:            ',pert_method
+   write(6,'(a24,1x,i8)')     ' nCryst:                 ',nCryst
+   write(6,'(a24,1x,es8.1)')  ' subStepMinCryst:        ',subStepMinCryst
+   write(6,'(a24,1x,es8.1)')  ' subStepSizeCryst:       ',subStepSizeCryst
+   write(6,'(a24,1x,es8.1)')  ' stepIncreaseCryst:      ',stepIncreaseCryst
+   write(6,'(a24,1x,i8)')     ' nState:                 ',nState
+   write(6,'(a24,1x,i8)')     ' nStress:                ',nStress
+   write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteState:  ',rTol_crystalliteState
+   write(6,'(a24,1x,es8.1)')  ' rTol_crystalliteStress: ',rTol_crystalliteStress
+   write(6,'(a24,1x,es8.1)')  ' aTol_crystalliteStress: ',aTol_crystalliteStress
+   write(6,'(a24,2(1x,i8))')  ' integrator:             ',numerics_integrator
+   write(6,'(a24,1x,L8)')     ' timeSyncing:            ',numerics_timeSyncing
+   write(6,'(a24,1x,L8)')     ' analytic Jacobian:      ',analyticJaco
+   write(6,'(a24,1x,L8)')     ' use ping pong scheme:   ',usepingpong
+   write(6,'(a24,1x,es8.1,/)')' unitlength:             ',numerics_unitlength
 
- write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog
- write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
- write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
- write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
- write(6,'(a24,1x,i8,/)')   ' nMPstate:               ',nMPstate
+   write(6,'(a24,1x,i8)')     ' nHomog:                 ',nHomog
+   write(6,'(a24,1x,es8.1)')  ' subStepMinHomog:        ',subStepMinHomog
+   write(6,'(a24,1x,es8.1)')  ' subStepSizeHomog:       ',subStepSizeHomog
+   write(6,'(a24,1x,es8.1)')  ' stepIncreaseHomog:      ',stepIncreaseHomog
+   write(6,'(a24,1x,i8,/)')   ' nMPstate:               ',nMPstate
 
 !--------------------------------------------------------------------------------------------------
 ! RGC parameters
- write(6,'(a24,1x,es8.1)')   ' aTol_RGC:               ',absTol_RGC
- write(6,'(a24,1x,es8.1)')   ' rTol_RGC:               ',relTol_RGC
- write(6,'(a24,1x,es8.1)')   ' aMax_RGC:               ',absMax_RGC
- write(6,'(a24,1x,es8.1)')   ' rMax_RGC:               ',relMax_RGC
- write(6,'(a24,1x,es8.1)')   ' perturbPenalty_RGC:     ',pPert_RGC
- write(6,'(a24,1x,es8.1)')   ' relevantMismatch_RGC:   ',xSmoo_RGC
- write(6,'(a24,1x,es8.1)')   ' viscosityrate_RGC:      ',viscPower_RGC
- write(6,'(a24,1x,es8.1)')   ' viscositymodulus_RGC:   ',viscModus_RGC
- write(6,'(a24,1x,es8.1)')   ' maxrelaxation_RGC:      ',maxdRelax_RGC
- write(6,'(a24,1x,es8.1)')   ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
- write(6,'(a24,1x,es8.1)')   ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
- write(6,'(a24,1x,es8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
+   write(6,'(a24,1x,es8.1)')   ' aTol_RGC:               ',absTol_RGC
+   write(6,'(a24,1x,es8.1)')   ' rTol_RGC:               ',relTol_RGC
+   write(6,'(a24,1x,es8.1)')   ' aMax_RGC:               ',absMax_RGC
+   write(6,'(a24,1x,es8.1)')   ' rMax_RGC:               ',relMax_RGC
+   write(6,'(a24,1x,es8.1)')   ' perturbPenalty_RGC:     ',pPert_RGC
+   write(6,'(a24,1x,es8.1)')   ' relevantMismatch_RGC:   ',xSmoo_RGC
+   write(6,'(a24,1x,es8.1)')   ' viscosityrate_RGC:      ',viscPower_RGC
+   write(6,'(a24,1x,es8.1)')   ' viscositymodulus_RGC:   ',viscModus_RGC
+   write(6,'(a24,1x,es8.1)')   ' maxrelaxation_RGC:      ',maxdRelax_RGC
+   write(6,'(a24,1x,es8.1)')   ' maxVolDiscrepancy_RGC:  ',maxVolDiscr_RGC
+   write(6,'(a24,1x,es8.1)')   ' volDiscrepancyMod_RGC:  ',volDiscrMod_RGC
+   write(6,'(a24,1x,es8.1,/)') ' discrepancyPower_RGC:   ',volDiscrPow_RGC
 
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
- write(6,'(a24,1x,i16,/)')    ' fixed_seed:             ',fixedSeed
- if (fixedSeed <= 0_pInt) &
-   write(6,'(a,/)') ' No fixed Seed: Random is random!'
+   write(6,'(a24,1x,i16,/)')    ' fixed_seed:             ',fixedSeed
+   if (fixedSeed <= 0_pInt) &
+     write(6,'(a,/)') ' No fixed Seed: Random is random!'
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter
   !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
@@ -521,53 +513,52 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef Spectral
- write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
- write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
- write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
- write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
- write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
- write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
- write(6,'(a24,1x,a)')       ' spectral filter:        ',trim(spectral_filter)
- if(fftw_timelimit<0.0_pReal) then
-   write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
- else    
-   write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
- endif
- write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
- write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
- write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
- write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
- write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
- write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
- write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
- write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
- write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
- write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
+   write(6,'(a24,1x,i8)')      ' itmax:                  ',itmax
+   write(6,'(a24,1x,i8)')      ' itmin:                  ',itmin
+   write(6,'(a24,1x,i8)')      ' maxCutBack:             ',maxCutBack
+   write(6,'(a24,1x,i8)')      ' continueCalculation:    ',continueCalculation
+   write(6,'(a24,1x,L8)')      ' memory_efficient:       ',memory_efficient
+   write(6,'(a24,1x,i8)')      ' divergence_correction:  ',divergence_correction
+   write(6,'(a24,1x,a)')       ' spectral filter:        ',trim(spectral_filter)
+   if(fftw_timelimit<0.0_pReal) then
+     write(6,'(a24,1x,L8)')    ' fftw_timelimit:         ',.false.
+   else    
+     write(6,'(a24,1x,es8.1)') ' fftw_timelimit:         ',fftw_timelimit
+   endif
+   write(6,'(a24,1x,a)')       ' fftw_plan_mode:         ',trim(fftw_plan_mode)
+   write(6,'(a24,1x,i8)')      ' fftw_planner_flag:      ',fftw_planner_flag
+   write(6,'(a24,1x,L8,/)')    ' update_gamma:           ',update_gamma
+   write(6,'(a24,1x,es8.1)')   ' err_stress_tolAbs:      ',err_stress_tolAbs
+   write(6,'(a24,1x,es8.1)')   ' err_stress_tolRel:      ',err_stress_tolRel
+   write(6,'(a24,1x,es8.1)')   ' err_div_tolAbs:         ',err_div_tolAbs
+   write(6,'(a24,1x,es8.1)')   ' err_div_tolRel:         ',err_div_tolRel
+   write(6,'(a24,1x,es8.1)')   ' err_curl_tolAbs:        ',err_curl_tolAbs
+   write(6,'(a24,1x,es8.1)')   ' err_curl_tolRel:        ',err_curl_tolRel
+   write(6,'(a24,1x,es8.1)')   ' polarAlpha:             ',polarAlpha
+   write(6,'(a24,1x,es8.1)')   ' polarBeta:              ',polarBeta
+   write(6,'(a24,1x,a)')       ' spectral solver:        ',trim(spectral_solver)
+   write(6,'(a24,1x,a)')       ' PETSc_options:          ',trim(petsc_options)
 #endif
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
 #ifdef FEM
- write(6,'(a24,1x,i8)')      ' itmaxFEM:               ',itmaxFEM
- write(6,'(a24,1x,i8)')      ' itminFEM:               ',itminFEM
- write(6,'(a24,1x,i8)')      ' maxCutBackFEM:          ',maxCutBackFEM
- write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
- write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
- write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
- write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
- write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
- write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
- write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
- write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
- write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
- write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
+   write(6,'(a24,1x,i8)')      ' itmaxFEM:               ',itmaxFEM
+   write(6,'(a24,1x,i8)')      ' itminFEM:               ',itminFEM
+   write(6,'(a24,1x,i8)')      ' maxCutBackFEM:          ',maxCutBackFEM
+   write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
+   write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
+   write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
+   write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
+   write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
+   write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
+   write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
+   write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
+   write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
+   write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
 #endif
-#ifdef FEM
- endif
-#endif  
+ endif mainProcess3
+ 
 
 !--------------------------------------------------------------------------------------------------
 ! sanity checks
