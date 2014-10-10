@@ -17,7 +17,9 @@ module constitutive
    constitutive_damage_maxSizePostResults, &
    constitutive_damage_maxSizeDotState, &
    constitutive_thermal_maxSizePostResults, &
-   constitutive_thermal_maxSizeDotState
+   constitutive_thermal_maxSizeDotState, &
+   constitutive_vacancy_maxSizePostResults, &
+   constitutive_vacancy_maxSizeDotState
 
  public :: & 
    constitutive_init, &
@@ -33,6 +35,9 @@ module constitutive
    constitutive_getAdiabaticTemperature, &
    constitutive_putAdiabaticTemperature, &
    constitutive_getTemperature, &
+   constitutive_getLocalVacancyConcentration, &
+   constitutive_putLocalVacancyConcentration, &
+   constitutive_getVacancyConcentration, &
    constitutive_postResults
  
  private :: &
@@ -89,6 +94,8 @@ subroutine constitutive_init
    phase_damageInstance, &
    phase_thermal, &
    phase_thermalInstance, &
+   phase_vacancy, &
+   phase_vacancyInstance, &
    phase_Noutput, &
    homogenization_Ngrains, &
    homogenization_maxNgrains, &
@@ -114,15 +121,20 @@ subroutine constitutive_init
    LOCAL_DAMAGE_gurson_ID, &
    LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
+   LOCAL_VACANCY_constant_ID, &
+   LOCAL_VACANCY_generation_ID, &
    LOCAL_DAMAGE_NONE_label, &
    LOCAL_DAMAGE_brittle_label, &
    LOCAL_DAMAGE_ductile_label, &
    LOCAL_DAMAGE_gurson_label, &
    LOCAL_THERMAL_isothermal_label, &
    LOCAL_THERMAL_adiabatic_label, &
+   LOCAL_VACANCY_constant_label, &
+   LOCAL_VACANCY_generation_label, &
    plasticState, &
    damageState, &
    thermalState, &
+   vacancyState, &
    mappingConstitutive
  
 
@@ -139,6 +151,9 @@ subroutine constitutive_init
  use damage_gurson
  use thermal_isothermal
  use thermal_adiabatic
+ use vacancy_constant
+ use vacancy_generation
+
  implicit none
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
@@ -150,7 +165,7 @@ subroutine constitutive_init
  integer(pInt), dimension(:)  , pointer :: thisNoutput
  character(len=64), dimension(:,:), pointer :: thisOutput
  character(len=32) :: outputName                                                                    !< name of output, intermediate fix until HDF5 output is ready
- logical :: knownPlasticity, knownDamage, knownThermal, nonlocalConstitutionPresent
+ logical :: knownPlasticity, knownDamage, knownThermal, knownVacancy, nonlocalConstitutionPresent
  nonlocalConstitutionPresent = .false.
  
 !--------------------------------------------------------------------------------------------------
@@ -173,18 +188,26 @@ subroutine constitutive_init
 ! parse damage from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_damage == LOCAL_DAMAGE_none_ID))       call damage_none_init(FILEUNIT)
- if (any(phase_damage == LOCAL_DAMAGE_brittle_ID))    call damage_brittle_init(FILEUNIT)
- if (any(phase_damage == LOCAL_DAMAGE_ductile_ID))    call damage_ductile_init(FILEUNIT)
- if (any(phase_damage == LOCAL_DAMAGE_gurson_ID))     call damage_gurson_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_none_ID))            call damage_none_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_brittle_ID))         call damage_brittle_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_ductile_ID))         call damage_ductile_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_gurson_ID))          call damage_gurson_init(FILEUNIT)
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
 ! parse thermal from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_thermal == LOCAL_THERMAL_isothermal_ID)) call thermal_isothermal_init(FILEUNIT)
- if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))  call thermal_adiabatic_init(FILEUNIT)
+ if (any(phase_thermal == LOCAL_THERMAL_isothermal_ID))    call thermal_isothermal_init(FILEUNIT)
+ if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))     call thermal_adiabatic_init(FILEUNIT)
+ close(FILEUNIT)
+
+!--------------------------------------------------------------------------------------------------
+! parse vacancy model from config file
+ if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
+   call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
+ if (any(phase_vacancy == LOCAL_VACANCY_constant_ID))      call vacancy_constant_init(FILEUNIT)
+ if (any(phase_vacancy == LOCAL_VACANCY_generation_ID))    call vacancy_generation_init(FILEUNIT)
  close(FILEUNIT)
 
  mainProcess: if (worldrank == 0) then 
@@ -286,7 +309,7 @@ subroutine constitutive_init
    instance = phase_thermalInstance(phase)                                                              ! which instance is present phase
    knownThermal = .true.
    select case(phase_thermal(phase))                                                                 ! split per constititution
-     case (LOCAL_THERMAL_ISOTHERMAL_ID)
+     case (LOCAL_THERMAL_isothermal_ID)
        outputName = LOCAL_THERMAL_ISOTHERMAL_label
        thisNoutput => null()
        thisOutput => null()
@@ -307,6 +330,30 @@ subroutine constitutive_init
        enddo
      endif
    endif
+   instance = phase_vacancyInstance(phase)                                                              ! which instance is present phase
+   knownVacancy = .true.
+   select case(phase_vacancy(phase))                                                                 ! split per constititution
+     case (LOCAL_VACANCY_constant_ID)
+       outputName = LOCAL_VACANCY_constant_label
+       thisNoutput => null()
+       thisOutput => null()
+       thisSize   => null()
+     case (LOCAL_VACANCY_generation_ID)
+       outputName = LOCAL_VACANCY_generation_label
+       thisNoutput => vacancy_generation_Noutput
+       thisOutput => vacancy_generation_output
+       thisSize   => vacancy_generation_sizePostResult
+     case default
+       knownVacancy = .false.
+   end select   
+   if (knownVacancy) then
+     write(FILEUNIT,'(a)') '(vacancy)'//char(9)//trim(outputName)
+     if (phase_vacancy(phase) /= LOCAL_VACANCY_generation_ID) then
+       do e = 1_pInt,thisNoutput(instance)
+         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+       enddo
+     endif
+   endif
 #endif
  enddo
  close(FILEUNIT)
@@ -317,6 +364,8 @@ subroutine constitutive_init
  constitutive_damage_maxSizeDotState = 0_pInt
  constitutive_thermal_maxSizePostResults = 0_pInt
  constitutive_thermal_maxSizeDotState = 0_pInt
+ constitutive_vacancy_maxSizePostResults = 0_pInt
+ constitutive_vacancy_maxSizeDotState = 0_pInt
 
  PhaseLoop2:do phase = 1_pInt,material_Nphase
    plasticState(phase)%partionedState0 = plasticState(phase)%State0
@@ -331,6 +380,10 @@ subroutine constitutive_init
    thermalState(phase)%State = thermalState(phase)%State0
    constitutive_thermal_maxSizeDotState = max(constitutive_thermal_maxSizeDotState, thermalState(phase)%sizeDotState)
    constitutive_thermal_maxSizePostResults = max(constitutive_thermal_maxSizePostResults, thermalState(phase)%sizePostResults)
+   vacancyState(phase)%partionedState0 = vacancyState(phase)%State0
+   vacancyState(phase)%State = vacancyState(phase)%State0
+   constitutive_vacancy_maxSizeDotState = max(constitutive_vacancy_maxSizeDotState, vacancyState(phase)%sizeDotState)
+   constitutive_vacancy_maxSizePostResults = max(constitutive_vacancy_maxSizePostResults, vacancyState(phase)%sizePostResults)
  enddo PhaseLoop2
 
 #ifdef HDF
@@ -673,6 +726,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    phase_plasticity, &
    phase_damage, &
    phase_thermal, &
+   phase_vacancy, &
    material_phase, &
    homogenization_maxNgrains, &
    PLASTICITY_none_ID, &
@@ -685,7 +739,8 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
-   LOCAL_THERMAL_adiabatic_ID
+   LOCAL_THERMAL_adiabatic_ID, &
+   LOCAL_VACANCY_generation_ID
  use constitutive_j2, only:  &
    constitutive_j2_dotState
  use constitutive_phenopowerlaw, only: &
@@ -706,6 +761,8 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    damage_gurson_dotState
  use thermal_adiabatic, only: &
    thermal_adiabatic_dotState
+ use vacancy_generation, only: &
+   vacancy_generation_dotState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -759,6 +816,11 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_adiabatic_ID)
      call thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
+ end select
+
+ select case (phase_vacancy(material_phase(ipc,ip,el)))
+   case (LOCAL_VACANCY_generation_ID)
+     call vacancy_generation_dotState(Tstar_v, Lp, ipc, ip, el)
  end select
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
@@ -1049,6 +1111,104 @@ function constitutive_getTemperature(ipc, ip, el)
 end function constitutive_getTemperature
 
 !--------------------------------------------------------------------------------------------------
+!> @brief returns local vacancy concentration
+!--------------------------------------------------------------------------------------------------
+function constitutive_getLocalVacancyConcentration(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use material, only: &
+   material_phase, &
+   LOCAL_VACANCY_constant_ID, &
+   LOCAL_VACANCY_generation_ID, &
+   phase_vacancy
+ use vacancy_generation, only: &
+   vacancy_generation_getConcentration
+ use lattice, only: &
+   lattice_equilibriumVacancyConcentration
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: constitutive_getLocalVacancyConcentration
+ 
+ select case (phase_vacancy(material_phase(ipc,ip,el)))
+   case (LOCAL_VACANCY_constant_ID)
+     constitutive_getLocalVacancyConcentration = &
+       lattice_equilibriumVacancyConcentration(material_phase(ipc,ip,el))
+     
+   case (LOCAL_VACANCY_generation_ID)
+     constitutive_getLocalVacancyConcentration = vacancy_generation_getConcentration(ipc, ip, el)
+ end select
+
+end function constitutive_getLocalVacancyConcentration
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Puts local vacancy concentration 
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_putLocalVacancyConcentration(ipc, ip, el, localVacancyConcentration)
+ use prec, only: &
+   pReal
+ use material, only: &
+   material_phase, &
+   LOCAL_VACANCY_generation_ID, &
+   phase_vacancy
+ use vacancy_generation, only: &
+   vacancy_generation_putConcentration
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in) :: &
+   localVacancyConcentration
+ 
+ select case (phase_vacancy(material_phase(ipc,ip,el)))
+   case (LOCAL_VACANCY_generation_ID)
+     call vacancy_generation_putConcentration(ipc, ip, el, localVacancyConcentration)
+
+ end select
+
+end subroutine constitutive_putLocalVacancyConcentration
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns nonlocal vacancy concentration
+!--------------------------------------------------------------------------------------------------
+function constitutive_getVacancyConcentration(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use material, only: &
+   mappingHomogenization, &
+   material_phase, &
+   fieldVacancy, &
+   field_vacancy_type, &
+   FIELD_VACANCY_local_ID, &
+   FIELD_VACANCY_nonlocal_ID, &
+   material_homog
+ use lattice, only: &
+   lattice_equilibriumVacancyConcentration
+ implicit none
+
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: constitutive_getVacancyConcentration
+ 
+   select case(field_vacancy_type(material_homog(ip,el)))                                                   
+     case (FIELD_VACANCY_local_ID)
+      constitutive_getVacancyConcentration = constitutive_getLocalVacancyConcentration(ipc, ip, el)      
+      
+     case (FIELD_VACANCY_nonlocal_ID)
+      constitutive_getVacancyConcentration = fieldVacancy(material_homog(ip,el))% &
+        field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+   end select
+
+end function constitutive_getVacancyConcentration
+
+!--------------------------------------------------------------------------------------------------
 !> @brief returns accumulated slip on each system defined
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
@@ -1128,9 +1288,11 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    plasticState, &
    damageState, &
    thermalState, &
+   vacancyState, &
    phase_plasticity, &
    phase_damage, &
    phase_thermal, &
+   phase_vacancy, &
    material_phase, &
    homogenization_maxNgrains, &
    PLASTICITY_NONE_ID, &
@@ -1143,7 +1305,8 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    LOCAL_DAMAGE_BRITTLE_ID, &
    LOCAL_DAMAGE_DUCTILE_ID, &
    LOCAL_DAMAGE_gurson_ID, &
-   LOCAL_THERMAL_ADIABATIC_ID
+   LOCAL_THERMAL_ADIABATIC_ID, &
+   LOCAL_VACANCY_generation_ID
  use constitutive_j2, only: &
 #ifdef HDF
    constitutive_j2_postResults2,&
@@ -1168,6 +1331,8 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    damage_gurson_postResults
  use thermal_adiabatic, only: &
    thermal_adiabatic_postResults
+ use vacancy_generation, only: &
+   vacancy_generation_postResults
 #endif
 
  implicit none
@@ -1178,7 +1343,8 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
 #ifdef multiphysicsOut
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                         damageState( material_phase(ipc,ip,el))%sizePostResults + &
-                        thermalState(material_phase(ipc,ip,el))%sizePostResults) :: & 
+                        thermalState(material_phase(ipc,ip,el))%sizePostResults + &
+                        vacancyState(material_phase(ipc,ip,el))%sizePostResults) :: & 
    constitutive_postResults
 #else
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
@@ -1234,6 +1400,13 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_ADIABATIC_ID)
      constitutive_postResults(startPos:endPos) = thermal_adiabatic_postResults(ipc, ip, el)
+ end select
+
+ startPos = endPos + 1_pInt
+ endPos = endPos + vacancyState(material_phase(ipc,ip,el))%sizePostResults
+ select case (phase_vacancy(material_phase(ipc,ip,el)))
+   case (LOCAL_VACANCY_generation_ID)
+     constitutive_postResults(startPos:endPos) = vacancy_generation_postResults(ipc, ip, el)
  end select
 #endif
   

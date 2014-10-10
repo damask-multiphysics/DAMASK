@@ -45,7 +45,8 @@ module homogenization
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  temperature_ID, &
-                 damage_ID
+                 damage_ID, &
+                 vacancy_concentration_ID
  end enum
  integer(pInt),               dimension(:),   allocatable, private, protected :: &
    field_sizePostResults
@@ -66,11 +67,15 @@ module homogenization
    field_putFieldDamage, &
    field_getLocalTemperature, &
    field_putFieldTemperature, &
+   field_getLocalVacancyConcentration, &
+   field_putFieldVacancyConcentration, &
    field_getDamageMobility, &
    field_getDamageDiffusion33, &
    field_getThermalConductivity33, &
    field_getMassDensity, &
    field_getSpecificHeat, &
+   field_getVacancyMobility, &
+   field_getVacancyDiffusion33, &
    materialpoint_postResults, &
    field_postResults
  private :: &
@@ -112,7 +117,8 @@ subroutine homogenization_init()
  use constitutive, only: &
    constitutive_maxSizePostResults, &
    constitutive_damage_maxSizePostResults, &
-   constitutive_thermal_maxSizePostResults
+   constitutive_thermal_maxSizePostResults, &
+   constitutive_vacancy_maxSizePostResults
  use crystallite, only: &
    crystallite_maxSizePostResults
  use material
@@ -200,6 +206,12 @@ subroutine homogenization_init()
            case('damage')
              field_Noutput(section) = field_Noutput(section) + 1_pInt
              field_outputID(field_Noutput(section),section) = damage_ID
+             field_sizePostResult(field_Noutput(section),section) = 1_pInt
+             field_sizePostResults(section) = field_sizePostResults(section) + 1_pInt
+             field_output(field_Noutput(section),section) = IO_lc(IO_stringValue(line,positions,2_pInt))
+           case('vacancy_concentration')
+             field_Noutput(section) = field_Noutput(section) + 1_pInt
+             field_outputID(field_Noutput(section),section) = vacancy_concentration_ID
              field_sizePostResult(field_Noutput(section),section) = 1_pInt
              field_sizePostResults(section) = field_sizePostResults(section) + 1_pInt
              field_output(field_Noutput(section),section) = IO_lc(IO_stringValue(line,positions,2_pInt))
@@ -302,6 +314,7 @@ subroutine homogenization_init()
 #ifdef multiphysicsOut
                                                             + constitutive_damage_maxSizePostResults &     
                                                             + constitutive_thermal_maxSizePostResults &    
+                                                            + constitutive_vacancy_maxSizePostResults &    
 #endif
                                                         + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
@@ -982,7 +995,6 @@ function field_getThermalConductivity33(ip,el)
    material_phase, &
    material_homog, &
    field_thermal_type, &
-   FIELD_THERMAL_local_ID, &
    FIELD_THERMAL_nonlocal_ID, &
    homogenization_Ngrains
  use crystallite, only: &
@@ -1000,10 +1012,6 @@ function field_getThermalConductivity33(ip,el)
  field_getThermalConductivity33 =0.0_pReal
                                                 
  select case(field_thermal_type(material_homog(ip,el)))                                                   
-   
-   case (FIELD_THERMAL_local_ID)
-    field_getThermalConductivity33 = 0.0_pReal
-      
    case (FIELD_THERMAL_nonlocal_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
        field_getThermalConductivity33 = field_getThermalConductivity33 + &
@@ -1027,7 +1035,6 @@ function field_getDamageDiffusion33(ip,el)
    material_phase, &
    material_homog, &
    field_damage_type, &
-   FIELD_DAMAGE_LOCAL_ID, &
    FIELD_DAMAGE_NONLOCAL_ID, &
    homogenization_Ngrains
  use crystallite, only: &
@@ -1044,10 +1051,6 @@ function field_getDamageDiffusion33(ip,el)
  field_getDamageDiffusion33 =0.0_pReal
                                                 
  select case(field_damage_type(material_homog(ip,el)))                                                   
-   
-   case (FIELD_DAMAGE_LOCAL_ID)
-     field_getDamageDiffusion33 = 0.0_pReal
-      
    case (FIELD_DAMAGE_NONLOCAL_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
       field_getDamageDiffusion33 = field_getDamageDiffusion33 + &
@@ -1059,6 +1062,7 @@ function field_getDamageDiffusion33(ip,el)
  field_getDamageDiffusion33 = field_getDamageDiffusion33 /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getDamageDiffusion33
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns average mobility for damage field at each integration point 
 !--------------------------------------------------------------------------------------------------
@@ -1071,7 +1075,6 @@ real(pReal) function field_getDamageMobility(ip,el)
    material_phase, &
    material_homog, &
    field_damage_type, &
-   FIELD_DAMAGE_LOCAL_ID, &
    FIELD_DAMAGE_NONLOCAL_ID, &
    homogenization_Ngrains
 
@@ -1081,15 +1084,10 @@ real(pReal) function field_getDamageMobility(ip,el)
    el                                                                                               !< element number
  integer(pInt) :: &
    ipc
-   
  
  field_getDamageMobility =0.0_pReal
                                                 
  select case(field_damage_type(material_homog(ip,el)))                                                   
-   
-   case (FIELD_DAMAGE_LOCAL_ID)
-     field_getDamageMobility = 0.0_pReal
-      
    case (FIELD_DAMAGE_NONLOCAL_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
        field_getDamageMobility = field_getDamageMobility + lattice_DamageMobility(material_phase(ipc,ip,el))
@@ -1100,6 +1098,85 @@ real(pReal) function field_getDamageMobility(ip,el)
  field_getDamageMobility = field_getDamageMobility /homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getDamageMobility
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns average diffusion tensor for vacancy field at each integration point 
+!--------------------------------------------------------------------------------------------------
+function field_getVacancyDiffusion33(ip,el)
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_vacancyDiffusion33
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   field_vacancy_type, &
+   FIELD_VACANCY_NONLOCAL_ID, &
+   homogenization_Ngrains
+ use crystallite, only: &
+   crystallite_push33ToRef
+
+ implicit none
+ real(pReal), dimension(3,3) :: field_getVacancyDiffusion33
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   ipc
+
+ field_getVacancyDiffusion33 = 0.0_pReal
+                                                
+ select case(field_vacancy_type(material_homog(ip,el)))                                                   
+   case (FIELD_VACANCY_NONLOCAL_ID)
+     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+      field_getVacancyDiffusion33 = field_getVacancyDiffusion33 + &
+        crystallite_push33ToRef(ipc,ip,el,lattice_vacancyDiffusion33(:,:,material_phase(ipc,ip,el)))
+     enddo
+      
+ end select   
+
+ field_getVacancyDiffusion33 = field_getVacancyDiffusion33/ &
+                               homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getVacancyDiffusion33
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns average mobility for vacancy field at each integration point 
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getVacancyMobility(ip,el)
+ use mesh, only: &
+   mesh_element
+ use lattice, only: &
+   lattice_vacancyMobility
+ use material, only: &
+   material_phase, &
+   material_homog, &
+   field_vacancy_type, &
+   FIELD_VACANCY_NONLOCAL_ID, &
+   homogenization_Ngrains
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   ipc
+   
+ 
+ field_getVacancyMobility =0.0_pReal
+                                                
+ select case(field_vacancy_type(material_homog(ip,el)))                                                   
+   case (FIELD_VACANCY_NONLOCAL_ID)
+     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getVacancyMobility = field_getVacancyMobility + lattice_VacancyMobility(material_phase(ipc,ip,el))
+     enddo
+      
+ end select   
+
+ field_getVacancyMobility = field_getVacancyMobility/ &
+                            homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getVacancyMobility
+
 !--------------------------------------------------------------------------------------------------
 !> @brief ToDo
 !--------------------------------------------------------------------------------------------------
@@ -1213,6 +1290,62 @@ subroutine field_putFieldTemperature(ip,el,fieldThermalValue)
 end subroutine field_putFieldTemperature
 
 !--------------------------------------------------------------------------------------------------
+!> @brief ToDo
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getLocalVacancyConcentration(ip,el)
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   homogenization_Ngrains
+ use constitutive, only: &
+   constitutive_getLocalVacancyConcentration
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   ipc
+
+ 
+ field_getLocalVacancyConcentration = 0.0_pReal
+ do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   field_getLocalVacancyConcentration = field_getLocalVacancyConcentration + &
+                               constitutive_getLocalVacancyConcentration(ipc,ip,el)                     ! array/function/subroutine which is faster
+ enddo
+ field_getLocalVacancyConcentration = field_getLocalVacancyConcentration/ &
+                                      homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getLocalVacancyConcentration
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Sets the diffused vacancy concentration in field state
+!--------------------------------------------------------------------------------------------------
+subroutine field_putFieldVacancyConcentration(ip,el,fieldVacancyConcentration) 
+ use material, only: &
+   material_homog, &
+   fieldVacancy, &
+   mappingHomogenization, &
+   field_vacancy_type, &
+   FIELD_VACANCY_nonlocal_ID
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el
+ real(pReal), intent(in) :: &
+   fieldVacancyConcentration
+
+ select case(field_vacancy_type(material_homog(ip,el)))                                                   
+   case (FIELD_VACANCY_nonlocal_ID)
+     fieldVacancy(material_homog(ip,el))% &
+        field(1,mappingHomogenization(1,ip,el)) = fieldVacancyConcentration 
+
+ end select 
+
+end subroutine field_putFieldVacancyConcentration
+
+!--------------------------------------------------------------------------------------------------
 !> @brief return array of homogenization results for post file inclusion. call only, 
 !> if homogenization_sizePostResults(i,e) > 0 !!
 !--------------------------------------------------------------------------------------------------
@@ -1266,7 +1399,8 @@ function field_postResults(ip,el)
  use material, only: &
    mappingHomogenization, &
    fieldThermal, &
-   fieldDamage
+   fieldDamage, &
+   fieldVacancy
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -1288,6 +1422,9 @@ function field_postResults(ip,el)
        c = c + 1_pInt
      case (damage_ID)
        field_postResults(c+1_pInt) = fieldDamage(homog)%field(1,pos)
+       c = c + 1_pInt
+     case (vacancy_concentration_ID)
+       field_postResults(c+1_pInt) = fieldVacancy(homog)%field(1,pos)
        c = c + 1_pInt
    end select
  enddo

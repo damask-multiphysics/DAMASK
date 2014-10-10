@@ -331,6 +331,9 @@ DAMAGE_FILES = \
 THERMAL_FILES = \
    thermal_isothermal.o thermal_adiabatic.o
 
+VACANCY_FILES = \
+   vacancy_constant.o vacancy_generation.o
+
 CONSTITUTIVE_FILES = \
    constitutive_dislotwin.o constitutive_dislokmc.o constitutive_j2.o constitutive_phenopowerlaw.o \
    constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o
@@ -350,7 +353,7 @@ DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
 SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 $(DAMAGE_FILES) $(THERMAL_FILES) $(CONSTITUTIVE_FILES) \
+                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(CONSTITUTIVE_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
                  DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o \
                  DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
@@ -393,7 +396,7 @@ DAMASK_FEM.exe: INCLUDE_DIRS    += -I./
 
 FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 $(DAMAGE_FILES) $(THERMAL_FILES) $(CONSTITUTIVE_FILES) \
+                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(CONSTITUTIVE_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
                  FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o
 
@@ -451,7 +454,8 @@ constitutive.o:                constitutive.f90 \
                                constitutive_j2.o \
                                constitutive_none.o \
                                $(DAMAGE_FILES) \
-                               $(THERMAL_FILES)
+                               $(THERMAL_FILES) \
+                               $(VACANCY_FILES)
 
 constitutive_nonlocal.o:       constitutive_nonlocal.f90 \
                                lattice.o
@@ -490,6 +494,12 @@ thermal_isothermal.o:          thermal_isothermal.f90 \
                                lattice.o
 
 thermal_adiabatic.o:           thermal_adiabatic.f90 \
+                               lattice.o
+
+vacancy_constant.o:            vacancy_constant.f90 \
+                               lattice.o
+
+vacancy_generation.o:          vacancy_generation.f90 \
                                lattice.o
 
 lattice.o:                     lattice.f90 \

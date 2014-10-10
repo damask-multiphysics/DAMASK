@@ -33,10 +33,14 @@ module material
    LOCAL_DAMAGE_gurson_label      = 'gurson', &
    LOCAL_THERMAL_isothermal_label = 'isothermal', &
    LOCAL_THERMAL_adiabatic_label  = 'adiabatic', &
+   LOCAL_VACANCY_constant_label   = 'constant', &
+   LOCAL_VACANCY_generation_label = 'generation', &
    FIELD_DAMAGE_local_label       = 'local', &
    FIELD_DAMAGE_nonlocal_label    = 'nonlocal', &
    FIELD_THERMAL_local_label      = 'local', &
    FIELD_THERMAL_nonlocal_label   = 'nonlocal', &
+   FIELD_VACANCY_local_label      = 'local', &
+   FIELD_VACANCY_nonlocal_label   = 'nonlocal', &
    HOMOGENIZATION_none_label      = 'none', &
    HOMOGENIZATION_isostrain_label = 'isostrain', &
    HOMOGENIZATION_rgc_label       = 'rgc' 
@@ -57,18 +61,21 @@ module material
                  PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
  end enum
-
  enum, bind(c)
    enumerator :: LOCAL_DAMAGE_none_ID, &
                  LOCAL_DAMAGE_brittle_ID, &
                  LOCAL_DAMAGE_ductile_ID, &
                  LOCAL_DAMAGE_gurson_ID
  end enum
-
  enum, bind(c)
    enumerator :: LOCAL_THERMAL_isothermal_ID, &
                  LOCAL_THERMAL_adiabatic_ID
  end enum
+ enum, bind(c)
+   enumerator :: LOCAL_VACANCY_constant_ID, &
+                 LOCAL_VACANCY_generation_ID
+ end enum
+
  enum, bind(c)
    enumerator :: FIELD_DAMAGE_local_ID ,&
                  FIELD_DAMAGE_nonlocal_ID
@@ -77,6 +84,10 @@ module material
  enum, bind(c)
    enumerator :: FIELD_THERMAL_local_ID, &
                  FIELD_THERMAL_nonlocal_ID
+ end enum
+ enum, bind(c)
+   enumerator :: FIELD_VACANCY_local_ID, &
+                 FIELD_VACANCY_nonlocal_ID
  end enum
  enum, bind(c)
    enumerator :: HOMOGENIZATION_undefined_ID, &
@@ -94,18 +105,22 @@ module material
    MATERIAL_partCrystallite    = 'crystallite', &                                                   !< keyword for crystallite part
    MATERIAL_partPhase          = 'phase'                                                            !< keyword for phase part
 
- integer(kind(ELASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
+ integer(kind(ELASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
    phase_elasticity                                                                                 !< elasticity of each phase  
- integer(kind(PLASTICITY_undefined_ID)), dimension(:),       allocatable, public, protected :: &
+ integer(kind(PLASTICITY_undefined_ID)),     dimension(:),   allocatable, public, protected :: &
    phase_plasticity                                                                                 !< plasticity of each phase  
- integer(kind(LOCAL_DAMAGE_none_ID)), dimension(:),          allocatable, public, protected :: &
+ integer(kind(LOCAL_DAMAGE_none_ID)),        dimension(:),   allocatable, public, protected :: &
    phase_damage                                                                                     !< local damage of each phase  
  integer(kind(LOCAL_THERMAL_isothermal_ID)), dimension(:),   allocatable, public, protected :: &
    phase_thermal                                                                                    !< local thermal of each phase  
- integer(kind(FIELD_DAMAGE_local_ID)), dimension(:),         allocatable, public, protected :: &
-   field_damage_type                                                                                    !< field damage of each phase  
- integer(kind(FIELD_THERMAL_local_ID)), dimension(:),    allocatable, public, protected :: &
-   field_thermal_type                                                                                  !< field thermal of each phase  
+ integer(kind(LOCAL_VACANCY_constant_ID)),   dimension(:),   allocatable, public, protected :: &
+   phase_vacancy                                                                                    !< local vacancy model of each phase  
+ integer(kind(FIELD_DAMAGE_local_ID)),       dimension(:),   allocatable, public, protected :: &
+   field_damage_type                                                                                !< field damage of each phase  
+ integer(kind(FIELD_THERMAL_local_ID)),      dimension(:),   allocatable, public, protected :: &
+   field_thermal_type                                                                               !< field thermal of each phase  
+ integer(kind(FIELD_VACANCY_local_ID)),      dimension(:),   allocatable, public, protected :: &
+   field_vacancy_type                                                                               !< field vacancy of each phase  
 
  integer(kind(HOMOGENIZATION_undefined_ID)), dimension(:),   allocatable, public, protected :: &
    homogenization_type                                                                              !< type of each homogenization
@@ -130,6 +145,7 @@ module material
    phase_plasticityInstance, &                                                                      !< instance of particular plasticity of each phase
    phase_damageInstance, &                                                                          !< instance of particular damage of each phase
    phase_thermalInstance, &                                                                         !< instance of particular thermal of each phase
+   phase_vacancyInstance, &                                                                         !< instance of particular vacancy model of each phase
    crystallite_Noutput, &                                                                           !< number of '(output)' items per crystallite setting
    homogenization_typeInstance, &                                                                   !< instance of particular type of each homogenization
    microstructure_crystallite                                                                       !< crystallite setting ID of each microstructure
@@ -142,12 +158,15 @@ module material
    plasticState, &
    damageState, &
    thermalState,&
+   vacancyState,&
    homogState
 
  type(tFieldData), allocatable, dimension(:), public :: &
    fieldDamage
  type(tFieldData), allocatable, dimension(:), public :: &
    fieldThermal
+ type(tFieldData), allocatable, dimension(:), public :: &
+   fieldVacancy
 
 
  integer(pInt), dimension(:,:,:), allocatable, public, protected :: &
@@ -221,10 +240,14 @@ module material
    LOCAL_DAMAGE_gurson_ID, &
    LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
+   LOCAL_VACANCY_constant_ID, &
+   LOCAL_VACANCY_generation_ID, &
    FIELD_DAMAGE_local_ID, &
    FIELD_DAMAGE_nonlocal_ID, &
    FIELD_THERMAL_local_ID, &
    FIELD_THERMAL_nonlocal_ID, &
+   FIELD_VACANCY_local_ID, &
+   FIELD_VACANCY_nonlocal_ID, &
    HOMOGENIZATION_none_ID, &
    HOMOGENIZATION_isostrain_ID, &
 #ifdef HDF
@@ -309,9 +332,11 @@ subroutine material_init
  allocate(plasticState(material_Nphase))
  allocate(damageState (material_Nphase))
  allocate(thermalState(material_Nphase))
+ allocate(vacancyState(material_Nphase))
  allocate(homogState  (material_Nhomogenization))
  allocate(fieldDamage (material_Nhomogenization))
  allocate(fieldThermal(material_Nhomogenization))
+ allocate(fieldVacancy(material_Nhomogenization))
  do m = 1_pInt,material_Nmicrostructure
    if(microstructure_crystallite(m) < 1_pInt .or. &
       microstructure_crystallite(m) > material_Ncrystallite) & 
@@ -406,6 +431,24 @@ subroutine material_init
    end select   
  enddo
 
+ do homog = 1,material_Nhomogenization
+   NofMyField=count(material_homog==homog)
+   select case(field_vacancy_type(homog))                                                   
+     case (FIELD_VACANCY_local_ID)
+      fieldVacancy(homog)%sizeField = 0_pInt
+      fieldVacancy(homog)%sizePostResults = 0_pInt
+      allocate(fieldVacancy(homog)%field(fieldVacancy(homog)%sizeField,NofMyField), &
+                                              source = 0.0_pReal)               
+      
+     case (FIELD_VACANCY_nonlocal_ID)
+      fieldVacancy(homog)%sizeField = 1_pInt
+      fieldVacancy(homog)%sizePostResults = 1_pInt
+      allocate(fieldVacancy(homog)%field(fieldVacancy(homog)%sizeField,NofMyField), &
+                                              source = 0.0_pReal)               
+
+   end select   
+ enddo
+
 end subroutine material_init
 
 
@@ -450,6 +493,7 @@ subroutine material_parseHomogenization(fileUnit,myPart)
  allocate(homogenization_type(Nsections),           source=HOMOGENIZATION_undefined_ID)
  allocate(FIELD_DAMAGE_type(Nsections),             source=FIELD_DAMAGE_local_ID)
  allocate(FIELD_THERMAL_type(Nsections),            source=FIELD_THERMAL_local_ID)
+ allocate(FIELD_VACANCY_type(Nsections),            source=FIELD_VACANCY_local_ID)
  allocate(homogenization_typeInstance(Nsections),   source=0_pInt)
  allocate(homogenization_Ngrains(Nsections),        source=0_pInt)
  allocate(homogenization_Noutput(Nsections),        source=0_pInt)
@@ -515,6 +559,17 @@ subroutine material_parseHomogenization(fileUnit,myPart)
            case default
              call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
+
+        case ('field_vacancy')
+         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case(FIELD_VACANCY_local_label)
+             FIELD_VACANCY_type(section) = FIELD_VACANCY_local_ID       
+           case(FIELD_VACANCY_nonlocal_label)
+             FIELD_VACANCY_type(section) = FIELD_VACANCY_nonlocal_ID
+           case default
+             call IO_error(500_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+         end select
+
        case ('nconstituents','ngrains')
          homogenization_Ngrains(section) = IO_intValue(line,positions,2_pInt)
      end select
@@ -726,6 +781,8 @@ subroutine material_parsePhase(fileUnit,myPart)
  allocate(phase_damageInstance(Nsections),       source=0_pInt)
  allocate(phase_thermal(Nsections) ,             source=LOCAL_THERMAL_isothermal_ID)
  allocate(phase_thermalInstance(Nsections),      source=0_pInt)
+ allocate(phase_vacancy(Nsections) ,             source=LOCAL_VACANCY_constant_ID)
+ allocate(phase_vacancyInstance(Nsections),      source=0_pInt)
  allocate(phase_Noutput(Nsections),              source=0_pInt)
  allocate(phase_localPlasticity(Nsections),      source=.false.)
 
@@ -807,7 +864,16 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_thermalInstance(section) = count(phase_thermal(1:section) == phase_thermal(section))            ! count instances
+       case ('vacancy')
+         select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
+           case (LOCAL_VACANCY_CONSTANT_label)
+             phase_vacancy(section) = LOCAL_VACANCY_constant_ID
+           case (LOCAL_VACANCY_GENERATION_label)
+             phase_vacancy(section) = LOCAL_VACANCY_generation_ID
+           case default
+             call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
+         end select
+         phase_vacancyInstance(section) = count(phase_vacancy(1:section) == phase_vacancy(section))            ! count instances
      end select
    endif
  enddo

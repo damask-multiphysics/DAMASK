@@ -117,6 +117,8 @@ end module DAMASK_interface
 #include "damage_gurson.f90"
 #include "thermal_isothermal.f90"
 #include "thermal_adiabatic.f90"
+#include "vacancy_constant.f90"
+#include "vacancy_generation.f90"
 #include "constitutive_none.f90"
 #include "constitutive_j2.f90"
 #include "constitutive_phenopowerlaw.f90"

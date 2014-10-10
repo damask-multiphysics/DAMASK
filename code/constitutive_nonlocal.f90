@@ -3571,7 +3571,6 @@ subroutine constitutive_nonlocal_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, i
    offset, &
    phase, &
    instance, &
-   offset_accshear_slip, &
    s
 
  offset = mappingConstitutive(1,ipc,ip,el)

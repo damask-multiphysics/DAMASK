@@ -747,12 +747,15 @@ module lattice
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
    lattice_thermalConductivity33, &
    lattice_thermalExpansion33, &
-   lattice_damageDiffusion33
+   lattice_damageDiffusion33, &
+   lattice_vacancyDiffusion33
  real(pReal),                              dimension(:),       allocatable, public, protected :: &
    lattice_damageMobility, &
+   lattice_vacancyMobility, &
    lattice_massDensity, &
    lattice_specificHeat, &
-   lattice_referenceTemperature
+   lattice_referenceTemperature, &
+   lattice_equilibriumVacancyConcentration
  enum, bind(c)
    enumerator :: LATTICE_undefined_ID, &
                  LATTICE_iso_ID, &
@@ -1008,11 +1011,14 @@ subroutine lattice_init
  allocate(lattice_C3333(3,3,3,3,Nphases),  source=0.0_pReal)
  allocate(lattice_thermalConductivity33(3,3,Nphases), source=0.0_pReal)
  allocate(lattice_thermalExpansion33   (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_damageDiffusion33   (3,3,Nphases), source=0.0_pReal)
- allocate(lattice_damageMobility      (    Nphases), source=0.0_pReal)
- allocate(lattice_massDensity         (    Nphases), source=0.0_pReal)
- allocate(lattice_specificHeat        (    Nphases), source=0.0_pReal)
- allocate(lattice_referenceTemperature     (Nphases), source=0.0_pReal)
+ allocate(lattice_damageDiffusion33    (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_vacancyDiffusion33   (3,3,Nphases), source=0.0_pReal)
+ allocate(lattice_damageMobility       (    Nphases), source=0.0_pReal)
+ allocate(lattice_vacancyMobility      (    Nphases), source=0.0_pReal)
+ allocate(lattice_massDensity          (    Nphases), source=0.0_pReal)
+ allocate(lattice_specificHeat         (    Nphases), source=0.0_pReal)
+ allocate(lattice_referenceTemperature (    Nphases), source=0.0_pReal)
+ allocate(lattice_equilibriumVacancyConcentration(Nphases), source=0.0_pReal)
 
  allocate(lattice_mu(Nphases),       source=0.0_pReal)
  allocate(lattice_nu(Nphases),       source=0.0_pReal)
@@ -1143,6 +1149,16 @@ subroutine lattice_init
        lattice_DamageDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('damage_mobility')
        lattice_DamageMobility(section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancy_diffusion11')
+       lattice_VacancyDiffusion33(1,1,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancy_diffusion22')
+       lattice_VacancyDiffusion33(2,2,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancy_diffusion33')
+       lattice_VacancyDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
+     case ('vacancy_mobility')
+       lattice_VacancyMobility(section) = IO_floatValue(line,positions,2_pInt)
+     case ('equilibrium_vacancy_concentration')
+       lattice_equilibriumVacancyConcentration(section) = IO_floatValue(line,positions,2_pInt)
      end select
    endif
  enddo
@@ -1232,6 +1248,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
                                                                     lattice_thermalExpansion33(1:3,1:3,myPhase))
  lattice_DamageDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                  lattice_DamageDiffusion33(1:3,1:3,myPhase))
+ lattice_VacancyDiffusion33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
+                                                                 lattice_VacancyDiffusion33(1:3,1:3,myPhase))
  
  select case(lattice_structure(myPhase))
 !--------------------------------------------------------------------------------------------------
