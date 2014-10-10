@@ -30,6 +30,7 @@ module material
    LOCAL_DAMAGE_none_label        = 'none', &
    LOCAL_DAMAGE_brittle_label     = 'brittle', &
    LOCAL_DAMAGE_ductile_label     = 'ductile', &
+   LOCAL_DAMAGE_gurson_label      = 'gurson', &
    LOCAL_THERMAL_isothermal_label = 'isothermal', &
    LOCAL_THERMAL_adiabatic_label  = 'adiabatic', &
    FIELD_DAMAGE_local_label       = 'local', &
@@ -60,7 +61,8 @@ module material
  enum, bind(c)
    enumerator :: LOCAL_DAMAGE_none_ID, &
                  LOCAL_DAMAGE_brittle_ID, &
-                 LOCAL_DAMAGE_ductile_ID
+                 LOCAL_DAMAGE_ductile_ID, &
+                 LOCAL_DAMAGE_gurson_ID
  end enum
 
  enum, bind(c)
@@ -216,6 +218,7 @@ module material
    LOCAL_DAMAGE_none_ID, &
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
+   LOCAL_DAMAGE_gurson_ID, &
    LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
    FIELD_DAMAGE_local_ID, &
@@ -789,12 +792,14 @@ subroutine material_parsePhase(fileUnit,myPart)
          phase_plasticityInstance(section) = count(phase_plasticity(1:section) == phase_plasticity(section))   ! count instances
        case ('damage')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
-           case (LOCAL_DAMAGE_NONE_label)
+           case (LOCAL_DAMAGE_none_label)
              phase_damage(section) = LOCAL_DAMAGE_none_ID
-           case (LOCAL_DAMAGE_BRITTLE_label)
+           case (LOCAL_DAMAGE_brittle_label)
              phase_damage(section) = LOCAL_DAMAGE_BRITTLE_ID
-           case (LOCAL_DAMAGE_DUCTILE_label)
+           case (LOCAL_DAMAGE_ductile_label)
              phase_damage(section) = LOCAL_DAMAGE_DUCTILE_ID
+           case (LOCAL_DAMAGE_gurson_label)
+             phase_damage(section) = LOCAL_DAMAGE_gurson_ID
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select

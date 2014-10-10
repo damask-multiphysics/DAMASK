@@ -9,7 +9,7 @@
 !>           by DAMASK. Interpretating the command line arguments or, in case of called from f2py, 
 !>           the arguments parsed to the init routine to get load case, geometry file, working 
 !>           directory, etc.
-!--------------------------------------------------------------------------------------------------
+!-----------------------------------------------------------`---------------------------------------
 module DAMASK_interface
  use prec, only: &
    pInt
