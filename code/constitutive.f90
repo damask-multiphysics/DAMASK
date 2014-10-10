@@ -180,7 +180,7 @@ subroutine constitutive_init
 ! parse thermal from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_thermal == LOCAL_THERMAL_ISOTHERMAL_ID)) call thermal_isothermal_init(FILEUNIT)
+ if (any(phase_thermal == LOCAL_THERMAL_isothermal_ID)) call thermal_isothermal_init(FILEUNIT)
  if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))  call thermal_adiabatic_init(FILEUNIT)
  close(FILEUNIT)
 
@@ -945,7 +945,7 @@ function constitutive_getAdiabaticTemperature(ipc, ip, el)
  real(pReal) :: constitutive_getAdiabaticTemperature
  
  select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_ISOTHERMAL_ID)
+   case (LOCAL_THERMAL_isothermal_ID)
      constitutive_getAdiabaticTemperature = lattice_referenceTemperature(material_phase(ipc,ip,el))
      
    case (LOCAL_THERMAL_adiabatic_ID)

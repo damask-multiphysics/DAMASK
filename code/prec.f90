@@ -97,7 +97,7 @@ subroutine prec_init
  
  implicit none
 #ifdef FEM
-#include <finclude/petsc.h90>
+#include <finclude/petscsys.h>
  PetscInt :: worldrank
  PetscErrorCode :: ierr
 #endif
