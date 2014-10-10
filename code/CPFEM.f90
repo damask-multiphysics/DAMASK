@@ -99,7 +99,7 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call lattice_init
      call material_init
      call constitutive_init
-     call crystallite_init(temperature)                                                            ! (have to) use temperature of first ip for whole model
+     call crystallite_init
      call homogenization_init
      call CPFEM_init
 #if defined(Marc4DAMASK) || defined(Abaqus)
@@ -324,8 +324,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_dPdF0, &
    crystallite_dPdF, &
    crystallite_Tstar0_v, &
-   crystallite_Tstar_v, &
-   crystallite_temperature
+   crystallite_Tstar_v
  use homogenization, only: &  
    materialpoint_F, &
    materialpoint_F0, &
@@ -492,7 +491,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  !*   If no parallel execution is required, there is no need to collect FEM input
 
  if (.not. parallelExecution) then
-   crystallite_temperature(ip,elCP) = temperature
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
@@ -503,7 +501,6 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
 #endif
-   crystallite_temperature(ip,elCP) = temperature
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
    CPFEM_calc_done = .false.

@@ -27,8 +27,6 @@ module homogenization
    materialpoint_sizeResults, &
    homogenization_maxSizePostResults, &
    field_maxSizePostResults
- real(pReal),   dimension(:,:),         allocatable, public, protected :: &
-   materialpoint_heat
 
  real(pReal),   dimension(:,:,:,:),     allocatable, private :: &
    materialpoint_subF0, &                                                                           !< def grad of IP at beginning of homogenization increment
@@ -79,7 +77,6 @@ module homogenization
    homogenization_partitionDeformation, &
    homogenization_updateState, &
    homogenization_averageStressAndItsTangent, &
-   homogenization_averageHeat, &
    homogenization_postResults
 
 contains
@@ -262,7 +259,6 @@ subroutine homogenization_init()
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
- allocate(materialpoint_heat(mesh_maxNips,mesh_NcpElems),               source=0.0_pReal)
  allocate(materialpoint_dPdF(3,3,3,3,mesh_maxNips,mesh_NcpElems),       source=0.0_pReal)
  allocate(materialpoint_F0(3,3,mesh_maxNips,mesh_NcpElems),             source=0.0_pReal)
  materialpoint_F0 = spread(spread(math_I3,3,mesh_maxNips),4,mesh_NcpElems)                          ! initialize to identity
@@ -335,7 +331,6 @@ subroutine homogenization_init()
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subF0:            ', shape(materialpoint_subF0)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subF:             ', shape(materialpoint_subF)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_P:                ', shape(materialpoint_P)
-   write(6,'(a32,1x,7(i8,1x))')   'materialpoint_heat:             ', shape(materialpoint_heat)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subFrac:          ', shape(materialpoint_subFrac)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subStep:          ', shape(materialpoint_subStep)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_subdt:            ', shape(materialpoint_subdt)
@@ -384,7 +379,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
   
    
  use crystallite, only: &
-   crystallite_heat, &
    crystallite_F0, &
    crystallite_Fp0, &
    crystallite_Fp, &
@@ -665,7 +659,6 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    elementLooping4: do e = FEsolving_execElem(1),FEsolving_execElem(2)
      IpLooping4: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        call homogenization_averageStressAndItsTangent(i,e)
-       materialpoint_heat(i,e) = homogenization_averageHeat(i,e)   
      enddo IpLooping4
    enddo elementLooping4
    !$OMP END PARALLEL DO
@@ -898,33 +891,6 @@ subroutine homogenization_averageStressAndItsTangent(ip,el)
  end select chosenHomogenization
 
 end subroutine homogenization_averageStressAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief derive average heat from constituent quantities (does not depend on choosen 
-!! homogenization scheme)
-!--------------------------------------------------------------------------------------------------
-real(pReal) function homogenization_averageHeat(ip,el)
- use mesh, only: &
-   mesh_element
- use material, only: &
-   homogenization_Ngrains
- use crystallite, only: &
-   crystallite_heat
-
- implicit none
- integer(pInt), intent(in) :: &
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   Ngrains
-
-!--------------------------------------------------------------------------------------------------
-! computing the average heat
- Ngrains = homogenization_Ngrains(mesh_element(3,el))
- homogenization_averageHeat= sum(crystallite_heat(1:Ngrains,ip,el))/real(Ngrains,pReal)
-
-end function homogenization_averageHeat
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns average specific heat at each integration point 

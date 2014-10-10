@@ -24,10 +24,6 @@ module crystallite
  integer(pInt),             dimension(:,:),          allocatable, private :: &
    crystallite_sizePostResult                                                                       !< description not available
 
- real(pReal),               dimension(:,:),          allocatable, public :: &
-   crystallite_temperature                                                                          !< temperature (same on all components on one IP)
- real(pReal),               dimension(:,:,:),        allocatable, public, protected :: &
-   crystallite_heat                                                                                 !< heat source
  real(pReal),               dimension(:,:,:),        allocatable, public :: &
    crystallite_dt                                                                                   !< requested time increment of each grain
  real(pReal),               dimension(:,:,:),        allocatable, private :: &
@@ -91,7 +87,6 @@ module crystallite
                  grainrotationx_ID, &
                  grainrotationy_ID, &
                  grainrotationz_ID, &
-                 heat_ID, &
                  orientation_ID, &
                  grainrotation_ID, &
                  eulerangles_ID, &
@@ -132,7 +127,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates and initialize per grain variables
 !--------------------------------------------------------------------------------------------------
-subroutine crystallite_init(temperature)
+subroutine crystallite_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_info, &
@@ -180,7 +175,6 @@ subroutine crystallite_init(temperature)
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
 
  implicit none
- real(pReal),   intent(in) :: temperature
  integer(pInt), parameter :: &
    FILEUNIT = 200_pInt, &
    MAXNCHUNKS = 2_pInt
@@ -222,8 +216,6 @@ subroutine crystallite_init(temperature)
  nMax = mesh_maxNipNeighbors
 
 
- allocate(crystallite_temperature(iMax,eMax),                source=temperature)
- allocate(crystallite_heat(gMax,iMax,eMax),                  source=0.0_pReal)
  allocate(crystallite_Tstar0_v(6,gMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_partionedTstar0_v(6,gMax,iMax,eMax),   source=0.0_pReal)
  allocate(crystallite_subTstar0_v(6,gMax,iMax,eMax),         source=0.0_pReal)
@@ -313,8 +305,6 @@ subroutine crystallite_init(temperature)
              crystallite_outputID(output,section) = grainrotationy_ID
            case ('grainrotationz')
              crystallite_outputID(output,section) = grainrotationx_ID
-           case ('heat')
-             crystallite_outputID(output,section) = heat_ID
            case ('orientation')
              crystallite_outputID(output,section) = orientation_ID
            case ('grainrotation')
@@ -355,7 +345,7 @@ subroutine crystallite_init(temperature)
  do i = 1_pInt,material_Ncrystallite
    do j = 1_pInt,crystallite_Noutput(i)
      select case(crystallite_outputID(j,i))
-       case(phase_ID,texture_ID,volume_ID,grainrotationx_ID,grainrotationy_ID,grainrotationz_ID,heat_ID)
+       case(phase_ID,texture_ID,volume_ID,grainrotationx_ID,grainrotationy_ID,grainrotationz_ID)
          mySize = 1_pInt
        case(orientation_ID,grainrotation_ID)                                                          ! orientation as quaternion, or deviation from initial grain orientation in axis-angle form (angle in degrees)
          mySize = 4_pInt
@@ -429,7 +419,7 @@ subroutine crystallite_init(temperature)
      myNgrains = homogenization_Ngrains(mesh_element(3,e))
      do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
        do g = 1_pInt,myNgrains
-         call constitutive_microstructure(temperature, &
+         call constitutive_microstructure( &
                           crystallite_Tstar_v(1:6,g,i,e), &
                           crystallite_Fe(1:3,1:3,g,i,e), &
                           crystallite_Fp(1:3,1:3,g,i,e),g,i,e)                                      ! update dependent state variables to be consistent with basic states
@@ -444,8 +434,6 @@ subroutine crystallite_init(temperature)
 !--------------------------------------------------------------------------------------------------
 ! debug output
  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_temperature:           ', shape(crystallite_temperature)
-   write(6,'(a35,1x,7(i8,1x))') 'crystallite_heat:                  ', shape(crystallite_heat)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Lp:                    ', shape(crystallite_Lp)
@@ -1107,7 +1095,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            do g = 1_pInt,myNgrains
              call constitutive_TandItsTangent(junk,dSdFe,crystallite_Fe(1:3,1:3,g,i,e),g,i,e)      ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
              call constitutive_LpAndItsTangent(junk,temp_99,crystallite_Tstar_v(1:6,g,i,e), &
-                                               crystallite_temperature(i,e),g,i,e)
+                                               g,i,e)
              dLpdS = reshape(temp_99,shape=[3,3,3,3])
              rhs_3333 = 0.0_pReal
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
@@ -1367,24 +1355,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    endif jacobianMethod
  endif computeJacobian
 !why not OMP?
- elementLooping12: do e = FEsolving_execElem(1),FEsolving_execElem(2)
-   myNgrains = homogenization_Ngrains(mesh_element(3,e))
-     do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
-       do g = 1,myNgrains
-          crystallite_heat(g,i,e) = 0.98_pReal* &
-                               abs(math_mul33xx33(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)), &
-                                                  crystallite_Lp(1:3,1:3,g,i,e)))
-!          constitutive_localDamage(g,i,e) = &
-!            1.0_pReal* &
-!            sum(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)/constitutive_gradientDamage(g,i,e))* &
-!                (math_mul33x33(math_transpose33(crystallite_Fe(1:3,1:3,g,i,e)), &
-!                               crystallite_Fe(1:3,1:3,g,i,e))-math_I3))/4.0_pReal + &
-!            0.0_pReal* &
-!            sum(abs(math_mul33x33(math_transpose33(crystallite_Fp(1:3,1:3,g,i,e)), &
-!                               crystallite_Fp(1:3,1:3,g,i,e))-math_I3)/2.0_pReal)
-      enddo
-   enddo
- enddo elementLooping12
 
 end subroutine crystallite_stressAndItsTangent
 
@@ -1475,7 +1445,7 @@ subroutine crystallite_integrateStateRK4()
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                          crystallite_Fe, &
-                                         crystallite_Fp, crystallite_temperature(i,e), &
+                                         crystallite_Fp, &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
    enddo; enddo; enddo
  !$OMP ENDDO
@@ -1582,8 +1552,7 @@ subroutine crystallite_integrateStateRK4()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) &
-         call constitutive_microstructure(crystallite_temperature(i,e), &
-                                          crystallite_Tstar_v(1:6,g,i,e), &
+         call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                          ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
@@ -1616,7 +1585,7 @@ subroutine crystallite_integrateStateRK4()
          if (crystallite_todo(g,i,e)) &
            call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                              crystallite_Fe, &
-                                             crystallite_Fp, crystallite_temperature(i,e), &
+                                             crystallite_Fp, &
                                              timeStepFraction(n)*crystallite_subdt(g,i,e), &               ! fraction of original timestep
                                              crystallite_subFrac, g,i,e)
        enddo; enddo; enddo
@@ -1788,7 +1757,7 @@ subroutine crystallite_integrateStateRKCK45()
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                          crystallite_Fe, &
-                                         crystallite_Fp, crystallite_temperature(i,e), &
+                                         crystallite_Fp, &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
    enddo; enddo; enddo
  !$OMP ENDDO
@@ -1900,8 +1869,7 @@ subroutine crystallite_integrateStateRKCK45()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) &
-         call constitutive_microstructure(crystallite_temperature(i,e), &
-                                          crystallite_Tstar_v(1:6,g,i,e), &
+         call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                           ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
@@ -1936,7 +1904,7 @@ subroutine crystallite_integrateStateRKCK45()
        if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                            crystallite_Fe, &
-                                           crystallite_Fp, crystallite_temperature(i,e), &
+                                           crystallite_Fp, &
                                            C(stage)*crystallite_subdt(g,i,e), & ! fraction of original timestep
                                            crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
@@ -2149,8 +2117,7 @@ subroutine crystallite_integrateStateRKCK45()
  !$OMP DO
    do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
      if (crystallite_todo(g,i,e)) &
-       call constitutive_microstructure(crystallite_temperature(i,e), &
-                                        crystallite_Tstar_v(1:6,g,i,e), &
+       call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                         crystallite_Fe(1:3,1:3,g,i,e), &
                                         crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
   enddo; enddo; enddo
@@ -2301,7 +2268,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                            crystallite_Fe, &
-                                           crystallite_Fp, crystallite_temperature(i,e), &
+                                           crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
     enddo; enddo; enddo
    !$OMP ENDDO
@@ -2383,8 +2350,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                  ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e)) &
-         call constitutive_microstructure(crystallite_temperature(i,e), &
-                                          crystallite_Tstar_v(1:6,g,i,e), & 
+         call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), & 
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                          ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
@@ -2421,7 +2387,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                            crystallite_Fe, &
-                                           crystallite_Fp, crystallite_temperature(i,e), &
+                                           crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -2634,7 +2600,7 @@ eIter = FEsolving_execElem(1:2)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                            crystallite_Fe, &
-                                           crystallite_Fp, crystallite_temperature(i,e), &
+                                           crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -2720,8 +2686,7 @@ eIter = FEsolving_execElem(1:2)
    !$OMP DO
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         call constitutive_microstructure(crystallite_temperature(i,e), &
-                                          crystallite_Tstar_v(1:6,g,i,e), &
+         call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
    enddo; enddo; enddo
@@ -2902,7 +2867,7 @@ subroutine crystallite_integrateStateFPI()
      if (crystallite_todo(g,i,e)) &
        call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                          crystallite_Fe, &
-                                         crystallite_Fp, crystallite_temperature(i,e), &
+                                         crystallite_Fp, &
                                          crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
    enddo; enddo; enddo
 
@@ -2968,8 +2933,7 @@ subroutine crystallite_integrateStateFPI()
    !$OMP DO PRIVATE(p,c)
      do e = eIter(1),eIter(2); do i = iIter(1,e),iIter(2,e); do g = gIter(1,e),gIter(2,e)                    ! iterate over elements, ips and grains
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
-         call constitutive_microstructure(crystallite_temperature(i,e), &
-                                          crystallite_Tstar_v(1:6,g,i,e), &
+         call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), g, i, e)                            ! update dependent state variables to be consistent with basic states
        p = mappingConstitutive(2,g,i,e) 
@@ -3015,7 +2979,7 @@ subroutine crystallite_integrateStateFPI()
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) &
          call constitutive_collectDotState(crystallite_Tstar_v(1:6,g,i,e), crystallite_Lp(1:3,1:3,g,i,e), &
                                            crystallite_Fe, &
-                                           crystallite_Fp, crystallite_temperature(i,e), &
+                                           crystallite_Fp, &
                                            crystallite_subdt(g,i,e), crystallite_subFrac, g,i,e)
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -3497,7 +3461,7 @@ logical function crystallite_integrateStress(&
    endif
 
    call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT_constitutive, Tstar_v, &
-                                     crystallite_temperature(i,e), g, i, e)
+                                     g, i, e)
 
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
@@ -3866,9 +3830,6 @@ function crystallite_postResults(ipc, ip, el)
        detF = math_det33(crystallite_partionedF(1:3,1:3,ipc,ip,el))                                 ! V_current = det(F) * V_reference
        crystallite_postResults(c+1) = detF * mesh_ipVolume(ip,el) &
                                            / homogenization_Ngrains(mesh_element(3,el))             ! grain volume (not fraction but absolute)
-     case (heat_ID)
-       mySize = 1_pInt
-       crystallite_postResults(c+1) = crystallite_heat(ipc,ip,el)                                   ! heat production
      case (orientation_ID)
        mySize = 4_pInt
        crystallite_postResults(c+1:c+mySize) = crystallite_orientation(1:4,ipc,ip,el)               ! grain orientation as quaternion
@@ -3953,7 +3914,7 @@ function crystallite_postResults(ipc, ip, el)
  if (size(crystallite_postResults)-c > 0_pInt) &
    crystallite_postResults(c+1:size(crystallite_postResults)) = &
       constitutive_postResults(crystallite_Tstar_v(1:6,ipc,ip,el), crystallite_Fe, &
-                               crystallite_temperature(ip,el), ipc, ip, el)
+                               ipc, ip, el)
 
 end function crystallite_postResults
 

@@ -418,7 +418,7 @@ end function constitutive_homogenizedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el)
+subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  use prec, only: &
    pReal 
  use material, only: &
@@ -450,26 +450,23 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal),   intent(in) :: &
-   temperature
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
- real(pReal) :: damage, Tstar_v_effective(6)
+ real(pReal) :: &
+   damage, &
+   Tstar_v_effective(6)
  
- damage = constitutive_getDamage(ipc,ip,el)
- Tstar_v_effective = Tstar_v/(damage*damage)
-
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
+     call constitutive_dislotwin_microstructure(constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_microstructure(temperature,ipc,ip,el)
+     call constitutive_dislokmc_microstructure(constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_microstructure (temperature,ipc,ip,el)
+     call constitutive_titanmod_microstructure (constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      call constitutive_nonlocal_microstructure (Fe,Fp,          ip,el)
 
@@ -477,6 +474,8 @@ subroutine constitutive_microstructure(temperature, Tstar_v, Fe, Fp, ipc, ip, el
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
+     damage = constitutive_getDamage(ipc,ip,el)
+     Tstar_v_effective = Tstar_v/(damage*damage)
      call damage_brittle_microstructure(Tstar_v_effective, Fe, ipc, ip, el)
    case (LOCAL_DAMAGE_DUCTILE_ID)
      call damage_ductile_microstructure(ipc, ip, el)
@@ -489,7 +488,7 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ipc, ip, el)
+subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
  use prec, only: &
    pReal 
  use math, only: &
@@ -524,8 +523,6 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal),   intent(in) :: &
-   Temperature
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(out), dimension(3,3) :: &
@@ -546,13 +543,13 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, temperature, ip
    case (PLASTICITY_PHENOPOWERLAW_ID)
      call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ip,el)
+     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ipc,ip,el)
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ipc,ip,el)
+     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,temperature,ipc,ip,el)
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
 
  end select
  
@@ -641,7 +638,7 @@ end subroutine constitutive_hooke_TandItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief contains the constitutive equation for calculating the rate of change of microstructure 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, Temperature, subdt, subfracArray,&
+subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, subfracArray,&
                                                                                         ipc, ip, el)
  use prec, only: &
    pReal, &
@@ -696,7 +693,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, Temperatu
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),  intent(in) :: &
-   Temperature, &
    subdt                                                                                            !< timestep
  real(pReal),  intent(in), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    subfracArray                                                                                     !< subfraction of timestep
@@ -721,14 +717,14 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, Temperatu
    case (PLASTICITY_PHENOPOWERLAW_ID)
      call constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_dotState    (Tstar_v,Temperature,ipc,ip,el)
+     call constitutive_dislotwin_dotState    (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_dotState    (Tstar_v,Temperature,ipc,ip,el)
+     call constitutive_dislokmc_dotState     (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_dotState     (Tstar_v,Temperature,ipc,ip,el)
+     call constitutive_titanmod_dotState     (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_dotState     (Tstar_v,FeArray,FpArray,Temperature, subdt, &
-                                              subfracArray,ip,el)
+     call constitutive_nonlocal_dotState     (Tstar_v,FeArray,FpArray,constitutive_getTemperature(ipc,ip,el), &
+                                              subdt,subfracArray,ip,el)
  end select
  
  select case (phase_damage(material_phase(ipc,ip,el)))
@@ -1021,7 +1017,7 @@ end function constitutive_getTemperature
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------
-function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
+function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
  use prec, only: &
    pReal 
  use mesh, only: &
@@ -1084,8 +1080,6 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
    constitutive_postResults
 #endif
- real(pReal),  intent(in) :: &
-   temperature
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
@@ -1110,10 +1104,10 @@ function constitutive_postResults(Tstar_v, FeArray, temperature, ipc, ip, el)
        constitutive_phenopowerlaw_postResults(Tstar_v_effective,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_dislotwin_postResults(Tstar_v_effective,Temperature,ipc,ip,el)
+       constitutive_dislotwin_postResults(Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_dislokmc_postResults(Tstar_v_effective,Temperature,ipc,ip,el)
+       constitutive_dislokmc_postResults(Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_postResults(startPos:endPos) = &
        constitutive_nonlocal_postResults (Tstar_v_effective,FeArray,ip,el)
