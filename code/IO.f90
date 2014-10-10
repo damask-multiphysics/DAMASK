@@ -112,12 +112,14 @@ subroutine IO_init
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+#endif
+
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)') ' <<<+-  IO init  -+>>>'
    write(6,'(a)')   ' $Id$'
    write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif 
+ endif mainProcess
 
 #ifdef HDF 
  call HDF5_createJobFile
