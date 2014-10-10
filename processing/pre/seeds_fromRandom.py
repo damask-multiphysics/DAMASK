@@ -30,17 +30,21 @@ parser.set_defaults(randomSeed = None)
 parser.set_defaults(grid = (16,16,16))
 parser.set_defaults(N = 20)
 
-(options, extras) = parser.parse_args()
+(options,filename) = parser.parse_args()
 options.grid = np.array(options.grid)
 
-sys.stderr.write('\033[1m'+scriptName+'\033[0m\n')
+# ------------------------------------------ setup file handle -------------------------------------
+if filename == []:
+  file = {'output':sys.stdout, 'croak':sys.stderr}
+else:
+  file = {'output':open(filename[0],'w'), 'croak':sys.stderr}
 
 gridSize = options.grid.prod()
 if gridSize == 0:
-  sys.stderr.write('zero grid dimension for %s.\n'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
+  file['croak'].write('zero grid dimension for %s.\n'%(', '.join([['a','b','c'][x] for x in np.where(options.grid == 0)[0]])))
   sys.exit()
 if options.N > gridSize: 
-  sys.stderr.write('accommodating only %i seeds on grid.\n'%gridSize)
+  file['croak'].write('accommodating only %i seeds on grid.\n'%gridSize)
   options.N = gridSize
 if options.randomSeed == None:
   options.randomSeed = int(os.urandom(4).encode('hex'), 16)
@@ -81,5 +85,5 @@ header = ["5\theader",
          ]
 
 for line in header:
-  sys.stdout.write(line+"\n")
-np.savetxt(sys.stdout,np.transpose(np.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')
+  file['output'].write(line+"\n")
+np.savetxt(file['output'],np.transpose(np.concatenate((seeds,grainEuler),axis = 0)),fmt='%10.6f',delimiter='\t')

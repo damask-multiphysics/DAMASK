@@ -1,31 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,numpy,damask
-from optparse import OptionParser, Option
+import os,sys,string
+import numpy as np
+from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
-
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -48,13 +30,10 @@ mappings = {
           }
 
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Create seed file taking microstructure indices from given geom file but excluding black-listed grains.
 
-Examples:
-""" + string.replace(scriptID,'\n','\\n')
-)
-
+""", version = scriptID)
 
 parser.add_option('-w','--white',   dest='whitelist', action='extend', \
                                     help='white list of grain IDs', metavar='<LIST>')
@@ -96,15 +75,15 @@ for file in files:
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':    numpy.zeros(3,'i'),
-          'size':    numpy.zeros(3,'d'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'size':    np.zeros(3,'d'),
+          'origin':  np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
   newInfo = {
-          'grid':    numpy.zeros(3,'i'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'origin':  np.zeros(3,'d'),
           'microstructures': 0,
          }
   extra_header = []
@@ -130,17 +109,17 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
   if 'origin' not in info:
-    info['origin'] = numpy.zeros(3)
+    info['origin'] = np.zeros(3)
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = numpy.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
+  microstructure = np.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
   i = 0
   while table.data_read():
     items = table.data
@@ -171,7 +150,7 @@ for file in files:
   table.data_clear()
   i = 0
   outputDead = False
-  coord = numpy.zeros(3,'d')
+  coord = np.zeros(3,'d')
   for coord[2] in xrange(info['grid'][2]):
     for coord[1] in xrange(info['grid'][1]):
       for coord[0] in xrange(info['grid'][0]):
