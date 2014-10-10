@@ -88,7 +88,9 @@ subroutine damage_ductile_init(fileUnit)
    damageState, &
    MATERIAL_partPhase
  use numerics,only: &
+#ifdef FEM
    worldrank, &
+#endif  
    numerics_integrator
 
  implicit none
@@ -103,12 +105,16 @@ subroutine damage_ductile_init(fileUnit)
    tag  = '', &
    line = ''
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_DUCTILE_LABEL//' init  -+>>>'
-   write(6,'(a)')     ' $Id: damage_ductile.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
+ write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_DUCTILE_LABEL//' init  -+>>>'
+ write(6,'(a)')     ' $Id: damage_ductile.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
+#ifdef FEM
+ endif
+#endif  
 
  maxNinstance = int(count(phase_damage == LOCAL_DAMAGE_DUCTILE_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -185,8 +191,8 @@ subroutine damage_ductile_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   2_pInt
-     sizeState                 =   3_pInt
+     sizeDotState              =   1_pInt
+     sizeState                 =   2_pInt
                 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
@@ -283,18 +289,15 @@ subroutine damage_ductile_dotState(Lp, ipc, ip, el)
  
  damageState(phase)%dotState(1,constituent) = &
    (1.0_pReal/lattice_DamageMobility(phase))* &
-   (damageState(phase)%state(3,constituent) - &
+   (damageState(phase)%state(2,constituent) - &
     damageState(phase)%state(1,constituent))
-
- damageState(phase)%dotState(2,constituent) = &
-   math_norm33(Lp)
   
 end subroutine damage_ductile_dotState
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_ductile_microstructure(ipc, ip, el)
+subroutine damage_ductile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -308,17 +311,20 @@ subroutine damage_ductile_microstructure(ipc, ip, el)
 
  implicit none
  integer(pInt), intent(in) :: &
+   nSlip, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ real(pReal), dimension(nSlip), intent(in) :: &
+   accumulatedSlip
  integer(pInt) :: &
    phase, constituent
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- damageState(phase)%state(3,constituent) = min(damageState(phase)%state(3,constituent), &
+ damageState(phase)%state(2,constituent) = min(damageState(phase)%state(2,constituent), &
                                                      damage_ductile_critpStrain(phase)/ &
-                                                      damageState(phase)%state(2,constituent))      !< akin to damage surface
+                                                     sum(accumulatedSlip))      !< akin to damage surface
                                                        
 end subroutine damage_ductile_microstructure
 

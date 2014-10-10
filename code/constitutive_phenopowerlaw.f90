@@ -89,6 +89,7 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_init, &
    constitutive_phenopowerlaw_LpAndItsTangent, &
    constitutive_phenopowerlaw_dotState, &
+   constitutive_phenopowerlaw_getAccumulatedSlip, &
    constitutive_phenopowerlaw_postResults
  private :: &
    constitutive_phenopowerlaw_aTolState, &
@@ -138,7 +139,9 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
+#ifdef FEM
    worldrank, &
+#endif  
    numerics_integrator
 
  implicit none
@@ -159,12 +162,16 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  integer(pInt) :: NofMyPhase   
  real(pReal), dimension(:), allocatable :: tempPerSlip
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id$'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_PHENOPOWERLAW_label//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
+#ifdef FEM
+ endif
+#endif  
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -990,6 +997,54 @@ subroutine constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
 end subroutine constitutive_phenopowerlaw_dotState
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_phenopowerlaw_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   offset_accshear_slip, &
+   nTwin, &
+   f, j, i
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase)
+ nSlip = constitutive_phenopowerlaw_totalNslip(instance)
+ nTwin = constitutive_phenopowerlaw_totalNtwin(instance)
+ offset_accshear_slip = nSlip + nTwin + 2_pInt
+ 
+ allocate(accumulatedSlip(nSlip))
+ j = 0_pInt
+ slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
+   do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                       ! process each (active) slip system in family
+     j = j+1_pInt
+     accumulatedSlip(j) = plasticState(phase)%state(offset_accshear_slip+j,offset)
+   enddo
+ enddo slipFamiliesLoop
+   
+end subroutine constitutive_phenopowerlaw_getAccumulatedSlip
+
+ 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------

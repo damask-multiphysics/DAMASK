@@ -250,6 +250,7 @@ module constitutive_nonlocal
  constitutive_nonlocal_dotState, &
  constitutive_nonlocal_deltaState, &
  constitutive_nonlocal_updateCompatibility, &
+ constitutive_nonlocal_getAccumulatedSlip, &
  constitutive_nonlocal_postResults
  
  private :: &
@@ -300,7 +301,9 @@ use material, only: homogenization_maxNgrains, &
                     material_phase
 use lattice
 use numerics,only: &
+#ifdef FEM
    worldrank, &
+#endif  
   numerics_integrator
 
 
@@ -338,12 +341,16 @@ integer(pInt)          ::                   phase, &
 
  integer(pInt) :: NofMyPhase 
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id$'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_NONLOCAL_label//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
+#ifdef FEM
+ endif
+#endif  
 
  maxNinstances = int(count(phase_plasticity == PLASTICITY_NONLOCAL_ID),pInt)
  if (maxNinstances == 0) return                                              ! we don't have to do anything if there's no instance for this constitutive law
@@ -3545,6 +3552,45 @@ endif
 
 end function constitutive_nonlocal_dislocationstress
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_nonlocal_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   offset_accshear_slip, &
+   s
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase) 
+ nSlip = totalNslip(instance)
+ allocate(accumulatedSlip(nSlip))
+ forall (s = 1:nSlip) &
+   accumulatedSlip(s) = plasticState(phase)%dotState(iGamma(s,instance),offset)
+   
+end subroutine constitutive_nonlocal_getAccumulatedSlip
+
+ 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------

@@ -288,7 +288,7 @@ subroutine damage_gurson_dotState(Lp, ipc, ip, el)
    damageState(phase)%dotState(4,constituent)                            ! total rate of void fraction evolution
    
  damageState(phase)%dotState(3,constituent) = &
-   damageState(phase)%state(6,constituent) + &
+   damageState(phase)%state(6,constituent) * &
    damageState(phase)%dotState(4,constituent)                            ! void nucleation rate
    
  damageState(phase)%dotState(4,constituent) = &

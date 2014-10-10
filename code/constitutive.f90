@@ -36,7 +36,8 @@ module constitutive
    constitutive_postResults
  
  private :: &
-   constitutive_hooke_TandItsTangent
+   constitutive_hooke_TandItsTangent, &
+   constitutive_getAccumulatedSlip
  
 contains
 
@@ -60,7 +61,9 @@ subroutine constitutive_init
    debug_constitutive, &
    debug_levelBasic
  use numerics, only: &
+#ifdef FEM
    worldrank, &
+#endif  
    numerics_integrator
  use IO, only: &
    IO_error, &
@@ -186,12 +189,16 @@ subroutine constitutive_init
  if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))  call thermal_adiabatic_init(FILEUNIT)
  close(FILEUNIT)
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
-   write(6,'(a)')     ' $Id$'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
+ write(6,'(/,a)')   ' <<<+-  constitutive init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
+#ifdef FEM
+ endif
+#endif  
  
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
@@ -464,7 +471,11 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  real(pReal) :: &
    damage, &
    Tstar_v_effective(6)
- 
+  real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
    case (PLASTICITY_DISLOTWIN_ID)
@@ -486,7 +497,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
      Tstar_v_effective = Tstar_v/(damage*damage)
      call damage_brittle_microstructure(Tstar_v_effective, Fe, ipc, ip, el)
    case (LOCAL_DAMAGE_ductile_ID)
-     call damage_ductile_microstructure(ipc, ip, el)
+     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
+     call damage_ductile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_microstructure(ipc, ip, el)
 
@@ -1041,6 +1053,74 @@ function constitutive_getTemperature(ipc, ip, el)
    end select
 
 end function constitutive_getTemperature
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip on each system defined
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
+ use prec, only: &
+   pReal, &
+   pInt
+ use math, only: &
+   math_mul33xx33, &
+   math_norm33, &
+   math_I3
+ use material, only: &
+   phase_plasticity, &
+   material_phase, &
+   PLASTICITY_none_ID, &
+   PLASTICITY_j2_ID, &
+   PLASTICITY_phenopowerlaw_ID, &
+   PLASTICITY_dislotwin_ID, &
+   PLASTICITY_dislokmc_ID, &
+   PLASTICITY_titanmod_ID, &
+   PLASTICITY_nonlocal_ID
+ use constitutive_phenopowerlaw, only: &
+   constitutive_phenopowerlaw_getAccumulatedSlip
+ use constitutive_dislotwin, only: &
+   constitutive_dislotwin_getAccumulatedSlip
+ use constitutive_dislokmc, only: &
+   constitutive_dislokmc_getAccumulatedSlip
+ use constitutive_titanmod, only: &
+   constitutive_titanmod_getAccumulatedSlip
+ use constitutive_nonlocal, only: &
+   constitutive_nonlocal_getAccumulatedSlip
+
+ implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+ real(pReal),  intent(in), dimension(3,3) :: &
+   Fp                                                                                               !< plastic velocity gradient
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ 
+ select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_none_ID)
+     nSlip = 0_pInt
+     allocate(accumulatedSlip(nSlip))
+   case (PLASTICITY_J2_ID)
+     nSlip = 1_pInt
+     allocate(accumulatedSlip(nSlip))
+     accumulatedSlip(1) = math_norm33(math_mul33xx33(transpose(Fp),Fp) - math_I3)/2.0_pReal
+   case (PLASTICITY_PHENOPOWERLAW_ID)
+     call constitutive_phenopowerlaw_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+   case (PLASTICITY_DISLOTWIN_ID)
+     call constitutive_dislotwin_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+   case (PLASTICITY_DISLOKMC_ID)
+     call constitutive_dislokmc_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+   case (PLASTICITY_TITANMOD_ID)
+     call constitutive_titanmod_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+   case (PLASTICITY_NONLOCAL_ID)
+     call constitutive_nonlocal_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+ end select
+
+end subroutine constitutive_getAccumulatedSlip
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
 !--------------------------------------------------------------------------------------------------

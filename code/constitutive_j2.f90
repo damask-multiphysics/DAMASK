@@ -94,7 +94,9 @@ subroutine constitutive_j2_init(fileUnit)
    debug_constitutive, &
    debug_levelBasic
  use numerics, only: &
+#ifdef FEM
    worldrank, &
+#endif  
    numerics_integrator
  use math, only: &
    math_Mandel3333to66, &
@@ -153,12 +155,16 @@ subroutine constitutive_j2_init(fileUnit)
  integer(HID_T) :: ID,ID2,ID4
 #endif
 
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_J2_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id$'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_J2_label//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
+#ifdef FEM
+ endif
+#endif  
  
  maxNinstance = int(count(phase_plasticity == PLASTICITY_J2_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -500,7 +506,7 @@ subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
 
 end subroutine constitutive_j2_dotState
 
- 
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------

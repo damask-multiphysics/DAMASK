@@ -176,6 +176,7 @@ module constitutive_titanmod
    constitutive_titanmod_init, &
    constitutive_titanmod_LpAndItsTangent, &
    constitutive_titanmod_dotState, &
+   constitutive_titanmod_getAccumulatedSlip, &
    constitutive_titanmod_postResults, &
    constitutive_titanmod_homogenizedC
 
@@ -219,7 +220,9 @@ subroutine constitutive_titanmod_init(fileUnit)
    MATERIAL_partPhase
  use lattice
  use numerics,only: &
+#ifdef FEM
    worldrank, &
+#endif  
    numerics_integrator
  
  implicit none
@@ -244,12 +247,16 @@ subroutine constitutive_titanmod_init(fileUnit)
    tag  = '', &
    line = ''  
  
- mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_TITANMOD_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id$'
-   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+#ifdef FEM
+ if (worldrank == 0) then
+#endif  
+ write(6,'(/,a)')   ' <<<+-  constitutive_'//PLASTICITY_TITANMOD_label//' init  -+>>>'
+ write(6,'(a)')     ' $Id$'
+ write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
- endif mainProcess
+#ifdef FEM
+ endif
+#endif  
 
  maxNinstance = int(count(phase_plasticity == PLASTICITY_TITANMOD_ID),pInt)
  if (maxNinstance == 0_pInt) return
@@ -1775,6 +1782,52 @@ implicit none
   enddo twinFamiliesLoop
 
 end subroutine constitutive_titanmod_dotState
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_titanmod_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   offset_accshear_slip, &
+   f, j, i
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase)
+ nSlip = constitutive_titanmod_totalNslip(instance)
+ allocate(accumulatedSlip(nSlip))
+ offset_accshear_slip = 2_pInt*nSlip
+
+ j = 0_pInt
+ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over all slip families
+   do i = 1_pInt,constitutive_titanmod_Nslip(f,instance)             ! process each (active) slip system in family
+      j = j+1_pInt
+      accumulatedSlip(j) = plasticState(phase)%state(offset_accshear_slip+j,offset)
+   enddo
+ enddo 
+   
+end subroutine constitutive_titanmod_getAccumulatedSlip
+
+
 
 
 !--------------------------------------------------------------------------------------------------
