@@ -104,7 +104,7 @@ subroutine IO_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  
  implicit none
- integer(pInt) :: worldrank
+ integer(pInt) :: worldrank == 0_pInt
 #ifdef PETSc
 #include <finclude/petscsys.h>
  PetscErrorCode :: ierr
