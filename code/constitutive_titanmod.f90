@@ -177,6 +177,7 @@ module constitutive_titanmod
    constitutive_titanmod_LpAndItsTangent, &
    constitutive_titanmod_dotState, &
    constitutive_titanmod_getAccumulatedSlip, &
+   constitutive_titanmod_getSlipRate, &
    constitutive_titanmod_postResults, &
    constitutive_titanmod_homogenizedC
 
@@ -1822,6 +1823,50 @@ subroutine constitutive_titanmod_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, i
 end subroutine constitutive_titanmod_getAccumulatedSlip
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_titanmod_getSlipRate(nSlip,slipRate,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   slipRate
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   offset_accshear_slip, &
+   f, j, i
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase)
+ nSlip = constitutive_titanmod_totalNslip(instance)
+ allocate(slipRate(nSlip))
+ offset_accshear_slip = 2_pInt*nSlip
+
+ j = 0_pInt
+ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over all slip families
+   do i = 1_pInt,constitutive_titanmod_Nslip(f,instance)             ! process each (active) slip system in family
+      j = j+1_pInt
+      slipRate(j) = plasticState(phase)%dotState(offset_accshear_slip+j,offset)
+   enddo
+ enddo 
+   
+end subroutine constitutive_titanmod_getSlipRate
 
 
 !--------------------------------------------------------------------------------------------------

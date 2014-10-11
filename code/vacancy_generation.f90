@@ -24,8 +24,15 @@ module vacancy_generation
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    vacancy_generation_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         public :: &
-   vacancy_generation_aTol
+ real(pReal),                         dimension(:),           allocatable,         public :: &
+   vacancy_generation_aTol, &
+   vacancy_generation_freq, &
+   vacancy_generation_energy, &
+   vacancy_generation_C1, &
+   vacancy_generation_C2
+
+ real(pReal),                                                 parameter,           private :: &
+   kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -118,6 +125,10 @@ subroutine vacancy_generation_init(fileUnit)
  allocate(vacancy_generation_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(vacancy_generation_Noutput(maxNinstance),                             source=0_pInt) 
  allocate(vacancy_generation_aTol(maxNinstance),                                source=0.0_pReal) 
+ allocate(vacancy_generation_freq(maxNinstance),                                source=0.0_pReal) 
+ allocate(vacancy_generation_energy(maxNinstance),                              source=0.0_pReal) 
+ allocate(vacancy_generation_C1(maxNinstance),                                  source=0.0_pReal) 
+ allocate(vacancy_generation_C2(maxNinstance),                                  source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -154,6 +165,18 @@ subroutine vacancy_generation_init(fileUnit)
 
        case ('atol_vacancyGeneration')
          vacancy_generation_aTol(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('vacancy_frequency')
+         vacancy_generation_freq(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('vacancy_energy')
+         vacancy_generation_energy(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('vacancy_C1')
+         vacancy_generation_C1(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('vacancy_C2')
+         vacancy_generation_C2(instance) = IO_floatValue(line,positions,2_pInt)
 
      end select
    endif; endif
@@ -250,7 +273,7 @@ end subroutine vacancy_generation_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine vacancy_generation_dotState(Tstar_v, Lp, ipc, ip, el)
+subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperature, ipc, ip, el)
  use lattice, only: &
    lattice_massDensity, &
    lattice_specificHeat
@@ -259,28 +282,36 @@ subroutine vacancy_generation_dotState(Tstar_v, Lp, ipc, ip, el)
    phase_vacancyInstance, &
    vacancyState
  use math, only: &
-   math_Mandel6to33
+   math_Mandel6to33, &
+   math_trace33
 
  implicit none
  integer(pInt), intent(in) :: &
+   nSlip, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ real(pReal), dimension(nSlip), intent(in) :: &
+   accumulatedSlip
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- real(pReal),  intent(in), dimension(3,3) :: &
-   Lp
+ real(pReal),  intent(in) :: &
+   Temperature                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+ real(pReal) :: &
+   pressure                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pInt) :: &
    instance, phase, constituent 
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_vacancyInstance(phase)
+ pressure = math_trace33(math_Mandel6to33(Tstar_v))
  
  vacancyState(phase)%dotState(1,constituent) = &
-    0.95_pReal &
-  * sum(abs(math_Mandel6to33(Tstar_v)*Lp)) &
-  / (lattice_massDensity(phase)*lattice_specificHeat(phase))
+    vacancy_generation_freq(instance)* &
+    (1.0_pReal + vacancy_generation_C2(instance)*sum(accumulatedSlip))* &     
+    exp(-(vacancy_generation_energy(instance) - vacancy_generation_C2(instance)*pressure)/ &
+         (kB*Temperature))
   
 end subroutine vacancy_generation_dotState
 

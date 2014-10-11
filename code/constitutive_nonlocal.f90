@@ -251,6 +251,7 @@ module constitutive_nonlocal
  constitutive_nonlocal_deltaState, &
  constitutive_nonlocal_updateCompatibility, &
  constitutive_nonlocal_getAccumulatedSlip, &
+ constitutive_nonlocal_getSlipRate, &
  constitutive_nonlocal_postResults
  
  private :: &
@@ -3579,9 +3580,47 @@ subroutine constitutive_nonlocal_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, i
  nSlip = totalNslip(instance)
  allocate(accumulatedSlip(nSlip))
  forall (s = 1:nSlip) &
-   accumulatedSlip(s) = plasticState(phase)%dotState(iGamma(s,instance),offset)
+   accumulatedSlip(s) = plasticState(phase)%state(iGamma(s,instance),offset)
    
 end subroutine constitutive_nonlocal_getAccumulatedSlip
+
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip rate
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_nonlocal_getSlipRate(nSlip,slipRate,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   slipRate
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   s
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase) 
+ nSlip = totalNslip(instance)
+ allocate(slipRate(nSlip))
+ forall (s = 1:nSlip) &
+   slipRate(s) = plasticState(phase)%dotState(iGamma(s,instance),offset)
+   
+end subroutine constitutive_nonlocal_getSlipRate
 
  
 !--------------------------------------------------------------------------------------------------

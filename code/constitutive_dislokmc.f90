@@ -153,6 +153,7 @@ module constitutive_dislokmc
    constitutive_dislokmc_LpAndItsTangent, &
    constitutive_dislokmc_dotState, &
    constitutive_dislokmc_getAccumulatedSlip, &
+   constitutive_dislokmc_getSlipRate, &
    constitutive_dislokmc_postResults
  private :: &
    constitutive_dislokmc_stateInit, &
@@ -1674,6 +1675,7 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  enddo
  
 end subroutine constitutive_dislokmc_dotState
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns accumulated slip
 !--------------------------------------------------------------------------------------------------
@@ -1719,6 +1721,50 @@ subroutine constitutive_dislokmc_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, i
    
 end subroutine constitutive_dislokmc_getAccumulatedSlip
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_dislokmc_getSlipRate(nSlip,slipRate,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   slipRate
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   offset_accshear_slip, &
+   f, j, i
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase)
+ nSlip = constitutive_dislokmc_totalNslip(instance)
+ allocate(slipRate(nSlip))
+ offset_accshear_slip = 2_pInt*nSlip
+
+ j = 0_pInt
+ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over all slip families
+   do i = 1_pInt,constitutive_dislokmc_Nslip(f,instance)             ! process each (active) slip system in family
+      j = j+1_pInt
+      slipRate(j) = plasticState(phase)%dotState(offset_accshear_slip+j,offset)
+   enddo
+ enddo 
+   
+end subroutine constitutive_dislokmc_getSlipRate
 
  
 !--------------------------------------------------------------------------------------------------

@@ -167,6 +167,7 @@ module constitutive_dislotwin
    constitutive_dislotwin_LpAndItsTangent, &
    constitutive_dislotwin_dotState, &
    constitutive_dislotwin_getAccumulatedSlip, &
+   constitutive_dislotwin_getSlipRate, &
    constitutive_dislotwin_postResults
  private :: &
    constitutive_dislotwin_stateInit, &
@@ -1940,6 +1941,52 @@ subroutine constitutive_dislotwin_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, 
  enddo 
    
 end subroutine constitutive_dislotwin_getAccumulatedSlip
+
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip rate
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_dislotwin_getSlipRate(nSlip,slipRate,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   slipRate
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   offset_accshear_slip, &
+   f, j, i
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase)
+ nSlip = constitutive_dislotwin_totalNslip(instance)
+ allocate(slipRate(nSlip))
+ offset_accshear_slip = 2_pInt*nSlip
+
+ j = 0_pInt
+ do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over all slip families
+   do i = 1_pInt,constitutive_dislotwin_Nslip(f,instance)             ! process each (active) slip system in family
+      j = j+1_pInt
+      slipRate(j) = plasticState(phase)%dotState(offset_accshear_slip+j,offset)
+   enddo
+ enddo 
+   
+end subroutine constitutive_dislotwin_getSlipRate
 
  
 !--------------------------------------------------------------------------------------------------

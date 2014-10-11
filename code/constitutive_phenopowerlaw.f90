@@ -90,6 +90,7 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_LpAndItsTangent, &
    constitutive_phenopowerlaw_dotState, &
    constitutive_phenopowerlaw_getAccumulatedSlip, &
+   constitutive_phenopowerlaw_getSlipRate, &
    constitutive_phenopowerlaw_postResults
  private :: &
    constitutive_phenopowerlaw_aTolState, &
@@ -1037,6 +1038,54 @@ subroutine constitutive_phenopowerlaw_getAccumulatedSlip(nSlip,accumulatedSlip,i
  enddo slipFamiliesLoop
    
 end subroutine constitutive_phenopowerlaw_getAccumulatedSlip
+
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip rate
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_phenopowerlaw_getSlipRate(nSlip,slipRate,ipc, ip, el)
+ use lattice, only: &
+   lattice_maxNslipFamily
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+   implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   slipRate
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   offset, &
+   phase, &
+   instance, &
+   offset_accshear_slip, &
+   nTwin, &
+   f, j, i
+
+ offset = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase)
+ nSlip = constitutive_phenopowerlaw_totalNslip(instance)
+ nTwin = constitutive_phenopowerlaw_totalNtwin(instance)
+ offset_accshear_slip = nSlip + nTwin + 2_pInt
+ 
+ allocate(slipRate(nSlip))
+ j = 0_pInt
+ slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
+   do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)                                       ! process each (active) slip system in family
+     j = j+1_pInt
+     slipRate(j) = plasticState(phase)%dotState(offset_accshear_slip+j,offset)
+   enddo
+ enddo slipFamiliesLoop
+   
+end subroutine constitutive_phenopowerlaw_getSlipRate
 
  
 !--------------------------------------------------------------------------------------------------

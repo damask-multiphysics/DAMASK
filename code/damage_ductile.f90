@@ -259,7 +259,7 @@ end subroutine damage_ductile_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_ductile_dotState(Lp, ipc, ip, el)
+subroutine damage_ductile_dotState(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -269,8 +269,6 @@ subroutine damage_ductile_dotState(Lp, ipc, ip, el)
    lattice_DamageMobility
 
  implicit none
- real(pReal), intent(in), dimension(3,3) :: &
-   Lp
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point

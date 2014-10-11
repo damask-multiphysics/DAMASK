@@ -42,7 +42,8 @@ module constitutive
  
  private :: &
    constitutive_hooke_TandItsTangent, &
-   constitutive_getAccumulatedSlip
+   constitutive_getAccumulatedSlip, &
+   constitutive_getSlipRate
  
 contains
 
@@ -518,7 +519,7 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  real(pReal) :: &
    damage, &
    Tstar_v_effective(6)
-  real(pReal), dimension(:), allocatable :: &
+ real(pReal), dimension(:), allocatable :: &
    accumulatedSlip
  integer(pInt) :: &
    nSlip
@@ -784,6 +785,10 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    tick, tock, & 
    tickrate, &
    maxticks
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
  
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) &
    call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
@@ -808,7 +813,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    case (LOCAL_DAMAGE_brittle_ID)
      call damage_brittle_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_ductile_ID)
-     call damage_ductile_dotState(Lp, ipc, ip, el)
+     call damage_ductile_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_dotState(Lp, ipc, ip, el)
  end select
@@ -820,7 +825,9 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
 
  select case (phase_vacancy(material_phase(ipc,ip,el)))
    case (LOCAL_VACANCY_generation_ID)
-     call vacancy_generation_dotState(Tstar_v, Lp, ipc, ip, el)
+     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,FpArray(1:3,1:3,ipc,ip,el),ipc,ip,el)
+     call vacancy_generation_dotState(nSlip,accumulatedSlip,Tstar_v,constitutive_getTemperature(ipc,ip,el), &
+                                      ipc, ip, el)
  end select
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
@@ -1217,7 +1224,7 @@ subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
    pInt
  use math, only: &
    math_mul33xx33, &
-   math_norm33, &
+   math_equivStrain33, &
    math_I3
  use material, only: &
    phase_plasticity, &
@@ -1260,7 +1267,7 @@ subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
    case (PLASTICITY_J2_ID)
      nSlip = 1_pInt
      allocate(accumulatedSlip(nSlip))
-     accumulatedSlip(1) = math_norm33(math_mul33xx33(transpose(Fp),Fp) - math_I3)/2.0_pReal
+     accumulatedSlip(1) = math_equivStrain33((math_mul33xx33(transpose(Fp),Fp) - math_I3)/2.0_pReal)
    case (PLASTICITY_PHENOPOWERLAW_ID)
      call constitutive_phenopowerlaw_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
    case (PLASTICITY_DISLOTWIN_ID)
@@ -1274,6 +1281,73 @@ subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
  end select
 
 end subroutine constitutive_getAccumulatedSlip
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip rates on each system defined
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_getSlipRate(nSlip,slipRate,Lp,ipc, ip, el)
+ use prec, only: &
+   pReal, &
+   pInt
+ use math, only: &
+   math_mul33xx33, &
+   math_equivStrain33, &
+   math_I3
+ use material, only: &
+   phase_plasticity, &
+   material_phase, &
+   PLASTICITY_none_ID, &
+   PLASTICITY_j2_ID, &
+   PLASTICITY_phenopowerlaw_ID, &
+   PLASTICITY_dislotwin_ID, &
+   PLASTICITY_dislokmc_ID, &
+   PLASTICITY_titanmod_ID, &
+   PLASTICITY_nonlocal_ID
+ use constitutive_phenopowerlaw, only: &
+   constitutive_phenopowerlaw_getSlipRate
+ use constitutive_dislotwin, only: &
+   constitutive_dislotwin_getSlipRate
+ use constitutive_dislokmc, only: &
+   constitutive_dislokmc_getSlipRate
+ use constitutive_titanmod, only: &
+   constitutive_titanmod_getSlipRate
+ use constitutive_nonlocal, only: &
+   constitutive_nonlocal_getSlipRate
+
+ implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   slipRate
+ integer(pInt) :: &
+   nSlip
+ real(pReal),  intent(in), dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ 
+ select case (phase_plasticity(material_phase(ipc,ip,el)))
+   case (PLASTICITY_none_ID)
+     nSlip = 0_pInt
+     allocate(slipRate(nSlip))
+   case (PLASTICITY_J2_ID)
+     nSlip = 1_pInt
+     allocate(slipRate(nSlip))
+     slipRate(1) = math_equivStrain33(Lp)
+   case (PLASTICITY_PHENOPOWERLAW_ID)
+     call constitutive_phenopowerlaw_getSlipRate(nSlip,slipRate,ipc, ip, el)
+   case (PLASTICITY_DISLOTWIN_ID)
+     call constitutive_dislotwin_getSlipRate(nSlip,slipRate,ipc, ip, el)
+   case (PLASTICITY_DISLOKMC_ID)
+     call constitutive_dislokmc_getSlipRate(nSlip,slipRate,ipc, ip, el)
+   case (PLASTICITY_TITANMOD_ID)
+     call constitutive_titanmod_getSlipRate(nSlip,slipRate,ipc, ip, el)
+   case (PLASTICITY_NONLOCAL_ID)
+     call constitutive_nonlocal_getSlipRate(nSlip,slipRate,ipc, ip, el)
+ end select
+
+end subroutine constitutive_getSlipRate
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns array of constitutive results
