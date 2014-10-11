@@ -16,8 +16,9 @@ module DAMASK_interface
 
  implicit none
  private
+#ifdef PETSc
 #include <finclude/petscsys.h>
-
+#endif
  logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
  integer(pInt),       public, protected :: spectralRestartInc = 1_pInt                              !< Increment at which calculation starts
  character(len=1024), public, protected :: &
@@ -71,7 +72,9 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
    positions
  integer, dimension(8) :: &
    dateAndTime                                                                                      ! type default integer
+#ifdef PETSc
  PetscErrorCode :: ierr
+#endif
  external :: &
    quit,&
    MPI_Comm_rank,&
@@ -80,11 +83,13 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
 
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
- call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
+#ifdef PETSc
+  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
 
  open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
+#endif
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)') ' <<<+-  DAMASK_spectral_interface init  -+>>>'
    write(6,'(a)')   ' $Id$'
