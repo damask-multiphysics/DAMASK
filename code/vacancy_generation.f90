@@ -49,6 +49,7 @@ module vacancy_generation
    vacancy_generation_dotState, &
    vacancy_generation_getConcentration, &
    vacancy_generation_putConcentration, &
+   vacancy_generation_getVacancyDiffusion33, &
    vacancy_generation_postResults
 
 contains
@@ -356,6 +357,43 @@ subroutine vacancy_generation_putConcentration(ipc, ip, el, localVacancyConcentr
  
 end subroutine vacancy_generation_putConcentration
  
+!--------------------------------------------------------------------------------------------------
+!> @brief returns generation vacancy diffusion tensor 
+!--------------------------------------------------------------------------------------------------
+function vacancy_generation_getVacancyDiffusion33(nSlip,accumulatedSlip,temperature,ipc,ip,el)
+ use lattice, only: &
+   lattice_VacancyDiffusion33
+ use material, only: &
+   mappingConstitutive, &
+   phase_vacancyInstance, &
+   vacancyState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   nSlip, &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   vacancy_generation_getVacancyDiffusion33
+ real(pReal), dimension(nSlip) :: &
+   accumulatedSlip
+ real(pReal) :: &
+   temperature
+ integer(pInt) :: &
+   phase, constituent, instance
+ 
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ instance = phase_vacancyInstance(phase)
+
+ vacancy_generation_getVacancyDiffusion33 = &
+   lattice_VacancyDiffusion33(1:3,1:3,phase)* &
+   (1.0_pReal + vacancy_generation_C2(instance)*sum(accumulatedSlip))* &
+   exp(-vacancy_generation_energy(instance)/(kB*temperature))
+    
+end function vacancy_generation_getVacancyDiffusion33
+
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------

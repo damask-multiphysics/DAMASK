@@ -39,6 +39,7 @@ module constitutive
    constitutive_getLocalVacancyConcentration, &
    constitutive_putLocalVacancyConcentration, &
    constitutive_getVacancyConcentration, &
+   constitutive_getVacancyDiffusion33, &
    constitutive_postResults
  
  private :: &
@@ -1251,6 +1252,46 @@ function constitutive_getVacancyConcentration(ipc, ip, el)
    end select
 
 end function constitutive_getVacancyConcentration
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns vacancy diffusion tensor
+!--------------------------------------------------------------------------------------------------
+function constitutive_getVacancyDiffusion33(Fp, ipc, ip, el)
+ use prec, only: &
+   pReal
+ use lattice, only: &
+   lattice_VacancyDiffusion33
+ use material, only: &
+   material_phase, &
+   LOCAL_VACANCY_generation_ID, &
+   phase_vacancy
+ use vacancy_generation, only: &
+   vacancy_generation_getVacancyDiffusion33
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   Fp, &
+   constitutive_getVacancyDiffusion33
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+ 
+ constitutive_getVacancyDiffusion33 = lattice_VacancyDiffusion33(1:3,1:3,material_phase(ipc,ip,el))
+ select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
+   case (LOCAL_VACANCY_generation_ID)
+    call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc,ip,el)
+    constitutive_getVacancyDiffusion33 = &
+      vacancy_generation_getVacancyDiffusion33(nSlip,accumulatedSlip,constitutive_getTemperature(ipc,ip,el), &
+                                               ipc,ip,el)
+    
+ end select
+
+end function constitutive_getVacancyDiffusion33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns accumulated slip on each system defined

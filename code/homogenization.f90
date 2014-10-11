@@ -1107,13 +1107,15 @@ function field_getVacancyDiffusion33(ip,el)
  use lattice, only: &
    lattice_vacancyDiffusion33
  use material, only: &
-   material_phase, &
    material_homog, &
    field_vacancy_type, &
    FIELD_VACANCY_NONLOCAL_ID, &
    homogenization_Ngrains
  use crystallite, only: &
-   crystallite_push33ToRef
+   crystallite_push33ToRef, &
+   crystallite_Fp
+ use constitutive, only: &
+   constitutive_getVacancyDiffusion33
 
  implicit none
  real(pReal), dimension(3,3) :: field_getVacancyDiffusion33
@@ -1129,7 +1131,8 @@ function field_getVacancyDiffusion33(ip,el)
    case (FIELD_VACANCY_NONLOCAL_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
       field_getVacancyDiffusion33 = field_getVacancyDiffusion33 + &
-        crystallite_push33ToRef(ipc,ip,el,lattice_vacancyDiffusion33(:,:,material_phase(ipc,ip,el)))
+        crystallite_push33ToRef(ipc,ip,el, &
+                                constitutive_getVacancyDiffusion33(crystallite_Fp(1:3,1:3,ipc,ip,el),ipc,ip,el))
      enddo
       
  end select   
