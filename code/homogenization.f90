@@ -1029,16 +1029,15 @@ end function field_getThermalConductivity33
 function field_getDamageDiffusion33(ip,el)
  use mesh, only: &
    mesh_element
- use lattice, only: &
-   lattice_DamageDiffusion33
  use material, only: &
-   material_phase, &
    material_homog, &
    field_damage_type, &
    FIELD_DAMAGE_NONLOCAL_ID, &
    homogenization_Ngrains
  use crystallite, only: &
    crystallite_push33ToRef
+ use constitutive, only: &
+   constitutive_getDamageDiffusion33
 
  implicit none
  real(pReal), dimension(3,3) :: field_getDamageDiffusion33
@@ -1054,7 +1053,7 @@ function field_getDamageDiffusion33(ip,el)
    case (FIELD_DAMAGE_NONLOCAL_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
       field_getDamageDiffusion33 = field_getDamageDiffusion33 + &
-        crystallite_push33ToRef(ipc,ip,el,lattice_DamageDiffusion33(:,:,material_phase(ipc,ip,el)))
+        crystallite_push33ToRef(ipc,ip,el,constitutive_getDamageDiffusion33(ipc,ip,el))
      enddo
       
  end select   

@@ -32,6 +32,7 @@ module constitutive
    constitutive_getLocalDamage, &
    constitutive_putLocalDamage, & 
    constitutive_getDamage, &
+   constitutive_getDamageDiffusion33, &
    constitutive_getAdiabaticTemperature, &
    constitutive_putAdiabaticTemperature, &
    constitutive_getTemperature, &
@@ -1019,6 +1020,42 @@ function constitutive_getDamage(ipc, ip, el)
  end select
 
 end function constitutive_getDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns damage diffusion tensor
+!--------------------------------------------------------------------------------------------------
+function constitutive_getDamageDiffusion33(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use lattice, only: &
+   lattice_DamageDiffusion33
+ use material, only: &
+   material_phase, &
+   LOCAL_DAMAGE_none_ID, &
+   LOCAL_DAMAGE_brittle_ID, &
+   LOCAL_DAMAGE_ductile_ID, &
+   LOCAL_DAMAGE_gurson_ID, &
+   phase_damage
+ use damage_brittle, only: &
+   damage_brittle_getDamageDiffusion33
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_getDamageDiffusion33
+ 
+ constitutive_getDamageDiffusion33 = lattice_DamageDiffusion33(1:3,1:3,material_phase(ipc,ip,el))
+ select case(phase_damage(material_phase(ipc,ip,el)))                                                   
+   case (LOCAL_DAMAGE_brittle_ID)
+    constitutive_getDamageDiffusion33 = damage_brittle_getDamageDiffusion33(ipc, ip, el)
+    
+ end select
+
+end function constitutive_getDamageDiffusion33
+
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local (unregularised) temperature
 !--------------------------------------------------------------------------------------------------

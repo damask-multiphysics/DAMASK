@@ -46,6 +46,7 @@ module damage_brittle
    damage_brittle_microstructure, &
    constitutive_brittle_getDamage, &
    constitutive_brittle_putDamage, &
+   damage_brittle_getDamageDiffusion33, &
    damage_brittle_postResults
 
 contains
@@ -360,6 +361,34 @@ subroutine constitutive_brittle_putDamage(ipc, ip, el, localDamage)
    localDamage
  
 end subroutine constitutive_brittle_putDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns brittle damage diffusion tensor 
+!--------------------------------------------------------------------------------------------------
+function damage_brittle_getDamageDiffusion33(ipc, ip, el)
+ use lattice, only: &
+   lattice_DamageDiffusion33
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   damage_brittle_getDamageDiffusion33
+ integer(pInt) :: &
+   phase, constituent
+ 
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ damage_brittle_getDamageDiffusion33 = &
+   damageState(phase)%state(2,constituent)* &
+   lattice_DamageDiffusion33(1:3,1:3,phase)
+    
+end function damage_brittle_getDamageDiffusion33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
