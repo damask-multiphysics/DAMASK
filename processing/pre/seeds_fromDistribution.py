@@ -171,8 +171,7 @@ class myThread (threading.Thread):
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Monte Carlo simulation to produce seed file that gives same size distribution like given geometry file.
 
-""", version=string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-s','--seeds',    dest='seedFile', metavar='string',
                                      help='name of the intial seed file. If not found, a new one is created [%default]')
