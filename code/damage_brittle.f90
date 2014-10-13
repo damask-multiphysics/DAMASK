@@ -211,7 +211,7 @@ subroutine damage_brittle_init(fileUnit)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(damageState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
 
-     call damage_brittle_stateInit(phase,instance)
+     call damage_brittle_stateInit(phase)
      call damage_brittle_aTolState(phase,instance)
    endif
  
@@ -221,12 +221,11 @@ end subroutine damage_brittle_init
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant  NEW state values for a given instance of this damage
 !--------------------------------------------------------------------------------------------------
-subroutine damage_brittle_stateInit(phase,instance)
+subroutine damage_brittle_stateInit(phase)
  use material, only: &
    damageState
  
  implicit none
- integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the damage
  integer(pInt),              intent(in) :: phase                                                    !< number specifying the phase of the damage
 
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
