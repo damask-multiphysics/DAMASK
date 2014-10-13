@@ -327,7 +327,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    materialpoint_results, &
    materialpoint_sizeResults, &
    materialpoint_stressAndItsTangent, &
-   materialpoint_postResults
+   materialpoint_postResults, &
+   field_putFieldTemperature
  use IO, only: &
    IO_write_jobRealFile, &
    IO_warning
@@ -485,6 +486,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  !*   If no parallel execution is required, there is no need to collect FEM input
 
  if (.not. parallelExecution) then
+#if defined(Marc4DAMASK) || defined(Abaqus)
+   call field_putFieldTemperature(ip,elCP,temperature) 
+#endif
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
 
@@ -494,6 +498,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    if (rnd < 0.5_pReal) rnd = rnd - 1.0_pReal
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
+#endif
+#if defined(Marc4DAMASK) || defined(Abaqus)
+   call field_putFieldTemperature(ip,elCP,temperature) 
 #endif
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
    materialpoint_F(1:3,1:3,ip,elCP) = ffn1
