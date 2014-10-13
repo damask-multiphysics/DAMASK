@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os, sys, math, re, threading, time, string, damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import os, sys, math, re, threading, time, string
+from optparse import OptionParser
+import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 #-------------------------------------------------------------------------------------------------
 def outMentat(cmd,locals):
@@ -196,7 +197,8 @@ def parse_geomFile(content,homog):
 
   microstructures = []
   for line in content[skip:]:
-    microstructures.append(int(line.split()[0]))
+    for word in line.split():
+      microstructures.append(int(word))
 
   return (grid,size,homog,microstructures)
 
@@ -228,14 +230,15 @@ def parse_spectralFile(content,homog):
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-parser = OptionParser(usage='%prog [options] spectral.datafile', description = """
+
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Generate FE hexahedral mesh from spectral description file.
 
 Acceptable formats are
 geom: header plus list of grain numbers or
 spectral: phi1,Phi,phi2,x,y,z,id,phase.
-""" + string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
+
 parser.add_option("-p", "--port", type="int",\
                   dest="port",\
                   help="Mentat connection port")
