@@ -250,18 +250,13 @@ subroutine math_init
    call random_number(randTest(i))
  enddo
 
-#ifdef FEM
- if (worldrank == 0) then
-#endif  
- write(6,*) 'size  of random seed:    ', randSize
- do i =1, randSize
-   write(6,*) 'value of random seed:    ', i, randInit(i)
- enddo
- write(6,'(a,4(/,26x,f17.14))') ' start of random sequence: ', randTest
- write(6,*) ''
-#ifdef FEM
- endif
-#endif  
+ mainProcess2: if (worldrank == 0) then 
+   write(6,*) 'size  of random seed:    ', randSize
+   do i =1, randSize
+     write(6,*) 'value of random seed:    ', i, randInit(i)
+   enddo
+   write(6,'(a,4(/,26x,f17.14),/)') ' start of random sequence: ', randTest
+ endif mainProcess2 
 
  call random_seed(put = randInit)
 

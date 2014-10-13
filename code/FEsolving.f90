@@ -66,11 +66,9 @@ subroutine FE_init
    IO_stringValue, &
    IO_intValue, &
    IO_lc, &
-#ifndef Spectral
-#ifndef FEM
+#if defined(Marc4DAMASK) || defined(Abaqus)
    IO_open_inputFile, &
    IO_open_logFile, &
-#endif
 #endif
    IO_warning, &
    IO_timeStamp
@@ -79,8 +77,7 @@ subroutine FE_init
    worldrank
  
  implicit none
-#ifndef Spectral
-#ifndef FEM
+#if defined(Marc4DAMASK) || defined(Abaqus)
  integer(pInt), parameter :: &
    FILEUNIT = 222_pInt, &
    maxNchunks = 6_pInt
@@ -89,12 +86,11 @@ subroutine FE_init
  character(len=1024) :: line
  integer(pInt), dimension(1_pInt+2_pInt*maxNchunks) :: positions
 #endif
-#endif
 
  mainProcess: if (worldrank == 0) then 
-   write(6,'(/,a)') ' <<<+-  FEsolving init  -+>>>'
-   write(6,'(a)')   ' $Id$'
-   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+   write(6,'(/,a)')   ' <<<+-  FEsolving init  -+>>>'
+   write(6,'(a)')     ' $Id$'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
 
