@@ -670,8 +670,6 @@ end subroutine constitutive_phenopowerlaw_aTolState
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
- use prec, only: &
-   p_vec
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -1051,7 +1049,7 @@ subroutine constitutive_phenopowerlaw_getSlipRate(nSlip,slipRate,ipc, ip, el)
    plasticState, &
    phase_plasticityInstance
 
-   implicit none
+ implicit none
  
  real(pReal), dimension(:), allocatable :: &
    slipRate
@@ -1092,8 +1090,6 @@ end subroutine constitutive_phenopowerlaw_getSlipRate
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
- use prec, only: &
-   p_vec
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips

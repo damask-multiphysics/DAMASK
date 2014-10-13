@@ -1161,8 +1161,6 @@ end subroutine constitutive_titanmod_stateInit
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
 function constitutive_titanmod_homogenizedC(ipc,ip,el)
- use prec, only: &
-   p_vec
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -1329,8 +1327,6 @@ end subroutine constitutive_titanmod_microstructure
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,ipc,ip,el)
- use prec, only: &
-   p_vec
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -1654,8 +1650,6 @@ end subroutine constitutive_titanmod_LpAndItsTangent
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_titanmod_dotState(Tstar_v,temperature,ipc,ip,el)
- use prec, only: &
-   p_vec
   use lattice,  only: &
    lattice_Stwin_v, &
    lattice_maxNslipFamily, &
@@ -1873,8 +1867,6 @@ end subroutine constitutive_titanmod_getSlipRate
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function constitutive_titanmod_postResults(ipc,ip,el)
- use prec, only: &
-   p_vec
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips

@@ -997,8 +997,6 @@ end subroutine constitutive_dislokmc_aTolState
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
 function constitutive_dislokmc_homogenizedC(ipc,ip,el)
- use prec, only: &
-   p_vec
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -1046,8 +1044,6 @@ function constitutive_dislokmc_homogenizedC(ipc,ip,el)
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_dislokmc_microstructure(temperature,ipc,ip,el)
- use prec, only: &
-   p_vec
  use math, only: &
    pi
  use mesh, only: &
@@ -1193,7 +1189,6 @@ end subroutine constitutive_dislokmc_microstructure
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
-   p_vec, &
    tol_math_check
  use math, only: &
    math_Plain3333to99, &
@@ -1473,7 +1468,6 @@ end subroutine constitutive_dislokmc_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
-   p_vec, &
    tol_math_check
  use math, only: &
    pi
@@ -1772,7 +1766,6 @@ end subroutine constitutive_dislokmc_getSlipRate
 !--------------------------------------------------------------------------------------------------
 function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
-   p_vec, &
    tol_math_check
  use math, only: &
    pi, &

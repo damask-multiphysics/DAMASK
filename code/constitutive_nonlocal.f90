@@ -9,8 +9,7 @@
 module constitutive_nonlocal
  use prec, only: &
    pReal, &
-   pInt, &
-   p_vec
+   pInt
  
  implicit none
  private
