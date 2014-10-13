@@ -271,7 +271,7 @@ contains
 !> @details figures out if solverJobName.materialConfig is present, if not looks for 
 !> material.config
 !--------------------------------------------------------------------------------------------------
-subroutine material_init
+subroutine material_init(temperature_init)
  use, intrinsic :: iso_fortran_env                             ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
    IO_error, &
@@ -293,6 +293,7 @@ subroutine material_init
    worldrank
  
  implicit none
+ real(pReal), intent(in)  :: temperature_init                                                       !< initial field temperature
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt)            :: m,c,h, myDebug, myHomog
  integer(pInt) :: &
@@ -419,14 +420,13 @@ subroutine material_init
      case (FIELD_THERMAL_local_ID)
       fieldThermal(homog)%sizeField = 0_pInt
       fieldThermal(homog)%sizePostResults = 0_pInt
-      allocate(fieldThermal(homog)%field(fieldThermal(homog)%sizeField,NofMyField), &
-                                              source = 300.0_pReal)                ! ToDo: temporary fix for now 
+      allocate(fieldThermal(homog)%field(fieldThermal(homog)%sizeField,NofMyField))                 
       
      case (FIELD_THERMAL_nonlocal_ID)
       fieldThermal(homog)%sizeField = 1_pInt
       fieldThermal(homog)%sizePostResults = 1_pInt
       allocate(fieldThermal(homog)%field(fieldThermal(homog)%sizeField,NofMyField), &
-                                              source = 300.0_pReal)                ! ToDo: temporary fix for now 
+                                              source = temperature_init)                 
 
    end select   
  enddo

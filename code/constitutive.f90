@@ -53,7 +53,7 @@ contains
 !--------------------------------------------------------------------------------------------------
 !> @brief allocates arrays pointing to array of the various constitutive modules
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_init
+subroutine constitutive_init(temperature_init)
 #ifdef HDF
  use hdf5, only: &
    HID_T
@@ -158,9 +158,10 @@ subroutine constitutive_init
  use vacancy_generation
 
  implicit none
+ real(pReal), intent(in)  :: temperature_init                                                       !< initial temperature
  integer(pInt), parameter :: FILEUNIT = 200_pInt
  integer(pInt) :: &
-  e, &                                                                                        !< maximum number of elements
+  e, &                                                                                              !< maximum number of elements
   phase, &
   instance
 
@@ -201,8 +202,8 @@ subroutine constitutive_init
 ! parse thermal from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_thermal == LOCAL_THERMAL_isothermal_ID))    call thermal_isothermal_init(FILEUNIT)
- if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))     call thermal_adiabatic_init(FILEUNIT)
+ if (any(phase_thermal == LOCAL_THERMAL_isothermal_ID))    call thermal_isothermal_init(FILEUNIT,temperature_init)
+ if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))     call thermal_adiabatic_init(FILEUNIT,temperature_init)
  close(FILEUNIT)
 
 !--------------------------------------------------------------------------------------------------
@@ -351,7 +352,7 @@ subroutine constitutive_init
    end select   
    if (knownVacancy) then
      write(FILEUNIT,'(a)') '(vacancy)'//char(9)//trim(outputName)
-     if (phase_vacancy(phase) /= LOCAL_VACANCY_generation_ID) then
+     if (phase_vacancy(phase) /= LOCAL_VACANCY_constant_ID) then
        do e = 1_pInt,thisNoutput(instance)
          write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
        enddo
@@ -1067,11 +1068,12 @@ function constitutive_getAdiabaticTemperature(ipc, ip, el)
    material_phase, &
    LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
-   phase_thermal
+   phase_thermal, &
+   phase_thermalInstance
+ use thermal_isothermal, only: &
+   thermal_isothermal_temperature
  use thermal_adiabatic, only: &
    thermal_adiabatic_getTemperature
- use lattice, only: &
-   lattice_referenceTemperature
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1082,7 +1084,8 @@ function constitutive_getAdiabaticTemperature(ipc, ip, el)
  
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_isothermal_ID)
-     constitutive_getAdiabaticTemperature = lattice_referenceTemperature(material_phase(ipc,ip,el))
+     constitutive_getAdiabaticTemperature = &
+       thermal_isothermal_temperature(phase_thermalInstance(material_phase(ipc,ip,el)))
      
    case (LOCAL_THERMAL_adiabatic_ID)
      constitutive_getAdiabaticTemperature = thermal_adiabatic_getTemperature(ipc, ip, el)

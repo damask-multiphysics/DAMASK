@@ -7,7 +7,8 @@
 !--------------------------------------------------------------------------------------------------
 module thermal_isothermal
  use prec, only: &
-   pInt
+   pInt, &
+   pReal
 
  implicit none
  private
@@ -16,6 +17,9 @@ module thermal_isothermal
 
  integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
    thermal_isothermal_sizePostResult                                                                 !< size of each post result output
+
+ real(pReal),                         dimension(:),     allocatable,          public :: &
+   thermal_isothermal_temperature
 
  public :: &
    thermal_isothermal_init
@@ -27,7 +31,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_isothermal_init(fileUnit)
+subroutine thermal_isothermal_init(fileUnit,temperature_init)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
@@ -49,6 +53,7 @@ subroutine thermal_isothermal_init(fileUnit)
 
  implicit none
 
+ real(pReal), intent(in)   :: temperature_init                                                      !< initial temperature
  integer(pInt), intent(in) :: fileUnit
  integer(pInt) :: &
    maxNinstance, &
@@ -98,6 +103,7 @@ subroutine thermal_isothermal_init(fileUnit)
    endif
  enddo initializeInstances
  allocate(thermal_isothermal_sizePostResults(maxNinstance), source=0_pInt)
+ allocate(thermal_isothermal_temperature(maxNinstance),     source=temperature_init)
 
 end subroutine thermal_isothermal_init
 

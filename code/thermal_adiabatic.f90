@@ -24,7 +24,7 @@ module thermal_adiabatic
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    thermal_adiabatic_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),     allocatable,         public :: &
+ real(pReal),                         dimension(:),           allocatable,         public :: &
    thermal_adiabatic_aTol
 
  enum, bind(c) 
@@ -51,7 +51,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_init(fileUnit)
+subroutine thermal_adiabatic_init(fileUnit,temperature_init)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level,&
@@ -88,6 +88,7 @@ subroutine thermal_adiabatic_init(fileUnit)
    numerics_integrator
 
  implicit none
+ real(pReal), intent(in)   :: temperature_init                                                      !< initial temperature
  integer(pInt), intent(in) :: fileUnit
 
  integer(pInt), parameter :: MAXNCHUNKS = 7_pInt
@@ -117,7 +118,7 @@ subroutine thermal_adiabatic_init(fileUnit)
           thermal_adiabatic_output = ''
  allocate(thermal_adiabatic_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(thermal_adiabatic_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(thermal_adiabatic_aTol(maxNinstance),                       source=0.0_pReal) 
+ allocate(thermal_adiabatic_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -202,7 +203,7 @@ subroutine thermal_adiabatic_init(fileUnit)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(thermalState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
 
-     call thermal_adiabatic_stateInit(phase,instance)
+     call thermal_adiabatic_stateInit(phase,temperature_init)
      call thermal_adiabatic_aTolState(phase,instance)
    endif
  
@@ -212,19 +213,17 @@ end subroutine thermal_adiabatic_init
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant  NEW state values for a given instance of this thermal
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_stateInit(phase,instance)
+subroutine thermal_adiabatic_stateInit(phase,temperature_init)
  use material, only: &
    thermalState
- use lattice, only: &
-  lattice_referenceTemperature
  
  implicit none
- integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the thermal
  integer(pInt),              intent(in) :: phase                                                    !< number specifying the phase of the thermal
+ real(pReal),                intent(in) :: temperature_init                                         !< initial temperature
 
  real(pReal), dimension(thermalState(phase)%sizeState) :: tempState
 
- tempState(1) = lattice_referenceTemperature(phase)
+ tempState(1) = temperature_init
  thermalState(phase)%state = spread(tempState,2,size(thermalState(phase)%state(1,:)))
  thermalState(phase)%state0 = thermalState(phase)%state
  thermalState(phase)%partionedState0 = thermalState(phase)%state
@@ -243,7 +242,7 @@ subroutine thermal_adiabatic_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the thermal
  real(pReal), dimension(thermalState(phase)%sizeState) :: tempTol
 
- tempTol = thermal_adiabatic_aTol
+ tempTol = thermal_adiabatic_aTol(instance)
  thermalState(phase)%aTolState = tempTol
 end subroutine thermal_adiabatic_aTolState
  

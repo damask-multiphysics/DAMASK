@@ -97,8 +97,8 @@ subroutine CPFEM_initAll(temperature,el,ip)
      call FE_init
      call mesh_init(ip, el)                                                                        ! pass on coordinates to alter calcMode of first ip
      call lattice_init
-     call material_init
-     call constitutive_init
+     call material_init(temperature)
+     call constitutive_init(temperature)
      call crystallite_init
      call homogenization_init
      call CPFEM_init
