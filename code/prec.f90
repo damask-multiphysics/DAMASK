@@ -49,7 +49,10 @@ module prec
  integer,     parameter, public :: pLongInt  = 8                                                    !< integer representation 64 bit (was selected_int_kind(12), number with at least up to +- 1e12)
  real(pReal), parameter, public :: tol_math_check = 1.0e-8_pReal                                    !< tolerance for internal math self-checks (rotation)
 
- type, public :: p_intvec
+ type, public :: p_vec                                                                              !< variable length datatype used for storage of state
+   real(pReal), dimension(:), allocatable :: p
+ end type p_vec
+type, public :: p_intvec
    integer(pInt), dimension(:), allocatable :: p
  end type p_intvec
 
