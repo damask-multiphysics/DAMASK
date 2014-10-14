@@ -864,6 +864,7 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
+         phase_thermalInstance(section) = count(phase_thermal(1:section) == phase_thermal(section))               ! count instances
        case ('vacancy')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (LOCAL_VACANCY_CONSTANT_label)
