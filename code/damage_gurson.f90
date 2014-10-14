@@ -255,8 +255,8 @@ subroutine damage_gurson_stateInit(phase)
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
  tempState(1) = 1.0_pReal
- tempState(2) = 0.0_pReal
- tempState(3) = 0.0_pReal
+ tempState(2) = 1.0_pReal
+ tempState(3) = 1.0_pReal
  tempState(4) = 1.0_pReal
 
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
@@ -294,6 +294,7 @@ subroutine damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
    math_norm33, &
    math_j3_33, &
    math_trace33, &
+   math_I3, &
    math_Mandel6to33
  use lattice, only: &
    lattice_DamageMobility
@@ -311,29 +312,30 @@ subroutine damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
    phase, constituent
  real(pReal) :: &
    i1, j2, j3
-
+ real(pReal) , dimension(3,3) :: &
+   Tstar_dev
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- 
+ Tstar_dev = math_Mandel6to33(Tstar_v) - math_trace33(math_Mandel6to33(Tstar_v))/3*math_I3
  i1 = sum(Tstar_v(1:3))
- j2 = math_norm33(math_Mandel6to33(Tstar_v))**2
+ j2 = 0.5_pReal*(math_norm33(Tstar_dev))**2
  j3 = math_j3_33(math_Mandel6to33(Tstar_v))
  
  damageState(phase)%dotState(1,constituent) = &
    (1.0_pReal/lattice_DamageMobility(phase))* &
-   (damageState(phase)%state(4,constituent) + &
+   (damageState(phase)%state(4,constituent) - &
     damageState(phase)%state(1,constituent))
 
 
  damageState(phase)%dotState(2,constituent) = &                                                     !> void nucleation rate
-   math_equivStrain33(Lp)*sqrt(damage_gurson_lengthscale(phase))/damage_gurson_fracture_tough(phase)* &
-    damageState(phase)%dotState(2,constituent) * ( &
+   math_norm33(Lp)*sqrt(damage_gurson_lengthscale(phase))/damage_gurson_fracture_tough(phase)* &
+    damageState(phase)%state(2,constituent) * ( &
              damage_gurson_coeff_torsion(phase) * ((4_pReal/27_pReal) - (j3**(2)/j2**(3))) + &
              damage_gurson_coeff_ten_comp(phase) * (j3/j2**(1.5_pReal)) + &
              damage_gurson_coeff_triaxiality(phase) * abs(i1/sqrt(j2)))                             !> to be coupled with vacancy generation
              
  damageState(phase)%dotState(3,constituent) = &
-   ( 1_pReal - damageState(phase)%state(1,constituent)) * math_trace33(Lp)                          !> void growth rate
+   ( damageState(phase)%state(4,constituent)) * math_trace33(Lp)                          !> void growth rate
 
   
 end subroutine damage_gurson_dotState
@@ -365,13 +367,13 @@ subroutine damage_gurson_microstructure(ipc, ip, el)
  
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- voidFraction =  damageState(phase)%state(2,constituent) * damageState(phase)%state(3,constituent)
+ voidFraction =  damageState(phase)%state(2,constituent) + damageState(phase)%state(3,constituent)
  
  if(voidFraction < damage_gurson_crit_void_fraction(phase)) then
    damageState(phase)%state(4,constituent) =  1_pReal - voidFraction                                ! damage parameter is 1 when no void present
  else 
    damageState(phase)%state(4,constituent) =  1_pReal - damage_gurson_crit_void_fraction(phase) + &
-                                  5_pReal * (voidFraction - damage_gurson_crit_void_fraction(phase)) ! this accelerated void increase model the effect of void coalescence
+                                  5_pReal * (voidFraction - damage_gurson_crit_void_fraction(phase)) ! this accelerated void increase models the effect of void coalescence
  endif
                                                        
 end subroutine damage_gurson_microstructure

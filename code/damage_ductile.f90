@@ -218,7 +218,7 @@ subroutine damage_ductile_init(fileUnit)
 end subroutine damage_ductile_init
 
 !--------------------------------------------------------------------------------------------------
-!> @brief sets the relevant  NEW state values for a given instance of this damage
+!> @brief sets the relevant state values for a given instance of this damage
 !--------------------------------------------------------------------------------------------------
 subroutine damage_ductile_stateInit(phase)
  use material, only: &
@@ -230,8 +230,8 @@ subroutine damage_ductile_stateInit(phase)
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
  tempState(1) = 1.0_pReal
- tempState(2) = 0.0_pReal
- tempState(3) = 1.0_pReal
+ tempState(2) = 1.0_pReal
+
 
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state

@@ -957,7 +957,7 @@ end function math_equivStrain33
 
  
 !--------------------------------------------------------------------------------------------------
-!> @brief trace of a 33 matrixmath_j3_33
+!> @brief trace of a 33 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_trace33(m)
 
@@ -969,14 +969,14 @@ real(pReal) pure function math_trace33(m)
 end function math_trace33
 
 !--------------------------------------------------------------------------------------------------
-!> @brief invarient 3 of a 33 matrix
+!> @brief invariant 3 of a 33 matrix
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_j3_33(m)
 
  implicit none
  real(pReal), dimension(3,3), intent(in) :: m
 
- math_j3_33 = sqrt(sum(m**3.0_pReal))
+ math_j3_33 = sum(m**3.0_pReal)/3.0_pReal
 
 end function math_j3_33
 
