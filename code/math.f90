@@ -110,6 +110,7 @@ module math
    math_deviatoric33, &
    math_equivStrain33, &
    math_trace33, &
+   math_j3_33, &
    math_det33, &
    math_norm33, &
    math_norm3, &
@@ -956,7 +957,7 @@ end function math_equivStrain33
 
  
 !--------------------------------------------------------------------------------------------------
-!> @brief trace of a 33 matrix
+!> @brief trace of a 33 matrixmath_j3_33
 !--------------------------------------------------------------------------------------------------
 real(pReal) pure function math_trace33(m)
 
@@ -967,6 +968,17 @@ real(pReal) pure function math_trace33(m)
 
 end function math_trace33
 
+!--------------------------------------------------------------------------------------------------
+!> @brief invarient 3 of a 33 matrix
+!--------------------------------------------------------------------------------------------------
+real(pReal) pure function math_j3_33(m)
+
+ implicit none
+ real(pReal), dimension(3,3), intent(in) :: m
+
+ math_j3_33 = sqrt(sum(m**3.0_pReal))
+
+end function math_j3_33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief determinant of a 33 matrix

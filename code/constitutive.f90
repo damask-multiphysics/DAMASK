@@ -818,7 +818,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    case (LOCAL_DAMAGE_ductile_ID)
      call damage_ductile_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
-     call damage_gurson_dotState(Lp, ipc, ip, el)
+     call damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
  end select
 
  select case (phase_thermal(material_phase(ipc,ip,el)))

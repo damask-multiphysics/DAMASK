@@ -27,15 +27,21 @@ module damage_gurson
 
  real(pReal),                         dimension(:),           allocatable,         private :: &
    damage_gurson_aTol, &
-   damage_gurson_critpStrain
+   damage_gurson_coeff_torsion, &
+   damage_gurson_coeff_ten_comp, &
+   damage_gurson_coeff_triaxiality, &
+   damage_gurson_fracture_tough, &
+   damage_gurson_lengthscale, &
+   damage_gurson_crit_void_fraction
+   
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
                  local_damage_ID
- end enum                                                 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!11 ToDo
+ end enum                                                                                          !!!!! ToDo
  
  integer(kind(undefined_ID)),         dimension(:,:),         allocatable,          private :: & 
-   damage_gurson_outputID                                                                  !< ID of each post result output
+   damage_gurson_outputID                                                                          !< ID of each post result output
 
 
  public :: &
@@ -122,7 +128,12 @@ subroutine damage_gurson_init(fileUnit)
           damage_gurson_output = ''
  allocate(damage_gurson_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_gurson_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(damage_gurson_critpStrain(maxNinstance),                    source=0.0_pReal) 
+ allocate(damage_gurson_coeff_torsion(maxNinstance),                       source=0.0_pReal)
+ allocate(damage_gurson_coeff_ten_comp(maxNinstance),                      source=0.0_pReal)
+ allocate(damage_gurson_coeff_triaxiality(maxNinstance),                   source=0.0_pReal)
+ allocate(damage_gurson_fracture_tough(maxNinstance),                      source=0.0_pReal)
+ allocate(damage_gurson_lengthscale(maxNinstance),                         source=0.0_pReal)
+ allocate(damage_gurson_crit_void_fraction(maxNinstance),                  source=0.0_pReal)
  allocate(damage_gurson_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -155,13 +166,27 @@ subroutine damage_gurson_init(fileUnit)
              damage_gurson_output(damage_gurson_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
-
-       case ('critical_plastic_strain')
-         damage_gurson_critpStrain(instance) = IO_floatValue(line,positions,2_pInt)
+! input parameters 
+       case ('coeff_torsion')
+         damage_gurson_coeff_torsion(instance)  = IO_floatValue(line,positions,2_pInt)               !> coefficent of torsional stress component
+         
+       case ('coeff_tension_comp')
+         damage_gurson_coeff_ten_comp(instance) = IO_floatValue(line,positions,2_pInt)               !> coefficent of tensile or compressive stress component
+         
+       case ('coeff_triaxiality')
+         damage_gurson_coeff_triaxiality(instance) = IO_floatValue(line,positions,2_pInt)
+         
+       case ('fracture_toughness')
+         damage_gurson_fracture_tough(instance) = IO_floatValue(line,positions,2_pInt)
+         
+       case ('lengthscale')
+         damage_gurson_lengthscale(instance) = IO_floatValue(line,positions,2_pInt)
+         
+       case ('critical_voidFraction')
+         damage_gurson_crit_void_fraction(instance) = IO_floatValue(line,positions,2_pInt)
 
        case ('atol_damage')
          damage_gurson_aTol(instance) = IO_floatValue(line,positions,2_pInt)
-
      end select
    endif; endif
  enddo parsingFile
@@ -185,8 +210,8 @@ subroutine damage_gurson_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   4_pInt
-     sizeState                 =   6_pInt
+     sizeDotState              =   3_pInt
+     sizeState                 =   4_pInt
                 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
@@ -231,7 +256,8 @@ subroutine damage_gurson_stateInit(phase)
 
  tempState(1) = 1.0_pReal
  tempState(2) = 0.0_pReal
- tempState(3) = 1.0_pReal
+ tempState(3) = 0.0_pReal
+ tempState(4) = 1.0_pReal
 
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
@@ -253,22 +279,28 @@ subroutine damage_gurson_aTolState(phase,instance)
 
  tempTol = damage_gurson_aTol(instance)
  damageState(phase)%aTolState = tempTol
+ 
 end subroutine damage_gurson_aTolState
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_gurson_dotState(Lp, ipc, ip, el)
+subroutine damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
  use math, only: &
    math_equivStrain33, &
-   math_trace33
+   math_norm33, &
+   math_j3_33, &
+   math_trace33, &
+   math_Mandel6to33
  use lattice, only: &
    lattice_DamageMobility
 
  implicit none
+ real(pReal),  intent(in), dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal), intent(in), dimension(3,3) :: &
    Lp
  integer(pInt), intent(in) :: &
@@ -277,26 +309,32 @@ subroutine damage_gurson_dotState(Lp, ipc, ip, el)
    el                                                                                               !< element
  integer(pInt) :: &
    phase, constituent
+ real(pReal) :: &
+   i1, j2, j3
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  
+ i1 = sum(Tstar_v(1:3))
+ j2 = math_norm33(math_Mandel6to33(Tstar_v))**2
+ j3 = math_j3_33(math_Mandel6to33(Tstar_v))
+ 
  damageState(phase)%dotState(1,constituent) = &
    (1.0_pReal/lattice_DamageMobility(phase))* &
-   (damageState(phase)%state(6,constituent) - &
+   (damageState(phase)%state(4,constituent) + &
     damageState(phase)%state(1,constituent))
 
- damageState(phase)%dotState(2,constituent) = &
-   damageState(phase)%dotState(3,constituent) + &
-   damageState(phase)%dotState(4,constituent)                            ! total rate of void fraction evolution
-   
+
+ damageState(phase)%dotState(2,constituent) = &                                                     !> void nucleation rate
+   math_equivStrain33(Lp)*sqrt(damage_gurson_lengthscale(phase))/damage_gurson_fracture_tough(phase)* &
+    damageState(phase)%dotState(2,constituent) * ( &
+             damage_gurson_coeff_torsion(phase) * ((4_pReal/27_pReal) - (j3**(2)/j2**(3))) + &
+             damage_gurson_coeff_ten_comp(phase) * (j3/j2**(1.5_pReal)) + &
+             damage_gurson_coeff_triaxiality(phase) * abs(i1/sqrt(j2)))                             !> to be coupled with vacancy generation
+             
  damageState(phase)%dotState(3,constituent) = &
-   damageState(phase)%state(6,constituent) * &
-   damageState(phase)%dotState(4,constituent)                            ! void nucleation rate
-   
- damageState(phase)%dotState(4,constituent) = &
-   (1_pReal - damageState(phase)%state(3,constituent)) * &
-    math_trace33(Lp)                                                     ! void growth rate( proportional to hydrostatic part of Lp )
+   ( 1_pReal - damageState(phase)%state(1,constituent)) * math_trace33(Lp)                          !> void growth rate
+
   
 end subroutine damage_gurson_dotState
  
@@ -320,16 +358,21 @@ subroutine damage_gurson_microstructure(ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ integer(pReal) :: &
+   voidFraction
  integer(pInt) :: &
    phase, constituent
-
+ 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
+ voidFraction =  damageState(phase)%state(2,constituent) * damageState(phase)%state(3,constituent)
  
- damageState(phase)%state(5,constituent) = 0.0_pReal                                                       !< a statistical measure of aeformation hetrogeneity
- damageState(phase)%state(6,constituent) = min(damageState(phase)%state(6,constituent), &
-                                                     damage_gurson_critpStrain(phase)/ &
-                                                      damageState(phase)%state(2,constituent))      !< akin to damage surface
+ if(voidFraction < damage_gurson_crit_void_fraction(phase)) then
+   damageState(phase)%state(4,constituent) =  1_pReal - voidFraction                                ! damage parameter is 1 when no void present
+ else 
+   damageState(phase)%state(4,constituent) =  1_pReal - damage_gurson_crit_void_fraction(phase) + &
+                                  5_pReal * (voidFraction - damage_gurson_crit_void_fraction(phase)) ! this accelerated void increase model the effect of void coalescence
+ endif
                                                        
 end subroutine damage_gurson_microstructure
 
