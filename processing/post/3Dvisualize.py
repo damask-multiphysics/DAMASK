@@ -460,48 +460,6 @@ for filename in args:
 
     nodes=nodes.reshape(3,grid[0]+1,grid[1]+1,grid[2]+1)
 
-#--- generate grid --------------------------------------------------------------------------------
-#  structure = vtk.vtkIntArray()
-#  structure.SetName('Microstructures')
-#  temp = []
-#  i=0
-#  aHexahedronGrid = vtk.vtkUnstructuredGrid()
-#  for z in range (grid[2]):
-#    for y in range (grid[1]):
-#      for x in range (grid[0]):
-#        temp.append(vtk.vtkHexahedron())
-#        base = z*(grid[1]+1)*(grid[0]+1)+y*(grid[0]+1)+x
-#        temp[i].GetPointIds().SetId(0, base)
-#        temp[i].GetPointIds().SetId(1, base+1)
-#        temp[i].GetPointIds().SetId(2, base+grid[0]+2)
-#        temp[i].GetPointIds().SetId(3, base+grid[0]+1)
-#        temp[i].GetPointIds().SetId(4, base+(grid[1]+1)*(grid[0]+1))
-#        temp[i].GetPointIds().SetId(5, base+(grid[1]+1)*(grid[0]+1)+1)
-#        temp[i].GetPointIds().SetId(6, base+(grid[1]+1)*(grid[0]+1)+grid[0]+2)
-#        temp[i].GetPointIds().SetId(7, base+(grid[1]+1)*(grid[0]+1)+grid[0]+1)
-#        aHexahedronGrid.InsertNextCell(temp[i].GetCellType(),temp[i].GetPointIds())
-#        i+=1
-#        structure.InsertNextValue(i)
-
-#  pcoords = vtk.vtkDoubleArray()
-#  pcoords.SetNumberOfComponents(3)
-#  for i in range(grid[0]+1):
-#    for j in range(grid[1]+1):
-#      for k in range(grid[2]+1):
-#        pcoords.InsertNextTuple3(nodes[0,i,j,k],nodes[1,i,j,k],nodes[2,i,j,k])
-
-#  points = vtk.vtkPoints()
-#  points.SetData(pcoords)
-#  aHexahedronGrid.SetPoints(points)
-#  aHexahedronGrid.GetCellData().SetScalars(structure)
-  
-#  outWriter = vtk.vtkXMLUnstructuredGridWriter()
-#  outWriter.SetDataModeToBinary()
-#  outWriter.SetCompressorTypeToZLib()
-#  outWriter.SetFileName('ddd.vtu')
-#  outWriter.SetInput(aHexahedronGrid)
-#  outWriter.Write()
-
 
   fields =  {\
              'tensor': {},\
@@ -528,8 +486,67 @@ for filename in args:
              'quadruple': 4,\
             }
 
-#  structure = vtk.vtkIntArray()
-#  structure.SetName('Microstructures')
+# vtk lib out
+ #points = vtk.vtkPoints()
+ #for z in range (grid[2]+1):
+ #  for y in range (grid[1]+1):
+ #    for x in range (grid[0]+1):
+ #      points.InsertNextPoint(nodes[:,x,y,z])
+
+ #hexs = vtk.vtkCellArray()
+ #i = 0
+ #elems=[]
+ #for z in range (grid[2]):
+ #  for y in range (grid[1]):
+ #    for x in range (grid[0]):
+
+ #      elems.append(vtk.vtkHexahedron())
+ #      base = z*(grid[1]+1)*(grid[0]+1)+y*(grid[0]+1)+x
+ #      elems[i].GetPointIds().SetId(0, base)
+ #      elems[i].GetPointIds().SetId(1, base+1)
+ #      elems[i].GetPointIds().SetId(2, base+grid[0]+2)
+ #      elems[i].GetPointIds().SetId(3, base+grid[0]+1)
+ #      elems[i].GetPointIds().SetId(4, base+(grid[1]+1)*(grid[0]+1))
+ #      elems[i].GetPointIds().SetId(5, base+(grid[1]+1)*(grid[0]+1)+1)
+ #      elems[i].GetPointIds().SetId(6, base+(grid[1]+1)*(grid[0]+1)+grid[0]+2)
+ #      elems[i].GetPointIds().SetId(7, base+(grid[1]+1)*(grid[0]+1)+grid[0]+1)
+ #      hexs.InsertNextCell(elems[i])
+ #      i+=1
+
+ #uGrid = vtk.vtkUnstructuredGrid()
+ #uGrid.SetPoints(points)
+ #i = 0
+ #for z in range (grid[2]):
+ #  for y in range (grid[1]):
+ #    for x in range (grid[0]):
+ #      uGrid.InsertNextCell(elems[i].GetCellType(), elems[i].GetPointIds())
+ #      i+=1
+
+ #data=[]
+ #j=0
+ #for datatype in fields.keys():
+ #  for what in eval('options.'+datatype):
+ #    for label in matches[datatype][what]:
+ #      col = column[datatype][label]
+ #      if col != -1:
+ #        data.append(vtk.vtkFloatArray())
+ #        data[j].SetNumberOfComponents(1) #this is for scalar only so far
+ #        for i in xrange(grid[0]*grid[1]*grid[2]):
+ #          data[j].InsertNextValue(values[i,col:col+length[datatype]])
+ #          data[j].SetName(label)
+ #        j+=1
+
+ #for i in xrange(len(data)):
+ #  uGrid.GetCellData().AddArray(data[i])
+
+ #outWriter = vtk.vtkXMLUnstructuredGridWriter()
+ #outWriter.SetDataModeToBinary()
+ #outWriter.SetCompressorTypeToZLib()
+ #outWriter.SetFileName(os.path.splitext(filename)[0]+'.vtu')
+ #outWriter.SetInput(uGrid)
+ #outWriter.Write()
+
+
   for datatype in fields.keys():
     print '\n%s:'%datatype,
     fields[datatype]['_order_'] = []
