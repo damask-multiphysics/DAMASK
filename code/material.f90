@@ -761,7 +761,7 @@ subroutine material_parsePhase(fileUnit,myPart)
  integer(pInt), parameter :: MAXNCHUNKS = 2_pInt
  
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
- integer(pInt) :: Nsections, section
+ integer(pInt) :: Nsections, section, p
  character(len=65536) :: &
   tag,line
  logical              :: echo
@@ -820,7 +820,6 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_elasticityInstance(section) = count(phase_elasticity(1:section) == phase_elasticity(section))   ! count instances
        case ('plasticity')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (PLASTICITY_NONE_label)
@@ -840,7 +839,6 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(201_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_plasticityInstance(section) = count(phase_plasticity(1:section) == phase_plasticity(section))   ! count instances
        case ('damage')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (LOCAL_DAMAGE_none_label)
@@ -854,7 +852,6 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_damageInstance(section) = count(phase_damage(1:section) == phase_damage(section))               ! count instances
        case ('thermal')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (LOCAL_THERMAL_ISOTHERMAL_label)
@@ -864,7 +861,6 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_thermalInstance(section) = count(phase_thermal(1:section) == phase_thermal(section))               ! count instances
        case ('vacancy')
          select case (IO_lc(IO_stringValue(line,positions,2_pInt)))
            case (LOCAL_VACANCY_CONSTANT_label)
@@ -874,13 +870,21 @@ subroutine material_parsePhase(fileUnit,myPart)
            case default
              call IO_error(200_pInt,ext_msg=trim(IO_stringValue(line,positions,2_pInt)))
          end select
-         phase_vacancyInstance(section) = count(phase_vacancy(1:section) == phase_vacancy(section))            ! count instances
+
      end select
    endif
  enddo
 
-end subroutine material_parsePhase
+ do p=1_pInt, Nsections
+   phase_elasticityInstance(p) = count(phase_elasticity(1:p) == phase_elasticity(p))
+   phase_plasticityInstance(p) = count(phase_plasticity(1:p) == phase_plasticity(p))
+   phase_damageInstance(p) = count(phase_damage(1:p) == phase_damage(p))
+   phase_thermalInstance(p) = count(phase_thermal(1:p) == phase_thermal(p))
+   phase_vacancyInstance(p) = count(phase_vacancy(1:p) == phase_vacancy(p))
+ enddo
 
+
+end subroutine material_parsePhase
 
 !--------------------------------------------------------------------------------------------------
 !> @brief parses the texture part in the material configuration file
