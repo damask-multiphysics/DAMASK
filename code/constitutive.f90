@@ -122,6 +122,7 @@ subroutine constitutive_init(temperature_init)
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
    LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
    LOCAL_VACANCY_constant_ID, &
@@ -130,6 +131,7 @@ subroutine constitutive_init(temperature_init)
    LOCAL_DAMAGE_brittle_label, &
    LOCAL_DAMAGE_ductile_label, &
    LOCAL_DAMAGE_gurson_label, &
+   LOCAL_DAMAGE_anisotropic_label, &
    LOCAL_THERMAL_isothermal_label, &
    LOCAL_THERMAL_adiabatic_label, &
    LOCAL_VACANCY_constant_label, &
@@ -152,6 +154,7 @@ subroutine constitutive_init(temperature_init)
  use damage_brittle
  use damage_ductile
  use damage_gurson
+ use damage_anisotropic
  use thermal_isothermal
  use thermal_adiabatic
  use vacancy_constant
@@ -196,6 +199,7 @@ subroutine constitutive_init(temperature_init)
  if (any(phase_damage == LOCAL_DAMAGE_brittle_ID))         call damage_brittle_init(FILEUNIT)
  if (any(phase_damage == LOCAL_DAMAGE_ductile_ID))         call damage_ductile_init(FILEUNIT)
  if (any(phase_damage == LOCAL_DAMAGE_gurson_ID))          call damage_gurson_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_anisotropic_ID))     call damage_anisotropic_init(FILEUNIT)
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
@@ -299,6 +303,11 @@ subroutine constitutive_init(temperature_init)
        thisNoutput => damage_gurson_Noutput
        thisOutput => damage_gurson_output
        thisSize   => damage_gurson_sizePostResult
+     case (LOCAL_DAMAGE_anisotropic_ID)
+       outputName = LOCAL_DAMAGE_anisotropic_label
+       thisNoutput => damage_anisotropic_Noutput
+       thisOutput => damage_anisotropic_output
+       thisSize   => damage_anisotropic_sizePostResult
      case default
        knownDamage = .false.
    end select   
@@ -492,7 +501,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    PLASTICITY_nonlocal_ID, &
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
-   LOCAL_DAMAGE_gurson_ID
+   LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID
 
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
@@ -508,6 +518,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    damage_ductile_microstructure
  use damage_gurson, only: &
    damage_gurson_microstructure
+ use damage_anisotropic, only: &
+   damage_anisotropic_microstructure
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -552,6 +564,9 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
      call damage_ductile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_microstructure(ipc, ip, el)
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
+     call damage_anisotropic_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
 
 
  end select
@@ -743,6 +758,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
    LOCAL_VACANCY_generation_ID
  use constitutive_j2, only:  &
@@ -763,6 +779,8 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    damage_ductile_dotState
  use damage_gurson, only: &
    damage_gurson_dotState
+ use damage_anisotropic, only: &
+   damage_anisotropic_dotState
  use thermal_adiabatic, only: &
    thermal_adiabatic_dotState
  use vacancy_generation, only: &
@@ -819,6 +837,8 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
      call damage_ductile_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     call damage_anisotropic_dotState(ipc, ip, el)
  end select
 
  select case (phase_thermal(material_phase(ipc,ip,el)))
@@ -906,7 +926,7 @@ end function constitutive_collectDeltaState
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Returns the local(unregularised)  damage 
+!> @brief Returns the local(regularised)  damage 
 !--------------------------------------------------------------------------------------------------
 function constitutive_getLocalDamage(ipc, ip, el)
  use prec, only: &
@@ -917,6 +937,7 @@ function constitutive_getLocalDamage(ipc, ip, el)
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
    phase_damage
  use damage_brittle, only: &
    constitutive_brittle_getDamage
@@ -924,6 +945,8 @@ function constitutive_getLocalDamage(ipc, ip, el)
    constitutive_ductile_getDamage
  use damage_gurson, only: &
    constitutive_gurson_getDamage
+ use damage_anisotropic, only: &
+   constitutive_anisotropic_getDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -944,6 +967,9 @@ function constitutive_getLocalDamage(ipc, ip, el)
      
    case (LOCAL_DAMAGE_gurson_ID)
      constitutive_getLocalDamage = constitutive_gurson_getDamage(ipc, ip, el)
+
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     constitutive_getLocalDamage = constitutive_anisotropic_getDamage(ipc, ip, el)
  end select
 
 end function constitutive_getLocalDamage
@@ -959,6 +985,7 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
    LOCAL_DAMAGE_BRITTLE_ID, &
    LOCAL_DAMAGE_DUCTILE_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
    phase_damage
  use damage_brittle, only: &
    constitutive_brittle_putDamage
@@ -966,6 +993,8 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
    constitutive_ductile_putDamage
  use damage_gurson, only: &
    constitutive_gurson_putDamage
+ use damage_anisotropic, only: &
+   constitutive_anisotropic_putDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -984,6 +1013,9 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
      
    case (LOCAL_DAMAGE_gurson_ID)
      call constitutive_gurson_putDamage(ipc, ip, el, localDamage)
+ 
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     call constitutive_anisotropic_putDamage(ipc, ip, el, localDamage)
 
  end select
 
@@ -1037,6 +1069,7 @@ function constitutive_getDamageDiffusion33(ipc, ip, el)
    LOCAL_DAMAGE_brittle_ID, &
    LOCAL_DAMAGE_ductile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
    phase_damage
  use damage_brittle, only: &
    damage_brittle_getDamageDiffusion33
@@ -1460,6 +1493,7 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    LOCAL_DAMAGE_BRITTLE_ID, &
    LOCAL_DAMAGE_DUCTILE_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
    LOCAL_THERMAL_ADIABATIC_ID, &
    LOCAL_VACANCY_generation_ID
  use constitutive_j2, only: &
@@ -1484,6 +1518,8 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    damage_ductile_postResults
  use damage_gurson, only: &
    damage_gurson_postResults
+ use damage_anisotropic, only: &
+   damage_anisotropic_postResults
  use thermal_adiabatic, only: &
    thermal_adiabatic_postResults
  use vacancy_generation, only: &
@@ -1548,6 +1584,8 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
      constitutive_postResults(startPos:endPos) = damage_ductile_postResults(ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      constitutive_postResults(startPos:endPos) = damage_gurson_postResults(ipc, ip, el)
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     constitutive_postResults(startPos:endPos) = damage_anisotropic_postResults(ipc, ip, el)
  end select
 
  startPos = endPos + 1_pInt
