@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: vacancy_generation.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for plastically generated vacancy concentrations
@@ -109,7 +109,7 @@ subroutine vacancy_generation_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  vacancy_'//LOCAL_VACANCY_GENERATION_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id: vacancy_generation.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

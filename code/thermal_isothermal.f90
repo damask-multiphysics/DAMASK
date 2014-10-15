@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: thermal_isothermal.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -64,7 +64,7 @@ subroutine thermal_isothermal_init(fileUnit,temperature_init)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  thermal_'//LOCAL_THERMAL_ISOTHERMAL_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id: thermal_isothermal.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

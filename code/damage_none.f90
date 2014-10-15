@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: damage_none.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
@@ -59,7 +59,7 @@ subroutine damage_none_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_DAMAGE_NONE_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id: damage_none.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess

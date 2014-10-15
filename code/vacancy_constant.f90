@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: vacancy_constant.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for constant vacancy concentration
@@ -58,7 +58,7 @@ subroutine vacancy_constant_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  vacancy_'//LOCAL_VACANCY_CONSTANT_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id: vacancy_constant.f90 3148 2014-05-27 14:46:03Z MPIE\m.diehl $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
