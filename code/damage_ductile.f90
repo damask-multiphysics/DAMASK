@@ -122,7 +122,7 @@ subroutine damage_ductile_init(fileUnit)
           damage_ductile_output = ''
  allocate(damage_ductile_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_ductile_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(damage_ductile_critpStrain(maxNinstance),                    source=0.0_pReal) 
+ allocate(damage_ductile_critpStrain(maxNinstance),                         source=0.0_pReal) 
  allocate(damage_ductile_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -309,13 +309,14 @@ subroutine damage_ductile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
  real(pReal), dimension(nSlip), intent(in) :: &
    accumulatedSlip
  integer(pInt) :: &
-   phase, constituent
+   phase, constituent, instance
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
+ instance = phase_damageInstance(phase)
  damageState(phase)%state(2,constituent) = min(damageState(phase)%state(2,constituent), &
-                                                     damage_ductile_critpStrain(phase)/ &
-                                                     sum(accumulatedSlip))      !< akin to damage surface
+                                                     damage_ductile_critpStrain(instance)/ &
+                                                     sum(accumulatedSlip))                         !< akin to damage surface
                                                        
 end subroutine damage_ductile_microstructure
 
