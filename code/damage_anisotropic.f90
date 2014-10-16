@@ -109,6 +109,7 @@ subroutine damage_anisotropic_init(fileUnit)
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,instance,o
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase   
+ integer(pInt) :: Nchunks_SlipFamilies, j   
  character(len=65536) :: &
    tag  = '', &
    line = ''

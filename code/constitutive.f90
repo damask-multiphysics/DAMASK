@@ -969,7 +969,7 @@ function constitutive_getLocalDamage(ipc, ip, el)
      constitutive_getLocalDamage = constitutive_gurson_getDamage(ipc, ip, el)
 
    case (LOCAL_DAMAGE_anisotropic_ID)
-     constitutive_getLocalDamage = constitutive_anisotropic_getDamage(ipc, ip, el)
+     !constitutive_getLocalDamage = constitutive_anisotropic_getDamage(ipc, ip, el)
  end select
 
 end function constitutive_getLocalDamage
@@ -1015,7 +1015,7 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
      call constitutive_gurson_putDamage(ipc, ip, el, localDamage)
  
    case (LOCAL_DAMAGE_anisotropic_ID)
-     call constitutive_anisotropic_putDamage(ipc, ip, el, localDamage)
+     !call constitutive_anisotropic_putDamage(ipc, ip, el, localDamage)
 
  end select
 
