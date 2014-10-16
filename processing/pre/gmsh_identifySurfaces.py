@@ -12,7 +12,8 @@ def func(seq):
     except ValueError:
       yield x
 
-my_geofile   = 'polyXtal_5grains.geo'
+my_geofile   = 'polyXtal_20grains.geo'
+numVol       = 20
 PointCount                = 0
 LineCount                 = 0
 LineLoopCount             = 0
@@ -26,6 +27,7 @@ surface  = []
 
 f = open(my_geofile,'r')
 lines = f.readlines()
+f.close()
 for eachline in lines:
   if eachline.startswith('Point', 0, 5):
     PointCount +=  1
@@ -106,5 +108,46 @@ print 'suraces on y + are ', yp
 print 'suraces on y - are ', ym
 print 'suraces on z + are ', zp
 print 'suraces on z - are ', zm
+with open(my_geofile,'a') as f:
+  f.write('Delete Physicals; \n')
+  f.write('%s%d' %('Physical Surface(1) = {',xp[0]))
+  for i in range(len(xp)-1):
+    f.write('%s%d' %(',', xp[i+1]))
+  f.write('%s\n' %'};')
 
+  f.write('%s%d' %('Physical Surface(2) = {',xm[0]))
+  for i in range(len(xm)-1):
+    f.write('%s%d' %(',', xm[i+1]))
+  f.write('%s\n' %'};')
+  
+
+  f.write('%s%d' %('Physical Surface(3) = {',yp[0]))
+  for i in range(len(yp)-1):
+    f.write('%s%d' %(',', yp[i+1]))
+  f.write('%s\n' %'};')
+ 
+
+  f.write('%s%d' %('Physical Surface(4) = {',ym[0]))
+  for i in range(len(ym)-1):
+    f.write('%s%d' %(',', ym[i+1]))
+  f.write('%s\n' %'};')
+  
+
+  f.write('%s%d' %('Physical Surface(5) = {',zp[0]))
+  for i in range(len(zp)-1):
+    f.write('%s%d' %(',', zp[i+1]))
+  f.write('%s\n' %'};')
+  
+
+
+  f.write('%s%d' %('Physical Surface(6) = {',zm[0]))
+  for i in range(len(zm)-1):
+    f.write('%s%d' %(',', zm[i+1]))
+  f.write('%s\n' %'};')
+
+  for i in range(numVol):
+    f.write('%s%d%s%d%s\n' %('Physical Volume (', i+1,') = {',i+1,'};'))
+
+
+f.close()
 
