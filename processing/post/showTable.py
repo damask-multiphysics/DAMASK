@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,damask
+import os,sys,string
 from optparse import OptionParser
+import damask
 
 scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptName = scriptID.split()[1][:-3]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -13,8 +14,8 @@ scriptName = scriptID.split()[1]
 
 parser = OptionParser(usage='%prog [options] [file[s]]', description = """
 Show components of given ASCIItable(s).
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 
 parser.add_option('-a','--head',   dest='head',   action='store_true', help='output all heading (info + labels)')

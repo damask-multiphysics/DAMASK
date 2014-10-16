@@ -1,46 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,string,numpy,damask
-from optparse import OptionParser, Option
+import os,re,sys,string
+import numpy as np
+from optparse import OptionParser
+import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
-
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Sort rows by given column label(s).
 
 Examples:
 With coordinates in columns "x", "y", and "z"; sorting with x slowest and z fastest varying index: --label x,y,z.
-""" + string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 
-parser.add_option('-l','--label',   dest='keys', action='extend', metavar='<LIST>',
+parser.add_option('-l','--label',   dest='keys', action='extend', metavar='<string LIST>',
                                     help='list of column labels (a,b,c,...)')
 parser.add_option('-r','--reverse', dest='reverse', action='store_true',
                                     help='reverse sorting')
@@ -87,7 +68,7 @@ for file in files:
   for column in table.labels_index(options.keys):
     cols += [table.data[:,column]]
 
-  ind = numpy.lexsort(cols)
+  ind = np.lexsort(cols)
   if options.reverse:
     ind = ind[::-1]
 
