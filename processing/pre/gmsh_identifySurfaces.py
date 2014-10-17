@@ -1,10 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
+import os,sys,string
 import numpy as np
+from optparse import OptionParser
+import damask
 import re
+
+scriptID = '$Id$'
+scriptName = scriptID.split()[1]
+
 def all_same(items,a):
   return all(x == a for x in items)
+
 def func(seq):
   for x in seq:
     try:
@@ -12,8 +20,26 @@ def func(seq):
     except ValueError:
       yield x
 
-my_geofile   = 'polyXtal_20grains.geo'
-numVol       = 20
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
+
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
+        Recognize bounding surfaces and append them as physical sufaces in the geo file. """, version = scriptID)
+parser.add_option('-n','--numvol', dest = 'N', \
+                                   type='int',\
+                                   metavar='int',\
+                                   help='number of physical volumes' )
+(options, filename) = parser.parse_args()
+
+print 'options',options
+print 'filename',filename
+print options.N, type(options.N)
+print filename
+
+my_geofile   = filename[0]
+numVol       = options.N
+
 PointCount                = 0
 LineCount                 = 0
 LineLoopCount             = 0
