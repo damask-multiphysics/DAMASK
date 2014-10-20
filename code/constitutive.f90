@@ -36,6 +36,7 @@ module constitutive
    constitutive_getAdiabaticTemperature, &
    constitutive_putAdiabaticTemperature, &
    constitutive_getTemperature, &
+   constitutive_getThermalStrain, &
    constitutive_getLocalVacancyConcentration, &
    constitutive_putLocalVacancyConcentration, &
    constitutive_getVacancyConcentration, &
@@ -712,10 +713,7 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
 
  damage = constitutive_getDamage(ipc,ip,el)
  C = damage*damage*math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
- T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3) - &
-                        lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))* &
-                        (constitutive_getTemperature(ipc,ip,el) - &
-                         lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el))))
+ T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3))
  
  dT_dFe = 0.0_pReal
  forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
@@ -1169,8 +1167,6 @@ function constitutive_getTemperature(ipc, ip, el)
    FIELD_THERMAL_local_ID, &
    FIELD_THERMAL_nonlocal_ID, &
    material_homog
- use lattice, only: &
-   lattice_referenceTemperature
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
@@ -1190,6 +1186,35 @@ function constitutive_getTemperature(ipc, ip, el)
    end select
 
 end function constitutive_getTemperature
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns thermal deformation gradient
+!--------------------------------------------------------------------------------------------------
+function constitutive_getThermalStrain(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use math, only: &
+   math_I3
+ use lattice, only: &
+   lattice_referenceTemperature, &
+   lattice_thermalExpansion33
+ use material, only: &
+   mappingConstitutive  
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_getThermalStrain
+ 
+ constitutive_getThermalStrain = math_I3 + &
+                                 (constitutive_getTemperature(ipc, ip, el) - &
+                                  lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))* &
+                                 lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))
+ 
+end function constitutive_getThermalStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local vacancy concentration

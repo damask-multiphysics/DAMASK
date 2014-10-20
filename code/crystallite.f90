@@ -3296,7 +3296,8 @@ logical function crystallite_integrateStress(&
                          debug_cumLpTicks, &
                          debug_StressLoopDistribution
  use constitutive, only: constitutive_LpAndItsTangent, &
-                         constitutive_TandItsTangent
+                         constitutive_TandItsTangent, &
+                         constitutive_getThermalStrain
  use math, only:         math_mul33x33, &
                          math_mul33xx33, &
                          math_mul66x6, &
@@ -3339,7 +3340,10 @@ logical function crystallite_integrateStress(&
                                      Tstar,&                                                         ! 2nd Piola-Kirchhoff Stress
                                      A,&
                                      B, &
-                                     Fe                                                              ! elastic deformation gradient
+                                     Fe, &                                                           ! elastic deformation gradient
+                                     Fi, &                                                           ! gradient of intermediate deformation stages
+                                     Ci, &                                                           ! stretch of intermediate deformation stages  
+                                     invFi
  real(pReal), dimension(6)::         Tstar_v                                                         ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
  real(pReal), dimension(9)::         work                                                            ! needed for matrix inversion by LAPACK
  integer(pInt), dimension(9) ::      ipiv                                                            ! needed for matrix inversion by LAPACK
@@ -3354,7 +3358,8 @@ logical function crystallite_integrateStress(&
                                      steplength0, &
                                      steplength, &
                                      dt, &                                                           ! time increment
-                                     aTol
+                                     aTol, &
+                                     detFi
  logical                             error                                                           ! flag indicating an error
  integer(pInt)                       NiterationStress, &                                             ! number of stress integrations
                                      ierr, &                                                         ! error indicator for LAPACK
@@ -3418,6 +3423,11 @@ logical function crystallite_integrateStress(&
    return
  endif
  A = math_mul33x33(Fg_new,invFp_current)                                    ! intermediate tensor needed later to calculate dFe_dLp
+ Fi = math_I3                                                               ! intermediate configuration, assume decomposition as F = Fe Fi Fp
+ Fi = math_mul33x33(Fi,constitutive_getThermalStrain(g,i,e))
+ Ci = math_mul33x33(math_transpose33(Fi),Fi)                                ! non-plastic stretch tensor (neglecting elastic contributions)
+ invFi = math_inv33(Fi)
+ detFi = math_det33(Fi)
 
 
  !* start LpLoop with normal step length
@@ -3443,8 +3453,10 @@ logical function crystallite_integrateStress(&
    !* calculate (elastic) 2nd Piola--Kirchhoff stress tensor and its tangent from constitutive law
 
    B = math_I3 - dt*Lpguess
-   Fe = math_mul33x33(A,B)                                                    ! current elastic deformation tensor
-   call constitutive_TandItsTangent(Tstar, dT_dFe3333, Fe, g,i,e)             ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
+   Fe = math_mul33x33(math_mul33x33(A,B),invFi)                               ! current elastic deformation tensor
+   call constitutive_TandItsTangent(Tstar, dT_dFe3333, Fe, g,i,e)             ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
+   Tstar = math_mul33x33(Ci, math_mul33x33(invFi, &
+             math_mul33x33(Tstar,math_transpose33(invFi))))/detFi             ! push Tstar forward to plastic (lattice) configuration 
    Tstar_v = math_Mandel33to6(Tstar)
 
 
@@ -3574,13 +3586,14 @@ logical function crystallite_integrateStress(&
 #endif
    return
  endif
- Fe_new = math_mul33x33(Fg_new,invFp_new)                             ! calc resulting Fe
+ Fe_new = math_mul33x33(math_mul33x33(Fg_new,invFp_new),invFi)    ! calc resulting Fe
 
 
  !* calculate 1st Piola-Kirchhoff stress
 
- crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(Fe_new, math_mul33x33(math_Mandel6to33(Tstar_v), &
-                                              math_transpose33(invFp_new)))
+ crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(Fe_new,Fi), &
+                                              math_mul33x33(math_Mandel6to33(Tstar_v), &
+                                                            math_transpose33(invFp_new)))*detFi
 
 
  !* store local values in global variables
