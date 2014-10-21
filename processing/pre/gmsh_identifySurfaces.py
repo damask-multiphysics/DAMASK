@@ -25,17 +25,22 @@ def func(seq):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
         Recognize bounding surfaces and append them as physical sufaces in the geo file. """, version = scriptID)
-parser.add_option('-n','--numvol',   dest = 'N', \
-                                     type='int',\
-                                     metavar='int',\
-                                     help='number of physical volumes' )
-parser.add_option('-s','--surfaces', dest = 'surfaces', \
-                                     action = 'extend', \
-                                     type = 'string', \
-                                     metavar = '<string LIST>', \
-                                     help = 'surfaces to tag (x, y, and/or z)')
+parser.add_option('-n','--numvol', dest = 'N', \
+                                   type='int',\
+                                   metavar='int',\
+                                   help='number of physical volumes' )
+parser.add_option('-f','--faces',  dest = 'surfaces', \
+                                   action = 'extend', \
+                                   type = 'string', \
+                                   metavar = '<string LIST>', \
+                                   help = 'surfaces to tag (x, y, and/or z)')
+parser.add_option('-s','--size',   dest = 'size', \
+                                   type='float',\
+                                   metavar='float',\
+                                   help='mesh size' )
 
 (options, filename) = parser.parse_args()
+parser.set_defaults(size = 0.1)
 
 my_geofile   = filename[0]
 numVol       = options.N
@@ -121,5 +126,16 @@ with open(my_geofile,'a') as f:
 
   for i in range(numVol):
     f.write('%s%d%s%d%s\n' %('Physical Volume (', i+1,') = {',i+1,'};'))
+    
+  f.write('Field[1] = Box;\n')  
+  f.write('%s%f%s\n' %('Field[1].VIn = ', options.size,';')) 
+  f.write('%s%f%s\n' %('Field[1].VOut = ',options.size,';')) 
+  f.write('%s%f%s\n' %('Field[1].XMin = ',xmin,';')) 
+  f.write('%s%f%s\n' %('Field[1].XMax = ',xmax,';'))  
+  f.write('%s%f%s\n' %('Field[1].YMin = ',ymin,';')) 
+  f.write('%s%f%s\n' %('Field[1].YMax = ',ymax,';'))  
+  f.write('%s%f%s\n' %('Field[1].ZMin = ',zmin,';')) 
+  f.write('%s%f%s\n' %('Field[1].ZMax = ',zmax,';'))  
+  f.write('Background Field = 1;\n')     
 
 f.close()
