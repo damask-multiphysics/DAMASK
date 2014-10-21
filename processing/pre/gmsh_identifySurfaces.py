@@ -2,10 +2,9 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os,sys,string
-import numpy as np
-from optparse import OptionParser
 import damask
 import re
+from optparse import OptionParser
 
 scriptID = '$Id$'
 scriptName = scriptID.split()[1]
@@ -26,30 +25,27 @@ def func(seq):
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
         Recognize bounding surfaces and append them as physical sufaces in the geo file. """, version = scriptID)
-parser.add_option('-n','--numvol', dest = 'N', \
-                                   type='int',\
-                                   metavar='int',\
-                                   help='number of physical volumes' )
-(options, filename) = parser.parse_args()
+parser.add_option('-n','--numvol',   dest = 'N', \
+                                     type='int',\
+                                     metavar='int',\
+                                     help='number of physical volumes' )
+parser.add_option('-s','--surfaces', dest = 'surfaces', \
+                                     action = 'extend', \
+                                     type = 'string', \
+                                     metavar = '<string LIST>', \
+                                     help = 'surfaces to tag (x, y, and/or z)')
 
-print 'options',options
-print 'filename',filename
-print options.N, type(options.N)
-print filename
+(options, filename) = parser.parse_args()
 
 my_geofile   = filename[0]
 numVol       = options.N
 
-PointCount                = 0
-LineCount                 = 0
-LineLoopCount             = 0
-PlaneSurfaceCount         = 0
-SurfaceLoopCount          = 0
+PointCount        = 0
+LineCount         = 0
+LineLoopCount     = 0
 point    = []
 line     = []
 lineloop = []
-plane    = []
-surface  = []
 
 f = open(my_geofile,'r')
 lines = f.readlines()
@@ -63,7 +59,6 @@ for eachline in lines:
       a = m.group(1)
       point.append(list(func(a.split(","))))
   
-
   elif eachline.startswith('Line (', 0, 6):
     LineCount +=  1
     r = re.compile('{(.*?)}')
@@ -80,30 +75,13 @@ for eachline in lines:
       a = m.group(1)
       lineloop.append(list(func(a.split(","))))
 
-  elif eachline.startswith('Plane', 0, len(eachline)):
-    PlaneSurfaceCount +=  1
-    r = re.compile('{(.*?)}')
-    m = r.search(eachline)
-    if m:
-      a = m.group(1)
-      plane.append(list(func(a.split(","))))
-
-  elif eachline.startswith('Surface', 0,len(eachline)):
-    SurfaceLoopCount +=  1
-    r = re.compile('{(.*?)}')
-    m = r.search(eachline)
-    if m:
-      a = m.group(1)
-      surface.append(list(func(a.split(","))))
-x_coord = []
-y_coord = []
-z_coord = []
-xp = []
-xm = []
-yp = []
-ym = []
-zp = []
-zm = []
+x_coord = []; y_coord = []; z_coord = []
+xp = []; xm = []
+yp = []; ym = []
+zp = []; zm = []
+xmin = min([x[0] for x in point]); xmax = max([x[0] for x in point])
+ymin = min([x[1] for x in point]); ymax = max([x[1] for x in point])
+zmin = min([x[2] for x in point]); zmax = max([x[2] for x in point])
 
 for i,l in enumerate(lineloop):
   for lines in l:
@@ -111,69 +89,37 @@ for i,l in enumerate(lineloop):
         x_coord.append(point[int(pts)-1][0])
         y_coord.append(point[int(pts)-1][1])
         z_coord.append(point[int(pts)-1][2])
-
-  if all_same(x_coord,1.):
+  if   all_same(x_coord,xmax) and any([surface == 'x' for surface in options.surfaces]):
     xp.append(int(i+1))
-  elif all_same(x_coord,0.):
+  elif all_same(x_coord,xmin) and any([surface == 'x' for surface in options.surfaces]):
     xm.append(int(i+1))
-  elif all_same(y_coord,1.):
+  elif all_same(y_coord,ymax) and any([surface == 'y' for surface in options.surfaces]):
     yp.append(int(i+1))
-  elif all_same(y_coord,0.):
+  elif all_same(y_coord,ymin) and any([surface == 'y' for surface in options.surfaces]):
     ym.append(int(i+1))
-  elif all_same(z_coord,1.):
+  elif all_same(z_coord,zmax) and any([surface == 'z' for surface in options.surfaces]):
     zp.append(int(i+1))
-  elif all_same(z_coord,0.):
+  elif all_same(z_coord,zmin) and any([surface == 'z' for surface in options.surfaces]):
     zm.append(int(i+1))
   x_coord = []
   y_coord = []
   z_coord = []
 
-print 'suraces on x + are ', xp
-print 'suraces on x - are ', xm
-print 'suraces on y + are ', yp
-print 'suraces on y - are ', ym
-print 'suraces on z + are ', zp
-print 'suraces on z - are ', zm
 with open(my_geofile,'a') as f:
   f.write('Delete Physicals; \n')
-  f.write('%s%d' %('Physical Surface(1) = {',xp[0]))
-  for i in range(len(xp)-1):
-    f.write('%s%d' %(',', xp[i+1]))
-  f.write('%s\n' %'};')
+  if any([surface == 'x' for surface in options.surfaces]):
+    f.write('%s%s%s\n' %('Physical Surface(1) = {',','.join(map(str, xp)),'};'))
+    f.write('%s%s%s\n' %('Physical Surface(2) = {',','.join(map(str, xm)),'};'))
 
-  f.write('%s%d' %('Physical Surface(2) = {',xm[0]))
-  for i in range(len(xm)-1):
-    f.write('%s%d' %(',', xm[i+1]))
-  f.write('%s\n' %'};')
-  
+  if any([surface == 'y' for surface in options.surfaces]):
+    f.write('%s%s%s\n' %('Physical Surface(3) = {',','.join(map(str, yp)),'};'))
+    f.write('%s%s%s\n' %('Physical Surface(4) = {',','.join(map(str, ym)),'};'))
 
-  f.write('%s%d' %('Physical Surface(3) = {',yp[0]))
-  for i in range(len(yp)-1):
-    f.write('%s%d' %(',', yp[i+1]))
-  f.write('%s\n' %'};')
- 
-
-  f.write('%s%d' %('Physical Surface(4) = {',ym[0]))
-  for i in range(len(ym)-1):
-    f.write('%s%d' %(',', ym[i+1]))
-  f.write('%s\n' %'};')
-  
-
-  f.write('%s%d' %('Physical Surface(5) = {',zp[0]))
-  for i in range(len(zp)-1):
-    f.write('%s%d' %(',', zp[i+1]))
-  f.write('%s\n' %'};')
-  
-
-
-  f.write('%s%d' %('Physical Surface(6) = {',zm[0]))
-  for i in range(len(zm)-1):
-    f.write('%s%d' %(',', zm[i+1]))
-  f.write('%s\n' %'};')
+  if any([surface == 'z' for surface in options.surfaces]):
+    f.write('%s%s%s\n' %('Physical Surface(5) = {',','.join(map(str, zp)),'};'))
+    f.write('%s%s%s\n' %('Physical Surface(6) = {',','.join(map(str, zm)),'};'))
 
   for i in range(numVol):
     f.write('%s%d%s%d%s\n' %('Physical Volume (', i+1,') = {',i+1,'};'))
 
-
 f.close()
-
