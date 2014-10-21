@@ -39,15 +39,18 @@ class Environment():
                       'standard':5,
                       'explicit':5}
     if Nneeded == -1: Nneeded = licensesNeeded[software]
-    cmd = """ ssh mulicense2 "/Stat_Flexlm | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software
-    process = subprocess.Popen(shlex.split(cmd),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
-    licenses = map(int, process.stdout.readline().split())
     try:
-      if licenses[0]-licenses[1] >= Nneeded:
-        return 0
-      else:
-        print('%s missing licenses for %s'%(licenses[1] + Nneeded - licenses[0],software))
-        return licenses[1] + Nneeded - licenses[0]
-    except IndexError:
-      print('Could not retrieve license information for %s'%software)
-      return 127
+      cmd = """ ssh mulicense2 "/Stat_Flexlm | grep 'Users of %s: ' | cut -d' ' -f7,13" """%software
+      process = subprocess.Popen(shlex.split(cmd),stdout = subprocess.PIPE,stderr = subprocess.PIPE)
+      licenses = map(int, process.stdout.readline().split())
+      try:
+        if licenses[0]-licenses[1] >= Nneeded:
+          return 0
+        else:
+          print('%s missing licenses for %s'%(licenses[1] + Nneeded - licenses[0],software))
+          return licenses[1] + Nneeded - licenses[0]
+      except IndexError:
+        print('Could not retrieve license information for %s'%software)
+        return 127
+    except:
+      return 126
