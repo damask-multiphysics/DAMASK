@@ -73,7 +73,7 @@ end function getSolverJobName
 
 end module DAMASK_interface
 
-#include CommercialFEM_fileList.f90
+#include "CommercialFEM_fileList.f90"
 
 subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
                  stepTime, totalTime, dt, cmName, coordMp, charLength, &
