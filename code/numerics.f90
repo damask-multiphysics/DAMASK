@@ -116,7 +116,7 @@ module numerics
    err_thermal_tol            =  1.0_pReal, &
    err_damage_tol             =  1.0e-4_pReal, &
    residualStiffness          =  1.0e-6_pReal                                                      !< non-zero residual damage   
- character(len=1024), protected, public :: &
+ character(len=4096), protected, public :: &
    petsc_optionsFEM           = '-mech_snes_type newtonls &
                                 &-mech_snes_linesearch_type cp &
                                 &-mech_snes_ksp_ew &
