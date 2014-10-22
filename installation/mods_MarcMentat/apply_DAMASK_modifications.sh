@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-DEFAULT_VERSION='2013.1'
+DEFAULT_VERSION='2014'
 
 WORKINGDIR="$( cd "$( dirname "$0" )" && pwd )"
 
@@ -9,6 +9,11 @@ if [ -f $HOME/.damask/damask.conf ]; then
 else
    source /etc/damask.conf
 fi
+
+if [ "x$MSC_ROOT" != "x" ]; then
+ DEFAULT_DIR=$MSC_ROOT
+fi
+
 
 while [ ! -d "$WORKINGDIR/$VERSION" ] || [ -z "$VERSION" ]
 do
@@ -20,14 +25,13 @@ do
 done
 echo "MSC version: $VERSION"
 
-if [ "x$MSC_ROOT" != "x" ]; then
- INSTALLDIR=$MSC_ROOT
-fi
-
 while [ ! -d "$INSTALLDIR" ] || [ -z "$INSTALLDIR" ]
 do
-  echo "Input path of MARC/MENTAT installation:"
+  echo "Input path of MARC/MENTAT installation: [${DEFAULT_DIR}]"
   read INSTALLDIR
+  if [ -z "$INSTALLDIR" ]; then
+    INSTALLDIR=${DEFAULT_DIR}
+  fi
 done
 
 INSTALLDIR=${INSTALLDIR%/}               # remove trailing slash
@@ -111,10 +115,10 @@ $INSTALLDIR/mentat$VERSION/bin/mentat -compile $INSTALLDIR/mentat$VERSION/menus/
 # setting access rights
 echo ''
 echo 'setting file access rights...'
-chmod 555 $INSTALLDIR/marc$VERSION/tools/run_damask*
-chmod 555 $INSTALLDIR/marc$VERSION/tools/comp_damask*
-chmod 555 $INSTALLDIR/mentat$VERSION/bin/submit{4..9}
-chmod 555 $INSTALLDIR/mentat$VERSION/bin/kill{4..9}
+chmod 755 $INSTALLDIR/marc$VERSION/tools/run_damask*
+chmod 755 $INSTALLDIR/marc$VERSION/tools/comp_damask*
+chmod 755 $INSTALLDIR/mentat$VERSION/bin/submit{4..9}
+chmod 755 $INSTALLDIR/mentat$VERSION/bin/kill{4..9}
 
 #creating symlinks for run_damask_scripts in /usr/local/bin
 BIN_DIR=/usr/local/bin
