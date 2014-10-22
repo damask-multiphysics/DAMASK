@@ -316,7 +316,7 @@ subroutine damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
  instance = phase_damageInstance(phase)
 
  strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- damageState(phase)%state(2,constituent) = min(damageState(phase)%state(2,constituent), &
+ damageState(phase)%state(2,constituent) = min(damageState(phase)%state0(2,constituent), &
                                                damage_brittle_critStrainEnergy(instance)/ &
                                                sum(abs(math_Mandel6to33(Tstar_v)*strain)))
 
