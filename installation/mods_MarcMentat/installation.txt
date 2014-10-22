@@ -4,10 +4,10 @@ Refer to http://damask.mpie.de for complete installation instructions.
 
 Usually you will need to be root for this to work!
 
-This is for the Linux64 version of Marc/Mentat2010(.2)/11/12/13(.1).
+This is for the Linux64 version of Marc/Mentat2011/12/13(.1)/14.
 See Marc and Mentat Release Guide for List of Build and Supported Platforms!
 
-The Intel Fortran compiler needs to be installed. The 2010 release of Marc/Mentat relies on Intel Fortran 10.1(_18)! The 2011/2012/2013 releases of Marc/Mentat relies on Intel Fortran 12.0! Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly, refer to the Intel installation guide for instructions on how to do this.
+The Intel Fortran compiler needs to be installed. Marc/Mentat as well as DAMASK rely on Intel Fortran 12.0 or above! Make sure that ifort (the compiler executable) is in the PATH and that LD_LIBRARY_PATH is set correctly, refer to the Intel installation guide for instructions on how to do this.
 
 The AMD Core Math Library or an other BLAS implementation (currently IMKL and LAPACK are supported) needs to be installed! 
 Add acml path to LD_LIBRARY_PATH, to do so either use the script setup_shellrc.py in the installation folder or for a system wide setup edit /etc/csh.cshrc.local and/or /etc/bash.bashrc.local.
@@ -24,40 +24,40 @@ As the apply_DAMASK_modifications script has to fix the path for the BLAS it nee
 
 APPENDIX:
 
-The structure of this directory should be (VERSION = 2010 or 2010.2 or 2011 or 2012 or 2013):
+The structure of this directory should be (VERSION = 2010.2 or 2011 or 2012 or 2013 or 2014):
 
-./installation.txt                          this text
-./apply_MPIE_modifications                  script file to apply modifications to the installation
-./VERSION/Marc_tools/comp_user.org          original file from installation
-./VERSION/Marc_tools/comp_damask            modified version using -O1 optimization
-./VERSION/Marc_tools/comp_damask_l          modified version using -O0 optimization
-./VERSION/Marc_tools/comp_damask_h          modified version using -O2 optimization
-./VERSION/Marc_tools/comp_damask_mp         modified version using -O1 optimization and OpenMP
-./VERSION/Marc_tools/comp_damask_lmp        modified version using -O0 optimization and OpenMP
-./VERSION/Marc_tools/comp_damask_hmp        modified version using -O2 optimization and OpenMP
-./VERSION/Marc_tools/run_marc.org           original file from installation
-./VERSION/Marc_tools/run_damask             modified version using -O1 optimization
-./VERSION/Marc_tools/run_damask_l           modified version using -O0 optimization
-./VERSION/Marc_tools/run_damask_h           modified version using -O2 optimization
-./VERSION/Marc_tools/run_damask_mp          modified version using -O1 optimization and OpenMP
-./VERSION/Marc_tools/run_damask_lmp         modified version using -O0 optimization and OpenMP
-./VERSION/Marc_tools/run_damask_hmp         modified version using -O2 optimization and OpenMP
-./VERSION/Marc_tools/include_linux64.org    original file from installation
-./VERSION/Marc_tools/include_linux64        modified version
-./VERSION/Mentat_bin/edit_window.org        original file from installation
-./VERSION/Mentat_bin/edit_window            modified version
-./VERSION/Mentat_bin/submit1.org            original file from installation
-./VERSION/Mentat_bin/submit4                modified version of original calling run_h_marc
-./VERSION/Mentat_bin/submit5                modified version of original calling run_marc
-./VERSION/Mentat_bin/submit6                modified version of original calling run_l_marc
-./VERSION/Mentat_bin/submit7                modified version of original calling run_hmp_marc
-./VERSION/Mentat_bin/submit8                modified version of original calling run_mp_marc
-./VERSION/Mentat_bin/submit9                modified version of original calling run_lmp_marc
-./VERSION/Mentat_bin/kill4                  kill file for submit4, identical to original kill1
-./VERSION/Mentat_bin/kill5                  kill file for submit5, identical to original kill1
-./VERSION/Mentat_bin/kill6                  kill file for submit6, identical to original kill1
-./VERSION/Mentat_bin/kill7                  kill file for submit7, identical to original kill1
-./VERSION/Mentat_bin/kill8                  kill file for submit8, identical to original kill1
-./VERSION/Mentat_bin/kill9                  kill file for submit9, identical to original kill1
-./VERSION/Mentat_menus/job_run.ms.org       original file from installation
-./VERSION/Mentat_menus/job_run.ms           modified version
+./installation.txt                              this text
+./apply_MPIE_modifications                      script file to apply modifications to the installation
+./VERSION/Marc_tools/comp_user.original         original file from installation
+./VERSION/Marc_tools/comp_damask                modified version using -O1 optimization
+./VERSION/Marc_tools/comp_damask_l              modified version using -O0 optimization
+./VERSION/Marc_tools/comp_damask_h              modified version using -O2 optimization
+./VERSION/Marc_tools/comp_damask_mp             modified version using -O1 optimization and OpenMP
+./VERSION/Marc_tools/comp_damask_lmp            modified version using -O0 optimization and OpenMP
+./VERSION/Marc_tools/comp_damask_hmp            modified version using -O2 optimization and OpenMP
+./VERSION/Marc_tools/run_marc.original          original file from installation
+./VERSION/Marc_tools/run_damask                 modified version using -O1 optimization
+./VERSION/Marc_tools/run_damask_l               modified version using -O0 optimization
+./VERSION/Marc_tools/run_damask_h               modified version using -O2 optimization
+./VERSION/Marc_tools/run_damask_mp              modified version using -O1 optimization and OpenMP
+./VERSION/Marc_tools/run_damask_lmp             modified version using -O0 optimization and OpenMP
+./VERSION/Marc_tools/run_damask_hmp             modified version using -O2 optimization and OpenMP
+./VERSION/Marc_tools/include_linux64.original   original file from installation
+./VERSION/Marc_tools/include_linux64            modified version defining DAMASK compiler calls
+./VERSION/Mentat_bin/edit_window.original       original file from installation
+./VERSION/Mentat_bin/edit_window                modified version calling editor of your chcoice
+./VERSION/Mentat_bin/submit1.original           original file from installation
+./VERSION/Mentat_bin/submit4                    modified version of original calling run_h_marc
+./VERSION/Mentat_bin/submit5                    modified version of original calling run_marc
+./VERSION/Mentat_bin/submit6                    modified version of original calling run_l_marc
+./VERSION/Mentat_bin/submit7                    modified version of original calling run_hmp_marc
+./VERSION/Mentat_bin/submit8                    modified version of original calling run_mp_marc
+./VERSION/Mentat_bin/submit9                    modified version of original calling run_lmp_marc
+./VERSION/Mentat_bin/kill4                      kill file for submit4, identical to original kill1
+./VERSION/Mentat_bin/kill5                      kill file for submit5, identical to original kill1
+./VERSION/Mentat_bin/kill6                      kill file for submit6, identical to original kill1
+./VERSION/Mentat_bin/kill7                      kill file for submit7, identical to original kill1
+./VERSION/Mentat_bin/kill8                      kill file for submit8, identical to original kill1
+./VERSION/Mentat_bin/kill9                      kill file for submit9, identical to original kill1
+./VERSION/Mentat_menus/job_run.ms.original      original file from installation
+./VERSION/Mentat_menus/job_run.ms               modified version adding DAMASK menu to run menu

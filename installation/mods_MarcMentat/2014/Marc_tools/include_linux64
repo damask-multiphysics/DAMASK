@@ -1,0 +1,726 @@
+#
+#                 General definitions for the Marc 2014 version
+#
+#                         EM64T
+#                         ( LP64 - i4 version)
+#                         (ILP64 - i8 version)
+#
+#                         Linux RedHat 5.7
+#
+#                         64 bit MPI version
+#
+#                         Intel(R) Fortran Compiler
+#                         Version 13.0.1
+#
+#                         Intel(R) C Compiler
+#                         Version 13.0.1
+#
+#                         MKL Libraries:
+#                           Intel(R) MKL 10.3
+#
+#                         DATE
+#
+#                         To check the O/S level, type:
+#                           uname -a
+#
+#                         Distributed parallel MPI libraries:
+#                         1) HP MPI 2.3
+#                             To check the mpi version, type:
+#                               mpirun -version
+#                         2) Intel MPI 4.0
+#                             To check the mpi version, type:
+#                               mpirun -version
+#
+#                         To check the Compiler level, type using the compiler
+#                         installation path:
+#                           ifort -V
+#                           icc -V
+#
+#  REMARKS      : This file contains the definitions of variables used during
+#                 compilation loading and use of the MARC programmes . The
+#                 current machine type is identified by means of the variable
+#                 MACHINE , defined below. 
+#
+#
+# MPI_ROOT: root directory in which mpi shared libraries, etc. are located
+# DIRJOB  : directory in which spawned jobs should look for Marc input
+# MPI_ARCH: system architecture
+# MPI_EPATH: path where executable resides
+#
+
+REVISION="VERSION, BUILD"
+HOSTNAME=`hostname`
+
+# find available memory in Mbyte on the machine
+#   can be set explicitly
+MEMLIMIT=`free -m | awk '/Mem:/ {print $2}'`
+
+# set _OEM_NASTRAN to 1 for MD Nastran build
+# override _OEM_NASTRAN setting with MARC_MD_NASTRAN environment variable
+_OEM_NASTRAN="${MARC_MD_NASTRAN:-0}"
+
+# uncomment the following line for an autoforge build
+#AUTOFORGE=1
+AUTOFORGE=0
+export AUTOFORGE
+
+# integer size
+if test "$MARC_INTEGER_SIZE" = "" ; then
+ INTEGER_PATH=
+else
+ INTEGER_PATH=/$MARC_INTEGER_SIZE
+fi
+
+FCOMP=ifort
+
+#
+# settings for Metis
+#
+METIS="-I$METIS_SOURCE"
+METISLIBS="$MARC_LIB/metis.a "
+
+#
+# settings for MPI
+#
+# RCP and RSH are used for parallel network runs
+#    replace with similar commands like rsh if needed
+RCP=/usr/bin/scp
+RSH=/usr/bin/ssh
+#
+
+
+MPI_DEFAULT=intelmpi
+MPI_OTHER=hpmpi
+
+MPITYPE=$MPI_DEFAULT
+
+if test $AUTOFORGE
+then
+ if test $AUTOFORGE = 1
+ then
+  MPITYPE=none
+ fi
+fi
+
+
+# overrule MPITYPE setting with environmental variable MARC_MPITYPE
+if test $MARC_MPITYPE
+then
+ MPITYPE=$MARC_MPITYPE
+fi
+
+# always set MPITYPE to none for MD Nastran
+if test "$_OEM_NASTRAN" -ne 0
+then
+ MPITYPE=none
+fi
+
+# Edit following lines to build with GPGPU version of BCS Solver for
+# NVIDIA platforms
+#BCSGPUSOLVER=NONE
+BCSGPUSOLVER=BCSGPU
+
+SOLVERFLAGS=
+if test "$BCSGPUSOLVER" = BCSGPU
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DBCSGPU -DCUDA"
+  BCS_DIR=bcsgpusolver
+  export PATH=$MARC_CUDA/bin:$MARC_CUDA/nvvm:$PATH
+  export LD_LIBRARY_PATH=$MARC_CUDA/lib64:$LD_LIBRARY_PATH
+else
+  BCS_DIR=bcssolver
+fi
+#
+# settings for MPI
+#
+DDM=
+if test $MPITYPE != none
+then
+ if test $MPITYPE = hpmpi
+ then
+  FCOMPMPI=mpif90
+  export MPI_ROOT=$MARC_HPMPI
+  export MPI_REMSH=$RSH
+  export MPI_F77=$FCOMP
+  ARCHITECTURE=linux_amd64
+  DDM="-I$MPI_ROOT/include/64 -DDDM -DHPMPI"
+  MPI_CLEAN=
+  export MPI_EPATH=$MARC_BIN
+  export LD_LIBRARY_PATH=$MPI_ROOT/lib/$ARCHITECTURE:$MARC_LIB:$MARC_LIB_SHARED:$LD_LIBRARY_PATH
+  export MPIHPSPECIAL="-e MPI_FLAGS=E,T,y1"
+#  Below line is moved in run_marc file
+#  export MPIHPSPECIAL="$MPIHPSPECIAL -e LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
+  export MPIHPSPECIAL="$MPIHPSPECIAL -e BINDIR=$MARC_BIN"
+  if test -n "$MSC_LICENSE_FILE"
+  then
+   export MPIHPSPECIAL="$MPIHPSPECIAL -e MSC_LICENSE_FILE=$MSC_LICENSE_FILE"
+  fi
+  if test -n "$LM_LICENSE_FILE"
+  then
+   export MPIHPSPECIAL="$MPIHPSPECIAL -e LM_LICENSE_FILE=$LM_LICENSE_FILE"
+  fi
+  export MPIHPSPECIAL="$MPIHPSPECIAL -e MPI_LIC_CHECKER=$MPI_ROOT/bin/licensing/amd64_s8/lichk.x"
+  RUN_JOB2="$MPI_ROOT/bin/mpirun ${MPIRUNOPTIONS} -prot -f "
+  RUN_JOB1="$MPI_ROOT/bin/mpirun ${MPIRUNOPTIONS} -prot -w $MPIHPSPECIAL -np "
+  RUN_JOB0=
+ fi
+ if test $MPITYPE = intelmpi
+ then
+  INTELMPI_VERSION=HYDRA
+  FCOMPMPI=mpiifort
+  MPI_ROOT=$MARC_INTELMPI
+  DDM="-I${MPI_ROOT}/include64 -DDDM"
+  PATH=$MPI_ROOT/bin64:$PATH
+  export PATH
+  LD_LIBRARY_PATH=$MPI_ROOT/lib64:$LD_LIBRARY_PATH
+  export LD_LIBRARY_PATH
+  if test $INTELMPI_VERSION = HYDRA
+  then
+    RUN_JOB1="${MPI_ROOT}/bin64/mpiexec.hydra -genvall -n "
+    RUN_JOB2="${MPI_ROOT}/bin64/mpiexec.hydra -genvall"
+  else
+    RUN_JOB1="${MPI_ROOT}/bin64/mpiexec -n "
+    RUN_JOB2="${MPI_ROOT}/bin64/mpiexec -configfile "
+  fi
+  RUN_JOB0=
+  MPI_CLEAN=
+  MPI_EPATH=$MARC_BIN
+  MPIR_HOME=$MPI_ROOT
+  MPICH_F77=$FCOMP
+  MPICH_F77LINKER=$FCOMP
+  export MPI_ROOT MPI_EPATH MPIR_HOME MPICH_F77 MPICH_F77LINKER
+  I_MPI_PIN_DOMAIN=node
+  export I_MPI_PIN_DOMAIN
+ fi
+else
+  MPI_ROOT=$MARC_DUMMYMPI
+  export MPI_ROOT=$MARC_DUMMYMPI
+  DDM="-I$MPI_ROOT/include"
+fi
+
+#
+#  variables for the "maintain" script
+#
+
+MACHINENAME=LINUX
+MACHINE64BIT=yes
+MACHINE=Linux_EM64T
+DEV=/dev/tape
+GETLOG="whoami"
+CLEAR="clear"
+MY_UNAME=`uname -a`
+
+# Edit following 2 lines to build with VKI Solver
+#VKISOLVER=VKI
+VKISOLVER=NONE
+
+# Edit following 2 lines to build with CASI Solver
+CASISOLVER=CASI
+#CASISOLVER=NONE
+
+# Edit following 2 lines to build with MF2 Solver
+MF2SOLVER=NONE
+#MF2SOLVER=SERIAL
+#MF2SOLVER=MF2PARALLEL
+
+# Edit following lines to build with Intel(c) Multithreaded solver (PARDISO)
+#INTELSOLVER=NONE
+INTELSOLVER=PARDISO
+
+# Edit following lines to build with MUMPS
+if test "$MARC_INTEGER_SIZE" = "i4" ; then
+ #MUMPSSOLVER=NONE
+ MUMPSSOLVER=MUMPS
+else
+ #MUMPSSOLVER=NONE
+ MUMPSSOLVER=MUMPS
+fi
+
+# Edit following 2 lines to build MARC dynamic shared library
+MARC_DLL=MARC_DLL
+MARC_DLL=NONE
+
+# always set VKISOLVER, CASISOLVER, BCSGPUSOLVER, and MARC_DLL to NONE for MD Nastran
+if test "$_OEM_NASTRAN" -ne 0
+then
+ VKISOLVER=NONE
+ CASISOLVER=NONE
+ MF2SOLVER=NONE
+ INTELSOLVER=NONE
+ MUMPSSOLVER=NONE
+ BCSGPUSOLVER=NONE
+ MARC_DLL=NONE
+fi
+
+#
+#  define Fortran and C compile syntax
+#
+if test "$VKISOLVER" = VKI
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DVKI"
+fi
+
+if test "$CASISOLVER" = CASI
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DCASI"
+fi
+
+if test "$MF2SOLVER" = MF2PARALLEL
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMF2PARALLEL"
+fi
+if test "$MF2SOLVER" = MF2SERIAL
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMF2SERIAL"
+fi
+
+if test "$INTELSOLVER" = PARDISO
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DPARDISO"
+fi
+
+if test "$MUMPSSOLVER" = MUMPS
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMUMPS"
+fi
+
+
+if test "$MARC_DLL" = MARC_DLL
+then
+  SOLVERFLAGS="$SOLVERFLAGS -DMARC_DLL"
+fi
+
+LINK_OPT=
+DEBUG_OPT=
+C_DEBUG_OPT=
+
+#Uncomment following line to build Marc in debuggable mode
+MARCDEBUG=
+#MARCDEBUG="ON"
+
+if test "$MARCDEBUG" = "ON"
+then
+  LINK_OPT="-debug -traceback"
+  DEBUG_OPT="-debug -traceback"
+  C_DEBUG_OPT="-debug -traceback"
+fi
+
+
+MARCCHECK=
+#MARCCHECK="ON"
+if test "$MARCCHECK" = "ON"
+then
+  DEBUG_OPT="$DEBUG_OPT -fpe0 -fp-stack-check -check all -ftrapuv "
+  C_DEBUG_OPT="$C_DEBUG_OPT -fp-stack-check -check-uninit -Wformat -ftrapuv "
+fi
+
+MARCCODECOV=
+#MARCCODECOV="ON"
+
+if test "$MARC_INTEGER_SIZE" = "i4" ; then
+  I8FFLAGS="-real-size 64 -integer-size 32"
+  I8DEFINES="-DFLOAT=8 -DINT=4"
+  I8CDEFINES=
+  I8CASIDEFS=
+else
+  I8FFLAGS="-i8 -real-size 64 -integer-size 64"
+  I8DEFINES="-DI64 -DFLOAT=8 -DINT=8"
+  I8CDEFINES="-U_DOUBLE -D_SINGLE"
+  I8CASIDEFS="-DCASI_64BIT_INT=1"
+fi
+
+MTHREAD=OPENMP
+if test "$MARC_OPENMP" = "NONE" ; then
+  MTHREAD=NONE
+fi
+#MTHREAD=NONE
+if test "$_OEM_NASTRAN" -ne 0
+then
+MTHREAD=NONE
+fi
+
+OMP_COMPAT=NO
+OMP_COMPAT=YES
+if test "$MTHREAD" = "NONE"
+then
+OMP_COMPAT=NO
+fi
+
+CDEFINES=
+FDEFINES=
+
+if test "$_OEM_NASTRAN" -ne 0
+then
+  CDEFINES="$CDEFINES -D_OEM_NASTRAN"
+  FDEFINES="$FDEFINES -D_OEM_NASTRAN"
+fi
+
+FDEFINES="$FDEFINES -D_IMPLICITNONE"
+
+if test "$_OEM_NASTRAN" -eq 0
+then
+  FDEFINES="$FDEFINES -DMKL -DOPENMP"
+fi
+
+if test "$OMP_COMPAT" = "YES"
+then
+  FDEFINES="$FDEFINES -DOMP_COMPAT"
+fi
+
+# -D_MSCMARC
+FDEFINES="$FDEFINES -D_MSCMARC $DEBUG_OPT"
+CDEFINES="$CDEFINES -D_MSCMARC $C_DEBUG_OPT $I8CDEFINES"
+
+CINCL="-I$MARC_SOURCE/mdsrc -I$MARC_SOURCE/csource $METIS"
+if test "$_OEM_NASTRAN" -ne 0
+then
+  CINCL="$CINCL -I../../include"
+fi
+
+CC="icc -c -O1 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS "
+CCLOW="icc -c -O0 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS "
+CCHIGH="icc -c -O3 $I8DEFINES -DLinux -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS "
+
+if test "$MARCDEBUG" = "ON"
+then
+  CC="icc -c -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS "
+  CCLOW="icc -c -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS "
+  CCHIGH="icc -c -DLinux $I8DEFINES -DLINUX -DLinux_intel $CDEFINES $CINCL $SOLVERFLAGS "
+fi
+
+LOAD_CC="icc -O1 -DLinux -DLINUX -DLinux_intel"
+CCT="$CC"
+CCTLOW="$CCLOW"
+CCTHIGH="$CCHIGH"
+
+CC_CASI="$CC -c99 $I8CASIDEFS"
+CCLOW_CASI="$CCLOW -c99 $I8CASIDEFS"
+CCHIGH_CASI="$CCHIGH -c99 $I8CASIDEFS"
+
+CCT_CASI="$CCT -c99 $I8CASIDEFS"
+CCTLOW_CASI="$CCLOW -c99 $I8CASIDEFS"
+CCTHIGH_CASI="$CCHIGH -c99 $I8CASIDEFS"
+
+#PROFILE="-Mprof=func"
+#PROFILE="-Mprof=lines"
+#PROFILE="-Mprof=func,mpi"
+PROFILE=
+if test "$MARCCODECOV" = "ON"
+then
+PROFILE="-prof-gen=srcpos"
+fi
+
+FORT_OPT="-c -assume byterecl -safe_cray_ptr -mp1 -WB"
+if test "$MTHREAD" = "OPENMP"
+then
+  FORT_OPT=" $FORT_OPT -openmp"
+  if test "$OMP_COMPAT" = "YES"
+  then
+    FORT_OPT=" $FORT_OPT -openmp-threadprivate=compat"
+  fi
+else
+#  FORT_OPT=" $FORT_OPT -auto "
+  FORT_OPT=" $FORT_OPT -save -zero"
+fi
+
+FORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+FORTRAN="$FCOMP $FORT_OPT $PROFILE -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+FORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+FORTNA="$FCOMP $FORT_OPT -fno-alias -O3 $I8FFLAGS -I$MARC_SOURCE/common \
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
+
+# DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
+DFORTLOW="$FCOMP $FORT_OPT $PROFILE -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+ -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+DFORTLOWMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O0 $I8FFLAGS -I$MARC_SOURCE/common \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+ -openmp -openmp_report2 -openmp-threadprivate=compat\
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+DFORTRAN="$FCOMP $FORT_OPT $PROFILE -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+ -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+DFORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp1 -WB  -O1 $I8FFLAGS -I$MARC_SOURCE/common \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+ -openmp -openmp_report2 -openmp-threadprivate=compat\
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+DFORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
+ -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+DFORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias -O2 $I8FFLAGS -I$MARC_SOURCE/common \
+ -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+ -openmp -openmp_report2 -openmp-threadprivate=compat\
+ -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+
+if test "$MARCDEBUG" = "ON"
+then
+  FORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  FORTRAN="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  FORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  FORTNA="$FCOMP $FORT_OPT -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM"
+
+# DAMASK compiler calls: additional flags are in line 2 OpenMP flags in line 3
+  DFORTLOW="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
+   -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  DFORTLOWMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+   -openmp -openmp_report2 -openmp-threadprivate=compat\
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  DFORTRAN="$FCOMP $FORT_OPT $PROFILE $I8FFLAGS -I$MARC_SOURCE/common \
+   -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES  -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  DFORTRANMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp1 -WB  $I8FFLAGS -I$MARC_SOURCE/common \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+   -openmp -openmp_report2 -openmp-threadprivate=compat\
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES  -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  DFORTHIGH="$FCOMP $FORT_OPT $PROFILE -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+   -fpp -ftz -diag-enable sc3 -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+  DFORTHIGHMP="$FCOMP -c -assume byterecl -safe_cray_ptr $PROFILE -zero -mp1 -WB  -fno-alias $I8FFLAGS -I$MARC_SOURCE/common \
+   -fpp -ftz -diag-disable 5268 -warn declarations -warn general -warn usage -warn interfaces -warn ignore_loc -warn alignments -DMarc4DAMASK=2014 \
+   -openmp -openmp_report2 -openmp-threadprivate=compat\
+   -I$MARC_SOURCE/${BCS_DIR}/common -I$MARC_SOURCE/mumpssolver/include $I8DEFINES -DLinux -DLINUX -DLinux_intel $FDEFINES $DDM $SOLVERFLAGS"
+
+fi
+
+FORTLOWT="$FORTLOW"
+FORTRANT="$FORTRAN"
+FORTHIGHT="$FORTHIGH"
+
+FORTRANMNF="$FCOMP -c $FDEFINES "
+CCMNF="icc -c -O1 -DLinux -DLINUX -DLinux_intel -Dport2egcs -I$MARC_SOURCE/marctoadams/mnf/include -D_LARGEFILE64_SOURCE"
+
+FORTRANMUMPS="$FCOMP -fpp $FORT_OPT $PROFILE -fno-alias -O1 -fp-model precise $FDEFINES -D_IMPLICITNONE $I8FFLAGS $I8DEFINES $DDM -I$MARC_SOURCE/mumpssolver/include -Dintel_ -DALLOW_NON_INIT -Dmetis -nofor_main"
+CCMUMPS="icc -c -DAdd_ -Dmetis -I$MARC_SOURCE/mumpssolver/include"
+
+
+BCSCC="icc -c -O3 -DLOWERCASE_ -I${MARC_SOURCE}/${BCS_DIR}/bcslib_csrc $CDEFINES $CINCL"
+NVCC="nvcc -c -O3 -arch sm_20 -DLOWERCASE_ -I${MARC_SOURCE}/${BCS_DIR}/bcslib_cuda/include -I${MARC_CUDA}/include -I$MARC_SOURCE/mdsrc $I8DEFINES -Xcompiler -fvisibility=hidden -Xcompiler -fPIC $I8DEFINES "
+NVCCLIB="ar rvl"
+NVCCLD=icc
+BCSFORTLOW="$FORTLOW   -I${MARC_SOURCE}/${BCS_DIR}/common"
+BCSFORTRAN="$FORTRAN   -I${MARC_SOURCE}/${BCS_DIR}/common"
+BCSFORTHIGH="$FORTHIGH -I${MARC_SOURCE}/${BCS_DIR}/common"
+BCSFORT90HIGH="$BCSFORTHIGH"
+if test "$MARCDEBUG" = "ON"
+then
+  BCSFORTRAN=$BCSFORTLOW
+  BCSFORTHIGH=$BCSFORTLOW
+  BCSFORT90HIGH=$BCSFORTLOW
+fi
+
+if test $MPITYPE != none
+then
+ if test $MPITYPE = hpmpi
+ then
+  LOAD="$MPI_ROOT/bin/$FCOMPMPI ${LOADOPTIONS} -L$MPI_ROOT/lib/$ARCHITECTURE $PROFILE $LINK_OPT -o "
+  LOADT="$MPI_ROOT/bin/$FCOMPMPI ${LOADOPTIONS} -L$MPI_ROOT/lib/$ARCHITECTURE $PROFILE $LINK_OPT -o "
+ fi
+# Uncomment the following lines to turn on the tracer and commnet out the next 5 lines
+# if test $MPITYPE = intelmpi
+# then
+#  INCLUDEMPI="-I$MPI_ROOT/include64 -I$VT_ROOT/include"
+#  LOAD="$MPI_ROOT/bin64/$FCOMPMPI $PROFILE $INCLUDEMPI -g -t=log $LINK_OPT -o "
+#  LOADT="$MPI_ROOT/bin64/$FCOMPMPI $PROFILE $INCLUDEMPI -g -t=log $LINK_OPT -o "
+# fi
+ if test $MPITYPE = intelmpi
+ then
+  LOAD="$MPI_ROOT/bin64/$FCOMPMPI $PROFILE $LINK_OPT -o "
+  LOADT="$MPI_ROOT/bin64/$FCOMPMPI $PROFILE $LINK_OPT -o "
+ fi
+else
+ LOAD="$FCOMP $LINK_OPT -o " 
+ LOADT="$FCOMP $LINK_OPT -o "
+fi
+
+if test "$MARC_DLL" = MARC_DLL
+then
+ FORTLOW="$FORTLOW -fpp -fPIC"
+ FORTRAN="$FORTRAN -fpp -fPIC"
+ FORTHIGH="$FORTHIGH -fpp -fPIC"
+ FORTRANMNF="$FORTRANMNF -fpp -fPIC"
+ CC="$CC -fPIC"
+ CCMNF="$CCMNF -fPIC"
+ CC_CASI="$CC_CASI -fPIC"
+ CCLOW_CASI="$CCLOW_CASI -fPIC"
+ CCHIGH_CASI="$CCHIGH_CASI -fPIC"
+ LINK_EXE_MARC="-L$MARC_LIB -lmarc -L$MARC_LIB_SHARED -lguide -lpthread"
+ LINK_MARC_DLL="-shared -fPIC"
+ LOAD_DLL=$LOAD
+ LOADT_DLL=$LOADT
+ EXT_DLL="so"
+fi
+
+
+XLIBS="-L/usr/X11/lib -lX11 "
+
+#
+#  define archive and ranlib syntax
+#
+
+ARC="ar rvl"
+ARD="ar dvl"
+ARX="ar xl"
+RAN=""
+
+#
+#  choose which libraries you want to use ( e.g. blas )
+#
+
+if test "$VKISOLVER" = VKI
+then
+  VKISOLVERLIBS="$MARC_LIB/vkisolver.a"
+else
+  VKISOLVERLIBS=
+fi
+
+if test "$CASISOLVER" = CASI
+then
+  CASISOLVERLIBS="$MARC_LIB/casilib.a"
+else
+  CASISOLVERLIBS=
+fi
+
+MF2SOLVERLIBS=
+if test "$MF2SOLVER" = MF2PARALLEL
+then
+  MF2SOLVERLIBS="$MARC_LIB/mf2parallel/libseq.a     \
+                 $MARC_LIB/mf2parallel/libsym.a     \
+                 $MARC_LIB/mf2parallel/libmet.a     \
+                 $MARC_LIB/mf2parallel/libmf2.a     \
+                 $MARC_LIB/mf2parallel/libgauss.a   \
+                 $MARC_LIB/mf2parallel/libmf2.a     \
+                 $MARC_LIB/mf2parallel/libgauss.a   \
+                 $MARC_LIB/mf2parallel/libnum.a     \
+                 $MARC_LIB/mf2parallel/libutl.a     \
+                 $MARC_LIB/mf2parallel/libr8.a      \
+                 $MARC_LIB/mf2parallel/libz.a       "
+fi
+
+if test "$INTELSOLVER" = PARDISO
+then
+  if test "$MARC_INTEGER_SIZE" = "i4" ; then
+   INTELSOLVERLIBS="$MARC_MKL/libmkl_solver_lp64.a"
+  else
+   INTELSOLVERLIBS="$MARC_MKL/libmkl_solver_ilp64.a"
+  fi
+else
+  INTELSOLVERLIBS=
+fi
+
+if test "$MUMPSSOLVER" = MUMPS
+then
+  MUMPSSOLVERLIBS="$MARC_LIB/libmumps.a"
+  if test $MPITYPE = none
+  then
+   MUMPSSOLVERLIBS2=
+   echo hello > /dev/null
+  fi
+  if test $MPITYPE = intelmpi
+  then
+   if test "$MARC_INTEGER_SIZE" = "i4" ; then
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_intelmpi_lp64.a "
+   else
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_intelmpi_ilp64.a "
+   fi
+  fi
+  if test $MPITYPE = hpmpi
+  then
+   if test "$MARC_INTEGER_SIZE" = "i4" ; then
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_lp64.a"
+   else
+    MUMPSSOLVERLIBS2=" $MARC_MKL/libmkl_blacs_ilp64.a"
+   fi
+  fi
+else
+  MUMPSSOLVERLIBS=
+  MUMPSSOLVERLIBS2=
+fi
+
+if test "$BCSGPUSOLVER" = BCSGPU
+then
+  BCSSOLVERLIBS="${MARC_LIB}/bcsgpulib.a "
+  MARCCUDALIBS1="-L${MARC_LIB}/cuda_dummy -lmarccuda "
+  MARCCUDALIBS2="-L${MARC_LIB}/cuda       -lmarccuda "
+  MARCCUDALIBS=$MARCCUDALIBS1
+  CUDALIBS="-L$MARC_CUDA/lib64 -lcudart -lcublas -L/usr/lib64 -lcuda "
+else
+  BCSSOLVERLIBS="${MARC_LIB}/bcslib.a "
+fi
+
+if test "$MARC_INTEGER_SIZE" = "i4" ; then
+ MKLLIB="$MARC_MKL/libmkl_blacs_lp64.a $MARC_MKL/libmkl_scalapack_lp64.a $MARC_MKL/libmkl_intel_lp64.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a "
+else
+ MKLLIB="$MARC_MKL/libmkl_blacs_ilp64.a $MARC_MKL/libmkl_scalapack_ilp64.a $MARC_MKL/libmkl_intel_ilp64.a $MARC_MKL/libmkl_intel_thread.a $MARC_MKL/libmkl_core.a "
+fi
+
+SECLIBS="-L$MARC_LIB -llapi"
+
+SOLVERLIBS="${BCSSOLVERLIBS} \
+  ${INTELSOLVERLIBS} ${MF2SOLVERLIBS} -Wl,--start-group $MKLLIB ${MUMPSSOLVERLIBS2} \
+  $MARC_MKL/libiomp5.a -Wl,--end-group \
+  $MARC_LIB/blas_src.a ${VKISOLVERLIBS} ${CASISOLVERLIBS} "
+SOLVERLIBS_DLL=${SOLVERLIBS}
+
+MRCLIBS="$MARC_LIB/clib.a ${CASISOLVERLIBS}"
+MRCLIBSPAR="$MARC_LIB/clib.a"
+STUBS="$MARC_LIB/stubs.a "
+MNFLIBS="$MARC_LIB/libmnf.a"
+MDUSER="$MARC_LIB/md_user.a"
+
+OPENMP="-openmp"
+
+SYSLIBS=" $OPENMP -lpthread "
+
+# Uncomment the following lines to turn on the trace and comment out the next 4 lines
+# if test $MPITYPE = intelmpi
+# then
+#  SYSLIBS="-L${VT_ROOT}/lib -lVT -ldwarf -lelf -lm -lpthread \
+#           -L${MPI_ROOT}/lib64 -lmpi -lmpiif -lmpigi -lrt"
+# fi
+if test $MPITYPE = intelmpi
+then
+ SYSLIBS="-L${MPI_ROOT}/lib64 -lmpi -lmpiif -lmpigi -lrt $OPENMP -threads -lpthread"
+fi
+
+SYSLIBSPAR=" "
+
+MARC_DLL_CODES="runmarc.f"
+
+
+BLAS_SRC="dzero.f icopy.f izero.f"
+if test "$_OEM_NASTRAN" -ne 0
+then
+  if test "$MARC_INTEGER_SIZE" = "i4" ; then
+   BLAS_SRC="$BLAS_SRC dsctr.f zsctr.f dzasum.f daxpyi.f zaxpyi.f dgthr.f zgthr.f"
+  else
+   BLAS_SRC="ALL"
+  fi
+fi
+
+LOW_OPT_CODES="are163.f contro.f ndext.f omarc.f omarca.f omarcb.f omarcc.f \
+               omars.f fixbc.f triang.f  bet049.f norst3.f eldata.f \
+               elec*.f elct*.f fmeig.f oada00.f ogeig.f updtrbe2.f cycrota.f \
+               cordef.f ogpk.f ogtan.f eldam.f formrbe3.f \
+               inertie.f em_sso072.f cn_fol3d_qpatch6.f"
+if test "$MARC_INTEGER_SIZE" = "i8" ; then
+  LOW_OPT_CODES="$LOW_OPT_CODES bbcseg.f"
+fi
+LOW_OPT_CODES_CASI=""
+
+HIGH_OPT_CODES="dpsmsa1.f  dpsmsa2.f  dpsmsa3.f   dpsmsa4.f  dpsmsa5.f  dpsmsa6.f \
+                dpsmsa7.f  dpsmsa8.f  dpsmsa9.f  dpsmsa10.f dpsmsa11.f dpsmsa12.f \
+               dpsmsa13.f dpsmsa14.f dpsmsa15.f  dpsmsa16.f cn_qsort4_11.f "
+
+
+HIGH_OPT_CODES_CASI="arithkernels.c blockedroutines.c blockedroutines_fd.c elemmatgenkernels.c longvecroutines.c sfmultutils.c solvewithbd.c"
+
+MAXNUM=1000000

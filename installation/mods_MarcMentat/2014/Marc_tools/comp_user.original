@@ -1,0 +1,41 @@
+#!/bin/ksh
+# 1st arg: $DIR
+# 2nd arg: $DIRJOB
+# 3rd arg: $user
+# 4th arg: $program
+DIR=$1
+user=$3
+program=$4
+. $DIR/tools/include
+DIRJOB=$2
+cd $DIRJOB
+echo "Compiling and linking user subroutine $user.f on host `hostname`"
+echo "program: $program"
+        $FORTRAN $user.f || \
+		{
+		echo "$0: compile failed for $user.f"
+		exit 1
+		}
+        /bin/rm $program 2>/dev/null
+        userobj=$user.o
+
+
+    $LOAD ${program}  $DIR/lib/main.o\
+    $DIR/lib/blkdta.o $DIR/lib/comm?.o \
+    ${userobj-} \
+    $DIR/lib/srclib.a \
+    $MNFLIBS \
+    $MDUSER  \
+    ../lib/mdsrc.a \
+    ../lib/mcvfit.a \
+    $STUBS \
+    ${SOLVERLIBS} \
+    $TKLIBS \
+    $MRCLIBS \
+    $METISLIBS \
+    $SYSLIBS          || \
+    {
+    echo "$0: link failed for $user.o on host `hostname`"
+    exit 1
+    }
+    /bin/rm $userobj
