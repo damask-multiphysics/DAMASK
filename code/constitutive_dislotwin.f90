@@ -81,6 +81,7 @@ module constitutive_dislotwin
    constitutive_dislotwin_dipoleFormationFactor, &                                                  !< scaling factor for dipole formation: 0: off, 1: on. other values not useful
    constitutive_dislotwin_aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
    constitutive_dislotwin_aTolTwinFrac, &                                                           !< absolute tolerance for integration of twin volume fraction
+   constitutive_dislotwin_aTolTransFrac, &                                                          !< absolute tolerance for integration of trans volume fraction
    constitutive_dislotwin_Cnuc, &                                                                   !< Coefficient for strain-induced martensite nucleation  
    constitutive_dislotwin_Cdwp, &                                                                   !< Coefficient for double well potential 
    constitutive_dislotwin_Cgro, &                                                                   !< Coefficient for stress-assisted martensite growth  
@@ -279,6 +280,7 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_VcrossSlip(maxNinstance),                          source=0.0_pReal)
  allocate(constitutive_dislotwin_aTolRho(maxNinstance),                             source=0.0_pReal)
  allocate(constitutive_dislotwin_aTolTwinFrac(maxNinstance),                        source=0.0_pReal)
+ allocate(constitutive_dislotwin_aTolTransFrac(maxNinstance),                       source=0.0_pReal)
  allocate(constitutive_dislotwin_sbResistance(maxNinstance),                        source=0.0_pReal)
  allocate(constitutive_dislotwin_sbVelocity(maxNinstance),                          source=0.0_pReal)
  allocate(constitutive_dislotwin_sbQedge(maxNinstance),                             source=0.0_pReal)
@@ -587,6 +589,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_aTolRho(instance) = IO_floatValue(line,positions,2_pInt)
        case ('atol_twinfrac')
          constitutive_dislotwin_aTolTwinFrac(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('atol_transfrac')
+         constitutive_dislotwin_aTolTransFrac(instance) = IO_floatValue(line,positions,2_pInt)
        case ('cmfptwin')
          constitutive_dislotwin_Cmfptwin(instance) = IO_floatValue(line,positions,2_pInt)
        case ('cthresholdtwin')
@@ -635,6 +639,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
         call IO_error(211_pInt,el=instance,ext_msg='Nslip ('//PLASTICITY_DISLOTWIN_label//')')
       if (sum(constitutive_dislotwin_Ntwin(:,instance)) < 0_pInt) &
         call IO_error(211_pInt,el=instance,ext_msg='Ntwin ('//PLASTICITY_DISLOTWIN_label//')')
+      if (sum(constitutive_dislotwin_Ntrans(:,instance)) < 0_pInt) &
+        call IO_error(211_pInt,el=instance,ext_msg='Ntrans ('//PLASTICITY_DISLOTWIN_label//')')
       do f = 1_pInt,lattice_maxNslipFamily
         if (constitutive_dislotwin_Nslip(f,instance) > 0_pInt) then
           if (constitutive_dislotwin_rhoEdge0(f,instance) < 0.0_pReal) &
@@ -672,6 +678,10 @@ subroutine constitutive_dislotwin_init(fileUnit)
           call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
         if (constitutive_dislotwin_aTolTwinFrac(instance) <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOTWIN_label//')')
+      endif
+      if (sum(constitutive_dislotwin_Ntrans(:,instance)) > 0_pInt) then
+        if (constitutive_dislotwin_aTolTransFrac(instance) <= 0.0_pReal) &
+          call IO_error(211_pInt,el=instance,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
       endif
       if (constitutive_dislotwin_sbResistance(instance) < 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
@@ -1088,11 +1098,11 @@ subroutine constitutive_dislotwin_aTolState(ph,instance)
 
 ! Tolerance state for stress-assisted martensite volume fraction
  plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+nr) = 1.0e-6
+                            3_pInt*ns+2_pInt*nt+nr) = constitutive_dislotwin_aTolTransFrac(instance)
 
 ! Tolerance state for strain-induced martensite volume fraction
  plasticState(ph)%aTolState(3_pInt*ns+2_pInt*nt+nr+1_pInt: &
-                            3_pInt*ns+2_pInt*nt+2_pInt*nr) = 1.0e-6
+                            3_pInt*ns+2_pInt*nt+2_pInt*nr) = constitutive_dislotwin_aTolTransFrac(instance)
 
 end subroutine constitutive_dislotwin_aTolState
 
