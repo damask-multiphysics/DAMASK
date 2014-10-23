@@ -138,10 +138,10 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal),   dimension(nblock(1)),           intent(in) :: &
    density, &                                                                                       !< current density at material points in the midstep configuration
    charLength, &                                                                                    !< characteristic element length
-   enerInternOld, &
-   enerInelasOld, &
-   tempOld, &                                                                                       !< temperature
-   tempNew 
+   enerInternOld, &                                                                                 !< internal energy per unit mass at each material point at the beginning of the increment
+   enerInelasOld, &                                                                                 !< dissipated inelastic energy per unit mass at each material point at the beginning of the increment
+   tempOld, &                                                                                       !< temperature at each material point at the beginning of the increment
+   tempNew                                                                                          !< temperature at each material point at the end of the increment (Temperature calculated in ABAQUS boundary conditions)
  real(pReal), dimension(nblock(1),*),           intent(in) :: &
    coordMp                                                                                          !< material point coordinates
  real(pReal), dimension(nblock(1),ndir+nshr),   intent(in) :: &
@@ -152,7 +152,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal), dimension(nblock(1),nshr),        intent(in) ::  &
    relSpinInc                                                                                       !< incremental relative rotation vector
  real(pReal), dimension(nblock(1),nstatev),     intent(in) :: &
-   stateOld
+   stateOld                                                                                         !< state variables at each material point at the beginning of the increment
  real(pReal), dimension(nblock(1),nfieldv),     intent(in) :: &
    fieldOld, &                                                                                      !< user-defined field variables
    fieldNew                                                                                         !< user-defined field variables
@@ -171,13 +171,10 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal), dimension(3,3) :: defgrd0,defgrd1
  real(pReal), dimension(6) ::   stress
  real(pReal), dimension(6,6) :: ddsdde
- real(pReal) :: temp, timeInc
+ real(pReal) :: temp, timeInc, stresspower
  integer(pInt) :: computationMode, n, i, cp_en
  !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Abaqus
  !$ include "omp_lib.h"
-
- enerInternNew = 0.0_pReal
- enerInelasNew = 0.0_pReal
 
  !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
  !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
@@ -258,9 +255,15 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
   !     ABAQUS explicit:     11, 22, 33, 12
 
    stressNew(n,1:ndir+nshr) = stress(1:ndir+nshr)*invnrmMandel(1:ndir+nshr)
-   stateNew(n,:) = materialpoint_results(1:min(nstatev,materialpoint_sizeResults),&
-                                         nBlock(2),mesh_FEasCP('elem', nBlock(4_pInt+n)))
+   stateNew(n,1:min(nstatev,materialpoint_sizeResults)) = &
+                              materialpoint_results(1:min(nstatev,materialpoint_sizeResults),&
+                              nBlock(2),mesh_FEasCP('elem', nBlock(4_pInt+n)))
   
+   stresspower = 0.5_pReal*sum((stressOld(n,1:ndir)+stressNew(n,1:ndir))*straininc(n,1:ndir))+&
+                 sum((stressOld(n,ndir+1:ndir+nshr)+stressNew(n,ndir+1:ndir+nshr))*&straininc(n,ndir+1:ndir+nshr))
+   enerInternNew(n) = enerInternOld(n) + stresspower / density(n)                                   ! Internal energy per unit mass
+   enerInelasNew(n) = enerInternNew(n)                                                              ! Dissipated inelastic energy per unit mass(Temporary output)
+
  enddo
  !$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
 
