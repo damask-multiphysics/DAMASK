@@ -34,19 +34,16 @@ parser.set_defaults(condition = '')
 
 (options,filenames) = parser.parse_args()
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
-if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
 
 #--- loop over input files -------------------------------------------------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+for name in filenames:
+  if name != 'STDIN':
+   file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+   file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
@@ -57,6 +54,7 @@ for file in files:
              }
   labels = []
   positions = []
+
   for position,label in enumerate(table.labels):
     if    (options.whitelist == [] or     any([fnmatch.fnmatch(label,needle) for needle in options.whitelist])) \
       and (options.blacklist == [] or not any([fnmatch.fnmatch(label,needle) for needle in options.blacklist])):  # a label to keep?
@@ -65,9 +63,9 @@ for file in files:
 
   interpolator = []
   for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',options.condition))):        # find three groups
-    options.condition = options.condition.replace('#'+operand[0]+'#',
-                                                  {  '': '{%i}'%position,
-                                                   's#':'"{%i}"'%position}[operand[1]])
+    condition = options.condition.replace('#'+operand[0]+'#',
+                                          {  '': '{%i}'%position,
+                                           's#':'"{%i}"'%position}[operand[1]])
     if operand[2] in specials:                                                                      # special label ?
       interpolator += ['specials["%s"]'%operand[2]]
     else:
@@ -78,7 +76,7 @@ for file in files:
       except:
         parser.error('column %s not found...\n'%operand[2])
 
-  evaluator = "'" + options.condition + "'.format(" + ','.join(interpolator) + ")"
+  evaluator = "'" + condition + "'.format(" + ','.join(interpolator) + ")"
   
 # ------------------------------------------ assemble header ---------------------------------------
   table.labels = labels                                                                             # update with new label set
@@ -88,7 +86,7 @@ for file in files:
   outputAlive = True
   while outputAlive and table.data_read():                                                          # read next data line of ASCII table
     specials['_row_'] += 1                                                                          # count row
-    if options.condition == '' or eval(eval(evaluator)):                                            # valid row ?
+    if condition == '' or eval(eval(evaluator)):                                                    # valid row ?
       table.data = [table.data[position] for position in positions]                                 # retain filtered columns
       outputAlive = table.data_write()                                                              # output processed line
 
