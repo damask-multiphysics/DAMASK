@@ -4225,35 +4225,43 @@ integer(pInt) function FE_mapElemtype(what)
            '128')
       FE_mapElemtype = 2_pInt            ! Two-dimensional Plane Strain triangle (155: cubic shape function, 125/128: second order isoparametric)
     case ( '11', &
-           'cpe4')
+           'cpe4', &
+           'cpe4t')
       FE_mapElemtype = 3_pInt            ! Arbitrary Quadrilateral Plane-strain
     case ( '27', &
-           'cpe8')
+           'cpe8', &
+           'cpe8t')
       FE_mapElemtype = 4_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral
     case ( '54')
       FE_mapElemtype = 5_pInt            ! Plane Strain, Eight-node Distorted Quadrilateral with reduced integration
-    case ('134', &
-          'c3d4')
+    case ( '134', &
+           'c3d4', &
+           'c3d4t')
       FE_mapElemtype = 6_pInt            ! Three-dimensional Four-node Tetrahedron
-    case ('157')
+    case ( '157')
       FE_mapElemtype = 7_pInt            ! Three-dimensional, Low-order, Tetrahedron, Herrmann Formulations
-    case ('127')
+    case ( '127')
       FE_mapElemtype = 8_pInt            ! Three-dimensional Ten-node Tetrahedron
-    case ('136', &
-          'c3d6')
+    case ( '136', &
+           'c3d6', &
+           'c3d6t')
       FE_mapElemtype = 9_pInt            ! Three-dimensional Arbitrarily Distorted Pentahedral
     case ( '117', &
            '123', &
-           'c3d8r')
+           'c3d8r', &
+           'c3d8rt')
       FE_mapElemtype = 10_pInt           ! Three-dimensional Arbitrarily Distorted linear hexahedral with reduced integration
-    case (  '7', &
-            'c3d8')
+    case ( '7', &
+           'c3d8', &
+           'c3d8t')
       FE_mapElemtype = 11_pInt           ! Three-dimensional Arbitrarily Distorted Brick
     case ( '57', &
-           'c3d20r')
+           'c3d20r', &
+           'c3d20rt')
       FE_mapElemtype = 12_pInt           ! Three-dimensional Arbitrarily Distorted quad hexahedral with reduced integration
     case ( '21', &
-           'c3d20')
+           'c3d20', &
+           'c3d20t')
       FE_mapElemtype = 13_pInt           ! Three-dimensional Arbitrarily Distorted quadratic hexahedral
     case default 
       call IO_error(error_ID=190_pInt,ext_msg=IO_lc(what))
