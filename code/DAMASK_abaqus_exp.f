@@ -260,7 +260,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
                               nBlock(2),mesh_FEasCP('elem', nBlock(4_pInt+n)))
   
    stresspower = 0.5_pReal*sum((stressOld(n,1:ndir)+stressNew(n,1:ndir))*straininc(n,1:ndir))+&
-                 sum((stressOld(n,ndir+1:ndir+nshr)+stressNew(n,ndir+1:ndir+nshr))*&straininc(n,ndir+1:ndir+nshr))
+                 sum((stressOld(n,ndir+1:ndir+nshr)+stressNew(n,ndir+1:ndir+nshr))*straininc(n,ndir+1:ndir+nshr))
    enerInternNew(n) = enerInternOld(n) + stresspower / density(n)                                   ! Internal energy per unit mass
    enerInelasNew(n) = enerInternNew(n)                                                              ! Dissipated inelastic energy per unit mass(Temporary output)
 
