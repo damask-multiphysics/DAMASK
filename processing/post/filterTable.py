@@ -62,8 +62,9 @@ for name in filenames:
       positions.append(position)                                                                    # ...and position
 
   interpolator = []
-  for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',options.condition))):        # find three groups
-    condition = options.condition.replace('#'+operand[0]+'#',
+  condition = options.condition                                                                     # copy per file, might be altered
+  for position,operand in enumerate(set(re.findall(r'#(([s]#)?(.+?))#',condition))):                # find three groups
+    condition = condition.replace('#'+operand[0]+'#',
                                           {  '': '{%i}'%position,
                                            's#':'"{%i}"'%position}[operand[1]])
     if operand[2] in specials:                                                                      # special label ?
