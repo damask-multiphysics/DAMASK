@@ -32,6 +32,7 @@ module constitutive
    constitutive_getLocalDamage, &
    constitutive_putLocalDamage, & 
    constitutive_getDamage, &
+   constitutive_getDamageStrain, &
    constitutive_getDamageDiffusion33, &
    constitutive_getAdiabaticTemperature, &
    constitutive_putAdiabaticTemperature, &
@@ -1186,6 +1187,62 @@ function constitutive_getTemperature(ipc, ip, el)
    end select
 
 end function constitutive_getTemperature
+!--------------------------------------------------------------------------------------------------
+!> @brief returns damage deformation gradient
+!--------------------------------------------------------------------------------------------------
+function constitutive_getDamageStrain(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use math, only: &
+   math_I3
+
+ use material, only: &
+   material_phase, &
+   LOCAL_DAMAGE_none_ID, &
+   LOCAL_DAMAGE_brittle_ID, &
+   LOCAL_DAMAGE_ductile_ID, &
+   LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
+   phase_damage
+! use damage_brittle_iso, only: &
+!   constitutive_brittle_iso_getDamageStrain
+! use damage_brittle_iso, only: &
+!   constitutive_brittle_iso_getDamageStrain 
+ use damage_ductile, only: &
+   constitutive_ductile_getDamageStrain
+! use damage_gurson, only: &
+!   constitutive_gurson_getDamageStrain
+! use damage_anisotropic, only: &
+!   constitutive_anisotropic_getDamageStrain
+   
+   
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_getDamageStrain
+ 
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_none_ID)
+     constitutive_getDamageStrain = math_I3 !
+
+   case (LOCAL_DAMAGE_brittle_ID)
+     constitutive_getDamageStrain = math_I3 !
+      
+   case (LOCAL_DAMAGE_ductile_ID)
+     constitutive_getDamageStrain = constitutive_ductile_getDamageStrain(ipc, ip, el)
+     
+   case (LOCAL_DAMAGE_gurson_ID)
+     constitutive_getDamageStrain = math_I3 !
+
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     constitutive_getDamageStrain = math_I3 !
+ end select
+ 
+end function constitutive_getDamageStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns thermal deformation gradient

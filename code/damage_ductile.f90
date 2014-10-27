@@ -45,6 +45,7 @@ module damage_ductile
    damage_ductile_dotState, &
    damage_ductile_microstructure, &
    constitutive_ductile_getDamage, &
+   constitutive_ductile_getDamageStrain, &
    constitutive_ductile_putDamage, &
    damage_ductile_postResults
 
@@ -321,7 +322,7 @@ subroutine damage_ductile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
 end subroutine damage_ductile_microstructure
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns temperature based on local damage model state layout 
+!> @brief returns damage value based on local damage model state layout 
 !--------------------------------------------------------------------------------------------------
 function constitutive_ductile_getDamage(ipc, ip, el)
  use material, only: &
@@ -339,6 +340,29 @@ function constitutive_ductile_getDamage(ipc, ip, el)
    damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
 end function constitutive_ductile_getDamage
+!--------------------------------------------------------------------------------------------------
+!> @brief returns damage deformation gradient (extra intermediate configuration) based on 
+!>  local damage model state layout 
+!--------------------------------------------------------------------------------------------------
+function constitutive_ductile_getDamageStrain(ipc, ip, el)
+ use math, only: &
+   math_I3
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_ductile_getDamageStrain
+ 
+ constitutive_ductile_getDamageStrain = &
+   math_I3 / ( &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)) )**(1_pInt/3_pInt) ! volumetric deformation gradient due to damage
+end function constitutive_ductile_getDamageStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage value based on local damage 
