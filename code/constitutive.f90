@@ -24,6 +24,7 @@ module constitutive
  public :: & 
    constitutive_init, &
    constitutive_homogenizedC, &
+   constitutive_damagedC, &
    constitutive_microstructure, &
    constitutive_LpAndItsTangent, &
    constitutive_TandItsTangent, &
@@ -486,6 +487,57 @@ function constitutive_homogenizedC(ipc,ip,el)
 
 end function constitutive_homogenizedC
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns the damaged elasticity matrix in case where not implementing  Fe..Fd..Fp decomposition 
+!>          and the undamaged elasticity matrix in case where implementing  Fe..Fd..Fp decomposition  
+!--------------------------------------------------------------------------------------------------
+function constitutive_damagedC(ipc,ip,el)
+ use prec, only: &
+   pReal 
+ use material, only: &
+   material_phase, &
+   LOCAL_DAMAGE_none_ID, &
+   LOCAL_DAMAGE_brittle_ID, &
+   LOCAL_DAMAGE_ductile_ID, &
+   LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
+   phase_damage
+ use damage_brittle, only: &
+   constitutive_brittle_getDamage
+! use damage_ductile, only: &
+!   constitutive_ductile_getDamage
+ use damage_gurson, only: &
+   constitutive_gurson_getDamage
+ use damage_anisotropic, only: &
+   constitutive_anisotropic_getDamage
+
+ implicit none
+ real(pReal), dimension(6,6) :: constitutive_damagedC
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_none_ID)
+     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)
+     
+   case (LOCAL_DAMAGE_brittle_ID)
+     constitutive_damagedC = constitutive_brittle_getDamage(ipc,ip,el) * &
+                                                             constitutive_homogenizedC(ipc,ip,el)   !> No Fe..Fd..Fp decomposition
+   case (LOCAL_DAMAGE_ductile_ID)
+     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)                                   !> No Fe..Fd..Fp decomposition  ??
+     
+   case (LOCAL_DAMAGE_gurson_ID)
+     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)                                   !> Elasticity degradation by Fe..Fd..Fp decomposition 
+
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)                                   !> Elasticity degradation by Fe..Fd..Fp decomposition
+ end select 
+
+   
+   
+end function constitutive_damagedC
 
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
@@ -709,11 +761,9 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    dT_dFe                                                                                           !< dT/dFe
  
  integer(pInt) :: i, j, k, l
- real(pReal)   :: damage
  real(pReal), dimension(3,3,3,3) :: C
 
- damage = constitutive_getDamage(ipc,ip,el)
- C = damage*damage*math_Mandel66to3333(constitutive_homogenizedC(ipc,ip,el))
+ C = math_Mandel66to3333(constitutive_damagedC(ipc,ip,el))
  T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3))
  
  dT_dFe = 0.0_pReal
