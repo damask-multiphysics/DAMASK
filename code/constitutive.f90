@@ -33,6 +33,7 @@ module constitutive
    constitutive_getLocalDamage, &
    constitutive_putLocalDamage, & 
    constitutive_getDamage, &
+   constitutive_getSlipDamage, &
    constitutive_getDamageStrain, &
    constitutive_getDamageDiffusion33, &
    constitutive_getAdiabaticTemperature, &
@@ -612,6 +613,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
    math_identity2nd
  use material, only: &
    phase_plasticity, &
+   phase_plasticityInstance, &
    material_phase, &
    plasticState,&
    mappingConstitutive, &
@@ -625,15 +627,20 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
  use constitutive_j2, only: &
    constitutive_j2_LpAndItsTangent
  use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_LpAndItsTangent
+   constitutive_phenopowerlaw_LpAndItsTangent, &
+   constitutive_phenopowerlaw_totalNslip
  use constitutive_dislotwin, only: &
-   constitutive_dislotwin_LpAndItsTangent
+   constitutive_dislotwin_LpAndItsTangent, &
+   constitutive_dislotwin_totalNslip
  use constitutive_dislokmc, only: &
-   constitutive_dislokmc_LpAndItsTangent
+   constitutive_dislokmc_LpAndItsTangent, &
+   constitutive_dislokmc_totalNslip
  use constitutive_titanmod, only: &
-   constitutive_titanmod_LpAndItsTangent
+   constitutive_titanmod_LpAndItsTangent, &
+   constitutive_titanmod_totalNslip
  use constitutive_nonlocal, only: &
-   constitutive_nonlocal_LpAndItsTangent
+   constitutive_nonlocal_LpAndItsTangent, &
+   totalNslip
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -646,27 +653,48 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
    Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(out), dimension(9,9) :: &
    dLp_dTstar                                                                                       !< derivative of Lp with respect to Tstar (4th-order tensor)
- real(pReal) :: damage, Tstar_v_effective(6)
- 
- damage = constitutive_getDamage(ipc,ip,el)
- Tstar_v_effective = Tstar_v/(damage*damage)
+ integer(pInt) :: &
+   nSlip
+
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_NONE_ID)
      Lp = 0.0_pReal
      dLp_dTstar = 0.0_pReal
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,ipc,ip,el)
+     nSlip = 1_pInt
+     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                          constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
+                                          ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,ipc,ip,el)
+     nSlip = constitutive_phenopowerlaw_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                                     constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
+                                                     ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ip,el)
+     nSlip = totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                                constitutive_getTemperature(ipc,ip,el), &
+                                                constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
+                                                ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     nSlip = constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                                 constitutive_getTemperature(ipc,ip,el), &
+                                                 constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
+                                                 ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     nSlip = constitutive_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                                constitutive_getTemperature(ipc,ip,el), &
+                                                constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
+                                                ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     nSlip = constitutive_titanmod_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+                                                 constitutive_getTemperature(ipc,ip,el), &
+                                                 constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
+                                                 ipc,ip,el)
 
  end select
  
@@ -1092,6 +1120,45 @@ function constitutive_getDamage(ipc, ip, el)
  end select
 
 end function constitutive_getDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns the damage on each slip system
+!--------------------------------------------------------------------------------------------------
+function constitutive_getSlipDamage(nSlip, Tstar_v, ipc, ip, el)
+ use prec, only: &
+   pReal
+ use material, only: &
+   material_phase, &
+   LOCAL_DAMAGE_ductile_ID, &
+   LOCAL_DAMAGE_gurson_ID, &
+   phase_damage
+ use damage_ductile, only: &
+   damage_ductile_getSlipDamage
+ use damage_gurson, only: &
+   damage_gurson_getSlipDamage
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   nSlip, &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal) :: constitutive_getSlipDamage(nSlip)
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_ductile_ID)
+     constitutive_getSlipDamage = damage_ductile_getSlipDamage(ipc, ip, el)
+     
+   case (LOCAL_DAMAGE_gurson_ID)
+     constitutive_getSlipDamage = damage_gurson_getSlipDamage(Tstar_v, ipc, ip, el)
+
+   case default
+     constitutive_getSlipDamage = 1.0_pReal
+ end select
+
+end function constitutive_getSlipDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage deformation gradient
@@ -1644,12 +1711,9 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- real(pReal) :: damage, Tstar_v_effective(6)
- integer(pInt) :: startPos, endPos
+ integer(pInt) :: &
+   startPos, endPos
  
- damage = constitutive_getDamage(ipc,ip,el)
- Tstar_v_effective = damage*damage*Tstar_v
-
  constitutive_postResults = 0.0_pReal
  
  startPos = 1_pInt
@@ -1658,19 +1722,19 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    case (PLASTICITY_TITANMOD_ID)
      constitutive_postResults(startPos:endPos) = constitutive_titanmod_postResults(ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults(startPos:endPos) = constitutive_j2_postResults(Tstar_v_effective,ipc,ip,el)
+     constitutive_postResults(startPos:endPos) = constitutive_j2_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_phenopowerlaw_postResults(Tstar_v_effective,ipc,ip,el)
+       constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_dislotwin_postResults(Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+       constitutive_dislotwin_postResults(Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_dislokmc_postResults(Tstar_v_effective,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+       constitutive_dislokmc_postResults(Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_nonlocal_postResults (Tstar_v_effective,FeArray,ip,el)
+       constitutive_nonlocal_postResults (Tstar_v,FeArray,ip,el)
  end select
 
 #ifdef multiphysicsOut

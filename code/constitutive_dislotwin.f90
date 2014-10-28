@@ -48,7 +48,7 @@ module constitutive_dislotwin
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    constitutive_dislotwin_Noutput                                                                   !< number of outputs per instance of this plasticity 
 
- integer(pInt),                       dimension(:),           allocatable,         private :: &
+ integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
    constitutive_dislotwin_totalNslip, &                                                             !< total number of active slip systems for each instance
    constitutive_dislotwin_totalNtwin, &                                                             !< total number of active twin systems for each instance
    constitutive_dislotwin_totalNtrans                                                               !< number of active transformation systems 
@@ -1355,7 +1355,7 @@ end subroutine constitutive_dislotwin_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,ipc,ip,el)
+subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,slipDamage,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -1398,6 +1398,10 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  integer(pInt), intent(in)                  :: ipc,ip,el
  real(pReal), intent(in)                    :: Temperature
  real(pReal), dimension(6),   intent(in)    :: Tstar_v
+ real(pReal), &
+ dimension(constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))), &
+ intent(in) :: &
+   slipDamage
  real(pReal), dimension(3,3), intent(out)   :: Lp
  real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar
 
@@ -1463,7 +1467,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  
       !* Calculation of Lp
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))/slipDamage(j)
 
       if((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of)) > tol_math_check) then
       !* Stress ratios

@@ -51,6 +51,7 @@ module damage_gurson
    damage_gurson_dotState, &
    damage_gurson_microstructure, &
    damage_gurson_getDamage, &
+   damage_gurson_getSlipDamage, &
    damage_gurson_putLocalDamage, &
    damage_gurson_getLocalDamage, &
    damage_gurson_postResults
@@ -409,6 +410,25 @@ function damage_gurson_getDamage(ipc, ip, el)
  end select
  
 end function damage_gurson_getDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns slip damage
+!--------------------------------------------------------------------------------------------------
+function damage_gurson_getSlipDamage(Tstar_v, ipc, ip, el)
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(6),   intent(in) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal) :: damage_gurson_getSlipDamage, porosity
+ 
+ porosity = damage_gurson_getDamage(ipc, ip, el)
+ damage_gurson_getSlipDamage = porosity*porosity      ! Gurson yield function should go here
+ 
+end function damage_gurson_getSlipDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief puts local damage 

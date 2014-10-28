@@ -69,7 +69,7 @@ module constitutive_nonlocal
    iV, &                                                                                            !< state indices for dislcation velocities
    iD                                                                                               !< state indices for stable dipole height
  
- integer(pInt), dimension(:), allocatable, private :: &
+ integer(pInt), dimension(:), allocatable, public, protected :: &
    totalNslip                                                                                       !< total number of active slip systems for each instance
  
  integer(pInt), dimension(:,:), allocatable, private :: &
@@ -2016,7 +2016,7 @@ end subroutine constitutive_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, ip, el)
+subroutine constitutive_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, slipDamage, ipc, ip, el)
 
 use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
@@ -2042,10 +2042,13 @@ use mesh,     only: mesh_ipVolume
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                ip, &                                                   !< current integration point
+integer(pInt), intent(in) ::                ipc, &
+                                            ip, &                                                   !< current integration point
                                             el                                                      !< current element number
 real(pReal), intent(in) ::                  Temperature                                             !< temperature
 real(pReal), dimension(6), intent(in) ::    Tstar_v                                                 !< 2nd Piola-Kirchhoff stress in Mandel notation
+real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))), intent(in) :: &
+  slipDamage
 
 
 !*** output variables
@@ -2111,7 +2114,7 @@ tauThreshold = plasticState(ph)%state(iTauF(1:ns,instance),of)
 
 do s = 1_pInt,ns
   sLattice = slipSystemLattice(s,instance)
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,ph))
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,ph))/slipDamage(s)
   tauNS(s,1) = tau(s)
   tauNS(s,2) = tau(s)
   if (tau(s) > 0.0_pReal) then

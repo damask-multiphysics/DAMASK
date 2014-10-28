@@ -45,7 +45,7 @@ module constitutive_titanmod
  integer(pInt),     dimension(:),          allocatable, target, public :: & 
    constitutive_titanmod_Noutput                                                                    !<  number of outputs per instance of this plasticity                                                            !< ID of the lattice structure
 
- integer(pInt),     dimension(:),          allocatable,         private :: & 
+ integer(pInt),     dimension(:),          allocatable,         public, protected :: & 
    constitutive_titanmod_totalNslip, &                                                              !<  total number of active slip systems for each instance
    constitutive_titanmod_totalNtwin                                                                 !<  total number of active twin systems for each instance
 
@@ -1326,7 +1326,7 @@ end subroutine constitutive_titanmod_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,ipc,ip,el)
+subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,slipDamage,ipc,ip,el)
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -1357,14 +1357,18 @@ subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,tempera
  real(pReal), dimension(9,9), intent(out) :: &
    dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
- real(pReal), dimension(6),   intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal),                 intent(in) :: &
-   temperature                                                                                      !< temperature at IP 
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ real(pReal), dimension(6),   intent(in) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal),                 intent(in) :: &
+   temperature                                                                                      !< temperature at IP 
+ real(pReal), &
+ dimension(constitutive_titanmod_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))), &
+ intent(in) :: &
+   slipDamage
  integer(pInt) :: &
    index_myFamily, instance, &
    ns,nt, &
@@ -1422,7 +1426,7 @@ subroutine constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,tempera
 
       !* Calculation of Lp
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph)) 
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))/slipDamage(j) 
       if(lattice_structure(ph)==LATTICE_hex_ID) then ! only for prismatic and pyr <a> systems in hex
       screwvelocity_prefactor=constitutive_titanmod_debyefrequency(instance)* &
         plasticState(ph)%state(4_pInt*ns+nt+j, of)*(constitutive_titanmod_burgersPerSlipSys(j,instance)/ &

@@ -25,7 +25,7 @@ module constitutive_phenopowerlaw
  integer(pInt),                       dimension(:),     allocatable, target, public :: &
    constitutive_phenopowerlaw_Noutput                                                               !< number of outputs per instance of this constitution 
 
- integer(pInt),                       dimension(:),     allocatable,         private :: &
+ integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
    constitutive_phenopowerlaw_totalNslip, &                                                         !< no. of slip system used in simulation
    constitutive_phenopowerlaw_totalNtwin                                                            !< no. of twin system used in simulation
 
@@ -669,7 +669,7 @@ end subroutine constitutive_phenopowerlaw_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
+subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,slipDamage,ipc,ip,el)
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -699,12 +699,16 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ip
  real(pReal), dimension(9,9), intent(out) :: &
    dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
- real(pReal), dimension(6),   intent(in) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ real(pReal), dimension(6),   intent(in) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), &
+ dimension(constitutive_phenopowerlaw_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))),   &
+ intent(in) :: &
+   slipDamage
 
  integer(pInt) :: &
    instance, & 
@@ -758,12 +762,12 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ip
                                            lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo
      gdot_slip_pos(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_pos(j))/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance))*&
-                                                                    sign(1.0_pReal,tau_slip_pos(j))
+                    ((abs(tau_slip_pos(j))/(slipDamage(j)*plasticState(ph)%state(j,of)))** &
+                    constitutive_phenopowerlaw_n_slip(instance))*sign(1.0_pReal,tau_slip_pos(j))
 
      gdot_slip_neg(j) = 0.5_pReal*constitutive_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_neg(j))/plasticState(ph)%state(j,of))**constitutive_phenopowerlaw_n_slip(instance))*&
-                                                                    sign(1.0_pReal,tau_slip_neg(j))
+                    ((abs(tau_slip_neg(j))/(slipDamage(j)*plasticState(ph)%state(j,of)))**&
+                    constitutive_phenopowerlaw_n_slip(instance))*sign(1.0_pReal,tau_slip_neg(j))
                                                                     
      Lp = Lp + (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                  ! 1-F
                (gdot_slip_pos(j)+gdot_slip_neg(j))*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)

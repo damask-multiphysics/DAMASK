@@ -46,7 +46,7 @@ module constitutive_dislokmc
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    constitutive_dislokmc_Noutput                                                                    !< number of outputs per instance of this plasticity 
 
- integer(pInt),                       dimension(:),           allocatable,         private :: &
+ integer(pInt),                       dimension(:),           allocatable,         public, protected :: &
    constitutive_dislokmc_totalNslip, &                                                              !< total number of active slip systems for each instance
    constitutive_dislokmc_totalNtwin                                                                 !< total number of active twin systems for each instance
 
@@ -1193,7 +1193,7 @@ end subroutine constitutive_dislokmc_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,ipc,ip,el)
+subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,slipDamage,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -1232,6 +1232,10 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
  integer(pInt), intent(in)                  :: ipc,ip,el
  real(pReal), intent(in)                    :: Temperature
  real(pReal), dimension(6),   intent(in)    :: Tstar_v
+ real(pReal), &
+ dimension(constitutive_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))), &
+ intent(in) :: &
+   slipDamage
  real(pReal), dimension(3,3), intent(out)   :: Lp
  real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar
 
@@ -1273,7 +1277,7 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
  
 !--------------------------------------------------------------------------------------------------
 ! Calculation of Lp
-     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_slip_pos(j)  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))/slipDamage(j)
      tau_slip_neg(j)  = tau_slip_pos(j)
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)

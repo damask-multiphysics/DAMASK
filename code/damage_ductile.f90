@@ -45,6 +45,7 @@ module damage_ductile
    damage_ductile_dotState, &
    damage_ductile_microstructure, &
    damage_ductile_getDamage, &
+   damage_ductile_getSlipDamage, &
    damage_ductile_putLocalDamage, &
    damage_ductile_getLocalDamage, &
    damage_ductile_postResults
@@ -351,6 +352,23 @@ function damage_ductile_getDamage(ipc, ip, el)
  end select
  
 end function damage_ductile_getDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns slip damage 
+!--------------------------------------------------------------------------------------------------
+function damage_ductile_getSlipDamage(ipc, ip, el)
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: damage_ductile_getSlipDamage, damage
+ 
+ damage = damage_ductile_getDamage(ipc, ip, el)
+ damage_ductile_getSlipDamage = damage*damage
+ 
+end function damage_ductile_getSlipDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief puts local damage 

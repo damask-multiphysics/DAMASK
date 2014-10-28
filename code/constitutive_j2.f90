@@ -346,7 +346,7 @@ end subroutine constitutive_j2_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
+subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,slipDamage,ipc,ip,el)
  use math, only: &
    math_mul6x6, &
    math_Mandel6to33, &
@@ -371,6 +371,8 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
 
  real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
+ real(pReal), dimension(1),   intent(in) :: &
+   slipDamage
  integer(pInt),               intent(in) :: &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
@@ -398,7 +400,7 @@ subroutine constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    dLp_dTstar99 = 0.0_pReal
  else
    gamma_dot = constitutive_j2_gdot0(instance) &
-             * (sqrt(1.5_pReal) * norm_Tstar_dev / (constitutive_j2_fTaylor(instance) * &
+             * (sqrt(1.5_pReal) * norm_Tstar_dev / (slipDamage(1)*constitutive_j2_fTaylor(instance) * &
                plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
                                                   **constitutive_j2_n(instance)
 
