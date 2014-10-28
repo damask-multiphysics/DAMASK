@@ -1,8 +1,8 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id: damage_anisoBrittle.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $
 !--------------------------------------------------------------------------------------------------
-!> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Luv Sharma, Max-Planck-Institut fŸr Eisenforschung GmbH
+!> @author Pratheek Shanthraj, Max-Planck-Institut fŸr Eisenforschung GmbH
 !> @brief material subroutine incorporating anisotropic ductile damage
 !> @details to be done
 !--------------------------------------------------------------------------------------------------

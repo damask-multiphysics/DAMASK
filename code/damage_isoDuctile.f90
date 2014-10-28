@@ -1,9 +1,9 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief material subroutine incoprorating ductile damage
+!> @author Luv Sharma, Max-Planck-Institut fŸr Eisenforschung GmbH
+!> @author Pratheek Shanthraj, Max-Planck-Institut fŸr Eisenforschung GmbH
+!> @brief material subroutine incoprorating isotropic ductile damage
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module damage_isoDuctile

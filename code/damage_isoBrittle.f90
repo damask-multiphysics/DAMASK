@@ -1,9 +1,9 @@
 !--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
-!> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
-!> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
-!> @brief material subroutine incoprorating dislocation and twinning physics
+!> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
+!> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
+!> @brief material subroutine incoprorating isotropic brittle damage
 !> @details to be done
 !--------------------------------------------------------------------------------------------------
 module damage_isoBrittle
