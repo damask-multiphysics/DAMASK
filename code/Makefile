@@ -326,7 +326,7 @@ COMPILE         =$(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATI
 COMPILE_MAXOPTI =$(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 ###################################################################################################
 DAMAGE_FILES = \
-   damage_none.o damage_brittle.o damage_ductile.o damage_gurson.o damage_anisotropic.o
+   damage_none.o damage_isoBrittle.o damage_isoDuctile.o damage_gurson.o damage_anisoBrittle.o
 
 THERMAL_FILES = \
    thermal_isothermal.o thermal_adiabatic.o
@@ -481,16 +481,16 @@ constitutive_none.o:           constitutive_none.f90 \
 damage_none.o:                 damage_none.f90 \
                                lattice.o
 
-damage_brittle.o:              damage_brittle.f90 \
+damage_isoBrittle.o:           damage_isoBrittle.f90 \
                                lattice.o
 
-damage_ductile.o:              damage_ductile.f90 \
+damage_isoDuctile.o:           damage_isoDuctile.f90 \
+                               lattice.o
+                               
+damage_anisoBrittle.o:         damage_anisoBrittle.f90 \
                                lattice.o
                                
 damage_gurson.o:               damage_gurson.f90 \
-                               lattice.o
-                               
-damage_anisotropic.o:          damage_anisotropic.f90 \
                                lattice.o
 
 thermal_isothermal.o:          thermal_isothermal.f90 \

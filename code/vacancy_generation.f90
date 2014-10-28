@@ -215,7 +215,7 @@ subroutine vacancy_generation_init(fileUnit)
      allocate(vacancyState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(vacancyState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(vacancyState(phase)%deltaState          (sizeDotState,NofMyPhase),     source=0.0_pReal)
+     allocate(vacancyState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(vacancyState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(vacancyState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
