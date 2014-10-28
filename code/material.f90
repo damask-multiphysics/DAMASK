@@ -28,9 +28,9 @@ module material
    PLASTICITY_titanmod_label      = 'titanmod', &
    PLASTICITY_nonlocal_label      = 'nonlocal', &
    LOCAL_DAMAGE_none_LABEL        = 'none', &
-   LOCAL_DAMAGE_isoBrittle_LABEL  = 'isoBrittle', &
-   LOCAL_DAMAGE_isoDuctile_LABEL  = 'isoDuctile', &
-   LOCAL_DAMAGE_anisoBrittle_LABEL= 'anisoBrittle', &
+   LOCAL_DAMAGE_isoBrittle_LABEL  = 'isobrittle', &
+   LOCAL_DAMAGE_isoDuctile_LABEL  = 'isoductile', &
+   LOCAL_DAMAGE_anisoBrittle_LABEL= 'anisobrittle', &
    LOCAL_DAMAGE_gurson_LABEL      = 'gurson', &   
    LOCAL_THERMAL_isothermal_label = 'isothermal', &
    LOCAL_THERMAL_adiabatic_label  = 'adiabatic', &
