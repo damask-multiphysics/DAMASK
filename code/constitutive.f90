@@ -488,54 +488,35 @@ function constitutive_homogenizedC(ipc,ip,el)
 end function constitutive_homogenizedC
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns the damaged elasticity matrix in case where not implementing  Fe..Fd..Fp decomposition 
-!>          and the undamaged elasticity matrix in case where implementing  Fe..Fd..Fp decomposition  
+!> @brief returns the damaged elasticity matrix if relevant 
 !--------------------------------------------------------------------------------------------------
 function constitutive_damagedC(ipc,ip,el)
  use prec, only: &
    pReal 
  use material, only: &
    material_phase, &
-   LOCAL_DAMAGE_none_ID, &
    LOCAL_DAMAGE_brittle_ID, &
-   LOCAL_DAMAGE_ductile_ID, &
-   LOCAL_DAMAGE_gurson_ID, &
-   LOCAL_DAMAGE_anisotropic_ID, &
    phase_damage
  use damage_brittle, only: &
-   constitutive_brittle_getDamage
-! use damage_ductile, only: &
-!   constitutive_ductile_getDamage
- use damage_gurson, only: &
-   constitutive_gurson_getDamage
- use damage_anisotropic, only: &
-   constitutive_anisotropic_getDamage
+   damage_brittle_getDamage  
 
  implicit none
  real(pReal), dimension(6,6) :: constitutive_damagedC
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
+   el 
+ real(pReal) :: damage                                                                              !< element number
  
  select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_none_ID)
-     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)
-     
    case (LOCAL_DAMAGE_brittle_ID)
-     constitutive_damagedC = constitutive_brittle_getDamage(ipc,ip,el) * &
-                                                             constitutive_homogenizedC(ipc,ip,el)   !> No Fe..Fd..Fp decomposition
-   case (LOCAL_DAMAGE_ductile_ID)
-     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)                                   !> No Fe..Fd..Fp decomposition  ??
-     
-   case (LOCAL_DAMAGE_gurson_ID)
-     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)                                   !> Elasticity degradation by Fe..Fd..Fp decomposition 
+     damage = damage_brittle_getDamage(ipc, ip, el)
+     constitutive_damagedC = damage*damage* &
+                             constitutive_homogenizedC(ipc,ip,el)
+   case default
+     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)
 
-   case (LOCAL_DAMAGE_anisotropic_ID)
-     constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)                                   !> Elasticity degradation by Fe..Fd..Fp decomposition
  end select 
-
-   
    
 end function constitutive_damagedC
 
@@ -567,13 +548,12 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  use constitutive_dislokmc, only: &
    constitutive_dislokmc_microstructure
  use damage_brittle, only: &
-   damage_brittle_microstructure
+   damage_brittle_microstructure, &
+   damage_brittle_getDamage
  use damage_ductile, only: &
    damage_ductile_microstructure
  use damage_gurson, only: &
    damage_gurson_microstructure
- use damage_anisotropic, only: &
-   damage_anisotropic_microstructure
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -608,9 +588,7 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_brittle_ID)
-     damage = constitutive_getDamage(ipc,ip,el)
-     Tstar_v_effective = Tstar_v/(damage*damage)
-     damage = constitutive_getDamage(ipc,ip,el)
+     damage = damage_brittle_getDamage(ipc,ip,el)
      Tstar_v_effective = Tstar_v/(damage*damage)
      call damage_brittle_microstructure(Tstar_v_effective, Fe, ipc, ip, el)
    case (LOCAL_DAMAGE_ductile_ID)
@@ -618,10 +596,6 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
      call damage_ductile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_microstructure(ipc, ip, el)
-   case (LOCAL_DAMAGE_anisotropic_ID)
-     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,Fp,ipc, ip, el)
-     call damage_anisotropic_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
-
 
  end select
 
@@ -887,7 +861,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
    case (LOCAL_DAMAGE_anisotropic_ID)
-     call damage_anisotropic_dotState(ipc, ip, el)
+     call damage_anisotropic_dotState(Tstar_v, ipc, ip, el)
  end select
 
  select case (phase_thermal(material_phase(ipc,ip,el)))
@@ -989,13 +963,13 @@ function constitutive_getLocalDamage(ipc, ip, el)
    LOCAL_DAMAGE_anisotropic_ID, &
    phase_damage
  use damage_brittle, only: &
-   constitutive_brittle_getDamage
+   damage_brittle_getLocalDamage
  use damage_ductile, only: &
-   constitutive_ductile_getDamage
+   damage_ductile_getLocalDamage
  use damage_gurson, only: &
-   constitutive_gurson_getDamage
+   damage_gurson_getLocalDamage
  use damage_anisotropic, only: &
-   constitutive_anisotropic_getDamage
+   damage_anisotropic_getLocalDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1009,16 +983,16 @@ function constitutive_getLocalDamage(ipc, ip, el)
      constitutive_getLocalDamage = 1.0_pReal
      
    case (LOCAL_DAMAGE_brittle_ID)
-     constitutive_getLocalDamage = constitutive_brittle_getDamage(ipc, ip, el)
+     constitutive_getLocalDamage = damage_brittle_getLocalDamage(ipc, ip, el)
    
    case (LOCAL_DAMAGE_ductile_ID)
-     constitutive_getLocalDamage = constitutive_ductile_getDamage(ipc, ip, el)
+     constitutive_getLocalDamage = damage_ductile_getLocalDamage(ipc, ip, el)
      
    case (LOCAL_DAMAGE_gurson_ID)
-     constitutive_getLocalDamage = constitutive_gurson_getDamage(ipc, ip, el)
+     constitutive_getLocalDamage = damage_gurson_getLocalDamage(ipc, ip, el)
 
    case (LOCAL_DAMAGE_anisotropic_ID)
-     !constitutive_getLocalDamage = constitutive_anisotropic_getDamage(ipc, ip, el)
+     constitutive_getLocalDamage = damage_anisotropic_getLocalDamage(ipc, ip, el)
  end select
 
 end function constitutive_getLocalDamage
@@ -1037,13 +1011,13 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
    LOCAL_DAMAGE_anisotropic_ID, &
    phase_damage
  use damage_brittle, only: &
-   constitutive_brittle_putDamage
+   damage_brittle_putLocalDamage
  use damage_ductile, only: &
-   constitutive_ductile_putDamage
+   damage_ductile_putLocalDamage
  use damage_gurson, only: &
-   constitutive_gurson_putDamage
+   damage_gurson_putLocalDamage
  use damage_anisotropic, only: &
-   constitutive_anisotropic_putDamage
+   damage_anisotropic_putLocalDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1055,16 +1029,16 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_BRITTLE_ID)
-     call constitutive_brittle_putDamage(ipc, ip, el, localDamage)
+     call damage_brittle_putLocalDamage(ipc, ip, el, localDamage)
    
    case (LOCAL_DAMAGE_DUCTILE_ID)
-     call constitutive_ductile_putDamage(ipc, ip, el, localDamage)
+     call damage_ductile_putLocalDamage(ipc, ip, el, localDamage)
      
    case (LOCAL_DAMAGE_gurson_ID)
-     call constitutive_gurson_putDamage(ipc, ip, el, localDamage)
+     call damage_gurson_putLocalDamage(ipc, ip, el, localDamage)
  
    case (LOCAL_DAMAGE_anisotropic_ID)
-     !call constitutive_anisotropic_putDamage(ipc, ip, el, localDamage)
+     call damage_anisotropic_putLocalDamage(ipc, ip, el, localDamage)
 
  end select
 
@@ -1077,12 +1051,21 @@ function constitutive_getDamage(ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
-    material_homog, &
-    mappingHomogenization, &
-    fieldDamage, &
-    field_damage_type, &
-    FIELD_DAMAGE_LOCAL_ID, &
-    FIELD_DAMAGE_NONLOCAL_ID
+   material_phase, &
+   LOCAL_DAMAGE_none_ID, &
+   LOCAL_DAMAGE_BRITTLE_ID, &
+   LOCAL_DAMAGE_DUCTILE_ID, &
+   LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_anisotropic_ID, &
+   phase_damage
+ use damage_brittle, only: &
+   damage_brittle_getDamage
+ use damage_ductile, only: &
+   damage_ductile_getDamage
+ use damage_gurson, only: &
+   damage_gurson_getDamage
+ use damage_anisotropic, only: &
+   damage_anisotropic_getDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1091,18 +1074,59 @@ function constitutive_getDamage(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal) :: constitutive_getDamage
  
- select case(field_damage_type(material_homog(ip,el)))                                                   
- 
-   case (FIELD_DAMAGE_LOCAL_ID)
-    constitutive_getDamage = constitutive_getLocalDamage(ipc, ip, el)
-    
-   case (FIELD_DAMAGE_NONLOCAL_ID)
-    constitutive_getDamage =    fieldDamage(material_homog(ip,el))% &
-      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_none_ID)
+     constitutive_getDamage = 1.0_pReal
+     
+   case (LOCAL_DAMAGE_brittle_ID)
+     constitutive_getDamage = damage_brittle_getDamage(ipc, ip, el)
+   
+   case (LOCAL_DAMAGE_ductile_ID)
+     constitutive_getDamage = damage_ductile_getDamage(ipc, ip, el)
+     
+   case (LOCAL_DAMAGE_gurson_ID)
+     constitutive_getDamage = damage_gurson_getDamage(ipc, ip, el)
 
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     constitutive_getDamage = damage_anisotropic_getDamage(ipc, ip, el)
  end select
 
 end function constitutive_getDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns damage deformation gradient
+!--------------------------------------------------------------------------------------------------
+function constitutive_getDamageStrain(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use math, only: &
+   math_I3
+ use material, only: &
+   material_phase, &
+   LOCAL_DAMAGE_anisotropic_ID, &
+   phase_damage
+ use damage_anisotropic, only: &
+   damage_anisotropic_getDamageStrain
+   
+   
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_getDamageStrain
+ 
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_anisotropic_ID)
+     constitutive_getDamageStrain = damage_anisotropic_getDamageStrain(ipc, ip, el)
+   case default
+     constitutive_getDamageStrain = math_I3
+
+ end select
+ 
+end function constitutive_getDamageStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage diffusion tensor
@@ -1225,74 +1249,17 @@ function constitutive_getTemperature(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal) :: constitutive_getTemperature
  
-   select case(field_thermal_type(material_homog(ip,el)))                                                   
-   
-     case (FIELD_THERMAL_local_ID)
-      constitutive_getTemperature = constitutive_getAdiabaticTemperature(ipc, ip, el)      
-      
-     case (FIELD_THERMAL_nonlocal_ID)
-      constitutive_getTemperature =    fieldThermal(material_homog(ip,el))% &
-        field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+ select case(field_thermal_type(material_homog(ip,el)))                                                   
+   case (FIELD_THERMAL_local_ID)
+    constitutive_getTemperature = constitutive_getAdiabaticTemperature(ipc, ip, el)      
+    
+   case (FIELD_THERMAL_nonlocal_ID)
+    constitutive_getTemperature = fieldThermal(material_homog(ip,el))% &
+      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
-   end select
+ end select
 
 end function constitutive_getTemperature
-!--------------------------------------------------------------------------------------------------
-!> @brief returns damage deformation gradient
-!--------------------------------------------------------------------------------------------------
-function constitutive_getDamageStrain(ipc, ip, el)
- use prec, only: &
-   pReal
- use math, only: &
-   math_I3
-
- use material, only: &
-   material_phase, &
-   LOCAL_DAMAGE_none_ID, &
-   LOCAL_DAMAGE_brittle_ID, &
-   LOCAL_DAMAGE_ductile_ID, &
-   LOCAL_DAMAGE_gurson_ID, &
-   LOCAL_DAMAGE_anisotropic_ID, &
-   phase_damage
-! use damage_brittle_iso, only: &
-!   constitutive_brittle_iso_getDamageStrain
-! use damage_brittle_iso, only: &
-!   constitutive_brittle_iso_getDamageStrain 
- use damage_ductile, only: &
-   constitutive_ductile_getDamageStrain
-! use damage_gurson, only: &
-!   constitutive_gurson_getDamageStrain
-! use damage_anisotropic, only: &
-!   constitutive_anisotropic_getDamageStrain
-   
-   
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal), dimension(3,3) :: &
-   constitutive_getDamageStrain
- 
- 
- select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_none_ID)
-     constitutive_getDamageStrain = math_I3 !
-
-   case (LOCAL_DAMAGE_brittle_ID)
-     constitutive_getDamageStrain = math_I3 !
-      
-   case (LOCAL_DAMAGE_ductile_ID)
-     constitutive_getDamageStrain = constitutive_ductile_getDamageStrain(ipc, ip, el)
-     
-   case (LOCAL_DAMAGE_gurson_ID)
-     constitutive_getDamageStrain = math_I3 !
-
-   case (LOCAL_DAMAGE_anisotropic_ID)
-     constitutive_getDamageStrain = math_I3 !
- end select
- 
-end function constitutive_getDamageStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns thermal deformation gradient

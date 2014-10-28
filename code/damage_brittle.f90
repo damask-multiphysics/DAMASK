@@ -44,8 +44,9 @@ module damage_brittle
    damage_brittle_aTolState, &
    damage_brittle_dotState, &
    damage_brittle_microstructure, &
-   constitutive_brittle_getDamage, &
-   constitutive_brittle_putDamage, &
+   damage_brittle_getDamage, &
+   damage_brittle_putLocalDamage, &
+   damage_brittle_getLocalDamage, &
    damage_brittle_getDamageDiffusion33, &
    damage_brittle_postResults
 
@@ -323,29 +324,40 @@ subroutine damage_brittle_microstructure(Tstar_v, Fe, ipc, ip, el)
 end subroutine damage_brittle_microstructure
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns temperature based on local damage model state layout 
+!> @brief returns damage
 !--------------------------------------------------------------------------------------------------
-function constitutive_brittle_getDamage(ipc, ip, el)
+function damage_brittle_getDamage(ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   material_homog, &
+   mappingHomogenization, &
+   fieldDamage, &
+   field_damage_type, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID
 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_brittle_getDamage
+ real(pReal) :: damage_brittle_getDamage
  
- constitutive_brittle_getDamage = &
-   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
- 
-end function constitutive_brittle_getDamage
+ select case(field_damage_type(material_homog(ip,el)))                                                   
+   case (FIELD_DAMAGE_LOCAL_ID)
+    damage_brittle_getDamage = damage_brittle_getLocalDamage(ipc, ip, el)
+    
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+    damage_brittle_getDamage = fieldDamage(material_homog(ip,el))% &
+      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+
+ end select
+
+end function damage_brittle_getDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns temperature based on local damage model state layout 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_brittle_putDamage(ipc, ip, el, localDamage)
+subroutine damage_brittle_putLocalDamage(ipc, ip, el, localDamage)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -360,7 +372,27 @@ subroutine constitutive_brittle_putDamage(ipc, ip, el, localDamage)
  damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)) = &
    localDamage
  
-end subroutine constitutive_brittle_putDamage
+end subroutine damage_brittle_putLocalDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns local damage
+!--------------------------------------------------------------------------------------------------
+function damage_brittle_getLocalDamage(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: damage_brittle_getLocalDamage
+ 
+ damage_brittle_getLocalDamage = &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
+ 
+end function damage_brittle_getLocalDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns brittle damage diffusion tensor 

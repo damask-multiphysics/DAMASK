@@ -3424,9 +3424,8 @@ logical function crystallite_integrateStress(&
    return
  endif
  A = math_mul33x33(Fg_new,invFp_current)                                    ! intermediate tensor needed later to calculate dFe_dLp
- Fi = math_I3                                                               ! intermediate configuration, assume decomposition as F = Fe Fi Fp
- Fi = math_mul33x33(math_mul33x33(Fi,constitutive_getThermalStrain(g,i,e)), &
-                                      constitutive_getDamageStrain(g,i,e))  ! Fi = Ft Fd
+ Fi = constitutive_getDamageStrain(g,i,e)                                   ! intermediate configuration, assume decomposition as F = Fe Fi Fp
+ Fi = math_mul33x33(Fi,constitutive_getThermalStrain(g,i,e))                ! Fi = Ft Fd
  Ci = math_mul33x33(math_transpose33(Fi),Fi)                                ! non-plastic stretch tensor (neglecting elastic contributions)
  invFi = math_inv33(Fi)
  detFi = math_det33(Fi)

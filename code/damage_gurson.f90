@@ -50,8 +50,9 @@ module damage_gurson
    damage_gurson_aTolState, &
    damage_gurson_dotState, &
    damage_gurson_microstructure, &
-   constitutive_gurson_getDamage, &
-   constitutive_gurson_putDamage, &
+   damage_gurson_getDamage, &
+   damage_gurson_putLocalDamage, &
+   damage_gurson_getLocalDamage, &
    damage_gurson_postResults
 
 contains
@@ -379,29 +380,40 @@ subroutine damage_gurson_microstructure(ipc, ip, el)
 end subroutine damage_gurson_microstructure
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns temperature based on local damage model state layout 
+!> @brief returns damage
 !--------------------------------------------------------------------------------------------------
-function constitutive_gurson_getDamage(ipc, ip, el)
+function damage_gurson_getDamage(ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   material_homog, &
+   mappingHomogenization, &
+   fieldDamage, &
+   field_damage_type, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID
 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: constitutive_gurson_getDamage
+ real(pReal) :: damage_gurson_getDamage
  
- constitutive_gurson_getDamage = &
-   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
+ select case(field_damage_type(material_homog(ip,el)))                                                   
+   case (FIELD_DAMAGE_LOCAL_ID)
+    damage_gurson_getDamage = damage_gurson_getLocalDamage(ipc, ip, el)
+    
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+    damage_gurson_getDamage =    fieldDamage(material_homog(ip,el))% &
+      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+
+ end select
  
-end function constitutive_gurson_getDamage
+end function damage_gurson_getDamage
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns damage value based on local damage 
+!> @brief puts local damage 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_gurson_putDamage(ipc, ip, el, localDamage)
+subroutine damage_gurson_putLocalDamage(ipc, ip, el, localDamage)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -416,7 +428,27 @@ subroutine constitutive_gurson_putDamage(ipc, ip, el, localDamage)
  damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)) = &
    localDamage
  
-end subroutine constitutive_gurson_putDamage
+end subroutine damage_gurson_putLocalDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns local damage
+!--------------------------------------------------------------------------------------------------
+function damage_gurson_getLocalDamage(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: damage_gurson_getLocalDamage
+ 
+ damage_gurson_getLocalDamage = &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
+ 
+end function damage_gurson_getLocalDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

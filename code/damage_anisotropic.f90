@@ -32,10 +32,13 @@ module damage_anisotropic
    damage_anisotropic_Nslip                                                                            !< Todo
    
  real(pReal),                         dimension(:),           allocatable,         private :: &
-   damage_anisotropic_aTol
+   damage_anisotropic_aTol, &
+   damage_anisotropic_sdot_0, &
+   damage_anisotropic_N
 
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   damage_anisotropic_critpStrain
+   damage_anisotropic_critDisp, &
+   damage_anisotropic_critLoad
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -51,9 +54,10 @@ module damage_anisotropic
    damage_anisotropic_stateInit, &
    damage_anisotropic_aTolState, &
    damage_anisotropic_dotState, &
-   damage_anisotropic_microstructure, &
-   constitutive_anisotropic_getDamage, &
-   constitutive_anisotropic_putDamage, &
+   damage_anisotropic_getDamage, &
+   damage_anisotropic_putLocalDamage, &
+   damage_anisotropic_getLocalDamage, &
+   damage_anisotropic_getDamageStrain, &
    damage_anisotropic_postResults
 
 contains
@@ -133,10 +137,13 @@ subroutine damage_anisotropic_init(fileUnit)
           damage_anisotropic_output = ''
  allocate(damage_anisotropic_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_anisotropic_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(damage_anisotropic_critpStrain(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal) 
+ allocate(damage_anisotropic_critDisp(lattice_maxNslipFamily,maxNinstance),   source=0.0_pReal) 
+ allocate(damage_anisotropic_critLoad  (lattice_maxNslipFamily,maxNinstance),   source=0.0_pReal) 
  allocate(damage_anisotropic_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
  allocate(damage_anisotropic_totalNslip(maxNinstance),                          source=0_pInt)
  allocate(damage_anisotropic_aTol(maxNinstance),                                source=0.0_pReal) 
+ allocate(damage_anisotropic_sdot_0(maxNinstance),                              source=0.0_pReal) 
+ allocate(damage_anisotropic_N(maxNinstance),                                   source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -172,6 +179,12 @@ subroutine damage_anisotropic_init(fileUnit)
        case ('atol_damage')
          damage_anisotropic_aTol(instance) = IO_floatValue(line,positions,2_pInt)
          
+       case ('sdot_0')
+         damage_anisotropic_sdot_0(instance) = IO_floatValue(line,positions,2_pInt)
+         
+       case ('n_damage')
+         damage_anisotropic_N(instance) = IO_floatValue(line,positions,2_pInt)
+         
        case ('Nslip')  !
          Nchunks_SlipFamilies = positions(1) - 1_pInt
          do j = 1_pInt, Nchunks_SlipFamilies
@@ -179,9 +192,14 @@ subroutine damage_anisotropic_init(fileUnit)
          enddo
          damage_anisotropic_totalNslip(instance) = sum(damage_anisotropic_Nslip(:,instance))
 
-       case ('critical_plastic_strain')
+       case ('critical_displacement')
          do j = 1_pInt, Nchunks_SlipFamilies
-           damage_anisotropic_critpStrain(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           damage_anisotropic_critDisp(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+         enddo
+
+       case ('critical_load')
+         do j = 1_pInt, Nchunks_SlipFamilies
+           damage_anisotropic_critLoad(j,instance) = IO_floatValue(line,positions,1_pInt+j)
          enddo
 
      end select
@@ -207,8 +225,10 @@ subroutine damage_anisotropic_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   damage_anisotropic_totalNslip(instance)
-     sizeState                 =   2_pInt * damage_anisotropic_totalNslip(instance)
+     sizeDotState              = 2_pInt + & ! viscous and non-viscous damage values
+                                 9_pInt + & ! damage deformation gradient  
+                                 damage_anisotropic_totalNslip(instance) ! opening on each damage system
+     sizeState                 = sizeDotState
                 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
@@ -251,7 +271,18 @@ subroutine damage_anisotropic_stateInit(phase)
 
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
- tempState = 1.0_pReal
+ tempState     = 0.0_pReal
+ tempState(1)  = 1.0_pReal
+ tempState(2)  = 1.0_pReal
+ tempState(3)  = 1.0_pReal
+ tempState(4)  = 0.0_pReal
+ tempState(5)  = 0.0_pReal
+ tempState(6)  = 0.0_pReal
+ tempState(7)  = 1.0_pReal
+ tempState(8)  = 0.0_pReal
+ tempState(9)  = 0.0_pReal
+ tempState(10) = 0.0_pReal
+ tempState(11) = 1.0_pReal
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
  damageState(phase)%partionedState0 = damageState(phase)%state
@@ -277,14 +308,18 @@ end subroutine damage_anisotropic_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_anisotropic_dotState(ipc, ip, el)
+subroutine damage_anisotropic_dotState(Tstar_v,ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
  use math, only: &
-   math_norm33
+   math_mul33x33
  use lattice, only: &
+   lattice_Sslip, &
+   lattice_Sslip_v, &
+   lattice_maxNslipFamily, &
+   lattice_NslipSystem, &
    lattice_DamageMobility
 
  implicit none
@@ -292,97 +327,92 @@ subroutine damage_anisotropic_dotState(ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ real(pReal),  intent(in), dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pInt) :: &
    phase, &
    constituent, &
    instance, &
-   i
+   j, f, i, index_myFamily
+ real(pReal), dimension(3,3) :: &
+   Ld
+ real(pReal) :: &
+   tau, &
+   tau_critical, &
+   nonLocalFactor    
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_damageInstance(phase)
  
- do i = 1_pInt,damage_anisotropic_totalNslip(instance)
-   damageState(phase)%dotState(i,constituent) = &
-     (1.0_pReal/lattice_DamageMobility(phase))* &
-     (damageState(phase)%state(i+damage_anisotropic_totalNslip(instance),constituent) - &
-      damageState(phase)%state(i,constituent))
- enddo     
-  
+ damageState(phase)%dotState(1,constituent) = &
+   (1.0_pReal/lattice_DamageMobility(phase))* &
+   (damageState(phase)%state(2,constituent) - &
+    damageState(phase)%state(1,constituent))
+
+ nonLocalFactor = 1.0_pReal + &
+                  (damageState(phase)%state(1,constituent) - &
+                   damage_anisotropic_getDamage(ipc, ip, el)) 
+ Ld = 0.0_pReal
+ j = 0_pInt
+ slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
+   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
+   do i = 1_pInt,damage_anisotropic_Nslip(f,instance)                                            ! process each (active) slip system in family
+     j = j+1_pInt
+     tau = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,phase))
+     tau_critical = (1.0_pReal - damageState(phase)%state(11+j,constituent)/&
+                                 damage_anisotropic_critDisp(f,instance))* &
+                    damage_anisotropic_critLoad(f,instance)*nonLocalFactor             
+     damageState(phase)%dotState(11+j,constituent) = &
+       damage_anisotropic_sdot_0(instance)*(tau/tau_critical)**damage_anisotropic_N(instance)
+     damageState(phase)%dotState(2,constituent) = &
+       damageState(phase)%dotState(2,constituent) - &
+       2.0_pReal*tau*damageState(phase)%dotState(11+j,constituent)/ &
+       (damage_anisotropic_critDisp(f,instance)*damage_anisotropic_critLoad(f,instance))
+     Ld = Ld + damageState(phase)%dotState(11+j,constituent)* &
+               lattice_Sslip(1:3,1:3,1,index_myFamily+i,phase)
+   enddo
+ enddo slipFamiliesLoop
+ damageState(phase)%dotState(3:11,constituent) = &
+   reshape(math_mul33x33(Ld,reshape(damageState(phase)%state(3:11,constituent),shape=[3,3])),shape=[9])
+
 end subroutine damage_anisotropic_dotState
  
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
+!> @brief returns damage
 !--------------------------------------------------------------------------------------------------
-subroutine damage_anisotropic_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
+function damage_anisotropic_getDamage(ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
- use math, only: &
-   math_Mandel6to33, &
-   math_mul33x33, &
-   math_transpose33, &
-   math_I3, &
-   math_norm33
- use lattice, only: &
-   lattice_maxNslipFamily
-
- implicit none
- integer(pInt), intent(in) :: &
-   nSlip, &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal), dimension(nSlip), intent(in) :: &
-   accumulatedSlip
- integer(pInt) :: &
-   phase, constituent, instance, i, j, f
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
- 
- j = 0_pInt
- do f = 1_pInt,lattice_maxNslipFamily
-   do i = 1_pInt,damage_anisotropic_Nslip(f,instance)                                          ! process each (active) slip system in family
-     j = j+1_pInt
-     damageState(phase)%state(j+damage_anisotropic_totalNslip(instance),constituent) = &
-       min(damageState(phase)%state(j+damage_anisotropic_totalNslip(instance),constituent), &
-           damage_anisotropic_critpStrain(f,instance)/accumulatedSlip(j))
-   enddo
- enddo     
-                                                        
-end subroutine damage_anisotropic_microstructure
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns temperature based on local damage model state layout 
-!--------------------------------------------------------------------------------------------------
-function constitutive_anisotropic_getDamage(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
+   material_homog, &
+   mappingHomogenization, &
+   fieldDamage, &
+   field_damage_type, &
+   FIELD_DAMAGE_LOCAL_ID, &
+   FIELD_DAMAGE_NONLOCAL_ID
 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal) :: &
-   constitutive_anisotropic_getDamage(damage_anisotropic_totalNslip(phase_damageInstance(mappingConstitutive(2,ipc,ip,el))))
+ real(pReal) :: damage_anisotropic_getDamage
  
- constitutive_anisotropic_getDamage = &
-   damageState(mappingConstitutive(2,ipc,ip,el))% &
-   state(1:damage_anisotropic_totalNslip(phase_damageInstance(mappingConstitutive(2,ipc,ip,el))), &
-         mappingConstitutive(1,ipc,ip,el))
+ select case(field_damage_type(material_homog(ip,el)))                                                   
+   case (FIELD_DAMAGE_LOCAL_ID)
+    damage_anisotropic_getDamage = damage_anisotropic_getLocalDamage(ipc, ip, el)
+    
+   case (FIELD_DAMAGE_NONLOCAL_ID)
+    damage_anisotropic_getDamage =    fieldDamage(material_homog(ip,el))% &
+      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+
+ end select
  
-end function constitutive_anisotropic_getDamage
+end function damage_anisotropic_getDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage value based on local damage 
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_anisotropic_putDamage(ipc, ip, el, localDamage)
+subroutine damage_anisotropic_putLocalDamage(ipc, ip, el, localDamage)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -394,17 +424,57 @@ subroutine constitutive_anisotropic_putDamage(ipc, ip, el, localDamage)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in) :: &
-   localDamage(damage_anisotropic_totalNslip(phase_damageInstance(mappingConstitutive(2,ipc,ip,el))))
- integer(pInt) :: &
-   phase, constituent, instance  
- 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
- damageState(phase)%state(1:damage_anisotropic_totalNslip(instance),constituent) = &
    localDamage
  
-end subroutine constitutive_anisotropic_putDamage
+ damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)) = &
+   localDamage
+ 
+end subroutine damage_anisotropic_putLocalDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns local damage
+!--------------------------------------------------------------------------------------------------
+function damage_anisotropic_getLocalDamage(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   phase_damageInstance, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal) :: &
+   damage_anisotropic_getLocalDamage
+ 
+ damage_anisotropic_getLocalDamage = &
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
+ 
+end function damage_anisotropic_getLocalDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns local damage deformation gradient
+!--------------------------------------------------------------------------------------------------
+function damage_anisotropic_getDamageStrain(ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   phase_damageInstance, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   damage_anisotropic_getDamageStrain
+ 
+ damage_anisotropic_getDamageStrain = &
+   reshape(damageState(mappingConstitutive(2,ipc,ip,el))%state(3:11,mappingConstitutive(1,ipc,ip,el)), &
+           shape=[3,3])
+ 
+end function damage_anisotropic_getDamageStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
