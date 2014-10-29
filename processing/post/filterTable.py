@@ -34,16 +34,18 @@ parser.set_defaults(condition = '')
 
 (options,filenames) = parser.parse_args()
 
+if filenames == []:
+  filenames = ['STDIN']
 
 #--- loop over input files -------------------------------------------------------------------------
 for name in filenames:
-  if name != 'STDIN':
-   file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
-   file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else:
-    if not os.path.exists(name): continue
+  if name == 'STDIN':
     file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
     file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
   table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
