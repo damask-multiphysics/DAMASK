@@ -1261,8 +1261,9 @@ subroutine material_populateGrains
        textureOfGrain = 0_pInt
        orientationOfGrain = 0.0_pReal
 
+       grain = 0_pInt
        texture: do i = 1_pInt,myNconstituents                                                       ! loop over constituents
-         grain            = sum(NgrainsOfConstituent(1_pInt:i-1_pInt))                              ! set microstructure grain index of current constituent
+         grain            = grain + NgrainsOfConstituent(i-1_pInt)                                  ! set microstructure grain index of current constituent
                                                                                                     ! "grain" points to start of this constituent's grain population
          constituentGrain = 0_pInt                                                                  ! constituent grain index
 
