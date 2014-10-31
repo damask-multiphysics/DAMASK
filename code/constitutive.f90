@@ -27,6 +27,10 @@ module constitutive
    constitutive_damagedC, &
    constitutive_microstructure, &
    constitutive_LpAndItsTangent, &
+   constitutive_LiAndItsTangent, &
+   constitutive_getFi, &
+   constitutive_getFi0, &
+   constitutive_getPartionedFi0, &
    constitutive_TandItsTangent, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
@@ -34,12 +38,10 @@ module constitutive
    constitutive_putLocalDamage, & 
    constitutive_getDamage, &
    constitutive_getSlipDamage, &
-   constitutive_getDamageStrain, &
    constitutive_getDamageDiffusion33, &
    constitutive_getAdiabaticTemperature, &
    constitutive_putAdiabaticTemperature, &
    constitutive_getTemperature, &
-   constitutive_getThermalStrain, &
    constitutive_getLocalVacancyConcentration, &
    constitutive_putLocalVacancyConcentration, &
    constitutive_getVacancyConcentration, &
@@ -701,6 +703,199 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
 end subroutine constitutive_LpAndItsTangent
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the velocity gradient  
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar, Tstar_v, Lp, ipc, ip, el)
+ use prec, only: &
+   pReal 
+ use material, only: &
+   phase_damage, &
+   phase_thermal, &
+   material_phase, &
+   LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_THERMAL_adiabatic_ID
+ use damage_anisoBrittle, only: &
+   damage_anisoBrittle_LdAndItsTangent
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_LTAndItsTangent
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
+ real(pReal),   intent(out), dimension(3,3) :: &
+   Li                                                                                               !< intermediate velocity gradient
+ real(pReal),   intent(out), dimension(9,9) :: &
+   dLi_dTstar                                                                                       !< derivative of Li with respect to Tstar (2nd-order tensor)
+ real(pReal), dimension(3,3) :: &
+   Li_temp                                                                                          !< intermediate velocity gradient
+ real(pReal), dimension(9,9) :: &
+   dLi_dTstar_temp                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor)
+
+ Li = 0.0_pReal
+ dLi_dTstar = 0.0_pReal
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_anisoBrittle_ID)
+     call damage_anisoBrittle_LdAndItsTangent(Li_temp, dLi_dTstar_temp, Tstar_v, ipc, ip, el)
+     Li = Li + Li_temp
+     dLi_dTstar = dLi_dTstar + dLi_dTstar_temp
+ 
+ end select
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_adiabatic_ID)
+     call thermal_adiabatic_LTAndItsTangent(Li_temp, dLi_dTstar_temp, Tstar_v, Lp, ipc, ip, el)
+     Li = Li + Li_temp
+     dLi_dTstar = dLi_dTstar + dLi_dTstar_temp
+
+ end select
+ 
+end subroutine constitutive_LiAndItsTangent
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
+!--------------------------------------------------------------------------------------------------
+pure function constitutive_getFi(ipc, ip, el)
+ use prec, only: &
+   pReal 
+ use math, only: &
+   math_I3, &
+   math_mul33x33
+ use material, only: &
+   phase_damage, &
+   phase_thermal, &
+   material_phase, &
+   LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_THERMAL_adiabatic_ID
+ use damage_anisoBrittle, only: &
+   damage_anisoBrittle_getFd
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_getFT
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   dimension(3,3) :: &
+   constitutive_getFi                                                                              !< intermediate deformation gradient
+
+ constitutive_getFi = math_I3
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_anisoBrittle_ID)
+     constitutive_getFi = math_mul33x33(constitutive_getFi,damage_anisoBrittle_getFd (ipc, ip, el))
+ 
+ end select
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_adiabatic_ID)
+     constitutive_getFi = math_mul33x33(constitutive_getFi,thermal_adiabatic_getFT (ipc, ip, el))
+
+ end select
+ 
+end function constitutive_getFi
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
+!--------------------------------------------------------------------------------------------------
+pure function constitutive_getFi0(ipc, ip, el)
+ use prec, only: &
+   pReal 
+ use math, only: &
+   math_I3, &
+   math_mul33x33
+ use material, only: &
+   phase_damage, &
+   phase_thermal, &
+   material_phase, &
+   LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_THERMAL_adiabatic_ID
+ use damage_anisoBrittle, only: &
+   damage_anisoBrittle_getFd0
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_getFT0
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   dimension(3,3) :: &
+   constitutive_getFi0                                                                              !< intermediate deformation gradient
+
+ constitutive_getFi0 = math_I3
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_anisoBrittle_ID)
+     constitutive_getFi0 = math_mul33x33(constitutive_getFi0,damage_anisoBrittle_getFd0 (ipc, ip, el))
+ 
+ end select
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_adiabatic_ID)
+     constitutive_getFi0 = math_mul33x33(constitutive_getFi0,thermal_adiabatic_getFT0 (ipc, ip, el))
+
+ end select
+ 
+end function constitutive_getFi0
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
+!--------------------------------------------------------------------------------------------------
+pure function constitutive_getPartionedFi0(ipc, ip, el)
+ use prec, only: &
+   pReal 
+ use math, only: &
+   math_I3, &
+   math_mul33x33
+ use material, only: &
+   phase_damage, &
+   phase_thermal, &
+   material_phase, &
+   LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_THERMAL_adiabatic_ID
+ use damage_anisoBrittle, only: &
+   damage_anisoBrittle_getPartionedFd0
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_getPartionedFT0
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   dimension(3,3) :: &
+   constitutive_getPartionedFi0                                                                     !< intermediate deformation gradient
+
+ constitutive_getPartionedFi0 = math_I3
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_anisoBrittle_ID)
+     constitutive_getPartionedFi0 = math_mul33x33(constitutive_getPartionedFi0, &
+                                                  damage_anisoBrittle_getPartionedFd0(ipc, ip, el))
+ 
+ end select
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_adiabatic_ID)
+     constitutive_getPartionedFi0 = math_mul33x33(constitutive_getPartionedFi0, &
+                                                  thermal_adiabatic_getPartionedFT0(ipc, ip, el))
+
+ end select
+ 
+end function constitutive_getPartionedFi0
+
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to 
@@ -1161,41 +1356,6 @@ function constitutive_getSlipDamage(nSlip, Tstar_v, ipc, ip, el)
 end function constitutive_getSlipDamage
 
 !--------------------------------------------------------------------------------------------------
-!> @brief returns damage deformation gradient
-!--------------------------------------------------------------------------------------------------
-function constitutive_getDamageStrain(ipc, ip, el)
- use prec, only: &
-   pReal
- use math, only: &
-   math_I3
- use material, only: &
-   material_phase, &
-   LOCAL_DAMAGE_anisoBrittle_ID, &
-   phase_damage
- use damage_anisoBrittle, only: &
-   damage_anisoBrittle_getDamageStrain
-   
-   
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal), dimension(3,3) :: &
-   constitutive_getDamageStrain
- 
- 
- select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_anisoBrittle_ID)
-     constitutive_getDamageStrain = damage_anisoBrittle_getDamageStrain(ipc, ip, el)
-   case default
-     constitutive_getDamageStrain = math_I3
-
- end select
- 
-end function constitutive_getDamageStrain
-
-!--------------------------------------------------------------------------------------------------
 !> @brief returns damage diffusion tensor
 !--------------------------------------------------------------------------------------------------
 function constitutive_getDamageDiffusion33(ipc, ip, el)
@@ -1327,35 +1487,6 @@ function constitutive_getTemperature(ipc, ip, el)
  end select
 
 end function constitutive_getTemperature
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns thermal deformation gradient
-!--------------------------------------------------------------------------------------------------
-function constitutive_getThermalStrain(ipc, ip, el)
- use prec, only: &
-   pReal
- use math, only: &
-   math_I3
- use lattice, only: &
-   lattice_referenceTemperature, &
-   lattice_thermalExpansion33
- use material, only: &
-   mappingConstitutive  
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal), dimension(3,3) :: &
-   constitutive_getThermalStrain
- 
- constitutive_getThermalStrain = math_I3 + &
-                                 (constitutive_getTemperature(ipc, ip, el) - &
-                                  lattice_referenceTemperature(mappingConstitutive(2,ipc,ip,el)))* &
-                                 lattice_thermalExpansion33(1:3,1:3,mappingConstitutive(2,ipc,ip,el))
- 
-end function constitutive_getThermalStrain
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local vacancy concentration
