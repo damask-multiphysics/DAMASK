@@ -300,9 +300,9 @@ module lattice
  real(pReal), dimension(3+3,LATTICE_fcc_Ncleavage), parameter, private :: &
    LATTICE_fcc_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
-      1, 0, 0,     0, 1, 0, &
-      0, 1, 0,     0, 0, 1, &
-      0, 0, 1,     1, 0, 0, &
+      0, 1, 0,     1, 0, 0, &
+      0, 0, 1,     0, 1, 0, &
+      1, 0, 0,     0, 0, 1, &
       0, 1,-1,     1, 1, 1, &
       0,-1,-1,    -1,-1, 1, &
      -1, 0,-1,     1,-1,-1, &
@@ -498,9 +498,9 @@ module lattice
  real(pReal), dimension(3+3,LATTICE_bcc_Ncleavage), parameter, private :: &
    LATTICE_bcc_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
-      1, 0, 0,     0, 1, 0, &
-      0, 1, 0,     0, 0, 1, &
-      0, 0, 1,     1, 0, 0, &
+      0, 1, 0,     1, 0, 0, &
+      0, 0, 1,     0, 1, 0, &
+      1, 0, 0,     0, 0, 1, &
       1,-1, 1,     0, 1, 1, &
       1, 1, 1,     0,-1, 1, &
      -1, 1, 1,     1, 0, 1, &
@@ -801,9 +801,9 @@ module lattice
  real(pReal), dimension(3+3,LATTICE_iso_Ncleavage), parameter, private :: &
    LATTICE_iso_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
-      1, 0, 0,     0, 1, 0, &
-      0, 1, 0,     0, 0, 1, &
-      0, 0, 1,     1, 0, 0  &
+      0, 1, 0,     1, 0, 0, &
+      0, 0, 1,     0, 1, 0, &
+      1, 0, 0,     0, 0, 1  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_iso_Ncleavage])
 
 !--------------------------------------------------------------------------------------------------
@@ -817,9 +817,9 @@ module lattice
  real(pReal), dimension(3+3,LATTICE_ortho_Ncleavage), parameter, private :: &
    LATTICE_ortho_systemCleavage = reshape(real([&
     ! Cleavage direction     Plane normal
-      1, 0, 0,     0, 1, 0, &
-      0, 1, 0,     0, 0, 1, &
-      0, 0, 1,     1, 0, 0  &
+      0, 1, 0,     1, 0, 0, &
+      0, 0, 1,     0, 1, 0, &
+      1, 0, 0,     0, 0, 1  &
      ],pReal),[ 3_pInt + 3_pInt,LATTICE_ortho_Ncleavage])
 
  real(pReal),                              dimension(:,:,:),   allocatable, public, protected :: &
