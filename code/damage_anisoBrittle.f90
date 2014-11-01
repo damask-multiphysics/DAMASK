@@ -366,12 +366,12 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
    do i = 1_pInt,damage_anisoBrittle_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
-     opening       = math_norm3(damageState(phase)%state0(index+1:index+3,constituent))
+     opening       = math_norm3(damageState(phase)%state(index+1:index+3,constituent))
      traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
-     traction_crit = max(0.001_pReal,(1.0_pReal - opening/damage_anisoBrittle_critDisp(f,instance)))* &
-                     damage_anisoBrittle_critLoad(f,instance)*nonLocalFactor             
+     traction_crit = nonLocalFactor*damage_anisoBrittle_critLoad(f,instance)* &
+                     1.0_pReal/(1.0_pReal + opening/damage_anisoBrittle_critDisp(f,instance))
      damageState(phase)%dotState(index+1,constituent) = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -464,12 +464,12 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
    do i = 1_pInt,damage_anisoBrittle_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
-     opening       = math_norm3(damageState(phase)%state0(index+1:index+3,constituent))
+     opening       = math_norm3(damageState(phase)%state(index+1:index+3,constituent))
      traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
-     traction_crit = max(0.001_pReal,(1.0_pReal - opening/damage_anisoBrittle_critDisp(f,instance)))* &
-                     damage_anisoBrittle_critLoad(f,instance)*nonLocalFactor             
+     traction_crit = nonLocalFactor*damage_anisoBrittle_critLoad(f,instance)* &
+                     1.0_pReal/(1.0_pReal + opening/damage_anisoBrittle_critDisp(f,instance))
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &

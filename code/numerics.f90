@@ -150,7 +150,7 @@ module numerics
                                 &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
                                 &-thermal_mg_levels_pc_type sor'
  integer(pInt), protected, public :: &
-   itmaxFEM                   =  250_pInt, &                                                        !< maximum number of iterations
+   itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
    itminFEM                   =  2_pInt, &                                                          !< minimum number of iterations
    maxCutBackFEM              =  3_pInt, &                                                          !< max number of cut backs
    integrationOrder           =  1_pInt, &
