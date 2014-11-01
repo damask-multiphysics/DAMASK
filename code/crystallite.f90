@@ -1104,7 +1104,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
      ! --- ANALYTIC JACOBIAN ---
 
-     !$OMP PARALLEL DO PRIVATE(dFedF,dSdF,dSdFe,dLpdS,dFpinvdF,rhs_3333,lhs_3333,temp_99,junk,dLidS,Fi,invFi,Fi0,invFi0,detInvFi,temp_3333,myNgrains)
+     !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dLpdS,dFpinvdF,rhs_3333,lhs_3333,temp_99,junk,dLidS,Fi,invFi,Fi0,invFi0,detInvFi,temp_3333,myNgrains)
        elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
@@ -3493,6 +3493,7 @@ logical function crystallite_integrateStress(&
  endif
  A = math_mul33x33(Fg_new,invFp_current)                                    ! intermediate tensor needed later to calculate dFe_dLp
 
+ Liguess = 0.0_pReal
  Fi_current = constitutive_getFi0(g,i,e)                                    ! intermediate configuration, assume decomposition as F = Fe Fi Fp
  invFi_current = math_inv33(Fi_current)
  if (all(invFi_current == 0.0_pReal)) then                          ! ... failed?
@@ -3527,7 +3528,6 @@ logical function crystallite_integrateStress(&
    endif loopsExeced
    B                 = math_I3 - dt*Lpguess
    NiterationStressI = 0_pInt
-   Liguess           = 0.0_pReal
    Liguess_old       = Liguess
    jacoICounter      = 0_pInt
    steplengthI0      = 1.0_pReal
