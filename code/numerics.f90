@@ -153,7 +153,7 @@ module numerics
    itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
    itminFEM                   =  2_pInt, &                                                          !< minimum number of iterations
    maxCutBackFEM              =  3_pInt, &                                                          !< max number of cut backs
-   integrationOrder           =  1_pInt, &
+   integrationOrder           =  2_pInt, &
    structOrder                =  2_pInt, &
    thermalOrder               =  2_pInt, &
    damageOrder                =  2_pInt
@@ -503,9 +503,14 @@ subroutine numerics_init
 
 !--------------------------------------------------------------------------------------------------
 ! Random seeding parameter
-   write(6,'(a24,1x,i16,/)')    ' fixed_seed:             ',fixedSeed
+   write(6,'(a24,1x,i16,/)')    ' fixed_seed:            ',fixedSeed
    if (fixedSeed <= 0_pInt) &
      write(6,'(a,/)') ' No fixed Seed: Random is random!'
+
+!--------------------------------------------------------------------------------------------------
+! gradient parameter
+   write(6,'(a24,1x,es8.1)')   ' charLength:             ',charLength
+
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter
   !$  write(6,'(a24,1x,i8,/)')   ' number of threads:      ',DAMASK_NumThreadsInt
