@@ -1189,7 +1189,7 @@ subroutine lattice_init
              lattice_structure(section) = LATTICE_bcc_ID
            case('hex','hexagonal')
              lattice_structure(section) = LATTICE_hex_ID
-           case('ort','orthorombic')
+           case('ort','orthorhombic')
              lattice_structure(section) = LATTICE_ort_ID
            case default
              call IO_error(450_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
@@ -1508,7 +1508,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
      lattice_interactionTwinTwin(1:myNtwin,1:myNtwin,myPhase)       = lattice_hex_interactionTwinTwin
 
 !--------------------------------------------------------------------------------------------------
-! orthorombic (no crystal plasticity)
+! orthorhombic (no crystal plasticity)
    case (LATTICE_ort_ID)
      myNslip       = 0_pInt
      myNtwin       = 0_pInt
