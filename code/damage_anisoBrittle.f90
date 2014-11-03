@@ -57,6 +57,7 @@ module damage_anisoBrittle
    damage_anisoBrittle_dotState, &
    damage_anisoBrittle_LdAndItsTangent, &
    damage_anisoBrittle_getFd, &
+   damage_anisoBrittle_putFd, &
    damage_anisoBrittle_getFd0, &
    damage_anisoBrittle_getPartionedFd0, &
    damage_anisoBrittle_getDamage, &
@@ -234,9 +235,9 @@ subroutine damage_anisoBrittle_init(fileUnit)
      enddo outputsLoop
 ! Determine size of state array
      sizeDotState              = 2_pInt + & ! viscous and non-viscous damage values
-                                 3_pInt*damage_anisoBrittle_totalNcleavage(instance) + & ! opening on each damage system
+                                 3_pInt*damage_anisoBrittle_totalNcleavage(instance) ! opening on each damage system
+     sizeState                 = sizeDotState + &
                                  9_pInt ! Fd
-     sizeState                 = sizeDotState
 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
@@ -285,7 +286,8 @@ subroutine damage_anisoBrittle_stateInit(phase,instance)
  tempState(2)  = 1.0_pReal
  tempState(3:2+3*damage_anisoBrittle_totalNcleavage(instance)) = 0.0_pReal
  tempState(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
-           3*damage_anisoBrittle_totalNcleavage(instance)+11)  = reshape(math_I3, shape=[9])
+           3*damage_anisoBrittle_totalNcleavage(instance)+11)  = &
+   reshape(math_I3, shape=[9])
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
  damageState(phase)%partionedState0 = damageState(phase)%state
@@ -306,9 +308,11 @@ subroutine damage_anisoBrittle_aTolState(phase,instance)
 
  tempTol(1)  = damage_anisoBrittle_aTol_damage(instance)
  tempTol(2)  = damage_anisoBrittle_aTol_damage(instance)
- tempTol(3:2+3*damage_anisoBrittle_totalNcleavage(instance)) = damage_anisoBrittle_aTol_disp(instance)
+ tempTol(3:2+3*damage_anisoBrittle_totalNcleavage(instance)) = &
+   damage_anisoBrittle_aTol_disp(instance)
  tempTol(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
-         3*damage_anisoBrittle_totalNcleavage(instance)+11)  = damage_anisoBrittle_aTol_disp(instance)
+         3*damage_anisoBrittle_totalNcleavage(instance)+11)  = &
+   damage_anisoBrittle_aTol_disp(instance)
  damageState(phase)%aTolState = tempTol
 end subroutine damage_anisoBrittle_aTolState
  
@@ -321,7 +325,6 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
    phase_damageInstance, &
    damageState
  use math, only: &
-   math_mul33x33, &
    math_norm3
  use lattice, only: &
    lattice_Scleavage, &
@@ -337,8 +340,6 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
    el                                                                                               !< element
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- real(pReal),  dimension(3,3) :: &
-   Ld, Fd
  integer(pInt) :: &
    phase, &
    constituent, &
@@ -354,24 +355,23 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
  instance = phase_damageInstance(phase)
  
  damageState(phase)%dotState(1,constituent) = &
-   (1.0_pReal/lattice_DamageMobility(phase))* &
-   (damageState(phase)%state(2,constituent) - &
-    damageState(phase)%state(1,constituent))
+   (max(0.0_pReal,damageState(phase)%state(2,constituent)) - &
+    damageState(phase)%state(1,constituent))/lattice_DamageMobility(phase)
  damageState(phase)%dotState(2,constituent) = 0.0_pReal
  nonLocalFactor = 1.0_pReal + &
                   (damage_anisoBrittle_getDamage     (ipc, ip, el) - &
                    damage_anisoBrittle_getLocalDamage(ipc, ip, el)) 
- Ld = 0.0_pReal
  index = 2_pInt
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
    do i = 1_pInt,damage_anisoBrittle_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
-     opening       = math_norm3(damageState(phase)%state(index+1:index+3,constituent))
+     opening       = max(math_norm3(damageState(phase)%state0(index+1:index+3,constituent)), &
+                         math_norm3(damageState(phase)%state (index+1:index+3,constituent)))
      traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
-     traction_crit = nonLocalFactor*damage_anisoBrittle_critLoad(f,instance)* &
-                     1.0_pReal/(1.0_pReal + opening/damage_anisoBrittle_critDisp(f,instance))
+     traction_crit = nonLocalFactor*damage_anisoBrittle_critLoad(f,instance)/ &
+                     (1.0_pReal + opening/damage_anisoBrittle_critDisp(f,instance))
      damageState(phase)%dotState(index+1,constituent) = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -381,34 +381,20 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
        damage_anisoBrittle_sdot_0(instance)* &
        (abs(traction_t)/traction_crit)**damage_anisoBrittle_N(instance)
      damageState(phase)%dotState(index+3,constituent) = &
-       sign(1.0_pReal,traction_n)* &
        damage_anisoBrittle_sdot_0(instance)* &
-       (abs(traction_n)/traction_crit)**damage_anisoBrittle_N(instance)
+       (max(0.0_pReal,traction_n)/traction_crit)**damage_anisoBrittle_N(instance)
      damageState(phase)%dotState(2,constituent) = &
        damageState(phase)%dotState(2,constituent) - &
        (traction_d*damageState(phase)%dotState(index+1,constituent) + &
         traction_t*damageState(phase)%dotState(index+2,constituent) + &
         traction_n*damageState(phase)%dotState(index+3,constituent))/ &
        (0.5_pReal*damage_anisoBrittle_critDisp(f,instance)*damage_anisoBrittle_critLoad(f,instance))
-     Ld = Ld + &
-          damageState(phase)%dotState(index+1,constituent)* &
-          lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase) + &
-          damageState(phase)%dotState(index+2,constituent)* &
-          lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase) + &
-          damageState(phase)%dotState(index+3,constituent)* &
-          lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase)
+
      index = index + 3_pInt
    enddo
  enddo
- Fd = reshape(damageState(phase)%state(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
-                                       3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent), &
-              shape=[3,3])
- damageState(phase)%dotState(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
-                             3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent) = &
-   reshape(math_mul33x33(Ld,Fd), shape=[9])                             
 
 end subroutine damage_anisoBrittle_dotState
- 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
@@ -464,12 +450,13 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
    do i = 1_pInt,damage_anisoBrittle_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
-     opening       = math_norm3(damageState(phase)%state(index+1:index+3,constituent))
+     opening       = max(math_norm3(damageState(phase)%state0(index+1:index+3,constituent)), &
+                         math_norm3(damageState(phase)%state (index+1:index+3,constituent)))
      traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
-     traction_crit = nonLocalFactor*damage_anisoBrittle_critLoad(f,instance)* &
-                     1.0_pReal/(1.0_pReal + opening/damage_anisoBrittle_critDisp(f,instance))
+     traction_crit = nonLocalFactor*damage_anisoBrittle_critLoad(f,instance)/ &
+                     (1.0_pReal + opening/damage_anisoBrittle_critDisp(f,instance))
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -497,9 +484,8 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
      endif                
 
      udotn = &
-       sign(1.0_pReal,traction_n)* &
        damage_anisoBrittle_sdot_0(instance)* &
-       (abs(traction_n)/traction_crit)**damage_anisoBrittle_N(instance)
+       (max(0.0_pReal,traction_n)/traction_crit)**damage_anisoBrittle_N(instance)
      if (udotn /= 0.0_pReal) then
        Ld = Ld + udotn*lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase)
        dudotn_dt = udotn*damage_anisoBrittle_N(instance)/traction_n
@@ -542,11 +528,99 @@ pure function damage_anisoBrittle_getFd(ipc, ip, el)
  instance = phase_damageInstance(phase)
 
  damage_anisoBrittle_getFd = &
-   reshape(damageState(phase)%state(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
-                                    3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent), &
+   reshape(damageState(phase)% &
+     state(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
+           3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent), &
            shape=[3,3])
  
 end function damage_anisoBrittle_getFd
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates derived quantities from state
+!--------------------------------------------------------------------------------------------------
+subroutine damage_anisoBrittle_putFd(Tstar_v, dt, ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   phase_damageInstance, &
+   damageState
+ use math, only: &
+   math_mul33x33, &
+   math_norm3, &
+   math_inv33, &
+   math_I3
+ use lattice, only: &
+   lattice_Scleavage, &
+   lattice_Scleavage_v, &
+   lattice_maxNcleavageFamily, &
+   lattice_NcleavageSystem
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in) :: &
+   dt
+ real(pReal), dimension(3,3) :: &
+   Ld                                                                                               !< damage velocity gradient
+ integer(pInt) :: &
+   phase, &
+   constituent, &
+   instance, &
+   f, i, index, index_myFamily
+ real(pReal) :: &
+   traction_d, traction_t, traction_n, traction_crit, &
+   udotd, udott, udotn, &
+   opening, &
+   nonLocalFactor    
+
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ instance = phase_damageInstance(phase)
+ 
+ Ld = 0.0_pReal
+ nonLocalFactor = 1.0_pReal + &
+                  (damage_anisoBrittle_getDamage     (ipc, ip, el) - &
+                   damage_anisoBrittle_getLocalDamage(ipc, ip, el)) 
+ index = 2_pInt
+ do f = 1_pInt,lattice_maxNcleavageFamily
+   index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
+   do i = 1_pInt,damage_anisoBrittle_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
+     opening       = max(math_norm3(damageState(phase)%state0(index+1:index+3,constituent)), &
+                         math_norm3(damageState(phase)%state (index+1:index+3,constituent)))
+     traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
+     traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
+     traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
+     traction_crit = nonLocalFactor*damage_anisoBrittle_critLoad(f,instance)/ &
+                     (1.0_pReal + opening/damage_anisoBrittle_critDisp(f,instance))
+     udotd = &
+       sign(1.0_pReal,traction_d)* &
+       damage_anisoBrittle_sdot_0(instance)* &
+       (abs(traction_d)/traction_crit)**damage_anisoBrittle_N(instance)
+     Ld = Ld + udotd*lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase)
+
+     udott = &
+       sign(1.0_pReal,traction_t)* &
+       damage_anisoBrittle_sdot_0(instance)* &
+       (abs(traction_t)/traction_crit)**damage_anisoBrittle_N(instance)
+     Ld = Ld + udott*lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase)
+
+     udotn = &
+       damage_anisoBrittle_sdot_0(instance)* &
+       (max(0.0_pReal,traction_n)/traction_crit)**damage_anisoBrittle_N(instance)
+     Ld = Ld + udotn*lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase)
+
+     index = index + 3_pInt
+   enddo
+ enddo
+ damageState(phase)%state(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
+                          3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent) = &
+   reshape(math_mul33x33(math_inv33(math_I3 - dt*Ld), &
+           damage_anisoBrittle_getFd0(ipc, ip, el)), shape=[9])                             
+
+end subroutine damage_anisoBrittle_putFd 
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local damage deformation gradient
@@ -574,8 +648,9 @@ pure function damage_anisoBrittle_getFd0(ipc, ip, el)
  instance = phase_damageInstance(phase)
 
  damage_anisoBrittle_getFd0 = &
-   reshape(damageState(phase)%subState0(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
-                                        3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent), &
+   reshape(damageState(phase)% &
+     subState0(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
+               3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent), &
            shape=[3,3])
  
 end function damage_anisoBrittle_getFd0
@@ -606,8 +681,9 @@ pure function damage_anisoBrittle_getPartionedFd0(ipc, ip, el)
  instance = phase_damageInstance(phase)
 
  damage_anisoBrittle_getPartionedFd0 = &
-   reshape(damageState(phase)%partionedState0(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
-                                              3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent), &
+   reshape(damageState(phase)% &
+     partionedState0(3*damage_anisoBrittle_totalNcleavage(instance)+3: &
+                     3*damage_anisoBrittle_totalNcleavage(instance)+11,constituent), &
            shape=[3,3])
  
 end function damage_anisoBrittle_getPartionedFd0
@@ -683,7 +759,7 @@ function damage_anisoBrittle_getLocalDamage(ipc, ip, el)
    damage_anisoBrittle_getLocalDamage
  
  damage_anisoBrittle_getLocalDamage = &
-   max(0.0_pReal,damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))
+   damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
 end function damage_anisoBrittle_getLocalDamage
 

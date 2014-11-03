@@ -29,6 +29,7 @@ module constitutive
    constitutive_LpAndItsTangent, &
    constitutive_LiAndItsTangent, &
    constitutive_getFi, &
+   constitutive_putFi, &
    constitutive_getFi0, &
    constitutive_getPartionedFi0, &
    constitutive_TandItsTangent, &
@@ -539,7 +540,6 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    PLASTICITY_nonlocal_ID, &
    LOCAL_DAMAGE_isoBrittle_ID, &
    LOCAL_DAMAGE_isoDuctile_ID, &
-   LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_gurson_ID
 
  use constitutive_titanmod, only: &
@@ -563,7 +563,7 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal),  intent(in), dimension(6) :: &
+ real(pReal),   intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
@@ -803,6 +803,38 @@ pure function constitutive_getFi(ipc, ip, el)
  end select
  
 end function constitutive_getFi
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_putFi(Tstar_v, dt, ipc, ip, el)
+ use prec, only: &
+   pReal 
+ use material, only: &
+   phase_damage, &
+   material_phase, &
+   LOCAL_DAMAGE_anisoBrittle_ID
+ use damage_anisoBrittle, only: &
+   damage_anisoBrittle_putFd
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in) :: &
+   dt
+ 
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_anisoBrittle_ID)
+     call damage_anisoBrittle_putFd (Tstar_v, dt, ipc, ip, el)
+ 
+ end select
+ 
+end subroutine constitutive_putFi
 
 
 !--------------------------------------------------------------------------------------------------
