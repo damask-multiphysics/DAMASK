@@ -1103,7 +1103,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
      ! --- ANALYTIC JACOBIAN ---
 
-     !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dLpdS,dFpinvdF,rhs_3333,lhs_3333,temp_99,temp_33,dLidS,Fi,invFi,invFi0,detInvFi,temp_3333,myNgrains)
+     !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dLpdS,dFpinvdF,rhs_3333,lhs_3333,temp_99,temp_33,dLidS,&
+     !$OMP                          Fi,invFi,invFi0,detInvFi,temp_3333,myNgrains)
        elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
