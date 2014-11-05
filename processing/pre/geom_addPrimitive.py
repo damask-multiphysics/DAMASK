@@ -8,6 +8,8 @@ from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 scriptID = '$Id: geom_addPrimitive.py 3412 2014-08-22 16:58:53Z MPIE\m.diehl $'
 scriptName = scriptID.split()[1]
 
+oversampling = 2.
+
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
 #--------------------------------------------------------------------------------------------------
@@ -85,6 +87,9 @@ elif options.quaternion != []:
   rotation = damask.Quaternion(options.quaternion).conjugated()
 else:
   rotation = damask.Quaternion().conjugated()
+
+options.center = numpy.array(options.center)
+invRotation = rotation.conjugated()                                                             # rotation of gridpos into primitive coordinate system
 
 #--- setup file handles --------------------------------------------------------------------------   
 files = []
@@ -180,20 +185,18 @@ for file in files:
   if options.dimension != None:
     mask = (numpy.array(options.dimension) < 0).astype(float)                                       # zero where positive dimension, otherwise one
     dim = abs(numpy.array(options.dimension))                                                       # dimensions of primitive body
-    extent = range(int(math.ceil(-math.sqrt(numpy.dot(dim,dim))/2.)),
-                   int(math.ceil( math.sqrt(numpy.dot(dim,dim))/2.)))                               # maximum extent (diagonal) of body
-    gridpos = numpy.zeros(3,dtype='float')
-
-    for     gridpos[0] in extent + (1+dim[0])%2/2.0:
-      for   gridpos[1] in extent + (1+dim[1])%2/2.0:
-        for gridpos[2] in extent + (1+dim[2])%2/2.0:
-          pos = rotation*gridpos
-          if numpy.dot(mask*pos/dim,mask*pos/dim) <= 0.25 and \
-             numpy.all(abs((1.-mask)*pos/dim) <= 0.5):                                              # inside ellipsoid and inside box
-            microstructure[options.center[0]+gridpos[0],
-                           options.center[1]+gridpos[1],
-                           options.center[2]+gridpos[2],
-                          ] = options.fill
+    pos = numpy.zeros(3,dtype='float')
+#    hiresPrimitive = numpy.zeros((2*dim[0],2*dim[1],2*dim[2],3))                                   # primitive discretized at twice the grid resolution
+    for     i,pos[0] in enumerate(numpy.arange(-dim[0]/oversampling,(dim[0]+1)/oversampling,1./oversampling)):
+      for   j,pos[1] in enumerate(numpy.arange(-dim[1]/oversampling,(dim[1]+1)/oversampling,1./oversampling)):
+        for k,pos[2] in enumerate(numpy.arange(-dim[2]/oversampling,(dim[2]+1)/oversampling,1./oversampling)):
+          gridpos = numpy.floor(rotation*pos)                                                       # rotate and lock into spacial grid
+          primPos = invRotation*gridpos                                                             # rotate back to primitive coordinate system
+          if numpy.dot(mask*primPos/dim,mask*primPos/dim) <= 0.25 and \
+             numpy.all(abs((1.-mask)*primPos/dim) <= 0.5):                                          # inside ellipsoid and inside box
+             microstructure[(gridpos[0]+options.center[0])%info['grid'][0],
+                            (gridpos[1]+options.center[1])%info['grid'][1],
+                            (gridpos[2]+options.center[2])%info['grid'][2]] = options.fill          # assign microstructure index
 
   newInfo['microstructures'] = microstructure.max()
 
