@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,numpy,vtk
-import damask
+import os,sys,string,re,vtk
+import numpy as np
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
@@ -87,9 +88,9 @@ for file in files:
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.zeros(3,'i'),
-          'size':   numpy.zeros(3,'d'),
-          'origin': numpy.zeros(3,'d'),
+          'grid':   np.zeros(3,'i'),
+          'size':   np.zeros(3,'d'),
+          'origin': np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
@@ -113,10 +114,10 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
 
@@ -163,14 +164,14 @@ for file in files:
     else:
       writer.SetInputData(grid)
     writer.Write()
-    sys.stdout.write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
+    file['output'].write(writer.GetOutputString()[0:writer.GetOutputStringLength()])
   else:
-    (head,tail) = os.path.split(file['name'])
+    (dir,file) = os.path.split(file['name'])
     writer = vtk.vtkXMLRectilinearGridWriter()
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
-    writer.SetFileName(os.path.join(head,'mesh_'+os.path.splitext(tail)[0]
-                                                   +'.'+writer.GetDefaultFileExtension()))
+    writer.SetFileName(os.path.join(dir,'mesh_'+os.path.splitext(file)[0]
+                                               +'.'+writer.GetDefaultFileExtension()))
     if vtk.VTK_MAJOR_VERSION <= 5:
       writer.SetInput(grid)
     else:
