@@ -1376,10 +1376,13 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  use lattice,  only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
+   lattice_Sslip, &
+   lattice_Stwin, &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
+   lattice_NnonSchmid, &
    lattice_sheartwin, &
    lattice_mu, &
    lattice_structure, &
@@ -1397,7 +1400,7 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
 
- integer(pInt) :: instance,ns,nt,f,i,j,index_myFamily,s1,s2, &
+ integer(pInt) :: instance,ns,nt,f,i,j,k,index_myFamily,s1,s2, &
                   ph, &
                   of
  real(pReal) :: &
@@ -1421,6 +1424,10 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
    ClimbVelocity, &
    DotRhoEdgeDipClimb, &
    DotRhoDipFormation
+ real(pReal), dimension(3,3,2) :: &
+   nonSchmid_tensor
+ real(pReal), dimension(3,3,3,3) :: &
+   dLp_dTstar3333
  real(pReal), dimension(constitutive_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos, tau_slip_neg
  real(pReal), dimension(constitutive_dislokmc_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
@@ -1555,9 +1562,9 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  
  !* Twin volume fraction evolution
  j = 0_pInt
- slipFamilies: do f = 1_pInt,lattice_maxNtwinFamily
+ twinFamilies: do f = 1_pInt,lattice_maxNtwinFamily
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   slipSystems: do i = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)
+   twinSystems: do i = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)
       j = j+1_pInt
  
       !* Resolved shear stress on twin system
@@ -1590,8 +1597,8 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
         plasticState(ph)%dotState(3_pInt*ns+nt+j, of) = plasticState(ph)%dotState(3_pInt*ns+j, of) * &
                                                           lattice_sheartwin(index_myfamily+i,ph)
       endif
-   enddo slipSystems
- enddo slipFamilies
+   enddo twinSystems
+ enddo twinFamilies
  
 end subroutine constitutive_dislokmc_dotState
 
@@ -1692,9 +1699,7 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
-   pi, &
-   math_Mandel6to33, &
-   math_spectralDecompositionSym33
+   pi
  use mesh, only: &
    mesh_NcpElems, &
    mesh_maxNips
@@ -1708,10 +1713,13 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
+   lattice_Sslip, &
+   lattice_Stwin, &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
+   lattice_NnonSchmid, &
    lattice_shearTwin, &
    lattice_mu, &
    lattice_structure, &
@@ -1734,7 +1742,7 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
  integer(pInt) :: &
    instance,&
    ns,nt,&
-   f,o,i,c,j,index_myFamily,&
+   f,o,i,c,j,k,index_myFamily,&
    s1,s2, &
    ph, &
    of
@@ -1743,8 +1751,6 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
  real(pReal) :: StressRatio_u,StressRatio_uminus1
  real(preal), dimension(constitutive_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip_pos, vel_slip
- real(pReal), dimension(3,3) :: eigVectors
- real(pReal), dimension (3) :: eigValues
  logical :: error
  
  !* Shortened notation
@@ -1760,9 +1766,7 @@ function constitutive_dislokmc_postResults(Tstar_v,Temperature,ipc,ip,el)
  !* Required output
  c = 0_pInt
  constitutive_dislokmc_postResults = 0.0_pReal
- 
- !* Spectral decomposition of stress
- call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
+
  
  do o = 1_pInt,constitutive_dislokmc_Noutput(instance)
     select case(constitutive_dislokmc_outputID(o,instance))
