@@ -1206,7 +1206,8 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
  dLp_dTstar3333 = 0.0_pReal
  dLp_dTstar = 0.0_pReal
  
- !* Dislocation glide part
+!--------------------------------------------------------------------------------------------------
+! Dislocation glide part
  gdot_slip_pos = 0.0_pReal
  gdot_slip_neg = 0.0_pReal
  dgdot_dtauslip_pos = 0.0_pReal
@@ -1297,8 +1298,8 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
    enddo slipSystems
  enddo slipFamilies
  
-
- !* Mechanical twinning part
+!--------------------------------------------------------------------------------------------------
+! Mechanical twinning part
  gdot_twin = 0.0_pReal
  dgdot_dtautwin = 0.0_pReal
  j = 0_pInt
@@ -1421,7 +1422,7 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
    DotRhoEdgeDipClimb, &
    DotRhoDipFormation
  real(pReal), dimension(constitutive_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-   gdot_slip_pos
+   gdot_slip_pos, tau_slip_neg
  real(pReal), dimension(constitutive_dislokmc_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    tau_twin
  
@@ -1439,104 +1440,118 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  !* Dislocation density evolution
  gdot_slip_pos = 0.0_pReal
  j = 0_pInt
- do f = 1_pInt,lattice_maxNslipFamily
+ slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   do i = 1_pInt,constitutive_dislokmc_Nslip(f,instance)          ! process each (active) slip system in family
-      j = j+1_pInt
- 
- 
-      !* Resolved shear stress on slip system
-      tau_slip_pos = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+   slipSystems: do i = 1_pInt,constitutive_dislokmc_Nslip(f,instance)
+     j = j+1_pInt
 
-      if((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of)) > tol_math_check) then
-      !* Stress ratios
-        StressRatio_p = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
-   (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
-                         **constitutive_dislokmc_pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
-      (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
-         **(constitutive_dislokmc_pPerSlipFamily(f,instance)-1.0_pReal)
+     tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
+     tau_slip_neg  = tau_slip_pos
+     nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
+     nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
 
-        StressRatio_u = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
-         (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
-       **constitutive_dislokmc_uPerSlipFamily(f,instance)
-        StressRatio_uminus1 = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j,of))/&
-   (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
-           **(constitutive_dislokmc_uPerSlipFamily(f,instance)-1.0_pReal)
+     nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
+       tau_slip_pos = tau_slip_pos + constitutive_dislokmc_nonSchmidCoeff(k,instance)* &
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
+       tau_slip_neg = tau_slip_neg + constitutive_dislokmc_nonSchmidCoeff(k,instance)* &
+                                   dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
+       nonSchmid_tensor(1:3,1:3,1) = nonSchmid_tensor(1:3,1:3,1) + constitutive_dislokmc_nonSchmidCoeff(k,instance)*&
+                                           lattice_Sslip(1:3,1:3,2*k,index_myFamily+i,ph)
+       nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_dislokmc_nonSchmidCoeff(k,instance)*&
+                                           lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
+     enddo nonSchmidSystems
 
-      !* Boltzmann ratio
-        BoltzmannRatio = constitutive_dislokmc_QedgePerSlipSystem(j,instance)/(kB*Temperature)
-      !* Initial shear rates
-        DotGamma0 = &
+     !* Boltzmann ratio
+     BoltzmannRatio = constitutive_dislokmc_QedgePerSlipSystem(j,instance)/(kB*Temperature)
+     !* Initial shear rates
+     DotGamma0 = &
           plasticState(ph)%state(j, of)*constitutive_dislokmc_burgersPerSlipSystem(j,instance)*&
           constitutive_dislokmc_v0PerSlipSystem(j,instance)
+
+     significantPostitiveSlip: if((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of)) > tol_math_check) then
+      !* Stress ratios
+       StressRatio_p = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
+          (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
+                         **constitutive_dislokmc_pPerSlipFamily(f,instance)
+       StressRatio_pminus1 = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
+          (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
+           **(constitutive_dislokmc_pPerSlipFamily(f,instance)-1.0_pReal)
+
+       StressRatio_u = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
+         (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
+           **constitutive_dislokmc_uPerSlipFamily(f,instance)
+       StressRatio_uminus1 = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j,of))/&
+          (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
+           **(constitutive_dislokmc_uPerSlipFamily(f,instance)-1.0_pReal)
+
+
       !* Shear rates due to slip                                                                                                                                        
-        gdot_slip_pos(j) = DotGamma0*exp(-BoltzmannRatio*(1.0_pReal-StressRatio_p)** &
+       gdot_slip_pos(j) = DotGamma0*exp(-BoltzmannRatio*(1.0_pReal-StressRatio_p)** &
                      constitutive_dislokmc_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau_slip_pos) &
                      * (1.0_pReal-constitutive_dislokmc_sPerSlipFamily(f,instance) &
                      * exp(-BoltzmannRatio*(1.0_pReal-StressRatio_p) ** constitutive_dislokmc_qPerSlipFamily(f,instance))) &
                      * StressRatio_u 
-      endif
+     endif significantPostitiveSlip
  
-      !* Multiplication
-      DotRhoMultiplication = abs(gdot_slip_pos(j))/&
-                                (constitutive_dislokmc_burgersPerSlipSystem(j,instance)* &
+     !* Multiplication
+     DotRhoMultiplication = abs(gdot_slip_pos(j))/&
+                               (constitutive_dislokmc_burgersPerSlipSystem(j,instance)* &
                                                             plasticState(ph)%state(5*ns+3*nt+j, of))
  
-      !* Dipole formation
-      EdgeDipMinDistance = &
-        constitutive_dislokmc_CEdgeDipMinDistance(instance)*constitutive_dislokmc_burgersPerSlipSystem(j,instance)
-      if (tau_slip_pos == 0.0_pReal) then
-        DotRhoDipFormation = 0.0_pReal
-      else
-        EdgeDipDistance = &
-          (3.0_pReal*lattice_mu(ph)*constitutive_dislokmc_burgersPerSlipSystem(j,instance))/&
-          (16.0_pReal*pi*abs(tau_slip_pos))
-        if (EdgeDipDistance>plasticState(ph)%state(5*ns+3*nt+j, of)) EdgeDipDistance=plasticState(ph)%state(5*ns+3*nt+j, of)
-        if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
-        DotRhoDipFormation = &
-          ((2.0_pReal*EdgeDipDistance)/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
-          plasticState(ph)%state(j, of)*abs(gdot_slip_pos(j))*constitutive_dislokmc_dipoleFormationFactor(instance)
-      endif
+     !* Dipole formation
+     EdgeDipMinDistance = &
+       constitutive_dislokmc_CEdgeDipMinDistance(instance)*constitutive_dislokmc_burgersPerSlipSystem(j,instance)
+     if (tau_slip_pos == 0.0_pReal) then
+       DotRhoDipFormation = 0.0_pReal
+     else
+       EdgeDipDistance = &
+         (3.0_pReal*lattice_mu(ph)*constitutive_dislokmc_burgersPerSlipSystem(j,instance))/&
+         (16.0_pReal*pi*abs(tau_slip_pos))
+       if (EdgeDipDistance>plasticState(ph)%state(5*ns+3*nt+j, of)) EdgeDipDistance=plasticState(ph)%state(5*ns+3*nt+j, of)
+       if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
+       DotRhoDipFormation = &
+         ((2.0_pReal*EdgeDipDistance)/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
+         plasticState(ph)%state(j, of)*abs(gdot_slip_pos(j))*constitutive_dislokmc_dipoleFormationFactor(instance)
+     endif
  
-      !* Spontaneous annihilation of 2 single edge dislocations
-      DotRhoEdgeEdgeAnnihilation = &
+    !* Spontaneous annihilation of 2 single edge dislocations
+    DotRhoEdgeEdgeAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
         plasticState(ph)%state(j, of)*abs(gdot_slip_pos(j))
  
-      !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-      DotRhoEdgeDipAnnihilation = &
+    !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
+    DotRhoEdgeDipAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
         plasticState(ph)%state(ns+j, of)*abs(gdot_slip_pos(j))
  
       !* Dislocation dipole climb
-      AtomicVolume = &
+     AtomicVolume = &
         constitutive_dislokmc_CAtomicVolume(instance)*constitutive_dislokmc_burgersPerSlipSystem(j,instance)**(3.0_pReal)
-      VacancyDiffusion = &
+     VacancyDiffusion = &
         constitutive_dislokmc_D0(instance)*exp(-constitutive_dislokmc_Qsd(instance)/(kB*Temperature))
-      if (tau_slip_pos == 0.0_pReal) then
-        DotRhoEdgeDipClimb = 0.0_pReal
-      else
-        ClimbVelocity = &
+     if (tau_slip_pos == 0.0_pReal) then
+       DotRhoEdgeDipClimb = 0.0_pReal
+     else
+       ClimbVelocity = &
           ((3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
           (1/(EdgeDipDistance+EdgeDipMinDistance))
-        DotRhoEdgeDipClimb = &
+       DotRhoEdgeDipClimb = &
           (4.0_pReal*ClimbVelocity*plasticState(ph)%state(ns+j, of))/(EdgeDipDistance-EdgeDipMinDistance)
-      endif
+     endif
  
-      !* Edge dislocation density rate of change
-      plasticState(ph)%dotState(j, of) = &
+     !* Edge dislocation density rate of change
+     plasticState(ph)%dotState(j, of) = &
         DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
  
-      !* Edge dislocation dipole density rate of change
-      plasticState(ph)%dotState(ns+j, of) = &
+     !* Edge dislocation dipole density rate of change
+     plasticState(ph)%dotState(ns+j, of) = &
         DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
  
-      !* Dotstate for accumulated shear due to slip
-      plasticState(ph)%dotState(2_pInt*ns+j, of) = gdot_slip_pos(j)
+     !* Dotstate for accumulated shear due to slip
+     plasticState(ph)%dotState(2_pInt*ns+j, of) = gdot_slip_pos(j)
  
-   enddo
- enddo
+   enddo slipSystems
+ enddo slipFamilies
  
  !* Twin volume fraction evolution
  j = 0_pInt
