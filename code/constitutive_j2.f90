@@ -43,6 +43,7 @@ module constitutive_j2
    constitutive_j2_tausat, &                                                                        !< final plastic stress
    constitutive_j2_a, &
    constitutive_j2_aTolResistance, &
+   constitutive_j2_aTolShear, &
 !--------------------------------------------------------------------------------------------------
 ! tausat += (asinh((gammadot / SinhFitA)**(1 / SinhFitD)))**(1 / SinhFitC) / (SinhFitB * (gammadot / gammadot0)**(1/n))
    constitutive_j2_tausat_SinhFitA, &                                                               !< fitting parameter for normalized strain rate vs. stress function
@@ -75,6 +76,7 @@ integer(HID_T), allocatable, dimension(:) :: outID
    constitutive_j2_init, &
    constitutive_j2_LpAndItsTangent, &
    constitutive_j2_dotState, &
+   constitutive_J2_getAccumulatedSlip, &
    constitutive_j2_postResults
 
 contains
@@ -186,6 +188,7 @@ subroutine constitutive_j2_init(fileUnit)
  allocate(constitutive_j2_tausat(maxNinstance),                               source=0.0_pReal)
  allocate(constitutive_j2_a(maxNinstance),                                    source=0.0_pReal)
  allocate(constitutive_j2_aTolResistance(maxNinstance),                       source=0.0_pReal)
+ allocate(constitutive_j2_aTolShear     (maxNinstance),                       source=0.0_pReal)
  allocate(constitutive_j2_tausat_SinhFitA(maxNinstance),                      source=0.0_pReal)
  allocate(constitutive_j2_tausat_SinhFitB(maxNinstance),                      source=0.0_pReal)
  allocate(constitutive_j2_tausat_SinhFitC(maxNinstance),                      source=0.0_pReal)
@@ -285,6 +288,9 @@ subroutine constitutive_j2_init(fileUnit)
          constitutive_j2_aTolResistance(instance)  = IO_floatValue(line,positions,2_pInt)
          if (constitutive_j2_aTolResistance(instance) <= 0.0_pReal) &
            call IO_error(211_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_J2_label//')')
+       case ('atol_shear')
+         constitutive_j2_aTolShear(instance)  = IO_floatValue(line,positions,2_pInt)
+
        case default
 
      end select
@@ -295,6 +301,11 @@ subroutine constitutive_j2_init(fileUnit)
    myPhase: if (phase_plasticity(phase) == PLASTICITY_j2_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_plasticityInstance(phase)
+!--------------------------------------------------------------------------------------------------
+!  sanity checks
+     if (constitutive_j2_aTolShear(instance) <= 0.0_pReal) &
+       constitutive_j2_aTolShear(instance) = 1.0e-6_pReal                                         ! default absolute tolerance 1e-6
+
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
      outputsLoop: do o = 1_pInt,constitutive_j2_Noutput(instance)
@@ -313,15 +324,17 @@ subroutine constitutive_j2_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-     sizeState    = 1_pInt
+     sizeState    = 2_pInt
      sizeDotState = sizeState
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = constitutive_j2_sizePostResults(instance)
-     allocate(plasticState(phase)%aTolState          (   sizeState),&
-                                  source=constitutive_j2_aTolResistance(instance))
-     allocate(plasticState(phase)%state0             (   sizeState,NofMyPhase),&
-                                  source=constitutive_j2_tau0(instance))
+     allocate(plasticState(phase)%aTolState          (   sizeState))
+     plasticState(phase)%aTolState(1) = constitutive_j2_aTolResistance(instance)
+     plasticState(phase)%aTolState(2) = constitutive_j2_aTolShear(instance)
+     allocate(plasticState(phase)%state0             (   sizeState,NofMyPhase))
+     plasticState(phase)%state0(1,1:NofMyPhase) = constitutive_j2_tau0(instance)
+     plasticState(phase)%state0(2,1:NofMyPhase) = 0.0_pReal
      allocate(plasticState(phase)%partionedState0    (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%subState0          (   sizeState,NofMyPhase),source=0.0_pReal)
      allocate(plasticState(phase)%state              (   sizeState,NofMyPhase),source=0.0_pReal)
@@ -499,10 +512,46 @@ subroutine constitutive_j2_dotState(Tstar_v,ipc,ip,el)
  endif
 
   plasticState(ph)%dotState(1,of) = hardening * gamma_dot
+  plasticState(ph)%dotState(2,of) =             gamma_dot
 
 end subroutine constitutive_j2_dotState
 
 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns accumulated slip
+!--------------------------------------------------------------------------------------------------
+subroutine constitutive_J2_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   plasticState, &
+   phase_plasticityInstance
+
+ implicit none
+ 
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   constituent, &
+   phase, &
+   instance
+
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ phase = mappingConstitutive(2,ipc,ip,el)
+ instance = phase_plasticityInstance(phase)
+ 
+ nSlip = 1_pInt
+ allocate(accumulatedSlip(nSlip))
+ accumulatedSlip(1) = plasticState(phase)%state(2,constituent)
+   
+end subroutine constitutive_J2_getAccumulatedSlip
+
+ 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
