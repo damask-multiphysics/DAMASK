@@ -1001,8 +1001,7 @@ subroutine constitutive_dislotwin_stateInit(ph,instance)
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_structure, &
-   lattice_mu, &
-   lattice_bcc_ID
+   lattice_mu
  use material, only: &
    plasticState
 
@@ -1125,12 +1124,7 @@ end subroutine constitutive_dislotwin_aTolState
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
 function constitutive_dislotwin_homogenizedC(ipc,ip,el)
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-  homogenization_maxNgrains, &
-  material_phase, &
   phase_plasticityInstance, &
   plasticState, &
   mappingConstitutive
@@ -1189,7 +1183,6 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
@@ -1198,7 +1191,6 @@ subroutine constitutive_dislotwin_microstructure(temperature,ipc,ip,el)
    lattice_structure, &
    lattice_mu, &
    lattice_nu, &
-   lattice_bcc_ID, &
    lattice_maxNslipFamily
 
 
@@ -1367,11 +1359,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
    math_symmetric33, &
    math_mul33x3, &
    math_norm33
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
@@ -1406,7 +1394,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar
 
  integer(pInt) :: instance,ph,of,ns,nt,nr,f,i,j,k,l,m,n,index_myFamily,s1,s2
- real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,StressRatio_r,BoltzmannRatio,DotGamma0,Ndot0
+ real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,StressRatio_r,BoltzmannRatio,DotGamma0,Ndot0,stressRatio
  real(pReal), dimension(3,3,3,3) :: dLp_dTstar3333
  real(pReal), dimension(constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
     gdot_slip,dgdot_dtauslip,tau_slip
@@ -1445,18 +1433,12 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  nt = constitutive_dislotwin_totalNtwin(instance)
  nr = constitutive_dislotwin_totalNtrans(instance)
 
- !* Total twin volume fraction
- sumf = sum(plasticState(ph)%state((3_pInt*ns+1_pInt):(3_pInt*ns+nt), of)) ! safe for nt == 0
-
- !* Total transformed volume fraction
- sumftr = sum(plasticState(ph)%state((3_pInt*ns+2_pInt*nt+1_pInt):(3_pInt*ns+2_pInt*nt+nr), of)) + &
-          sum(plasticState(ph)%state((3_pInt*ns+2_pInt*nt+nr+1_pInt):(3_pInt*ns+2_pInt*nt+2_pInt*nr), of))
-
  Lp = 0.0_pReal
  dLp_dTstar3333 = 0.0_pReal
  dLp_dTstar = 0.0_pReal
  
- !* Dislocation glide part
+!--------------------------------------------------------------------------------------------------
+! Dislocation glide part
  gdot_slip = 0.0_pReal
  dgdot_dtauslip = 0.0_pReal
  j = 0_pInt
@@ -1471,12 +1453,10 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
 
       if((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of)) > tol_math_check) then
       !* Stress ratios
-        StressRatio_p = ((abs(tau_slip(j))- plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
-          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **constitutive_dislotwin_pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = ((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
-          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+        stressRatio =((abs(tau_slip(j))- plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
+          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))
+        StressRatio_p       = stressRatio** constitutive_dislotwin_pPerSlipFamily(f,instance)
+        StressRatio_pminus1 = stressRatio**(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
       !* Boltzmann ratio
         BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
       !* Initial shear rates
@@ -1485,7 +1465,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
           constitutive_dislotwin_v0PerSlipSystem(j,instance)
  
         !* Shear rates due to slip
-        gdot_slip(j) = (1.0_pReal - sumf - sumftr) * DotGamma0 &
+        gdot_slip(j) = DotGamma0 &
                      * exp(-BoltzmannRatio*(1-StressRatio_p) ** constitutive_dislotwin_qPerSlipFamily(f,instance)) &
                      * sign(1.0_pReal,tau_slip(j))
  
@@ -1509,7 +1489,19 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
    enddo slipSystemsLoop
  enddo slipFamiliesLoop
  
- !* Shear banding (shearband) part
+!--------------------------------------------------------------------------------------------------
+! correct Lp and dLp_dTstar3333 for twinned and transformed fraction 
+ !* Total twin volume fraction
+ sumf = sum(plasticState(ph)%state((3_pInt*ns+1_pInt):(3_pInt*ns+nt), of)) ! safe for nt == 0
+
+ !* Total transformed volume fraction
+ sumftr = sum(plasticState(ph)%state((3_pInt*ns+2_pInt*nt+1_pInt):(3_pInt*ns+2_pInt*nt+nr), of)) + &
+          sum(plasticState(ph)%state((3_pInt*ns+2_pInt*nt+nr+1_pInt):(3_pInt*ns+2_pInt*nt+2_pInt*nr), of))
+ Lp = Lp * (1.0_pReal - sumf - sumftr)
+ dLp_dTstar3333 = dLp_dTstar3333 * (1.0_pReal - sumf - sumftr)
+ 
+!--------------------------------------------------------------------------------------------------
+! Shear banding (shearband) part
  if(constitutive_dislotwin_sbVelocity(instance) /= 0.0_pReal .and. &
     constitutive_dislotwin_sbResistance(instance) /= 0.0_pReal) then
    gdot_sb = 0.0_pReal
@@ -1564,7 +1556,8 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
    enddo
  end if
  
- !* Mechanical twinning part
+!--------------------------------------------------------------------------------------------------
+! Mechanical twinning part
  gdot_twin = 0.0_pReal
  dgdot_dtautwin = 0.0_pReal
  j = 0_pInt
@@ -1674,7 +1667,6 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    mesh_NcpElems, &
    mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
@@ -1712,14 +1704,14 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
                   ph, &
                   of
  real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,&
-             EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,Ndot0
+             EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,Ndot0,stressRatio
  real(pReal), dimension(constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
  gdot_slip,tau_slip,DotRhoMultiplication,EdgeDipDistance,DotRhoEdgeEdgeAnnihilation,DotRhoEdgeDipAnnihilation,&
  ClimbVelocity,DotRhoEdgeDipClimb,DotRhoDipFormation
  real(pReal), dimension(constitutive_dislotwin_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
               tau_twin
  real(pReal), dimension(constitutive_dislotwin_totalNtrans(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-              V_trans,Vdot_trans,dVdot_dtautrans,tau_trans,fstress_trans,shear_trans,shearrate_trans,probrate_trans
+              V_trans,tau_trans,fstress_trans,shear_trans,shearrate_trans,probrate_trans
 
  !* Shortened notation
  of = mappingConstitutive(1,ipc,ip,el)
@@ -1750,12 +1742,10 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
 
       if((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of)) > tol_math_check) then
       !* Stress ratios
-        StressRatio_p = ((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
-          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **constitutive_dislotwin_pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = ((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
-          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+        stressRatio =((abs(tau_slip(j))- plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
+          (constitutive_dislotwin_SolidSolutionStrength(instance)+constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))
+        StressRatio_p       = stressRatio** constitutive_dislotwin_pPerSlipFamily(f,instance)
+        StressRatio_pminus1 = stressRatio**(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
       !* Boltzmann ratio
         BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
       !* Initial shear rates
@@ -1909,10 +1899,10 @@ subroutine constitutive_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         case (LATTICE_fcc_ID)
           a = lattice_fcc_transNucleationTwinPair(1,j)
           b = lattice_fcc_transNucleationTwinPair(2,j)
-          sa  = sign(1, a)
-          sb  = sign(1, b)
-          ssa = sign(1.0, shearrate_trans(a))
-          ssb = sign(1.0, shearrate_trans(b))
+          sa  = sign(1_pInt, a)
+          sb  = sign(1_pInt, b)
+          ssa = sign(1.0_pReal, shearrate_trans(a))
+          ssb = sign(1.0_pReal, shearrate_trans(b))
 
           if (sa == ssa .and. sb == ssb) then
             probrate_trans(j) = (abs(shear_trans(a)*shearrate_trans(b)) + abs(shear_trans(b)*shearrate_trans(a)))
@@ -2036,11 +2026,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    pi, &
    math_Mandel6to33, &
    math_spectralDecompositionSym33
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains,&
    material_phase, &
    phase_plasticityInstance,& 
    phase_Noutput, &
@@ -2051,10 +2037,8 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    lattice_Stwin_v, &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
-   lattice_maxNtransFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem, &
-   lattice_NtransSystem, &
    lattice_shearTwin, &
    lattice_mu, &
    lattice_structure, &
@@ -2080,7 +2064,7 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
    s1,s2, &
    ph, &
    of
- real(pReal) :: sumf,tau,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_r,Ndot0,dgdot_dtauslip
+ real(pReal) :: sumf,tau,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_r,Ndot0,dgdot_dtauslip,stressRatio
  real(preal), dimension(constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
    gdot_slip
  real(pReal), dimension(3,3) :: eigVectors
@@ -2127,14 +2111,11 @@ function constitutive_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
               !* Stress ratios
               if((abs(tau)-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of)) > tol_math_check) then
               !* Stress ratios
-                StressRatio_p = ((abs(tau)-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
+                stressRatio = ((abs(tau)-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
                                 (constitutive_dislotwin_SolidSolutionStrength(instance)+&
-                                 constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **constitutive_dislotwin_pPerSlipFamily(f,instance)
-                StressRatio_pminus1 = ((abs(tau)-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of))/&
-                                      (constitutive_dislotwin_SolidSolutionStrength(instance)+&
-                                       constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))&
-                                                    **(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
+                                 constitutive_dislotwin_tau_peierlsPerSlipFamily(f,instance)))
+                StressRatio_p       = stressRatio** constitutive_dislotwin_pPerSlipFamily(f,instance)
+                StressRatio_pminus1 = stressRatio**(constitutive_dislotwin_pPerSlipFamily(f,instance)-1.0_pReal)
               !* Boltzmann ratio
                 BoltzmannRatio = constitutive_dislotwin_QedgePerSlipSystem(j,instance)/(kB*Temperature)
               !* Initial shear rates
