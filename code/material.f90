@@ -31,6 +31,7 @@ module material
    LOCAL_DAMAGE_isoBrittle_LABEL  = 'isobrittle', &
    LOCAL_DAMAGE_isoDuctile_LABEL  = 'isoductile', &
    LOCAL_DAMAGE_anisoBrittle_LABEL= 'anisobrittle', &
+   LOCAL_DAMAGE_anisoDuctile_LABEL= 'anisoductile', &
    LOCAL_DAMAGE_gurson_LABEL      = 'gurson', &   
    LOCAL_THERMAL_isothermal_label = 'isothermal', &
    LOCAL_THERMAL_adiabatic_label  = 'adiabatic', &
@@ -67,6 +68,7 @@ module material
                  LOCAL_DAMAGE_isoBrittle_ID, &
                  LOCAL_DAMAGE_isoDuctile_ID, &
                  LOCAL_DAMAGE_anisoBrittle_ID, &
+                 LOCAL_DAMAGE_anisoDuctile_ID, &
                  LOCAL_DAMAGE_gurson_ID
  end enum
  enum, bind(c)
@@ -240,6 +242,7 @@ module material
    LOCAL_DAMAGE_isoBrittle_ID, &
    LOCAL_DAMAGE_isoDuctile_ID, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
    LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
@@ -852,6 +855,8 @@ subroutine material_parsePhase(fileUnit,myPart)
              phase_damage(section) = LOCAL_DAMAGE_isoDuctile_ID
            case (LOCAL_DAMAGE_anisoBrittle_label)
              phase_damage(section) = LOCAL_DAMAGE_anisoBrittle_ID
+           case (LOCAL_DAMAGE_anisoDuctile_label)
+             phase_damage(section) = LOCAL_DAMAGE_anisoDuctile_ID
            case (LOCAL_DAMAGE_gurson_label)
              phase_damage(section) = LOCAL_DAMAGE_gurson_ID
            case default

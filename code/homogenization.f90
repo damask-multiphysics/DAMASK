@@ -1112,8 +1112,7 @@ function field_getVacancyDiffusion33(ip,el)
    FIELD_VACANCY_NONLOCAL_ID, &
    homogenization_Ngrains
  use crystallite, only: &
-   crystallite_push33ToRef, &
-   crystallite_Fp
+   crystallite_push33ToRef
  use constitutive, only: &
    constitutive_getVacancyDiffusion33
 
@@ -1132,7 +1131,7 @@ function field_getVacancyDiffusion33(ip,el)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
       field_getVacancyDiffusion33 = field_getVacancyDiffusion33 + &
         crystallite_push33ToRef(ipc,ip,el, &
-                                constitutive_getVacancyDiffusion33(crystallite_Fp(1:3,1:3,ipc,ip,el),ipc,ip,el))
+                                constitutive_getVacancyDiffusion33(ipc,ip,el))
      enddo
       
  end select   
