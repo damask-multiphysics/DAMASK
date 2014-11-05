@@ -324,7 +324,7 @@ subroutine constitutive_dislokmc_init(fileUnit)
      endif
      cycle                                                                                          ! skip to next line
    endif
-   if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_DISLOKMC_ID) then          ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
+   if (phase > 0_pInt ) then; if (phase_plasticity(phase) == PLASTICITY_DISLOKMC_ID) then           ! do not short-circuit here (.and. with next if statemen). It's not safe in Fortran
      instance = phase_plasticityInstance(phase)                                                     ! which instance of my plasticity is present phase
      positions = IO_stringPos(line,MAXNCHUNKS)
      tag = IO_lc(IO_stringValue(line,positions,1_pInt))                                             ! extract key
@@ -644,7 +644,7 @@ subroutine constitutive_dislokmc_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
-     outputsLoop: do o = 1_pInt,constitutive_dislokmc_Noutput(instance)
+     outputs: do o = 1_pInt,constitutive_dislokmc_Noutput(instance)
        select case(constitutive_dislokmc_outputID(o,instance))
          case(edge_density_ID, &
               dipole_density_ID, &
@@ -671,7 +671,7 @@ subroutine constitutive_dislokmc_init(fileUnit)
           constitutive_dislokmc_sizePostResult(o,instance) = mySize
           constitutive_dislokmc_sizePostResults(instance)  = constitutive_dislokmc_sizePostResults(instance) + mySize
        endif
-     enddo outputsLoop
+     enddo outputs
   
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
@@ -703,9 +703,9 @@ subroutine constitutive_dislokmc_init(fileUnit)
        allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
     !* Process slip related parameters ------------------------------------------------ 
  
-     slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
+     mySlipFamilies: do f = 1_pInt,lattice_maxNslipFamily
        index_myFamily = sum(constitutive_dislokmc_Nslip(1:f-1_pInt,instance))                      ! index in truncated slip system list
-       slipSystemsLoop: do j = 1_pInt,constitutive_dislokmc_Nslip(f,instance)
+       mySlipSystems: do j = 1_pInt,constitutive_dislokmc_Nslip(f,instance)
 
       !* Burgers vector, 
       !  dislocation velocity prefactor,
@@ -727,9 +727,9 @@ subroutine constitutive_dislokmc_init(fileUnit)
        !* Calculation of forest projections for edge dislocations
        !* Interaction matrices
   
-         do o = 1_pInt,lattice_maxNslipFamily
+         otherSlipFamilies: do o = 1_pInt,lattice_maxNslipFamily
            index_otherFamily = sum(constitutive_dislokmc_Nslip(1:o-1_pInt,instance))
-           do k = 1_pInt,constitutive_dislokmc_Nslip(o,instance)                                   ! loop over (active) systems in other family (slip)
+           otherSlipSystems: do k = 1_pInt,constitutive_dislokmc_Nslip(o,instance)
              constitutive_dislokmc_forestProjectionEdge(index_myFamily+j,index_otherFamily+k,instance) = &
                abs(math_mul3x3(lattice_sn(:,sum(lattice_NslipSystem(1:f-1,phase))+j,phase), &
                                lattice_st(:,sum(lattice_NslipSystem(1:o-1,phase))+k,phase)))
@@ -738,26 +738,26 @@ subroutine constitutive_dislokmc_init(fileUnit)
                                                                  sum(lattice_NslipSystem(1:f-1,phase))+j, &
                                                                  sum(lattice_NslipSystem(1:o-1,phase))+k, &
                                                                  phase), instance )
-         enddo; enddo
+         enddo otherSlipSystems; enddo otherSlipFamilies
   
-         do o = 1_pInt,lattice_maxNtwinFamily
+         otherTwinFamilies: do o = 1_pInt,lattice_maxNtwinFamily
            index_otherFamily = sum(constitutive_dislokmc_Ntwin(1:o-1_pInt,instance))
-           do k = 1_pInt,constitutive_dislokmc_Ntwin(o,instance)                                   ! loop over (active) systems in other family (twin)
+           otherTwinSystems: do k = 1_pInt,constitutive_dislokmc_Ntwin(o,instance)
              constitutive_dislokmc_interactionMatrix_SlipTwin(index_myFamily+j,index_otherFamily+k,instance) = &
                    constitutive_dislokmc_interaction_SlipTwin(lattice_interactionSlipTwin( &
                                                                  sum(lattice_NslipSystem(1:f-1_pInt,phase))+j, &
                                                                  sum(lattice_NtwinSystem(1:o-1_pInt,phase))+k, &
                                                                  phase), instance )
-         enddo; enddo
+         enddo otherTwinSystems; enddo otherTwinFamilies
   
-       enddo slipSystemsLoop
-     enddo slipFamiliesLoop
+       enddo mySlipSystems
+     enddo mySlipFamilies
   
     !* Process twin related parameters ------------------------------------------------
     
-     twinFamiliesLoop: do f = 1_pInt,lattice_maxNtwinFamily
+     myTwinFamilies: do f = 1_pInt,lattice_maxNtwinFamily
        index_myFamily = sum(constitutive_dislokmc_Ntwin(1:f-1_pInt,instance))                      ! index in truncated twin system list
-       twinSystemsLoop: do j = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)
+       myTwinSystems: do j = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)
  
        !* Burgers vector,
        !  nucleation rate prefactor,
@@ -790,28 +790,28 @@ subroutine constitutive_dislokmc_init(fileUnit)
            math_Mandel3333to66(constitutive_dislokmc_Ctwin3333(1:3,1:3,1:3,1:3,index_myFamily+j,instance))
  
       !* Interaction matrices
-         do o = 1_pInt,lattice_maxNslipFamily
+         otherSlipFamilies2: do o = 1_pInt,lattice_maxNslipFamily
            index_otherFamily = sum(constitutive_dislokmc_Nslip(1:o-1_pInt,instance))
-           do k = 1_pInt,constitutive_dislokmc_Nslip(o,instance)                                   ! loop over (active) systems in other family (slip)
+           otherSlipSystems2: do k = 1_pInt,constitutive_dislokmc_Nslip(o,instance)
              constitutive_dislokmc_interactionMatrix_TwinSlip(index_myFamily+j,index_otherFamily+k,instance) = &
                    constitutive_dislokmc_interaction_TwinSlip(lattice_interactionTwinSlip( &
                                                                  sum(lattice_NtwinSystem(1:f-1_pInt,phase))+j, &
                                                                  sum(lattice_NslipSystem(1:o-1_pInt,phase))+k, &
                                                                  phase), instance )
-         enddo; enddo
+         enddo otherSlipSystems2; enddo otherSlipFamilies2
  
-         do o = 1_pInt,lattice_maxNtwinFamily
+         otherTwinFamilies2: do o = 1_pInt,lattice_maxNtwinFamily
            index_otherFamily = sum(constitutive_dislokmc_Ntwin(1:o-1_pInt,instance))
-           do k = 1_pInt,constitutive_dislokmc_Ntwin(o,instance)                                   ! loop over (active) systems in other family (twin)
+           otherTwinSystems2:  do k = 1_pInt,constitutive_dislokmc_Ntwin(o,instance)
              constitutive_dislokmc_interactionMatrix_TwinTwin(index_myFamily+j,index_otherFamily+k,instance) = &
                    constitutive_dislokmc_interaction_TwinTwin(lattice_interactionTwinTwin( &
                                                                  sum(lattice_NtwinSystem(1:f-1_pInt,phase))+j, &
                                                                  sum(lattice_NtwinSystem(1:o-1_pInt,phase))+k, &
                                                                  phase), instance )
-         enddo; enddo
+         enddo otherTwinSystems2; enddo otherTwinFamilies2
  
-       enddo twinSystemsLoop
-     enddo twinFamiliesLoop
+       enddo myTwinSystems
+     enddo myTwinFamilies
      call constitutive_dislokmc_stateInit(phase,instance)
      call constitutive_dislokmc_aTolState(phase,instance)
    endif myPhase2
@@ -1213,9 +1213,9 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
  dgdot_dtauslip_neg = 0.0_pReal
 
  j = 0_pInt
- slipFamiliesLoop: do f = 1_pInt,lattice_maxNslipFamily
+ slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   slipSystemsLoop: do i = 1_pInt,constitutive_dislokmc_Nslip(f,instance)
+   slipSystems: do i = 1_pInt,constitutive_dislokmc_Nslip(f,instance)
      j = j+1_pInt
  
 !--------------------------------------------------------------------------------------------------
@@ -1294,17 +1294,17 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
         dLp_dTstar3333(k,l,m,n) + (dgdot_dtauslip_pos)*&
                                   lattice_Sslip(k,l,1,index_myFamily+i,ph)*&
                                   lattice_Sslip(m,n,1,index_myFamily+i,ph)
-   enddo slipSystemsLoop
- enddo slipFamiliesLoop
+   enddo slipSystems
+ enddo slipFamilies
  
 
  !* Mechanical twinning part
  gdot_twin = 0.0_pReal
  dgdot_dtautwin = 0.0_pReal
  j = 0_pInt
- twinFamiliesLoop: do f = 1_pInt,lattice_maxNtwinFamily
+ twinFamilies: do f = 1_pInt,lattice_maxNtwinFamily
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   twinSystemsLoop: do i = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)
+   twinSystems: do i = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)
       j = j+1_pInt
  
       !* Calculation of Lp
@@ -1347,8 +1347,8 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperatu
         dLp_dTstar3333(k,l,m,n) + dgdot_dtautwin*&
                                   lattice_Stwin(k,l,index_myFamily+i,ph)*&
                                   lattice_Stwin(m,n,index_myFamily+i,ph)
-   enddo twinSystemsLoop
- enddo twinFamiliesLoop
+   enddo twinSystems
+ enddo twinFamilies
  
  dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
  
@@ -1399,13 +1399,31 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  integer(pInt) :: instance,ns,nt,f,i,j,index_myFamily,s1,s2, &
                   ph, &
                   of
- real(pReal) :: sumf,StressRatio_p,StressRatio_pminus1,BoltzmannRatio,DotGamma0,StressRatio_u,StressRatio_uminus1,&
-             EdgeDipMinDistance,AtomicVolume,VacancyDiffusion,StressRatio_r,Ndot0
+ real(pReal) :: &
+   sumf, &
+   StressRatio_p,&
+   StressRatio_pminus1,&
+   BoltzmannRatio,&
+   DotGamma0,&
+   StressRatio_u,&
+   StressRatio_uminus1,&
+   EdgeDipMinDistance,&
+   AtomicVolume,&
+   VacancyDiffusion,&
+   StressRatio_r,&
+   Ndot0,&
+   tau_slip_pos,&
+   DotRhoMultiplication,&
+   EdgeDipDistance, &
+   DotRhoEdgeDipAnnihilation, &
+   DotRhoEdgeEdgeAnnihilation, &
+   ClimbVelocity, &
+   DotRhoEdgeDipClimb, &
+   DotRhoDipFormation
  real(pReal), dimension(constitutive_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
- gdot_slip_pos,tau_slip_pos,DotRhoMultiplication,EdgeDipDistance,DotRhoEdgeEdgeAnnihilation,DotRhoEdgeDipAnnihilation,&
- ClimbVelocity,DotRhoEdgeDipClimb,DotRhoDipFormation
+   gdot_slip_pos
  real(pReal), dimension(constitutive_dislokmc_totalNtwin(phase_plasticityInstance(material_phase(ipc,ip,el)))) :: &
-              tau_twin
+   tau_twin
  
  !* Shortened notation
  of = mappingConstitutive(1,ipc,ip,el)
@@ -1421,28 +1439,28 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  !* Dislocation density evolution
  gdot_slip_pos = 0.0_pReal
  j = 0_pInt
- do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over all slip families
+ do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
    do i = 1_pInt,constitutive_dislokmc_Nslip(f,instance)          ! process each (active) slip system in family
       j = j+1_pInt
  
  
       !* Resolved shear stress on slip system
-      tau_slip_pos(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
+      tau_slip_pos = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
 
-      if((abs(tau_slip_pos(j))-plasticState(ph)%state(6*ns+4*nt+j, of)) > tol_math_check) then
+      if((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of)) > tol_math_check) then
       !* Stress ratios
-        StressRatio_p = ((abs(tau_slip_pos(j))-plasticState(ph)%state(6*ns+4*nt+j, of))/&
+        StressRatio_p = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
    (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
                          **constitutive_dislokmc_pPerSlipFamily(f,instance)
-        StressRatio_pminus1 = ((abs(tau_slip_pos(j))-plasticState(ph)%state(6*ns+4*nt+j, of))/&
+        StressRatio_pminus1 = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
       (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
          **(constitutive_dislokmc_pPerSlipFamily(f,instance)-1.0_pReal)
 
-        StressRatio_u = ((abs(tau_slip_pos(j))-plasticState(ph)%state(6*ns+4*nt+j, of))/&
+        StressRatio_u = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of))/&
          (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
        **constitutive_dislokmc_uPerSlipFamily(f,instance)
-        StressRatio_uminus1 = ((abs(tau_slip_pos(j))-plasticState(ph)%state(6*ns+4*nt+j,of))/&
+        StressRatio_uminus1 = ((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j,of))/&
    (constitutive_dislokmc_SolidSolutionStrength(instance)+constitutive_dislokmc_tau_peierlsPerSlipFamily(f,instance)))&
            **(constitutive_dislokmc_uPerSlipFamily(f,instance)-1.0_pReal)
 
@@ -1454,40 +1472,40 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
           constitutive_dislokmc_v0PerSlipSystem(j,instance)
       !* Shear rates due to slip                                                                                                                                        
         gdot_slip_pos(j) = DotGamma0*exp(-BoltzmannRatio*(1.0_pReal-StressRatio_p)** &
-                     constitutive_dislokmc_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau_slip_pos(j)) &
+                     constitutive_dislokmc_qPerSlipFamily(f,instance))*sign(1.0_pReal,tau_slip_pos) &
                      * (1.0_pReal-constitutive_dislokmc_sPerSlipFamily(f,instance) &
                      * exp(-BoltzmannRatio*(1.0_pReal-StressRatio_p) ** constitutive_dislokmc_qPerSlipFamily(f,instance))) &
                      * StressRatio_u 
       endif
  
       !* Multiplication
-      DotRhoMultiplication(j) = abs(gdot_slip_pos(j))/&
+      DotRhoMultiplication = abs(gdot_slip_pos(j))/&
                                 (constitutive_dislokmc_burgersPerSlipSystem(j,instance)* &
                                                             plasticState(ph)%state(5*ns+3*nt+j, of))
  
       !* Dipole formation
       EdgeDipMinDistance = &
         constitutive_dislokmc_CEdgeDipMinDistance(instance)*constitutive_dislokmc_burgersPerSlipSystem(j,instance)
-      if (tau_slip_pos(j) == 0.0_pReal) then
-        DotRhoDipFormation(j) = 0.0_pReal
+      if (tau_slip_pos == 0.0_pReal) then
+        DotRhoDipFormation = 0.0_pReal
       else
-        EdgeDipDistance(j) = &
+        EdgeDipDistance = &
           (3.0_pReal*lattice_mu(ph)*constitutive_dislokmc_burgersPerSlipSystem(j,instance))/&
-          (16.0_pReal*pi*abs(tau_slip_pos(j)))
-        if (EdgeDipDistance(j)>plasticState(ph)%state(5*ns+3*nt+j, of)) EdgeDipDistance(j)=plasticState(ph)%state(5*ns+3*nt+j, of)
-        if (EdgeDipDistance(j)<EdgeDipMinDistance) EdgeDipDistance(j)=EdgeDipMinDistance
-        DotRhoDipFormation(j) = &
-          ((2.0_pReal*EdgeDipDistance(j))/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
+          (16.0_pReal*pi*abs(tau_slip_pos))
+        if (EdgeDipDistance>plasticState(ph)%state(5*ns+3*nt+j, of)) EdgeDipDistance=plasticState(ph)%state(5*ns+3*nt+j, of)
+        if (EdgeDipDistance<EdgeDipMinDistance) EdgeDipDistance=EdgeDipMinDistance
+        DotRhoDipFormation = &
+          ((2.0_pReal*EdgeDipDistance)/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
           plasticState(ph)%state(j, of)*abs(gdot_slip_pos(j))*constitutive_dislokmc_dipoleFormationFactor(instance)
       endif
  
       !* Spontaneous annihilation of 2 single edge dislocations
-      DotRhoEdgeEdgeAnnihilation(j) = &
+      DotRhoEdgeEdgeAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
         plasticState(ph)%state(j, of)*abs(gdot_slip_pos(j))
  
       !* Spontaneous annihilation of a single edge dislocation with a dipole constituent
-      DotRhoEdgeDipAnnihilation(j) = &
+      DotRhoEdgeDipAnnihilation = &
         ((2.0_pReal*EdgeDipMinDistance)/constitutive_dislokmc_burgersPerSlipSystem(j,instance))*&
         plasticState(ph)%state(ns+j, of)*abs(gdot_slip_pos(j))
  
@@ -1496,23 +1514,23 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
         constitutive_dislokmc_CAtomicVolume(instance)*constitutive_dislokmc_burgersPerSlipSystem(j,instance)**(3.0_pReal)
       VacancyDiffusion = &
         constitutive_dislokmc_D0(instance)*exp(-constitutive_dislokmc_Qsd(instance)/(kB*Temperature))
-      if (tau_slip_pos(j) == 0.0_pReal) then
-        DotRhoEdgeDipClimb(j) = 0.0_pReal
+      if (tau_slip_pos == 0.0_pReal) then
+        DotRhoEdgeDipClimb = 0.0_pReal
       else
-        ClimbVelocity(j) = &
+        ClimbVelocity = &
           ((3.0_pReal*lattice_mu(ph)*VacancyDiffusion*AtomicVolume)/(2.0_pReal*pi*kB*Temperature))*&
-          (1/(EdgeDipDistance(j)+EdgeDipMinDistance))
-        DotRhoEdgeDipClimb(j) = &
-          (4.0_pReal*ClimbVelocity(j)*plasticState(ph)%state(ns+j, of))/(EdgeDipDistance(j)-EdgeDipMinDistance)
+          (1/(EdgeDipDistance+EdgeDipMinDistance))
+        DotRhoEdgeDipClimb = &
+          (4.0_pReal*ClimbVelocity*plasticState(ph)%state(ns+j, of))/(EdgeDipDistance-EdgeDipMinDistance)
       endif
  
       !* Edge dislocation density rate of change
       plasticState(ph)%dotState(j, of) = &
-        DotRhoMultiplication(j)-DotRhoDipFormation(j)-DotRhoEdgeEdgeAnnihilation(j)
+        DotRhoMultiplication-DotRhoDipFormation-DotRhoEdgeEdgeAnnihilation
  
       !* Edge dislocation dipole density rate of change
       plasticState(ph)%dotState(ns+j, of) = &
-        DotRhoDipFormation(j)-DotRhoEdgeDipAnnihilation(j)-DotRhoEdgeDipClimb(j)
+        DotRhoDipFormation-DotRhoEdgeDipAnnihilation-DotRhoEdgeDipClimb
  
       !* Dotstate for accumulated shear due to slip
       plasticState(ph)%dotState(2_pInt*ns+j, of) = gdot_slip_pos(j)
@@ -1522,9 +1540,9 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  
  !* Twin volume fraction evolution
  j = 0_pInt
- do f = 1_pInt,lattice_maxNtwinFamily                                 ! loop over all twin families
+ slipFamilies: do f = 1_pInt,lattice_maxNtwinFamily
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph)) ! at which index starts my family
-   do i = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)          ! process each (active) twin system in family
+   slipSystems: do i = 1_pInt,constitutive_dislokmc_Ntwin(f,instance)
       j = j+1_pInt
  
       !* Resolved shear stress on twin system
@@ -1557,8 +1575,8 @@ subroutine constitutive_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
         plasticState(ph)%dotState(3_pInt*ns+nt+j, of) = plasticState(ph)%dotState(3_pInt*ns+j, of) * &
                                                           lattice_sheartwin(index_myfamily+i,ph)
       endif
-   enddo
- enddo
+   enddo slipSystems
+ enddo slipFamilies
  
 end subroutine constitutive_dislokmc_dotState
 
@@ -1573,8 +1591,7 @@ subroutine constitutive_dislokmc_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, i
    plasticState, &
    phase_plasticityInstance
 
-   implicit none
- 
+ implicit none
  real(pReal), dimension(:), allocatable :: &
    accumulatedSlip
  integer(pInt) :: &
