@@ -1347,7 +1347,7 @@ end subroutine constitutive_dislotwin_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperature,slipDamage,ipc,ip,el)
+subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,slipDamage,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -1391,7 +1391,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
  intent(in) :: &
    slipDamage
  real(pReal), dimension(3,3), intent(out)   :: Lp
- real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar
+ real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar99
 
  integer(pInt) :: instance,ph,of,ns,nt,nr,f,i,j,k,l,m,n,index_myFamily,s1,s2
  real(pReal) :: sumf,sumftr,StressRatio_p,StressRatio_pminus1,StressRatio_r,BoltzmannRatio,DotGamma0,Ndot0,stressRatio
@@ -1435,7 +1435,6 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
 
  Lp = 0.0_pReal
  dLp_dTstar3333 = 0.0_pReal
- dLp_dTstar = 0.0_pReal
  
 !--------------------------------------------------------------------------------------------------
 ! Dislocation glide part
@@ -1648,9 +1647,7 @@ subroutine constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,Temperat
    enddo transSystemsLoop
  enddo transFamiliesLoop
 
-
-
- dLp_dTstar = math_Plain3333to99(dLp_dTstar3333)
+ dLp_dTstar99 = math_Plain3333to99(dLp_dTstar3333)
  
 end subroutine constitutive_dislotwin_LpAndItsTangent
 
