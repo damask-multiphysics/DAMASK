@@ -29,7 +29,12 @@ module vacancy_generation
    vacancy_generation_freq, &
    vacancy_generation_energy, &
    vacancy_generation_C1, &
-   vacancy_generation_C2
+   vacancy_generation_C2, &
+   vacancy_generation_jogHeight, &                                                              !< the height of jogs in Burgers vectors
+   vacancy_generation_jogSeparation, &                                                          !< the jog seperation
+   vacancy_generation_nLatticeSites, &                                                          !< the number of lattice sites per unit volume
+   vacancy_generation_burgersVec, &                                                             !< the Burgers vector
+   vacancy_generateFactorbyDislocation
 
  real(pReal),                                                 parameter,           private :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
@@ -130,6 +135,12 @@ subroutine vacancy_generation_init(fileUnit)
  allocate(vacancy_generation_energy(maxNinstance),                              source=0.0_pReal) 
  allocate(vacancy_generation_C1(maxNinstance),                                  source=0.0_pReal) 
  allocate(vacancy_generation_C2(maxNinstance),                                  source=0.0_pReal) 
+ allocate(vacancy_generation_jogHeight(maxNinstance),                           source=0.0_pReal)
+ allocate(vacancy_generation_jogSeparation(maxNinstance),                       source=0.0_pReal) 
+ allocate(vacancy_generation_nLatticeSites(maxNinstance),                       source=0.0_pReal)
+ allocate(vacancy_generation_burgersVec(maxNinstance),                          source=0.0_pReal) 
+ 
+ allocate(vacancy_generateFactorbyDislocation(maxNinstance),                    source=0.0_pReal)
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -178,6 +189,15 @@ subroutine vacancy_generation_init(fileUnit)
 
        case ('vacancy_C2')
          vacancy_generation_C2(instance) = IO_floatValue(line,positions,2_pInt)
+         
+       case ('vacancy_jogHeight')
+         vacancy_generation_jogHeight(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('vacancy_jogSeparation')
+         vacancy_generation_jogSeparation(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('vacancy_nLatticeSites')
+         vacancy_generation_nLatticeSites(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('vacancy_burgersVec')
+         vacancy_generation_burgersVec(instance) = IO_floatValue(line,positions,2_pInt)
 
      end select
    endif; endif
@@ -225,6 +245,12 @@ subroutine vacancy_generation_init(fileUnit)
        allocate(vacancyState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(vacancyState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+! Calculate the coefficient which decribes the rate of vacancy concentration induced by dislocation motion.      
+     vacancy_generateFactorbyDislocation(instance) = vacancy_generation_jogHeight(instance)/ &
+                                                     vacancy_generation_jogSeparation(instance)/ &
+                                                     vacancy_generation_nLatticeSites(instance)/ &
+                                                     vacancy_generation_burgersVec(instance)/    &
+                                                     vacancy_generation_burgersVec(instance)       
 
      call vacancy_generation_stateInit(phase,instance)
      call vacancy_generation_aTolState(phase,instance)
@@ -310,9 +336,9 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
  
  vacancyState(phase)%dotState(1,constituent) = &
     vacancy_generation_freq(instance)* &
-    (1.0_pReal + vacancy_generation_C2(instance)*sum(accumulatedSlip))* &     
     exp(-(vacancy_generation_energy(instance) - vacancy_generation_C2(instance)*pressure)/ &
-         (kB*Temperature))
+         (kB*Temperature)) + &
+    sum(accumulatedSlip) * vacancy_generateFactorbyDislocation(instance)                            !< Induced by dislocation motion.
   
 end subroutine vacancy_generation_dotState
 
