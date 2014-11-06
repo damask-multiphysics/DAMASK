@@ -27,14 +27,14 @@ module vacancy_generation
  real(pReal),                         dimension(:),           allocatable,         public :: &
    vacancy_generation_aTol, &
    vacancy_generation_freq, &
-   vacancy_generation_energy, &
-   vacancy_generation_C1, &
-   vacancy_generation_C2, &
+   vacancy_generation_formationEnergy, &
+   vacancy_generation_diffusionEnergy, &
+   vacancy_generation_stressCoeff, &
    vacancy_generation_jogHeight, &                                                              !< the height of jogs in Burgers vectors
    vacancy_generation_jogSeparation, &                                                          !< the jog seperation
    vacancy_generation_nLatticeSites, &                                                          !< the number of lattice sites per unit volume
    vacancy_generation_burgersVec, &                                                             !< the Burgers vector
-   vacancy_generateFactorbyDislocation
+   vacancy_generation_dislocationCoeff
 
  real(pReal),                                                 parameter,           private :: &
    kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
@@ -132,15 +132,15 @@ subroutine vacancy_generation_init(fileUnit)
  allocate(vacancy_generation_Noutput(maxNinstance),                             source=0_pInt) 
  allocate(vacancy_generation_aTol(maxNinstance),                                source=0.0_pReal) 
  allocate(vacancy_generation_freq(maxNinstance),                                source=0.0_pReal) 
- allocate(vacancy_generation_energy(maxNinstance),                              source=0.0_pReal) 
- allocate(vacancy_generation_C1(maxNinstance),                                  source=0.0_pReal) 
- allocate(vacancy_generation_C2(maxNinstance),                                  source=0.0_pReal) 
+ allocate(vacancy_generation_formationEnergy(maxNinstance),                     source=0.0_pReal) 
+ allocate(vacancy_generation_diffusionEnergy(maxNinstance),                     source=0.0_pReal) 
+ allocate(vacancy_generation_stressCoeff(maxNinstance),                         source=0.0_pReal) 
  allocate(vacancy_generation_jogHeight(maxNinstance),                           source=0.0_pReal)
  allocate(vacancy_generation_jogSeparation(maxNinstance),                       source=0.0_pReal) 
  allocate(vacancy_generation_nLatticeSites(maxNinstance),                       source=0.0_pReal)
  allocate(vacancy_generation_burgersVec(maxNinstance),                          source=0.0_pReal) 
  
- allocate(vacancy_generateFactorbyDislocation(maxNinstance),                    source=0.0_pReal)
+ allocate(vacancy_generation_dislocationCoeff(maxNinstance),                    source=0.0_pReal)
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -181,21 +181,24 @@ subroutine vacancy_generation_init(fileUnit)
        case ('vacancy_frequency')
          vacancy_generation_freq(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_energy')
-         vacancy_generation_energy(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('vacancy_formationEnergy')
+         vacancy_generation_formationEnergy(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_C1')
-         vacancy_generation_C1(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('vacancy_diffusionEnergy')
+         vacancy_generation_diffusionEnergy(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_C2')
-         vacancy_generation_C2(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('vacancy_stressCoeff')
+         vacancy_generation_stressCoeff(instance) = IO_floatValue(line,positions,2_pInt)
          
        case ('vacancy_jogHeight')
          vacancy_generation_jogHeight(instance) = IO_floatValue(line,positions,2_pInt)
+
        case ('vacancy_jogSeparation')
          vacancy_generation_jogSeparation(instance) = IO_floatValue(line,positions,2_pInt)
+
        case ('vacancy_nLatticeSites')
          vacancy_generation_nLatticeSites(instance) = IO_floatValue(line,positions,2_pInt)
+
        case ('vacancy_burgersVec')
          vacancy_generation_burgersVec(instance) = IO_floatValue(line,positions,2_pInt)
 
@@ -207,6 +210,14 @@ subroutine vacancy_generation_init(fileUnit)
    if (phase_vacancy(phase) == LOCAL_VACANCY_generation_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_vacancyInstance(phase)
+
+!--------------------------------------------------------------------------------------------------
+!  Calculate the coefficient for dislocation motion induced vacancy generation
+     vacancy_generation_dislocationCoeff(instance) = vacancy_generation_jogHeight(instance)/ &
+                                                     vacancy_generation_jogSeparation(instance)/ &
+                                                     vacancy_generation_nLatticeSites(instance)/ &
+                                                     vacancy_generation_burgersVec(instance)/    &
+                                                     vacancy_generation_burgersVec(instance)       
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -244,15 +255,9 @@ subroutine vacancy_generation_init(fileUnit)
      if (any(numerics_integrator == 4_pInt)) &
        allocate(vacancyState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(vacancyState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
-! Calculate the coefficient which decribes the rate of vacancy concentration induced by dislocation motion.      
-     vacancy_generateFactorbyDislocation(instance) = vacancy_generation_jogHeight(instance)/ &
-                                                     vacancy_generation_jogSeparation(instance)/ &
-                                                     vacancy_generation_nLatticeSites(instance)/ &
-                                                     vacancy_generation_burgersVec(instance)/    &
-                                                     vacancy_generation_burgersVec(instance)       
+       allocate(vacancyState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)      
 
-     call vacancy_generation_stateInit(phase,instance)
+     call vacancy_generation_stateInit(phase)
      call vacancy_generation_aTolState(phase,instance)
    endif
  
@@ -262,19 +267,17 @@ end subroutine vacancy_generation_init
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant  NEW state values for a given instance of this vacancy model
 !--------------------------------------------------------------------------------------------------
-subroutine vacancy_generation_stateInit(phase,instance)
+subroutine vacancy_generation_stateInit(phase)
  use material, only: &
    vacancyState
  use lattice, only: &
   lattice_equilibriumVacancyConcentration
  
  implicit none
- integer(pInt),              intent(in) :: instance                                                 !< number specifying the instance of the vacancy
- integer(pInt),              intent(in) :: phase                                                    !< number specifying the phase of the vacancy
-
+ integer(pInt), intent(in) :: phase                                                    !< number specifying the phase of the vacancy
  real(pReal), dimension(vacancyState(phase)%sizeState) :: tempState
 
- tempState(1) = lattice_equilibriumVacancyConcentration(phase)
+ tempState = lattice_equilibriumVacancyConcentration(phase)
  vacancyState(phase)%state = spread(tempState,2,size(vacancyState(phase)%state(1,:)))
  vacancyState(phase)%state0 = vacancyState(phase)%state
  vacancyState(phase)%partionedState0 = vacancyState(phase)%state
@@ -293,7 +296,7 @@ subroutine vacancy_generation_aTolState(phase,instance)
    instance                                                                                         ! number specifying the current instance of the vacancy
  real(pReal), dimension(vacancyState(phase)%sizeState) :: tempTol
 
- tempTol = vacancy_generation_aTol
+ tempTol = vacancy_generation_aTol(instance)
  vacancyState(phase)%aTolState = tempTol
 end subroutine vacancy_generation_aTolState
  
@@ -336,9 +339,9 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
  
  vacancyState(phase)%dotState(1,constituent) = &
     vacancy_generation_freq(instance)* &
-    exp(-(vacancy_generation_energy(instance) - vacancy_generation_C2(instance)*pressure)/ &
+    exp(-(vacancy_generation_formationEnergy(instance) - vacancy_generation_stressCoeff(instance)*pressure)/ &
          (kB*Temperature)) + &
-    sum(accumulatedSlip) * vacancy_generateFactorbyDislocation(instance)                            !< Induced by dislocation motion.
+    sum(accumulatedSlip) * vacancy_generation_dislocationCoeff(instance)                            !< Induced by dislocation motion.
   
 end subroutine vacancy_generation_dotState
 
@@ -415,8 +418,7 @@ function vacancy_generation_getVacancyDiffusion33(nSlip,accumulatedSlip,temperat
 
  vacancy_generation_getVacancyDiffusion33 = &
    lattice_VacancyDiffusion33(1:3,1:3,phase)* &
-   (1.0_pReal + vacancy_generation_C2(instance)*sum(accumulatedSlip))* &
-   exp(-vacancy_generation_energy(instance)/(kB*temperature))
+   exp(-vacancy_generation_diffusionEnergy(instance)/(kB*temperature))
     
 end function vacancy_generation_getVacancyDiffusion33
 
