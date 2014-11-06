@@ -72,12 +72,10 @@ module IO
    IO_warning, &
    IO_intOut, &
    IO_timeStamp
-#ifndef Spectral
-#ifndef FEM
+#if defined(Marc4DAMASK) || defined(Abaqus)
  public :: &
    IO_open_inputFile, &
    IO_open_logFile
-#endif
 #endif
 #ifdef Abaqus  
  public :: &
@@ -316,8 +314,7 @@ logical function IO_open_jobFile_stat(fileUnit,ext)
 end function IO_open_JobFile_stat
 
 
-#ifndef Spectral
-#ifndef FEM
+#if defined(Marc4DAMASK) || defined(Abaqus)
 !--------------------------------------------------------------------------------------------------
 !> @brief opens FEM input file for reading located in current working directory to given unit
 !--------------------------------------------------------------------------------------------------
@@ -382,7 +379,6 @@ subroutine IO_open_logFile(fileUnit)
  if (myStat /= 0_pInt) call IO_error(100_pInt,el=myStat,ext_msg=path)
 
 end subroutine IO_open_logFile
-#endif
 #endif
 
 
