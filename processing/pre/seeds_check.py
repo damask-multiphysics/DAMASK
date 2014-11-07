@@ -1,31 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,numpy,vtk
+import os,sys,string,re,vtk
+import numpy as np
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
-
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
      
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -47,11 +29,10 @@ mappings = {
           }
 
 
-parser = OptionParser(option_class=extendedOption, usage='%prog [seedsfile[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [seedsfile[s]]', description = """
 Produce VTK point mesh from seeds file
 
-""" + string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar='int int int', \
                   help='a,b,c grid of hexahedral box [from seeds file]')
@@ -90,9 +71,9 @@ for file in files:
   
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.zeros(3,'i'),
-          'size':   numpy.zeros(3,'d'),
-          'origin': numpy.zeros(3,'d'),
+          'grid':   np.zeros(3,'i'),
+          'size':   np.zeros(3,'d'),
+          'origin': np.zeros(3,'d'),
          }
 
   for header in theTable.info:
@@ -112,8 +93,8 @@ for file in files:
                       'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
                       'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))))
   if 0 not in options.grid:                                                                         # user-specified grid
-    info['grid'] = numpy.array(options.grid)
-  if numpy.any(info['grid'] < 1):
+    info['grid'] = np.array(options.grid)
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
 #    continue
 

@@ -3,31 +3,12 @@
 
 import os,sys,string,re,vtk
 import numpy as np
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = os.path.splitext(scriptID.split()[1])[0]
-
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-     
+scriptName = scriptID.split()[1][:-3]
+  
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
@@ -48,11 +29,10 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog [geomfile[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [file[s]]', description = """
 Produce VTK rectilinear mesh of structure data from geom description
 
-""" + string.replace(scriptID,'\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-n','--nodata',      dest='data', action='store_false',
                                         help='omit microstructure data, just generate mesh')
@@ -171,7 +151,7 @@ for file in files:
     writer.SetDataModeToBinary()
     writer.SetCompressorTypeToZLib()
     writer.SetFileName(os.path.join(dir,'mesh_'+os.path.splitext(file)[0]
-                                               +'.'+writer.GetDefaultFileExtension()))
+                                                   +'.'+writer.GetDefaultFileExtension()))
     if vtk.VTK_MAJOR_VERSION <= 5:
       writer.SetInput(grid)
     else:
