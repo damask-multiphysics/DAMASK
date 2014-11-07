@@ -244,7 +244,7 @@ subroutine damage_anisoDuctile_init(fileUnit)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(damageState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
 
-     call damage_anisoDuctile_stateInit(phase,instance)
+     call damage_anisoDuctile_stateInit(phase)
      call damage_anisoDuctile_aTolState(phase,instance)
    endif
  
@@ -254,14 +254,14 @@ end subroutine damage_anisoDuctile_init
 !--------------------------------------------------------------------------------------------------
 !> @brief sets the relevant state values for a given instance of this damage
 !--------------------------------------------------------------------------------------------------
-subroutine damage_anisoDuctile_stateInit(phase,instance)
+subroutine damage_anisoDuctile_stateInit(phase)
  use material, only: &
    damageState
  use math, only: &
    math_I3  
  
  implicit none
- integer(pInt),              intent(in) :: phase, instance                                                    !< number specifying the phase of the damage
+ integer(pInt),              intent(in) :: phase                                                           !< number specifying the phase of the damage
 
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
@@ -332,7 +332,7 @@ subroutine damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
      damageState(phase)%dotState(index+1,constituent) = &
       -damage_anisoDuctile_sdot_0(instance)* &
        max(0.0_pReal, &
-           damageState(phase)%state(index+1,constituent)* &
+           2.0_pReal*damageState(phase)%state(index+1,constituent)* &
            accumulatedSlip(index)/damage_anisoDuctile_critAccShear(f,instance) - &
            nonlocalFactor)**damage_anisoDuctile_N(instance)
      index = index + 1_pInt
