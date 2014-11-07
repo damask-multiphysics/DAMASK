@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: damage_anisoDuctile.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
@@ -119,7 +119,7 @@ subroutine damage_anisoDuctile_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_damage_anisoDuctile_LABEL//' init  -+>>>'
-   write(6,'(a)')     ' $Id: damage_anisoDuctile.f90 3210 2014-06-17 15:24:44Z MPIE\m.diehl $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
