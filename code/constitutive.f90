@@ -189,7 +189,7 @@ subroutine constitutive_init(temperature_init)
 ! parse plasticities from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_plasticity == PLASTICITY_NONE_ID))          call constitutive_none_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_NONE_ID))          call constitutive_none_init
  if (any(phase_plasticity == PLASTICITY_J2_ID))            call constitutive_j2_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
@@ -205,7 +205,7 @@ subroutine constitutive_init(temperature_init)
 ! parse damage from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_damage == LOCAL_DAMAGE_none_ID))             call damage_none_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_none_ID))             call damage_none_init
  if (any(phase_damage == LOCAL_DAMAGE_isoBrittle_ID))       call damage_isoBrittle_init(FILEUNIT)
  if (any(phase_damage == LOCAL_DAMAGE_isoductile_ID))       call damage_isoDuctile_init(FILEUNIT)
  if (any(phase_damage == LOCAL_DAMAGE_anisoBrittle_ID))     call damage_anisoBrittle_init(FILEUNIT)
@@ -217,7 +217,7 @@ subroutine constitutive_init(temperature_init)
 ! parse thermal from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_thermal == LOCAL_THERMAL_isothermal_ID))    call thermal_isothermal_init(FILEUNIT,temperature_init)
+ if (any(phase_thermal == LOCAL_THERMAL_isothermal_ID))    call thermal_isothermal_init(temperature_init)
  if (any(phase_thermal == LOCAL_THERMAL_adiabatic_ID))     call thermal_adiabatic_init(FILEUNIT,temperature_init)
  close(FILEUNIT)
 
@@ -225,7 +225,7 @@ subroutine constitutive_init(temperature_init)
 ! parse vacancy model from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_vacancy == LOCAL_VACANCY_constant_ID))      call vacancy_constant_init(FILEUNIT)
+ if (any(phase_vacancy == LOCAL_VACANCY_constant_ID))      call vacancy_constant_init
  if (any(phase_vacancy == LOCAL_VACANCY_generation_ID))    call vacancy_generation_init(FILEUNIT)
  close(FILEUNIT)
 

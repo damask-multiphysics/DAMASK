@@ -26,7 +26,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine vacancy_constant_init(fileUnit)
+subroutine vacancy_constant_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
@@ -48,7 +48,6 @@ subroutine vacancy_constant_init(fileUnit)
 
  implicit none
 
- integer(pInt), intent(in) :: fileUnit
  integer(pInt) :: &
    maxNinstance, &
    phase, &

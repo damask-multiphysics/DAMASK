@@ -31,7 +31,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine thermal_isothermal_init(fileUnit,temperature_init)
+subroutine thermal_isothermal_init(temperature_init)
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
@@ -54,7 +54,6 @@ subroutine thermal_isothermal_init(fileUnit,temperature_init)
  implicit none
 
  real(pReal), intent(in)   :: temperature_init                                                      !< initial temperature
- integer(pInt), intent(in) :: fileUnit
  integer(pInt) :: &
    maxNinstance, &
    phase, &
