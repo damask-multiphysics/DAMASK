@@ -1,31 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy
+import os,sys,string,re,math
+import numpy as np
+from optparse import OptionParser
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
-
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -47,11 +29,11 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Scales a geometry description independently in x, y, and z direction in terms of grid and/or size.
 Either absolute values or relative factors (like "0.25x") can be used.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-g', '--grid', dest='grid', nargs = 3, metavar = 'string string string', \
                   help='a,b,c grid of hexahedral box [unchanged]')
@@ -93,15 +75,15 @@ for file in files:
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.zeros(3,'i'),
-          'size':   numpy.zeros(3,'d'),
-          'origin': numpy.zeros(3,'d'),
+          'grid':   np.zeros(3,'i'),
+          'size':   np.zeros(3,'d'),
+          'origin': np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
   newInfo = {
-          'grid':    numpy.zeros(3,'i'),
-          'size':    numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'size':    np.zeros(3,'d'),
           'microstructures': 0,
          }
   extra_header = []
@@ -127,15 +109,15 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = numpy.zeros(info['grid'].prod(),'i')
+  microstructure = np.zeros(info['grid'].prod(),'i')
   i = 0
   table.data_rewind()
   while table.data_read():
@@ -152,10 +134,10 @@ for file in files:
 
 #--- do work ------------------------------------------------------------------------------------
 
-  newInfo['grid'] = numpy.array([{True:round(o*float(n.translate(None,'xX'))), False: round(float(n.translate(None,'xX')))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
-  newInfo['size'] = numpy.array([{True:      o*float(n.translate(None,'xX')) , False:       float(n.translate(None,'xX')) }[n[-1].lower() == 'x'] for o,n in zip(info['size'],options.size)],'d')
-  newInfo['grid'] = numpy.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
-  newInfo['size'] = numpy.where(newInfo['size'] <= 0.0, info['size'],newInfo['size'])
+  newInfo['grid'] = np.array([{True:round(o*float(n.translate(None,'xX'))), False: round(float(n.translate(None,'xX')))}[n[-1].lower() == 'x'] for o,n in zip(info['grid'],options.grid)],'i')
+  newInfo['size'] = np.array([{True:      o*float(n.translate(None,'xX')) , False:       float(n.translate(None,'xX')) }[n[-1].lower() == 'x'] for o,n in zip(info['size'],options.size)],'d')
+  newInfo['grid'] = np.where(newInfo['grid'] <= 0  , info['grid'],newInfo['grid'])
+  newInfo['size'] = np.where(newInfo['size'] <= 0.0, info['size'],newInfo['size'])
 
   multiplicity = []
   for j in xrange(3):
@@ -167,19 +149,19 @@ for file in files:
       last = this
 
   microstructure = microstructure.reshape(info['grid'],order='F')
-  microstructure = numpy.repeat(
-                   numpy.repeat(
-                   numpy.repeat(microstructure,multiplicity[0], axis=0),
+  microstructure = np.repeat(
+                   np.repeat(
+                   np.repeat(microstructure,multiplicity[0], axis=0),
                                                multiplicity[1], axis=1),
                                                multiplicity[2], axis=2)
 # --- renumber to sequence 1...Ngrains if requested ------------------------------------------------
-#  http://stackoverflow.com/questions/10741346/numpy-frequency-counts-for-unique-values-in-an-array  
+#  http://stackoverflow.com/questions/10741346/np-frequency-counts-for-unique-values-in-an-array  
   if options.renumber:
     newID=0
-    for microstructureID,count in enumerate(numpy.bincount(microstructure.reshape(newInfo['grid'].prod()))):
+    for microstructureID,count in enumerate(np.bincount(microstructure.reshape(newInfo['grid'].prod()))):
       if count != 0:
         newID+=1
-        microstructure=numpy.where(microstructure==microstructureID,newID,microstructure).reshape(microstructure.shape)
+        microstructure=np.where(microstructure==microstructureID,newID,microstructure).reshape(microstructure.shape)
 
   newInfo['microstructures'] = microstructure.max()
 
@@ -191,10 +173,10 @@ for file in files:
   if (newInfo['microstructures'] != info['microstructures']):
     file['croak'].write('--> microstructures: %i\n'%newInfo['microstructures'])
   
-  if numpy.any(newInfo['grid'] < 1):
+  if np.any(newInfo['grid'] < 1):
     file['croak'].write('invalid new grid a b c.\n')
     continue
-  if numpy.any(newInfo['size'] <= 0.0):
+  if np.any(newInfo['size'] <= 0.0):
     file['croak'].write('invalid new size x y z.\n')
     continue
 

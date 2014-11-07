@@ -1,33 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy
+import os,re,sys,math,string
+import numpy as np
+from optparse import OptionParser
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID = '$Id: geom_addPrimitive.py 3412 2014-08-22 16:58:53Z MPIE\m.diehl $'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id: geom_pack.py 3679 2014-11-05 22:01:11Z p.eisenlohr $','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 oversampling = 2.
-
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -49,11 +31,11 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Positions a geometric object within the (three-dimensional) canvas of a spectral geometry description.
 Depending on the sign of the dimension parameters, these objects can be boxes, cylinders, or ellipsoids.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-o', '--origin', 
                   '-c', '--center',     dest='center', type='int', nargs = 3, metavar=' '.join(['int']*3),
@@ -80,7 +62,7 @@ parser.set_defaults(center = [0,0,0],
 
 if options.angleaxis != []:
   options.angleaxis = map(float,options.angleaxis)
-  rotation = damask.Quaternion().fromAngleAxis(numpy.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
+  rotation = damask.Quaternion().fromAngleAxis(np.radians(options.angleaxis[0]) if options.degrees else options.angleaxis[0],
                                                options.angleaxis[1:4]).conjugated()
 elif options.quaternion != []:
   options.rotation = map(float,options.rotation)
@@ -88,7 +70,7 @@ elif options.quaternion != []:
 else:
   rotation = damask.Quaternion().conjugated()
 
-options.center = numpy.array(options.center)
+options.center = np.array(options.center)
 invRotation = rotation.conjugated()                                                             # rotation of gridpos into primitive coordinate system
 
 #--- setup file handles --------------------------------------------------------------------------   
@@ -118,15 +100,15 @@ for file in files:
 
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':    numpy.zeros(3,'i'),
-          'size':    numpy.zeros(3,'d'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'size':    np.zeros(3,'d'),
+          'origin':  np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
   newInfo = {
-          'grid':    numpy.zeros(3,'i'),
-          'origin':  numpy.zeros(3,'d'),
+          'grid':    np.zeros(3,'i'),
+          'origin':  np.zeros(3,'d'),
           'microstructures': 0,
          }
   extra_header = []
@@ -152,15 +134,15 @@ for file in files:
                       'homogenization:  %i\n'%info['homogenization'] + \
                       'microstructures: %i\n'%info['microstructures'])
 
-  if numpy.any(info['grid'] < 1):
+  if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
     continue
-  if numpy.any(info['size'] <= 0.0):
+  if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
     continue
 
 #--- read data ------------------------------------------------------------------------------------
-  microstructure = numpy.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
+  microstructure = np.zeros(info['grid'].prod(),'i')                                            # initialize as flat array
   i = 0
 
   while table.data_read():
@@ -183,17 +165,17 @@ for file in files:
   microstructure = microstructure.reshape(info['grid'],order='F')
 
   if options.dimension != None:
-    mask = (numpy.array(options.dimension) < 0).astype(float)                                       # zero where positive dimension, otherwise one
-    dim = abs(numpy.array(options.dimension))                                                       # dimensions of primitive body
-    pos = numpy.zeros(3,dtype='float')
-#    hiresPrimitive = numpy.zeros((2*dim[0],2*dim[1],2*dim[2],3))                                   # primitive discretized at twice the grid resolution
-    for     i,pos[0] in enumerate(numpy.arange(-dim[0]/oversampling,(dim[0]+1)/oversampling,1./oversampling)):
-      for   j,pos[1] in enumerate(numpy.arange(-dim[1]/oversampling,(dim[1]+1)/oversampling,1./oversampling)):
-        for k,pos[2] in enumerate(numpy.arange(-dim[2]/oversampling,(dim[2]+1)/oversampling,1./oversampling)):
-          gridpos = numpy.floor(rotation*pos)                                                       # rotate and lock into spacial grid
+    mask = (np.array(options.dimension) < 0).astype(float)                                       # zero where positive dimension, otherwise one
+    dim = abs(np.array(options.dimension))                                                       # dimensions of primitive body
+    pos = np.zeros(3,dtype='float')
+#    hiresPrimitive = np.zeros((2*dim[0],2*dim[1],2*dim[2],3))                                   # primitive discretized at twice the grid resolution
+    for     i,pos[0] in enumerate(np.arange(-dim[0]/oversampling,(dim[0]+1)/oversampling,1./oversampling)):
+      for   j,pos[1] in enumerate(np.arange(-dim[1]/oversampling,(dim[1]+1)/oversampling,1./oversampling)):
+        for k,pos[2] in enumerate(np.arange(-dim[2]/oversampling,(dim[2]+1)/oversampling,1./oversampling)):
+          gridpos = np.floor(rotation*pos)                                                       # rotate and lock into spacial grid
           primPos = invRotation*gridpos                                                             # rotate back to primitive coordinate system
-          if numpy.dot(mask*primPos/dim,mask*primPos/dim) <= 0.25 and \
-             numpy.all(abs((1.-mask)*primPos/dim) <= 0.5):                                          # inside ellipsoid and inside box
+          if np.dot(mask*primPos/dim,mask*primPos/dim) <= 0.25 and \
+             np.all(abs((1.-mask)*primPos/dim) <= 0.5):                                          # inside ellipsoid and inside box
              microstructure[(gridpos[0]+options.center[0])%info['grid'][0],
                             (gridpos[1]+options.center[1])%info['grid'][1],
                             (gridpos[2]+options.center[2])%info['grid'][2]] = options.fill          # assign microstructure index
