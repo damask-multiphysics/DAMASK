@@ -148,7 +148,15 @@ module numerics
                                 &-thermal_pc_type ml &
                                 &-thermal_mg_levels_ksp_type chebyshev &
                                 &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                                &-thermal_mg_levels_pc_type sor'
+                                &-thermal_mg_levels_pc_type sor &
+                                &-vacancy_snes_type newtonls &
+                                &-vacancy_snes_linesearch_type cp &
+                                &-vacancy_ksp_type fgmres &
+                                &-vacancy_snes_atol 1e-6 &
+                                &-vacancy_pc_type ml &
+                                &-vacancy_mg_levels_ksp_type chebyshev &
+                                &-vacancy_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                                &-vacancy_mg_levels_pc_type sor '
  integer(pInt), protected, public :: &
    itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
    itminFEM                   =  2_pInt, &                                                          !< minimum number of iterations
@@ -156,7 +164,8 @@ module numerics
    integrationOrder           =  2_pInt, &
    structOrder                =  2_pInt, &
    thermalOrder               =  2_pInt, &
-   damageOrder                =  2_pInt
+   damageOrder                =  2_pInt, &
+   vacancyDiffusionOrder      =  2_pInt
 #endif
 
  public :: numerics_init
@@ -413,6 +422,8 @@ subroutine numerics_init
          thermalorder = IO_intValue(line,positions,2_pInt)
        case ('damageorder')
          damageorder = IO_intValue(line,positions,2_pInt)
+       case ('vacancydiffusionorder')
+         vacancyDiffusionOrder = IO_intValue(line,positions,2_pInt)
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
 #else
@@ -555,6 +566,7 @@ subroutine numerics_init
    write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
    write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
    write(6,'(a24,1x,i8)')      ' damageOrder:            ',damageOrder
+   write(6,'(a24,1x,i8)')      ' vacancyDiffusionOrder:  ',vacancyDiffusionOrder
    write(6,'(a24,1x,es8.1)')   ' err_struct_tolAbs:      ',err_struct_tolAbs
    write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
    write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol

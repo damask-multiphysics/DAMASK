@@ -398,14 +398,14 @@ FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.
                  FEsolving.o mesh.o material.o lattice.o \
                  $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(CONSTITUTIVE_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
-                 FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o
+                 FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
 
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
 	$(PREFIX) $(LINKERNAME) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
   $(FEM_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
-DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 FEM_mech.o FEM_thermal.o FEM_damage.o
+DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
 
 FEM_mech.o:                    FEM_mech.f90 \
@@ -415,6 +415,9 @@ FEM_thermal.o:                 FEM_thermal.f90 \
                                FEM_utilities.o
 
 FEM_damage.o:                  FEM_damage.f90 \
+                               FEM_utilities.o
+
+FEM_vacancyDiffusion.o:        FEM_vacancyDiffusion.f90 \
                                FEM_utilities.o
 
 FEM_utilities.o:               FEM_utilities.f90 \
