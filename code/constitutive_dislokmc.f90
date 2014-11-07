@@ -1208,6 +1208,9 @@ subroutine constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Tempera
        nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,2) + constitutive_dislokmc_nonSchmidCoeff(k,instance)*&
                                            lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo nonSchmidSystems
+     !* Applying damage to slip system
+     tau_slip_pos = tau_slip_pos/slipDamage(j)
+     tau_slip_neg = tau_slip_neg/slipDamage(j)
 
      significantPostitiveStress: if((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of)) > tol_math_check) then
        !* Stress ratios
