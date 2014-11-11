@@ -29,15 +29,23 @@ module vacancy_generation
    vacancy_generation_freq, &
    vacancy_generation_formationEnergy, &
    vacancy_generation_diffusionEnergy, &
+   vacancy_generation_diffusionCoeff0, &                                                      !< the temperature-independent pre-exponential of diffusion coefficient D_0
    vacancy_generation_stressCoeff, &
    vacancy_generation_jogHeight, &                                                              !< the height of jogs in Burgers vectors
    vacancy_generation_jogSeparation, &                                                          !< the jog seperation
    vacancy_generation_nLatticeSites, &                                                          !< the number of lattice sites per unit volume
    vacancy_generation_burgersVec, &                                                             !< the Burgers vector
-   vacancy_generation_dislocationCoeff
+   vacancy_generation_dislocationCoeff, &
+   vacancy_generation_equilibConcentration                                                      !< the equilibrium concentration of vacancy
+
+ real(pReal),                         dimension(:),           allocatable,         public :: &
+   pore_nucleation_surfaceEnergy, &                                                             !< surface energy of metal which controls the necleation of pores
+   pore_nucleation_atomVolume, &                                                                !< the volume of atom
+   pore_nucleation_shellThickness, &                                                            !< the thickness of spherical shell surrounding the pore
+   pore_nucleation_concentrationCoeff0                                                          !< the pre-exponential of equilibrium concentration of critical pore
 
  real(pReal),                                                 parameter,           private :: &
-   kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
+   kB = 1.38e-23_pReal                                                                          !< Boltzmann constant in J/Kelvin
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -138,9 +146,16 @@ subroutine vacancy_generation_init(fileUnit)
  allocate(vacancy_generation_jogHeight(maxNinstance),                           source=0.0_pReal)
  allocate(vacancy_generation_jogSeparation(maxNinstance),                       source=0.0_pReal) 
  allocate(vacancy_generation_nLatticeSites(maxNinstance),                       source=0.0_pReal)
- allocate(vacancy_generation_burgersVec(maxNinstance),                          source=0.0_pReal) 
+ allocate(vacancy_generation_burgersVec(maxNinstance),                          source=0.0_pReal)
+ allocate(vacancy_generation_diffusionCoeff0(maxNinstance),                     source=0.0_pReal)
+ allocate(vacancy_generation_equilibConcentration(maxNinstance),                source=0.0_pReal)
  
  allocate(vacancy_generation_dislocationCoeff(maxNinstance),                    source=0.0_pReal)
+ 
+ allocate(pore_nucleation_surfaceEnergy(maxNinstance),                          source=0.0_pReal)
+ allocate(pore_nucleation_atomVolume(maxNinstance),                             source=0.0_pReal)
+ allocate(pore_nucleation_shellThickness(maxNinstance),                         source=0.0_pReal)
+ allocate(pore_nucleation_concentrationCoeff0(maxNinstance),                    source=0.0_pReal)
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -175,32 +190,50 @@ subroutine vacancy_generation_init(fileUnit)
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
 
-       case ('atol_vacancyGeneration')
+       case ('atol_vacancygeneration')
          vacancy_generation_aTol(instance) = IO_floatValue(line,positions,2_pInt)
 
        case ('vacancy_frequency')
          vacancy_generation_freq(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_formationEnergy')
+       case ('vacancy_formationenergy')
          vacancy_generation_formationEnergy(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_diffusionEnergy')
+       case ('vacancy_equilibconcentration')
+         vacancy_generation_equilibConcentration(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('vacancy_diffusionenergy')
          vacancy_generation_diffusionEnergy(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_stressCoeff')
+       case ('vacancy_diffusioncoeff0')
+         vacancy_generation_diffusionCoeff0(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('vacancy_stresscoeff')
          vacancy_generation_stressCoeff(instance) = IO_floatValue(line,positions,2_pInt)
          
-       case ('vacancy_jogHeight')
+       case ('vacancy_jogheight')
          vacancy_generation_jogHeight(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_jogSeparation')
+       case ('vacancy_jogseparation')
          vacancy_generation_jogSeparation(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_nLatticeSites')
+       case ('vacancy_nlatticesites')
          vacancy_generation_nLatticeSites(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('vacancy_burgersVec')
+       case ('vacancy_burgersvec')
          vacancy_generation_burgersVec(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('pore_surfacefnergy')
+         pore_nucleation_surfaceEnergy(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('pore_atomvolume')
+         pore_nucleation_atomVolume(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('pore_shellthickness')
+         pore_nucleation_shellThickness(instance) = IO_floatValue(line,positions,2_pInt)
+
+       case ('pore_concentrationcoeff0')
+         pore_nucleation_concentrationCoeff0(instance) = IO_floatValue(line,positions,2_pInt)
 
      end select
    endif; endif
@@ -213,11 +246,11 @@ subroutine vacancy_generation_init(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
 !  Calculate the coefficient for dislocation motion induced vacancy generation
-     vacancy_generation_dislocationCoeff(instance) = vacancy_generation_jogHeight(instance)/ &
+     vacancy_generation_dislocationCoeff(instance) = vacancy_generation_jogHeight(instance)/     &
                                                      vacancy_generation_jogSeparation(instance)/ &
                                                      vacancy_generation_nLatticeSites(instance)/ &
                                                      vacancy_generation_burgersVec(instance)/    &
-                                                     vacancy_generation_burgersVec(instance)       
+                                                     vacancy_generation_burgersVec(instance)
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -313,7 +346,8 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
    vacancyState
  use math, only: &
    math_Mandel6to33, &
-   math_trace33
+   math_trace33, &
+   pi
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -326,23 +360,57 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
  real(pReal),  intent(in), dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in) :: &
-   Temperature                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+   Temperature                                                                                      !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal) :: &
-   pressure                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
+   pressure                                                                                         !< 2nd Piola Kirchhoff stress tensor (Mandel)
  integer(pInt) :: &
    instance, phase, constituent 
+ real(pReal) :: &
+   vacancyConcentration, &                                                                          !< current vacancy concentration
+   vacancyDiffusion, &                                                                              !< the diffusion coefficient D_v
+   poleZeldovichCoeff, &                                                                            !< Zeldovich factor of pore nucleation
+   vacancyAbsorpRateCoeff, &                                                                        !< vacancy absorption rate
+   chemicalPotential, &                                                                             !< the chemical potential due to vacancy concentration
+   criticalRadius, &                                                                                !< the critical pore radius
+   Gibbs4Pore, &                                                                                    !< the Gibbs free energy for generating a critical pore
+   equilibPoreConcentration, &                                                                      !< the equilibrium pore concentration
+   nucleationRatePore                                                                               !< the nucleation rate of pore
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_vacancyInstance(phase)
  pressure = math_trace33(math_Mandel6to33(Tstar_v))
- 
+
+!--------------------------------------------------------------------------------------------------
+!  Calculate nucleation rate of pore
+ vacancyDiffusion = vacancy_generation_diffusionCoeff0(instance)* &
+                    exp( -vacancy_generation_diffusionEnergy(instance)/(kB*temperature) )
+ vacancyConcentration = vacancy_generation_getConcentration(ipc, ip, el)
+ chemicalPotential = kB*Temperature * log(vacancyConcentration/ &
+                     vacancy_generation_equilibConcentration(instance))
+ criticalRadius = 2_pReal/chemicalPotential* &
+                  pore_nucleation_surfaceEnergy(instance) * pore_nucleation_atomVolume(instance)
+ Gibbs4Pore = 4_pReal/3_pReal * pi * pore_nucleation_surfaceEnergy(instance)* &
+              criticalRadius * criticalRadius
+ equilibPoreConcentration = pore_nucleation_concentrationCoeff0(instance)* &
+                            exp( -Gibbs4Pore/(kB*temperature) )
+
+ vacancyAbsorpRateCoeff = 2_pReal/pore_nucleation_shellThickness(instance) * &
+                          vacancyDiffusion * vacancyConcentration
+ poleZeldovichCoeff = pore_nucleation_atomVolume(instance)* &
+                      sqrt( pore_nucleation_surfaceEnergy(instance)/(kB*temperature) )
+ nucleationRatePore = poleZeldovichCoeff * vacancyAbsorpRateCoeff* equilibPoreConcentration                     
+
+!--------------------------------------------------------------------------------------------------
+!  the net generating rate vacancy                            
  vacancyState(phase)%dotState(1,constituent) = &
     vacancy_generation_freq(instance)* &
     exp(-(vacancy_generation_formationEnergy(instance) - vacancy_generation_stressCoeff(instance)*pressure)/ &
          (kB*Temperature)) + &
-    sum(accumulatedSlip) * vacancy_generation_dislocationCoeff(instance)                            !< Induced by dislocation motion.
-  
+    sum(accumulatedSlip) * vacancy_generation_dislocationCoeff(instance)- &                         !< Induced by dislocation motion
+    nucleationRatePore * (4_pReal/3_pReal * pi * criticalRadius**3_pReal)/ &                        !< Reduced by the formation of pore
+    pore_nucleation_atomVolume(instance)   
+
 end subroutine vacancy_generation_dotState
 
 !--------------------------------------------------------------------------------------------------
