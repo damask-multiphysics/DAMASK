@@ -511,7 +511,7 @@ function constitutive_damagedC(ipc,ip,el)
    LOCAL_DAMAGE_isoBrittle_ID, &
    phase_damage
  use damage_isoBrittle, only: &
-   damage_isoBrittle_getDamage  
+   damage_isoBrittle_getDamagedC66  
 
  implicit none
  real(pReal), dimension(6,6) :: constitutive_damagedC
@@ -519,13 +519,11 @@ function constitutive_damagedC(ipc,ip,el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el 
- real(pReal) :: damage                                                                              !< element number
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_isoBrittle_ID)
-     damage = damage_isoBrittle_getDamage(ipc, ip, el)
-     constitutive_damagedC = damage*damage* &
-                             constitutive_homogenizedC(ipc,ip,el)
+     constitutive_damagedC = damage_isoBrittle_getDamagedC66(constitutive_homogenizedC(ipc,ip,el), &
+                                                             ipc,ip,el)
    case default
      constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)
 
@@ -559,11 +557,6 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    constitutive_dislotwin_microstructure
  use constitutive_dislokmc, only: &
    constitutive_dislokmc_microstructure
- use damage_isoBrittle, only: &
-   damage_isoBrittle_microstructure, &
-   damage_isoBrittle_getDamage
- use damage_isoDuctile, only: &
-   damage_isoDuctile_microstructure
  use damage_gurson, only: &
    damage_gurson_microstructure
 
@@ -577,13 +570,6 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
- real(pReal) :: &
-   damage, &
-   Tstar_v_effective(6)
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
- integer(pInt) :: &
-   nSlip
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
@@ -599,13 +585,6 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  end select
  
  select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_isoBrittle_ID)
-     damage = damage_isoBrittle_getDamage(ipc,ip,el)
-     Tstar_v_effective = Tstar_v/(damage*damage)
-     call damage_isoBrittle_microstructure(Tstar_v_effective, Fe, ipc, ip, el)
-   case (LOCAL_DAMAGE_isoDuctile_ID)
-     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
-     call damage_isoDuctile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_microstructure(ipc, ip, el)
 
@@ -1122,9 +1101,11 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_isoBrittle_ID)
-     call damage_isoBrittle_dotState(ipc, ip, el)
+     call damage_isoBrittle_dotState(constitutive_homogenizedC(ipc,ip,el), &
+                                     FeArray(1:3,1:3,ipc,ip,el), ipc, ip, el)
    case (LOCAL_DAMAGE_isoDuctile_ID)
-     call damage_isoDuctile_dotState(ipc, ip, el)
+     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call damage_isoDuctile_dotState(nSlip,accumulatedSlip,ipc, ip, el)
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      call damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
    case (LOCAL_DAMAGE_anisoDuctile_ID)
