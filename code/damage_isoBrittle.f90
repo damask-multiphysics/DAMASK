@@ -27,6 +27,7 @@ module damage_isoBrittle
 
  real(pReal),                         dimension(:),     allocatable,         private :: &
    damage_isoBrittle_aTol, &
+   damage_isoBrittle_N, &
    damage_isoBrittle_critStrainEnergy
 
  enum, bind(c) 
@@ -43,11 +44,11 @@ module damage_isoBrittle
    damage_isoBrittle_stateInit, &
    damage_isoBrittle_aTolState, &
    damage_isoBrittle_dotState, &
-   damage_isoBrittle_microstructure, &
    damage_isoBrittle_getDamage, &
    damage_isoBrittle_putLocalDamage, &
    damage_isoBrittle_getLocalDamage, &
    damage_isoBrittle_getDamageDiffusion33, &
+   damage_isoBrittle_getDamagedC66, &
    damage_isoBrittle_postResults
 
 contains
@@ -124,6 +125,7 @@ subroutine damage_isoBrittle_init(fileUnit)
           damage_isoBrittle_output = ''
  allocate(damage_isoBrittle_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_isoBrittle_Noutput(maxNinstance),                             source=0_pInt) 
+ allocate(damage_isoBrittle_N(maxNinstance),                                   source=0.0_pReal) 
  allocate(damage_isoBrittle_critStrainEnergy(maxNinstance),                    source=0.0_pReal) 
  allocate(damage_isoBrittle_aTol(maxNinstance),                                source=0.0_pReal) 
 
@@ -158,6 +160,9 @@ subroutine damage_isoBrittle_init(fileUnit)
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
           end select
 
+       case ('rate_sensitivity_damage')
+         damage_isoBrittle_N(instance) = IO_floatValue(line,positions,2_pInt)
+
        case ('critical_strain_energy')
          damage_isoBrittle_critStrainEnergy(instance) = IO_floatValue(line,positions,2_pInt)
 
@@ -187,7 +192,7 @@ subroutine damage_isoBrittle_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   1_pInt
+     sizeDotState              =   2_pInt
      sizeState                 =   2_pInt
                 
      damageState(phase)%sizeState = sizeState
@@ -231,8 +236,7 @@ subroutine damage_isoBrittle_stateInit(phase)
 
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
- tempState(1) = 1.0_pReal
- tempState(2) = 1.0_pReal
+ tempState = 1.0_pReal
  damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
  damageState(phase)%state0 = damageState(phase)%state
  damageState(phase)%partionedState0 = damageState(phase)%state
@@ -258,11 +262,17 @@ end subroutine damage_isoBrittle_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_isoBrittle_dotState(ipc, ip, el)
+subroutine damage_isoBrittle_dotState(C, Fe, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
+ use math, only : &
+   math_mul33x33, &
+   math_mul66x6, &
+   math_Mandel33to6, &
+   math_transpose33, &
+   math_I3
  use lattice, only: &
    lattice_DamageMobility
 
@@ -271,58 +281,39 @@ subroutine damage_isoBrittle_dotState(ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- integer(pInt) :: &
-   phase, constituent
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- 
- damageState(phase)%dotState(1,constituent) = &
-   (1.0_pReal/lattice_DamageMobility(phase))* &
-   (damageState(phase)%state(2,constituent) - &
-    damageState(phase)%state(1,constituent))
-  
-end subroutine damage_isoBrittle_dotState
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine damage_isoBrittle_microstructure(Tstar_v, Fe, ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
- use math, only: &
-   math_Mandel6to33, &
-   math_mul33x33, &
-   math_transpose33, &
-   math_I3
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in), dimension(3,3) :: &
    Fe
  integer(pInt) :: &
    phase, constituent, instance
  real(pReal) :: &
-   strain(3,3)
+   drivingForce, &
+   strain(6), &
+   stress(6), &
+   C(6,6)
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_damageInstance(phase)
 
- strain = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- damageState(phase)%state(2,constituent) = min(damageState(phase)%state0(2,constituent), &
-                                               damage_isoBrittle_critStrainEnergy(instance)/ &
-                                               sum(abs(math_Mandel6to33(Tstar_v)*strain)))
+ strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+ stress = math_mul66x6(C,strain) 
+ 
+ drivingForce = max(0.0_pReal, &
+                    2.0_pReal*damageState(phase)%state(2,constituent)* &
+                    sum(abs(stress*strain))/damage_isoBrittle_critStrainEnergy(instance) - &
+                    damage_isoBrittle_getDamage(ipc, ip, el) + &
+                    damageState(phase)%state(2,constituent))
+ 
+ damageState(phase)%dotState(1,constituent) = &
+   (damageState(phase)%state(2,constituent) - damageState(phase)%state(1,constituent))/ &
+   lattice_DamageMobility(phase)
 
-end subroutine damage_isoBrittle_microstructure
+ damageState(phase)%dotState(2,constituent) = &
+   (exp(-drivingForce**damage_isoBrittle_N(instance)) - 1.0_pReal)/ &
+   lattice_DamageMobility(phase)
 
+end subroutine damage_isoBrittle_dotState
+ 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage
 !--------------------------------------------------------------------------------------------------
@@ -417,10 +408,38 @@ function damage_isoBrittle_getDamageDiffusion33(ipc, ip, el)
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  damage_isoBrittle_getDamageDiffusion33 = &
-   damageState(phase)%state(2,constituent)* &
    lattice_DamageDiffusion33(1:3,1:3,phase)
     
 end function damage_isoBrittle_getDamageDiffusion33
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns brittle damaged stiffness tensor 
+!--------------------------------------------------------------------------------------------------
+function damage_isoBrittle_getDamagedC66(C, ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),  intent(in), dimension(6,6) :: &
+   C
+ real(pReal),              dimension(6,6) :: &
+   damage_isoBrittle_getDamagedC66
+ integer(pInt) :: &
+   phase, constituent
+ 
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ damage_isoBrittle_getDamagedC66 = &
+   damageState(phase)%state(2,constituent)* &
+   damageState(phase)%state(2,constituent)* &
+   C
+    
+end function damage_isoBrittle_getDamagedC66
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

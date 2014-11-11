@@ -348,7 +348,7 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
  real(pReal) :: &
    traction_d, traction_t, traction_n, traction_crit, &
    udotd, udott, udotn, &
-   nonlocalFactor, localDamage
+   drivingForce, nonlocalFactor, localDamage
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
@@ -368,8 +368,8 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      traction_crit = damage_anisoBrittle_critLoad(f,instance)* &
-                     damageState(phase)%state0(index_d,constituent)* &
-                     damageState(phase)%state0(index_d,constituent)
+                     damageState(phase)%state(index_d,constituent)* &
+                     damageState(phase)%state(index_d,constituent)
                     
      udotd = &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -384,11 +384,13 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
      damageState(phase)%dotState(index_o,constituent) = &
        (udotd + udott + udotn)/damage_anisoBrittle_critDisp(f,instance)
 
+     drivingForce = max(0.0_pReal, &
+                        2.0_pReal*damageState(phase)%state(index_d,constituent)*  &
+                        damageState(phase)%state(index_o,constituent) - &
+                        nonlocalFactor)
      damageState(phase)%dotState(index_d,constituent) = &
-      -damage_anisoBrittle_sdot_0(instance)* &
-       max(0.0_pReal,2.0_pReal*damageState(phase)%state(index_d,constituent)*  &
-                     damageState(phase)%state(index_o,constituent) - &
-                     nonlocalFactor)**damage_anisoBrittle_N(instance)
+       (exp(-drivingForce**damage_anisoBrittle_N(instance)) - 1.0_pReal)/ &
+       lattice_DamageMobility(phase)
 
      index_d = index_d + 1_pInt; index_o = index_o + 1_pInt
    enddo
@@ -450,8 +452,8 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      traction_crit = damage_anisoBrittle_critLoad(f,instance)* &
-                     damageState(phase)%state0(index,constituent)* &
-                     damageState(phase)%state0(index,constituent)
+                     damageState(phase)%state(index,constituent)* &
+                     damageState(phase)%state(index,constituent)
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -581,8 +583,8 @@ subroutine damage_anisoBrittle_putFd(Tstar_v, dt, ipc, ip, el)
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      traction_crit = damage_anisoBrittle_critLoad(f,instance)* &
-                     damageState(phase)%state0(index,constituent)* &
-                     damageState(phase)%state0(index,constituent)
+                     damageState(phase)%state(index,constituent)* &
+                     damageState(phase)%state(index,constituent)
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &

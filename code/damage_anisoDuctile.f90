@@ -33,7 +33,6 @@ module damage_anisoDuctile
    
  real(pReal),                         dimension(:),           allocatable,         private :: &
    damage_anisoDuctile_aTol_damage, &
-   damage_anisoDuctile_sdot_0, &
    damage_anisoDuctile_N
 
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
@@ -140,7 +139,6 @@ subroutine damage_anisoDuctile_init(fileUnit)
  allocate(damage_anisoDuctile_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
  allocate(damage_anisoDuctile_totalNslip(maxNinstance),                          source=0_pInt)
  allocate(damage_anisoDuctile_aTol_damage(maxNinstance),                         source=0.0_pReal) 
- allocate(damage_anisoDuctile_sdot_0(maxNinstance),                              source=0.0_pReal) 
  allocate(damage_anisoDuctile_N(maxNinstance),                                   source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -176,9 +174,6 @@ subroutine damage_anisoDuctile_init(fileUnit)
 
        case ('atol_damage')
          damage_anisoDuctile_aTol_damage(instance) = IO_floatValue(line,positions,2_pInt)
-         
-       case ('sdot_0')
-         damage_anisoDuctile_sdot_0(instance) = IO_floatValue(line,positions,2_pInt)
          
        case ('rate_sensitivity_damage')
          damage_anisoDuctile_N(instance) = IO_floatValue(line,positions,2_pInt)
@@ -315,6 +310,7 @@ subroutine damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
    index, f, i
  real(pReal) :: &
    localDamage, &
+   drivingForce, &
    nonlocalFactor
 
  phase = mappingConstitutive(2,ipc,ip,el)
@@ -329,12 +325,13 @@ subroutine damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
  index = 1_pInt
  do f = 1_pInt,lattice_maxNslipFamily
    do i = 1_pInt,damage_anisoDuctile_Nslip(f,instance)                                            ! process each (active) slip system in family
+     drivingForce = max(0.0_pReal, &
+                        2.0_pReal*damageState(phase)%state(index+1,constituent)* &
+                        accumulatedSlip(index)/damage_anisoDuctile_critAccShear(f,instance) - &
+                        nonlocalFactor)
      damageState(phase)%dotState(index+1,constituent) = &
-      -damage_anisoDuctile_sdot_0(instance)* &
-       max(0.0_pReal, &
-           2.0_pReal*damageState(phase)%state(index+1,constituent)* &
-           accumulatedSlip(index)/damage_anisoDuctile_critAccShear(f,instance) - &
-           nonlocalFactor)**damage_anisoDuctile_N(instance)
+       (exp(-drivingForce**damage_anisoDuctile_N(instance)) - 1.0_pReal)/ &
+       lattice_DamageMobility(phase)
      index = index + 1_pInt
    enddo
  enddo
