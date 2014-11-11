@@ -293,15 +293,15 @@ end subroutine thermal_adiabatic_dotState
 subroutine thermal_adiabatic_LTAndItsTangent(LT, dLT_dTstar, Tstar_v, Lp, ipc, ip, el)
  use lattice, only: &
    lattice_massDensity, &
-   lattice_specificHeat
+   lattice_specificHeat, &
+   lattice_thermalExpansion33
  use material, only: &
    mappingConstitutive, &
    phase_thermalInstance, &
    thermalState
  use math, only: &
    math_Plain3333to99, &
-   math_Mandel6to33, &
-   math_I3
+   math_Mandel6to33
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -332,10 +332,10 @@ subroutine thermal_adiabatic_LTAndItsTangent(LT, dLT_dTstar, Tstar_v, Lp, ipc, i
       * sum(abs(math_Mandel6to33(Tstar_v))*Lp) &
       / (lattice_massDensity(phase)*lattice_specificHeat(phase))
 
- LT = Tdot*math_I3
+ LT = Tdot*lattice_thermalExpansion33(1:3,1:3,phase)
  dLT_dTstar3333 = 0.0_pReal
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-   dLT_dTstar3333(i,j,k,l) = dLT_dTstar3333(i,j,k,l) + Lp(k,l)*math_I3(i,j)
+   dLT_dTstar3333(i,j,k,l) = dLT_dTstar3333(i,j,k,l) + Lp(k,l)*lattice_thermalExpansion33(i,j,phase)
      
  dLT_dTstar3333 = 0.95_pReal*dLT_dTstar3333/(lattice_massDensity(phase)*lattice_specificHeat(phase))
  dLT_dTstar = math_Plain3333to99(dLT_dTstar3333)
