@@ -374,7 +374,10 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
    criticalRadius, &                                                                                !< the critical pore radius
    Gibbs4Pore, &                                                                                    !< the Gibbs free energy for generating a critical pore
    equilibPoreConcentration, &                                                                      !< the equilibrium pore concentration
-   nucleationRatePore                                                                               !< the nucleation rate of pore
+   nucleationRatePore, &                                                                            !< the nucleation rate of pore
+   ratioCvCve                                                                                       !< the ratio of Cv with respect to Cve
+ real(pReal) :: &
+   threshold4ratioCvCve = 2.0_pReal                                                                 !< the threshold value for Cv/Cve
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
@@ -382,24 +385,30 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
  pressure = math_trace33(math_Mandel6to33(Tstar_v))
 
 !--------------------------------------------------------------------------------------------------
-!  Calculate nucleation rate of pore
- vacancyDiffusion = vacancy_generation_diffusionCoeff0(instance)* &
-                    exp( -vacancy_generation_diffusionEnergy(instance)/(kB*temperature) )
  vacancyConcentration = vacancy_generation_getConcentration(ipc, ip, el)
- chemicalPotential = kB*Temperature * log(vacancyConcentration/ &
-                     vacancy_generation_equilibConcentration(instance))
- criticalRadius = 2_pReal/chemicalPotential* &
-                  pore_nucleation_surfaceEnergy(instance) * pore_nucleation_atomVolume(instance)
- Gibbs4Pore = 4_pReal/3_pReal * pi * pore_nucleation_surfaceEnergy(instance)* &
-              criticalRadius * criticalRadius
- equilibPoreConcentration = pore_nucleation_concentrationCoeff0(instance)* &
-                            exp( -Gibbs4Pore/(kB*temperature) )
+ ratioCvCve = vacancyConcentration/vacancy_generation_equilibConcentration(instance)
 
- vacancyAbsorpRateCoeff = 2_pReal/pore_nucleation_shellThickness(instance) * &
-                          vacancyDiffusion * vacancyConcentration
- poleZeldovichCoeff = pore_nucleation_atomVolume(instance)* &
-                      sqrt( pore_nucleation_surfaceEnergy(instance)/(kB*temperature) )
- nucleationRatePore = poleZeldovichCoeff * vacancyAbsorpRateCoeff* equilibPoreConcentration                     
+ if(ratioCvCve < threshold4ratioCvCve) then
+   nucleationRatePore = 0.0_pReal
+ else
+!  Calculate nucleation rate of pore
+   vacancyDiffusion = vacancy_generation_diffusionCoeff0(instance)* &
+                      exp( -vacancy_generation_diffusionEnergy(instance)/(kB*temperature) )
+   chemicalPotential = kB*Temperature * log(vacancyConcentration/ &
+                       vacancy_generation_equilibConcentration(instance))
+   criticalRadius = 2_pReal/chemicalPotential* &
+                    pore_nucleation_surfaceEnergy(instance) * pore_nucleation_atomVolume(instance)
+   Gibbs4Pore = 4_pReal/3_pReal * pi * pore_nucleation_surfaceEnergy(instance)* &
+                criticalRadius * criticalRadius
+   equilibPoreConcentration = pore_nucleation_concentrationCoeff0(instance)* &
+                              exp( -Gibbs4Pore/(kB*temperature) )
+
+   vacancyAbsorpRateCoeff = 2_pReal/pore_nucleation_shellThickness(instance) * &
+                            vacancyDiffusion * vacancyConcentration
+   poleZeldovichCoeff = pore_nucleation_atomVolume(instance)* &
+                        sqrt( pore_nucleation_surfaceEnergy(instance)/(kB*temperature) )
+   nucleationRatePore = poleZeldovichCoeff * vacancyAbsorpRateCoeff* equilibPoreConcentration
+ endif
 
 !--------------------------------------------------------------------------------------------------
 !  the net generating rate vacancy                            
