@@ -796,15 +796,19 @@ end function constitutive_getFi
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_putFi(Tstar_v, dt, ipc, ip, el)
+subroutine constitutive_putFi(Tstar_v, Lp, dt, ipc, ip, el)
  use prec, only: &
    pReal 
  use material, only: &
    phase_damage, &
+   phase_thermal, &
    material_phase, &
-   LOCAL_DAMAGE_anisoBrittle_ID
+   LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_THERMAL_adiabatic_ID
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_putFd
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_putFT
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -813,6 +817,8 @@ subroutine constitutive_putFi(Tstar_v, dt, ipc, ip, el)
    el                                                                                               !< element number
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(in) :: &
    dt
  
@@ -820,6 +826,12 @@ subroutine constitutive_putFi(Tstar_v, dt, ipc, ip, el)
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      call damage_anisoBrittle_putFd (Tstar_v, dt, ipc, ip, el)
  
+ end select
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_adiabatic_ID)
+     call thermal_adiabatic_putFT (Tstar_v, Lp, dt, ipc, ip, el)
+
  end select
  
 end subroutine constitutive_putFi
@@ -1010,7 +1022,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
  use material, only: &
    phase_plasticity, &
    phase_damage, &
-   phase_thermal, &
    phase_vacancy, &
    material_phase, &
    homogenization_maxNgrains, &
@@ -1026,7 +1037,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_gurson_ID, &
-   LOCAL_THERMAL_adiabatic_ID, &
    LOCAL_VACANCY_generation_ID
  use constitutive_j2, only:  &
    constitutive_j2_dotState
@@ -1050,8 +1060,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    damage_anisoDuctile_dotState
  use damage_gurson, only: &
    damage_gurson_dotState
- use thermal_adiabatic, only: &
-   thermal_adiabatic_dotState
  use vacancy_generation, only: &
    vacancy_generation_dotState
 
@@ -1113,11 +1121,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
      call damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
- end select
-
- select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_adiabatic_ID)
-     call thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
  end select
 
  select case (phase_vacancy(material_phase(ipc,ip,el)))

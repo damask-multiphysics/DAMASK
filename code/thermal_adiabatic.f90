@@ -39,9 +39,9 @@ module thermal_adiabatic
    thermal_adiabatic_init, &
    thermal_adiabatic_stateInit, &
    thermal_adiabatic_aTolState, &
-   thermal_adiabatic_dotState, &
    thermal_adiabatic_LTAndItsTangent, &
    thermal_adiabatic_getFT, &
+   thermal_adiabatic_putFT, &
    thermal_adiabatic_getFT0, &
    thermal_adiabatic_getPartionedFT0, &
    thermal_adiabatic_getTemperature, &
@@ -183,7 +183,7 @@ subroutine thermal_adiabatic_init(fileUnit,temperature_init)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   1_pInt
+     sizeDotState              =   0_pInt
      sizeState                 =   1_pInt
      thermalState(phase)%sizeState = sizeState
      thermalState(phase)%sizeDotState = sizeDotState
@@ -251,43 +251,6 @@ subroutine thermal_adiabatic_aTolState(phase,instance)
 end subroutine thermal_adiabatic_aTolState
  
 !--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine thermal_adiabatic_dotState(Tstar_v, Lp, ipc, ip, el)
- use lattice, only: &
-   lattice_massDensity, &
-   lattice_specificHeat
- use material, only: &
-   mappingConstitutive, &
-   phase_thermalInstance, &
-   thermalState
- use math, only: &
-   math_Mandel6to33
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- real(pReal),  intent(in), dimension(3,3) :: &
-   Lp
- integer(pInt) :: &
-   instance, phase, constituent 
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_thermalInstance(phase)
- 
- thermalState(phase)%dotState(1,constituent) = &
-    0.95_pReal &
-  * sum(abs(math_Mandel6to33(Tstar_v)*Lp)) &
-  / (lattice_massDensity(phase)*lattice_specificHeat(phase))
-  
-end subroutine thermal_adiabatic_dotState
-
-!--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine thermal_adiabatic_LTAndItsTangent(LT, dLT_dTstar, Tstar_v, Lp, ipc, ip, el)
@@ -335,7 +298,7 @@ subroutine thermal_adiabatic_LTAndItsTangent(LT, dLT_dTstar, Tstar_v, Lp, ipc, i
  LT = Tdot*lattice_thermalExpansion33(1:3,1:3,phase)
  dLT_dTstar3333 = 0.0_pReal
  forall (i=1_pInt:3_pInt,j=1_pInt:3_pInt,k=1_pInt:3_pInt,l=1_pInt:3_pInt) &
-   dLT_dTstar3333(i,j,k,l) = dLT_dTstar3333(i,j,k,l) + Lp(k,l)*lattice_thermalExpansion33(i,j,phase)
+   dLT_dTstar3333(i,j,k,l) = Lp(k,l)*lattice_thermalExpansion33(i,j,phase)
      
  dLT_dTstar3333 = 0.95_pReal*dLT_dTstar3333/(lattice_massDensity(phase)*lattice_specificHeat(phase))
  dLT_dTstar = math_Plain3333to99(dLT_dTstar3333)
@@ -374,6 +337,47 @@ pure function thermal_adiabatic_getFT(ipc, ip, el)
                             (thermalState(phase)%state(1,constituent) - lattice_referenceTemperature(phase))
  
 end function thermal_adiabatic_getFT
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns local thermal deformation gradient
+!--------------------------------------------------------------------------------------------------
+subroutine thermal_adiabatic_putFT(Tstar_v, Lp, dt, ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   thermalState
+ use math, only: &
+   math_Mandel6to33
+ use lattice, only: &
+   lattice_massDensity, &
+   lattice_specificHeat, &
+   lattice_thermalExpansion33
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
+ real(pReal),   intent(in) :: &
+   dt
+ integer(pInt) :: &
+   phase, &
+   constituent
+ real(pReal) :: &
+   Tdot
+ 
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+
+ Tdot = 0.95_pReal &
+      * sum(abs(math_Mandel6to33(Tstar_v))*Lp) &
+      / (lattice_massDensity(phase)*lattice_specificHeat(phase))
+ thermalState(phase)%state(1,constituent) = thermalState(phase)%subState0(1,constituent) + Tdot*dt
+ 
+end subroutine thermal_adiabatic_putFT
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local thermal deformation gradient
