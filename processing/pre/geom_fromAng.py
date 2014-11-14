@@ -115,29 +115,28 @@ for file in files:
     texture = []
     microstructure = []
     otherPoint=-1                                                                                   # ensure to create first microstructure
-    matPoints = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')
+    matPoints = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')                                 # Index of microstructure in geom file
     for myPoint in xrange(info['grid'][0]*info['grid'][1]):
       myTexture=-1
       for otherPoint in xrange(len(microstructure)):
         otherEulers = eulerangles[texture[microstructure[otherPoint][0]]]
-        otherPhase  = phase[[microstructure[otherPoint][1]]]
-        if all(eulerangles[myPoint]==otherEulers) and phase[myPoint] == otherPhase:  # common microstructure
-           matPoints[myPoint] = otherPoint+1                                         # use other points microstructure
-           otherPoint =-4                                                            # in no case, create new microstructure
+        otherPhase  = phase[microstructure[otherPoint][1]]
+        if all(eulerangles[myPoint]==otherEulers) and phase[myPoint] == otherPhase:                 # common microstructure
+           matPoints[myPoint] = otherPoint+1                                                        # use other points microstructure
+           otherPoint =-2                                                                           # never create new microstructure
            break
-        elif all(eulerangles[myPoint]==otherEulers):                                 # found common texture and store it
+        elif all(eulerangles[myPoint]==otherEulers):                                                # found common texture and store it
            myTexture = microstructure[otherPoint][0]
-      if otherPoint == len(microstructure)-1 or otherPoint == -2:                    #
-        if myTexture == -1:
+      if otherPoint == len(microstructure)-1:                                                       # did not found matching microstructure
+        if myTexture == -1:                                                                         # did not even found matching texture
           texture.append(myPoint)
-          myTexture = len(texture)-1
-        microstructure.append([myTexture,myPoint])
-        matPoints[myPoint] = len(microstructure)    # use the new microstructure
-
+          myTexture = myPoint
+        microstructure.append([myTexture,phase[myPoint-1]])                                         # here, the counter is one more than in the line above!
+        matPoints[myPoint] = len(microstructure)                                                    # use the new microstructure
+    print texture,microstructure
   else:
     texture = [i for i in xrange(info['grid'][0]*info['grid'][1])]
-    microstructure = [[i+1,phase[i]] for i in xrange(info['grid'][0]*info['grid'][1])]
-    matPoints = np.arange(info['grid'][0]*info['grid'][1],dtype='i')
+    microstructure = [[i,phase[i]] for i in xrange(info['grid'][0]*info['grid'][1])]
     
   formatOut = 1+int(math.log10(len(texture)))
   textureOut =['\n\n<texture>']
@@ -151,7 +150,7 @@ for file in files:
   for i in xrange(len(microstructure)):
     microstructureOut += ['[Grain%s]\n'%str(i+1).zfill(formatOut) + \
                          'crystallite\t%i\n'%options.crystallite + \
-                         '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(phase[microstructure[i][1]],microstructure[i][0]+1)
+                         '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(microstructure[i][1],microstructure[i][0]+1)
                          ]
 
   info['microstructures'] = len(microstructure)
