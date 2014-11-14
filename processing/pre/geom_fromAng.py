@@ -20,37 +20,36 @@ Two phases can be discriminated based on threshold value in a given data column.
 """, version = scriptID)
 
 parser.add_option('--column',              dest='column', type='int', metavar = 'int', \
-                  help='data column to discriminate phase 1 from 2 [%default]')
+                  help='data column to discriminate between both phases [%default]')
 parser.add_option('-t','--threshold',      dest='threshold', type='float', metavar = 'float', \
-                  help='threshold value to discriminate phase 1 from 2 [%default]')
+                  help='threshold value for phase discrimination [%default]')
 parser.add_option('--homogenization',      dest='homogenization', type='int', metavar = 'int', \
-                  help='homogenization index to be used [%default]')
+                  help='homogenization index for <microstructure> configuration [%default]')
 parser.add_option('--phase',               dest='phase', type='int', nargs = 2, metavar = 'int int', \
-                  help='two phase indices to be used %default')
+                  help='phase indices for <microstructure> configuration %default')
 parser.add_option('--crystallite',         dest='crystallite', type='int', metavar = 'int', \
-                  help='crystallite index to be used [%default]')
+                  help='crystallite index for <microstructure> configuration [%default]')
 parser.add_option('-c', '--configuration', dest='config', action='store_true', \
                   help='output material configuration [%default]')
 parser.add_option('--compress',            dest='compress', action='store_true', \
-                  help='search for matching mircrostructure and texture and lump them [%default]')
+                  help='lump identical microstructure and texture information [%default]')
 parser.add_option('-a', '--axes',         dest='axes', nargs = 3, metavar = 'string string string', \
-                  help='axes assignement of eulerangles x,y,z = %default')
+                  help='Euler angle coordinate system for <texture> configuration x,y,z = %default')
     
                   
-parser.set_defaults(column = 11)
-parser.set_defaults(threshold = 0.5)
+parser.set_defaults(column         = 11)
+parser.set_defaults(threshold      = 0.5)
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = [1,2])
 parser.set_defaults(crystallite    = 1)
-parser.set_defaults(config = False)
-parser.set_defaults(compress= False)
+parser.set_defaults(config         = False)
+parser.set_defaults(compress       = False)
 parser.set_defaults(axes           = ['y','x','-z'])
 (options,filenames) = parser.parse_args()
 
 for i in options.axes:
   if i.lower() not in ['x','+x','-x','y','+y','-y','z','+z','-z']:
-    file['croak'].write('invalid axes %s %s %s' %(options.axes[0],options.axes[1],options.axes[2]))
-    sys.exit()
+    parser.error('invalid axes %s %s %s' %(options.axes[0],options.axes[1],options.axes[2]))
 
 #--- setup file handles ---------------------------------------------------------------------------
 files = []
@@ -72,60 +71,59 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
 
   info = {
           'grid':   np.ones (3,'i'),
           'size':   np.zeros(3,'d'),
           'origin': np.zeros(3,'d'),
           'microstructures': 0,
-          'homogenization':  options.homogenization
+          'homogenization':  options.homogenization,
          }
 
-  step           = [0,0]
-  point          = 0
+  step  = [0,0]
+  point = 0
   for line in file['input']:
     words = line.split()
     if words[0] == '#':                                                                             # process initial comments block
       if len(words) > 2:
         if words[2].lower() == 'hexgrid': 
           file['croak'].write('The file has HexGrid format. Please first convert to SquareGrid...\n')
-          sys.exit()
+          break
         if words[1] == 'XSTEP:':     step[0] = float(words[2])
         if words[1] == 'YSTEP:':     step[1] = float(words[2])
         if words[1] == 'NCOLS_ODD:':
           info['grid'][0] = int(words[2])
           eulerangles = np.zeros((info['grid'][0]*info['grid'][1],3),dtype='f')
-          phase = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')
-        if words[1] == 'NROWS:':         
+          phase       = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')
+        if words[1] == 'NROWS:':
           info['grid'][1] = int(words[2])
           eulerangles = np.zeros((info['grid'][0]*info['grid'][1],3),dtype='f')
-          phase = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')
+          phase       = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')
     else:                                                                                           # finished with comments block
-      phase[point] = options.phase[{True:0,False:1}[float(words[options.column-1])<options.threshold]]
-      eulerangles[point,...] = map(lambda x: float(x)*180.0/math.pi, words[:3])
+      phase[point] = options.phase[int(float(words[options.column-1]) > options.threshold)]
+      eulerangles[point,...] = map(math.degrees, words[:3])
       point += 1
  
   if info['grid'].prod() != point:
     file['croak'].write('Error: found %s microstructures. Header info in ang file might be wrong.\n'%point)
-    sys.exit()
+    continue
 
   if options.compress:
     texture = []
     microstructure = []
-    otherPoint=-1                                                                                   # ensure to create first microstructure
-    matPoints = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')                                 # Index of microstructure in geom file
-    for myPoint in xrange(info['grid'][0]*info['grid'][1]):
-      myTexture=-1
+    otherPoint = -1                                                                                 # ensure to create first microstructure
+    matPoints = np.zeros(info['grid'].prod(),dtype='i')                                             # index of microstructure in geom file
+    for myPoint in xrange(info['grid'].prod()):
+      myTexture = -1
       for otherPoint in xrange(len(microstructure)):
         otherEulers = eulerangles[texture[microstructure[otherPoint][0]]]
         otherPhase  = phase[microstructure[otherPoint][1]]
         if all(eulerangles[myPoint]==otherEulers) and phase[myPoint] == otherPhase:                 # common microstructure
            matPoints[myPoint] = otherPoint+1                                                        # use other points microstructure
-           otherPoint =-2                                                                           # never create new microstructure
+           otherPoint = -2                                                                          # never create new microstructure
            break
-        elif all(eulerangles[myPoint]==otherEulers):                                                # found common texture and store it
+        elif all(eulerangles[myPoint] == otherEulers):                                              # found common texture and store it
            myTexture = microstructure[otherPoint][0]
       if otherPoint == len(microstructure)-1:                                                       # did not found matching microstructure
         if myTexture == -1:                                                                         # did not even found matching texture
@@ -133,7 +131,7 @@ for file in files:
           myTexture = myPoint
         microstructure.append([myTexture,phase[myPoint-1]])                                         # here, the counter is one more than in the line above!
         matPoints[myPoint] = len(microstructure)                                                    # use the new microstructure
-    print texture,microstructure
+    file['croak'].write("%i %i\n"%(texture,microstructure))
   else:
     texture = [i for i in xrange(info['grid'][0]*info['grid'][1])]
     microstructure = [[i,phase[i]] for i in xrange(info['grid'][0]*info['grid'][1])]
@@ -150,7 +148,7 @@ for file in files:
   for i in xrange(len(microstructure)):
     microstructureOut += ['[Grain%s]\n'%str(i+1).zfill(formatOut) + \
                          'crystallite\t%i\n'%options.crystallite + \
-                         '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(microstructure[i][1],microstructure[i][0]+1)
+                         '(constituent)\tphase %i\ttexture %i\tfraction 1.0\n'%(microstructure[i][1],microstructure[i][0]+1)
                          ]
 
   info['microstructures'] = len(microstructure)
@@ -165,24 +163,24 @@ for file in files:
 
   if np.any(info['grid'] < 1):
     file['croak'].write('invalid grid a b c.\n')
-    sys.exit()
+    continue
   if np.any(info['size'] <= 0.0):
     file['croak'].write('invalid size x y z.\n')
-    sys.exit()
+    continue
 
 
 #--- write data -----------------------------------------------------------------------------------
   if options.config:
-    file['output'].write('\n'.join(microstructureOut) + \
-                         '\n'.join(textureOut))
+    file['output'].write('\n'.join(microstructureOut+ textureOut) + '\n')
   else:
-    header = [scriptID + ' ' + ' '.join(sys.argv[1:]) + '\n']
-    header.append("grid\ta %i\tb %i\tc %i\n"%(info['grid'][0],info['grid'][1],info['grid'][2],))
-    header.append("size\tx %f\ty %f\tz %f\n"%(info['size'][0],info['size'][1],info['size'][2],))
-    header.append("origin\tx %f\ty %f\tz %f\n"%(info['origin'][0],info['origin'][1],info['origin'][2],))
-    header.append("microstructures\t%i\n"%info['microstructures'])
-    header.append("homogenization\t%i\n"%info['homogenization'])
-    file['output'].write('%i\theader\n'%(len(header))+''.join(header))
+    header = [' '.join([scriptID] + sys.argv[1:]),
+              "grid\ta %i\tb %i\tc %i"%(info['grid'][0],info['grid'][1],info['grid'][2],),
+              "size\tx %f\ty %f\tz %f"%(info['size'][0],info['size'][1],info['size'][2],),
+              "origin\tx %f\ty %f\tz %f"%(info['origin'][0],info['origin'][1],info['origin'][2],),
+              "microstructures\t%i"%info['microstructures'],
+              "homogenization\t%i"%info['homogenization'],
+              ]
+    file['output'].write('\n'.join(['%i\theader'%(len(header))] + header) + '\n')
     if options.compress:
       matPoints = matPoints.reshape((info['grid'][1],info['grid'][0]))
       np.savetxt(file['output'],matPoints,fmt='%0'+str(1+int(math.log10(np.amax(matPoints))))+'d')
@@ -191,7 +189,6 @@ for file in files:
   
 #--- output finalization -------------------------------------------------------------------------- 
   if file['name'] != 'STDIN':
-    file['output'].close()  
-    os.rename(file['name']+'_tmp',os.path.splitext(file['name'])[0] + \
-                                  {True: '_material.config',
-                                   False:'.geom'}[options.config])
+    file['output'].close()
+    os.rename(file['name']+'_tmp',
+              os.path.splitext(file['name'])[0] + '_material.config' if options.config else '.geom')
