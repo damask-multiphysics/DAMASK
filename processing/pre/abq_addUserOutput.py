@@ -14,7 +14,7 @@ import sys,os,re,string
 from optparse import OptionParser
 import damask 
 
-scriptID = '$Id$'
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
 
 # -----------------------------

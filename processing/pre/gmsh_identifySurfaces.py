@@ -6,8 +6,8 @@ import damask
 import re
 from optparse import OptionParser
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 def all_same(items,a):
   return all(x == a for x in items)

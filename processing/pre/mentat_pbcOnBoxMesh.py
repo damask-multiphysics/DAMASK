@@ -4,8 +4,8 @@
 import sys,os,pwd,math,re,string,numpy, damask
 from optparse import OptionParser
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 sys.path.append(damask.solver.Marc().libraryPath('../../'))
 

@@ -4,8 +4,8 @@
 import string,os,sys
 from optparse import OptionParser, Option
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 #-------------------------------------------------------------------------------------------------
 class extendableOption(Option):

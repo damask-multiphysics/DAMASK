@@ -10,8 +10,8 @@ that are written during the first run of the model.
 import sys,os,re
 from optparse import OptionParser
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 # -----------------------------
 def ParseOutputFormat(filename,what,me):

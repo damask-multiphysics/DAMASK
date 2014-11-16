@@ -8,8 +8,8 @@ from scipy import ndimage
 from multiprocessing import Pool
 import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN

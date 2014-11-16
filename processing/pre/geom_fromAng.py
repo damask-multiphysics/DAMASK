@@ -6,8 +6,8 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -102,7 +102,7 @@ for file in files:
           phase       = np.zeros(info['grid'][0]*info['grid'][1],dtype='i')
     else:                                                                                           # finished with comments block
       phase[point] = options.phase[int(float(words[options.column-1]) > options.threshold)]
-      eulerangles[point,...] = map(math.degrees, words[:3])
+      eulerangles[point,...] = map(lambda x: math.degrees(float(x)), words[:3])
       point += 1
  
   if info['grid'].prod() != point:
@@ -190,5 +190,6 @@ for file in files:
 #--- output finalization -------------------------------------------------------------------------- 
   if file['name'] != 'STDIN':
     file['output'].close()
+    print os.path.splitext(file['name'])[0]
     os.rename(file['name']+'_tmp',
-              os.path.splitext(file['name'])[0] + '_material.config' if options.config else '.geom')
+              os.path.splitext(file['name'])[0] +'%s'%('_material.config' if options.config else '.geom'))

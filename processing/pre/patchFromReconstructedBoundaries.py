@@ -4,8 +4,8 @@
 import sys,os,math,re,string, damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 
 try:                                        # check for Python Image Lib

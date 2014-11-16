@@ -5,8 +5,8 @@ import os,sys,string,re,math,numpy
 import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = scriptID.split()[1][:-3]
 
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
