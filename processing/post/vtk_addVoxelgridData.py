@@ -6,8 +6,8 @@ import damask
 from collections import defaultdict
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
-scriptID = '$Id: vtk_addVoxelcloudData.py 3064 2014-04-03 01:00:00Z p.eisenlohr $'
-scriptName = scriptID.split()[1]
+scriptID = '$Id: vtk_addVoxelgridData.py 3064 2014-04-03 01:00:00Z p.eisenlohr $'
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
@@ -39,9 +39,12 @@ parser.add_option('-s', '--scalar',  dest='scalar', action='extend',
                   help = 'scalar values')
 parser.add_option('-c', '--color',   dest='color',  action='extend',
                   help = 'RGB color tuples')
+parser.add_option('-r', '--render',  dest='render', action='store_true',
+                  help = 'open output in VTK render window')
 
 parser.set_defaults(scalar = [])
 parser.set_defaults(color = [])
+parser.set_defaults(render = False)
 
 (options, filenames) = parser.parse_args()
 
@@ -64,7 +67,7 @@ elif os.path.splitext(options.vtk)[1] == '.vtk':
   reader = vtk.vtkGenericDataObjectReader()
   reader.SetFileName(options.vtk)
   reader.Update()
-  rGrid = reader.GetRectiliearGridOutput()
+  rGrid = reader.GetRectilinearGridOutput()
 else:
   parser.error('unsupported VTK file type extension')
 
@@ -160,3 +163,35 @@ if vtk.VTK_MAJOR_VERSION <= 5:
 else:
     writer.SetInputData(rGrid)
 writer.Write()
+
+# ------------------------------------------ render result ---------------------------------------  
+
+if options.render:
+  mapper = vtk.vtkDataSetMapper()
+  mapper.SetInputData(rGrid)
+  actor = vtk.vtkActor()
+  actor.SetMapper(mapper)
+
+  # Create the graphics structure. The renderer renders into the
+  # render window. The render window interactor captures mouse events
+  # and will perform appropriate camera or actor manipulation
+  # depending on the nature of the events.
+
+  ren = vtk.vtkRenderer()
+
+  renWin = vtk.vtkRenderWindow()
+  renWin.AddRenderer(ren)
+
+  ren.AddActor(actor)
+  ren.SetBackground(1, 1, 1)
+  renWin.SetSize(200, 200)
+
+  iren = vtk.vtkRenderWindowInteractor()
+  iren.SetRenderWindow(renWin)
+ 
+  #ren.ResetCamera()
+  #ren.GetActiveCamera().Zoom(1.5)
+ 
+  iren.Initialize()
+  renWin.Render()
+  iren.Start()
