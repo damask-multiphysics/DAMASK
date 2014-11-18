@@ -27,11 +27,13 @@ module constitutive_phenopowerlaw
 
  integer(pInt),                       dimension(:),     allocatable,         public, protected :: &
    constitutive_phenopowerlaw_totalNslip, &                                                         !< no. of slip system used in simulation
-   constitutive_phenopowerlaw_totalNtwin                                                            !< no. of twin system used in simulation
+   constitutive_phenopowerlaw_totalNtwin, &                                                         !< no. of twin system used in simulation
+   constitutive_phenopowerlaw_totalNtrans                                                           !< no. of trans system used in simulation
 
  integer(pInt),                       dimension(:,:),   allocatable,         private :: &
    constitutive_phenopowerlaw_Nslip, &                                                              !< active number of slip systems per family (input parameter, per family)
-   constitutive_phenopowerlaw_Ntwin                                                                 !< active number of twin systems per family (input parameter, per family)
+   constitutive_phenopowerlaw_Ntwin, &                                                              !< active number of twin systems per family (input parameter, per family)
+   constitutive_phenopowerlaw_Ntrans                                                                !< active number of trans systems per family (input parameter, per family)
 
  real(pReal),                         dimension(:),     allocatable,         private :: &
    constitutive_phenopowerlaw_gdot0_slip, &                                                         !< reference shear strain rate for slip (input parameter)
@@ -50,7 +52,8 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_a_slip, &
    constitutive_phenopowerlaw_aTolResistance, &
    constitutive_phenopowerlaw_aTolShear, &
-   constitutive_phenopowerlaw_aTolTwinfrac
+   constitutive_phenopowerlaw_aTolTwinfrac, &
+   constitutive_phenopowerlaw_aTolTransfrac
 
  real(pReal),                         dimension(:,:),   allocatable,          private :: &
    constitutive_phenopowerlaw_tau0_slip, &                                                          !< initial critical shear stress for slip (input parameter, per family)
@@ -149,7 +152,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    maxNinstance, &
    instance,phase,j,k, f,o, &
    Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
-   Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_nonSchmid, &
+   Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_TransFamilies, Nchunks_nonSchmid, &
    index_myFamily, index_otherFamily, &
    mySize=0_pInt,sizeState,sizeDotState
  character(len=65536) :: &
@@ -180,8 +183,10 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  allocate(constitutive_phenopowerlaw_Noutput(maxNinstance),                       source=0_pInt)
  allocate(constitutive_phenopowerlaw_Nslip(lattice_maxNslipFamily,maxNinstance),  source=0_pInt)
  allocate(constitutive_phenopowerlaw_Ntwin(lattice_maxNtwinFamily,maxNinstance),  source=0_pInt)
+ allocate(constitutive_phenopowerlaw_Ntrans(lattice_maxNtransFamily,maxNinstance),source=0_pInt)
  allocate(constitutive_phenopowerlaw_totalNslip(maxNinstance),                    source=0_pInt)
  allocate(constitutive_phenopowerlaw_totalNtwin(maxNinstance),                    source=0_pInt)
+ allocate(constitutive_phenopowerlaw_totalNtrans(maxNinstance),                   source=0_pInt)
  allocate(constitutive_phenopowerlaw_gdot0_slip(maxNinstance),                    source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_n_slip(maxNinstance),                        source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_tau0_slip(lattice_maxNslipFamily,maxNinstance),  &
@@ -213,6 +218,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  allocate(constitutive_phenopowerlaw_aTolResistance(maxNinstance),                source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_aTolShear(maxNinstance),                     source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_aTolTwinfrac(maxNinstance),                  source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_aTolTransfrac(maxNinstance),                 source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance), &
                                                                                   source=0.0_pReal)
 
@@ -232,8 +238,9 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      if (phase_plasticity(phase) == PLASTICITY_PHENOPOWERLAW_ID) then
-       Nchunks_SlipFamilies = count(lattice_NslipSystem(:,phase) > 0_pInt)
-       Nchunks_TwinFamilies = count(lattice_NtwinSystem(:,phase) > 0_pInt)
+       Nchunks_SlipFamilies  = count(lattice_NslipSystem(:,phase) > 0_pInt)
+       Nchunks_TwinFamilies  = count(lattice_NtwinSystem(:,phase) > 0_pInt)
+       Nchunks_TransFamilies = count(lattice_NtransSystem(:,phase) > 0_pInt)
        Nchunks_SlipSlip =     maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
        Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
@@ -341,6 +348,17 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
            constitutive_phenopowerlaw_tau0_twin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
+! parameters depending on number of transformation families
+       case ('ntrans')
+         if (positions(1) < Nchunks_TransFamilies + 1_pInt) &
+           call IO_warning(51_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         if (positions(1) > Nchunks_TransFamilies + 1_pInt) &
+           call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
+         Nchunks_TransFamilies = positions(1) - 1_pInt
+         do j = 1_pInt, Nchunks_TransFamilies
+             constitutive_phenopowerlaw_Ntrans(j,instance) = IO_intValue(line,positions,1_pInt+j)
+         enddo
+!--------------------------------------------------------------------------------------------------
 ! parameters depending on number of interactions
        case ('interaction_sliptwin')
          if (positions(1) < 1_pInt + Nchunks_SlipTwin) &
@@ -403,6 +421,8 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
          constitutive_phenopowerlaw_aTolShear(instance)      = IO_floatValue(line,positions,2_pInt)
        case ('atol_twinfrac')
          constitutive_phenopowerlaw_aTolTwinfrac(instance)   = IO_floatValue(line,positions,2_pInt)
+       case ('atol_transfrac')
+         constitutive_phenopowerlaw_aTolTransfrac(instance)  = IO_floatValue(line,positions,2_pInt)
        case ('interaction_slipslip')
          if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
@@ -425,8 +445,9 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
      constitutive_phenopowerlaw_Ntwin(1:lattice_maxNtwinFamily,instance) = &
        min(lattice_NtwinSystem(1:lattice_maxNtwinFamily,phase),&                                    ! limit active twin systems per family to min of available and requested
            constitutive_phenopowerlaw_Ntwin(:,instance))
-     constitutive_phenopowerlaw_totalNslip(instance) = sum(constitutive_phenopowerlaw_Nslip(:,instance))            ! how many slip systems altogether
-     constitutive_phenopowerlaw_totalNtwin(instance) = sum(constitutive_phenopowerlaw_Ntwin(:,instance))            ! how many twin systems altogether
+     constitutive_phenopowerlaw_totalNslip(instance)  = sum(constitutive_phenopowerlaw_Nslip(:,instance))           ! how many slip systems altogether
+     constitutive_phenopowerlaw_totalNtwin(instance)  = sum(constitutive_phenopowerlaw_Ntwin(:,instance))           ! how many twin systems altogether
+     constitutive_phenopowerlaw_totalNtrans(instance) = sum(constitutive_phenopowerlaw_Ntrans(:,instance))          ! how many trans systems altogether
 
      if (any(constitutive_phenopowerlaw_tau0_slip(:,instance) < 0.0_pReal .and. &
              constitutive_phenopowerlaw_Nslip(:,instance) > 0)) &
@@ -456,6 +477,8 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
        constitutive_phenopowerlaw_aTolShear(instance) = 1.0e-6_pReal                                         ! default absolute tolerance 1e-6
      if (constitutive_phenopowerlaw_aTolTwinfrac(instance) <= 0.0_pReal) &
        constitutive_phenopowerlaw_aTolTwinfrac(instance) = 1.0e-6_pReal                                      ! default absolute tolerance 1e-6
+     if (constitutive_phenopowerlaw_aTolTransfrac(instance) <= 0.0_pReal) &
+       constitutive_phenopowerlaw_aTolTransfrac(instance) = 1.0e-6_pReal                                     ! default absolute tolerance 1e-6
    endif myPhase
  enddo sanityChecks
 
