@@ -149,17 +149,21 @@ subroutine basicPETSc_init(temperature)
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call DMDACreate3d(PETSC_COMM_WORLD, &
-        DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &
-        DMDA_STENCIL_BOX,grid(1),grid(2),grid(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
-        9,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
+        DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &             ! cut off stencil at boundary
+        DMDA_STENCIL_BOX, &                                                       ! Moore (26) neighborhood around central point
+        grid(1),grid(2),grid(3), &                                                ! overall grid
+        PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &                                 ! domain decomposition strategy (or local (per core) grid)
+        9,1, &                                                                    ! #dof (F tensor), ghost boundary width (domain overlap)
+        PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &               ! todo
+        da,ierr)                                                                  ! handle, error
    CHKERRQ(ierr)
- call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr)
+ call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                   ! global solution vector (grid x 9, i.e. every def grad tensor)
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr) ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)
- call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)
+ call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                        ! connect snes to da
+ call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr) ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)
+ call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                ! pull it all together with additional cli arguments
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
@@ -193,8 +197,14 @@ subroutine basicPETSc_init(temperature)
  mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
                                               F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
  call Utilities_constitutiveResponse(F_lastInc, &
-    reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]),&
-    temperature,0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
+    reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]), &
+    temperature, &
+    0.0_pReal, &
+    P, &
+    C_volAvg,C_minMaxAvg, &                                                                         ! global average of stiffness and (min+max)/2
+    temp33_Real, &
+    .false., &
+    math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back to PETSc
 
  if (restartInc > 1_pInt) then                                                                      ! using old values from files                                                    
