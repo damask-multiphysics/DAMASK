@@ -6,8 +6,8 @@ import numpy as np
 from optparse import OptionParser
 import damask
 
-scriptID   = string.replace('$Id: geom_pack.py 3679 2014-11-05 22:01:11Z p.eisenlohr $','\n','\\n')
-scriptName = scriptID.split()[1][:-3]
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 oversampling = 2.
 
@@ -92,8 +92,7 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
 
   table = damask.ASCIItable(file['input'],file['output'],labels = False)
   table.head_read()

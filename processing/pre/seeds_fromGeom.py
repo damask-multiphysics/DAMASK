@@ -7,7 +7,7 @@ from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1][:-3]
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
@@ -67,8 +67,7 @@ else:
 
 #--- loop over input files ------------------------------------------------------------------------
 for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  file['croak'].write('\033[1m' + scriptName + '\033[0m: ' + (file['name'] if file['name'] != 'STDIN' else '') + '\n')
 
   table = damask.ASCIItable(file['input'],file['output'],labels = False,buffered = False)
   table.head_read()
