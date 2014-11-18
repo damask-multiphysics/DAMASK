@@ -129,7 +129,7 @@ for file in files:
 
 # --------------- figure out position of labels and coordinates ------------------------------------
   try:
-    locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
+    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
   except ValueError:
     file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
     continue
@@ -146,7 +146,7 @@ for file in files:
 
 # ------------------------------------------ process data ------------------------------------------
   
-  table.data_readArray([options.coords+'.x',options.coords+'.y',options.coords+'.z',options.id])
+  table.data_readArray(['1_'+options.coords,'2_'+options.coords,'3_'+options.coords,options.id])
 
   coords = [{},{},{}]
   for i in xrange(len(table.data)):
