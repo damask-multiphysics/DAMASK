@@ -86,10 +86,10 @@ for file in files:
   Polydata = vtk.vtkPolyData()
   Points = vtk.vtkPoints()
   Vertices = vtk.vtkCellArray()
-  pos = table.data_asArray(range(column['vector'][options.pos],\
-                                 column['vector'][options.pos]+datainfo['vector']['len']))
+  table.data_readArray(range(column['vector'][options.pos],\
+                             column['vector'][options.pos]+datainfo['vector']['len']))
 
-  for p in pos:
+  for p in table.data:
     id = Points.InsertNextPoint(p)
     Vertices.InsertNextCell(1)
     Vertices.InsertCellPoint(id)
