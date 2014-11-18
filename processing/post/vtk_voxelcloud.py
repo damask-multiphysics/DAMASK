@@ -6,7 +6,7 @@ import damask
 from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID = '$Id$'
-scriptName = scriptID.split()[1]
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 #--------------------------------------------------------------------------------------------------
 class extendedOption(Option):
@@ -27,6 +27,26 @@ class extendedOption(Option):
             Option.take_action(self, action, dest, opt, value, values, parser)
 
 
+#--------------------------------------------------------------------------------------------------
+#                                MAIN
+#--------------------------------------------------------------------------------------------------
+synonyms = {
+        'grid':   ['resolution'],
+        'size':   ['dimension'],
+          }
+identifiers = {
+        'grid':    ['a','b','c'],
+        'size':    ['x','y','z'],
+        'origin':  ['x','y','z'],
+          }
+mappings = {
+        'grid':            lambda x: int(x),
+        'size':            lambda x: float(x),
+        'origin':          lambda x: float(x),
+        'microstructures': lambda x: int(x),
+          }
+
+
 parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
 Create hexahedral voxels around points in an ASCIItable.
 """ + string.replace(scriptID,'\n','\\n')
@@ -36,12 +56,18 @@ parser.add_option('-p', '--positions',   dest='pos', type='string',
                   help = 'coordinate label')
 parser.add_option('-s', '--size',   dest='size', type='float', nargs=3,
                   help = 'x,y,z size of voxel')
+parser.add_option('-o', '--origin',   dest='origin', type='float', nargs=3,
+                  help = 'x,y,z origin of coordinate system')
+parser.add_option('-g', '--geom',   dest='geom', action='store_true',
+                  help = 'derive geometry from geom-file header information')
 
 parser.set_defaults(pos = 'pos')
+parser.set_defaults(origin = [0.0,0.0,0.0])
+parser.set_defaults(geom = False)
 
 (options, filenames) = parser.parse_args()
 
-if options.size == None:
+if options.size == None and not options.geom:
   parser.error('no size sprecified.')
 
 datainfo = {                                                               # list of requested labels per datatype
@@ -66,13 +92,55 @@ for file in files:
   table = damask.ASCIItable(file['input'],file['croak'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
 
+#--- interpret header ----------------------------------------------------------------------------
+  info = {
+          'grid':   numpy.zeros(3,'i'),
+          'size':   numpy.zeros(3,'d'),
+          'origin': numpy.zeros(3,'d'),
+          'homogenization':  0,
+          'microstructures': 0,
+         }
+
+  if options.geom:
+    for header in table.info:
+      headitems = map(str.lower,header.split())
+      if len(headitems) == 0: continue
+      for synonym,alternatives in synonyms.iteritems():
+        if headitems[0] in alternatives: headitems[0] = synonym
+      if headitems[0] in mappings.keys():
+        if headitems[0] in identifiers.keys():
+          for i in xrange(len(identifiers[headitems[0]])):
+            info[headitems[0]][i] = \
+              mappings[headitems[0]](headitems[headitems.index(identifiers[headitems[0]][i])+1])
+        else:
+          info[headitems[0]] = mappings[headitems[0]](headitems[1])
+
+    file['croak'].write('grid     a b c:  %s\n'%(' x '.join(map(str,info['grid']))) + \
+                        'size     x y z:  %s\n'%(' x '.join(map(str,info['size']))) + \
+                        'origin   x y z:  %s\n'%(' : '.join(map(str,info['origin']))) + \
+                        'homogenization:  %i\n'%info['homogenization'] + \
+                        'microstructures: %i\n'%info['microstructures'])
+
+    if numpy.any(info['grid'] < 1):
+      file['croak'].write('invalid grid a b c.\n')
+      continue
+    if numpy.any(info['size'] <= 0.0):
+      file['croak'].write('invalid size x y z.\n')
+      continue
+
+  else:
+    info['size'] = numpy.ones(3)
+    info['grid'] = info['size'] / options.size
+    info['origin'] = options.origin
+    
+
 # --------------- figure out columns to process
   active = {}
   column = {}
   head = []
 
-  for datatype,info in datainfo.items():
-    for label in info['label']:
+  for datatype,infos in datainfo.items():
+    for label in infos['label']:
       foundIt = False
       for key in ['1_'+label,label]:
         if key in table.labels:
@@ -104,7 +172,10 @@ for file in files:
   table.data_readArray(range(column['vector'][options.pos],\
                              column['vector'][options.pos]+datainfo['vector']['len']))
 
-  minD = numpy.array(options.size,dtype=float)
+  table.data[:,0:3] *= info['size']
+  table.data[:,0:3] += info['origin']
+
+#  minD = numpy.array(options.size,dtype=float)
 #   for i in xrange(3):
 #     coords = numpy.unique(table.data[:,i])
 #     minD[i] = coords[-1]-coords[0]
@@ -115,7 +186,7 @@ for file in files:
     
   for p in table.data:
     for i,h in enumerate(hexPoints):
-      id = Points.InsertNextPoint(p+h*minD/2.)
+      id = Points.InsertNextPoint(p+h*info['size']/info['grid']/2.)
       Hex.GetPointIds().SetId(i,id)
 
     uGrid.InsertNextCell(Hex.GetCellType(), Hex.GetPointIds())
