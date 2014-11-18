@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import sys,os,pwd,math,re,string,numpy, damask
+import sys,os,pwd,math,string
+import numpy as np
 from optparse import OptionParser
+import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
@@ -54,12 +56,12 @@ def servoLink():
 
   cmds = []
   base = ['x','y','z']
-  box = {'min': numpy.zeros(3,dtype='d'),
-         'max': numpy.zeros(3,dtype='d'),
-       'delta': numpy.zeros(3,dtype='d'),
+  box = {'min': np.zeros(3,dtype='d'),
+         'max': np.zeros(3,dtype='d'),
+       'delta': np.zeros(3,dtype='d'),
       }
   Nnodes = py_get_int("nnodes()")
-  NodeCoords = numpy.zeros((Nnodes,3),dtype='d')
+  NodeCoords = np.zeros((Nnodes,3),dtype='d')
   for node in xrange(Nnodes):
     NodeCoords[node,0] = py_get_float("node_x(%i)"%(node+1))
     NodeCoords[node,1] = py_get_float("node_y(%i)"%(node+1))
@@ -120,7 +122,7 @@ def servoLink():
     for dir in xrange(3):                         # check for each direction
       if node['faceMember'][dir]:                 # me on this front face
         linkCoord[0][dir] = box['min'][dir]       # project me onto rear face along dir
-        linkCoord.append(numpy.array(box['min'])) # append base corner
+        linkCoord.append(np.array(box['min'])) # append base corner
         
         linkCoord[-1][dir] = box['max'][dir]      # stretch it to corresponding control leg of "dir"
 
@@ -156,10 +158,10 @@ def servoLink():
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #-------------------------------------------------------------------------------------------------- 
-parser = OptionParser(usage='%prog [options]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage = '%prog [options]', description = """
 Set up servo linking to achieve periodic boundary conditions for a regular hexahedral mesh presently opened in MSC.Mentat
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option("-p", "--port", type="int",\
                                   dest="port",\

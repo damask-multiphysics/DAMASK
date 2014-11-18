@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,itertools
+import os,sys,string,math
 import numpy as np
 from optparse import OptionParser
 from scipy import ndimage
-from multiprocessing import Pool
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')

@@ -1,10 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
-import damask
-import re
+import os,sys,string,re
 from optparse import OptionParser
+import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]

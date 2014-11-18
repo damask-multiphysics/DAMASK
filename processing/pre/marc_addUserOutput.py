@@ -7,8 +7,9 @@ based on the files
 <modelname_jobname>.output<Homogenization/Crystallite/Constitutive>
 that are written during the first run of the model.
 '''
-import sys,os,re
+import sys,os,re,string
 from optparse import OptionParser
+import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
@@ -54,8 +55,7 @@ def ParseOutputFormat(filename,what,me):
           format['outputs'].append([output,length])
   return format
 
-
-parser = OptionParser(usage='%prog [options] Marc.inputfile(s)', description="""
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] Marc.inputfile(s)', description="""
 Transfer the output variables requested in the material.config to
 properly labelled user defined variables within the Marc input file (*.dat).
 
@@ -65,7 +65,10 @@ that are written during the first run of the model.
 
 Specify which user block format you want to apply by stating the homogenization, crystallite, and phase identifiers.
 Or have an existing set of user variables copied over from another *.dat file.
-""")
+
+""", version = scriptID)
+
+
 parser.add_option('-n','--number', dest='number', type='int', \
           help='maximum requested User Defined Variable [%default]')
 parser.add_option('--homogenization', dest='homog', \

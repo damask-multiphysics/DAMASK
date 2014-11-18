@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import sys,os,math,re,string, damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+import sys,os,math,re,string
+from optparse import OptionParser
+import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
@@ -21,26 +22,6 @@ try:                                        # check for MSC.Mentat Python interf
   MentatCapability = True
 except:
   MentatCapability = False
-
-
-# -----------------------------
-class extendedOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
 
 
 def outMentat(cmd,locals):
@@ -800,12 +781,11 @@ def fftbuild(rcData,height,xframe,yframe,resolution,extrusion):            # bui
 
 
 # ----------------------- MAIN -------------------------------
-  
-parser = OptionParser(option_class=extendedOption, usage='%prog [options] datafile[s]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] datafile[s]', description = """
 Produce image, spectral geometry description, and (auto) Mentat procedure from TSL/OIM
 reconstructed boundary file
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option("-o", "--output", action='extend', dest='output', \
         help="types of output [image, mentat, procedure, spectral]")

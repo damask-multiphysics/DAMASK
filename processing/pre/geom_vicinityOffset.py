@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math,numpy, damask
+import os,sys,string,math
+import numpy as np
 from scipy import ndimage
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
+import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
@@ -48,11 +50,11 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Offset microstructure index for points which see a microstructure different from themselves within a given (cubic) vicinity,
 i.e. within the region close to a grain/phase boundary.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-v', '--vicinity', dest='vicinity', type='int', metavar='int', \
                   help='voxel distance checked for presence of other microstructure [%default]')
