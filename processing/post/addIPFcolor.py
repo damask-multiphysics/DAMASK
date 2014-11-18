@@ -7,7 +7,7 @@ from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1][:-3]
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # --------------------------------------------------------------------
 #                                MAIN
@@ -98,12 +98,12 @@ for file in files:
 
   for datatype,info in datainfo.items():
     for label in info['label']:
-      key = '1_'+label
-      if key not in table.labels:
-        file['croak'].write('column %s not found...\n'%key)
+      key = list(set([label, '1_'+label]) & set(table.labels))
+      if key == []:
+        file['croak'].write('column %s not found...\n'%label)
         missingColumns = True                                                                       # break if label not found
       else:
-        column[label] = table.labels.index(key)                                                     # remember columns of requested data
+        column[label] = table.labels.index(key[0])                                                  # remember columns of requested data
 
   if missingColumns:
     continue
