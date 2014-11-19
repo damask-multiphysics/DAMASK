@@ -149,28 +149,28 @@ subroutine basicPETSc_init(temperature)
 ! initialize solver specific parts of PETSc
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
  call DMDACreate3d(PETSC_COMM_WORLD, &
-        DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, DMDA_BOUNDARY_NONE, &             ! cut off stencil at boundary
-        DMDA_STENCIL_BOX, &                                                       ! Moore (26) neighborhood around central point
-        grid(1),grid(2),grid(3), &                                                ! overall grid
-        PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &                                 ! domain decomposition strategy (or local (per core) grid)
-        9,1, &                                                                    ! #dof (F tensor), ghost boundary width (domain overlap)
-        PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &               ! todo
-        da,ierr)                                                                  ! handle, error
+        DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
+        DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
+        grid(1),grid(2),grid(3), &                                                                  ! overall grid
+        PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &                                                   ! domain decomposition strategy (or local (per core) grid)
+        9,1, &                                                                                      ! #dof (F tensor), ghost boundary width (domain overlap)
+        PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER, &                                 ! todo
+        da,ierr)                                                                                    ! handle, error
    CHKERRQ(ierr)
- call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                   ! global solution vector (grid x 9, i.e. every def grad tensor)
- call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr) ! residual vector of same shape as solution vector
+ call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)                                     ! global solution vector (grid x 9, i.e. every def grad tensor)
+ call DMDASNESSetFunctionLocal(da,INSERT_VALUES,BasicPETSC_formResidual,dummy,ierr)                 ! residual vector of same shape as solution vector
  CHKERRQ(ierr) 
- call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                        ! connect snes to da
- call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr) ! specify custom convergence check function "_converged"
+ call SNESSetDM(snes,da,ierr); CHKERRQ(ierr)                                                        ! connect snes to da
+ call SNESSetConvergenceTest(snes,BasicPETSC_converged,dummy,PETSC_NULL_FUNCTION,ierr)              ! specify custom convergence check function "_converged"
  CHKERRQ(ierr)
- call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                ! pull it all together with additional cli arguments
+ call SNESSetFromOptions(snes,ierr); CHKERRQ(ierr)                                                  ! pull it all together with additional cli arguments
 
 !--------------------------------------------------------------------------------------------------
 ! init fields                 
  call DMDAVecGetArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                     ! get the data out of PETSc to work with
 
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                         ! initialize to identity
+   F_lastInc = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                        ! initialize to identity
    F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
    F_lastInc2 = F_lastInc
  elseif (restartInc > 1_pInt) then                                                                  ! using old values from file                                                      
