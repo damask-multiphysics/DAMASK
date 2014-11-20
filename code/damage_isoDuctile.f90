@@ -171,6 +171,20 @@ subroutine damage_isoDuctile_init(fileUnit)
      end select
    endif; endif
  enddo parsingFile
+
+ sanityChecks: do phase = 1_pInt, size(phase_damage)   
+   myPhase: if (phase_damage(phase) == LOCAL_damage_isoDuctile_ID) then
+     NofMyPhase=count(material_phase==phase)
+     instance = phase_damageInstance(phase)
+!  sanity checks
+     if (damage_isoDuctile_aTol(instance) >= 1.0e-3_pReal) &
+       damage_isoDuctile_aTol(instance) = 1.0e-3_pReal                                              ! default absolute tolerance 1e-3
+     if (damage_isoDuctile_critpStrain(instance) <= 0.0_pReal) &
+       call IO_error(211_pInt,el=instance,ext_msg='critical_plastic_strain ('//LOCAL_DAMAGE_isoDuctile_LABEL//')')
+     if (damage_isoDuctile_N(instance) <= 0.0_pReal) &
+       call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity_damage ('//LOCAL_DAMAGE_isoDuctile_LABEL//')')
+   endif myPhase
+ enddo sanityChecks
  
  initializeInstances: do phase = 1_pInt, size(phase_damage)
    if (phase_damage(phase) == LOCAL_damage_isoDuctile_ID) then

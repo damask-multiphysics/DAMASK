@@ -172,12 +172,26 @@ subroutine damage_isoBrittle_init(fileUnit)
      end select
    endif; endif
  enddo parsingFile
- 
+
+
+ sanityChecks: do phase = 1_pInt, size(phase_damage)   
+   myPhase: if (phase_damage(phase) == LOCAL_damage_isoBrittle_ID) then
+     NofMyPhase=count(material_phase==phase)
+     instance = phase_damageInstance(phase)
+!  sanity checks
+     if (damage_isoBrittle_aTol(instance) >= 1.0e-3_pReal) &
+       damage_isoBrittle_aTol(instance) = 1.0e-3_pReal                                              ! default absolute tolerance 1e-3
+     if (damage_isoBrittle_critStrainEnergy(instance) <= 0.0_pReal) &
+       call IO_error(211_pInt,el=instance,ext_msg='critical_strain_energy ('//LOCAL_DAMAGE_isoBrittle_LABEL//')')
+     if (damage_isoBrittle_N(instance) <= 0.0_pReal) &
+       call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity_damage ('//LOCAL_DAMAGE_isoBrittle_LABEL//')')
+   endif myPhase
+ enddo sanityChecks
+
  initializeInstances: do phase = 1_pInt, size(phase_damage)
    if (phase_damage(phase) == LOCAL_damage_isoBrittle_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_damageInstance(phase)
-
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
      outputsLoop: do o = 1_pInt,damage_isoBrittle_Noutput(instance)

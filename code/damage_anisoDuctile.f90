@@ -101,7 +101,8 @@ subroutine damage_anisoDuctile_init(fileUnit)
    worldrank, &
    numerics_integrator
  use lattice, only: &
-   lattice_maxNslipFamily
+   lattice_maxNslipFamily, &
+   lattice_NslipSystem
 
  implicit none
  integer(pInt), intent(in) :: fileUnit
@@ -183,7 +184,6 @@ subroutine damage_anisoDuctile_init(fileUnit)
          do j = 1_pInt, Nchunks_SlipFamilies
            damage_anisoDuctile_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
-         damage_anisoDuctile_totalNslip(instance) = sum(damage_anisoDuctile_Nslip(:,instance))
 
        case ('critical_accshear')
          do j = 1_pInt, Nchunks_SlipFamilies
@@ -193,7 +193,26 @@ subroutine damage_anisoDuctile_init(fileUnit)
      end select
    endif; endif
  enddo parsingFile
- 
+
+ sanityChecks: do phase = 1_pInt, size(phase_damage)   
+   myPhase: if (phase_damage(phase) == LOCAL_damage_anisoDuctile_ID) then
+     NofMyPhase=count(material_phase==phase)
+     instance = phase_damageInstance(phase)
+!  sanity checks
+     damage_anisoDuctile_Nslip(1:lattice_maxNslipFamily,instance) = &
+       min(lattice_NslipSystem(1:lattice_maxNslipFamily,phase),&                                    ! limit active cleavage systems per family to min of available and requested
+           damage_anisoDuctile_Nslip(1:lattice_maxNslipFamily,instance))
+         damage_anisoDuctile_totalNslip(instance) = sum(damage_anisoDuctile_Nslip(:,instance))
+     if (damage_anisoDuctile_aTol_damage(instance) >= 1.0e-3_pReal) &
+       damage_anisoDuctile_aTol_damage(instance) = 1.0e-3_pReal                                     ! default absolute tolerance 1e-3
+     if (any(damage_anisoDuctile_critAccShear(:,instance) <= 0.0_pReal)) &
+       call IO_error(211_pInt,el=instance,ext_msg='critical_accshear ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
+     if (damage_anisoDuctile_N(instance) <= 0.0_pReal) &
+       call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity_damage ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
+   endif myPhase
+ enddo sanityChecks
+  
+
  initializeInstances: do phase = 1_pInt, size(phase_damage)
    if (phase_damage(phase) == LOCAL_damage_anisoDuctile_ID) then
      NofMyPhase=count(material_phase==phase)
