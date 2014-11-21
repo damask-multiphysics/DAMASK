@@ -53,7 +53,11 @@ module constitutive_phenopowerlaw
    constitutive_phenopowerlaw_aTolResistance, &
    constitutive_phenopowerlaw_aTolShear, &
    constitutive_phenopowerlaw_aTolTwinfrac, &
-   constitutive_phenopowerlaw_aTolTransfrac
+   constitutive_phenopowerlaw_aTolTransfrac, &
+   constitutive_phenopowerlaw_Cnuc, &                                                               !< coefficient for strain-induced martensite nucleation  
+   constitutive_phenopowerlaw_Cdwp, &                                                               !< coefficient for double well potential 
+   constitutive_phenopowerlaw_Cgro, &                                                               !< coefficient for stress-assisted martensite growth  
+   constitutive_phenopowerlaw_deltaG                                                                !< free energy difference between austensite and martensite [MPa]
 
  real(pReal),                         dimension(:,:),   allocatable,          private :: &
    constitutive_phenopowerlaw_tau0_slip, &                                                          !< initial critical shear stress for slip (input parameter, per family)
@@ -83,7 +87,7 @@ module constitutive_phenopowerlaw
                  accumulatedshear_twin_ID, &
                  shearrate_twin_ID, &
                  resolvedstress_twin_ID, &
-                 totalvolfrac_ID
+                 totalvolfrac_twin_ID
  end enum
  integer(kind(undefined_ID)),         dimension(:,:),   allocatable,          private :: & 
    constitutive_phenopowerlaw_outputID                                                              !< ID of each post result output
@@ -221,6 +225,10 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  allocate(constitutive_phenopowerlaw_aTolTransfrac(maxNinstance),                 source=0.0_pReal)
  allocate(constitutive_phenopowerlaw_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance), &
                                                                                   source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_Cnuc(maxNinstance),                          source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_Cdwp(maxNinstance),                          source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_Cgro(maxNinstance),                          source=0.0_pReal)
+ allocate(constitutive_phenopowerlaw_deltaG(maxNinstance),                        source=0.0_pReal)
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -303,9 +311,9 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
              constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = resolvedstress_twin_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('totalvolfrac')
+           case ('totalvolfrac_twin')
              constitutive_phenopowerlaw_Noutput(instance) = constitutive_phenopowerlaw_Noutput(instance) + 1_pInt
-             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalvolfrac_ID
+             constitutive_phenopowerlaw_outputID(constitutive_phenopowerlaw_Noutput(instance),instance) = totalvolfrac_twin_ID
              constitutive_phenopowerlaw_output(constitutive_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
            case default
@@ -423,6 +431,14 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
          constitutive_phenopowerlaw_aTolTwinfrac(instance)   = IO_floatValue(line,positions,2_pInt)
        case ('atol_transfrac')
          constitutive_phenopowerlaw_aTolTransfrac(instance)  = IO_floatValue(line,positions,2_pInt)
+       case ('cnuc')
+         constitutive_phenopowerlaw_Cnuc(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cdwp')
+         constitutive_phenopowerlaw_Cdwp(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cgro')
+         constitutive_phenopowerlaw_Cgro(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('deltag')
+         constitutive_phenopowerlaw_deltaG(instance) = IO_floatValue(line,positions,2_pInt)
        case ('interaction_slipslip')
          if (positions(1) < 1_pInt + Nchunks_SlipSlip) &
            call IO_warning(52_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
@@ -519,7 +535,7 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
               )
            mySize = constitutive_phenopowerlaw_totalNtwin(instance)
          case(totalshear_ID, &
-              totalvolfrac_ID &
+              totalvolfrac_twin_ID &
               )
            mySize = 1_pInt
          case default
@@ -753,14 +769,15 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,sl
  dLp_dTstar3333 = 0.0_pReal
  dLp_dTstar99 = 0.0_pReal
 
+!--------------------------------------------------------------------------------------------------
+! Slip part
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph))                                          ! at which index starts my family
    slipSystems: do i = 1_pInt,constitutive_phenopowerlaw_Nslip(f,instance)
      j = j+1_pInt
      
-!--------------------------------------------------------------------------------------------------
-! Calculation of Lp
+     ! Calculation of Lp
      tau_slip_pos  = dot_product(Tstar_v,lattice_Sslip_v(1:6,1,index_myFamily+i,ph))
      tau_slip_neg  = tau_slip_pos
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
@@ -786,9 +803,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,sl
      Lp = Lp + (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                  ! 1-F
                (gdot_slip_pos+gdot_slip_neg)*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
 
-
-!--------------------------------------------------------------------------------------------------
-! Calculation of the tangent of Lp
+     ! Calculation of the tangent of Lp
      if (gdot_slip_pos /= 0.0_pReal) then
        dgdot_dtauslip_pos = gdot_slip_pos*constitutive_phenopowerlaw_n_slip(instance)/tau_slip_pos
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -807,14 +822,15 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,sl
    enddo slipSystems
  enddo slipFamilies
 
+!--------------------------------------------------------------------------------------------------
+! Twinning part
  j = 0_pInt
  twinFamilies: do f = 1_pInt,lattice_maxNtwinFamily
    index_myFamily = sum(lattice_NtwinSystem(1:f-1_pInt,ph))                                      ! at which index starts my family
    twinSystems: do i = 1_pInt,constitutive_phenopowerlaw_Ntwin(f,instance)
      j = j+1_pInt
 
-!--------------------------------------------------------------------------------------------------
-! Calculation of Lp
+     ! Calculation of Lp
      tau_twin  = dot_product(Tstar_v,lattice_Stwin_v(1:6,index_myFamily+i,ph)) 
      gdot_twin = (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                                  ! 1-F
                     constitutive_phenopowerlaw_gdot0_twin(instance)*&
@@ -822,8 +838,7 @@ subroutine constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,sl
                     constitutive_phenopowerlaw_n_twin(instance)*max(0.0_pReal,sign(1.0_pReal,tau_twin))               
      Lp = Lp + gdot_twin*lattice_Stwin(1:3,1:3,index_myFamily+i,ph)
 
-!--------------------------------------------------------------------------------------------------
-! Calculation of the tangent of Lp
+     ! Calculation of the tangent of Lp
      if (gdot_twin /= 0.0_pReal) then
        dgdot_dtautwin = gdot_twin*constitutive_phenopowerlaw_n_twin(instance)/tau_twin
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -1238,7 +1253,7 @@ function constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
        enddo twinFamilies2
        c = c + nTwin
 
-     case (totalvolfrac_ID)
+     case (totalvolfrac_twin_ID)
        constitutive_phenopowerlaw_postResults(c+1_pInt) = plasticState(ph)%state(index_F,of)
        c = c + 1_pInt
 
