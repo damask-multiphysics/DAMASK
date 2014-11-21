@@ -205,7 +205,7 @@ subroutine damage_anisoDuctile_init(fileUnit)
          damage_anisoDuctile_totalNslip(instance) = sum(damage_anisoDuctile_Nslip(:,instance))
      if (damage_anisoDuctile_aTol_damage(instance) >= 1.0e-3_pReal) &
        damage_anisoDuctile_aTol_damage(instance) = 1.0e-3_pReal                                     ! default absolute tolerance 1e-3
-     if (any(damage_anisoDuctile_critAccShear(:,instance) <= 0.0_pReal)) &
+     if (any(damage_anisoDuctile_critAccShear(:,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_accshear ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
      if (damage_anisoDuctile_N(instance) <= 0.0_pReal) &
        call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity_damage ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
