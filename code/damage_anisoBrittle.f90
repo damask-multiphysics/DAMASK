@@ -224,7 +224,7 @@ subroutine damage_anisoBrittle_init(fileUnit)
        min(lattice_NcleavageSystem(1:lattice_maxNcleavageFamily,phase),&                            ! limit active cleavage systems per family to min of available and requested
            damage_anisoBrittle_Ncleavage(1:lattice_maxNcleavageFamily,instance))
      damage_anisoBrittle_totalNcleavage(instance)  = sum(damage_anisoBrittle_Ncleavage(:,instance)) ! how many cleavage systems altogether
-     if (damage_anisoBrittle_aTol_damage(instance) >= 1.0e-3_pReal) &
+     if (damage_anisoBrittle_aTol_damage(instance) < 0.0_pReal) &
        damage_anisoBrittle_aTol_damage(instance) = 1.0e-3_pReal                                     ! default absolute tolerance 1e-3
      if (damage_anisoBrittle_aTol_disp(instance) >= 1.0e-3_pReal) &
        damage_anisoBrittle_aTol_disp(instance) = 1.0e-3_pReal                                       ! default absolute tolerance 1e-3

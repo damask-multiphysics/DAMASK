@@ -179,7 +179,7 @@ subroutine damage_isoBrittle_init(fileUnit)
      NofMyPhase=count(material_phase==phase)
      instance = phase_damageInstance(phase)
 !  sanity checks
-     if (damage_isoBrittle_aTol(instance) >= 1.0e-3_pReal) &
+     if (damage_isoBrittle_aTol(instance) < 0.0_pReal) &
        damage_isoBrittle_aTol(instance) = 1.0e-3_pReal                                              ! default absolute tolerance 1e-3
      if (damage_isoBrittle_critStrainEnergy(instance) <= 0.0_pReal) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_strain_energy ('//LOCAL_DAMAGE_isoBrittle_LABEL//')')

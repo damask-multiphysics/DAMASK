@@ -203,7 +203,7 @@ subroutine damage_anisoDuctile_init(fileUnit)
        min(lattice_NslipSystem(1:lattice_maxNslipFamily,phase),&                                    ! limit active cleavage systems per family to min of available and requested
            damage_anisoDuctile_Nslip(1:lattice_maxNslipFamily,instance))
          damage_anisoDuctile_totalNslip(instance) = sum(damage_anisoDuctile_Nslip(:,instance))
-     if (damage_anisoDuctile_aTol_damage(instance) >= 1.0e-3_pReal) &
+     if (damage_anisoDuctile_aTol_damage(instance) < 0.0_pReal) &
        damage_anisoDuctile_aTol_damage(instance) = 1.0e-3_pReal                                     ! default absolute tolerance 1e-3
      if (any(damage_anisoDuctile_critAccShear(:,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_accshear ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
