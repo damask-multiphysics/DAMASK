@@ -65,7 +65,7 @@ module numerics
    volDiscrPow_RGC            =  5.0_pReal, &                                                       !< powerlaw penalty for volume discrepancy
    charLength                 =  1.0_pReal                                                          !< characteristic length scale for gradient problems
  logical, protected, public :: &                                                   
-#ifdef Spectral
+#if defined(Spectral) || defined(FEM)
    analyticJaco               = .true.,  &                                                          !< use analytic Jacobian or perturbation, Default for Spectral solver .true.:
 #else
    analyticJaco               = .false., &                                                          !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
@@ -112,7 +112,7 @@ module numerics
 #ifdef FEM
  real(pReal), protected, public :: &
    err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
-   err_struct_tolRel          =  5.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
+   err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_thermal_tol            =  1.0_pReal, &
    err_damage_tol             =  1.0e-4_pReal, &
    residualStiffness          =  1.0e-6_pReal                                                      !< non-zero residual damage   
@@ -159,7 +159,7 @@ module numerics
                                 &-vacancy_mg_levels_pc_type sor '
  integer(pInt), protected, public :: &
    itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
-   itminFEM                   =  2_pInt, &                                                          !< minimum number of iterations
+   itminFEM                   =  1_pInt, &                                                          !< minimum number of iterations
    maxCutBackFEM              =  3_pInt, &                                                          !< max number of cut backs
    integrationOrder           =  2_pInt, &
    structOrder                =  2_pInt, &
