@@ -47,6 +47,7 @@ module constitutive
    constitutive_putLocalVacancyConcentration, &
    constitutive_getVacancyConcentration, &
    constitutive_getVacancyDiffusion33, &
+   constitutive_getVacancyMobility33, &
    constitutive_postResults
  
  private :: &
@@ -131,6 +132,7 @@ subroutine constitutive_init(temperature_init)
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_phaseField_ID, &
    LOCAL_THERMAL_isothermal_ID, &
    LOCAL_THERMAL_adiabatic_ID, &
    LOCAL_VACANCY_constant_ID, &
@@ -141,6 +143,7 @@ subroutine constitutive_init(temperature_init)
    LOCAL_DAMAGE_anisoBrittle_LABEL, &
    LOCAL_DAMAGE_anisoDuctile_LABEL, &
    LOCAL_DAMAGE_gurson_LABEL, &
+   LOCAL_DAMAGE_phaseField_label, &
    LOCAL_THERMAL_isothermal_label, &
    LOCAL_THERMAL_adiabatic_label, &
    LOCAL_VACANCY_constant_label, &
@@ -165,6 +168,7 @@ subroutine constitutive_init(temperature_init)
  use damage_anisoDuctile
  use damage_anisoBrittle
  use damage_gurson
+ use damage_phaseField
  use thermal_isothermal
  use thermal_adiabatic
  use vacancy_constant
@@ -211,6 +215,7 @@ subroutine constitutive_init(temperature_init)
  if (any(phase_damage == LOCAL_DAMAGE_anisoBrittle_ID))     call damage_anisoBrittle_init(FILEUNIT)
  if (any(phase_damage == LOCAL_DAMAGE_anisoductile_ID))     call damage_anisoDuctile_init(FILEUNIT)
  if (any(phase_damage == LOCAL_DAMAGE_gurson_ID))           call damage_gurson_init(FILEUNIT)
+ if (any(phase_damage == LOCAL_DAMAGE_phaseField_ID))       call damage_phaseField_init(FILEUNIT)
  close(FILEUNIT)
  
 !--------------------------------------------------------------------------------------------------
@@ -324,6 +329,11 @@ subroutine constitutive_init(temperature_init)
        thisNoutput => damage_gurson_Noutput
        thisOutput => damage_gurson_output
        thisSize   => damage_gurson_sizePostResult
+     case (LOCAL_DAMAGE_phaseField_ID)
+       outputName = LOCAL_DAMAGE_phaseField_label
+       thisNoutput => damage_phaseField_Noutput
+       thisOutput => damage_phaseField_output
+       thisSize   => damage_phaseField_sizePostResult
      case default
        knownDamage = .false.
    end select   
@@ -509,9 +519,12 @@ function constitutive_damagedC(ipc,ip,el)
  use material, only: &
    material_phase, &
    LOCAL_DAMAGE_isoBrittle_ID, &
+   LOCAL_DAMAGE_phaseField_ID, &   
    phase_damage
  use damage_isoBrittle, only: &
    damage_isoBrittle_getDamagedC66  
+ use damage_phaseField, only: &
+   damage_phaseField_getDamagedC66  
 
  implicit none
  real(pReal), dimension(6,6) :: constitutive_damagedC
@@ -523,6 +536,9 @@ function constitutive_damagedC(ipc,ip,el)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_isoBrittle_ID)
      constitutive_damagedC = damage_isoBrittle_getDamagedC66(constitutive_homogenizedC(ipc,ip,el), &
+                                                             ipc,ip,el)
+   case (LOCAL_DAMAGE_phaseField_ID)
+     constitutive_damagedC = damage_phaseField_getDamagedC66(constitutive_homogenizedC(ipc,ip,el), &
                                                              ipc,ip,el)
    case default
      constitutive_damagedC = constitutive_homogenizedC(ipc,ip,el)
@@ -547,7 +563,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    PLASTICITY_nonlocal_ID, &
    LOCAL_DAMAGE_isoBrittle_ID, &
    LOCAL_DAMAGE_isoDuctile_ID, &
-   LOCAL_DAMAGE_gurson_ID
+   LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_phaseField_ID
 
  use constitutive_titanmod, only: &
    constitutive_titanmod_microstructure
@@ -559,6 +576,10 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    constitutive_dislokmc_microstructure
  use damage_gurson, only: &
    damage_gurson_microstructure
+ use damage_gurson, only: &
+   damage_gurson_microstructure
+ use damage_phaseField, only: &
+   damage_phaseField_microstructure  
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -587,6 +608,10 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_microstructure(ipc, ip, el)
+   case (LOCAL_DAMAGE_phaseField_ID)
+     call damage_phaseField_microstructure(constitutive_homogenizedC(ipc,ip,el), Fe, &
+                                           constitutive_getVacancyConcentration(ipc, ip, el), &
+                                           ipc, ip, el)
 
  end select
 
@@ -1037,6 +1062,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_phaseField_ID, &
    LOCAL_VACANCY_generation_ID
  use constitutive_j2, only:  &
    constitutive_j2_dotState
@@ -1060,6 +1086,8 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    damage_anisoDuctile_dotState
  use damage_gurson, only: &
    damage_gurson_dotState
+ use damage_phaseField, only: &
+   damage_phaseField_dotState
  use vacancy_generation, only: &
    vacancy_generation_dotState
 
@@ -1121,6 +1149,8 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
      call damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
+   case (LOCAL_DAMAGE_phaseField_ID)
+     call damage_phaseField_dotState(constitutive_getVacancyConcentration(ipc, ip, el), ipc, ip, el)
  end select
 
  select case (phase_vacancy(material_phase(ipc,ip,el)))
@@ -1216,6 +1246,7 @@ function constitutive_getLocalDamage(ipc, ip, el)
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_phaseField_ID, &
    phase_damage
  use damage_isoBrittle, only: &
    damage_isoBrittle_getLocalDamage
@@ -1227,6 +1258,8 @@ function constitutive_getLocalDamage(ipc, ip, el)
    damage_anisoDuctile_getLocalDamage
  use damage_gurson, only: &
    damage_gurson_getLocalDamage
+ use damage_phaseField, only: &
+   damage_phaseField_getLocalDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1248,12 +1281,14 @@ function constitutive_getLocalDamage(ipc, ip, el)
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      constitutive_getLocalDamage = damage_anisoBrittle_getLocalDamage(ipc, ip, el)
 
-   case (LOCAL_DAMAGE_anisoDuctile_ID)
-     
+   case (LOCAL_DAMAGE_anisoDuctile_ID)     
      constitutive_getLocalDamage = damage_anisoDuctile_getLocalDamage(ipc, ip, el)
      
    case (LOCAL_DAMAGE_gurson_ID)
      constitutive_getLocalDamage = damage_gurson_getLocalDamage(ipc, ip, el)
+
+   case (LOCAL_DAMAGE_phaseField_ID)
+     constitutive_getLocalDamage = damage_phaseField_getLocalDamage(ipc, ip, el)
 
  end select
 
@@ -1272,6 +1307,7 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_phaseField_ID, &
    phase_damage
  use damage_isoBrittle, only: &
    damage_isoBrittle_putLocalDamage
@@ -1283,6 +1319,8 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
    damage_anisoDuctile_putLocalDamage
  use damage_gurson, only: &
    damage_gurson_putLocalDamage
+ use damage_phaseField, only: &
+   damage_phaseField_putLocalDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1308,6 +1346,9 @@ subroutine constitutive_putLocalDamage(ipc, ip, el, localDamage)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_putLocalDamage(ipc, ip, el, localDamage)
  
+   case (LOCAL_DAMAGE_phaseField_ID)
+     call damage_phaseField_putLocalDamage(ipc, ip, el, localDamage)
+
  end select
 
 end subroutine constitutive_putLocalDamage
@@ -1326,6 +1367,7 @@ function constitutive_getDamage(ipc, ip, el)
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_phaseField_ID, &
    phase_damage
  use damage_isoBrittle, only: &
    damage_isoBrittle_getDamage
@@ -1337,6 +1379,8 @@ function constitutive_getDamage(ipc, ip, el)
    damage_anisoDuctile_getDamage
  use damage_gurson, only: &
    damage_gurson_getDamage
+ use damage_phaseField, only: &
+   damage_phaseField_getDamage
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1363,6 +1407,9 @@ function constitutive_getDamage(ipc, ip, el)
      
    case (LOCAL_DAMAGE_gurson_ID)
      constitutive_getDamage = damage_gurson_getDamage(ipc, ip, el)
+
+   case (LOCAL_DAMAGE_phaseField_ID)
+     constitutive_getDamage = damage_phaseField_getDamage(ipc, ip, el)
 
  end select
 
@@ -1424,14 +1471,13 @@ function constitutive_getDamageDiffusion33(ipc, ip, el)
    lattice_DamageDiffusion33
  use material, only: &
    material_phase, &
-   LOCAL_DAMAGE_none_ID, &
+   phase_damage, &
    LOCAL_DAMAGE_isoBrittle_ID, &
-   LOCAL_DAMAGE_isoDuctile_ID, &
-   LOCAL_DAMAGE_anisoBrittle_ID, &
-   LOCAL_DAMAGE_gurson_ID, &
-   phase_damage
+   LOCAL_DAMAGE_phaseField_ID
  use damage_isoBrittle, only: &
    damage_isoBrittle_getDamageDiffusion33
+ use damage_phaseField, only: &
+   damage_phaseField_getDamageDiffusion33
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1445,6 +1491,8 @@ function constitutive_getDamageDiffusion33(ipc, ip, el)
  select case(phase_damage(material_phase(ipc,ip,el)))                                                   
    case (LOCAL_DAMAGE_isoBrittle_ID)
     constitutive_getDamageDiffusion33 = damage_isoBrittle_getDamageDiffusion33(ipc, ip, el)
+   case (LOCAL_DAMAGE_phaseField_ID)
+    constitutive_getDamageDiffusion33 = damage_phaseField_getDamageDiffusion33(ipc, ip, el)
     
  end select
 
@@ -1559,7 +1607,7 @@ function constitutive_getLocalVacancyConcentration(ipc, ip, el)
    LOCAL_VACANCY_generation_ID, &
    phase_vacancy
  use vacancy_generation, only: &
-   vacancy_generation_getConcentration
+   vacancy_generation_getLocalConcentration
  use lattice, only: &
    lattice_equilibriumVacancyConcentration
 
@@ -1576,7 +1624,7 @@ function constitutive_getLocalVacancyConcentration(ipc, ip, el)
        lattice_equilibriumVacancyConcentration(material_phase(ipc,ip,el))
      
    case (LOCAL_VACANCY_generation_ID)
-     constitutive_getLocalVacancyConcentration = vacancy_generation_getConcentration(ipc, ip, el)
+     constitutive_getLocalVacancyConcentration = vacancy_generation_getLocalConcentration(ipc, ip, el)
  end select
 
 end function constitutive_getLocalVacancyConcentration
@@ -1592,7 +1640,7 @@ subroutine constitutive_putLocalVacancyConcentration(ipc, ip, el, localVacancyCo
    LOCAL_VACANCY_generation_ID, &
    phase_vacancy
  use vacancy_generation, only: &
-   vacancy_generation_putConcentration
+   vacancy_generation_putLocalConcentration
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1604,7 +1652,7 @@ subroutine constitutive_putLocalVacancyConcentration(ipc, ip, el, localVacancyCo
  
  select case (phase_vacancy(material_phase(ipc,ip,el)))
    case (LOCAL_VACANCY_generation_ID)
-     call vacancy_generation_putConcentration(ipc, ip, el, localVacancyConcentration)
+     call vacancy_generation_putLocalConcentration(ipc, ip, el, localVacancyConcentration)
 
  end select
 
@@ -1617,13 +1665,12 @@ function constitutive_getVacancyConcentration(ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
-   mappingHomogenization, &
    material_phase, &
-   fieldVacancy, &
-   field_vacancy_type, &
-   FIELD_VACANCY_local_ID, &
-   FIELD_VACANCY_nonlocal_ID, &
-   material_homog
+   LOCAL_VACANCY_constant_ID, &
+   LOCAL_VACANCY_generation_ID, &
+   phase_vacancy
+ use vacancy_generation, only: &
+   vacancy_generation_getConcentration
  use lattice, only: &
    lattice_equilibriumVacancyConcentration
  implicit none
@@ -1634,14 +1681,14 @@ function constitutive_getVacancyConcentration(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal) :: constitutive_getVacancyConcentration
  
-   select case(field_vacancy_type(material_homog(ip,el)))                                                   
-     case (FIELD_VACANCY_local_ID)
-      constitutive_getVacancyConcentration = constitutive_getLocalVacancyConcentration(ipc, ip, el)      
-      
-     case (FIELD_VACANCY_nonlocal_ID)
-      constitutive_getVacancyConcentration = fieldVacancy(material_homog(ip,el))% &
-        field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
-   end select
+ select case (phase_vacancy(material_phase(ipc,ip,el)))
+   case (LOCAL_VACANCY_constant_ID)
+     constitutive_getVacancyConcentration = &
+       lattice_equilibriumVacancyConcentration(material_phase(ipc,ip,el))
+     
+   case (LOCAL_VACANCY_generation_ID)
+     constitutive_getVacancyConcentration = vacancy_generation_getConcentration(ipc, ip, el)
+ end select
 
 end function constitutive_getVacancyConcentration
 
@@ -1667,22 +1714,53 @@ function constitutive_getVacancyDiffusion33(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
    constitutive_getVacancyDiffusion33
+ 
+ select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
+   case (LOCAL_VACANCY_generation_ID)
+    constitutive_getVacancyDiffusion33 = &
+      vacancy_generation_getVacancyDiffusion33(ipc,ip,el)
+    
+ end select
+
+end function constitutive_getVacancyDiffusion33
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns vacancy diffusion tensor
+!--------------------------------------------------------------------------------------------------
+function constitutive_getVacancyMobility33(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use lattice, only: &
+   lattice_VacancyDiffusion33
+ use material, only: &
+   material_phase, &
+   LOCAL_VACANCY_generation_ID, &
+   phase_vacancy
+ use vacancy_generation, only: &
+   vacancy_generation_getVacancyMobility33
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_getVacancyMobility33
  real(pReal), dimension(:), allocatable :: &
    accumulatedSlip
  integer(pInt) :: &
    nSlip
  
- constitutive_getVacancyDiffusion33 = lattice_VacancyDiffusion33(1:3,1:3,material_phase(ipc,ip,el))
  select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
    case (LOCAL_VACANCY_generation_ID)
     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc,ip,el)
-    constitutive_getVacancyDiffusion33 = &
-      vacancy_generation_getVacancyDiffusion33(nSlip,accumulatedSlip,constitutive_getTemperature(ipc,ip,el), &
+    constitutive_getVacancyMobility33 = &
+      vacancy_generation_getVacancyMobility33(nSlip,accumulatedSlip,constitutive_getTemperature(ipc,ip,el), &
                                                ipc,ip,el)
     
  end select
 
-end function constitutive_getVacancyDiffusion33
+end function constitutive_getVacancyMobility33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns accumulated slip on each system defined
