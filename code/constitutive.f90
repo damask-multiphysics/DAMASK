@@ -564,6 +564,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    PLASTICITY_nonlocal_ID, &
    LOCAL_DAMAGE_isoBrittle_ID, &
    LOCAL_DAMAGE_isoDuctile_ID, &
+   LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
    LOCAL_DAMAGE_phaseField_ID
 
@@ -575,8 +577,14 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
    constitutive_dislotwin_microstructure
  use constitutive_dislokmc, only: &
    constitutive_dislokmc_microstructure
- use damage_gurson, only: &
-   damage_gurson_microstructure
+ use damage_isoBrittle, only: &
+   damage_isoBrittle_microstructure
+ use damage_isoDuctile, only: &
+   damage_isoDuctile_microstructure
+ use damage_anisoBrittle, only: &
+   damage_anisoBrittle_microstructure
+ use damage_anisoDuctile, only: &
+   damage_anisoDuctile_microstructure
  use damage_gurson, only: &
    damage_gurson_microstructure
  use damage_phaseField, only: &
@@ -592,6 +600,10 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
    Fp                                                                                               !< plastic deformation gradient
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
 
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
@@ -607,6 +619,17 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, ipc, ip, el)
  end select
  
  select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_DAMAGE_isoBrittle_ID)
+     call damage_isoBrittle_microstructure(constitutive_homogenizedC(ipc,ip,el), Fe, &
+                                           ipc, ip, el)
+   case (LOCAL_DAMAGE_isoDuctile_ID)
+     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call damage_isoDuctile_microstructure(nSlip, accumulatedSlip, ipc, ip, el)
+   case (LOCAL_DAMAGE_anisoBrittle_ID)
+     call damage_anisoBrittle_microstructure(ipc, ip, el)
+   case (LOCAL_DAMAGE_anisoDuctile_ID)
+     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_microstructure(ipc, ip, el)
    case (LOCAL_DAMAGE_phaseField_ID)
@@ -1138,16 +1161,13 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_isoBrittle_ID)
-     call damage_isoBrittle_dotState(constitutive_homogenizedC(ipc,ip,el), &
-                                     FeArray(1:3,1:3,ipc,ip,el), ipc, ip, el)
+     call damage_isoBrittle_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_isoDuctile_ID)
-     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
-     call damage_isoDuctile_dotState(nSlip,accumulatedSlip,ipc, ip, el)
+     call damage_isoDuctile_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      call damage_anisoBrittle_dotState(Tstar_v, ipc, ip, el)
    case (LOCAL_DAMAGE_anisoDuctile_ID)
-     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc,ip,el)
-     call damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
+     call damage_anisoDuctile_dotState(ipc, ip, el)
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
    case (LOCAL_DAMAGE_phaseField_ID)

@@ -32,11 +32,10 @@ module damage_anisoDuctile
    damage_anisoDuctile_Nslip                                                                         !< number of slip systems per family
    
  real(pReal),                         dimension(:),           allocatable,         private :: &
-   damage_anisoDuctile_aTol_damage, &
-   damage_anisoDuctile_N
+   damage_anisoDuctile_aTol_damage
 
  real(pReal),                         dimension(:,:),         allocatable,         private :: &
-   damage_anisoDuctile_critAccShear
+   damage_anisoDuctile_critPlasticStrain
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -52,6 +51,7 @@ module damage_anisoDuctile
    damage_anisoDuctile_stateInit, &
    damage_anisoDuctile_aTolState, &
    damage_anisoDuctile_dotState, &
+   damage_anisoDuctile_microstructure, &
    damage_anisoDuctile_getDamage, &
    damage_anisoDuctile_putLocalDamage, &
    damage_anisoDuctile_getLocalDamage, &
@@ -71,9 +71,6 @@ subroutine damage_anisoDuctile_init(fileUnit)
    debug_level,&
    debug_constitutive,&
    debug_levelBasic
- use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems
  use IO, only: &
    IO_read, &
    IO_lc, &
@@ -88,7 +85,6 @@ subroutine damage_anisoDuctile_init(fileUnit)
    IO_timeStamp, &
    IO_EOF
  use material, only: &
-   homogenization_maxNgrains, &
    phase_damage, &
    phase_damageInstance, &
    phase_Noutput, &
@@ -136,11 +132,10 @@ subroutine damage_anisoDuctile_init(fileUnit)
           damage_anisoDuctile_output = ''
  allocate(damage_anisoDuctile_outputID(maxval(phase_Noutput),maxNinstance),      source=undefined_ID)
  allocate(damage_anisoDuctile_Noutput(maxNinstance),                             source=0_pInt) 
- allocate(damage_anisoDuctile_critAccShear(lattice_maxNslipFamily,maxNinstance), source=0.0_pReal) 
+ allocate(damage_anisoDuctile_critPlasticStrain(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal) 
  allocate(damage_anisoDuctile_Nslip(lattice_maxNslipFamily,maxNinstance),        source=0_pInt)
  allocate(damage_anisoDuctile_totalNslip(maxNinstance),                          source=0_pInt)
  allocate(damage_anisoDuctile_aTol_damage(maxNinstance),                         source=0.0_pReal) 
- allocate(damage_anisoDuctile_N(maxNinstance),                                   source=0.0_pReal) 
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -176,18 +171,15 @@ subroutine damage_anisoDuctile_init(fileUnit)
        case ('atol_damage')
          damage_anisoDuctile_aTol_damage(instance) = IO_floatValue(line,positions,2_pInt)
          
-       case ('rate_sensitivity_damage')
-         damage_anisoDuctile_N(instance) = IO_floatValue(line,positions,2_pInt)
-         
        case ('nslip')  !
          Nchunks_SlipFamilies = positions(1) - 1_pInt
          do j = 1_pInt, Nchunks_SlipFamilies
            damage_anisoDuctile_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
 
-       case ('critical_accshear')
+       case ('criticalplasticstrain')
          do j = 1_pInt, Nchunks_SlipFamilies
-           damage_anisoDuctile_critAccShear(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           damage_anisoDuctile_critPlasticStrain(j,instance) = IO_floatValue(line,positions,1_pInt+j)
          enddo
 
      end select
@@ -205,10 +197,8 @@ subroutine damage_anisoDuctile_init(fileUnit)
          damage_anisoDuctile_totalNslip(instance) = sum(damage_anisoDuctile_Nslip(:,instance))
      if (damage_anisoDuctile_aTol_damage(instance) < 0.0_pReal) &
        damage_anisoDuctile_aTol_damage(instance) = 1.0e-3_pReal                                     ! default absolute tolerance 1e-3
-     if (any(damage_anisoDuctile_critAccShear(:,instance) < 0.0_pReal)) &
-       call IO_error(211_pInt,el=instance,ext_msg='critical_accshear ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
-     if (damage_anisoDuctile_N(instance) <= 0.0_pReal) &
-       call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity_damage ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
+     if (any(damage_anisoDuctile_critPlasticStrain(:,instance) < 0.0_pReal)) &
+       call IO_error(211_pInt,el=instance,ext_msg='criticaPlasticStrain ('//LOCAL_DAMAGE_anisoDuctile_LABEL//')')
    endif myPhase
  enddo sanityChecks
   
@@ -232,9 +222,9 @@ subroutine damage_anisoDuctile_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              = 1_pInt + &
-                                 damage_anisoDuctile_totalNslip(instance) ! non-local damage
-     sizeState                 = sizeDotState
+     sizeDotState              = 1_pInt ! non-local damage
+     sizeState                 = sizeDotState + &
+                                 damage_anisoDuctile_totalNslip(instance)
 
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
@@ -271,8 +261,6 @@ end subroutine damage_anisoDuctile_init
 subroutine damage_anisoDuctile_stateInit(phase)
  use material, only: &
    damageState
- use math, only: &
-   math_I3  
  
  implicit none
  integer(pInt),              intent(in) :: phase                                                           !< number specifying the phase of the damage
@@ -305,14 +293,48 @@ end subroutine damage_anisoDuctile_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
+subroutine damage_anisoDuctile_dotState(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
  use lattice, only: &
-   lattice_maxNslipFamily, &
    lattice_DamageMobility
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< component-ID of integration point
+   ip, &                                                                                            !< integration point
+   el                                                                                               !< element
+ integer(pInt) :: &
+   phase, &
+   constituent, &
+   instance
+ real(pReal) :: &
+   localDamage
+
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ instance = phase_damageInstance(phase)
+
+ localDamage = max(0.0_pReal, &
+                   1.0_pReal - sum(1.0_pReal - damageState(phase)% &
+                                    state(2:1+damage_anisoDuctile_totalNslip(instance),constituent)))
+ damageState(phase)%dotState(1,constituent) = &
+   (localDamage - damageState(phase)%state(1,constituent))/lattice_DamageMobility(phase)
+
+end subroutine damage_anisoDuctile_dotState
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculates derived quantities from state
+!--------------------------------------------------------------------------------------------------
+subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   phase_damageInstance, &
+   damageState
+ use lattice, only: &
+   lattice_maxNslipFamily
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -329,7 +351,6 @@ subroutine damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
    index, f, i
  real(pReal) :: &
    localDamage, &
-   drivingForce, &
    nonlocalFactor
 
  phase = mappingConstitutive(2,ipc,ip,el)
@@ -344,20 +365,16 @@ subroutine damage_anisoDuctile_dotState(nSlip, accumulatedSlip, ipc, ip, el)
  index = 1_pInt
  do f = 1_pInt,lattice_maxNslipFamily
    do i = 1_pInt,damage_anisoDuctile_Nslip(f,instance)                                            ! process each (active) slip system in family
-     drivingForce = max(0.0_pReal, &
-                        2.0_pReal*damageState(phase)%state(index+1,constituent)* &
-                        accumulatedSlip(index)/damage_anisoDuctile_critAccShear(f,instance) - &
-                        nonlocalFactor)
-     damageState(phase)%dotState(index+1,constituent) = &
-       (exp(-drivingForce**damage_anisoDuctile_N(instance)) - 1.0_pReal)/ &
-       lattice_DamageMobility(phase)
+     damageState(phase)%state(index+1,constituent) = &
+       min(damageState(phase)%state0(index+1,constituent), &
+           1.0_pReal/max(0.0_pReal,accumulatedSlip(index)/ &
+                                   damage_anisoDuctile_critPlasticStrain(f,instance) - &
+                                   nonlocalFactor))
      index = index + 1_pInt
    enddo
  enddo
- damageState(phase)%dotState(1,constituent) = &
-   (localDamage - damageState(phase)%state(1,constituent))/lattice_DamageMobility(phase)
 
-end subroutine damage_anisoDuctile_dotState
+end subroutine damage_anisoDuctile_microstructure
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage
@@ -396,7 +413,6 @@ end function damage_anisoDuctile_getDamage
 subroutine damage_anisoDuctile_putLocalDamage(ipc, ip, el, localDamage)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
    damageState
 
  implicit none
@@ -418,7 +434,6 @@ end subroutine damage_anisoDuctile_putLocalDamage
 function damage_anisoDuctile_getLocalDamage(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
    damageState
 
  implicit none
@@ -442,8 +457,6 @@ function damage_anisoDuctile_getSlipDamage(ipc, ip, el)
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
- use lattice, only: &
-   lattice_maxNslipFamily
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -474,8 +487,7 @@ end function damage_anisoDuctile_getSlipDamage
 function damage_anisoDuctile_postResults(ipc,ip,el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance,& 
-   damageState
+   phase_damageInstance
 
  implicit none
  integer(pInt),              intent(in) :: &

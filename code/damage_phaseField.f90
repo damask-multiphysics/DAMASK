@@ -1,5 +1,5 @@
 !--------------------------------------------------------------------------------------------------
-! $Id: damage_phaseField.f90 3736 2014-11-21 13:12:54Z MPIE\l.sharma $
+! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Pratheek Shanthraj, Max-Planck-Institut für Eisenforschung GmbH
 !> @author Luv Sharma, Max-Planck-Institut für Eisenforschung GmbH
@@ -65,9 +65,6 @@ subroutine damage_phaseField_init(fileUnit)
    debug_level,&
    debug_constitutive,&
    debug_levelBasic
- use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems
  use IO, only: &
    IO_read, &
    IO_lc, &
@@ -82,7 +79,6 @@ subroutine damage_phaseField_init(fileUnit)
    IO_timeStamp, &
    IO_EOF
  use material, only: &
-   homogenization_maxNgrains, &
    phase_damage, &
    phase_damageInstance, &
    phase_Noutput, &
@@ -109,7 +105,7 @@ subroutine damage_phaseField_init(fileUnit)
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  damage_'//LOCAL_damage_phaseField_label//' init  -+>>>'
-   write(6,'(a)')     ' $Id: damage_phaseField.f90 3736 2014-11-21 13:12:54Z MPIE\l.sharma $'
+   write(6,'(a)')     ' $Id$'
    write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
  endif mainProcess
@@ -316,8 +312,6 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, ipc, ip, el)
    math_Mandel33to6, &
    math_transpose33, &
    math_I3
- use lattice, only: &
-   lattice_DamageMobility
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -454,8 +448,7 @@ end function damage_phaseField_getDamageDiffusion33
 !--------------------------------------------------------------------------------------------------
 function damage_phaseField_getDamagedC66(C, ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   mappingConstitutive
 
  implicit none
  integer(pInt), intent(in) :: &
