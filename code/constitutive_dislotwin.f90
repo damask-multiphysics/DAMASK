@@ -82,8 +82,8 @@ module constitutive_dislotwin
    constitutive_dislotwin_aTolRho, &                                                                !< absolute tolerance for integration of dislocation density
    constitutive_dislotwin_aTolTwinFrac, &                                                           !< absolute tolerance for integration of twin volume fraction
    constitutive_dislotwin_aTolTransFrac, &                                                          !< absolute tolerance for integration of trans volume fraction
-   constitutive_dislotwin_Cnuc, &                                                                   !< Coefficient for strain-induced martensite nucleation  
    constitutive_dislotwin_Cdwp, &                                                                   !< Coefficient for double well potential 
+   constitutive_dislotwin_Cnuc, &                                                                   !< Coefficient for strain-induced martensite nucleation  
    constitutive_dislotwin_Cgro, &                                                                   !< Coefficient for stress-assisted martensite growth  
    constitutive_dislotwin_deltaG                                                                    !< Free energy difference between austensite and martensite [MPa]
 
@@ -289,8 +289,8 @@ subroutine constitutive_dislotwin_init(fileUnit)
  allocate(constitutive_dislotwin_SFE_0K(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_dislotwin_dSFE_dT(maxNinstance),                             source=0.0_pReal)
  allocate(constitutive_dislotwin_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
- allocate(constitutive_dislotwin_Cnuc(maxNinstance),                                source=0.0_pReal)
  allocate(constitutive_dislotwin_Cdwp(maxNinstance),                                source=0.0_pReal)
+ allocate(constitutive_dislotwin_Cnuc(maxNinstance),                                source=0.0_pReal)
  allocate(constitutive_dislotwin_Cgro(maxNinstance),                                source=0.0_pReal)
  allocate(constitutive_dislotwin_deltaG(maxNinstance),                              source=0.0_pReal)
  allocate(constitutive_dislotwin_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
@@ -628,10 +628,10 @@ subroutine constitutive_dislotwin_init(fileUnit)
          constitutive_dislotwin_sbVelocity(instance) = IO_floatValue(line,positions,2_pInt)
        case ('qedgepersbsystem')
          constitutive_dislotwin_sbQedge(instance) = IO_floatValue(line,positions,2_pInt)
-       case ('cnuc')
-         constitutive_dislotwin_Cnuc(instance) = IO_floatValue(line,positions,2_pInt)
        case ('cdwp')
          constitutive_dislotwin_Cdwp(instance) = IO_floatValue(line,positions,2_pInt)
+       case ('cnuc')
+         constitutive_dislotwin_Cnuc(instance) = IO_floatValue(line,positions,2_pInt)
        case ('cgro')
          constitutive_dislotwin_Cgro(instance) = IO_floatValue(line,positions,2_pInt)
        case ('deltag')
@@ -691,6 +691,12 @@ subroutine constitutive_dislotwin_init(fileUnit)
       if (sum(constitutive_dislotwin_Ntrans(:,instance)) > 0_pInt) then
         if (constitutive_dislotwin_aTolTransFrac(instance) <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTransFrac ('//PLASTICITY_DISLOTWIN_label//')')
+        if (constitutive_dislotwin_Cdwp(instance) < 0.0_pReal) &
+          call IO_error(211_pInt,el=instance,ext_msg='Cdwp ('//PLASTICITY_DISLOTWIN_label//')')
+        if (constitutive_dislotwin_Cnuc(instance) < 0.0_pReal) &
+          call IO_error(211_pInt,el=instance,ext_msg='Cnuc ('//PLASTICITY_DISLOTWIN_label//')')
+        if (constitutive_dislotwin_Cgro(instance) < 0.0_pReal) &
+          call IO_error(211_pInt,el=instance,ext_msg='Cgro ('//PLASTICITY_DISLOTWIN_label//')')
       endif
       if (constitutive_dislotwin_sbResistance(instance) < 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='sbResistance ('//PLASTICITY_DISLOTWIN_label//')')
