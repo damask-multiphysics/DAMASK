@@ -48,6 +48,7 @@ module constitutive
    constitutive_getVacancyConcentration, &
    constitutive_getVacancyDiffusion33, &
    constitutive_getVacancyMobility33, &
+   constitutive_getVacancyPotentialDrivingForce, &
    constitutive_postResults
  
  private :: &
@@ -1730,8 +1731,6 @@ end function constitutive_getVacancyDiffusion33
 function constitutive_getVacancyMobility33(ipc, ip, el)
  use prec, only: &
    pReal
- use lattice, only: &
-   lattice_VacancyDiffusion33
  use material, only: &
    material_phase, &
    LOCAL_VACANCY_generation_ID, &
@@ -1761,6 +1760,42 @@ function constitutive_getVacancyMobility33(ipc, ip, el)
  end select
 
 end function constitutive_getVacancyMobility33
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns vacancy chemical potential driving force
+!--------------------------------------------------------------------------------------------------
+real(pReal) function constitutive_getVacancyPotentialDrivingForce(ipc, ip, el)
+ use prec, only: &
+   pReal
+ use material, only: &
+   material_phase, &
+   LOCAL_VACANCY_generation_ID, &
+   phase_vacancy
+ use vacancy_generation, only: &
+   vacancy_generation_getVacancyPotentialDrivingForce
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   constitutive_getVacancyMobility33
+ real(pReal), dimension(:), allocatable :: &
+   accumulatedSlip
+ integer(pInt) :: &
+   nSlip
+ 
+ select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
+   case (LOCAL_VACANCY_generation_ID)
+    call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc,ip,el)
+    constitutive_getVacancyMobility33 = &
+      vacancy_generation_getVacancyPotentialDrivingForce(constitutive_getDamage(ipc, ip, el), &
+                                                         ipc,ip,el)
+    
+ end select
+
+end function constitutive_getVacancyPotentialDrivingForce
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns accumulated slip on each system defined

@@ -74,8 +74,9 @@ module homogenization
    field_getThermalConductivity33, &
    field_getMassDensity, &
    field_getSpecificHeat, &
-   field_getVacancyMobility, &
+   field_getVacancyMobility33, &
    field_getVacancyDiffusion33, &
+   field_getVacancyPotentialDrivingForce, &
    materialpoint_postResults, &
    field_postResults
  private :: &
@@ -1104,8 +1105,6 @@ end function field_getDamageMobility
 function field_getVacancyDiffusion33(ip,el)
  use mesh, only: &
    mesh_element
- use lattice, only: &
-   lattice_vacancyDiffusion33
  use material, only: &
    material_homog, &
    field_vacancy_type, &
@@ -1140,20 +1139,59 @@ function field_getVacancyDiffusion33(ip,el)
                                homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getVacancyDiffusion33
+
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns average mobility for vacancy field at each integration point 
 !--------------------------------------------------------------------------------------------------
-real(pReal) function field_getVacancyMobility(ip,el)
+function field_getVacancyMobility33(ip,el)
  use mesh, only: &
    mesh_element
- use lattice, only: &
-   lattice_vacancyMobility
  use material, only: &
-   material_phase, &
    material_homog, &
    field_vacancy_type, &
    FIELD_VACANCY_NONLOCAL_ID, &
    homogenization_Ngrains
+ use constitutive, only: &
+   constitutive_getVacancyMobility33
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), dimension(3,3) :: &
+   field_getVacancyMobility33
+ integer(pInt) :: &
+   ipc
+   
+ 
+ field_getVacancyMobility33 = 0.0_pReal
+                                                
+ select case(field_vacancy_type(material_homog(ip,el)))                                                   
+   case (FIELD_VACANCY_NONLOCAL_ID)
+     do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+       field_getVacancyMobility33 = field_getVacancyMobility33 + constitutive_getVacancyMobility33(ipc,ip,el)
+     enddo
+      
+ end select   
+
+ field_getVacancyMobility33 = field_getVacancyMobility33/ &
+                              homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getVacancyMobility33
+
+!--------------------------------------------------------------------------------------------------
+!> @brief Returns average driving for vacancy chemical potential at each integration point 
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getVacancyPotentialDrivingForce(ip,el)
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   material_homog, &
+   field_vacancy_type, &
+   FIELD_VACANCY_NONLOCAL_ID, &
+   homogenization_Ngrains
+ use constitutive, only: &
+   constitutive_getVacancyPotentialDrivingForce
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1163,20 +1201,21 @@ real(pReal) function field_getVacancyMobility(ip,el)
    ipc
    
  
- field_getVacancyMobility =0.0_pReal
+ field_getVacancyPotentialDrivingForce = 0.0_pReal
                                                 
  select case(field_vacancy_type(material_homog(ip,el)))                                                   
    case (FIELD_VACANCY_NONLOCAL_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getVacancyMobility = field_getVacancyMobility + lattice_VacancyMobility(material_phase(ipc,ip,el))
+       field_getVacancyPotentialDrivingForce = field_getVacancyPotentialDrivingForce + &
+         constitutive_getVacancyPotentialDrivingForce(ipc,ip,el)
      enddo
       
  end select   
 
- field_getVacancyMobility = field_getVacancyMobility/ &
-                            homogenization_Ngrains(mesh_element(3,el))
+ field_getVacancyPotentialDrivingForce = field_getVacancyPotentialDrivingForce/ &
+                                         homogenization_Ngrains(mesh_element(3,el))
 
-end function field_getVacancyMobility
+end function field_getVacancyPotentialDrivingForce
 
 !--------------------------------------------------------------------------------------------------
 !> @brief ToDo

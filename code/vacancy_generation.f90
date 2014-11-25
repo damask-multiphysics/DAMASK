@@ -55,6 +55,7 @@ module vacancy_generation
    vacancy_generation_getConcentration, &
    vacancy_generation_getVacancyDiffusion33, &
    vacancy_generation_getVacancyMobility33, &
+   vacancy_generation_getVacancyPotentialDrivingForce, &
    vacancy_generation_postResults
 
 contains
@@ -427,6 +428,8 @@ end function vacancy_generation_getVacancyDiffusion33
 !> @brief returns generation vacancy mobility tensor 
 !--------------------------------------------------------------------------------------------------
 function vacancy_generation_getVacancyMobility33(nSlip,accumulatedSlip,temperature,ipc,ip,el)
+ use math, only: &
+   math_I3
  use material, only: &
    mappingConstitutive, &
    phase_vacancyInstance
@@ -451,12 +454,41 @@ function vacancy_generation_getVacancyMobility33(nSlip,accumulatedSlip,temperatu
  instance = phase_vacancyInstance(phase)
 
  vacancy_generation_getVacancyMobility33 = &
+   math_I3* &
    vacancy_generation_surfaceEnergy(instance)* &
    vacancy_generation_diffusionCoeff0(instance)* &
    exp(-vacancy_generation_migrationEnergy(instance)/(kB*temperature))/ &
    (kB*temperature)
     
 end function vacancy_generation_getVacancyMobility33
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns generation vacancy mobility tensor 
+!--------------------------------------------------------------------------------------------------
+real(pReal) function vacancy_generation_getVacancyPotentialDrivingForce(damage,ipc,ip,el)
+ use material, only: &
+   mappingConstitutive, &
+   phase_vacancyInstance
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal), intent(in) :: &
+   damage
+ integer(pInt) :: &
+   phase, constituent, instance
+ 
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ instance = phase_vacancyInstance(phase)
+
+ vacancy_generation_getVacancyPotentialDrivingForce = &
+   1.0_pReal - damage - damage*damage*vacancy_generation_formationEnergy(instance)/ &
+                                      vacancy_generation_surfaceEnergy(instance)
+    
+end function vacancy_generation_getVacancyPotentialDrivingForce
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
