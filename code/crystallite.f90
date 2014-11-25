@@ -1127,17 +1127,17 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                rhs_3333(p,o,1:3,1:3) = math_mul33x33(dSdFe(p,o,1:3,1:3),temp_33)
              
              temp_3333 = 0.0_pReal
-             temp_33 = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
-                                  math_inv33(crystallite_subFp0(1:3,1:3,g,i,e)))
+             temp_33 = math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), &
+                                     math_inv33(crystallite_Fp0(1:3,1:3,g,i,e)))
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                temp_3333(1:3,1:3,p,o) = math_mul33x33(math_mul33x33(temp_33,dLpdS(1:3,1:3,p,o)),invFi)
              
-             temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
-                                                crystallite_invFp(1:3,1:3,g,i,e)), invFi0)
+             temp_33 = math_mul33x33(math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), &
+                                                   crystallite_invFp(1:3,1:3,g,i,e)), invFi0)
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                temp_3333(1:3,1:3,p,o) = temp_3333(1:3,1:3,p,o) + math_mul33x33(temp_33,dLidS(1:3,1:3,p,o))
              
-             lhs_3333 = crystallite_subdt(g,i,e)*math_mul3333xx3333(dSdFe,temp_3333)
+             lhs_3333 = crystallite_dt(g,i,e)*math_mul3333xx3333(dSdFe,temp_3333)
 
              call math_invert(9_pInt,math_identity2nd(9_pInt)+reshape(lhs_3333,shape=[9,9]),temp_99,error)
              if (error) call IO_error(error_ID=400_pInt,ext_msg='analytic tangent inversion')
@@ -1146,8 +1146,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              dFpinvdF = 0.0_pReal
              temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(g,i,e)* &
-                                        math_mul33x33(math_inv33(crystallite_subFp0(1:3,1:3,g,i,e)), &
+               dFpinvdF(1:3,1:3,p,o) = -crystallite_dt(g,i,e)* &
+                                        math_mul33x33(math_inv33(crystallite_Fp0(1:3,1:3,g,i,e)), &
                                                       math_mul33x33(temp_3333(1:3,1:3,p,o),invFi))
              
              crystallite_dPdF(1:3,1:3,1:3,1:3,g,i,e) = 0.0_pReal
