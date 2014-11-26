@@ -20,6 +20,7 @@
 #include "damage_anisoBrittle.f90"
 #include "damage_anisoDuctile.f90"
 #include "damage_gurson.f90"
+#include "damage_phaseField.f90"
 #include "thermal_isothermal.f90"
 #include "thermal_adiabatic.f90"
 #include "vacancy_constant.f90"
