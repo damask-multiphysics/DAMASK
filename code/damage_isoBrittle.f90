@@ -453,8 +453,8 @@ function damage_isoBrittle_getDamagedC66(C, ipc, ip, el)
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  damage_isoBrittle_getDamagedC66 = &
-   damageState(phase)%state(1,constituent)* &
-   damageState(phase)%state(1,constituent)* &
+   damageState(phase)%state0(1,constituent)* &
+   damageState(phase)%state0(1,constituent)* &
    C
     
 end function damage_isoBrittle_getDamagedC66
