@@ -1799,17 +1799,10 @@ real(pReal) function constitutive_getVacancyPotentialDrivingForce(ipc, ip, el)
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal), dimension(3,3) :: &
-   constitutive_getVacancyMobility33
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
- integer(pInt) :: &
-   nSlip
  
  select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
    case (LOCAL_VACANCY_generation_ID)
-    call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc,ip,el)
-    constitutive_getVacancyMobility33 = &
+    constitutive_getVacancyPotentialDrivingForce = &
       vacancy_generation_getVacancyPotentialDrivingForce(constitutive_getDamage(ipc, ip, el), &
                                                          ipc,ip,el)
     
