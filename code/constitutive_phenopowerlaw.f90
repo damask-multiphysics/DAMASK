@@ -157,12 +157,12 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    instance,phase,j,k, f,o, &
    Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
    Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_TransFamilies, Nchunks_nonSchmid, &
+   NipcMyPhase, &
    index_myFamily, index_otherFamily, &
    mySize=0_pInt,sizeState,sizeDotState
  character(len=65536) :: &
    tag  = '', &
    line = ''
- integer(pInt) :: NofMyPhase   
  real(pReal), dimension(:), allocatable :: tempPerSlip
  
  mainProcess: if (worldrank == 0) then 
@@ -246,9 +246,9 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
    if (IO_getTag(line,'[',']') /= '') then                                                          ! next phase
      phase = phase + 1_pInt                                                                         ! advance phase section counter
      if (phase_plasticity(phase) == PLASTICITY_PHENOPOWERLAW_ID) then
-       Nchunks_SlipFamilies  = count(lattice_NslipSystem(:,phase) > 0_pInt)
-       Nchunks_TwinFamilies  = count(lattice_NtwinSystem(:,phase) > 0_pInt)
-       Nchunks_TransFamilies = count(lattice_NtransSystem(:,phase) > 0_pInt)
+       Nchunks_SlipFamilies  = count(lattice_NslipSystem(:,phase) > 0_pInt)                         ! maximum number of slip families according to lattice type of current phase
+       Nchunks_TwinFamilies  = count(lattice_NtwinSystem(:,phase) > 0_pInt)                         ! maximum number of twin families according to lattice type of current phase
+       Nchunks_TransFamilies = count(lattice_NtransSystem(:,phase) > 0_pInt)                        ! maximum number of trans families according to lattice type of current phase
        Nchunks_SlipSlip =     maxval(lattice_interactionSlipSlip(:,:,phase))
        Nchunks_SlipTwin =     maxval(lattice_interactionSlipTwin(:,:,phase))
        Nchunks_TwinSlip =     maxval(lattice_interactionTwinSlip(:,:,phase))
@@ -326,13 +326,15 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
            call IO_warning(50_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
          if (positions(1) > Nchunks_SlipFamilies + 1_pInt) &
            call IO_error(150_pInt,ext_msg=trim(tag)//' ('//PLASTICITY_PHENOPOWERLAW_label//')')
-         Nchunks_SlipFamilies = positions(1) - 1_pInt
+         Nchunks_SlipFamilies = positions(1) - 1_pInt                                                 ! user specified number of (possibly) active slip families (e.g. 6 0 6 --> 3)
          do j = 1_pInt, Nchunks_SlipFamilies
            constitutive_phenopowerlaw_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
        case ('tausat_slip','tau0_slip')
+         tempPerSlip = 0.0_pReal
          do j = 1_pInt, Nchunks_SlipFamilies
-           tempPerSlip(j) = IO_floatValue(line,positions,1_pInt+j)
+           if (constitutive_phenopowerlaw_Nslip(j,instance) > 0_pInt) &
+             tempPerSlip(j) = IO_floatValue(line,positions,1_pInt+j)
          enddo
          select case(tag)
            case ('tausat_slip')
@@ -353,7 +355,8 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
          enddo
        case ('tau0_twin')
          do j = 1_pInt, Nchunks_TwinFamilies
-           constitutive_phenopowerlaw_tau0_twin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
+           if (constitutive_phenopowerlaw_Ntwin(j,instance) > 0_pInt) &
+             constitutive_phenopowerlaw_tau0_twin(j,instance) = IO_floatValue(line,positions,1_pInt+j)
          enddo
 !--------------------------------------------------------------------------------------------------
 ! parameters depending on number of transformation families
@@ -452,7 +455,6 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
  enddo parsingFile
 
  sanityChecks: do phase = 1_pInt, size(phase_plasticity)
-   NofMyPhase=count(material_phase==phase)
    myPhase: if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then
      instance = phase_plasticityInstance(phase)           
      constitutive_phenopowerlaw_Nslip(1:lattice_maxNslipFamily,instance) = &
@@ -513,10 +515,10 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
                                                               maxval(constitutive_phenopowerlaw_totalNtwin),&
                                                               maxNinstance), source=0.0_pReal)
 
- initializeInstances: do phase = 1_pInt, size(phase_plasticity)
-   myPhase2: if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then
-     NofMyPhase=count(material_phase==phase)
-     instance = phase_plasticityInstance(phase) 
+ initializeInstances: do phase = 1_pInt, size(phase_plasticity)                                     ! loop through all phases in material.config
+   myPhase2: if (phase_plasticity(phase) == PLASTICITY_phenopowerlaw_ID) then                       ! only consider my phase
+     NipcMyPhase = count(material_phase == phase)                                                   ! number of IPCs containing my phase
+     instance = phase_plasticityInstance(phase)                                                     ! which instance of my phase
 
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
@@ -548,29 +550,32 @@ subroutine constitutive_phenopowerlaw_init(fileUnit)
      enddo outputsLoop 
 !--------------------------------------------------------------------------------------------------
 ! allocate state arrays
-     sizeState = constitutive_phenopowerlaw_totalNslip(instance) * 2_pInt &                         ! s_slip, accshear_slip
-               + constitutive_phenopowerlaw_totalNtwin(instance) * 2_pInt &                         ! s_twin, accshear_twin
-               + 2_pInt                                                                             ! sum(gamma) + sum(f)
+     sizeState = constitutive_phenopowerlaw_totalNslip(instance) &                         ! s_slip
+               + constitutive_phenopowerlaw_totalNtwin(instance) &                         ! s_twin
+               + 2_pInt &                                                                  ! sum(gamma) + sum(f)
+               + constitutive_phenopowerlaw_totalNslip(instance) &                         ! accshear_slip
+               + constitutive_phenopowerlaw_totalNtwin(instance)                           ! accshear_twin
+               
      sizeDotState = sizeState
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = constitutive_phenopowerlaw_sizePostResults(instance)
-     allocate(plasticState(phase)%aTolState          (   sizeState),            source=0.0_pReal)
-     allocate(plasticState(phase)%state0             (   sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%partionedState0    (   sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%subState0          (   sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state              (   sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%state_backup       (   sizeState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%dotState           (sizeDotState,NofMyPhase), source=0.0_pReal)
-     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NofMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%aTolState          (   sizeState),             source=0.0_pReal)
+     allocate(plasticState(phase)%state0             (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%partionedState0    (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%subState0          (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state              (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%state_backup       (   sizeState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%dotState           (sizeDotState,NipcMyPhase), source=0.0_pReal)
+     allocate(plasticState(phase)%dotState_backup    (sizeDotState,NipcMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
-       allocate(plasticState(phase)%previousDotState (sizeDotState,NofMyPhase),source=0.0_pReal)
-       allocate(plasticState(phase)%previousDotState2(sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState (sizeDotState,NipcMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%previousDotState2(sizeDotState,NipcMyPhase),source=0.0_pReal)
      endif
      if (any(numerics_integrator == 4_pInt)) &
-       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NofMyPhase), source=0.0_pReal)
+       allocate(plasticState(phase)%RK4dotState      (sizeDotState,NipcMyPhase), source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
-       allocate(plasticState(phase)%RKCK45dotState  (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+       allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NipcMyPhase), source=0.0_pReal)
   
      do f = 1_pInt,lattice_maxNslipFamily                                                                    ! >>> interaction slip -- X
        index_myFamily = sum(constitutive_phenopowerlaw_Nslip(1:f-1_pInt,instance))
@@ -654,7 +659,7 @@ subroutine constitutive_phenopowerlaw_stateInit(ph,instance)
  do i = 1_pInt,lattice_maxNslipFamily
    tempState(1+sum(constitutive_phenopowerlaw_Nslip(1:i-1,instance)) : &
                sum(constitutive_phenopowerlaw_Nslip(1:i  ,instance))) = &
-                                         constitutive_phenopowerlaw_tau0_slip(i,instance)
+     constitutive_phenopowerlaw_tau0_slip(i,instance)
  enddo
 
  do i = 1_pInt,lattice_maxNtwinFamily
@@ -662,10 +667,12 @@ subroutine constitutive_phenopowerlaw_stateInit(ph,instance)
                sum(constitutive_phenopowerlaw_Ntwin(1:i-1,instance)) : &
                sum(constitutive_phenopowerlaw_Nslip(:,instance))+&
                sum(constitutive_phenopowerlaw_Ntwin(1:i  ,instance))) = &
-                                          constitutive_phenopowerlaw_tau0_twin(i,instance)
+     constitutive_phenopowerlaw_tau0_twin(i,instance)
  enddo
 
- plasticState(ph)%state0(:,:) = spread(tempState,2,size(plasticState(ph)%state0(1,:)))
+ plasticState(ph)%state0(:,:) = spread(tempState, &                                                 ! spread single tempstate array
+                                       2, &                                                         ! along dimension 2
+                                       size(plasticState(ph)%state0(1,:)))                          ! number of copies (number of IPCs)
 
 end subroutine constitutive_phenopowerlaw_stateInit
 
