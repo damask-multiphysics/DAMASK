@@ -1292,7 +1292,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    math_axisAngleToR, &
    INRAD
  use IO, only: &
-   IO_error
+   IO_error, &
+   IO_warning
  
  implicit none
  integer(pInt), intent(in) :: myPhase
@@ -1339,7 +1340,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
  lattice_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_C66(1:6,1:6,myPhase))          ! Literature data is Voigt
  lattice_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_C3333(1:3,1:3,1:3,1:3,myPhase))         ! DAMASK uses Mandel
  do i = 1_pInt, 6_pInt
-   if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_error(43_pInt,el=i,ip=myPhase)
+   if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_warning(43_pInt,el=i,ip=myPhase)
  enddo
  lattice_thermalConductivity33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                        lattice_thermalConductivity33(1:3,1:3,myPhase))
