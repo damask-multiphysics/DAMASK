@@ -1972,7 +1972,9 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    LOCAL_DAMAGE_isoBrittle_ID, &
    LOCAL_DAMAGE_isoDuctile_ID, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
+   LOCAL_DAMAGE_phaseField_ID, &
    LOCAL_THERMAL_ADIABATIC_ID, &
    LOCAL_VACANCY_generation_ID
  use constitutive_j2, only: &
@@ -1995,10 +1997,14 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    damage_isoBrittle_postResults
  use damage_isoDuctile, only: &
    damage_isoDuctile_postResults
- use damage_gurson, only: &
-   damage_gurson_postResults
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_postResults
+ use damage_anisoDuctile, only: &
+   damage_anisoDuctile_postResults
+ use damage_gurson, only: &
+   damage_gurson_postResults
+ use damage_phaseField, only: &
+   damage_phaseField_postResults
  use thermal_adiabatic, only: &
    thermal_adiabatic_postResults
  use vacancy_generation, only: &
@@ -2058,10 +2064,14 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
      constitutive_postResults(startPos:endPos) = damage_isoBrittle_postResults(ipc, ip, el)
    case (LOCAL_DAMAGE_isoDuctile_ID)
      constitutive_postResults(startPos:endPos) = damage_isoDuctile_postResults(ipc, ip, el)
-   case (LOCAL_DAMAGE_gurson_ID)
-     constitutive_postResults(startPos:endPos) = damage_gurson_postResults(ipc, ip, el)
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      constitutive_postResults(startPos:endPos) = damage_anisoBrittle_postResults(ipc, ip, el)
+   case (LOCAL_DAMAGE_anisoDuctile_ID)
+     constitutive_postResults(startPos:endPos) = damage_anisoDuctile_postResults(ipc, ip, el)
+   case (LOCAL_DAMAGE_gurson_ID)
+     constitutive_postResults(startPos:endPos) = damage_gurson_postResults(ipc, ip, el)
+   case (LOCAL_DAMAGE_phaseField_ID)
+     constitutive_postResults(startPos:endPos) = damage_phaseField_postResults(ipc, ip, el)
  end select
 
  startPos = endPos + 1_pInt
