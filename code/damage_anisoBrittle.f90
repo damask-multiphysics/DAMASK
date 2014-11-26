@@ -433,7 +433,8 @@ subroutine damage_anisoBrittle_microstructure(ipc, ip, el)
    instance, &
    f, i, index_d, index_o, index_myFamily
  real(pReal) :: &
-   localDamage
+   localDamage, &
+   drivingForce
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
