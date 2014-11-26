@@ -391,8 +391,8 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      traction_crit = damage_anisoBrittle_critLoad(f,instance)* &
-                     damageState(phase)%state(index_d,constituent)* &
-                     damageState(phase)%state(index_d,constituent)
+                     damageState(phase)%state0(index_d,constituent)* &
+                     damageState(phase)%state0(index_d,constituent)
                     
      udotd = &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -516,8 +516,8 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      traction_crit = damage_anisoBrittle_critLoad(f,instance)* &
-                     damageState(phase)%state(index,constituent)* &
-                     damageState(phase)%state(index,constituent)
+                     damageState(phase)%state0(index,constituent)* &
+                     damageState(phase)%state0(index,constituent)
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -647,8 +647,8 @@ subroutine damage_anisoBrittle_putFd(Tstar_v, dt, ipc, ip, el)
      traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
      traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
      traction_crit = damage_anisoBrittle_critLoad(f,instance)* &
-                     damageState(phase)%state(index,constituent)* &
-                     damageState(phase)%state(index,constituent)
+                     damageState(phase)%state0(index,constituent)* &
+                     damageState(phase)%state0(index,constituent)
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &
@@ -749,6 +749,8 @@ function damage_anisoBrittle_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
+   mappingConstitutive, &
+   damageState, &
    fieldDamage, &
    field_damage_type, &
    FIELD_DAMAGE_LOCAL_ID, &
@@ -763,7 +765,8 @@ function damage_anisoBrittle_getDamage(ipc, ip, el)
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
    case (FIELD_DAMAGE_LOCAL_ID)
-    damage_anisoBrittle_getDamage = damage_anisoBrittle_getLocalDamage(ipc, ip, el)
+    damage_anisoBrittle_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
+      state0(1,mappingConstitutive(1,ipc,ip,el))
     
    case (FIELD_DAMAGE_NONLOCAL_ID)
     damage_anisoBrittle_getDamage = fieldDamage(material_homog(ip,el))% &

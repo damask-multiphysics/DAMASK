@@ -383,6 +383,8 @@ function damage_anisoDuctile_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
+   mappingConstitutive, &
+   damageState, &
    fieldDamage, &
    field_damage_type, &
    FIELD_DAMAGE_LOCAL_ID, &
@@ -397,7 +399,8 @@ function damage_anisoDuctile_getDamage(ipc, ip, el)
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
    case (FIELD_DAMAGE_LOCAL_ID)
-    damage_anisoDuctile_getDamage = damage_anisoDuctile_getLocalDamage(ipc, ip, el)
+    damage_anisoDuctile_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
+      state0(1,mappingConstitutive(1,ipc,ip,el))
     
    case (FIELD_DAMAGE_NONLOCAL_ID)
     damage_anisoDuctile_getDamage = fieldDamage(material_homog(ip,el))% &
@@ -476,8 +479,8 @@ function damage_anisoDuctile_getSlipDamage(ipc, ip, el)
  instance = phase_damageInstance(phase)
  
  damage_anisoDuctile_getSlipDamage = &
-   damageState(phase)%state(2:1+damage_anisoDuctile_totalNslip(instance),constituent)* &
-   damageState(phase)%state(2:1+damage_anisoDuctile_totalNslip(instance),constituent)
+   damageState(phase)%state0(2:1+damage_anisoDuctile_totalNslip(instance),constituent)* &
+   damageState(phase)%state0(2:1+damage_anisoDuctile_totalNslip(instance),constituent)
 
 end function damage_anisoDuctile_getSlipDamage
 

@@ -351,6 +351,8 @@ function damage_phaseField_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
+   mappingConstitutive, &
+   damageState, &
    fieldDamage, &
    field_damage_type, &
    FIELD_DAMAGE_LOCAL_ID, &
@@ -365,7 +367,8 @@ function damage_phaseField_getDamage(ipc, ip, el)
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
    case (FIELD_DAMAGE_LOCAL_ID)
-    damage_phaseField_getDamage = damage_phaseField_getLocalDamage(ipc, ip, el)
+    damage_phaseField_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
+      state0(1,mappingConstitutive(1,ipc,ip,el))
     
    case (FIELD_DAMAGE_NONLOCAL_ID)
     damage_phaseField_getDamage = fieldDamage(material_homog(ip,el))% &
