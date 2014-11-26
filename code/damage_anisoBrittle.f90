@@ -227,9 +227,9 @@ subroutine damage_anisoBrittle_init(fileUnit)
        damage_anisoBrittle_aTol_disp(instance) = 1.0e-3_pReal                                       ! default absolute tolerance 1e-3
      if (damage_anisoBrittle_sdot_0(instance) <= 0.0_pReal) &
        call IO_error(211_pInt,el=instance,ext_msg='sdot_0 ('//LOCAL_DAMAGE_anisoBrittle_LABEL//')')
-     if (any(damage_anisoBrittle_critDisp(:,instance) <= 0.0_pReal)) &
+     if (any(damage_anisoBrittle_critDisp(:,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_displacement ('//LOCAL_DAMAGE_anisoBrittle_LABEL//')')
-     if (any(damage_anisoBrittle_critLoad(:,instance) <= 0.0_pReal)) &
+     if (any(damage_anisoBrittle_critLoad(:,instance) < 0.0_pReal)) &
        call IO_error(211_pInt,el=instance,ext_msg='critical_load ('//LOCAL_DAMAGE_anisoBrittle_LABEL//')')
      if (damage_anisoBrittle_N(instance) <= 0.0_pReal) &
        call IO_error(211_pInt,el=instance,ext_msg='rate_sensitivity_damage ('//LOCAL_DAMAGE_anisoBrittle_LABEL//')')
