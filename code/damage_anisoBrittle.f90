@@ -376,7 +376,8 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
  
  localDamage = max(0.0_pReal, &
                    1.0_pReal - sum(1.0_pReal - damageState(phase)% &
-                                    state(2:1+damage_anisoBrittle_totalNcleavage(instance),constituent)))
+                                    state(2+  damage_anisoBrittle_totalNcleavage(instance): &
+                                          1+2*damage_anisoBrittle_totalNcleavage(instance),constituent)))
  damageState(phase)%dotState(1,constituent) = &
    (localDamage - damageState(phase)%state(1,constituent))/lattice_DamageMobility(phase)
  nonlocalFactor = damage_anisoBrittle_getDamage(ipc, ip, el) - localDamage
@@ -443,7 +444,8 @@ subroutine damage_anisoBrittle_microstructure(ipc, ip, el)
  
  localDamage = max(0.0_pReal, &
                    1.0_pReal - sum(1.0_pReal - damageState(phase)% &
-                                    state(2:1+damage_anisoBrittle_totalNcleavage(instance),constituent)))
+                                    state(2+  damage_anisoBrittle_totalNcleavage(instance): &
+                                          1+2*damage_anisoBrittle_totalNcleavage(instance),constituent)))
  nonlocalFactor = damage_anisoBrittle_getDamage(ipc, ip, el) - localDamage
 
  index_o = 2_pInt
