@@ -368,19 +368,16 @@ subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
  real(pReal) :: &
    traction_d, traction_t, traction_n, traction_crit, &
    udotd, udott, udotn, &
-   nonlocalFactor, localDamage
+   localDamage
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_damageInstance(phase)
  
- localDamage = max(0.0_pReal, &
-                   1.0_pReal - sum(1.0_pReal - damageState(phase)% &
-                                    state(2+  damage_anisoBrittle_totalNcleavage(instance): &
-                                          1+2*damage_anisoBrittle_totalNcleavage(instance),constituent)))
+ localDamage = minval(damageState(phase)%state(2+  damage_anisoBrittle_totalNcleavage(instance): &
+                                               1+2*damage_anisoBrittle_totalNcleavage(instance),constituent))
  damageState(phase)%dotState(1,constituent) = &
    (localDamage - damageState(phase)%state(1,constituent))/lattice_DamageMobility(phase)
- nonlocalFactor = damage_anisoBrittle_getDamage(ipc, ip, el) - localDamage
 
  index_o = 2_pInt
  index_d = 2_pInt + damage_anisoBrittle_totalNcleavage(instance)
@@ -436,27 +433,32 @@ subroutine damage_anisoBrittle_microstructure(ipc, ip, el)
    instance, &
    f, i, index_d, index_o, index_myFamily
  real(pReal) :: &
-   nonlocalFactor, localDamage
+   localDamage
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_damageInstance(phase)
  
- localDamage = max(0.0_pReal, &
-                   1.0_pReal - sum(1.0_pReal - damageState(phase)% &
-                                    state(2+  damage_anisoBrittle_totalNcleavage(instance): &
-                                          1+2*damage_anisoBrittle_totalNcleavage(instance),constituent)))
- nonlocalFactor = damage_anisoBrittle_getDamage(ipc, ip, el) - localDamage
+ localDamage = minval(damageState(phase)%state(2+  damage_anisoBrittle_totalNcleavage(instance): &
+                                               1+2*damage_anisoBrittle_totalNcleavage(instance),constituent))
 
  index_o = 2_pInt
  index_d = 2_pInt + damage_anisoBrittle_totalNcleavage(instance)
  do f = 1_pInt,lattice_maxNcleavageFamily
    index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
    do i = 1_pInt,damage_anisoBrittle_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
-     damageState(phase)%state(index_d,constituent) = &
-       min(damageState(phase)%state0(index_d,constituent), &
-           1.0_pReal/max(0.0_pReal,damageState(phase)%state(index_o,constituent) - &
-                                   nonlocalFactor))
+     if (localDamage == damageState(phase)%state(index_d,constituent)) then
+       drivingForce = damageState(phase)%state(index_o,constituent) - &
+                      damage_anisoBrittle_getDamage(ipc, ip, el)
+       damageState(phase)%state(index_d,constituent) = &
+         min(damageState(phase)%state0(index_d,constituent), &
+             (sqrt(drivingForce*drivingForce + 4.0_pReal) - drivingForce)/2.0_pReal)
+     else
+       drivingForce = damageState(phase)%state(index_o,constituent)
+       damageState(phase)%state(index_d,constituent) = &
+         min(damageState(phase)%state0(index_d,constituent), &
+             1.0_pReal/drivingForce)
+     endif
 
      index_d = index_d + 1_pInt; index_o = index_o + 1_pInt
    enddo
