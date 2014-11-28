@@ -42,7 +42,6 @@ module damage_isoBrittle
    damage_isoBrittle_init, &
    damage_isoBrittle_stateInit, &
    damage_isoBrittle_aTolState, &
-   damage_isoBrittle_dotState, &
    damage_isoBrittle_microstructure, &
    damage_isoBrittle_getDamage, &
    damage_isoBrittle_putLocalDamage, &
@@ -196,7 +195,7 @@ subroutine damage_isoBrittle_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   1_pInt
+     sizeDotState              =   0_pInt
      sizeState                 =   2_pInt
                 
      damageState(phase)%sizeState = sizeState
@@ -266,34 +265,7 @@ end subroutine damage_isoBrittle_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_isoBrittle_dotState(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   damageState
- use lattice, only: &
-   lattice_DamageMobility
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- integer(pInt) :: &
-   phase, constituent
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
-
- damageState(phase)%dotState(1,constituent) = &
-   (damageState(phase)%state(2,constituent) - damageState(phase)%state(1,constituent))/ &
-   lattice_DamageMobility(phase)
-
-end subroutine damage_isoBrittle_dotState
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine damage_isoBrittle_microstructure(C, Fe, ipc, ip, el)
+subroutine damage_isoBrittle_microstructure(C, Fe, subdt, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -304,6 +276,8 @@ subroutine damage_isoBrittle_microstructure(C, Fe, ipc, ip, el)
    math_Mandel33to6, &
    math_transpose33, &
    math_I3
+ use lattice, only: &
+   lattice_DamageMobility
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -312,6 +286,8 @@ subroutine damage_isoBrittle_microstructure(C, Fe, ipc, ip, el)
    el                                                                                               !< element
  real(pReal),  intent(in), dimension(3,3) :: &
    Fe
+ real(pReal),  intent(in) :: &
+   subdt
  integer(pInt) :: &
    phase, constituent, instance
  real(pReal) :: &
@@ -329,7 +305,12 @@ subroutine damage_isoBrittle_microstructure(C, Fe, ipc, ip, el)
  damageState(phase)%state(2,constituent) = &
    min(damageState(phase)%state0(2,constituent), &
        damage_isoBrittle_critStrainEnergy(instance)/sum(abs(stress*strain)))
-
+       
+ damageState(phase)%state(1,constituent) = &
+   damageState(phase)%state(2,constituent) + &
+   (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent))* &
+   exp(-subdt/lattice_DamageMobility(phase))
+              
 end subroutine damage_isoBrittle_microstructure
  
 !--------------------------------------------------------------------------------------------------

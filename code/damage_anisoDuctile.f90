@@ -50,7 +50,6 @@ module damage_anisoDuctile
    damage_anisoDuctile_init, &
    damage_anisoDuctile_stateInit, &
    damage_anisoDuctile_aTolState, &
-   damage_anisoDuctile_dotState, &
    damage_anisoDuctile_microstructure, &
    damage_anisoDuctile_getDamage, &
    damage_anisoDuctile_putLocalDamage, &
@@ -222,8 +221,9 @@ subroutine damage_anisoDuctile_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              = 1_pInt ! non-local damage
+     sizeDotState              = 0_pInt
      sizeState                 = sizeDotState + &
+                                 1_pInt + & ! non-local damage
                                  damage_anisoDuctile_totalNslip(instance)
 
      damageState(phase)%sizeState = sizeState
@@ -293,47 +293,15 @@ end subroutine damage_anisoDuctile_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_anisoDuctile_dotState(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
- use lattice, only: &
-   lattice_DamageMobility
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- integer(pInt) :: &
-   phase, &
-   constituent, &
-   instance
- real(pReal) :: &
-   localDamage
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
-
- localDamage = minval(damageState(phase)%state(2:1+damage_anisoDuctile_totalNslip(instance),constituent))
-
- damageState(phase)%dotState(1,constituent) = &
-   (localDamage - damageState(phase)%state(1,constituent))/lattice_DamageMobility(phase)
-
-end subroutine damage_anisoDuctile_dotState
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, ipc, ip, el)
+subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, subdt, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
    damageState
  use lattice, only: &
    lattice_maxNslipFamily
+ use lattice, only: &
+   lattice_DamageMobility
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -343,6 +311,8 @@ subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, ipc, ip, e
    el                                                                                               !< element
  real(pReal), dimension(nSlip), intent(in) :: &
    accumulatedSlip
+ real(pReal),  intent(in) :: &
+   subdt
  integer(pInt) :: &
    phase, &
    constituent, &
@@ -376,6 +346,13 @@ subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, ipc, ip, e
      index = index + 1_pInt
    enddo
  enddo
+
+ localDamage = minval(damageState(phase)%state(2:1+damage_anisoDuctile_totalNslip(instance),constituent))
+
+ damageState(phase)%state(1,constituent) = &
+   localDamage + &
+   (damageState(phase)%subState0(1,constituent) - localDamage)* &
+   exp(-subdt/lattice_DamageMobility(phase))
 
 end subroutine damage_anisoDuctile_microstructure
 
@@ -459,6 +436,8 @@ end function damage_anisoDuctile_getLocalDamage
 !> @brief returns slip system damage
 !--------------------------------------------------------------------------------------------------
 function damage_anisoDuctile_getSlipDamage(ipc, ip, el)
+ use numerics, only: &
+   residualStiffness
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -482,7 +461,8 @@ function damage_anisoDuctile_getSlipDamage(ipc, ip, el)
  instance = phase_damageInstance(phase)
  
  damage_anisoDuctile_getSlipDamage = &
-   damageState(phase)%state0(2:1+damage_anisoDuctile_totalNslip(instance),constituent)
+   damageState(phase)%state0(2:1+damage_anisoDuctile_totalNslip(instance),constituent) + &
+   residualStiffness
 
 end function damage_anisoDuctile_getSlipDamage
 

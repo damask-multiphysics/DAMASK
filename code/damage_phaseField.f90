@@ -43,7 +43,6 @@ module damage_phaseField
    damage_phaseField_init, &
    damage_phaseField_stateInit, &
    damage_phaseField_aTolState, &
-   damage_phaseField_dotState, &
    damage_phaseField_microstructure, &
    damage_phaseField_getDamage, &
    damage_phaseField_putLocalDamage, &
@@ -201,7 +200,7 @@ subroutine damage_phaseField_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   1_pInt
+     sizeDotState              =   0_pInt
      sizeState                 =   2_pInt
                 
      damageState(phase)%sizeState = sizeState
@@ -271,37 +270,7 @@ end subroutine damage_phaseField_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_phaseField_dotState(Cv, ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   damageState
- use lattice, only: &
-   lattice_DamageMobility
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal),  intent(in) :: &
-   Cv
- integer(pInt) :: &
-   phase, constituent
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
-
- damageState(phase)%dotState(1,constituent) = &
-   (damageState(phase)%state(2,constituent)*(1.0_pReal - Cv) - &
-    damageState(phase)%state(1,constituent))/ &
-   lattice_DamageMobility(phase)
-
-end subroutine damage_phaseField_dotState
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine damage_phaseField_microstructure(C, Fe, Cv, ipc, ip, el)
+subroutine damage_phaseField_microstructure(C, Fe, Cv, subdt, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -312,6 +281,8 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, ipc, ip, el)
    math_Mandel33to6, &
    math_transpose33, &
    math_I3
+ use lattice, only: &
+   lattice_DamageMobility
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -324,6 +295,8 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, ipc, ip, el)
    C
  real(pReal),  intent(in) :: &
    Cv
+ real(pReal),  intent(in) :: &
+   subdt
  integer(pInt) :: &
    phase, constituent, instance
  real(pReal) :: &
@@ -341,6 +314,11 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, ipc, ip, el)
    min(damageState(phase)%state0(2,constituent), &
        damage_phaseField_surfaceEnergy(instance)/ &
        (2.0_pReal*(sum(abs(stress*strain)) + Cv*damage_phaseField_vacancyFormationEnergy(instance))))
+
+ damageState(phase)%state(1,constituent) = &
+   damageState(phase)%state(2,constituent)*(1.0_pReal - Cv) + &
+   (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent)*(1.0_pReal - Cv))* &
+   exp(-subdt/lattice_DamageMobility(phase))
  
 end subroutine damage_phaseField_microstructure
  

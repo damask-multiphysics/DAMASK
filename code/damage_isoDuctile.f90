@@ -42,7 +42,6 @@ module damage_isoDuctile
    damage_isoDuctile_init, &
    damage_isoDuctile_stateInit, &
    damage_isoDuctile_aTolState, &
-   damage_isoDuctile_dotState, &
    damage_isoDuctile_microstructure, &
    damage_isoDuctile_getDamage, &
    damage_isoDuctile_getSlipDamage, &
@@ -195,7 +194,7 @@ subroutine damage_isoDuctile_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   1_pInt
+     sizeDotState              =   0_pInt
      sizeState                 =   2_pInt
                 
      damageState(phase)%sizeState = sizeState
@@ -265,40 +264,15 @@ end subroutine damage_isoDuctile_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_isoDuctile_dotState(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   damageState
- use lattice, only: &
-   lattice_DamageMobility
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- integer(pInt) :: &
-   phase, constituent
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
-
- damageState(phase)%dotState(1,constituent) = &
-   (damageState(phase)%state(2,constituent) - damageState(phase)%state(1,constituent))/ &
-   lattice_DamageMobility(phase)
-
-end subroutine damage_isoDuctile_dotState
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine damage_isoDuctile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
+subroutine damage_isoDuctile_microstructure(nSlip,accumulatedSlip,subdt,ipc, ip, el)
  use material, only: &
    phase_damageInstance, &
    mappingConstitutive, &
    damageState
  use math, only: &
    math_norm33
+ use lattice, only: &
+   lattice_DamageMobility
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -308,6 +282,8 @@ subroutine damage_isoDuctile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
    el                                                                                               !< element
  real(pReal), dimension(nSlip), intent(in) :: &
    accumulatedSlip
+ real(pReal),  intent(in) :: &
+   subdt
  integer(pInt) :: &
    phase, constituent, instance
 
@@ -319,6 +295,11 @@ subroutine damage_isoDuctile_microstructure(nSlip,accumulatedSlip,ipc, ip, el)
    min(damageState(phase)%state0(2,constituent), &
        damage_isoDuctile_critPlasticStrain(instance)/sum(accumulatedSlip))
  
+ damageState(phase)%state(1,constituent) = &
+   damageState(phase)%state(2,constituent) + &
+   (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent))* &
+   exp(-subdt/lattice_DamageMobility(phase))
+
 end subroutine damage_isoDuctile_microstructure
  
 !--------------------------------------------------------------------------------------------------
