@@ -57,24 +57,27 @@ Generate geometry description and material configuration by standard Voronoi tes
 
 """, version = scriptID)
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int', \
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int',
                   help='a,b,c grid of hexahedral box [from seeds file]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar = 'float float float', \
+parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar = 'float float float',
                   help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
-parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int', \
+parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int',
                   help='homogenization index to be used [%default]')
-parser.add_option('--phase', dest='phase', type='int', metavar = 'int', \
+parser.add_option('--phase', dest='phase', type='int', metavar = 'int',
                   help='phase index to be used [%default]')
-parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'int', \
+parser.add_option('--crystallite', dest='crystallite', type='int', metavar = 'int',
                   help='crystallite index to be used [%default]')
-parser.add_option('-c', '--configuration', dest='config', action='store_true', \
+parser.add_option('-c', '--configuration', dest='config', action='store_true',
                   help='output material configuration [%default]')
-                                   
+parser.add_option('--secondphase', type='float', dest='secondphase', metavar= 'float',
+                  help='volume fraction of randomly distribute second phase [%default]')
+
 parser.set_defaults(grid = (0,0,0))
 parser.set_defaults(size = (0.0,0.0,0.0))
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = 1)
 parser.set_defaults(crystallite    = 1)
+parser.set_defaults(secondphase    = 0.0)
 parser.set_defaults(config = False)
 
 (options,filenames) = parser.parse_args()
@@ -191,17 +194,21 @@ for file in files:
 
 #--- switch according to task ---------------------------------------------------------------------
   if options.config:                                                                                # write config file
+    phase=np.empty(info['microstructures'],'i')
+    phase.fill(options.phase)
+    phase[0:int(float(info['microstructures'])*options.secondphase)] = options.phase+1
+    np.random.shuffle(phase)
     formatwidth = 1+int(math.log10(info['microstructures']))
     file['output'].write('<microstructure>\n')
-    for i in grainIDs:
-      file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
+    for i,ID in enumerate(grainIDs):
+      file['output'].write('\n[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
                            'crystallite %i\n'%options.crystallite + \
-                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(options.phase,str(i).rjust(formatwidth)))
+                           '(constituent)\tphase %i\ttexture %s\tfraction 1.0\n'%(phase[i],str(ID).rjust(formatwidth)))
   
     file['output'].write('\n<texture>\n')
-    for i in grainIDs:
-      eulerID = np.nonzero(grain == i)[0][0]                                                     # find first occurrence of this grain id
-      file['output'].write('\n[Grain%s]\n'%(str(i).zfill(formatwidth)) + \
+    for ID in grainIDs:
+      eulerID = np.nonzero(grain == ID)[0][0]                                                       # find first occurrence of this grain id
+      file['output'].write('\n[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
                            '(gauss)\tphi1 %g\tPhi %g\tphi2 %g\tscatter 0.0\tfraction 1.0\n'%(eulers[0,eulerID],
                                                                                              eulers[1,eulerID],
                                                                                              eulers[2,eulerID]))
