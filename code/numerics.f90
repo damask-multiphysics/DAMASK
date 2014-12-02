@@ -63,7 +63,8 @@ module numerics
    maxVolDiscr_RGC            =  1.0e-5_pReal, &                                                    !< threshold of maximum volume discrepancy allowed
    volDiscrMod_RGC            =  1.0e+12_pReal, &                                                   !< stiffness of RGC volume discrepancy (zero = without volume discrepancy constraint)
    volDiscrPow_RGC            =  5.0_pReal, &                                                       !< powerlaw penalty for volume discrepancy
-   charLength                 =  1.0_pReal                                                          !< characteristic length scale for gradient problems
+   charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
+   residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage   
  logical, protected, public :: &                                                   
 #if defined(Spectral) || defined(FEM)
    analyticJaco               = .true.,  &                                                          !< use analytic Jacobian or perturbation, Default for Spectral solver .true.:
@@ -113,9 +114,8 @@ module numerics
  real(pReal), protected, public :: &
    err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
    err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
-   err_thermal_tol            =  1.0_pReal, &
-   err_damage_tol             =  1.0e-4_pReal, &
-   residualStiffness          =  1.0e-6_pReal                                                      !< non-zero residual damage   
+   err_thermal_tol            =  1.0e-1_pReal, &
+   err_damage_tol             =  1.0e-3_pReal, &
  character(len=4096), protected, public :: &
    petsc_optionsFEM           = '-mech_snes_type newtonls &
                                 &-mech_snes_linesearch_type cp &
@@ -123,7 +123,7 @@ module numerics
                                 &-mech_snes_ksp_ew_rtol0 0.01 &
                                 &-mech_snes_ksp_ew_rtolmax 0.01 &
                                 &-mech_ksp_type fgmres &
-                                &-mech_ksp_max_it 50 &
+                                &-mech_ksp_max_it 25 &
                                 &-mech_pc_type ml &
                                 &-mech_pc_ml_maxNlevels 2 &
                                 &-mech_mg_coarse_ksp_type preonly &
@@ -160,6 +160,7 @@ module numerics
  integer(pInt), protected, public :: &
    itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
    itminFEM                   =  1_pInt, &                                                          !< minimum number of iterations
+   stagItMax                  =  10_pInt, &                                                         !< max number of field level staggered iterations
    maxCutBackFEM              =  3_pInt, &                                                          !< max number of cut backs
    integrationOrder           =  2_pInt, &
    structOrder                =  2_pInt, &
@@ -342,6 +343,8 @@ subroutine numerics_init
 ! gradient parameter
        case ('charlength')
          charLength = IO_floatValue(line,positions,2_pInt)
+       case ('residualstiffness')
+         residualStiffness = IO_floatValue(line,positions,2_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! spectral parameters
@@ -406,14 +409,14 @@ subroutine numerics_init
          err_thermal_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_damage_tol')
          err_damage_tol = IO_floatValue(line,positions,2_pInt)
-       case ('residualstiffness')
-         residualStiffness = IO_floatValue(line,positions,2_pInt)
        case ('itmaxfem')
          itmaxFEM = IO_intValue(line,positions,2_pInt)
        case ('itminfem')
          itminFEM = IO_intValue(line,positions,2_pInt)
        case ('maxcutbackfem')
          maxCutBackFEM = IO_intValue(line,positions,2_pInt)
+       case ('maxstaggerediter')
+         stagItMax = IO_intValue(line,positions,2_pInt)
        case ('integrationorder')
          integrationorder = IO_intValue(line,positions,2_pInt)
        case ('structorder')
@@ -427,8 +430,8 @@ subroutine numerics_init
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
 #else
-      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol',&           ! found FEM parameter for spectral/Abaqus/Marc build
-            'residualstiffness', 'itmaxfem', 'itminfem','maxcutbackfem','integrationorder',&
+      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol', &         ! found FEM parameter for spectral/Abaqus/Marc build
+            'itmaxfem', 'itminfem','maxcutbackfem','maxstaggerediter','integrationorder',&
             'structorder','thermalorder', 'damageorder','petsc_optionsfem')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
@@ -521,6 +524,7 @@ subroutine numerics_init
 !--------------------------------------------------------------------------------------------------
 ! gradient parameter
    write(6,'(a24,1x,es8.1)')   ' charLength:             ',charLength
+   write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
 
 !--------------------------------------------------------------------------------------------------
 ! openMP parameter
@@ -562,6 +566,7 @@ subroutine numerics_init
    write(6,'(a24,1x,i8)')      ' itmaxFEM:               ',itmaxFEM
    write(6,'(a24,1x,i8)')      ' itminFEM:               ',itminFEM
    write(6,'(a24,1x,i8)')      ' maxCutBackFEM:          ',maxCutBackFEM
+   write(6,'(a24,1x,i8)')      ' maxStaggeredIter:       ',stagItMax
    write(6,'(a24,1x,i8)')      ' integrationOrder:       ',integrationOrder
    write(6,'(a24,1x,i8)')      ' structOrder:            ',structOrder
    write(6,'(a24,1x,i8)')      ' thermalOrder:           ',thermalOrder
@@ -571,7 +576,6 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
    write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
    write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
-   write(6,'(a24,1x,es8.1)')   ' residualStiffness:      ',residualStiffness
    write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
 #endif
  endif mainProcess3
@@ -616,6 +620,7 @@ subroutine numerics_init
  if (maxVolDiscr_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='maxVolDiscr_RGC')
  if (volDiscrMod_RGC < 0.0_pReal)          call IO_error(301_pInt,ext_msg='volDiscrMod_RGC')
  if (volDiscrPow_RGC <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='volDiscrPw_RGC')
+ if (residualStiffness <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='residualStiffness')
 #ifdef Spectral
  if (itmax <= 1_pInt)                      call IO_error(301_pInt,ext_msg='itmax')
  if (itmin > itmax .or. itmin < 1_pInt)    call IO_error(301_pInt,ext_msg='itmin')
@@ -642,11 +647,11 @@ subroutine numerics_init
  if (itminFEM > itmaxFEM .or. &
      itminFEM < 0_pInt)                    call IO_error(301_pInt,ext_msg='itminFEM')
  if (maxCutBackFEM < 0_pInt)               call IO_error(301_pInt,ext_msg='maxCutBackFEM')
+ if (stagItMax < 0_pInt)                   call IO_error(301_pInt,ext_msg='maxStaggeredIter')
  if (err_struct_tolRel <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolRel')
  if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
  if (err_thermal_tol <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_thermal_tol')
  if (err_damage_tol <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_damage_tol')
- if (residualStiffness <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='residualStiffness')
 #endif
 
 end subroutine numerics_init
