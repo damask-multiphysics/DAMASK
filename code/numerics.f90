@@ -115,7 +115,7 @@ module numerics
    err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
    err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_thermal_tol            =  1.0e-1_pReal, &
-   err_damage_tol             =  1.0e-3_pReal, &
+   err_damage_tol             =  1.0e-3_pReal
  character(len=4096), protected, public :: &
    petsc_optionsFEM           = '-mech_snes_type newtonls &
                                 &-mech_snes_linesearch_type cp &
