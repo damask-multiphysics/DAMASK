@@ -6,15 +6,11 @@ SHELL = /bin/sh
 ########################################################################################
 # OPTIONS = standard (alternative): meaning
 #-------------------------------------------------------------
-# F90            = ifort (gfortran): compiler, choose Intel or GNU
-# COMPILERNAME   = overwrite name of Compiler, e.g. using mpich-g90 instead of ifort
+# F90            = ifort (gfortran): compiler type, choose Intel or GNU
+# COMPILERNAME   = name of the compiler executable (if not the same as the ype), e.g. using mpich-g90 instead of ifort
 # PORTABLE       = TRUE (FALSE): decision, if executable is optimized for the machine on which it was built.
 # OPTIMIZATION   = DEFENSIVE (OFF,AGGRESSIVE,ULTRA): Optimization mode: O2, O0, O3 + further options for most files, O3 + further options for all files
 # OPENMP         = TRUE (FALSE): OpenMP multiprocessor support
-# FFTW_ROOT      = root path FFTW, needed
-# IMKL_ROOT      = root path IMKL, first option for BLAS/LAPACK funtionality
-# ACML_ROOT      = root path ACML, second option for BLAS/LAPACK funtionality
-# LAPACK_ROOT    = root path LAPACK, third option for BLAS/LAPACK funtionality
 # PREFIX         = arbitrary prefix (before compilername)
 # OPTION         = arbitrary option (just before file to compile)
 # SUFFIX         = arbitrary suffix (after file to compile)
@@ -31,9 +27,6 @@ INCLUDE_DIRS :=$(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    :=$(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
-
-LIB_DIRS  :=-L$(FFTW_ROOT)/lib64 -L$(FFTW_ROOT)/lib
-RUN_PATH  :=-Wl,-rpath,$(FFTW_ROOT)/lib64,-rpath,$(FFTW_ROOT)/lib
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -69,10 +62,6 @@ ifeq  "$(PORTABLE)" "FALSE"
 PORTABLE_SWITCH =-msse3
 endif
 
-# names for linking IMKL
-IMKL_COMPILER_ifort :=intel
-IMKL_COMPILER_gfortran :=gf
-
 # settings for multicore support
 ifeq "$(OPENMP)" "ON"
 OPENMP_FLAG_ifort =-openmp -openmp-report0 -parallel
@@ -81,14 +70,6 @@ LIBRARIES +=-lpthread
 ifeq "$(F90)" "ifort"
 LIBRARIES +=-liomp5
 endif
-endif
-
-#hdf5
-ifeq "$(HDF5)" "ON"
-LIBRARIES +=-lhdf5hl_fortran -lhdf5_hl -lhdf5_fortran -lhdf5
-LIB_DIRS  +=-L$(HDF5_ROOT)/lib64 -L$(HDF5_ROOT)/lib
-RUN_PATH  :=$(RUN_PATH),-rpath,$(HDF5_ROOT)/lib64,-rpath,$(HDF5_ROOT)/lib
-INCLUDE_DIRS +=-I$(HDF5_ROOT)/include -DHDF
 endif
 
 #newstate
