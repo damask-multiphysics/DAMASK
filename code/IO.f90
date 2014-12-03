@@ -210,8 +210,8 @@ subroutine IO_checkAndRewind(fileUnit)
  logical                   :: fileOpened
  character(len=15)         :: fileRead
 
- inquire(unit=fileUnit, opened=fileOpened, read = fileRead) 
- if (fileOpened .neqv. .true. .or. trim(fileRead)/='YES') call IO_error(102_pInt)
+ inquire(unit=fileUnit, opened=fileOpened, read=fileRead) 
+ if (.not. fileOpened .or. trim(fileRead)/='YES') call IO_error(102_pInt)
  rewind(fileUnit)
 
 end subroutine IO_checkAndRewind
@@ -1498,6 +1498,15 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'unknown output:'
  
 !--------------------------------------------------------------------------------------------------
+! lattice error messages
+ case (130_pInt)
+   msg = 'unknown lattice structure encountered'
+ case (131_pInt)
+   msg = 'hex lattice structure with invalid c/a ratio'
+ case (135_pInt)
+   msg = 'zero entry on stiffness diagonal'
+
+!--------------------------------------------------------------------------------------------------
 ! material error messages and related messages in mesh
  case (150_pInt)
    msg = 'index out of bounds'
@@ -1530,20 +1539,11 @@ subroutine IO_error(error_ID,el,ip,g,ext_msg)
    msg = 'unknown elasticity specified:' 
  case (201_pInt)
    msg = 'unknown plasticity specified:'
- case (205_pInt)
-   msg = 'unknown lattice structure encountered'
- case (206_pInt)
-   msg = 'hex lattice structure with invalid c/a ratio'
 
  case (210_pInt)
    msg = 'unknown material parameter:'
  case (211_pInt)
    msg = 'material parameter out of bounds:'
- case (214_pInt)
-   msg = 'stiffness parameter close to zero:'
-
- case (252_pInt)
-   msg = 'nonlocal plasticity works only for direct CPFEM, i.e. one grain per integration point'
 
 !--------------------------------------------------------------------------------------------------
 ! numerics error messages 
@@ -1720,6 +1720,8 @@ subroutine IO_warning(warning_ID,el,ip,g,ext_msg)
  character(len=1024)                    :: formatString
 
  select case (warning_ID)
+ case (1_pInt)
+   msg = 'unknown key'
  case (34_pInt)
    msg = 'invalid restart increment given'
  case (35_pInt)

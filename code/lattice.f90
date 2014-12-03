@@ -1192,7 +1192,7 @@ subroutine lattice_init
            case('ort','orthorhombic')
              lattice_structure(section) = LATTICE_ort_ID
            case default
-             call IO_error(450_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
+             call IO_error(130_pInt,ext_msg=trim(IO_lc(IO_stringValue(line,positions,2_pInt))))
          end select
      case ('c11')
        lattice_C66(1,1,section) = IO_floatValue(line,positions,2_pInt)
@@ -1262,7 +1262,7 @@ subroutine lattice_init
 
  do i = 1_pInt,Nphases
    if ((CoverA(i) < 1.0_pReal .or. CoverA(i) > 2.0_pReal) &
-       .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(206_pInt)                        ! checking physical significance of c/a
+       .and. lattice_structure(i) == LATTICE_hex_ID) call IO_error(131_pInt,el=i)                        ! checking physical significance of c/a
    call lattice_initializeStructure(i, CoverA(i), aA(i), aM(i), cM(i))
  enddo
 
@@ -1340,7 +1340,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
  lattice_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_C66(1:6,1:6,myPhase))          ! Literature data is Voigt
  lattice_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_C3333(1:3,1:3,1:3,1:3,myPhase))         ! DAMASK uses Mandel
  do i = 1_pInt, 6_pInt
-   if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_warning(43_pInt,el=i,ip=myPhase)
+   if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_error(135_pInt,el=i,ip=myPhase)
  enddo
  lattice_thermalConductivity33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                        lattice_thermalConductivity33(1:3,1:3,myPhase))
@@ -1539,7 +1539,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
 !--------------------------------------------------------------------------------------------------
 ! something went wrong
    case default
-     call IO_error(450_pInt,ext_msg='lattice_initializeStructure')
+     call IO_error(130_pInt,ext_msg='lattice_initializeStructure')
  end select
 
 
