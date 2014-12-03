@@ -199,7 +199,8 @@ for file in files:
     phase[0:int(float(info['microstructures'])*options.secondphase)] = options.phase+1
     np.random.shuffle(phase)
     formatwidth = 1+int(math.log10(info['microstructures']))
-    file['output'].write('<microstructure>\n')
+    file['output'].write('#' + scriptID + ' ' + ' '.join(sys.argv[1:]))
+    file['output'].write('\n<microstructure>\n')
     for i,ID in enumerate(grainIDs):
       file['output'].write('\n[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
                            'crystallite %i\n'%options.crystallite + \
