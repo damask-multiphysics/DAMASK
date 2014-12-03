@@ -17,16 +17,17 @@ SHELL = /bin/sh
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 ifneq ("","$(wildcard $(HOME)/.damask/damask.conf)")
-	include $(HOME)/.damask/damask.conf
+  include $(HOME)/.damask/damask.conf
 else
-	include /etc/damask.conf
+  include /etc/damask.conf
 endif  
 
 include $(PETSC_DIR)/conf/variables
-INCLUDE_DIRS :=$(PETSC_FC_INCLUDES) -DPETSc -I../lib
-LIBRARIES    :=$(PETSC_WITH_EXTERNAL_LIB)
+INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
+LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
+
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -340,7 +341,7 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
-	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
+    $(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
     -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
     $(SPECTRAL_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
@@ -348,7 +349,7 @@ DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic
                                                      DAMASK_spectral_solverAL.o \
                                                      DAMASK_spectral_solverBasicPETSc.o \
                                                      DAMASK_spectral_solverPolarisation.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
+    $(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
 
 DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \
                                DAMASK_spectral_utilities.o
@@ -382,12 +383,12 @@ FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.
                  FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
 
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
-	$(PREFIX) $(LINKERNAME) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
+  $(PREFIX) $(LINKERNAME) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
   $(FEM_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
 
 DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
+  $(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
 
 FEM_mech.o:                    FEM_mech.f90 \
                                FEM_utilities.o
@@ -406,8 +407,8 @@ FEM_utilities.o:               FEM_utilities.f90 \
 
 FEZoo.o:                       $(wildcard FEZoo.f90) \
                                IO.o
-	$(IGNORE) $(PREFIX) $(COMPILERNAME) $(COMPILE) -c ../private/FEM/code/FEZoo.f90 $(SUFFIX)
-	touch FEZoo.o
+  $(IGNORE) $(PREFIX) $(COMPILERNAME) $(COMPILE) -c ../private/FEM/code/FEZoo.f90 $(SUFFIX)
+  touch FEZoo.o
 
 CPFEM.o:                       CPFEM.f90\
                                homogenization.o
@@ -506,7 +507,7 @@ mesh.o:                        mesh.f90 \
                                FEsolving.o \
                                math.o \
                                FEZoo.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(MESHNAME) -o mesh.o $(SUFFIX)
+  $(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(MESHNAME) -o mesh.o $(SUFFIX)
 
 FEsolving.o:                   FEsolving.f90 \
                                debug.o
@@ -530,36 +531,36 @@ ifeq "$(F90)" "gfortran"
 DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
+  $(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -fall-intrinsics -o DAMASK_interface.o $(SUFFIX)
 #-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored 
 #                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
 #      -->   allows the use of 'getcwd'
 prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check $(SUFFIX)
+  $(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check $(SUFFIX)
 # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
 #      -->   allows the definition of DAMASK_NaN
 else
 DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \
                                prec.o
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -diag-remark 7410 -stand none -warn nostderrors -o DAMASK_interface.o $(SUFFIX)
+  $(PREFIX) $(COMPILERNAME) $(COMPILE) -c $(INTERFACENAME) -diag-remark 7410 -stand none -warn nostderrors -o DAMASK_interface.o $(SUFFIX)
 # -diag-disable 7410 should disable warning about directory statement in inquire function, but does not work. hence the other 2 statements
 prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
+  $(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 $(SUFFIX)
 endif
 
 %.o : %.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
+  $(PREFIX) $(COMPILERNAME) $(COMPILE) -c $< $(SUFFIX)
 
 .PHONY: tidy
 tidy:
-	@rm -rf *.o
-	@rm -rf *.mod
+  @rm -rf *.o
+  @rm -rf *.mod
 
 
 .PHONY: clean
 clean:
-	@rm -rf *.o
-	@rm -rf *.mod
-	@rm -rf *.exe
-	@rm -rf *.marc
+  @rm -rf *.o
+  @rm -rf *.mod
+  @rm -rf *.exe
+  @rm -rf *.marc
