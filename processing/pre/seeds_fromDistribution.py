@@ -94,7 +94,7 @@ class myThread (threading.Thread):
           direction+=direction
           newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction)
           newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)
-          newCoords=np.where(newCoords <1.0,newCoords+1.0,newCoords)
+          newCoords=np.where(newCoords <0.0,newCoords+1.0,newCoords)
           perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
         ms+=1
         perturbedSeedsTable.data_write()
@@ -251,9 +251,6 @@ initialData = np.bincount(initialGeomTable.data.astype(int).ravel())[1:]/points
 for i in xrange(nMicrostructures):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
-  #print target[i]['histogram']
-  #print initialHist
-  #print target[i]['error'],'\n-----------------------------------'
 
 match=0
 for i in xrange(nMicrostructures):
@@ -264,8 +261,7 @@ print 'Stage %i cleared'%match
 initialGeomVFile.close()
 
 
-
-# strart mulithreaded monte carlo simulation
+# start mulithreaded monte carlo simulation
 threads=[]
 s=threading.Semaphore(1)
 
