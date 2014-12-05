@@ -330,7 +330,7 @@ subroutine hypela2(d,g,e,de,s,t,dt,ngens,m,nn,kcus,matus,ndi,nshear,disp, &
        endif
        do node = 1,FE_Nnodes(mesh_element(2,cp_en))
          CPnodeID = mesh_element(4_pInt+node,cp_en)
-         mesh_node(1:3,CPnodeID) = mesh_node0(1:3,CPnodeID) + numerics_unitlength * dispt(1:3,node)
+         mesh_node(1:ndeg,CPnodeID) = mesh_node0(1:ndeg,CPnodeID) + numerics_unitlength * dispt(1:ndeg,node)
        enddo
      endif
    
