@@ -8,15 +8,11 @@ from scipy import ndimage
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1][:-3]
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-synonyms = {
-        'grid':   ['resolution'],
-        'size':   ['dimension'],
-          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -35,8 +31,8 @@ Smoothens out interface roughness by simulated curvature flow.
 This is achieved by the diffusion of each initially sharply bounded grain volume within the periodic domain
 up to a given distance 'd' voxels.
 The final geometry is assembled by selecting at each voxel that grain index for which the concentration remains largest.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-d', '--distance', dest='d', type='int', metavar='int',
                   help='diffusion distance in voxels [%default]')
@@ -97,8 +93,6 @@ for file in files:
   for header in theTable.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue
-    for synonym,alternatives in synonyms.iteritems():
-      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
@@ -243,6 +237,6 @@ for file in files:
     
 #--- output finalization --------------------------------------------------------------------------
   if file['name'] != 'STDIN':
-    theTable.__IO__['in'].close()
-    theTable.__IO__['out'].close()
+    theTable.input_close() 
+    theTable.output_close() 
     os.rename(file['name']+'_tmp',file['name'])

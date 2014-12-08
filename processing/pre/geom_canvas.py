@@ -12,12 +12,6 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-
-
-synonyms = {
-        'grid':   ['resolution'],
-        'size':   ['dimension'],
-          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -44,7 +38,7 @@ parser.add_option('-f', '--fill',   dest='fill', type='int', metavar = 'int',
                                     help='(background) canvas grain index. "0" selects maximum microstructure index + 1 [%default]')
 
 parser.set_defaults(grid = ['0','0','0'])
-parser.set_defaults(offset = [0,0,0])
+parser.set_defaults(offset = (0,0,0))
 parser.set_defaults(fill = 0)
 
 (options, filenames) = parser.parse_args()
@@ -91,8 +85,6 @@ for file in files:
   for header in theTable.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue                                                              # skip blank lines
-    for synonym,alternatives in synonyms.iteritems():
-      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):

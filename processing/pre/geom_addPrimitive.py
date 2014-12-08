@@ -14,10 +14,6 @@ oversampling = 2.
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-synonyms = {
-        'grid':   ['resolution'],
-        'size':   ['dimension'],
-          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -37,8 +33,7 @@ Depending on the sign of the dimension parameters, these objects can be boxes, c
 
 """, version = scriptID)
 
-parser.add_option('-o', '--origin', 
-                  '-c', '--center',     dest='center', type='int', nargs = 3, metavar=' '.join(['int']*3),
+parser.add_option('-c', '--center',     dest='center', type='int', nargs = 3, metavar=' '.join(['int']*3),
                   help='a,b,c origin of primitive %default')
 parser.add_option('-d', '--dimension',  dest='dimension', type='int', nargs = 3, metavar=' '.join(['int']*3),
                   help='a,b,c extension of hexahedral box; negative values are diameters')
@@ -115,8 +110,6 @@ for file in files:
   for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue                                                              # skip blank lines
-    for synonym,alternatives in synonyms.iteritems():
-      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):

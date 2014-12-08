@@ -10,14 +10,9 @@ import damask
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
-
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-synonyms = {
-        'grid':   ['resolution'],
-        'size':   ['dimension'],
-          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -30,7 +25,6 @@ mappings = {
         'homogenization':  lambda x: int(x),
         'microstructures': lambda x: int(x),
           }
-
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Create seed file by taking microstructure indices from given ASCIItable column.

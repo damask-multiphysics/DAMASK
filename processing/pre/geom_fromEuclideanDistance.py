@@ -34,10 +34,6 @@ def periodic_3Dpad(array, rimdim=(1,1,1)):
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-synonyms = {
-        'grid':   ['resolution'],
-        'size':   ['dimension'],
-          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -169,8 +165,6 @@ for file in files:
   for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue                                                              # skip blank lines
-    for synonym,alternatives in synonyms.iteritems():
-      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):

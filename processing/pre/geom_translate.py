@@ -12,10 +12,6 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 #--------------------------------------------------------------------------------------------------
 #                                MAIN
 #--------------------------------------------------------------------------------------------------
-synonyms = {
-        'grid':   ['resolution'],
-        'size':   ['dimension'],
-          }
 identifiers = {
         'grid':    ['a','b','c'],
         'size':    ['x','y','z'],
@@ -34,14 +30,14 @@ translate microstructure indices (shift or substitute) and/or geometry origin.
 
 """, version=scriptID)
 
-parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3, \
-                  help='offset from old to new origin of grid', metavar='float float float')
-parser.add_option('-m', '--microstructure', dest='microstructure', type='int', \
+parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3,
+                  help='offset from old to new origin of grid', metavar=' '.join(['float']*3))
+parser.add_option('-m', '--microstructure', dest='microstructure', type='int',
                   help='offset from old to new microstructure indices', metavar='int')
-parser.add_option('-s', '--substitute', action='extend', dest='substitute', \
+parser.add_option('-s', '--substitute', action='extend', dest='substitute',
                   help='substitutions of microstructure indices from,to,from,to,...', metavar='<string LIST>')
 
-parser.set_defaults(origin = [0.0,0.0,0.0])
+parser.set_defaults(origin = (0.0,0.0,0.0))
 parser.set_defaults(microstructure = 0)
 parser.set_defaults(substitute = [])
 parser.set_defaults(twoD = False)
@@ -93,8 +89,6 @@ for file in files:
   for header in theTable.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue
-    for synonym,alternatives in synonyms.iteritems():
-      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
