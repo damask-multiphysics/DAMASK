@@ -168,6 +168,8 @@ module numerics
    thermalOrder               =  2_pInt, &
    damageOrder                =  2_pInt, &
    vacancyDiffusionOrder      =  2_pInt
+ logical, protected, public :: & 
+   BBarStabilisation          = .false.                                                  
 #endif
 
  public :: numerics_init
@@ -432,10 +434,12 @@ subroutine numerics_init
          vacancyDiffusionOrder = IO_intValue(line,positions,2_pInt)
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
+       case ('bbarstabilisation')
+         BBarStabilisation = IO_intValue(line,positions,2_pInt) > 0_pInt
 #else
       case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','err_vacancydiffusion_tol',&         ! found FEM parameter for spectral/Abaqus/Marc build
             'itmaxfem', 'itminfem','maxcutbackfem','maxstaggerediter','integrationorder',&
-            'structorder','thermalorder', 'damageorder','petsc_optionsfem')
+            'structorder','thermalorder', 'damageorder','petsc_optionsfem','bbarstabilisation')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
        case default                                                                                ! found unknown keyword
@@ -579,8 +583,9 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
    write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
    write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
-   write(6,'(a24,1x,es8.1)')   ' err_vacancyDiffusion_tol:',err_vacancydiffusion_tol
+   write(6,'(a24,1x,es8.1)')   ' err_vacancyDiff_tol:    ',err_vacancyDiffusion_tol
    write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
+   write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
  endif mainProcess3
  
