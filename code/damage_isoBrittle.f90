@@ -266,6 +266,8 @@ end subroutine damage_isoBrittle_aTolState
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine damage_isoBrittle_microstructure(C, Fe, subdt, ipc, ip, el)
+ use numerics, only: &
+   residualStiffness
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -303,13 +305,14 @@ subroutine damage_isoBrittle_microstructure(C, Fe, subdt, ipc, ip, el)
  stress = math_mul66x6(C,strain) 
  
  damageState(phase)%state(2,constituent) = &
-   min(damageState(phase)%state0(2,constituent), &
-       damage_isoBrittle_critStrainEnergy(instance)/sum(abs(stress*strain)))
+   max(residualStiffness, &
+       min(damageState(phase)%state0(2,constituent), &
+           damage_isoBrittle_critStrainEnergy(instance)/(2.0_pReal*sum(abs(stress*strain)))))                   !< residualStiffness < damage < damage0
        
  damageState(phase)%state(1,constituent) = &
    damageState(phase)%state(2,constituent) + &
    (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent))* &
-   exp(-subdt/lattice_DamageMobility(phase))
+   exp(-subdt/(damageState(phase)%state(2,constituent)*lattice_DamageMobility(phase)))
               
 end subroutine damage_isoBrittle_microstructure
  

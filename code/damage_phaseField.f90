@@ -271,6 +271,8 @@ end subroutine damage_phaseField_aTolState
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine damage_phaseField_microstructure(C, Fe, Cv, subdt, ipc, ip, el)
+ use numerics, only: &
+   residualStiffness
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -311,14 +313,15 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, subdt, ipc, ip, el)
  stress = math_mul66x6(C,strain) 
  
  damageState(phase)%state(2,constituent) = &
-   min(damageState(phase)%state0(2,constituent), &
-       damage_phaseField_surfaceEnergy(instance)/ &
-       (2.0_pReal*(sum(abs(stress*strain)) + Cv*damage_phaseField_vacancyFormationEnergy(instance))))
+   max(residualStiffness, &
+       min(damageState(phase)%state0(2,constituent), &
+           (1.0_pReal - Cv)*damage_phaseField_surfaceEnergy(instance)/ &
+           (2.0_pReal*(sum(abs(stress*strain)) + Cv*damage_phaseField_vacancyFormationEnergy(instance)))))
 
  damageState(phase)%state(1,constituent) = &
-   damageState(phase)%state(2,constituent)*(1.0_pReal - Cv) + &
-   (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent)*(1.0_pReal - Cv))* &
-   exp(-subdt/lattice_DamageMobility(phase))
+   damageState(phase)%state(2,constituent) + &
+   (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent))* &
+   exp(-subdt/(damageState(phase)%state(2,constituent)*lattice_DamageMobility(phase)))
  
 end subroutine damage_phaseField_microstructure
  
@@ -419,7 +422,6 @@ function damage_phaseField_getDamageDiffusion33(ipc, ip, el)
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  damage_phaseField_getDamageDiffusion33 = &
-   damageState(phase)%state(2,constituent)* &
    lattice_DamageDiffusion33(1:3,1:3,phase)
     
 end function damage_phaseField_getDamageDiffusion33
