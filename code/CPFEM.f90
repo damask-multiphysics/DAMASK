@@ -304,6 +304,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    damageState, &
    homogState, &
    thermalState, &
+   vacancyState,&
    mappingConstitutive, &
    material_phase, &
    phase_plasticity, &
@@ -405,6 +406,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    forall ( i = 1:size(plasticState)) plasticState(i)%state0= plasticState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    forall ( i = 1:size(damageState))  damageState(i)%state0 = damageState(i)%state             ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    forall ( i = 1:size(thermalState)) thermalState(i)%state0= thermalState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
+   forall ( i = 1:size(vacancyState)) vacancyState(i)%state0= vacancyState(i)%state            ! copy state in this lenghty way because: A component cannot be an array if the encompassing structure is an array
    if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) then
      write(6,'(a)') '<< CPFEM >> aging states'
      if (debug_e <= mesh_NcpElems .and. debug_i <= mesh_maxNips) then
