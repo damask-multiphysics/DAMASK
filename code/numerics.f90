@@ -115,48 +115,49 @@ module numerics
    err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
    err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_thermal_tol            =  1.0e-1_pReal, &
-   err_damage_tol             =  1.0e-3_pReal
+   err_damage_tol             =  1.0e-3_pReal, &
+   err_vacancydiffusion_tol   =  1.0e-8_pReal
  character(len=4096), protected, public :: &
-   petsc_optionsFEM           = '-mech_snes_type newtonls &
-                                &-mech_snes_linesearch_type cp &
-                                &-mech_snes_ksp_ew &
-                                &-mech_snes_ksp_ew_rtol0 0.01 &
-                                &-mech_snes_ksp_ew_rtolmax 0.01 &
-                                &-mech_ksp_type fgmres &
-                                &-mech_ksp_max_it 25 &
-                                &-mech_pc_type ml &
-                                &-mech_pc_ml_maxNlevels 2 &
-                                &-mech_mg_coarse_ksp_type preonly &
-                                &-mech_mg_coarse_pc_type lu &
-                                &-mech_mg_coarse_pc_factor_mat_solver_package superlu_dist &
-                                &-mech_mg_levels_ksp_type chebyshev &
-                                &-mech_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                                &-mech_mg_levels_pc_type sor &
-                                &-mech_pc_ml_nullspace user &
-                                &-damage_snes_type vinewtonssls &
-                                &-damage_snes_linesearch_type cp &
-                                &-damage_ksp_type fgmres &
-                                &-damage_snes_atol 1e-8 &
-                                &-damage_pc_type ml &
-                                &-damage_mg_levels_ksp_type chebyshev &
-                                &-damage_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                                &-damage_mg_levels_pc_type sor &
-                                &-thermal_snes_type newtonls &
-                                &-thermal_snes_linesearch_type cp &
-                                &-thermal_ksp_type fgmres &
-                                &-thermal_snes_atol 1e-1 &
-                                &-thermal_pc_type ml &
-                                &-thermal_mg_levels_ksp_type chebyshev &
-                                &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                                &-thermal_mg_levels_pc_type sor &
-                                &-vacancy_snes_type newtonls &
-                                &-vacancy_snes_linesearch_type cp &
-                                &-vacancy_ksp_type fgmres &
-                                &-vacancy_snes_atol 1e-6 &
-                                &-vacancy_pc_type ml &
-                                &-vacancy_mg_levels_ksp_type chebyshev &
-                                &-vacancy_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                                &-vacancy_mg_levels_pc_type sor '
+   petsc_optionsFEM        = '-mech_snes_type newtonls &
+                             &-mech_snes_linesearch_type cp &
+                             &-mech_snes_ksp_ew &
+                             &-mech_snes_ksp_ew_rtol0 0.01 &
+                             &-mech_snes_ksp_ew_rtolmax 0.01 &
+                             &-mech_ksp_type fgmres &
+                             &-mech_ksp_max_it 25 &
+                             &-mech_pc_type ml &
+                             &-mech_pc_ml_maxNlevels 2 &
+                             &-mech_mg_coarse_ksp_type preonly &
+                             &-mech_mg_coarse_pc_type lu &
+                             &-mech_mg_coarse_pc_factor_mat_solver_package superlu_dist &
+                             &-mech_mg_levels_ksp_type chebyshev &
+                             &-mech_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                             &-mech_mg_levels_pc_type sor &
+                             &-mech_pc_ml_nullspace user &
+                             &-damage_snes_type vinewtonssls &
+                             &-damage_snes_linesearch_type cp &
+                             &-damage_ksp_type fgmres &
+                             &-damage_snes_atol 1e-8 &
+                             &-damage_pc_type ml &
+                             &-damage_mg_levels_ksp_type chebyshev &
+                             &-damage_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                             &-damage_mg_levels_pc_type sor &
+                             &-thermal_snes_type newtonls &
+                             &-thermal_snes_linesearch_type cp &
+                             &-thermal_ksp_type fgmres &
+                             &-thermal_snes_atol 1e-1 &
+                             &-thermal_pc_type ml &
+                             &-thermal_mg_levels_ksp_type chebyshev &
+                             &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                             &-thermal_mg_levels_pc_type sor &
+                             &-vacancyDiffusion_snes_type newtonls &
+                             &-vacancyDiffusion_snes_linesearch_type cp &
+                             &-vacancyDiffusion_ksp_type fgmres &
+                             &-vacancyDiffusion_snes_atol 1e-6 &
+                             &-vacancyDiffusion_pc_type ml &
+                             &-vacancyDiffusion_mg_levels_ksp_type chebyshev &
+                             &-vacancyDiffusion_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                             &-vacancyDiffusion_mg_levels_pc_type sor '
  integer(pInt), protected, public :: &
    itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
    itminFEM                   =  1_pInt, &                                                          !< minimum number of iterations
@@ -409,6 +410,8 @@ subroutine numerics_init
          err_thermal_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_damage_tol')
          err_damage_tol = IO_floatValue(line,positions,2_pInt)
+       case ('err_vacancydiffusion_tol')
+         err_vacancyDiffusion_tol = IO_floatValue(line,positions,2_pInt)
        case ('itmaxfem')
          itmaxFEM = IO_intValue(line,positions,2_pInt)
        case ('itminfem')
@@ -430,7 +433,7 @@ subroutine numerics_init
        case ('petsc_optionsfem')
          petsc_optionsFEM = trim(line(positions(4):))
 #else
-      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol', &         ! found FEM parameter for spectral/Abaqus/Marc build
+      case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','err_vacancydiffusion_tol',&         ! found FEM parameter for spectral/Abaqus/Marc build
             'itmaxfem', 'itminfem','maxcutbackfem','maxstaggerediter','integrationorder',&
             'structorder','thermalorder', 'damageorder','petsc_optionsfem')
          call IO_warning(40_pInt,ext_msg=tag)
@@ -576,6 +579,7 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' err_struct_tolRel:      ',err_struct_tolRel
    write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
    write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
+   write(6,'(a24,1x,es8.1)')   ' err_vacancyDiffusion_tol:',err_vacancydiffusion_tol
    write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
 #endif
  endif mainProcess3
@@ -652,6 +656,7 @@ subroutine numerics_init
  if (err_struct_tolAbs <= 0.0_pReal)       call IO_error(301_pInt,ext_msg='err_struct_tolAbs')
  if (err_thermal_tol <= 0.0_pReal)         call IO_error(301_pInt,ext_msg='err_thermal_tol')
  if (err_damage_tol <= 0.0_pReal)          call IO_error(301_pInt,ext_msg='err_damage_tol')
+ if (err_vacancyDiffusion_tol <= 0.0_pReal)call IO_error(301_pInt,ext_msg='err_vacancydiffusion_tol')
 #endif
 
 end subroutine numerics_init
