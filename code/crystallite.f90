@@ -3991,8 +3991,8 @@ subroutine crystallite_orientations
  use lattice, only: &
    lattice_qDisorientation, &
    lattice_structure
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_updateCompatibility
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_updateCompatibility
 
 
  implicit none
@@ -4073,7 +4073,7 @@ subroutine crystallite_orientations
 
          ! --- calculate compatibility and transmissivity between me and my neighbor ---
 
-         call constitutive_nonlocal_updateCompatibility(crystallite_orientation,i,e)
+         call plastic_nonlocal_updateCompatibility(crystallite_orientation,i,e)
 
        endif
      enddo

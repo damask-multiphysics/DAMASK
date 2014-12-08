@@ -156,13 +156,13 @@ subroutine constitutive_init(temperature_init)
    mappingConstitutive
  
 
- use constitutive_none
- use constitutive_j2
- use constitutive_phenopowerlaw
- use constitutive_dislotwin
- use constitutive_dislokmc
- use constitutive_titanmod
- use constitutive_nonlocal
+ use plastic_none
+ use plastic_j2
+ use plastic_phenopowerlaw
+ use plastic_dislotwin
+ use plastic_dislokmc
+ use plastic_titanmod
+ use plastic_nonlocal
  use damage_none
  use damage_isoBrittle
  use damage_isoDuctile
@@ -194,15 +194,15 @@ subroutine constitutive_init(temperature_init)
 ! parse plasticities from config file
  if (.not. IO_open_jobFile_stat(FILEUNIT,material_localFileExt)) &                                  ! no local material configuration present...
    call IO_open_file(FILEUNIT,material_configFile)                                                  ! ... open material.config file
- if (any(phase_plasticity == PLASTICITY_NONE_ID))          call constitutive_none_init
- if (any(phase_plasticity == PLASTICITY_J2_ID))            call constitutive_j2_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call constitutive_phenopowerlaw_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call constitutive_dislotwin_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_DISLOKMC_ID))      call constitutive_dislokmc_init(FILEUNIT)
- if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call constitutive_titanmod_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_NONE_ID))          call plastic_none_init
+ if (any(phase_plasticity == PLASTICITY_J2_ID))            call plastic_j2_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_PHENOPOWERLAW_ID)) call plastic_phenopowerlaw_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_DISLOTWIN_ID))     call plastic_dislotwin_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_DISLOKMC_ID))      call plastic_dislokmc_init(FILEUNIT)
+ if (any(phase_plasticity == PLASTICITY_TITANMOD_ID))      call plastic_titanmod_init(FILEUNIT)
  if (any(phase_plasticity == PLASTICITY_NONLOCAL_ID)) then
-  call constitutive_nonlocal_init(FILEUNIT)
-  call constitutive_nonlocal_stateInit()
+  call plastic_nonlocal_init(FILEUNIT)
+  call plastic_nonlocal_stateInit()
  endif
  close(FILEUNIT)
 
@@ -252,38 +252,38 @@ subroutine constitutive_init(temperature_init)
      case (PLASTICITY_NONE_ID)
        outputName = PLASTICITY_NONE_label
        thisNoutput => null()
-       thisOutput => null()                                                                         ! constitutive_none_output
-       thisSize   => null()                                                                         ! constitutive_none_sizePostResult
+       thisOutput => null()                                                                         ! plastic_none_output
+       thisSize   => null()                                                                         ! plastic_none_sizePostResult
      case (PLASTICITY_J2_ID)
        outputName = PLASTICITY_J2_label
-       thisNoutput => constitutive_j2_Noutput
-       thisOutput => constitutive_j2_output
-       thisSize   => constitutive_j2_sizePostResult
+       thisNoutput => plastic_j2_Noutput
+       thisOutput => plastic_j2_output
+       thisSize   => plastic_j2_sizePostResult
      case (PLASTICITY_PHENOPOWERLAW_ID)
        outputName = PLASTICITY_PHENOPOWERLAW_label
-       thisNoutput => constitutive_phenopowerlaw_Noutput
-       thisOutput => constitutive_phenopowerlaw_output
-       thisSize   => constitutive_phenopowerlaw_sizePostResult
+       thisNoutput => plastic_phenopowerlaw_Noutput
+       thisOutput => plastic_phenopowerlaw_output
+       thisSize   => plastic_phenopowerlaw_sizePostResult
      case (PLASTICITY_DISLOTWIN_ID)
        outputName = PLASTICITY_DISLOTWIN_label
-       thisNoutput => constitutive_dislotwin_Noutput
-       thisOutput => constitutive_dislotwin_output
-       thisSize   => constitutive_dislotwin_sizePostResult
+       thisNoutput => plastic_dislotwin_Noutput
+       thisOutput => plastic_dislotwin_output
+       thisSize   => plastic_dislotwin_sizePostResult
      case (PLASTICITY_DISLOKMC_ID)
        outputName = PLASTICITY_DISLOKMC_label
-       thisNoutput => constitutive_dislokmc_Noutput
-       thisOutput => constitutive_dislokmc_output
-       thisSize   => constitutive_dislokmc_sizePostResult
+       thisNoutput => plastic_dislokmc_Noutput
+       thisOutput => plastic_dislokmc_output
+       thisSize   => plastic_dislokmc_sizePostResult
      case (PLASTICITY_TITANMOD_ID)
        outputName = PLASTICITY_TITANMOD_label
-       thisNoutput => constitutive_titanmod_Noutput
-       thisOutput => constitutive_titanmod_output
-       thisSize   => constitutive_titanmod_sizePostResult
+       thisNoutput => plastic_titanmod_Noutput
+       thisOutput => plastic_titanmod_output
+       thisSize   => plastic_titanmod_sizePostResult
      case (PLASTICITY_NONLOCAL_ID)
        outputName = PLASTICITY_NONLOCAL_label
-       thisNoutput => constitutive_nonlocal_Noutput
-       thisOutput => constitutive_nonlocal_output
-       thisSize   => constitutive_nonlocal_sizePostResult
+       thisNoutput => plastic_nonlocal_Noutput
+       thisOutput => plastic_nonlocal_output
+       thisSize   => plastic_nonlocal_sizePostResult
      case default
        knownPlasticity = .false.
    end select   
@@ -480,12 +480,12 @@ function constitutive_homogenizedC(ipc,ip,el)
    plasticState,&
    mappingConstitutive
 
- use constitutive_titanmod, only: &
-   constitutive_titanmod_homogenizedC
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_homogenizedC
- use constitutive_dislokmc, only: &
-   constitutive_dislokmc_homogenizedC
+ use plastic_titanmod, only: &
+   plastic_titanmod_homogenizedC
+ use plastic_dislotwin, only: &
+   plastic_dislotwin_homogenizedC
+ use plastic_dislokmc, only: &
+   plastic_dislokmc_homogenizedC
  use lattice, only: &
    lattice_C66
 
@@ -499,11 +499,11 @@ function constitutive_homogenizedC(ipc,ip,el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
 
    case (PLASTICITY_DISLOTWIN_ID)
-     constitutive_homogenizedC = constitutive_dislotwin_homogenizedC(ipc,ip,el)
+     constitutive_homogenizedC = plastic_dislotwin_homogenizedC(ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     constitutive_homogenizedC = constitutive_dislokmc_homogenizedC(ipc,ip,el) 
+     constitutive_homogenizedC = plastic_dislokmc_homogenizedC(ipc,ip,el) 
    case (PLASTICITY_TITANMOD_ID)
-     constitutive_homogenizedC = constitutive_titanmod_homogenizedC (ipc,ip,el)
+     constitutive_homogenizedC = plastic_titanmod_homogenizedC (ipc,ip,el)
    case default
      constitutive_homogenizedC = lattice_C66(1:6,1:6,material_phase (ipc,ip,el))
      
@@ -569,14 +569,14 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
    LOCAL_DAMAGE_gurson_ID, &
    LOCAL_DAMAGE_phaseField_ID
 
- use constitutive_titanmod, only: &
-   constitutive_titanmod_microstructure
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_microstructure
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_microstructure
- use constitutive_dislokmc, only: &
-   constitutive_dislokmc_microstructure
+ use plastic_titanmod, only: &
+   plastic_titanmod_microstructure
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_microstructure
+ use plastic_dislotwin, only: &
+   plastic_dislotwin_microstructure
+ use plastic_dislokmc, only: &
+   plastic_dislokmc_microstructure
  use damage_isoBrittle, only: &
    damage_isoBrittle_microstructure
  use damage_isoDuctile, only: &
@@ -610,13 +610,13 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
  select case (phase_plasticity(material_phase(ipc,ip,el)))
        
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_microstructure(constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     call plastic_dislotwin_microstructure(constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_microstructure(constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     call plastic_dislokmc_microstructure(constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_microstructure (constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     call plastic_titanmod_microstructure (constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_microstructure (Fe,Fp,          ip,el)
+     call plastic_nonlocal_microstructure (Fe,Fp,          ip,el)
 
  end select
  
@@ -665,22 +665,22 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
    PLASTICITY_DISLOKMC_ID, &
    PLASTICITY_TITANMOD_ID, &
    PLASTICITY_NONLOCAL_ID
- use constitutive_j2, only: &
-   constitutive_j2_LpAndItsTangent
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_LpAndItsTangent, &
-   constitutive_phenopowerlaw_totalNslip
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_LpAndItsTangent, &
-   constitutive_dislotwin_totalNslip
- use constitutive_dislokmc, only: &
-   constitutive_dislokmc_LpAndItsTangent, &
-   constitutive_dislokmc_totalNslip
- use constitutive_titanmod, only: &
-   constitutive_titanmod_LpAndItsTangent, &
-   constitutive_titanmod_totalNslip
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_LpAndItsTangent, &
+ use plastic_j2, only: &
+   plastic_j2_LpAndItsTangent
+ use plastic_phenopowerlaw, only: &
+   plastic_phenopowerlaw_LpAndItsTangent, &
+   plastic_phenopowerlaw_totalNslip
+ use plastic_dislotwin, only: &
+   plastic_dislotwin_LpAndItsTangent, &
+   plastic_dislotwin_totalNslip
+ use plastic_dislokmc, only: &
+   plastic_dislokmc_LpAndItsTangent, &
+   plastic_dislokmc_totalNslip
+ use plastic_titanmod, only: &
+   plastic_titanmod_LpAndItsTangent, &
+   plastic_titanmod_totalNslip
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_LpAndItsTangent, &
    totalNslip
  
  implicit none
@@ -704,35 +704,35 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
      dLp_dTstar = 0.0_pReal
    case (PLASTICITY_J2_ID)
      nSlip = 1_pInt
-     call constitutive_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     call plastic_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                           constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
                                           ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     nSlip = constitutive_phenopowerlaw_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
-     call constitutive_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     nSlip = plastic_phenopowerlaw_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                                      constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
                                                      ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      nSlip = totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
-     call constitutive_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                                 constitutive_getTemperature(ipc,ip,el), &
                                                 constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
                                                 ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     nSlip = constitutive_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
-     call constitutive_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     nSlip = plastic_dislotwin_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                                  constitutive_getTemperature(ipc,ip,el), &
                                                  constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
                                                  ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     nSlip = constitutive_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
-     call constitutive_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     nSlip = plastic_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call plastic_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                                 constitutive_getTemperature(ipc,ip,el), &
                                                 constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
                                                 ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     nSlip = constitutive_titanmod_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
-     call constitutive_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     nSlip = plastic_titanmod_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))
+     call plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
                                                  constitutive_getTemperature(ipc,ip,el), &
                                                  constitutive_getSlipDamage(nSlip,Tstar_v,ipc,ip,el), &
                                                  ipc,ip,el)
@@ -1086,18 +1086,18 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_gurson_ID, &
    LOCAL_VACANCY_generation_ID
- use constitutive_j2, only:  &
-   constitutive_j2_dotState
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_dotState
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_dotState
- use constitutive_dislokmc, only: &
-   constitutive_dislokmc_dotState
- use constitutive_titanmod, only: &
-   constitutive_titanmod_dotState
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_dotState
+ use plastic_j2, only:  &
+   plastic_j2_dotState
+ use plastic_phenopowerlaw, only: &
+   plastic_phenopowerlaw_dotState
+ use plastic_dislotwin, only: &
+   plastic_dislotwin_dotState
+ use plastic_dislokmc, only: &
+   plastic_dislokmc_dotState
+ use plastic_titanmod, only: &
+   plastic_titanmod_dotState
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_dotState
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_dotState
  use damage_gurson, only: &
@@ -1135,17 +1135,17 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
  
  select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_J2_ID)
-     call constitutive_j2_dotState           (Tstar_v,ipc,ip,el)
+     call plastic_j2_dotState           (Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
+     call plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_dotState    (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     call plastic_dislotwin_dotState    (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_dotState     (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     call plastic_dislokmc_dotState     (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_dotState     (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+     call plastic_titanmod_dotState     (Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_dotState     (Tstar_v,FeArray,FpArray,constitutive_getTemperature(ipc,ip,el), &
+     call plastic_nonlocal_dotState     (Tstar_v,FeArray,FpArray,constitutive_getTemperature(ipc,ip,el), &
                                               subdt,subfracArray,ip,el)
  end select
  
@@ -1194,8 +1194,8 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
    plasticState, &
    mappingConstitutive, &
    PLASTICITY_NONLOCAL_ID 
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_deltaState
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_deltaState
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -1216,7 +1216,7 @@ logical function constitutive_collectDeltaState(Tstar_v, ipc, ip, el)
 
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_collectDeltaState = .true.
-     call constitutive_nonlocal_deltaState(Tstar_v,ip,el)
+     call plastic_nonlocal_deltaState(Tstar_v,ip,el)
    case default
      constitutive_collectDeltaState = .false.
 
@@ -1813,18 +1813,18 @@ subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
    PLASTICITY_dislokmc_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID
- use constitutive_J2, only: &
-   constitutive_J2_getAccumulatedSlip
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_getAccumulatedSlip
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_getAccumulatedSlip
- use constitutive_dislokmc, only: &
-   constitutive_dislokmc_getAccumulatedSlip
- use constitutive_titanmod, only: &
-   constitutive_titanmod_getAccumulatedSlip
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_getAccumulatedSlip
+ use plastic_j2, only: &
+   plastic_j2_getAccumulatedSlip
+ use plastic_phenopowerlaw, only: &
+   plastic_phenopowerlaw_getAccumulatedSlip
+ use plastic_dislotwin, only: &
+   plastic_dislotwin_getAccumulatedSlip
+ use plastic_dislokmc, only: &
+   plastic_dislokmc_getAccumulatedSlip
+ use plastic_titanmod, only: &
+   plastic_titanmod_getAccumulatedSlip
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_getAccumulatedSlip
 
  implicit none
  
@@ -1842,17 +1842,17 @@ subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
      nSlip = 0_pInt
      allocate(accumulatedSlip(nSlip))
    case (PLASTICITY_J2_ID)
-     call constitutive_J2_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call plastic_j2_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call plastic_phenopowerlaw_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call plastic_dislotwin_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call plastic_dislokmc_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call plastic_titanmod_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call plastic_nonlocal_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
  end select
 
 end subroutine constitutive_getAccumulatedSlip
@@ -1878,16 +1878,16 @@ subroutine constitutive_getSlipRate(nSlip,slipRate,Lp,ipc, ip, el)
    PLASTICITY_dislokmc_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_getSlipRate
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_getSlipRate
- use constitutive_dislokmc, only: &
-   constitutive_dislokmc_getSlipRate
- use constitutive_titanmod, only: &
-   constitutive_titanmod_getSlipRate
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_getSlipRate
+ use plastic_phenopowerlaw, only: &
+   plastic_phenopowerlaw_getSlipRate
+ use plastic_dislotwin, only: &
+   plastic_dislotwin_getSlipRate
+ use plastic_dislokmc, only: &
+   plastic_dislokmc_getSlipRate
+ use plastic_titanmod, only: &
+   plastic_titanmod_getSlipRate
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_getSlipRate
 
  implicit none
  
@@ -1911,15 +1911,15 @@ subroutine constitutive_getSlipRate(nSlip,slipRate,Lp,ipc, ip, el)
      allocate(slipRate(nSlip))
      slipRate(1) = math_equivStrain33(Lp)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call constitutive_phenopowerlaw_getSlipRate(nSlip,slipRate,ipc, ip, el)
+     call plastic_phenopowerlaw_getSlipRate(nSlip,slipRate,ipc, ip, el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call constitutive_dislotwin_getSlipRate(nSlip,slipRate,ipc, ip, el)
+     call plastic_dislotwin_getSlipRate(nSlip,slipRate,ipc, ip, el)
    case (PLASTICITY_DISLOKMC_ID)
-     call constitutive_dislokmc_getSlipRate(nSlip,slipRate,ipc, ip, el)
+     call plastic_dislokmc_getSlipRate(nSlip,slipRate,ipc, ip, el)
    case (PLASTICITY_TITANMOD_ID)
-     call constitutive_titanmod_getSlipRate(nSlip,slipRate,ipc, ip, el)
+     call plastic_titanmod_getSlipRate(nSlip,slipRate,ipc, ip, el)
    case (PLASTICITY_NONLOCAL_ID)
-     call constitutive_nonlocal_getSlipRate(nSlip,slipRate,ipc, ip, el)
+     call plastic_nonlocal_getSlipRate(nSlip,slipRate,ipc, ip, el)
  end select
 
 end subroutine constitutive_getSlipRate
@@ -1959,21 +1959,21 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    LOCAL_DAMAGE_phaseField_ID, &
    LOCAL_THERMAL_ADIABATIC_ID, &
    LOCAL_VACANCY_generation_ID
- use constitutive_j2, only: &
+ use plastic_j2, only: &
 #ifdef HDF
-   constitutive_j2_postResults2,&
+   plastic_j2_postResults2,&
 #endif
-   constitutive_j2_postResults
- use constitutive_phenopowerlaw, only: &
-   constitutive_phenopowerlaw_postResults
- use constitutive_dislotwin, only: &
-   constitutive_dislotwin_postResults
- use constitutive_dislokmc, only: &
-   constitutive_dislokmc_postResults
- use constitutive_titanmod, only: &
-   constitutive_titanmod_postResults
- use constitutive_nonlocal, only: &
-   constitutive_nonlocal_postResults
+   plastic_j2_postResults
+ use plastic_phenopowerlaw, only: &
+   plastic_phenopowerlaw_postResults
+ use plastic_dislotwin, only: &
+   plastic_dislotwin_postResults
+ use plastic_dislokmc, only: &
+   plastic_dislokmc_postResults
+ use plastic_titanmod, only: &
+   plastic_titanmod_postResults
+ use plastic_nonlocal, only: &
+   plastic_nonlocal_postResults
 #ifdef multiphysicsOut
  use damage_isoBrittle, only: &
    damage_isoBrittle_postResults
@@ -2021,21 +2021,21 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
  endPos = plasticState(material_phase(ipc,ip,el))%sizePostResults
  select case (phase_plasticity(material_phase(ipc,ip,el)))
    case (PLASTICITY_TITANMOD_ID)
-     constitutive_postResults(startPos:endPos) = constitutive_titanmod_postResults(ipc,ip,el)
+     constitutive_postResults(startPos:endPos) = plastic_titanmod_postResults(ipc,ip,el)
    case (PLASTICITY_J2_ID)
-     constitutive_postResults(startPos:endPos) = constitutive_j2_postResults(Tstar_v,ipc,ip,el)
+     constitutive_postResults(startPos:endPos) = plastic_j2_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
+       plastic_phenopowerlaw_postResults(Tstar_v,ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_dislotwin_postResults(Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+       plastic_dislotwin_postResults(Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_dislokmc_postResults(Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
+       plastic_dislokmc_postResults(Tstar_v,constitutive_getTemperature(ipc,ip,el),ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
      constitutive_postResults(startPos:endPos) = &
-       constitutive_nonlocal_postResults (Tstar_v,FeArray,ip,el)
+       plastic_nonlocal_postResults (Tstar_v,FeArray,ip,el)
  end select
 
 #ifdef multiphysicsOut

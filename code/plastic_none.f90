@@ -5,20 +5,20 @@
 !> @author Philip Eisenlohr, Max-Planck-Institut für Eisenforschung GmbH
 !> @brief material subroutine for purely elastic material
 !--------------------------------------------------------------------------------------------------
-module constitutive_none
+module plastic_none
  use prec, only: &
    pInt
 
  implicit none
  private
  integer(pInt),                       dimension(:),     allocatable,          public, protected :: &
-   constitutive_none_sizePostResults
+   plastic_none_sizePostResults
 
  integer(pInt),                       dimension(:,:),   allocatable, target,  public :: &
-   constitutive_none_sizePostResult                                                                 !< size of each post result output
+   plastic_none_sizePostResult                                                                 !< size of each post result output
 
  public :: &
-   constitutive_none_init
+   plastic_none_init
 
 contains
 
@@ -27,7 +27,7 @@ contains
 !> @brief module initialization
 !> @details reads in material parameters, allocates arrays, and does sanity checks
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_none_init
+subroutine plastic_none_init
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use debug, only: &
    debug_level, &
@@ -98,8 +98,8 @@ subroutine constitutive_none_init
    endif
  enddo initializeInstances
 
- allocate(constitutive_none_sizePostResults(maxNinstance), source=0_pInt)
+ allocate(plastic_none_sizePostResults(maxNinstance), source=0_pInt)
 
-end subroutine constitutive_none_init
+end subroutine plastic_none_init
 
-end module constitutive_none
+end module plastic_none

@@ -317,8 +317,8 @@ VACANCY_FILES = \
    vacancy_constant.o vacancy_generation.o
 
 CONSTITUTIVE_FILES = \
-   constitutive_dislotwin.o constitutive_dislokmc.o constitutive_j2.o constitutive_phenopowerlaw.o \
-   constitutive_titanmod.o constitutive_nonlocal.o constitutive_none.o constitutive.o
+   plastic_dislotwin.o plastic_dislokmc.o plastic_j2.o plastic_phenopowerlaw.o \
+   plastic_titanmod.o plastic_nonlocal.o plastic_none.o constitutive.o
 
 HOMOGENIZATION_FILES = \
    homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o
@@ -431,36 +431,36 @@ crystallite.o:                 crystallite.f90 \
                                constitutive.o 
                             
 constitutive.o:                constitutive.f90 \
-                               constitutive_nonlocal.o \
-                               constitutive_titanmod.o \
-                               constitutive_dislotwin.o \
-                               constitutive_dislokmc.o \
-                               constitutive_phenopowerlaw.o \
-                               constitutive_j2.o \
-                               constitutive_none.o \
+                               plastic_nonlocal.o \
+                               plastic_titanmod.o \
+                               plastic_dislotwin.o \
+                               plastic_dislokmc.o \
+                               plastic_phenopowerlaw.o \
+                               plastic_j2.o \
+                               plastic_none.o \
                                $(DAMAGE_FILES) \
                                $(THERMAL_FILES) \
                                $(VACANCY_FILES)
 
-constitutive_nonlocal.o:       constitutive_nonlocal.f90 \
+plastic_nonlocal.o:       plastic_nonlocal.f90 \
                                lattice.o
 
-constitutive_titanmod.o:       constitutive_titanmod.f90 \
+plastic_titanmod.o:       plastic_titanmod.f90 \
                                lattice.o
 
-constitutive_dislokmc.o:       constitutive_dislokmc.f90 \
+plastic_dislokmc.o:       plastic_dislokmc.f90 \
                                lattice.o
 
-constitutive_dislotwin.o:      constitutive_dislotwin.f90 \
+plastic_dislotwin.o:      plastic_dislotwin.f90 \
                                lattice.o
 
-constitutive_phenopowerlaw.o:  constitutive_phenopowerlaw.f90 \
+plastic_phenopowerlaw.o:  plastic_phenopowerlaw.f90 \
                                lattice.o
 
-constitutive_j2.o:             constitutive_j2.f90 \
+plastic_j2.o:             plastic_j2.f90 \
                                lattice.o
 
-constitutive_none.o:           constitutive_none.f90 \
+plastic_none.o:           plastic_none.f90 \
                                lattice.o
 
 damage_none.o:                 damage_none.f90 \
