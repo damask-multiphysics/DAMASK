@@ -380,6 +380,7 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
    plasticState, &
    damageState, &
    thermalState, &
+   vacancyState, &
    homogState, &
    mappingHomogenization, &  
    mappingConstitutive, &
@@ -455,6 +456,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
      damageState( mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
      thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
      thermalState(mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
+     vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+     vacancyState(mappingConstitutive(2,g,i,e))%state0(         :,mappingConstitutive(1,g,i,e))
 
      crystallite_partionedFp0(1:3,1:3,g,i,e) = crystallite_Fp0(1:3,1:3,g,i,e)                       ! ...plastic def grads
      crystallite_partionedLp0(1:3,1:3,g,i,e) = crystallite_Lp0(1:3,1:3,g,i,e)                       ! ...plastic velocity grads
@@ -519,6 +522,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              damageState( mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
              thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
              thermalState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
+             vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e)) = &
+             vacancyState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e))
            end forall    
            if (homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
              homogState(mappingHomogenization(2,i,e))%subState0(:,mappingHomogenization(1,i,e)) = &
@@ -574,6 +579,8 @@ subroutine materialpoint_stressAndItsTangent(updateJaco,dt)
              damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
              thermalState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
              thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+             vacancyState(mappingConstitutive(2,g,i,e))%state(          :,mappingConstitutive(1,g,i,e)) = &
+             vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
            end forall    
            if (homogState(mappingHomogenization(2,i,e))%sizeState > 0_pInt) &
              homogState(mappingHomogenization(2,i,e))%state(    :,mappingHomogenization(1,i,e)) = &
@@ -694,6 +701,7 @@ subroutine materialpoint_postResults
    plasticState, &
    damageState, &
    thermalState, &
+   vacancyState, &
    material_phase, &
    homogenization_Ngrains, &
    microstructure_crystallite
@@ -745,7 +753,8 @@ subroutine materialpoint_postResults
          theSize = 1 + crystallite_sizePostResults(myCrystallite) + &
                    1 + plasticState(material_phase(g,i,e))%sizePostResults + &                    !ToDo
                        damageState(material_phase(g,i,e))%sizePostResults + &     
-                       thermalState(material_phase(g,i,e))%sizePostResults    
+                       thermalState(material_phase(g,i,e))%sizePostResults + &
+                       vacancyState(material_phase(g,i,e))%sizePostResults
 #else
          theSize = (1 + crystallite_sizePostResults(myCrystallite)) + &
                    (1 + plasticState(material_phase(g,i,e))%sizePostResults)  
