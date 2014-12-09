@@ -320,9 +320,9 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_vacancyInstance(phase)
  pressure = math_trace33(math_Mandel6to33(Tstar_v))
- energyBarrier = vacancy_generation_formationEnergy(instance) - &
-                 pressure*vacancy_generation_atomicVol(instance) - &
-                 sum(accumulatedSlip)*vacancy_generation_plasticityCoeff(instance)
+ energyBarrier = (vacancy_generation_formationEnergy(instance) - &
+                  pressure)*vacancy_generation_atomicVol(instance) - &
+                  sum(accumulatedSlip)*vacancy_generation_plasticityCoeff(instance)
 
  vacancyState(phase)%dotState(1,constituent) = &
     vacancy_generation_freq(instance)* &
