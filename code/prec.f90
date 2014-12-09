@@ -58,29 +58,47 @@ type, public :: p_intvec
 
 !http://stackoverflow.com/questions/3948210/can-i-have-a-pointer-to-an-item-in-an-allocatable-array
  type, public :: tState
-   integer(pInt)                              :: sizeState = 0_pInt , &
-                                                 sizeDotState = 0_pInt, &
-                                                 sizePostResults = 0_pInt
-   logical                                    :: nonlocal = .false.
-   real(pReal), allocatable, dimension(:)     :: atolState
-   real(pReal), allocatable, dimension(:,:)   :: state, &                                                     ! material points, state size
-                                                 dotState, &
-                                                 state0, &
-                                                 partionedState0, &
-                                                 subState0, &
-                                                 state_backup, &
-                                                 deltaState, &
-                                                 previousDotState, &
-                                                 previousDotState2, &
-                                                 dotState_backup, &
-                                                 RK4dotState
-   real(pReal), allocatable, dimension(:,:,:) :: RKCK45dotState
+   integer(pInt) :: &
+     sizeState = 0_pInt , &                                                                         !< size of state
+     sizeDotState = 0_pInt, &                                                                       !< size of dot state, i.e. parts of the state that are integrated
+     sizePostResults = 0_pInt                                                                       !< size of output data
+   logical :: & 
+     nonlocal = .false.                                                                             !< absolute tolerance for state integration
+   real(pReal), allocatable, dimension(:) :: &
+     atolState
+   real(pReal), pointer,     dimension(:,:) :: &
+     state, &                                                                                       !< state
+     dotState                                                                                       !< state rate
+   real(pReal), allocatable, dimension(:,:) :: &
+     state0, &
+     partionedState0, &
+     subState0, &
+     state_backup, &
+     deltaState, &
+     previousDotState, &                                                                            !< state rate of previous xxxx
+     previousDotState2, &                                                                           !< state rate two xxxx ago
+     dotState_backup, &                                                                             !< backup of state rate
+     RK4dotState
+   real(pReal), allocatable, dimension(:,:,:) :: &
+     RKCK45dotState
+ end type
+
+ type, extends(tState), public :: tPlasticState
+   integer(pInt) :: &
+     nSlip = 0_pInt , &
+     nTwin = 0_pInt, &
+     nTrans = 0_pInt
+   real(pReal), pointer,     dimension(:,:) :: &
+     slipRate, &                                                                                    !< slip rate
+     accumulatedSlip                                                                                !< accumulated plastic slip
  end type
 
  type, public :: tFieldData
-   integer(pInt)                              :: sizeField = 0_pInt , &
-                                                 sizePostResults = 0_pInt
-   real(pReal), allocatable, dimension(:,:)   :: field                                              ! material points, state size
+   integer(pInt) :: &
+     sizeField = 0_pInt , &
+     sizePostResults = 0_pInt
+   real(pReal), allocatable, dimension(:,:) :: &
+     field                                                                                          !< field data
  end type 
 
  public :: &
