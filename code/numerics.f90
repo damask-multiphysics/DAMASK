@@ -115,7 +115,7 @@ module numerics
    err_struct_tolAbs          =  1.0e-10_pReal, &                                                   !< absolute tolerance for equilibrium
    err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_thermal_tol            =  1.0e-1_pReal, &
-   err_damage_tol             =  1.0e-3_pReal, &
+   err_damage_tol             =  1.0e-2_pReal, &
    err_vacancydiffusion_tol   =  1.0e-8_pReal
  character(len=4096), protected, public :: &
    petsc_optionsFEM        = '-mech_snes_type newtonls &
@@ -134,7 +134,7 @@ module numerics
                              &-mech_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
                              &-mech_mg_levels_pc_type sor &
                              &-mech_pc_ml_nullspace user &
-                             &-damage_snes_type vinewtonssls &
+                             &-damage_snes_type newtonls &
                              &-damage_snes_linesearch_type cp &
                              &-damage_ksp_type fgmres &
                              &-damage_snes_atol 1e-8 &
