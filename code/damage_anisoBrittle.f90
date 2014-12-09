@@ -54,7 +54,6 @@ module damage_anisoBrittle
    damage_anisoBrittle_init, &
    damage_anisoBrittle_stateInit, &
    damage_anisoBrittle_aTolState, &
-   damage_anisoBrittle_dotState, &
    damage_anisoBrittle_microstructure, &
    damage_anisoBrittle_LdAndItsTangent, &
    damage_anisoBrittle_getFd, &
@@ -340,77 +339,6 @@ subroutine damage_anisoBrittle_aTolState(phase,instance)
  damageState(phase)%aTolState = tempTol
 end subroutine damage_anisoBrittle_aTolState
  
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine damage_anisoBrittle_dotState(Tstar_v,ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
- use lattice, only: &
-   lattice_Scleavage_v, &
-   lattice_maxNcleavageFamily, &
-   lattice_NcleavageSystem, &
-   lattice_DamageMobility
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< component-ID of integration point
-   ip, &                                                                                            !< integration point
-   el                                                                                               !< element
- real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
- integer(pInt) :: &
-   phase, &
-   constituent, &
-   instance, &
-   f, i, index_d, index_o, index_myFamily
- real(pReal) :: &
-   traction_d, traction_t, traction_n, traction_crit, &
-   udotd, udott, udotn, &
-   localDamage
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
- 
- localDamage = minval(damageState(phase)%state(2+  damage_anisoBrittle_totalNcleavage(instance): &
-                                               1+2*damage_anisoBrittle_totalNcleavage(instance),constituent))
- damageState(phase)%dotState(1,constituent) = &
-   (localDamage - damageState(phase)%state(1,constituent))/lattice_DamageMobility(phase)
-
- index_o = 2_pInt
- index_d = 2_pInt + damage_anisoBrittle_totalNcleavage(instance)
- do f = 1_pInt,lattice_maxNcleavageFamily
-   index_myFamily = sum(lattice_NcleavageSystem(1:f-1_pInt,phase))                                   ! at which index starts my family
-   do i = 1_pInt,damage_anisoBrittle_Ncleavage(f,instance)                                            ! process each (active) cleavage system in family
-     traction_d    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,1,index_myFamily+i,phase))
-     traction_t    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,2,index_myFamily+i,phase))
-     traction_n    = dot_product(Tstar_v,lattice_Scleavage_v(1:6,3,index_myFamily+i,phase))
-     traction_crit = damage_anisoBrittle_critLoad(f,instance)* &
-                     damageState(phase)%state0(index_d,constituent)* &
-                     damageState(phase)%state0(index_d,constituent)
-                    
-     udotd = &
-       damage_anisoBrittle_sdot_0(instance)* &
-       (abs(traction_d)/traction_crit)**damage_anisoBrittle_N(instance)
-     udott = &
-       damage_anisoBrittle_sdot_0(instance)* &
-       (abs(traction_t)/traction_crit)**damage_anisoBrittle_N(instance)
-     udotn = &
-       damage_anisoBrittle_sdot_0(instance)* &
-       (max(0.0_pReal,traction_n)/traction_crit)**damage_anisoBrittle_N(instance)
-
-     damageState(phase)%dotState(index_o,constituent) = &
-       (udotd + udott + udotn)/damage_anisoBrittle_critDisp(f,instance)
-
-     index_d = index_d + 1_pInt; index_o = index_o + 1_pInt
-   enddo
- enddo
-
-end subroutine damage_anisoBrittle_dotState
-
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------

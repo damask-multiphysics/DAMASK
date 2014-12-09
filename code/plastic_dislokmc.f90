@@ -1111,7 +1111,8 @@ end subroutine plastic_dislokmc_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislokmc_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,slipDamage,ipc,ip,el)
+subroutine plastic_dislokmc_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,nSlipDamage,slipDamage, &
+                                            ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -1143,13 +1144,10 @@ subroutine plastic_dislokmc_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,
    LATTICE_fcc_ID
  
  implicit none
- integer(pInt), intent(in)                  :: ipc,ip,el
+ integer(pInt), intent(in)                  :: nSlipDamage,ipc,ip,el
  real(pReal), intent(in)                    :: Temperature
  real(pReal), dimension(6),   intent(in)    :: Tstar_v
- real(pReal), &
- dimension(plastic_dislokmc_totalNslip(phase_plasticityInstance(material_phase(ipc,ip,el)))), &
- intent(in) :: &
-   slipDamage
+ real(pReal), dimension(nSlipDamage), intent(in) :: slipDamage
  real(pReal), dimension(3,3), intent(out)   :: Lp
  real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar99
 
@@ -1357,7 +1355,7 @@ end subroutine plastic_dislokmc_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
+subroutine plastic_dislokmc_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -1388,9 +1386,12 @@ subroutine plastic_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
+   nSlipDamage, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ real(pReal), dimension(nSlipDamage), intent(in) :: &
+   slipDamage
 
  integer(pInt) :: instance,ns,nt,f,i,j,k,index_myFamily,s1,s2, &
                   ph, &
@@ -1456,6 +1457,8 @@ subroutine plastic_dislokmc_dotState(Tstar_v,Temperature,ipc,ip,el)
        tau_slip_neg = tau_slip_neg + plastic_dislokmc_nonSchmidCoeff(k,instance)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
      enddo nonSchmidSystems
+     tau_slip_pos = tau_slip_pos/slipDamage(j)
+     tau_slip_neg = tau_slip_pos/slipDamage(j)
 
      significantPositiveStress: if((abs(tau_slip_pos)-plasticState(ph)%state(6*ns+4*nt+j, of)) > tol_math_check) then
        !* Stress ratios
