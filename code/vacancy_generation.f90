@@ -49,7 +49,7 @@ module vacancy_generation
    vacancy_generation_init, &
    vacancy_generation_stateInit, &
    vacancy_generation_aTolState, &
-   vacancy_generation_dotState, &
+   vacancy_generation_microstructure, &
    vacancy_generation_getLocalConcentration, &
    vacancy_generation_putLocalConcentration, &
    vacancy_generation_getConcentration, &
@@ -289,14 +289,20 @@ end subroutine vacancy_generation_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperature, ipc, ip, el)
+subroutine vacancy_generation_microstructure(C, Fe, nSlip, accumulatedSlip, Temperature, subdt, &
+                                             ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_vacancyInstance, &
    vacancyState
- use math, only: &
+ use math, only : &
+   math_mul33x33, &
+   math_mul66x6, &
+   math_Mandel33to6, &
    math_Mandel6to33, &
-   math_trace33
+   math_transpose33, &
+   math_trace33, &
+   math_I3
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -304,31 +310,39 @@ subroutine vacancy_generation_dotState(nSlip, accumulatedSlip, Tstar_v, Temperat
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
+ real(pReal), intent(in) :: &
+   Fe(3,3), &
+   C (6,6)
  real(pReal), dimension(nSlip), intent(in) :: &
    accumulatedSlip
- real(pReal),  intent(in), dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in) :: &
    Temperature                                                                                      !< 2nd Piola Kirchhoff stress tensor (Mandel)
+ real(pReal),  intent(in) :: &
+   subdt
  real(pReal) :: &
    pressure, &
-   energyBarrier                                                                     
+   energyBarrier, &
+   stress(6), &
+   strain(6)                                                                     
  integer(pInt) :: &
    instance, phase, constituent 
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_vacancyInstance(phase)
- pressure = math_trace33(math_Mandel6to33(Tstar_v))
- energyBarrier = (vacancy_generation_formationEnergy(instance) - &
-                  pressure)*vacancy_generation_atomicVol(instance) - &
-                  sum(accumulatedSlip)*vacancy_generation_plasticityCoeff(instance)
 
- vacancyState(phase)%dotState(1,constituent) = &
-    vacancy_generation_freq(instance)* &
-    exp(-energyBarrier/(kB*Temperature))
+ strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
+ stress = math_mul66x6(C,strain) 
+ pressure = math_trace33(math_Mandel6to33(stress))
+ energyBarrier = (vacancy_generation_formationEnergy(instance) - pressure)* &
+                 vacancy_generation_atomicVol(instance) - &
+                 sum(accumulatedSlip)*vacancy_generation_plasticityCoeff(instance)
 
-end subroutine vacancy_generation_dotState
+ vacancyState(phase)%state(1,constituent) = &
+   vacancyState(phase)%subState0(1,constituent) + &
+   subdt*vacancy_generation_freq(instance)*exp(-energyBarrier/(kB*Temperature))
+
+end subroutine vacancy_generation_microstructure
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns vacancy concentration based on state layout 

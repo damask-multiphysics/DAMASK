@@ -567,8 +567,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
    LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
-   LOCAL_DAMAGE_phaseField_ID
-
+   LOCAL_DAMAGE_phaseField_ID, &
+   LOCAL_VACANCY_generation_ID
  use plastic_titanmod, only: &
    plastic_titanmod_microstructure
  use plastic_nonlocal, only: &
@@ -588,7 +588,9 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
  use damage_gurson, only: &
    damage_gurson_microstructure
  use damage_phaseField, only: &
-   damage_phaseField_microstructure  
+   damage_phaseField_microstructure
+ use vacancy_generation, only: &
+   vacancy_generation_microstructure    
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -638,6 +640,15 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
      call damage_phaseField_microstructure(constitutive_homogenizedC(ipc,ip,el), Fe, &
                                            constitutive_getVacancyConcentration(ipc, ip, el), &
                                            subdt, ipc, ip, el)
+
+ end select
+
+ select case (phase_damage(material_phase(ipc,ip,el)))
+   case (LOCAL_VACANCY_generation_ID)
+     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
+     call vacancy_generation_microstructure(constitutive_homogenizedC(ipc,ip,el), Fe, &
+                                            nSlip,accumulatedSlip,constitutive_getTemperature(ipc,ip,el), &
+                                            subdt,ipc,ip,el)
 
  end select
 
@@ -1084,8 +1095,7 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    PLASTICITY_dislokmc_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
-   LOCAL_DAMAGE_gurson_ID, &
-   LOCAL_VACANCY_generation_ID
+   LOCAL_DAMAGE_gurson_ID
  use plastic_j2, only:  &
    plastic_j2_dotState
  use plastic_phenopowerlaw, only: &
@@ -1105,8 +1115,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    totalNslip
  use damage_gurson, only: &
    damage_gurson_dotState
- use vacancy_generation, only: &
-   vacancy_generation_dotState
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1128,8 +1136,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
    tick, tock, & 
    tickrate, &
    maxticks
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
  integer(pInt) :: &
    nSlip
  
@@ -1163,13 +1169,6 @@ subroutine constitutive_collectDotState(Tstar_v, Lp, FeArray, FpArray, subdt, su
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_gurson_ID)
      call damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
- end select
-
- select case (phase_vacancy(material_phase(ipc,ip,el)))
-   case (LOCAL_VACANCY_generation_ID)
-     call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc,ip,el)
-     call vacancy_generation_dotState(nSlip,accumulatedSlip,Tstar_v,constitutive_getTemperature(ipc,ip,el), &
-                                      ipc, ip, el)
  end select
 
  if (iand(debug_level(debug_constitutive), debug_levelBasic) /= 0_pInt) then
