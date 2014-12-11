@@ -253,37 +253,26 @@ subroutine plastic_dislokmc_init(fileUnit)
  allocate(plastic_dislokmc_dipoleFormationFactor(maxNinstance),               source=1.0_pReal) !should be on by default
  allocate(plastic_dislokmc_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_dislokmc_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
- allocate(plastic_dislokmc_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_burgersPerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
+ allocate(plastic_dislokmc_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
+ allocate(plastic_dislokmc_burgersPerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
+ allocate(plastic_dislokmc_QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
+ allocate(plastic_dislokmc_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_dislokmc_tau_peierlsPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_pPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_dislokmc_qPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_dislokmc_uPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_dislokmc_sPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_dislokmc_Ndot0PerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_twinsizePerTwinFamily(lattice_maxNtwinFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
+                                                                                      source=0.0_pReal)
+ allocate(plastic_dislokmc_pPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
+ allocate(plastic_dislokmc_qPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
+ allocate(plastic_dislokmc_uPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
+ allocate(plastic_dislokmc_sPerSlipFamily(lattice_maxNslipFamily,maxNinstance),       source=0.0_pReal)
+ allocate(plastic_dislokmc_Ndot0PerTwinFamily(lattice_maxNtwinFamily,maxNinstance),   source=0.0_pReal)
+ allocate(plastic_dislokmc_twinsizePerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
  allocate(plastic_dislokmc_CLambdaSlipPerSlipFamily(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
+                                                                                      source=0.0_pReal)
  allocate(plastic_dislokmc_rPerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_dislokmc_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_interaction_TwinSlip(lattice_maxNinteraction,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_interaction_TwinTwin(lattice_maxNinteraction,maxNinstance), &
-                                                                                    source=0.0_pReal)
- allocate(plastic_dislokmc_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance), &
-                                                                                  source=0.0_pReal)
+ allocate(plastic_dislokmc_interaction_SlipSlip(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
+ allocate(plastic_dislokmc_interaction_SlipTwin(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
+ allocate(plastic_dislokmc_interaction_TwinSlip(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
+ allocate(plastic_dislokmc_interaction_TwinTwin(lattice_maxNinteraction,maxNinstance),source=0.0_pReal)
+ allocate(plastic_dislokmc_nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstance),        source=0.0_pReal)
  
 
  rewind(fileUnit)
@@ -406,7 +395,7 @@ subroutine plastic_dislokmc_init(fileUnit)
              plastic_dislokmc_Nslip(j,instance) = IO_intValue(line,positions,1_pInt+j)
          enddo
        case ('rhoedge0','rhoedgedip0','slipburgers','qedge','v0','clambdaslip','tau_peierls','p_slip','q_slip',&
-            'u_slip','v_slip','s_slip')
+            'u_slip','s_slip')
          do j = 1_pInt, Nchunks_SlipFamilies
            tempPerSlip(j) = IO_floatValue(line,positions,1_pInt+j)
          enddo
@@ -518,9 +507,9 @@ subroutine plastic_dislokmc_init(fileUnit)
        case ('l0')
          plastic_dislokmc_L0(instance) = IO_floatValue(line,positions,2_pInt)
        case ('xc')
-              plastic_dislokmc_xc(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_dislokmc_xc(instance) = IO_floatValue(line,positions,2_pInt)
        case ('vcrossslip')
-              plastic_dislokmc_VcrossSlip(instance) = IO_floatValue(line,positions,2_pInt)
+         plastic_dislokmc_VcrossSlip(instance) = IO_floatValue(line,positions,2_pInt)
        case ('cedgedipmindistance')
          plastic_dislokmc_CEdgeDipMinDistance(instance) = IO_floatValue(line,positions,2_pInt)
        case ('catomicvolume')
@@ -911,20 +900,20 @@ subroutine plastic_dislokmc_aTolState(ph,instance)
 
  ! Tolerance state for accumulated shear due to slip 
  plasticState(ph)%aTolState(2_pInt*plastic_dislokmc_totalNslip(instance)+1_pInt: &
-                                  3_pInt*plastic_dislokmc_totalNslip(instance))=1e6_pReal
+                            3_pInt*plastic_dislokmc_totalNslip(instance))=1e6_pReal
    
  
  ! Tolerance state for twin volume fraction
  plasticState(ph)%aTolState(3_pInt*plastic_dislokmc_totalNslip(instance)+1_pInt: &
-                                  3_pInt*plastic_dislokmc_totalNslip(instance)+&
-                                   plastic_dislokmc_totalNtwin(instance)) = &
+                            3_pInt*plastic_dislokmc_totalNslip(instance)+&
+                            plastic_dislokmc_totalNtwin(instance)) = &
    plastic_dislokmc_aTolTwinFrac(instance)
 
 ! Tolerance state for accumulated shear due to twin
  plasticState(ph)%aTolState(3_pInt*plastic_dislokmc_totalNslip(instance)+ &
-                                  plastic_dislokmc_totalNtwin(instance)+1_pInt: &
-                                  3_pInt*plastic_dislokmc_totalNslip(instance)+ &
-                                  2_pInt*plastic_dislokmc_totalNtwin(instance)) = 1e6_pReal
+                            plastic_dislokmc_totalNtwin(instance)+1_pInt: &
+                            3_pInt*plastic_dislokmc_totalNslip(instance)+ &
+                            2_pInt*plastic_dislokmc_totalNtwin(instance)) = 1e6_pReal
 
 end subroutine plastic_dislokmc_aTolState
 
@@ -969,8 +958,8 @@ function plastic_dislokmc_homogenizedC(ipc,ip,el)
     plastic_dislokmc_homogenizedC = plastic_dislokmc_homogenizedC &
                    + plasticState(ph)%state(3_pInt*ns+i, of)*plastic_dislokmc_Ctwin66(1:6,1:6,i,instance)
  enddo 
- 
- end function plastic_dislokmc_homogenizedC
+
+end function plastic_dislokmc_homogenizedC
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
@@ -1195,7 +1184,6 @@ subroutine plastic_dislokmc_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,
      tau_slip_neg  = tau_slip_pos
      nonSchmid_tensor(1:3,1:3,1) = lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
      nonSchmid_tensor(1:3,1:3,2) = nonSchmid_tensor(1:3,1:3,1)
-
      nonSchmidSystems: do k = 1,lattice_NnonSchmid(ph) 
        tau_slip_pos = tau_slip_pos + plastic_dislokmc_nonSchmidCoeff(k,instance)* &
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k,index_myFamily+i,ph))
@@ -1280,7 +1268,6 @@ subroutine plastic_dislokmc_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,
      endif significantNegativeStress
      !* Plastic velocity gradient for dislocation glide
      Lp = Lp + (gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal*lattice_Sslip(1:3,1:3,1,index_myFamily+i,ph)
- 
      !* Calculation of the tangent of Lp
      forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
         dLp_dTstar3333(k,l,m,n) = &
@@ -1436,6 +1423,7 @@ subroutine plastic_dislokmc_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage,
  
  !* Dislocation density evolution
  gdot_slip_pos = 0.0_pReal
+ gdot_slip_neg = 0.0_pReal
  j = 0_pInt
  slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,ph)) ! at which index starts my family
@@ -1594,7 +1582,6 @@ subroutine plastic_dislokmc_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage,
  enddo twinFamilies
  
 end subroutine plastic_dislokmc_dotState
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns accumulated slip
