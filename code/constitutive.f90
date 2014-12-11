@@ -557,6 +557,7 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
  use material, only: &
    phase_plasticity, &
    phase_damage, &
+   phase_vacancy, &
    material_phase, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_dislokmc_ID, &
@@ -643,7 +644,7 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
 
  end select
 
- select case (phase_damage(material_phase(ipc,ip,el)))
+ select case (phase_vacancy(material_phase(ipc,ip,el)))
    case (LOCAL_VACANCY_generation_ID)
      call constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
      call vacancy_generation_microstructure(constitutive_homogenizedC(ipc,ip,el), Fe, &
