@@ -1171,8 +1171,8 @@ end subroutine mesh_spectral_mapNodesAndElems
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Allocates global arrays 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
-!! and mesh_maxNcellnodes
+!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
+!! and 'mesh_maxNcellnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_count_cpSizes
  
@@ -2611,7 +2611,7 @@ subroutine mesh_marc_count_cpElements(fileUnit)
        do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (fileUnit,610,END=620) line
        enddo
-       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)
+       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)  ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)?
      exit
    endif
  enddo
@@ -2767,8 +2767,8 @@ end subroutine mesh_marc_build_nodes
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets maximum count of nodes, IPs, IP neighbors, and cellnodes among cpElements.
-!! Allocates global arrays 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
-!! and mesh_maxNcellnodes
+!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
+!! and 'mesh_maxNcellnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_cpSizes(fileUnit)
  
@@ -2798,9 +2798,9 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
    myPos = IO_stringPos(line,maxNchunks)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
      read (fileUnit,610,END=630) line                                                                 ! Garbage line
-     do i=1_pInt,mesh_Nelems                                                                        ! read all elements
+     do i=1_pInt,mesh_Nelems                                                                          ! read all elements
        read (fileUnit,610,END=630) line
-       myPos = IO_stringPos(line,maxNchunks)                                                        ! limit to id and type
+       myPos = IO_stringPos(line,maxNchunks)                                                          ! limit to id and type
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0_pInt) then
          t = FE_mapElemtype(IO_stringValue(line,myPos,2_pInt))
@@ -2821,7 +2821,7 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
 
 
 !--------------------------------------------------------------------------------------------------
-!> @brief Store FEid, type, mat, tex, and node list per elemen.
+!> @brief Store FEid, type, mat, tex, and node list per element.
 !! Allocates global array 'mesh_element'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_build_elements(fileUnit)
@@ -2858,21 +2858,21 @@ subroutine mesh_marc_build_elements(fileUnit)
        read (fileUnit,610,END=620) line
        myPos = IO_stringPos(line,maxNchunks)
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
-       if (e /= 0_pInt) then                                                                        ! disregard non CP elems
-         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                        ! FE id
-         t = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))                                      ! elem type
+       if (e /= 0_pInt) then                                                                          ! disregard non CP elems
+         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                          ! FE id
+         t = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))                                        ! elem type
          mesh_element(2,e) = t
          nNodesAlreadyRead = 0_pInt
          do j = 1_pInt,myPos(1)-2_pInt
-           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,myPos,j+2_pInt))          ! CP ids of nodes
+           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,myPos,j+2_pInt))            ! CP ids of nodes
          enddo  
          nNodesAlreadyRead = myPos(1) - 2_pInt
-         do while(nNodesAlreadyRead < FE_Nnodes(t))                                                 ! read on if not all nodes in one line
+         do while(nNodesAlreadyRead < FE_Nnodes(t))                                                   ! read on if not all nodes in one line
            read (fileUnit,610,END=620) line
            myPos = IO_stringPos(line,maxNchunks)
            do j = 1_pInt,myPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
-               = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                      ! CP ids of nodes
+               = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                        ! CP ids of nodes
            enddo
            nNodesAlreadyRead = nNodesAlreadyRead + myPos(1)
          enddo
@@ -2882,7 +2882,7 @@ subroutine mesh_marc_build_elements(fileUnit)
    endif
  enddo
  
-620 rewind(fileUnit)                                                                                  ! just in case "initial state" apears before "connectivity"
+620 rewind(fileUnit)                                                                                  ! just in case "initial state" appears before "connectivity"
  read (fileUnit,610,END=620) line
  do
    myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
@@ -2891,19 +2891,19 @@ subroutine mesh_marc_build_elements(fileUnit)
      if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                            ! read extra line for new style
      read (fileUnit,610,END=630) line                                                                 ! read line with index of state var
      myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
-     sv = IO_IntValue(line,myPos,1_pInt)                                                            ! figure state variable index
-     if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                    ! only state vars 2 and 3 of interest
+     sv = IO_IntValue(line,myPos,1_pInt)                                                              ! figure state variable index
+     if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                      ! only state vars 2 and 3 of interest
        read (fileUnit,610,END=620) line                                                               ! read line with value of state var
        myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
-       do while (scan(IO_stringValue(line,myPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
-         myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
-         mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                 ! remember max val of homogenization and microstructure index
+       do while (scan(IO_stringValue(line,myPos,1_pInt),'+-',back=.true.)>1)                          ! is noEfloat value?
+         myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                       ! state var's value
+         mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                   ! remember max val of homogenization and microstructure index
          if (initialcondTableStyle == 2_pInt) then
            read (fileUnit,610,END=630) line                                                           ! read extra line
            read (fileUnit,610,END=630) line                                                           ! read extra line
          endif
-         contInts = IO_continuousIntValues&                                                          ! get affected elements
-                   (fileUnit,mesh_Nelems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+         contInts = IO_continuousIntValues&                                                           ! get affected elements
+                   (fileUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
          do i = 1_pInt,contInts(1)
            e = mesh_FEasCP('elem',contInts(1_pInt+i))
            mesh_element(1_pInt+sv,e) = myVal
@@ -3438,8 +3438,8 @@ end subroutine mesh_abaqus_build_nodes
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Allocates global arrays 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
-!! and mesh_maxNcellnodes
+!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
+!! and 'mesh_maxNcellnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_count_cpSizes(fileUnit)
 
@@ -3586,7 +3586,7 @@ subroutine mesh_abaqus_build_elements(fileUnit)
      case('*user')
        if ( IO_lc(IO_StringValue(line,myPos,2_pInt)) == 'material' .and. &
             materialFound ) then
-         read (fileUnit,610,END=630) line                                                             ! read homogenization and microstructure
+         read (fileUnit,610,END=630) line                                                           ! read homogenization and microstructure
          myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
          homog = nint(IO_floatValue(line,myPos,1_pInt),pInt)
          micro = nint(IO_floatValue(line,myPos,2_pInt),pInt)
