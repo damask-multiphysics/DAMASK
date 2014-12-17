@@ -43,6 +43,7 @@ module constitutive
    constitutive_getAdiabaticTemperature, &
    constitutive_putAdiabaticTemperature, &
    constitutive_getTemperature, &
+   constitutive_getHeatGeneration, &
    constitutive_getLocalVacancyConcentration, &
    constitutive_putLocalVacancyConcentration, &
    constitutive_getVacancyConcentration, &
@@ -1606,6 +1607,41 @@ function constitutive_getTemperature(ipc, ip, el)
  end select
 
 end function constitutive_getTemperature
+
+!--------------------------------------------------------------------------------------------------
+!> @brief returns heat generation rate
+!--------------------------------------------------------------------------------------------------
+function constitutive_getHeatGeneration(Tstar_v, Lp, ipc, ip, el)
+ use prec, only: &
+   pReal
+ use material, only: &
+   material_phase, &
+   LOCAL_THERMAL_isothermal_ID, &
+   LOCAL_THERMAL_adiabatic_ID, &
+   phase_thermal
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_getHeatGeneration
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
+ real(pReal) :: constitutive_getHeatGeneration
+ 
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_isothermal_ID)
+     constitutive_getHeatGeneration = 0.0_pReal
+     
+   case (LOCAL_THERMAL_adiabatic_ID)
+     constitutive_getHeatGeneration = thermal_adiabatic_getHeatGeneration(Tstar_v, Lp)
+ end select
+
+end function constitutive_getHeatGeneration
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local vacancy concentration

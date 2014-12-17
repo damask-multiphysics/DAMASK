@@ -46,6 +46,7 @@ module thermal_adiabatic
    thermal_adiabatic_getPartionedFT0, &
    thermal_adiabatic_getTemperature, &
    thermal_adiabatic_putTemperature, &
+   thermal_adiabatic_getHeatGeneration, &
    thermal_adiabatic_postResults
 
 contains
@@ -485,6 +486,25 @@ subroutine thermal_adiabatic_putTemperature(ipc, ip, el, localTemperature)
    localTemperature
  
 end subroutine thermal_adiabatic_putTemperature
+ 
+!--------------------------------------------------------------------------------------------------
+!> @brief returns heat generation rate
+!--------------------------------------------------------------------------------------------------
+function thermal_adiabatic_getHeatGeneration(Tstar_v, Lp)
+ use math, only: &
+   math_Mandel6to33
+
+ implicit none
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
+ real(pReal) :: thermal_adiabatic_getHeatGeneration
+  
+ thermal_adiabatic_getHeatGeneration = 0.95_pReal &
+                                     * sum(abs(math_Mandel6to33(Tstar_v))*Lp)
+ 
+end function thermal_adiabatic_getHeatGeneration
  
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

@@ -67,6 +67,7 @@ module homogenization
    field_putFieldDamage, &
    field_getLocalTemperature, &
    field_putFieldTemperature, &
+   field_getHeatGeneration, &
    field_getLocalVacancyConcentration, &
    field_putFieldVacancyConcentration, &
    field_getDamageMobility, &
@@ -1337,6 +1338,38 @@ subroutine field_putFieldTemperature(ip,el,fieldThermalValue)
  end select 
 
 end subroutine field_putFieldTemperature
+
+!--------------------------------------------------------------------------------------------------
+!> @brief return heat generation rate
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getHeatGeneration(ip,el)
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   homogenization_Ngrains
+ use crystallite, only: &
+   crystallite_Tstar_v, &
+   crystallite_Lp
+ use constitutive, only: &
+   constitutive_getHeatGeneration
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   ipc
+ 
+ field_getHeatGeneration = 0.0_pReal
+ do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   field_getHeatGeneration = field_getHeatGeneration + &
+                             constitutive_getHeatGeneration(crystallite_Tstar_v(1:6,ipc,ip,el), &
+                                                            crystallite_Lp (1:3,1:3,ipc,ip,el), &
+                                                            ipc,ip,el)                     
+ enddo
+ field_getHeatGeneration = field_getHeatGeneration/homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getHeatGeneration
 
 !--------------------------------------------------------------------------------------------------
 !> @brief ToDo
