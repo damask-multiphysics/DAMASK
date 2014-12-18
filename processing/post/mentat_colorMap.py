@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import sys, string
+import os, sys, string
 import damask
 from optparse import OptionParser
 
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # -----------------------------
 def outMentat(cmd,locals):
@@ -57,13 +59,12 @@ def colorMap(colors,baseIdx=32):
 # MAIN FUNCTION STARTS HERE
 # -----------------------------
 
-parser = OptionParser(usage="%prog [options] predefinedScheme | (lower_h,s,l upper_h,s,l)", description = """
+parser = OptionParser(option_class=damask.extendableOption, usage="%prog [options] predefinedScheme | (lower_h,s,l upper_h,s,l)", description = """
 Changes the color map in MSC.Mentat. 
 
 Interpolates colors between "lower_hsl" and "upper_hsl". 
-""" + string.replace('$Id$','\n','\\n')
-)
 
+""", version = scriptID)
 
 parser.add_option("-i","--inverse", action = "store_true", 
                   dest = "inverse", \

@@ -2,38 +2,20 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import math, string, sys, os
-from damask import Color,Colormap
-from optparse import OptionParser, Option
+import damask
+from optparse import OptionParser
 
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # --------------------------------------------------------------------
                                # MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Produces perceptually linear diverging and sequential colormaps in formats suitable for visualization software or simply as a list of interpolated colors.
 
-""" + string.replace('$Id$','\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-l','--left', dest='left', type='float', nargs=3, \
                   help='left color %default')

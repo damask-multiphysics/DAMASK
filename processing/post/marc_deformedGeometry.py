@@ -5,7 +5,8 @@ import os, sys, math, string, numpy, shutil
 import damask
 from optparse import OptionParser
 
-
+scriptID = '$Id$'
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # -----------------------------
 # MAIN FUNCTION STARTS HERE
@@ -15,8 +16,8 @@ from optparse import OptionParser
 
 parser = OptionParser(usage='%prog [options] resultfile', description = """
 Create vtk files for the (deformed) geometry that belongs to a .t16 (MSC.Marc) results file.
-""" + string.replace('$Id$','\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-d','--dir', dest='dir', \
                   help='name of subdirectory to hold output [%default]')

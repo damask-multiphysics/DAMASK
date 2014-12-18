@@ -8,7 +8,7 @@ from vtk.util import numpy_support
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
-scriptName = scriptID.split()[1][:-3]
+scriptName = os.path.splitext(scriptID.split()[1])[0]
             
 # -----------------------------
 class backgroundMessage(threading.Thread):

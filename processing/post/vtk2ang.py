@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
- 
-import os,numpy,string,math,sys
-from optparse import OptionParser, Option
+import os,string,math,sys
+import numpy as np
+from optparse import OptionParser
 from vtk import *
  
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # -----------------------------
 def getHeader(filename,sizeFastIndex,sizeSlowIndex,stepsize):
@@ -79,8 +81,7 @@ def getDataLine(angles,x,y,validData=True):
 parser = OptionParser(usage='%prog options [file[s]]', description = """
 Builds a ang files from a vtk file.
 
-""" + string.replace('$Id$','\n','\\n')
-)
+""", version = scriptID)
 
 
 parser.add_option('--disp','--displacement',dest='dispLabel', \
@@ -137,7 +138,7 @@ for filename in filenames:
 
 # check for othogonality of normal and up vector
 
-if numpy.dot(numpy.array(options.normal),numpy.array(options.up)) > 1e-3:
+if np.dot(np.array(options.normal),np.array(options.up)) > 1e-3:
   parser.error('normal vector and up vector have to be orthogonal')
 
 
@@ -221,12 +222,12 @@ for filename in filenames:
   # "R" rotates coordinates from the mesh system into the TSL system
 
   if options.verbose: sys.stdout.write("\nGETTING COORDINATE SYSTEM FOR ANG FILES\n")
-  z = numpy.array(options.normal,dtype='float')
-  z = z / numpy.linalg.norm(z)
-  x = numpy.array(options.up,dtype='float')
-  x = x / numpy.linalg.norm(x)
-  y = numpy.cross(z,x)
-  R = numpy.array([x,y,z])
+  z = np.array(options.normal,dtype='float')
+  z = z / np.linalg.norm(z)
+  x = np.array(options.up,dtype='float')
+  x = x / np.linalg.norm(x)
+  y = np.cross(z,x)
+  R = np.array([x,y,z])
   if options.verbose:
     sys.stdout.write("  axis (x: up direction, z: slice normal)\n")
     sys.stdout.write("    x (% .8f % .8f % .8f)\n"%tuple(x))
@@ -237,12 +238,12 @@ for filename in filenames:
   # Get bounding box in rotated system (x,y,z)
 
   if options.verbose: sys.stdout.write("\nGETTING BOUNDING BOX IN ROTATED SYSTEM\n")
-  rotatedbox = [[numpy.inf,-numpy.inf] for i in range(3)]     # bounding box in rotated TSL system
+  rotatedbox = [[np.inf,-np.inf] for i in range(3)]     # bounding box in rotated TSL system
   for n in range(8):                                          # loop over eight vertices of mesh bounding box 
-    vert = numpy.array([box[0+(n/1)%2], 
+    vert = np.array([box[0+(n/1)%2], 
                         box[2+(n/2)%2], 
                         box[4+(n/4)%2]])                      # vertex in mesh system
-    rotatedvert = numpy.dot(R,vert)                           # vertex in rotated system
+    rotatedvert = np.dot(R,vert)                           # vertex in rotated system
     for i in range(3):
       rotatedbox[i][0] = min(rotatedbox[i][0],rotatedvert[i])
       rotatedbox[i][1] = max(rotatedbox[i][1],rotatedvert[i])
@@ -292,10 +293,10 @@ for filename in filenames:
   for k in xrange(Npoints[2]):
     for j in xrange(Npoints[0]):  
       for i in xrange(Npoints[1]):   # y is fastest index
-        rotatedpoint = numpy.array([rotatedbox[0][0] + (float(j) + 0.5) * options.resolution,
+        rotatedpoint = np.array([rotatedbox[0][0] + (float(j) + 0.5) * options.resolution,
                                     rotatedbox[1][0] + (float(i) + 0.5) * options.resolution,
                                     rotatedbox[2][0] + (float(k) + 0.5) * options.distance ])  # point in rotated system
-        point = numpy.dot(R.T,rotatedpoint)                                                    # point in mesh system
+        point = np.dot(R.T,rotatedpoint)                                                    # point in mesh system
         points.InsertNextPoint(list(point))
         if options.verbose: 
           sys.stdout.write("\rGENERATING POINTS FOR POINT GRID %d%%" %(100*(Npoints[1]*(k*Npoints[0]+j)+i+1)/totalNpoints))
@@ -363,7 +364,7 @@ for filename in filenames:
   if options.verbose: 
     sys.stdout.write("\nWRITING OUT ANG FILES\n")
     sys.stdout.write("  scaling all length with %f\n"%options.scale)
-  x0,y0,z0 = numpy.dot(R,pointgrid.GetPoint(0))                    # first point on slice defines origin
+  x0,y0,z0 = np.dot(R,pointgrid.GetPoint(0))                    # first point on slice defines origin
   for sliceN in range(Npoints[2]):
     
     # Open file and write header
@@ -396,7 +397,7 @@ for filename in filenames:
         
         # write data to ang file
 
-        x,y,z = numpy.dot(R,pointgrid.GetPoint(i))                  # point in rotated TSL system
+        x,y,z = np.dot(R,pointgrid.GetPoint(i))                  # point in rotated TSL system
         x -= x0                                                     # first point on slice defines origin 
         y -= y0                                                     # first point on slice defines origin 
         x *= options.scale
@@ -423,7 +424,7 @@ for filename in filenames:
       P = [rotatedbox[0][(n/1)%2],
            rotatedbox[1][(n/2)%2], 
            rotatedbox[2][(n/4)%2]]
-      boxpoints.InsertNextPoint(list(numpy.dot(R.T,numpy.array(P))))
+      boxpoints.InsertNextPoint(list(np.dot(R.T,np.array(P))))
     box = vtkHexahedron()
     for n,i in enumerate([0,1,3,2,4,5,7,6]):
       box.GetPointIds().SetId(n,i)

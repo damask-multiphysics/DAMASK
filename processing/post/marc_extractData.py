@@ -2,30 +2,11 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os, sys, math, string, re, time
+from optparse import OptionParser, OptionGroup
 import damask
-from optparse import OptionParser, OptionGroup, Option
 
-
-
-# -----------------------------
-class MyOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-      
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # -----------------------------
 def ParseOutputFormat(filename,homogID,crystID,phaseID):
@@ -278,17 +259,14 @@ def writeHeader(myfile,stat,geomtype):
   return True
 
 
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
 
-# -----------------------------
-# MAIN FUNCTION STARTS HERE
-# -----------------------------
-
-# --- input parsing
-
-parser = OptionParser(option_class=MyOption, usage='%prog [options] resultfile', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Extract data from a .t16 (MSC.Marc) results file. 
-""" + string.replace('$Id$','\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')

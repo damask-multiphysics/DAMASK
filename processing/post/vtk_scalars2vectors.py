@@ -2,19 +2,20 @@
 # -*- coding: UTF-8 no BOM -*-
 
 import os, sys, string, re, shutil
+import damask
 from optparse import OptionParser
 from vtk import *
 
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
-# -----------------------------
-# MAIN FUNCTION STARTS HERE
-# -----------------------------
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
 
-# --- input parsing
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 
-parser = OptionParser(usage='%prog [options] vtkfile', description = """
-""" + string.replace('$Id$','\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-v','--vector', nargs=3, dest='vector', \
                   help='suffices indicating vector components [%default]')

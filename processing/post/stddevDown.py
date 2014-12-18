@@ -1,52 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,re,sys,math,string,numpy,damask,time
-from optparse import OptionParser, Option
+import os,re,sys,math,string,time
+import numpy as np
+import damask
+from optparse import OptionParser
 
-# -----------------------------
-class extendableOption(Option):
-# -----------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-  
-  ACTIONS = Option.ACTIONS + ("extend",)
-  STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-  TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-  ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-  def take_action(self, action, dest, opt, value, values, parser):
-    if action == "extend":
-      lvalue = value.split(",")
-      values.ensure_value(dest, []).extend(lvalue)
-    else:
-      Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-
-def location(idx,res):
-
-  return numpy.array([ idx  % res[0], \
-                      (idx // res[0]) % res[1], \
-                      (idx // res[0] // res[1]) % res[2] ])
-
-def index(location,res):
-
-  return ( location[0] % res[0]                    + \
-          (location[1] % res[1]) * res[0]          + \
-          (location[2] % res[2]) * res[0] * res[1]   )
-
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendableOption, usage='%prog [options] [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] datafile[s]', description = """
 Calculates the standard deviation of data in blocks of size 'packing' thus reducing the former resolution
-to resolution/packing. (Requires numpy.)
+to resolution/packing. (Requires np.)
 
-""" + string.replace('$Id$','\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-c','--coordinates', dest='coords', type='string',\
                                         help='column heading for coordinates [%default]')
@@ -71,11 +42,11 @@ if len(options.packing) < 3:
 if len(options.shift) < 3:
   parser.error('shift needs three parameters...')
 
-options.packing = numpy.array(options.packing)
-options.shift = numpy.array(options.shift)
+options.packing = np.array(options.packing)
+options.shift = np.array(options.shift)
 
 prefix = 'stddevDown%ix%ix%i_'%(options.packing[0],options.packing[1],options.packing[2])
-if numpy.any(options.shift != 0):
+if np.any(options.shift != 0):
   prefix += 'shift%+i%+i%+i_'%(options.shift[0],options.shift[1],options.shift[2])
 
 # ------------------------------------------ setup file handles ---------------------------------------  
@@ -114,27 +85,27 @@ for file in files:
     while table.data_read():                                                  # read next data line of ASCII table
       for j in xrange(3):
         grid[j][str(table.data[locationCol+j])] = True                        # remember coordinate along x,y,z
-    resolution = numpy.array([len(grid[0]),\
+    resolution = np.array([len(grid[0]),\
                               len(grid[1]),\
                               len(grid[2]),],'i')                             # resolution is number of distinct coordinates found
-    dimension = resolution/numpy.maximum(numpy.ones(3,'d'),resolution-1.0)* \
-                numpy.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
+    dimension = resolution/np.maximum(np.ones(3,'d'),resolution-1.0)* \
+                np.array([max(map(float,grid[0].keys()))-min(map(float,grid[0].keys())),\
                              max(map(float,grid[1].keys()))-min(map(float,grid[1].keys())),\
                              max(map(float,grid[2].keys()))-min(map(float,grid[2].keys())),\
                             ],'d')                                            # dimension from bounding box, corrected for cell-centeredness
   else:
-    resolution = numpy.array(options.resolution,'i')
-    dimension = numpy.array(options.dimension,'d')
+    resolution = np.array(options.resolution,'i')
+    dimension = np.array(options.dimension,'d')
 
   if resolution[2] == 1:
     options.packing[2] = 1
     options.shift[2]   = 0
     dimension[2]       = min(dimension[:2]/resolution[:2])                    # z spacing equal to smaller of x or y spacing
   
-  packing   = numpy.array(options.packing,'i')
-  shift     = numpy.array(options.shift,'i')
-  downSized = numpy.maximum(numpy.ones(3,'i'),resolution//packing)
-  outSize   = numpy.ceil(numpy.array(resolution,'d')/numpy.array(packing,'d'))
+  packing   = np.array(options.packing,'i')
+  shift     = np.array(options.shift,'i')
+  downSized = np.maximum(np.ones(3,'i'),resolution//packing)
+  outSize   = np.ceil(np.array(resolution,'d')/np.array(packing,'d'))
   
   print '\t%s @ %s --> %s'%(dimension,resolution,downSized)
   
@@ -144,9 +115,9 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  dataavg = numpy.zeros(outSize.tolist()+[len(table.labels)])
-  datavar = numpy.zeros(outSize.tolist()+[len(table.labels)])
-  p = numpy.zeros(3,'i')
+  dataavg = np.zeros(outSize.tolist()+[len(table.labels)])
+  datavar = np.zeros(outSize.tolist()+[len(table.labels)])
+  p = np.zeros(3,'i')
   
   table.data_rewind()
   for p[2] in xrange(resolution[2]):
@@ -154,7 +125,7 @@ for file in files:
       for p[0] in xrange(resolution[0]):
         d = ((p-shift)%resolution)//packing
         table.data_read()
-        dataavg[d[0],d[1],d[2],:] += numpy.array(table.data_asFloat(),'d')                        # convert to numpy array
+        dataavg[d[0],d[1],d[2],:] += np.array(table.data_asFloat(),'d')                        # convert to np array
    
   dataavg /= packing.prod()
   
@@ -164,9 +135,9 @@ for file in files:
       for p[0] in xrange(resolution[0]):
         d = ((p-shift)%resolution)//packing
         table.data_read()
-        datavar[d[0],d[1],d[2],:] += (numpy.array(table.data_asFloat(),'d') - dataavg[d[0],d[1],d[2],:])**2  
+        datavar[d[0],d[1],d[2],:] += (np.array(table.data_asFloat(),'d') - dataavg[d[0],d[1],d[2],:])**2  
 
-  datavar = numpy.sqrt(datavar/packing.prod())
+  datavar = np.sqrt(datavar/packing.prod())
   
   posOffset = (shift+[0.5,0.5,0.5])*dimension/resolution
   elementSize = dimension/resolution*packing

@@ -1,37 +1,22 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,numpy,vtk
+import os,sys,string,re,vtk
 import damask
 from collections import defaultdict
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
+from optparse import OptionParser
 
-scriptID = '$Id: vtk_addVoxelgridData.py 3064 2014-04-03 01:00:00Z p.eisenlohr $'
+scriptID   = string.replace('$Id: addCalculation.py 3465 2014-09-12 14:14:55Z MPIE\m.diehl $','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
 
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Add scalar and RGB tuples from ASCIItable to existing VTK voxel grid (.vtr).
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-v', '--vtk',     dest='vtk',    type='string',
                   help = 'VTK file name')

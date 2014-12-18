@@ -5,7 +5,8 @@ import os, sys, string, glob, re
 import damask
 from optparse import OptionParser
 
-
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # -----------------------------
 def findTag(filename,tag):
@@ -27,8 +28,8 @@ def findTag(filename,tag):
 
 parser = OptionParser(usage='%prog [options] directory', description = """
 Add data from an ASCII table to a VTK geometry file. 
-""" + string.replace('$Id$','\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-s','--sub', action='store_true', dest='subdir', \
                   help='include files in subdirectories [%default]')

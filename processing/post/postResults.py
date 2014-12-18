@@ -5,6 +5,9 @@ import pdb, os, sys, gc, math, re, threading, time, struct, string
 import damask
 from optparse import OptionParser, OptionGroup
 
+scriptID   = string.replace('$Id$','\n','\\n')
+scriptName = os.path.splitext(scriptID.split()[1])[0]
+
 
 fileExtensions = { \
                    'marc': ['.t16',],
@@ -623,7 +626,7 @@ def SummarizePostfile(stat,where=sys.stdout,format='marc'):
 
 # --- input parsing
 
-parser = OptionParser(option_class=damask.extendableOption, usage='%prog [options] resultfile', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Extract data from a .t16 (MSC.Marc) or .spectralOut results file. 
 
 List of output variables is given by options '--ns','--es','--et','--ho','--cr','--co'. 
@@ -640,8 +643,7 @@ User mappings need to be formulated in an incremental fashion for each new data 
 and may use the current (incremental) result, b(ase), as well as the number, n(umber),
 of already processed data points for evaluation.
 
-""", version = string.replace('$Id$','\n','\\n')
-)
+""", version = scriptID)
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')

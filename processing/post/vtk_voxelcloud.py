@@ -1,35 +1,14 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,numpy,vtk
+import os,sys,string,re,vtk
+import numpy as np
+from optparse import OptionParser
 import damask
-from optparse import OptionParser, OptionGroup, Option, SUPPRESS_HELP
 
 scriptID = '$Id$'
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
-#--------------------------------------------------------------------------------------------------
-class extendedOption(Option):
-#--------------------------------------------------------------------------------------------------
-# used for definition of new option parser action 'extend', which enables to take multiple option arguments
-# taken from online tutorial http://docs.python.org/library/optparse.html
-    
-    ACTIONS = Option.ACTIONS + ("extend",)
-    STORE_ACTIONS = Option.STORE_ACTIONS + ("extend",)
-    TYPED_ACTIONS = Option.TYPED_ACTIONS + ("extend",)
-    ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("extend",)
-
-    def take_action(self, action, dest, opt, value, values, parser):
-        if action == "extend":
-            lvalue = value.split(",")
-            values.ensure_value(dest, []).extend(lvalue)
-        else:
-            Option.take_action(self, action, dest, opt, value, values, parser)
-
-
-#--------------------------------------------------------------------------------------------------
-#                                MAIN
-#--------------------------------------------------------------------------------------------------
 synonyms = {
         'grid':   ['resolution'],
         'size':   ['dimension'],
@@ -46,11 +25,14 @@ mappings = {
         'microstructures': lambda x: int(x),
           }
 
+# --------------------------------------------------------------------
+#                                MAIN
+# --------------------------------------------------------------------
 
-parser = OptionParser(option_class=extendedOption, usage='%prog options [file[s]]', description = """
+parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
 Create hexahedral voxels around points in an ASCIItable.
-""" + string.replace(scriptID,'\n','\\n')
-)
+
+""", version = scriptID)
 
 parser.add_option('-p', '--positions',   dest='pos', type='string',
                   help = 'coordinate label')
@@ -91,12 +73,11 @@ for file in files:
 
   table = damask.ASCIItable(file['input'],file['croak'],False)             # make unbuffered ASCII_table
   table.head_read()                                                         # read ASCII header info
-
 #--- interpret header ----------------------------------------------------------------------------
   info = {
-          'grid':   numpy.zeros(3,'i'),
-          'size':   numpy.zeros(3,'d'),
-          'origin': numpy.zeros(3,'d'),
+          'grid':   np.zeros(3,'i'),
+          'size':   np.zeros(3,'d'),
+          'origin': np.zeros(3,'d'),
           'homogenization':  0,
           'microstructures': 0,
          }
@@ -121,18 +102,17 @@ for file in files:
                         'homogenization:  %i\n'%info['homogenization'] + \
                         'microstructures: %i\n'%info['microstructures'])
 
-    if numpy.any(info['grid'] < 1):
+    if np.any(info['grid'] < 1):
       file['croak'].write('invalid grid a b c.\n')
       continue
-    if numpy.any(info['size'] <= 0.0):
+    if np.any(info['size'] <= 0.0):
       file['croak'].write('invalid size x y z.\n')
       continue
 
   else:
-    info['size'] = numpy.ones(3)
+    info['size'] = np.ones(3)
     info['grid'] = info['size'] / options.size
     info['origin'] = options.origin
-    
 
 # --------------- figure out columns to process
   active = {}
@@ -156,7 +136,7 @@ for file in files:
 
 # ------------------------------------------ process data ---------------------------------------  
 
-  hexPoints = numpy.array([[-1,-1,-1],
+  hexPoints = np.array([[-1,-1,-1],
                            [ 1,-1,-1],
                            [ 1, 1,-1],
                            [-1, 1,-1],
@@ -175,9 +155,9 @@ for file in files:
   table.data[:,0:3] *= info['size']
   table.data[:,0:3] += info['origin']
 
-#  minD = numpy.array(options.size,dtype=float)
+#  minD = np.array(options.size,dtype=float)
 #   for i in xrange(3):
-#     coords = numpy.unique(table.data[:,i])
+#     coords = np.unique(table.data[:,i])
 #     minD[i] = coords[-1]-coords[0]
 #     for j in xrange(len(coords)-1):
 #       d = coords[j+1]-coords[j]
