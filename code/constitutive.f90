@@ -1873,9 +1873,9 @@ subroutine constitutive_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
 
  implicit none
  
- real(pReal), dimension(:), allocatable :: &
+ real(pReal), dimension(:), intent(out),  allocatable :: &
    accumulatedSlip
- integer(pInt) :: &
+ integer(pInt), intent(out) :: &
    nSlip
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
@@ -1936,9 +1936,9 @@ subroutine constitutive_getSlipRate(nSlip,slipRate,Lp,ipc, ip, el)
 
  implicit none
  
- real(pReal), dimension(:), allocatable :: &
+ real(pReal), dimension(:), intent(out), allocatable :: &
    slipRate
- integer(pInt) :: &
+ integer(pInt), intent(out) :: &
    nSlip
  real(pReal),  intent(in), dimension(3,3) :: &
    Lp                                                                                               !< plastic velocity gradient
