@@ -129,7 +129,7 @@ class myThread (threading.Thread):
         myMatch = i+1
 
       if myNmicrostructures == nMicrostructures:
-        for i in xrange(nMicrostructures):
+        for i in xrange(min(nMicrostructures,myMatch+options.bins)):
           if currentError[i] > target[i]['error']:
             randReset = True
             break
@@ -154,8 +154,16 @@ class myThread (threading.Thread):
               match=myMatch
               sys.stdout.flush()
             break
-          if i == nMicrostructures-1:
-            print 'Thread %i: Continue along trajectory'%(self.threadID)
+          if i == min(nMicrostructures,myMatch+options.bins)-1:
+            bestSeedsUpdate = time.time()
+            perturbedSeedsVFile.reset()
+            bestSeedsVFile.close()
+            bestSeedsVFile = StringIO()
+            for line in perturbedSeedsVFile:
+              bestSeedsVFile.write(line)
+            for j in xrange(nMicrostructures):
+              target[j]['error'] = currentError[j]
+            randReset = True
       else:                                                                                                #--- not all grains are tessellated
         print 'Thread %i: Microstructure mismatch (%i microstructures mapped)'%(self.threadID,myNmicrostructures)
         randReset = True
@@ -187,7 +195,8 @@ parser.add_option('--tolerance',     dest='threshold', type='int', metavar='int'
                                      help='stopping criterion (bin number) [%default]')
 parser.add_option('--scale',         dest='scale',type='float', metavar='float',                                     
                                      help='maximum moving distance of perturbed seed in pixel [%default]')
-
+parser.add_option('--bins',          dest='bins', type='int', metavar='int',
+                                     help='bins to sort beyond current best fit [%default]')
 
 parser.set_defaults(seedFile    = 'seeds')
 parser.set_defaults(grid        = (64,64,64))
@@ -195,6 +204,7 @@ parser.set_defaults(threads     = 2)
 parser.set_defaults(randomSeed  = None)
 parser.set_defaults(target      = 'geom')
 parser.set_defaults(threshold   = 20)
+parser.set_defaults(bins        = 15)
 parser.set_defaults(scale       = 1.0)
 
 
@@ -258,6 +268,7 @@ for i in xrange(nMicrostructures):
   match = i+1
 
 print 'Stage %i cleared'%match
+sys.stdout.flush()
 initialGeomVFile.close()
 
 
