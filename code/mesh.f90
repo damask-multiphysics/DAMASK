@@ -1234,7 +1234,7 @@ end subroutine mesh_spectral_mapNodesAndElems
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
+!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', 'mesh_maxNipNeighbors', 
 !! and 'mesh_maxNcellnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_count_cpSizes
@@ -2835,7 +2835,7 @@ end subroutine mesh_marc_build_nodes
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets maximum count of nodes, IPs, IP neighbors, and cellnodes among cpElements.
-!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
+!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', 'mesh_maxNipNeighbors', 
 !! and 'mesh_maxNcellnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_marc_count_cpSizes(fileUnit)
@@ -3506,7 +3506,7 @@ end subroutine mesh_abaqus_build_nodes
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Gets maximum count of nodes, IPs, IP neighbors, and subNodes among cpElements.
-!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', mesh_maxNipNeighbors', 
+!! Sets global values 'mesh_maxNnodes', 'mesh_maxNips', 'mesh_maxNipNeighbors', 
 !! and 'mesh_maxNcellnodes'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_abaqus_count_cpSizes(fileUnit)
