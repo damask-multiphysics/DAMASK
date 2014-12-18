@@ -488,10 +488,14 @@ subroutine mesh_init(ip,el)
 #endif
  use debug, only: &
    debug_e, &
-   debug_i
+   debug_i, &
+   debug_level, &
+   debug_mesh, &
+   debug_levelBasic
  use numerics, only: &
    usePingPong, &
-   numerics_unitlength
+   numerics_unitlength, &
+   worldrank
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP, &
@@ -502,11 +506,14 @@ subroutine mesh_init(ip,el)
  integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt), intent(in) :: el, ip
  integer(pInt) :: j
+ logical :: myDebug
  
- write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
- write(6,'(a)')     ' $Id$'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then 
+   write(6,'(/,a)')   ' <<<+-  mesh init  -+>>>'
+   write(6,'(a)')     ' $Id$'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+ endif mainProcess
 
  if (allocated(mesh_mapFEtoCPelem))           deallocate(mesh_mapFEtoCPelem)
  if (allocated(mesh_mapFEtoCPnode))           deallocate(mesh_mapFEtoCPnode)
@@ -529,67 +536,123 @@ subroutine mesh_init(ip,el)
  if (allocated(FE_subNodeOnIPFace))           deallocate(FE_subNodeOnIPFace)
  call mesh_build_FEdata                                                                             ! get properties of the different types of elements
  mesh_unitlength = numerics_unitlength                                                              ! set physical extent of a length unit in mesh
+ 
+ myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
 #ifdef Spectral
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
+ if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
  call mesh_spectral_count(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
  call mesh_spectral_mapNodesAndElems
+ if (myDebug) write(6,'(a)') ' Mapped nodes and elements'; flush(6)
  call mesh_spectral_count_cpSizes
+ if (myDebug) write(6,'(a)') ' Built CP statistics'; flush(6)
  call mesh_spectral_build_nodes(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_spectral_build_elements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  call mesh_get_damaskOptions(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
+ if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
+ if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
  call mesh_build_ipCoordinates
+ if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  call mesh_build_ipVolumes
+ if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
  call mesh_build_ipAreas
+ if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  call mesh_spectral_build_ipNeighborhood(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 #endif
 #ifdef Marc4DAMASK
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
+ if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  call mesh_marc_get_tableStyles(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Got table styles'; flush(6)
  call mesh_marc_count_nodesAndElements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
  call mesh_marc_count_elementSets(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted element sets'; flush(6)
  call mesh_marc_map_elementSets(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
  call mesh_marc_count_cpElements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
  call mesh_marc_map_elements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
  call mesh_marc_map_nodes(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
  call mesh_marc_build_nodes(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_marc_count_cpSizes(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_marc_build_elements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  call mesh_get_damaskOptions(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
+ if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
+ if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
  call mesh_build_ipCoordinates
+ if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  call mesh_build_ipVolumes
+ if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
  call mesh_build_ipAreas
+ if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  call mesh_build_nodeTwins
+ if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)
  call mesh_build_sharedElems
+ if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
+ if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 #endif
 #ifdef Abaqus
  call IO_open_inputFile(FILEUNIT,modelName)                                                         ! parse info from input file...
+ if (myDebug) write(6,'(a)') ' Opened input file'; flush(6)
  noPart = IO_abaqus_hasNoPart(FILEUNIT)
  call mesh_abaqus_count_nodesAndElements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
  call mesh_abaqus_count_elementSets(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted element sets'; flush(6)
  call mesh_abaqus_count_materials(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted materials'; flush(6)
  call mesh_abaqus_map_elementSets(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Mapped element sets'; flush(6)
  call mesh_abaqus_map_materials(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Mapped materials'; flush(6)
  call mesh_abaqus_count_cpElements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted CP elements'; flush(6)
  call mesh_abaqus_map_elements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Mapped elements'; flush(6)
  call mesh_abaqus_map_nodes(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Mapped nodes'; flush(6)
  call mesh_abaqus_build_nodes(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_abaqus_count_cpSizes(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Counted CP sizes'; flush(6)
  call mesh_abaqus_build_elements(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
  call mesh_get_damaskOptions(FILEUNIT)
+ if (myDebug) write(6,'(a)') ' Got DAMASK options'; flush(6)
  call mesh_build_cellconnectivity
+ if (myDebug) write(6,'(a)') ' Built cell connectivity'; flush(6)
  mesh_cellnode = mesh_build_cellnodes(mesh_node,mesh_Ncellnodes)
+ if (myDebug) write(6,'(a)') ' Built cell nodes'; flush(6)
  call mesh_build_ipCoordinates
+ if (myDebug) write(6,'(a)') ' Built IP coordinates'; flush(6)
  call mesh_build_ipVolumes
+ if (myDebug) write(6,'(a)') ' Built IP volumes'; flush(6)
  call mesh_build_ipAreas
+ if (myDebug) write(6,'(a)') ' Built IP areas'; flush(6)
  call mesh_build_nodeTwins
+ if (myDebug) write(6,'(a)') ' Built node twins'; flush(6)
  call mesh_build_sharedElems
+ if (myDebug) write(6,'(a)') ' Built shared elements'; flush(6)
  call mesh_build_ipNeighborhood
+ if (myDebug) write(6,'(a)') ' Built IP neighborhood'; flush(6)
 #endif
 
  close (FILEUNIT)
@@ -1267,8 +1330,10 @@ subroutine mesh_spectral_build_elements(fileUnit)
 
  grid  = mesh_spectral_getGrid(fileUnit)
  homog = mesh_spectral_getHomogenization(fileUnit)
- call IO_checkAndRewind(fileUnit)
 
+!--------------------------------------------------------------------------------------------------
+! get header length
+ call IO_checkAndRewind(fileUnit)
  read(fileUnit,'(a65536)') line
  myPos = IO_stringPos(line,7_pInt)
  keyword = IO_lc(IO_StringValue(line,myPos,2_pInt,.true.))
@@ -1278,7 +1343,9 @@ subroutine mesh_spectral_build_elements(fileUnit)
    call IO_error(error_ID=841_pInt, ext_msg='mesh_spectral_build_elements')
  endif
  
- rewind(fileUnit)
+!--------------------------------------------------------------------------------------------------
+! get maximum microstructure index
+ call IO_checkAndRewind(fileUnit)
  do i = 1_pInt, headerLength
    read(fileUnit,'(a65536)') line
  enddo
@@ -1290,14 +1357,15 @@ subroutine mesh_spectral_build_elements(fileUnit)
    i = IO_countContinuousIntValues(fileUnit)
    maxIntCount = max(maxIntCount, i)
  enddo
+ allocate (mesh_element    (4_pInt+mesh_maxNnodes,mesh_NcpElems), source = 0_pInt)
+ allocate (microstructures (1_pInt+maxIntCount), source = 1_pInt)
 
- rewind (fileUnit)
- do i=1_pInt,headerLength                                                                           ! skip header
+!--------------------------------------------------------------------------------------------------
+! read in microstructures
+ call IO_checkAndRewind(fileUnit)
+ do i=1_pInt,headerLength
    read(fileUnit,'(a65536)') line
  enddo
-
- allocate (mesh_element (4_pInt+mesh_maxNnodes,mesh_NcpElems), source = 0_pInt)
- allocate (microstructures (1_pInt+maxIntCount), source = 1_pInt)
  
  elemType = FE_mapElemtype('C3D8R') 
  e = 0_pInt
