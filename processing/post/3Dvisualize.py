@@ -9,45 +9,6 @@ import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
-            
-# -----------------------------
-class backgroundMessage(threading.Thread):
-# -----------------------------
-    
-    def __init__(self):
-        threading.Thread.__init__(self)
-        self.message = ''
-        self.new_message = ''
-        self.counter = 0
-        self.symbols = ['- ', '\ ', '| ', '/ ']
-        self.waittime = 0.5
-    
-    def __quit__(self):
-        length = len(self.message) + len(self.symbols[self.counter])
-        sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)
-        sys.stderr.write('')
-    
-    def run(self):
-        while not threading.enumerate()[0]._Thread__stopped:
-            time.sleep(self.waittime)
-            self.update_message()
-        self.__quit__()
-
-    def set_message(self, new_message):
-        self.new_message = new_message
-        self.print_message()
-    
-    def print_message(self):
-        length = len(self.message) + len(self.symbols[self.counter])
-        sys.stderr.write(chr(8)*length + ' '*length + chr(8)*length)                                # delete former message
-        sys.stderr.write(self.symbols[self.counter] + self.new_message)                             # print new message
-        self.message = self.new_message
-        
-    def update_message(self):
-        self.counter = (self.counter + 1)%len(self.symbols)
-        self.print_message()
-
-
 
 def outStdout(cmd,locals):
   if cmd[0:3] == '(!)':
@@ -150,75 +111,6 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
               ]
 
   return cmds
-  
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++
-def gmsh_writeASCII_mesh(mesh,data,res,sep):
-# ++++++++++++++++++++++++++++++++++++++++++++++++++++
-  """ function writes data array defined on a hexahedral mesh (geometry) """
-  info =  {\
-             'tensor': {'name':'tensor','len':9},\
-             'vector': {'name':'vector','len':3},\
-             'scalar': {'name':'scalar','len':1},\
-             'double': {'name':'scalar','len':2},\
-             'triple': {'name':'scalar','len':3},\
-             'quadruple': {'name':'scalar','len':4},\
-            }
-  N1 = (res[0]+1)*(res[1]+1)*(res[2]+1)
-  N  = res[0]*res[1]*res[2]
-  
-  cmds = [\
-          '$MeshFormat',
-          '2.1 0 8',
-          '$EndMeshFormat',
-          '$Nodes',
-          '%i float'%N1,
-          [[['\t'.join(map(str,l,mesh[:,i,j,k])) for l in range(1,N1+1) for i in range(res[0]+1)] for j in range(res[1]+1)] for k in range(res[2]+1)],
-          '$EndNodes',
-          '$Elements',
-          '%i'%N,
-          ]
-
-# cells
-  n_elem = 0
-  for z in range (res[2]):
-    for y in range (res[1]):
-      for x in range (res[0]):
-        base = z*(res[1]+1)*(res[0]+1)+y*(res[0]+1)+x
-        n_elem +=1
-        cmds.append('\t'.join(map(str,[ \
-                                            n_elem,
-                                            '5',
-                                            base,
-                                            base+1,
-                                            base+res[0]+2,
-                                            base+res[0]+1,
-                                            base+(res[1]+1)*(res[0]+1),
-                                            base+(res[1]+1)*(res[0]+1)+1,
-                                            base+(res[1]+1)*(res[0]+1)+res[0]+2,
-                                            base+(res[1]+1)*(res[0]+1)+res[0]+1,
-                                          ])))
-
-  cmds += [\
-           'ElementData',
-           '1',
-           '%s'%item,     # name of the view
-           '0.0',         # thats the time value
-           '3', 
-           '0',           # time step
-           '1',
-           '%i'%N
-          ]
-  
-  for type in data:
-    plural = {True:'',False:'S'}[type.lower().endswith('s')]
-    for item in data[type]['_order_']:
-      cmds += [\
-               '%s %s float %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
-               'LOOKUP_TABLE default',
-               [[[sep.join(map(str,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
-              ]
-
-  return cmds
  
 # +++++++++++++++++++++++++++++++++++++++++++++++++++
 def vtk_writeASCII_points(coordinates,data,res,sep):
@@ -250,8 +142,6 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
               ]
 
   return cmds
-  
-
 
 
 # ----------------------- MAIN -------------------------------
@@ -377,7 +267,7 @@ for filename in args:
     continue
 
   column['vector'] = {}
-  matches['tensor'] = {}
+  matches['vector'] = {}
   for label in options.vector:
     column['vector'][label] = -1
     for col,head in enumerate(headings):
@@ -403,7 +293,8 @@ for filename in args:
 
 
   values = np.array(sorted([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],
-                              key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),'d')             # sort with z as fastest and x as slowest index
+                              key=lambda x:(x[locol+0],x[locol+1],x[locol+2])),'d')                         # sort with z as fastest and x as slowest index
+  values2 = np.array([map(transliterateToFloat,line.split()[:maxcol]) for line in content[headrow+1:]],'d') # sort with x as fastest and z as slowest index
 
   N = len(values)
 
@@ -413,8 +304,8 @@ for filename in args:
       tempGrid[j][str(values[i,locol+j])] = True
 
   grid = np.array([len(tempGrid[0]),\
-                      len(tempGrid[1]),\
-                      len(tempGrid[2]),],'i')
+                   len(tempGrid[1]),\
+                   len(tempGrid[2]),],'i')
   
   dim = np.ones(3)
 
@@ -436,7 +327,7 @@ for filename in args:
                                                              (3,3,grid[0],grid[1],grid[2])))
   if not options.filenodalcoords:
     F = np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
-                                               column['tensor'][options.defgrad]+9]),
+                                         column['tensor'][options.defgrad]+9]),
                                                              (3,3,grid[0],grid[1],grid[2]))
     if options.linearreconstruction:
       centroids = damask.core.mesh.deformedCoordsLinear(dim,F,Favg)
@@ -486,67 +377,72 @@ for filename in args:
              'quadruple': 4,\
             }
 
+
 # vtk lib out
- #points = vtk.vtkPoints()
- #for z in range (grid[2]+1):
- #  for y in range (grid[1]+1):
- #    for x in range (grid[0]+1):
- #      points.InsertNextPoint(nodes[:,x,y,z])
+  if False:
+    points = vtk.vtkPoints()
+    for z in range (grid[2]+1):
+      for y in range (grid[1]+1):
+        for x in range (grid[0]+1):
+          points.InsertNextPoint(nodes[:,x,y,z])
+   
+    data=[]
+    j=0
+    for datatype in fields.keys():
+      for what in eval('options.'+datatype):
+        for label in matches[datatype][what]:
+          col = column[datatype][label]
+          if col != -1:
+            data.append(vtk.vtkFloatArray())
+            data[j].SetNumberOfComponents(length[datatype])
+            for i in xrange(grid[2]*grid[1]*grid[0]):
+              for k in xrange(length[datatype]):
+                data[j].InsertNextValue(values2[i,col+k])
+            data[j].SetName(label)
+            j+=1
+   
+    if options.output_mesh:
+      hexs = vtk.vtkCellArray()
+      i = 0
+      elems=[]
+      for z in range (grid[2]):
+        for y in range (grid[1]):
+          for x in range (grid[0]):
+   
+            elems.append(vtk.vtkHexahedron())
+            base = z*(grid[1]+1)*(grid[0]+1)+y*(grid[0]+1)+x
+            elems[i].GetPointIds().SetId(0, base)
+            elems[i].GetPointIds().SetId(1, base+1)
+            elems[i].GetPointIds().SetId(2, base+grid[0]+2)
+            elems[i].GetPointIds().SetId(3, base+grid[0]+1)
+            elems[i].GetPointIds().SetId(4, base+(grid[1]+1)*(grid[0]+1))
+            elems[i].GetPointIds().SetId(5, base+(grid[1]+1)*(grid[0]+1)+1)
+            elems[i].GetPointIds().SetId(6, base+(grid[1]+1)*(grid[0]+1)+grid[0]+2)
+            elems[i].GetPointIds().SetId(7, base+(grid[1]+1)*(grid[0]+1)+grid[0]+1)
+            hexs.InsertNextCell(elems[i])
+            i+=1
+   
+      uGrid = vtk.vtkUnstructuredGrid()
+      uGrid.SetPoints(points)
+      i = 0
+      for z in range (grid[2]):
+        for y in range (grid[1]):
+          for x in range (grid[0]):
+            uGrid.InsertNextCell(elems[i].GetCellType(), elems[i].GetPointIds())
+            i+=1
+   
+      for i in xrange(len(data)):
+        uGrid.GetCellData().AddArray(data[i])
+   
+      outWriter = vtk.vtkXMLUnstructuredGridWriter()
+      outWriter.SetDataModeToBinary()
+      outWriter.SetCompressorTypeToZLib()
+      (head,tail) = os.path.split(filename)
+      outWriter.SetFileName(os.path.join(head,'mesh_'+os.path.splitext(tail)[0]+'.vtu'))
+      outWriter.SetInput(uGrid)
+      outWriter.Write()
 
- #hexs = vtk.vtkCellArray()
- #i = 0
- #elems=[]
- #for z in range (grid[2]):
- #  for y in range (grid[1]):
- #    for x in range (grid[0]):
-
- #      elems.append(vtk.vtkHexahedron())
- #      base = z*(grid[1]+1)*(grid[0]+1)+y*(grid[0]+1)+x
- #      elems[i].GetPointIds().SetId(0, base)
- #      elems[i].GetPointIds().SetId(1, base+1)
- #      elems[i].GetPointIds().SetId(2, base+grid[0]+2)
- #      elems[i].GetPointIds().SetId(3, base+grid[0]+1)
- #      elems[i].GetPointIds().SetId(4, base+(grid[1]+1)*(grid[0]+1))
- #      elems[i].GetPointIds().SetId(5, base+(grid[1]+1)*(grid[0]+1)+1)
- #      elems[i].GetPointIds().SetId(6, base+(grid[1]+1)*(grid[0]+1)+grid[0]+2)
- #      elems[i].GetPointIds().SetId(7, base+(grid[1]+1)*(grid[0]+1)+grid[0]+1)
- #      hexs.InsertNextCell(elems[i])
- #      i+=1
-
- #uGrid = vtk.vtkUnstructuredGrid()
- #uGrid.SetPoints(points)
- #i = 0
- #for z in range (grid[2]):
- #  for y in range (grid[1]):
- #    for x in range (grid[0]):
- #      uGrid.InsertNextCell(elems[i].GetCellType(), elems[i].GetPointIds())
- #      i+=1
-
- #data=[]
- #j=0
- #for datatype in fields.keys():
- #  for what in eval('options.'+datatype):
- #    for label in matches[datatype][what]:
- #      col = column[datatype][label]
- #      if col != -1:
- #        data.append(vtk.vtkFloatArray())
- #        data[j].SetNumberOfComponents(1) #this is for scalar only so far
- #        for i in xrange(grid[0]*grid[1]*grid[2]):
- #          data[j].InsertNextValue(values[i,col:col+length[datatype]])
- #          data[j].SetName(label)
- #        j+=1
-
- #for i in xrange(len(data)):
- #  uGrid.GetCellData().AddArray(data[i])
-
- #outWriter = vtk.vtkXMLUnstructuredGridWriter()
- #outWriter.SetDataModeToBinary()
- #outWriter.SetCompressorTypeToZLib()
- #outWriter.SetFileName(os.path.splitext(filename)[0]+'.vtu')
- #outWriter.SetInput(uGrid)
- #outWriter.Write()
-
-
+  
   for datatype in fields.keys():
     print '\n%s:'%datatype,
     fields[datatype]['_order_'] = []
