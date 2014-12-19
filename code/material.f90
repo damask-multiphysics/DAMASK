@@ -13,6 +13,7 @@ module material
    pReal, &
    pInt, &
    tState, &
+   tPlasticState, &
    tFieldData, &
    p_intvec
 
@@ -160,8 +161,9 @@ module material
    material_phase                                                                                   !< phase (index) of each grain,IP,element
  integer(pInt), dimension(:,:), allocatable, public :: &
    material_homog                                                                                   !< homogenization (index) of each IP,element 
+ type(tPlasticState), allocatable, dimension(:), public :: &
+   plasticState
  type(tState), allocatable, dimension(:), public :: &
-   plasticState, &
    damageState, &
    thermalState,&
    vacancyState,&
