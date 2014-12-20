@@ -108,7 +108,6 @@ for file in files:
   if info['grid'].prod() != point:
     file['croak'].write('Error: found %s microstructures. Header info in ang file might be wrong.\n'%point)
     continue
-
   if options.compress:
     texture = []
     microstructure = []
@@ -118,20 +117,19 @@ for file in files:
       myTexture = -1
       for otherPoint in xrange(len(microstructure)):
         otherEulers = eulerangles[texture[microstructure[otherPoint][0]]]
-        otherPhase  = phase[microstructure[otherPoint][1]]
-        if all(eulerangles[myPoint]==otherEulers) and phase[myPoint] == otherPhase:                 # common microstructure
-           matPoints[myPoint] = otherPoint+1                                                        # use other points microstructure
+        otherPhase  = microstructure[otherPoint][1]
+        if all(abs(eulerangles[myPoint]-otherEulers)<1e-6) and phase[myPoint] == otherPhase:        # common microstructure
+           matPoints[myPoint] = otherPoint+1                                                        # use other point's microstructure, +1 because starting with 1 (.config) instead of 0 (python)
            otherPoint = -2                                                                          # never create new microstructure
            break
         elif all(eulerangles[myPoint] == otherEulers):                                              # found common texture and store it
            myTexture = microstructure[otherPoint][0]
       if otherPoint == len(microstructure)-1:                                                       # did not found matching microstructure
         if myTexture == -1:                                                                         # did not even found matching texture
+          myTexture = len(texture)
           texture.append(myPoint)
-          myTexture = myPoint
-        microstructure.append([myTexture,phase[myPoint-1]])                                         # here, the counter is one more than in the line above!
+        microstructure.append([myTexture,phase[myPoint]])
         matPoints[myPoint] = len(microstructure)                                                    # use the new microstructure
-    file['croak'].write("%i %i\n"%(texture,microstructure))
   else:
     texture = [i for i in xrange(info['grid'][0]*info['grid'][1])]
     microstructure = [[i,phase[i]] for i in xrange(info['grid'][0]*info['grid'][1])]
@@ -139,7 +137,7 @@ for file in files:
   formatOut = 1+int(math.log10(len(texture)))
   textureOut =['\n\n<texture>']
   for i in xrange(len(texture)):
-    textureOut +=       ['[Texture%s]\n'%str(i+1).zfill(formatOut) + \
+    textureOut +=       ['[Texture%s]\n'%str(texture[i]+1).zfill(formatOut) + \
                           'axes %s %s %s\n'%(options.axes[0],options.axes[1],options.axes[2]) +\
                           '(gauss)\tphi1 %4.2f\tPhi %4.2f\tphi2 %4.2f\tscatter 0.0\tfraction 1.0\n'%tuple(eulerangles[texture[i],...])
                          ]
@@ -190,6 +188,5 @@ for file in files:
 #--- output finalization -------------------------------------------------------------------------- 
   if file['name'] != 'STDIN':
     file['output'].close()
-    print os.path.splitext(file['name'])[0]
     os.rename(file['name']+'_tmp',
               os.path.splitext(file['name'])[0] +'%s'%('_material.config' if options.config else '.geom'))
