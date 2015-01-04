@@ -439,7 +439,7 @@ end function vacancy_generation_getVacancyDiffusion33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns generation vacancy mobility tensor 
 !--------------------------------------------------------------------------------------------------
-function vacancy_generation_getVacancyMobility33(nSlip,accumulatedSlip,temperature,ipc,ip,el)
+function vacancy_generation_getVacancyMobility33(nSlip,temperature,ipc,ip,el)
  use math, only: &
    math_I3
  use material, only: &
@@ -454,8 +454,6 @@ function vacancy_generation_getVacancyMobility33(nSlip,accumulatedSlip,temperatu
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
    vacancy_generation_getVacancyMobility33
- real(pReal), dimension(nSlip) :: &
-   accumulatedSlip
  real(pReal) :: &
    temperature
  integer(pInt) :: &

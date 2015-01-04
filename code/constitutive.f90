@@ -1783,15 +1783,13 @@ function constitutive_getVacancyMobility33(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
    constitutive_getVacancyMobility33
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
  integer(pInt) :: &
    nSlip
  
  select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
    case (LOCAL_VACANCY_generation_ID)
     constitutive_getVacancyMobility33 = &
-      vacancy_generation_getVacancyMobility33(nSlip,accumulatedSlip,constitutive_getTemperature(ipc,ip,el), &
+      vacancy_generation_getVacancyMobility33(nSlip,constitutive_getTemperature(ipc,ip,el), &
                                                ipc,ip,el)
     
  end select
