@@ -264,24 +264,22 @@ end subroutine damage_isoDuctile_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_isoDuctile_microstructure(nSlip,accumulatedSlip,subdt,ipc, ip, el)
+subroutine damage_isoDuctile_microstructure(subdt,ipc, ip, el)
  use numerics, only: &
    residualStiffness
  use material, only: &
    phase_damageInstance, &
    mappingConstitutive, &
+   plasticState, &
    damageState
  use lattice, only: &
    lattice_DamageMobility
 
  implicit none
  integer(pInt), intent(in) :: &
-   nSlip, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(nSlip), intent(in) :: &
-   accumulatedSlip
  real(pReal),  intent(in) :: &
    subdt
  integer(pInt) :: &
@@ -294,7 +292,8 @@ subroutine damage_isoDuctile_microstructure(nSlip,accumulatedSlip,subdt,ipc, ip,
  damageState(phase)%state(2,constituent) = &
    max(residualStiffness, &
        min(damageState(phase)%state0(2,constituent), &
-           damage_isoDuctile_critPlasticStrain(instance)/sum(accumulatedSlip)))
+           damage_isoDuctile_critPlasticStrain(instance)/ &
+           sum(plasticState(phase)%accumulatedSlip(:,constituent))))
  
  damageState(phase)%state(1,constituent) = &
    damageState(phase)%state(2,constituent) + &

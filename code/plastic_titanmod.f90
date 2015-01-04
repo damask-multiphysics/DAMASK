@@ -176,8 +176,6 @@ module plastic_titanmod
    plastic_titanmod_init, &
    plastic_titanmod_LpAndItsTangent, &
    plastic_titanmod_dotState, &
-   plastic_titanmod_getAccumulatedSlip, &
-   plastic_titanmod_getSlipRate, &
    plastic_titanmod_postResults, &
    plastic_titanmod_homogenizedC
 
@@ -238,7 +236,7 @@ subroutine plastic_titanmod_init(fileUnit)
    ns, nt, &
    Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
    Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
-   mySize, &
+   offset_slip, mySize, &
    maxTotalNslip,maxTotalNtwin, maxNinstance
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase  
@@ -852,6 +850,9 @@ subroutine plastic_titanmod_init(fileUnit)
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = plastic_titanmod_sizePostResults(instance)
+     plasticState(phase)%nSlip =plastic_titanmod_totalNslip(instance)
+     plasticState(phase)%nTwin = 0_pInt
+     plasticState(phase)%nTrans= 0_pInt
      allocate(plasticState(phase)%aTolState           (sizeState),                source=plastic_titanmod_aTolRho(instance))
      allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -870,6 +871,11 @@ subroutine plastic_titanmod_init(fileUnit)
        allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+     offset_slip =  2_pInt*plasticState(phase)%nSlip+1
+     plasticState(phase)%slipRate => &
+       plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NofMyPhase)
+     plasticState(phase)%accumulatedSlip => &
+       plasticState(phase)%state   (offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NofMyPhase)
 !--------------------------------------------------------------------------------------------------
 ! construction of the twin elasticity matrices
      do j=1_pInt,lattice_maxNtwinFamily
@@ -1775,97 +1781,6 @@ implicit none
   enddo twinFamiliesLoop
 
 end subroutine plastic_titanmod_dotState
-!--------------------------------------------------------------------------------------------------
-!> @brief returns accumulated slip
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_titanmod_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
- use lattice, only: &
-   lattice_maxNslipFamily
- use material, only: &
-   mappingConstitutive, &
-   plasticState, &
-   phase_plasticityInstance
-
-   implicit none
- 
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
- integer(pInt) :: &
-   nSlip
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   offset, &
-   phase, &
-   instance, &
-   offset_accshear_slip, &
-   f, j, i
-
- offset = mappingConstitutive(1,ipc,ip,el)
- phase = mappingConstitutive(2,ipc,ip,el)
- instance = phase_plasticityInstance(phase)
- nSlip = plastic_titanmod_totalNslip(instance)
- allocate(accumulatedSlip(nSlip))
- offset_accshear_slip = 2_pInt*nSlip
-
- j = 0_pInt
- do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over all slip families
-   do i = 1_pInt,plastic_titanmod_Nslip(f,instance)             ! process each (active) slip system in family
-      j = j+1_pInt
-      accumulatedSlip(j) = plasticState(phase)%state(offset_accshear_slip+j,offset)
-   enddo
- enddo 
-   
-end subroutine plastic_titanmod_getAccumulatedSlip
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns accumulated slip
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_titanmod_getSlipRate(nSlip,slipRate,ipc, ip, el)
- use lattice, only: &
-   lattice_maxNslipFamily
- use material, only: &
-   mappingConstitutive, &
-   plasticState, &
-   phase_plasticityInstance
-
-   implicit none
- 
- real(pReal), dimension(:), allocatable :: &
-   slipRate
- integer(pInt) :: &
-   nSlip
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   offset, &
-   phase, &
-   instance, &
-   offset_accshear_slip, &
-   f, j, i
-
- offset = mappingConstitutive(1,ipc,ip,el)
- phase = mappingConstitutive(2,ipc,ip,el)
- instance = phase_plasticityInstance(phase)
- nSlip = plastic_titanmod_totalNslip(instance)
- allocate(slipRate(nSlip))
- offset_accshear_slip = 2_pInt*nSlip
-
- j = 0_pInt
- do f = 1_pInt,lattice_maxNslipFamily                                 ! loop over all slip families
-   do i = 1_pInt,plastic_titanmod_Nslip(f,instance)             ! process each (active) slip system in family
-      j = j+1_pInt
-      slipRate(j) = plasticState(phase)%dotState(offset_accshear_slip+j,offset)
-   enddo
- enddo 
-   
-end subroutine plastic_titanmod_getSlipRate
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

@@ -76,7 +76,6 @@ integer(HID_T), allocatable, dimension(:) :: outID
    plastic_j2_init, &
    plastic_j2_LpAndItsTangent, &
    plastic_j2_dotState, &
-   plastic_j2_getAccumulatedSlip, &
    plastic_j2_postResults
 
 contains
@@ -329,6 +328,9 @@ subroutine plastic_j2_init(fileUnit)
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = plastic_j2_sizePostResults(instance)
+     plasticState(phase)%nSlip = 1
+     plasticState(phase)%nTwin = 0
+     plasticState(phase)%nTrans= 0
      allocate(plasticState(phase)%aTolState          (   sizeState))
      plasticState(phase)%aTolState(1) = plastic_j2_aTolResistance(instance)
      plasticState(phase)%aTolState(2) = plastic_j2_aTolShear(instance)
@@ -349,7 +351,8 @@ subroutine plastic_j2_init(fileUnit)
        allocate(plasticState(phase)%RK4dotState      (sizeDotState,NofMyPhase),source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(plasticState(phase)%RKCK45dotState (6,sizeDotState,NofMyPhase),source=0.0_pReal)
-
+     plasticState(phase)%slipRate        => plasticState(phase)%dotState(2:2,1:NofMyPhase)
+     plasticState(phase)%accumulatedSlip => plasticState(phase)%state   (2:2,1:NofMyPhase)
    endif myPhase
  enddo initializeInstances
 
@@ -520,42 +523,6 @@ subroutine plastic_j2_dotState(Tstar_v,nSlipDamage,slipDamage,ipc,ip,el)
 
 end subroutine plastic_j2_dotState
 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns accumulated slip
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_j2_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   plasticState, &
-   phase_plasticityInstance
-
- implicit none
- 
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
- integer(pInt) :: &
-   nSlip
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   constituent, &
-   phase, &
-   instance
-
- constituent = mappingConstitutive(1,ipc,ip,el)
- phase = mappingConstitutive(2,ipc,ip,el)
- instance = phase_plasticityInstance(phase)
- 
- nSlip = 1_pInt
- allocate(accumulatedSlip(nSlip))
- accumulatedSlip(1) = plasticState(phase)%state(2,constituent)
-   
-end subroutine plastic_j2_getAccumulatedSlip
-
- 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------

@@ -289,11 +289,12 @@ end subroutine vacancy_generation_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine vacancy_generation_microstructure(C, Fe, nSlip, accumulatedSlip, Temperature, subdt, &
+subroutine vacancy_generation_microstructure(C, Fe, Temperature, subdt, &
                                              ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_vacancyInstance, &
+   plasticState, &
    vacancyState
  use math, only : &
    math_mul33x33, &
@@ -306,15 +307,12 @@ subroutine vacancy_generation_microstructure(C, Fe, nSlip, accumulatedSlip, Temp
 
  implicit none
  integer(pInt), intent(in) :: &
-   nSlip, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), intent(in) :: &
    Fe(3,3), &
    C (6,6)
- real(pReal), dimension(nSlip), intent(in) :: &
-   accumulatedSlip
  real(pReal),  intent(in) :: &
    Temperature                                                                                      !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),  intent(in) :: &
@@ -336,7 +334,7 @@ subroutine vacancy_generation_microstructure(C, Fe, nSlip, accumulatedSlip, Temp
  pressure = math_trace33(math_Mandel6to33(stress))
  energyBarrier = (vacancy_generation_formationEnergy(instance) - pressure)* &
                  vacancy_generation_atomicVol(instance) - &
-                 sum(accumulatedSlip)*vacancy_generation_plasticityCoeff(instance)
+                 sum(plasticState(phase)%accumulatedSlip(:,constituent))*vacancy_generation_plasticityCoeff(instance)
 
  vacancyState(phase)%state(1,constituent) = &
    vacancyState(phase)%subState0(1,constituent) + &

@@ -293,10 +293,11 @@ end subroutine damage_anisoDuctile_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, subdt, ipc, ip, el)
+subroutine damage_anisoDuctile_microstructure(subdt, ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
+   plasticState, &
    damageState
  use lattice, only: &
    lattice_maxNslipFamily
@@ -305,12 +306,9 @@ subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, subdt, ipc
 
  implicit none
  integer(pInt), intent(in) :: &
-   nSlip, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(nSlip), intent(in) :: &
-   accumulatedSlip
  real(pReal),  intent(in) :: &
    subdt
  integer(pInt) :: &
@@ -332,13 +330,13 @@ subroutine damage_anisoDuctile_microstructure(nSlip, accumulatedSlip, subdt, ipc
  do f = 1_pInt,lattice_maxNslipFamily
    do i = 1_pInt,damage_anisoDuctile_Nslip(f,instance)                                            ! process each (active) slip system in family
      if (localDamage == damageState(phase)%state(index+1,constituent)) then
-       drivingForce = accumulatedSlip(index)/damage_anisoDuctile_critPlasticStrain(f,instance) - &
+       drivingForce = plasticState(phase)%accumulatedSlip(index,constituent)/damage_anisoDuctile_critPlasticStrain(f,instance) - &
                       damage_anisoDuctile_getDamage(ipc, ip, el)
        damageState(phase)%state(index+1,constituent) = &
          min(damageState(phase)%state0(index+1,constituent), &
              (sqrt(drivingForce*drivingForce + 4.0_pReal) - drivingForce)/2.0_pReal)
      else
-       drivingForce = accumulatedSlip(index)/damage_anisoDuctile_critPlasticStrain(f,instance)
+       drivingForce = plasticState(phase)%accumulatedSlip(index,constituent)/damage_anisoDuctile_critPlasticStrain(f,instance)
        damageState(phase)%state(index+1,constituent) = &
          min(damageState(phase)%state0(index+1,constituent), &
              1.0_pReal/drivingForce)

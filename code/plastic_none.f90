@@ -78,6 +78,9 @@ subroutine plastic_none_init
      sizeDotState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = 0_pInt
+     plasticState(phase)%nSlip  = 0_pInt
+     plasticState(phase)%nTwin  = 0_pInt
+     plasticState(phase)%nTrans = 0_pInt
      allocate(plasticState(phase)%aTolState          (sizeState))
      allocate(plasticState(phase)%state0             (sizeState,NofMyPhase))
      allocate(plasticState(phase)%partionedState0    (sizeState,NofMyPhase))

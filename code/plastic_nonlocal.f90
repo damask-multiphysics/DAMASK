@@ -249,8 +249,6 @@ module plastic_nonlocal
  plastic_nonlocal_dotState, &
  plastic_nonlocal_deltaState, &
  plastic_nonlocal_updateCompatibility, &
- plastic_nonlocal_getAccumulatedSlip, &
- plastic_nonlocal_getSlipRate, &
  plastic_nonlocal_postResults
  
  private :: &
@@ -1305,6 +1303,9 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
      plasticState(phase)%sizeDotState = sizeDotState
      plasticState(phase)%sizePostResults = plastic_nonlocal_sizePostResults(instance)
      plasticState(phase)%nonlocal = .true.
+     plasticState(phase)%nSlip = totalNslip(instance)
+     plasticState(phase)%nTwin = 0_pInt
+     plasticState(phase)%nTrans= 0_pInt
      allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
      allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -1323,7 +1324,11 @@ allocate(nonSchmidProjection(3,3,4,maxTotalNslip,maxNinstances),                
        allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
-
+     plasticState(phase)%slipRate => &
+       plasticState(phase)%dotState(iGamma(1,instance):iGamma(ns,instance),1:NofMyPhase)
+     plasticState(phase)%accumulatedSlip => &
+       plasticState(phase)%state   (iGamma(1,instance):iGamma(ns,instance),1:NofMyPhase)
+       
      do s1 = 1_pInt,ns 
        f = slipFamily(s1,instance)
        
@@ -3554,81 +3559,6 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
 endif
 
 end function plastic_nonlocal_dislocationstress
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns accumulated slip
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
- use lattice, only: &
-   lattice_maxNslipFamily
- use material, only: &
-   mappingConstitutive, &
-   plasticState, &
-   phase_plasticityInstance
-
-   implicit none
- 
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
- integer(pInt) :: &
-   nSlip
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   offset, &
-   phase, &
-   instance, &
-   s
-
- offset = mappingConstitutive(1,ipc,ip,el)
- phase = mappingConstitutive(2,ipc,ip,el)
- instance = phase_plasticityInstance(phase) 
- nSlip = totalNslip(instance)
- allocate(accumulatedSlip(nSlip))
- forall (s = 1:nSlip) &
-   accumulatedSlip(s) = plasticState(phase)%state(iGamma(s,instance),offset)
-   
-end subroutine plastic_nonlocal_getAccumulatedSlip
-
- 
-!--------------------------------------------------------------------------------------------------
-!> @brief returns accumulated slip rate
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_getSlipRate(nSlip,slipRate,ipc, ip, el)
- use lattice, only: &
-   lattice_maxNslipFamily
- use material, only: &
-   mappingConstitutive, &
-   plasticState, &
-   phase_plasticityInstance
-
-   implicit none
- 
- real(pReal), dimension(:), allocatable :: &
-   slipRate
- integer(pInt) :: &
-   nSlip
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   offset, &
-   phase, &
-   instance, &
-   s
-
- offset = mappingConstitutive(1,ipc,ip,el)
- phase = mappingConstitutive(2,ipc,ip,el)
- instance = phase_plasticityInstance(phase) 
- nSlip = totalNslip(instance)
- allocate(slipRate(nSlip))
- forall (s = 1:nSlip) &
-   slipRate(s) = plasticState(phase)%dotState(iGamma(s,instance),offset)
-   
-end subroutine plastic_nonlocal_getSlipRate
 
  
 !--------------------------------------------------------------------------------------------------
