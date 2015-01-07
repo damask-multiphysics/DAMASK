@@ -401,7 +401,7 @@ subroutine damage_anisoBrittle_microstructure(Tstar_v, subdt, ipc, ip, el)
      
      if (damageState(phase)%state(index_o,constituent) <= 1.0_pReal) then
        damageState(phase)%state(index_o,constituent) = &
-         damageState(phase)%state(index_o,constituent) + &
+         damageState(phase)%subState0(index_o,constituent) + &
          deltaState
      else 
        if (damageState(phase)%state(index_d,constituent) == localDamage) then
