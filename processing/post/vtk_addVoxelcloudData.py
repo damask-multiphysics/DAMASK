@@ -13,7 +13,7 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add scalar and RGB tuples from ASCIItable to existing VTK voxel cloud (.vtu).
+Add scalar and RGB tuples from ASCIItable to existing VTK voxel cloud (.vtu/.vtk).
 
 """, version = scriptID)
 

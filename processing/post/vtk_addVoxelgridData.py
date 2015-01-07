@@ -6,7 +6,7 @@ import damask
 from collections import defaultdict
 from optparse import OptionParser
 
-scriptID   = string.replace('$Id: addCalculation.py 3465 2014-09-12 14:14:55Z MPIE\m.diehl $','\n','\\n')
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # --------------------------------------------------------------------
@@ -14,7 +14,7 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Add scalar and RGB tuples from ASCIItable to existing VTK voxel grid (.vtr).
+Add scalar and RGB tuples from ASCIItable to existing VTK voxel grid (.vtr/.vtk).
 
 """, version = scriptID)
 
@@ -55,7 +55,6 @@ elif os.path.splitext(options.vtk)[1] == '.vtk':
   rGrid = reader.GetRectilinearGridOutput()
 else:
   parser.error('unsupported VTK file type extension')
-
 
 Npoints = rGrid.GetNumberOfPoints()
 Ncells  = rGrid.GetNumberOfCells()
