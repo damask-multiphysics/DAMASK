@@ -804,6 +804,8 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
    materialpoint_F, &
    materialpoint_P, &
    materialpoint_dPdF
+ use thermal_isothermal, only: &
+   thermal_isothermal_temperature
  
  implicit none
  real(pReal), intent(in)                                         :: temperature                     !< temperature (no field)
@@ -837,7 +839,7 @@ subroutine utilities_constitutiveResponse(F_lastInc,F,temperature,timeinc,&
 
  call CPFEM_general(CPFEM_COLLECT,F_lastInc(1:3,1:3,1,1,1),F(1:3,1:3,1,1,1), &
                    temperature,timeinc,1_pInt,1_pInt)
- 
+ thermal_isothermal_temperature(:) = temperature
  materialpoint_F  = reshape(F,[3,3,1,product(grid)])
 
  call debug_reset()
