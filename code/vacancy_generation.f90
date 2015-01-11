@@ -219,7 +219,7 @@ subroutine vacancy_generation_init(fileUnit)
        endif
      enddo outputsLoop
 ! Determine size of state array
-     sizeDotState              =   1_pInt
+     sizeDotState              =   0_pInt
      sizeState                 =   1_pInt
      vacancyState(phase)%sizeState =       sizeState
      vacancyState(phase)%sizeDotState =    sizeDotState
