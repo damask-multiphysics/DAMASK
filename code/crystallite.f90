@@ -3271,7 +3271,7 @@ subroutine crystallite_integrateStateFPI()
                                                      - damageState(p)%subState0(1:mySizeDamageDotState,c)  &
                                                      - (damageState(p)%dotState(1:mySizeDamageDotState,c) * damageStateDamper &
                                                       + damageState(p)%previousDotState(1:mySizeDamageDotState,c) &
-                                                     * (1.0_pReal - damageStatedamper)) * crystallite_subdt(g,i,e)
+                                                     * (1.0_pReal - damageStateDamper)) * crystallite_subdt(g,i,e)
 
          thermalStateResiduum(1:mySizeThermalDotState) = thermalState(p)%state(1:mySizeThermalDotState,c)      &
                                                        - thermalState(p)%subState0(1:mySizeThermalDotState,c)  &

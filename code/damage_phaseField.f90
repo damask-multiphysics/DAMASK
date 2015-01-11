@@ -214,7 +214,7 @@ subroutine damage_phaseField_init(fileUnit)
      allocate(damageState(phase)%state_backup        (sizeState,NofMyPhase),     source=0.0_pReal)
 
      allocate(damageState(phase)%dotState            (sizeDotState,NofMyPhase),  source=0.0_pReal)
-     allocate(damageState(phase)%deltaState          (sizeDotState,NofMyPhase),     source=0.0_pReal)
+     allocate(damageState(phase)%deltaState          (sizeDotState,NofMyPhase),  source=0.0_pReal)
      allocate(damageState(phase)%dotState_backup     (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 1_pInt)) then
        allocate(damageState(phase)%previousDotState  (sizeDotState,NofMyPhase),  source=0.0_pReal)
