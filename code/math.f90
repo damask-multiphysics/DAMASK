@@ -109,6 +109,7 @@ module math
    math_skew33, &
    math_deviatoric33, &
    math_equivStrain33, &
+   math_equivStress33, &
    math_trace33, &
    math_j3_33, &
    math_det33, &
@@ -955,7 +956,20 @@ pure function math_equivStrain33(m)
 
 end function math_equivStrain33
 
- 
+!--------------------------------------------------------------------------------------------------
+!> @brief von Mises equivalent of a full stress tensor
+!--------------------------------------------------------------------------------------------------
+pure function math_equivStress33(m)
+
+ implicit none
+ real(pReal), dimension(3,3), intent(in) :: m
+ real(pReal) :: math_equivStress33
+
+
+ math_equivStress33 =  (((m(1,1)-m(2,2))**2.0_pReal + (m(2,2)-m(3,3))**2.0_pReal + (m(3,3)-m(1,1))**2.0_pReal + &
+                         6*(m(1,2)**2.0_pReal + m(3,1)**2.0_pReal + m(2,3)**2.0_pReal))**(0.5_pReal))/sqrt(2.0_pReal)
+
+end function math_equivStress33
 !--------------------------------------------------------------------------------------------------
 !> @brief trace of a 33 matrix
 !--------------------------------------------------------------------------------------------------
