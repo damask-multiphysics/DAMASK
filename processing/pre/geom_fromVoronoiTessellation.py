@@ -110,20 +110,20 @@ for file in files:
   labels = ['x','y','z']
   index = 0
 
+  eulerCol = table.labels_index('phi1')
   hasEulers = np.all(table.labels_index(['phi1','Phi','phi2'])) != -1
-  hasGrains = table.labels_index('microstructure') != -1
+  grainCol = table.labels_index('microstructure')
+  hasGrains = grainCol != -1
 
   if hasEulers:
     labels += ['phi1','Phi','phi2']
     index += 3
 
-  eulerCol = index
 
   if hasGrains:
     labels += ['microstructure']
     index += 1
 
-  grainCol = index
 
   table.data_readArray(labels)
   coords = table.data[:,0:3]
