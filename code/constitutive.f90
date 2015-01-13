@@ -29,6 +29,7 @@ module constitutive
    constitutive_LpAndItsTangent, &
    constitutive_LiAndItsTangent, &
    constitutive_getFi, &
+   constitutive_getUndamagedFi, &
    constitutive_putFi, &
    constitutive_getFi0, &
    constitutive_getPartionedFi0, &
@@ -519,10 +520,13 @@ function constitutive_damagedC(ipc,ip,el)
  use material, only: &
    material_phase, &
    LOCAL_DAMAGE_isoBrittle_ID, &
+   LOCAL_DAMAGE_isoDuctile_ID, &
    LOCAL_DAMAGE_phaseField_ID, &   
    phase_damage
  use damage_isoBrittle, only: &
-   damage_isoBrittle_getDamagedC66  
+   damage_isoBrittle_getDamagedC66
+ use damage_isoDuctile, only: &
+   damage_isoDuctile_getDamagedC66  
  use damage_phaseField, only: &
    damage_phaseField_getDamagedC66  
 
@@ -537,6 +541,11 @@ function constitutive_damagedC(ipc,ip,el)
    case (LOCAL_DAMAGE_isoBrittle_ID)
      constitutive_damagedC = damage_isoBrittle_getDamagedC66(constitutive_homogenizedC(ipc,ip,el), &
                                                              ipc,ip,el)
+                                                             
+   case (LOCAL_DAMAGE_isoDuctile_ID)
+     constitutive_damagedC = damage_isoDuctile_getDamagedC66(constitutive_homogenizedC(ipc,ip,el), &
+                                                             ipc,ip,el)
+                                                             
    case (LOCAL_DAMAGE_phaseField_ID)
      constitutive_damagedC = damage_phaseField_getDamagedC66(constitutive_homogenizedC(ipc,ip,el), &
                                                              ipc,ip,el)
@@ -846,6 +855,41 @@ pure function constitutive_getFi(ipc, ip, el)
  end select
  
 end function constitutive_getFi
+
+!--------------------------------------------------------------------------------------------------
+!> @brief  contains the constitutive equation for calculating the undamaged 
+!>  intermediate deformation gradient  
+!--------------------------------------------------------------------------------------------------
+pure function constitutive_getUndamagedFi(ipc, ip, el)
+ use prec, only: &
+   pReal 
+ use math, only: &
+   math_I3, &
+   math_mul33x33
+ use material, only: &
+   phase_thermal, &
+   material_phase, &
+   LOCAL_THERMAL_adiabatic_ID
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_getFT
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   dimension(3,3) :: &
+   constitutive_getUndamagedFi                                                                              !< intermediate deformation gradient
+
+ constitutive_getUndamagedFi = math_I3
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_adiabatic_ID)
+     constitutive_getUndamagedFi = math_mul33x33(constitutive_getUndamagedFi,thermal_adiabatic_getFT (ipc, ip, el))
+
+ end select
+ 
+end function constitutive_getUndamagedFi
 
 
 !--------------------------------------------------------------------------------------------------

@@ -47,6 +47,7 @@ module damage_isoDuctile
    damage_isoDuctile_getSlipDamage, &
    damage_isoDuctile_putLocalDamage, &
    damage_isoDuctile_getLocalDamage, &
+   damage_isoDuctile_getDamagedC66, &
    damage_isoDuctile_postResults
 
 contains
@@ -330,7 +331,7 @@ function damage_isoDuctile_getDamage(ipc, ip, el)
     
    case (FIELD_DAMAGE_NONLOCAL_ID)
     damage_isoDuctile_getDamage =    fieldDamage(material_homog(ip,el))% &
-      field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
+      field(1,mappingHomogenization(1,ip,el))                                                       ! Taylor type 
 
  end select
  
@@ -392,6 +393,35 @@ function damage_isoDuctile_getLocalDamage(ipc, ip, el)
    damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
  
 end function damage_isoDuctile_getLocalDamage
+!--------------------------------------------------------------------------------------------------
+!> @brief returns ductile damaged stiffness tensor 
+!--------------------------------------------------------------------------------------------------
+function damage_isoDuctile_getDamagedC66(C, ipc, ip, el)
+ use material, only: &
+   mappingConstitutive, &
+   damageState
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),  intent(in), dimension(6,6) :: &
+   C
+ real(pReal),              dimension(6,6) :: &
+   damage_isoDuctile_getDamagedC66
+ integer(pInt) :: &
+   phase, constituent
+ real(pReal) :: &
+   damage
+ 
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ damage = damage_isoDuctile_getDamage(ipc, ip, el)
+ damage_isoDuctile_getDamagedC66 = &
+   damage*damage*C
+    
+end function damage_isoDuctile_getDamagedC66
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results
