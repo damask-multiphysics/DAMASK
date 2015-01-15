@@ -85,7 +85,7 @@ endif
 
 ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics
-STANDARD_CHECK_gfortran ?=-std=f2008 -pedantic-errors
+STANDARD_CHECK_gfortran ?=-std=f2008ts -pedantic-errors
 endif
 #-std=f2008ts:      for newer gfortran
 #-pedantic:                    more strict on standard, enables some warnings
@@ -316,9 +316,10 @@ THERMAL_FILES = \
 VACANCY_FILES = \
    vacancy_constant.o vacancy_generation.o
 
-CONSTITUTIVE_FILES = \
-   plastic_dislotwin.o plastic_dislokmc.o plastic_j2.o plastic_phenopowerlaw.o \
+PLASTIC_FILES = \
+   plastic_dislotwin.o plastic_disloKMC.o plastic_disloUCLA.o plastic_j2.o plastic_phenopowerlaw.o \
    plastic_titanmod.o plastic_nonlocal.o plastic_none.o constitutive.o
+   
 
 HOMOGENIZATION_FILES = \
    homogenization_RGC.o homogenization_isostrain.o homogenization_none.o homogenization.o
@@ -335,7 +336,7 @@ DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 
 SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(CONSTITUTIVE_FILES) \
+                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(PLASTIC_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
                  DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o \
                  DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
@@ -344,7 +345,8 @@ DAMASK_spectral.exe: DAMASK_spectral_driver.o
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
     -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
     $(SPECTRAL_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
-
+    
+    
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o \
                                                      DAMASK_spectral_solverAL.o \
                                                      DAMASK_spectral_solverBasicPETSc.o \
@@ -378,7 +380,7 @@ DAMASK_FEM.exe: INCLUDE_DIRS    += -I./
 
 FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.o math.o \
                  FEsolving.o mesh.o material.o lattice.o \
-                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(CONSTITUTIVE_FILES) \
+                 $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(PLASTIC_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
                  FEM_utilities.o FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
 
@@ -434,7 +436,8 @@ constitutive.o:                constitutive.f90 \
                                plastic_nonlocal.o \
                                plastic_titanmod.o \
                                plastic_dislotwin.o \
-                               plastic_dislokmc.o \
+                               plastic_disloKMC.o \
+                               plastic_disloUCLA.o \
                                plastic_phenopowerlaw.o \
                                plastic_j2.o \
                                plastic_none.o \
@@ -442,25 +445,28 @@ constitutive.o:                constitutive.f90 \
                                $(THERMAL_FILES) \
                                $(VACANCY_FILES)
 
-plastic_nonlocal.o:       plastic_nonlocal.f90 \
+plastic_nonlocal.o:            plastic_nonlocal.f90 \
                                lattice.o
 
-plastic_titanmod.o:       plastic_titanmod.f90 \
+plastic_titanmod.o:            plastic_titanmod.f90 \
                                lattice.o
 
-plastic_dislokmc.o:       plastic_dislokmc.f90 \
+plastic_disloKMC.o:            plastic_disloKMC.f90 \
                                lattice.o
 
-plastic_dislotwin.o:      plastic_dislotwin.f90 \
+plastic_disloUCLA.o:           plastic_disloUCLA.f90 \
                                lattice.o
 
-plastic_phenopowerlaw.o:  plastic_phenopowerlaw.f90 \
+plastic_dislotwin.o:           plastic_dislotwin.f90 \
                                lattice.o
 
-plastic_j2.o:             plastic_j2.f90 \
+plastic_phenopowerlaw.o:       plastic_phenopowerlaw.f90 \
                                lattice.o
 
-plastic_none.o:           plastic_none.f90 \
+plastic_j2.o:                  plastic_j2.f90 \
+                               lattice.o
+
+plastic_none.o:                plastic_none.f90 \
                                lattice.o
 
 damage_none.o:                 damage_none.f90 \

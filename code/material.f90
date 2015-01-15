@@ -26,6 +26,7 @@ module material
    PLASTICITY_phenopowerlaw_label = 'phenopowerlaw', &
    PLASTICITY_dislotwin_label     = 'dislotwin', &
    PLASTICITY_dislokmc_label      = 'dislokmc', &
+   PLASTICITY_disloucla_label     = 'disloucla', &
    PLASTICITY_titanmod_label      = 'titanmod', &
    PLASTICITY_nonlocal_label      = 'nonlocal', &
    LOCAL_DAMAGE_none_LABEL        = 'none', &
@@ -62,6 +63,7 @@ module material
                  PLASTICITY_phenopowerlaw_ID, &
                  PLASTICITY_dislotwin_ID, &
                  PLASTICITY_dislokmc_ID, &
+                 PLASTICITY_disloucla_ID, &
                  PLASTICITY_titanmod_ID, &
                  PLASTICITY_nonlocal_ID
  end enum
@@ -240,6 +242,7 @@ module material
    PLASTICITY_phenopowerlaw_ID, &
    PLASTICITY_dislotwin_ID, &
    PLASTICITY_dislokmc_ID, &
+   PLASTICITY_disloucla_ID, &
    PLASTICITY_titanmod_ID, &
    PLASTICITY_nonlocal_ID, &
    LOCAL_DAMAGE_none_ID, &
@@ -843,6 +846,8 @@ subroutine material_parsePhase(fileUnit,myPart)
              phase_plasticity(section) = PLASTICITY_DISLOTWIN_ID
            case (PLASTICITY_DISLOKMC_label)
              phase_plasticity(section) = PLASTICITY_DISLOKMC_ID
+           case (PLASTICITY_DISLOUCLA_label)
+             phase_plasticity(section) = PLASTICITY_DISLOUCLA_ID
            case (PLASTICITY_TITANMOD_label)
              phase_plasticity(section) = PLASTICITY_TITANMOD_ID
            case (PLASTICITY_NONLOCAL_label)
