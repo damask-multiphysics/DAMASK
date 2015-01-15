@@ -16,11 +16,6 @@ SHELL = /bin/sh
 # SUFFIX         = arbitrary suffix (after file to compile)
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
-ifneq ("","$(wildcard $(HOME)/.damask/damask.conf)")
-  include $(HOME)/.damask/damask.conf
-else
-  include /etc/damask.conf
-endif  
 
 include $(PETSC_DIR)/conf/variables
 INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
@@ -28,6 +23,11 @@ LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
 
+# MPI compiler wrappers will tell if they are pointing to ifort or gfortran
+COMPILEROUT :=$(shell $(FC) --show)
+# search in FC or COMPILEROUT for gfortran/ifort if not defined
+F90 ?=$(findstring ifort,$(FC) $(COMPILEROUT))
+F90 ?=$(findstring gfortran,$(FC) $(COMPILEROUT))
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -87,7 +87,6 @@ ifneq "$(FASTBUILD)" "YES"
 STANDARD_CHECK_ifort ?=-stand f08 -standard-semantics
 STANDARD_CHECK_gfortran ?=-std=f2008ts -pedantic-errors
 endif
-#-std=f2008ts:      for newer gfortran
 #-pedantic:                    more strict on standard, enables some warnings
 #   -pedantic-errors:          like pedantic, but errors instead of warnings
 OPTIMIZATION_OFF_ifort           :=-O0 -no-ip
@@ -563,10 +562,16 @@ tidy:
 	@rm -rf *.o
 	@rm -rf *.mod
 
-
 .PHONY: clean
 clean:
 	@rm -rf *.o
 	@rm -rf *.mod
 	@rm -rf *.exe
 	@rm -rf *.marc
+
+.PHONY: help
+help:
+	F90=$(F90)
+	COMPILERNAME=$(COMPILERNAME)
+	COMPILEROUT="$(COMPILEROUT)"
+
