@@ -299,7 +299,7 @@ subroutine damage_isoDuctile_microstructure(subdt,ipc, ip, el)
  damageState(phase)%state(1,constituent) = &
    damageState(phase)%state(2,constituent) + &
    (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent))* &
-   exp(-subdt/(damageState(phase)%state(2,constituent)*lattice_DamageMobility(phase)))
+   exp(-subdt/lattice_DamageMobility(phase))
 
 end subroutine damage_isoDuctile_microstructure
  
