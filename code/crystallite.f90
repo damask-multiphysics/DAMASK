@@ -3519,7 +3519,6 @@ logical function crystallite_integrateStress(&
  use constitutive, only: constitutive_LpAndItsTangent, &
                          constitutive_LiAndItsTangent, &
                          constitutive_getFi0, &
-                         constitutive_getUndamagedFi, &
                          constitutive_putFi, &
                          constitutive_TandItsTangent
  use math, only:         math_mul33x33, &
@@ -3555,7 +3554,6 @@ logical function crystallite_integrateStress(&
                                      Fi_current, &                                                   ! intermediate deformation gradient at start of timestep
                                      Fp_new, &                                                       ! plastic deformation gradient at end of timestep
                                      Fe_new, &                                                       ! elastic deformation gradient at end of timestep
-                                     Fe_undamaged, &
                                      invFp_new, &                                                    ! inverse of Fp_new
                                      invFp_current, &                                                ! inverse of Fp_current
                                      invFi_current, &                                                ! inverse of Fp_current
@@ -3573,13 +3571,11 @@ logical function crystallite_integrateStress(&
                                      deltaLi, &                                                      ! direction of next guess
                                      Tstar, &                                                        ! 2nd Piola-Kirchhoff Stress in plastic (lattice) configuration
                                      Tstar_unloaded, &                                               ! 2nd Piola-Kirchhoff Stress in unloaded configuration
-                                     Tstar_undamaged, &
                                      A, &
                                      B, &
                                      Fe, &                                                           ! elastic deformation gradient
                                      Fi, &                                                           ! gradient of intermediate deformation stages
                                      invFi, &
-                                     invFiundamaged, &
                                      temp_33
  real(pReal), dimension(6)::         Tstar_v                                                         ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
  real(pReal), dimension(9)::         work                                                            ! needed for matrix inversion by LAPACK
@@ -3594,7 +3590,6 @@ logical function crystallite_integrateStress(&
                                      dRLi_dLi                                                        ! partial derivative of residuumI (Jacobian for NEwton-Raphson scheme)
  real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
                                      dT_dFe3333_unloaded, &
-                                     dT_dFe3333_undamaged, &
                                      dFe_dLp3333, &                                                  ! partial derivative of elastic deformation gradient
                                      dFe_dLi3333
  real(pReal)                         det, &                                                          ! determinant
@@ -3737,15 +3732,13 @@ logical function crystallite_integrateStress(&
      !* calculate (elastic) 2nd Piola--Kirchhoff stress tensor and its tangent from constitutive law
 
      B  = math_I3 - dt*Lpguess
-     Fe = math_mul33x33(math_mul33x33(A,B),invFi)                                                   ! current elastic deformation tensor
-     invFiundamaged = math_inv33(constitutive_getUndamagedFi(g, i, e))
-     Fe_undamaged = math_mul33x33(math_mul33x33(A,B),invFiundamaged) 
-     call constitutive_TandItsTangent(Tstar_undamaged, dT_dFe3333_undamaged, Fe_undamaged, g,i,e)    ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
+     Fe = math_mul33x33(math_mul33x33(A,B),invFi)                                                       ! current elastic deformation tensor
+     call constitutive_TandItsTangent(Tstar_unloaded, dT_dFe3333_unloaded, Fe, g,i,e)                   ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
      Tstar = math_mul33x33(invFi, &
-               math_mul33x33(Tstar_undamaged,math_transpose33(invFi)))/detInvFi                      ! push Tstar forward from unloaded to plastic (lattice) configuration 
+               math_mul33x33(Tstar_unloaded,math_transpose33(invFi)))/detInvFi                          ! push Tstar forward from unloaded to plastic (lattice) configuration 
      do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
        dT_dFe3333(1:3,1:3,o,p) = math_mul33x33(invFi, &
-               math_mul33x33(dT_dFe3333_undamaged(1:3,1:3,o,p),math_transpose33(invFi)))/detInvFi 
+               math_mul33x33(dT_dFe3333_unloaded(1:3,1:3,o,p),math_transpose33(invFi)))/detInvFi 
      enddo; enddo   
      Tstar_v = math_Mandel33to6(Tstar)
 

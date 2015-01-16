@@ -29,7 +29,6 @@ module constitutive
    constitutive_LpAndItsTangent, &
    constitutive_LiAndItsTangent, &
    constitutive_getFi, &
-   constitutive_getUndamagedFi, &
    constitutive_putFi, &
    constitutive_getFi0, &
    constitutive_getPartionedFi0, &
@@ -884,42 +883,6 @@ pure function constitutive_getFi(ipc, ip, el)
  end select
  
 end function constitutive_getFi
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the undamaged 
-!>  intermediate deformation gradient  
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_getUndamagedFi(ipc, ip, el)
- use prec, only: &
-   pReal 
- use math, only: &
-   math_I3, &
-   math_mul33x33
- use material, only: &
-   phase_thermal, &
-   material_phase, &
-   LOCAL_THERMAL_adiabatic_ID
- use thermal_adiabatic, only: &
-   thermal_adiabatic_getFT
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal),   dimension(3,3) :: &
-   constitutive_getUndamagedFi                                                                              !< intermediate deformation gradient
-
- constitutive_getUndamagedFi = math_I3
-
- select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_adiabatic_ID)
-     constitutive_getUndamagedFi = math_mul33x33(constitutive_getUndamagedFi,thermal_adiabatic_getFT (ipc, ip, el))
-
- end select
- 
-end function constitutive_getUndamagedFi
-
 
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
