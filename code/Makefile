@@ -24,10 +24,14 @@ COMPILERNAME ?= $(FC)
 LINKERNAME   ?= $(FLINKER)
 
 # MPI compiler wrappers will tell if they are pointing to ifort or gfortran
-COMPILEROUT :=$(shell $(FC) --show)
+COMPILEROUT :=$(shell $(FC) -show)
 # search in FC or COMPILEROUT for gfortran/ifort if not defined
-F90 ?=$(findstring ifort,$(FC) $(COMPILEROUT))
-F90 ?=$(findstring gfortran,$(FC) $(COMPILEROUT))
+ifeq ($(strip $(F90)),)
+	F90 :=$(findstring gfortran,$(FC) $(COMPILEROUT))
+endif
+ifeq ($(strip $(F90)),)
+	F90 :=$(findstring ifort,$(FC) $(COMPILEROUT))
+endif
 
 ifeq "$(FASTBUILD)" "YES"
 OPENMP := OFF
@@ -571,7 +575,7 @@ clean:
 
 .PHONY: help
 help:
-	F90=$(F90)
-	COMPILERNAME=$(COMPILERNAME)
+	F90="$(F90)"
+	COMPILERNAME="$(COMPILERNAME)"
 	COMPILEROUT="$(COMPILEROUT)"
 
