@@ -77,11 +77,6 @@ LIBRARIES +=-liomp5
 endif
 endif
 
-#newstate
-ifeq "$(STATE)" "NEWH"
-INCLUDE_DIRS +=-DNEWSTATE
-endif
-
 ifdef STANDARD_CHECK
 STANDARD_CHECK_ifort =$(STANDARD_CHECK)
 STANDARD_CHECK_gfortran =$(STANDARD_CHECK)

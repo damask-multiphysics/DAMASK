@@ -1254,7 +1254,7 @@ subroutine lattice_init
        lattice_VacancyDiffusion33(3,3,section) = IO_floatValue(line,positions,2_pInt)
      case ('vacancy_mobility')
        lattice_VacancyMobility(section) = IO_floatValue(line,positions,2_pInt)
-     case ('equilibrium_vacancy_concentration')
+     case ('vacancy_eqcv')
        lattice_equilibriumVacancyConcentration(section) = IO_floatValue(line,positions,2_pInt)
      end select
    endif

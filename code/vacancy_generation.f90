@@ -339,7 +339,10 @@ subroutine vacancy_generation_microstructure(Tstar_v, temperature, damage, subdt
 
  vacancyState(phase)%state(1,constituent) = &
    vacancyState(phase)%subState0(1,constituent) + &
-   subdt*vacancy_generation_freq(instance)*exp(-energyBarrier/(kB*Temperature))
+   subdt* &
+   damage*damage* &
+   vacancy_generation_freq(instance)* &
+   exp(-stressBarrier/(vacancy_generation_kBCoeff(instance)*temperature))
 
 end subroutine vacancy_generation_microstructure
 
