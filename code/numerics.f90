@@ -116,7 +116,8 @@ module numerics
    err_struct_tolRel          =  1.0e-4_pReal, &                                                    !< relative tolerance for equilibrium
    err_thermal_tol            =  1.0e-1_pReal, &
    err_damage_tol             =  1.0e-2_pReal, &
-   err_vacancydiffusion_tol   =  1.0e-8_pReal
+   err_vacancydiffusion_tol   =  1.0e-8_pReal, &
+   vacancyBoundPenalty        =  1.0e+4_pReal                                                       !< penalty to enforce 0 < Cv < 1
  character(len=4096), protected, public :: &
    petsc_optionsFEM        = '-mech_snes_type newtonls &
                              &-mech_snes_linesearch_type cp &
@@ -414,6 +415,8 @@ subroutine numerics_init
          err_damage_tol = IO_floatValue(line,positions,2_pInt)
        case ('err_vacancydiffusion_tol')
          err_vacancyDiffusion_tol = IO_floatValue(line,positions,2_pInt)
+       case ('vacancyboundpenalty')
+         vacancyBoundPenalty = IO_floatValue(line,positions,2_pInt)
        case ('itmaxfem')
          itmaxFEM = IO_intValue(line,positions,2_pInt)
        case ('itminfem')
@@ -438,7 +441,7 @@ subroutine numerics_init
          BBarStabilisation = IO_intValue(line,positions,2_pInt) > 0_pInt
 #else
       case ('err_struct_tolabs','err_struct_tolrel','err_thermal_tol','err_damage_tol','err_vacancydiffusion_tol',&         ! found FEM parameter for spectral/Abaqus/Marc build
-            'itmaxfem', 'itminfem','maxcutbackfem','maxstaggerediter','integrationorder',&
+            'vacancyboundpenalty','itmaxfem', 'itminfem','maxcutbackfem','maxstaggerediter','integrationorder',&
             'structorder','thermalorder', 'damageorder','petsc_optionsfem','bbarstabilisation')
          call IO_warning(40_pInt,ext_msg=tag)
 #endif
@@ -584,6 +587,7 @@ subroutine numerics_init
    write(6,'(a24,1x,es8.1)')   ' err_thermal_tol:        ',err_thermal_tol
    write(6,'(a24,1x,es8.1)')   ' err_damage_tol:         ',err_damage_tol
    write(6,'(a24,1x,es8.1)')   ' err_vacancyDiff_tol:    ',err_vacancyDiffusion_tol
+   write(6,'(a24,1x,es8.1)')   ' vacancyBoundPenalty:    ',vacancyBoundPenalty
    write(6,'(a24,1x,a)')       ' PETSc_optionsFEM:       ',trim(petsc_optionsFEM)
    write(6,'(a24,1x,L8)')      ' B-Bar stabilisation:    ',BBarStabilisation
 #endif
