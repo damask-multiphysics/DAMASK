@@ -28,7 +28,9 @@ module damage_phaseField
  real(pReal),                         dimension(:),           allocatable,         private :: &
    damage_phaseField_aTol, &
    damage_phaseField_surfaceEnergy, &
-   damage_phaseField_vacancyFormationEnergy
+   damage_phaseField_vacancyFormationEnergy, &
+   damage_phaseField_atomicVol, &
+   damage_phaseField_specificVacancyFormationEnergy
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -123,6 +125,8 @@ subroutine damage_phaseField_init(fileUnit)
  allocate(damage_phaseField_Noutput(maxNinstance),                             source=0_pInt) 
  allocate(damage_phaseField_surfaceEnergy(maxNinstance),                       source=0.0_pReal) 
  allocate(damage_phaseField_vacancyFormationEnergy(maxNinstance),              source=0.0_pReal) 
+ allocate(damage_phaseField_atomicVol(maxNinstance),                           source=0.0_pReal) 
+ allocate(damage_phaseField_specificVacancyFormationEnergy(maxNinstance),      source=0.0_pReal) 
  allocate(damage_phaseField_aTol(maxNinstance),                                source=0.0_pReal) 
 
  rewind(fileUnit)
@@ -162,6 +166,9 @@ subroutine damage_phaseField_init(fileUnit)
        case ('vacancyformationenergy')
          damage_phaseField_vacancyFormationEnergy(instance) = IO_floatValue(line,positions,2_pInt)
 
+       case ('atomicvolume')
+         damage_phaseField_atomicVol(instance) = IO_floatValue(line,positions,2_pInt)
+         
        case ('atol_damage')
          damage_phaseField_aTol(instance) = IO_floatValue(line,positions,2_pInt)
 
@@ -186,6 +193,12 @@ subroutine damage_phaseField_init(fileUnit)
    if (phase_damage(phase) == LOCAL_damage_phaseField_ID) then
      NofMyPhase=count(material_phase==phase)
      instance = phase_damageInstance(phase)
+
+!--------------------------------------------------------------------------------------------------
+!  pre-calculating derived material parameters
+     damage_phaseField_specificVacancyFormationEnergy(instance) = &
+       damage_phaseField_vacancyFormationEnergy(instance)/damage_phaseField_atomicVol(instance)
+
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
      outputsLoop: do o = 1_pInt,damage_phaseField_Noutput(instance)
@@ -199,6 +212,7 @@ subroutine damage_phaseField_init(fileUnit)
           damage_phaseField_sizePostResults(instance)  = damage_phaseField_sizePostResults(instance) + mySize
        endif
      enddo outputsLoop
+
 ! Determine size of state array
      sizeDotState              =   0_pInt
      sizeState                 =   2_pInt
@@ -303,7 +317,8 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, subdt, ipc, ip, el)
    phase, constituent, instance
  real(pReal) :: &
    strain(6), &
-   stress(6)
+   stress(6), &
+   drivingForce
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
@@ -312,17 +327,17 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, subdt, ipc, ip, el)
  strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
  stress = math_mul66x6(C,strain) 
  
+ drivingForce = (1.0_pReal - Cv)*(1.0_pReal - Cv) + &
+                (Cv*damage_phaseField_specificVacancyFormationEnergy(instance) + &
+                 sum(abs(stress*strain)))/damage_phaseField_surfaceEnergy(instance)           
  damageState(phase)%state(2,constituent) = &
-   max(residualStiffness, &
-       min(damageState(phase)%state0(2,constituent), &
-           (1.0_pReal - Cv)*damage_phaseField_surfaceEnergy(instance)/ &
-           (2.0_pReal*(sum(abs(stress*strain)) + Cv*damage_phaseField_vacancyFormationEnergy(instance)))))
-
+   (1.0_pReal - Cv)*(1.0_pReal - Cv)/drivingForce
+       
  damageState(phase)%state(1,constituent) = &
    damageState(phase)%state(2,constituent) + &
    (damageState(phase)%subState0(1,constituent) - damageState(phase)%state(2,constituent))* &
-   exp(-subdt/(damageState(phase)%state(2,constituent)*lattice_DamageMobility(phase)))
- 
+   exp(-2.0_pReal*subdt*drivingForce/lattice_DamageMobility(phase))
+
 end subroutine damage_phaseField_microstructure
  
 !--------------------------------------------------------------------------------------------------

@@ -49,7 +49,7 @@ module constitutive
    constitutive_getVacancyConcentration, &
    constitutive_getVacancyDiffusion33, &
    constitutive_getVacancyMobility33, &
-   constitutive_getVacancyPotentialDrivingForce, &
+   constitutive_getVacancyEnergy, &
    constitutive_postResults
  
  private :: &
@@ -666,8 +666,9 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
 
  select case (phase_vacancy(material_phase(ipc,ip,el)))
    case (LOCAL_VACANCY_generation_ID)
-     call vacancy_generation_microstructure(constitutive_homogenizedC(ipc,ip,el), Fe, &
+     call vacancy_generation_microstructure(Tstar_v, &
                                             constitutive_getTemperature(ipc,ip,el), &
+                                            constitutive_getDamage(ipc, ip, el), &
                                             subdt,ipc,ip,el)
 
  end select
@@ -1827,15 +1828,12 @@ function constitutive_getVacancyMobility33(ipc, ip, el)
    el                                                                                               !< element number
  real(pReal), dimension(3,3) :: &
    constitutive_getVacancyMobility33
-
- integer(pInt) :: &
-   nSlip
  
  select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
    case (LOCAL_VACANCY_generation_ID)
     constitutive_getVacancyMobility33 = &
-      vacancy_generation_getVacancyMobility33(nSlip,constitutive_getTemperature(ipc,ip,el), &
-                                               ipc,ip,el)
+      vacancy_generation_getVacancyMobility33(constitutive_getTemperature(ipc,ip,el), &
+                                              ipc,ip,el)
     
  end select
 
@@ -1844,7 +1842,7 @@ end function constitutive_getVacancyMobility33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns vacancy chemical potential driving force
 !--------------------------------------------------------------------------------------------------
-real(pReal) function constitutive_getVacancyPotentialDrivingForce(ipc, ip, el)
+real(pReal) function constitutive_getVacancyEnergy(ipc, ip, el)
  use prec, only: &
    pReal
  use material, only: &
@@ -1852,7 +1850,7 @@ real(pReal) function constitutive_getVacancyPotentialDrivingForce(ipc, ip, el)
    LOCAL_VACANCY_generation_ID, &
    phase_vacancy
  use vacancy_generation, only: &
-   vacancy_generation_getVacancyPotentialDrivingForce
+   vacancy_generation_getVacancyEnergy
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1862,13 +1860,12 @@ real(pReal) function constitutive_getVacancyPotentialDrivingForce(ipc, ip, el)
  
  select case(phase_vacancy(material_phase(ipc,ip,el)))                                                   
    case (LOCAL_VACANCY_generation_ID)
-    constitutive_getVacancyPotentialDrivingForce = &
-      vacancy_generation_getVacancyPotentialDrivingForce(constitutive_getDamage(ipc, ip, el), &
-                                                         ipc,ip,el)
+    constitutive_getVacancyEnergy = &
+      vacancy_generation_getVacancyEnergy(ipc,ip,el)
     
  end select
 
-end function constitutive_getVacancyPotentialDrivingForce
+end function constitutive_getVacancyEnergy
 
 
 !--------------------------------------------------------------------------------------------------

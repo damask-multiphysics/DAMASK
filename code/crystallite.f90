@@ -634,8 +634,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        damageState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
        thermalState(mappingConstitutive(2,g,i,e))%subState0(      :,mappingConstitutive(1,g,i,e)) = &
        thermalState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
-       vacancyState( mappingConstitutive(2,g,i,e))%subState0(      :,mappingConstitutive(1,g,i,e)) = &
-       vacancyState( mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
+       vacancyState(mappingConstitutive(2,g,i,e))%subState0(      :,mappingConstitutive(1,g,i,e)) = &
+       vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
        crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_partionedFp0(1:3,1:3,g,i,e)                  ! ...plastic def grad
        crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_partionedLp0(1:3,1:3,g,i,e)                  ! ...plastic velocity grad
        crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) ! ...stiffness

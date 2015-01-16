@@ -150,14 +150,14 @@ module numerics
                              &-thermal_mg_levels_ksp_type chebyshev &
                              &-thermal_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
                              &-thermal_mg_levels_pc_type sor &
-                             &-vacancyDiffusion_snes_type newtonls &
-                             &-vacancyDiffusion_snes_linesearch_type cp &
-                             &-vacancyDiffusion_ksp_type fgmres &
-                             &-vacancyDiffusion_snes_atol 1e-6 &
-                             &-vacancyDiffusion_pc_type ml &
-                             &-vacancyDiffusion_mg_levels_ksp_type chebyshev &
-                             &-vacancyDiffusion_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
-                             &-vacancyDiffusion_mg_levels_pc_type sor '
+                             &-vacancy_snes_type newtonls &
+                             &-vacancy_snes_linesearch_type cp &
+                             &-vacancy_ksp_type fgmres &
+                             &-vacancy_snes_atol 1e-9 &
+                             &-vacancy_pc_type ml &
+                             &-vacancy_mg_levels_ksp_type chebyshev &
+                             &-vacancy_mg_levels_ksp_chebyshev_estimate_eigenvalues 0,0.1,0,1.1 &
+                             &-vacancy_mg_levels_pc_type sor '
  integer(pInt), protected, public :: &
    itmaxFEM                   =  25_pInt, &                                                         !< maximum number of iterations
    itminFEM                   =  1_pInt, &                                                          !< minimum number of iterations

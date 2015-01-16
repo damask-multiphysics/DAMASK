@@ -24,18 +24,20 @@ module vacancy_generation
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    vacancy_generation_Noutput                                                                   !< number of outputs per instance of this damage 
 
- real(pReal),                         dimension(:),           allocatable,         public :: &
+ real(pReal),                         dimension(:),           allocatable,        private :: &
    vacancy_generation_aTol, &
    vacancy_generation_freq, &
    vacancy_generation_formationEnergy, &
+   vacancy_generation_specificFormationEnergy, &
    vacancy_generation_migrationEnergy, &
    vacancy_generation_diffusionCoeff0, &                                                        !< the temperature-independent diffusion coefficient D_0
    vacancy_generation_atomicVol, &
    vacancy_generation_surfaceEnergy, &
-   vacancy_generation_plasticityCoeff
+   vacancy_generation_plasticityCoeff, &
+   vacancy_generation_kBCoeff
 
  real(pReal),                                                 parameter,           private :: &
-   kB = 1.38e-23_pReal                                                                          !< Boltzmann constant in J/Kelvin
+   kB = 1.3806488e-23_pReal                                                                          !< Boltzmann constant in J/Kelvin
 
  enum, bind(c) 
    enumerator :: undefined_ID, &
@@ -55,7 +57,7 @@ module vacancy_generation
    vacancy_generation_getConcentration, &
    vacancy_generation_getVacancyDiffusion33, &
    vacancy_generation_getVacancyMobility33, &
-   vacancy_generation_getVacancyPotentialDrivingForce, &
+   vacancy_generation_getVacancyEnergy, &
    vacancy_generation_postResults
 
 contains
@@ -134,10 +136,13 @@ subroutine vacancy_generation_init(fileUnit)
  allocate(vacancy_generation_aTol(maxNinstance),                                source=0.0_pReal) 
  allocate(vacancy_generation_freq(maxNinstance),                                source=0.0_pReal) 
  allocate(vacancy_generation_formationEnergy(maxNinstance),                     source=0.0_pReal) 
+ allocate(vacancy_generation_specificFormationEnergy(maxNinstance),             source=0.0_pReal) 
  allocate(vacancy_generation_migrationEnergy(maxNinstance),                     source=0.0_pReal) 
+ allocate(vacancy_generation_diffusionCoeff0(maxNinstance),                     source=0.0_pReal) 
  allocate(vacancy_generation_atomicVol(maxNinstance),                           source=0.0_pReal) 
  allocate(vacancy_generation_surfaceEnergy(maxNinstance),                       source=0.0_pReal)
  allocate(vacancy_generation_plasticityCoeff(maxNinstance),                     source=0.0_pReal)
+ allocate(vacancy_generation_kBCoeff(maxNinstance),                             source=0.0_pReal)
 
  rewind(fileUnit)
  phase = 0_pInt
@@ -175,7 +180,7 @@ subroutine vacancy_generation_init(fileUnit)
        case ('atolvacancygeneration')
          vacancy_generation_aTol(instance) = IO_floatValue(line,positions,2_pInt)
 
-       case ('debyefrequency')
+       case ('vacancyformationfreq')
          vacancy_generation_freq(instance) = IO_floatValue(line,positions,2_pInt)
 
        case ('vacancyformationenergy')
@@ -205,6 +210,12 @@ subroutine vacancy_generation_init(fileUnit)
      NofMyPhase=count(material_phase==phase)
      instance = phase_vacancyInstance(phase)
 
+!--------------------------------------------------------------------------------------------------
+!  pre-calculating derived material parameters
+     vacancy_generation_kBCoeff(instance) = kB/vacancy_generation_atomicVol(instance)
+     vacancy_generation_specificFormationEnergy(instance) = &
+       vacancy_generation_formationEnergy(instance)/vacancy_generation_atomicVol(instance)
+     
 !--------------------------------------------------------------------------------------------------
 !  Determine size of postResults array
      outputsLoop: do o = 1_pInt,vacancy_generation_Noutput(instance)
@@ -263,10 +274,9 @@ subroutine vacancy_generation_stateInit(phase)
  integer(pInt), intent(in) :: phase                                                    !< number specifying the phase of the vacancy
  real(pReal), dimension(vacancyState(phase)%sizeState) :: tempState
 
- tempState = lattice_equilibriumVacancyConcentration(phase)
- vacancyState(phase)%state = spread(tempState,2,size(vacancyState(phase)%state(1,:)))
- vacancyState(phase)%state0 = vacancyState(phase)%state
- vacancyState(phase)%partionedState0 = vacancyState(phase)%state
+ tempState(1) = lattice_equilibriumVacancyConcentration(phase)
+ vacancyState(phase)%state0 = spread(tempState,2,size(vacancyState(phase)%state(1,:)))
+
 end subroutine vacancy_generation_stateInit
 
 !--------------------------------------------------------------------------------------------------
@@ -289,7 +299,7 @@ end subroutine vacancy_generation_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
-subroutine vacancy_generation_microstructure(C, Fe, Temperature, subdt, &
+subroutine vacancy_generation_microstructure(Tstar_v, temperature, damage, subdt, &
                                              ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
@@ -297,13 +307,8 @@ subroutine vacancy_generation_microstructure(C, Fe, Temperature, subdt, &
    plasticState, &
    vacancyState
  use math, only : &
-   math_mul33x33, &
-   math_mul66x6, &
-   math_Mandel33to6, &
    math_Mandel6to33, &
-   math_transpose33, &
-   math_trace33, &
-   math_I3
+   math_trace33
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -311,17 +316,13 @@ subroutine vacancy_generation_microstructure(C, Fe, Temperature, subdt, &
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), intent(in) :: &
-   Fe(3,3), &
-   C (6,6)
- real(pReal),  intent(in) :: &
-   Temperature                                                                                      !< 2nd Piola Kirchhoff stress tensor (Mandel)
- real(pReal),  intent(in) :: &
+   Tstar_v(6), &
+   temperature, &                                                                                   !< 2nd Piola Kirchhoff stress tensor (Mandel)
+   damage, &
    subdt
  real(pReal) :: &
    pressure, &
-   energyBarrier, &
-   stress(6), &
-   strain(6)                                                                     
+   stressBarrier
  integer(pInt) :: &
    instance, phase, constituent 
 
@@ -329,12 +330,12 @@ subroutine vacancy_generation_microstructure(C, Fe, Temperature, subdt, &
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_vacancyInstance(phase)
 
- strain = 0.5_pReal*math_Mandel33to6(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)
- stress = math_mul66x6(C,strain) 
- pressure = math_trace33(math_Mandel6to33(stress))
- energyBarrier = (vacancy_generation_formationEnergy(instance) - pressure)* &
-                 vacancy_generation_atomicVol(instance) - &
-                 sum(plasticState(phase)%accumulatedSlip(:,constituent))*vacancy_generation_plasticityCoeff(instance)
+ pressure = math_trace33(math_Mandel6to33(Tstar_v))/3.0_pReal
+ stressBarrier = max(0.0_pReal, &
+                     vacancy_generation_specificFormationEnergy(instance) - &
+                     pressure - &
+                     vacancy_generation_plasticityCoeff(instance)* &
+                     sum(plasticState(phase)%accumulatedSlip(:,constituent))) 
 
  vacancyState(phase)%state(1,constituent) = &
    vacancyState(phase)%subState0(1,constituent) + &
@@ -439,16 +440,16 @@ end function vacancy_generation_getVacancyDiffusion33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns generation vacancy mobility tensor 
 !--------------------------------------------------------------------------------------------------
-function vacancy_generation_getVacancyMobility33(nSlip,temperature,ipc,ip,el)
+function vacancy_generation_getVacancyMobility33(temperature,ipc,ip,el)
  use math, only: &
    math_I3
  use material, only: &
    mappingConstitutive, &
-   phase_vacancyInstance
+   phase_vacancyInstance, &
+   plasticState
 
  implicit none
  integer(pInt), intent(in) :: &
-   nSlip, &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
@@ -464,18 +465,14 @@ function vacancy_generation_getVacancyMobility33(nSlip,temperature,ipc,ip,el)
  instance = phase_vacancyInstance(phase)
 
  vacancy_generation_getVacancyMobility33 = &
-   math_I3* &
-   vacancy_generation_surfaceEnergy(instance)* &
-   vacancy_generation_diffusionCoeff0(instance)* &
-   exp(-vacancy_generation_migrationEnergy(instance)/(kB*temperature))/ &
-   (kB*temperature)
-    
+   math_I3*(1.0_pReal + sum(plasticState(phase)%accumulatedSlip(:,constituent)))
+       
 end function vacancy_generation_getVacancyMobility33
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns generation vacancy mobility tensor 
 !--------------------------------------------------------------------------------------------------
-real(pReal) function vacancy_generation_getVacancyPotentialDrivingForce(damage,ipc,ip,el)
+real(pReal) function vacancy_generation_getVacancyEnergy(ipc,ip,el)
  use material, only: &
    mappingConstitutive, &
    phase_vacancyInstance
@@ -485,20 +482,14 @@ real(pReal) function vacancy_generation_getVacancyPotentialDrivingForce(damage,i
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
- real(pReal), intent(in) :: &
-   damage
  integer(pInt) :: &
-   phase, constituent, instance
- 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_vacancyInstance(phase)
-
- vacancy_generation_getVacancyPotentialDrivingForce = &
-   1.0_pReal - damage - damage*damage*vacancy_generation_formationEnergy(instance)/ &
-                                      vacancy_generation_surfaceEnergy(instance)
+   instance
+   
+ instance = phase_vacancyInstance(mappingConstitutive(2,ipc,ip,el))   
+ vacancy_generation_getVacancyEnergy = &
+   vacancy_generation_specificFormationEnergy(instance)/vacancy_generation_surfaceEnergy(instance)
     
-end function vacancy_generation_getVacancyPotentialDrivingForce
+end function vacancy_generation_getVacancyEnergy
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

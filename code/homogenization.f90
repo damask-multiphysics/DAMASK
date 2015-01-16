@@ -64,6 +64,7 @@ module homogenization
    homogenization_init, &
    materialpoint_stressAndItsTangent, &
    field_getLocalDamage, &
+   field_getFieldDamage, &
    field_putFieldDamage, &
    field_getLocalTemperature, &
    field_putFieldTemperature, &
@@ -77,7 +78,7 @@ module homogenization
    field_getSpecificHeat, &
    field_getVacancyMobility33, &
    field_getVacancyDiffusion33, &
-   field_getVacancyPotentialDrivingForce, &
+   field_getVacancyEnergy, &
    materialpoint_postResults, &
    field_postResults
  private :: &
@@ -1161,6 +1162,8 @@ function field_getVacancyMobility33(ip,el)
    field_vacancy_type, &
    FIELD_VACANCY_NONLOCAL_ID, &
    homogenization_Ngrains
+ use crystallite, only: &
+   crystallite_push33ToRef
  use constitutive, only: &
    constitutive_getVacancyMobility33
 
@@ -1179,7 +1182,9 @@ function field_getVacancyMobility33(ip,el)
  select case(field_vacancy_type(material_homog(ip,el)))                                                   
    case (FIELD_VACANCY_NONLOCAL_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getVacancyMobility33 = field_getVacancyMobility33 + constitutive_getVacancyMobility33(ipc,ip,el)
+       field_getVacancyMobility33 = field_getVacancyMobility33 + &
+        crystallite_push33ToRef(ipc,ip,el, &
+                                constitutive_getVacancyMobility33(ipc,ip,el))
      enddo
       
  end select   
@@ -1192,7 +1197,7 @@ end function field_getVacancyMobility33
 !--------------------------------------------------------------------------------------------------
 !> @brief Returns average driving for vacancy chemical potential at each integration point 
 !--------------------------------------------------------------------------------------------------
-real(pReal) function field_getVacancyPotentialDrivingForce(ip,el)
+real(pReal) function field_getVacancyEnergy(ip,el)
  use mesh, only: &
    mesh_element
  use material, only: &
@@ -1201,7 +1206,7 @@ real(pReal) function field_getVacancyPotentialDrivingForce(ip,el)
    FIELD_VACANCY_NONLOCAL_ID, &
    homogenization_Ngrains
  use constitutive, only: &
-   constitutive_getVacancyPotentialDrivingForce
+   constitutive_getVacancyEnergy
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1211,21 +1216,21 @@ real(pReal) function field_getVacancyPotentialDrivingForce(ip,el)
    ipc
    
  
- field_getVacancyPotentialDrivingForce = 0.0_pReal
+ field_getVacancyEnergy = 0.0_pReal
                                                 
  select case(field_vacancy_type(material_homog(ip,el)))                                                   
    case (FIELD_VACANCY_NONLOCAL_ID)
      do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
-       field_getVacancyPotentialDrivingForce = field_getVacancyPotentialDrivingForce + &
-         constitutive_getVacancyPotentialDrivingForce(ipc,ip,el)
+       field_getVacancyEnergy = field_getVacancyEnergy + &
+         constitutive_getVacancyEnergy(ipc,ip,el)
      enddo
       
  end select   
 
- field_getVacancyPotentialDrivingForce = field_getVacancyPotentialDrivingForce/ &
-                                         homogenization_Ngrains(mesh_element(3,el))
+ field_getVacancyEnergy = field_getVacancyEnergy/ &
+                          homogenization_Ngrains(mesh_element(3,el))
 
-end function field_getVacancyPotentialDrivingForce
+end function field_getVacancyEnergy
 
 !--------------------------------------------------------------------------------------------------
 !> @brief ToDo
@@ -1256,6 +1261,36 @@ real(pReal) function field_getLocalDamage(ip,el)
  field_getLocalDamage = field_getLocalDamage/homogenization_Ngrains(mesh_element(3,el))
 
 end function field_getLocalDamage
+
+!--------------------------------------------------------------------------------------------------
+!> @brief ToDo
+!--------------------------------------------------------------------------------------------------
+real(pReal) function field_getFieldDamage(ip,el)
+ use mesh, only: &
+   mesh_element
+ use material, only: &
+   homogenization_Ngrains
+ use constitutive, only: &
+   constitutive_getDamage
+
+ implicit none
+ integer(pInt), intent(in) :: &
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ integer(pInt) :: &
+   ipc
+
+!--------------------------------------------------------------------------------------------------
+! computing the damage value needed to be passed to field solver
+ field_getFieldDamage = 0.0_pReal
+                                                
+ do ipc = 1, homogenization_Ngrains(mesh_element(3,el))
+   field_getFieldDamage = field_getFieldDamage + constitutive_getDamage(ipc,ip,el)
+ enddo
+
+ field_getFieldDamage = field_getFieldDamage/homogenization_Ngrains(mesh_element(3,el))
+
+end function field_getFieldDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief Sets the regularised damage value in field state
