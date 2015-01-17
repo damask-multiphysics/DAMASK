@@ -53,15 +53,9 @@ if [ ! -z "$PS1" ]; then
   [[ "x$SOLVER"       != "x" ]] && echo "Spectral Solver    $SOLVER" 
   [[ "x$PROCESSING"   != "x" ]] && echo "Post Processing    $PROCESSING"
   echo "Multithreading     DAMASK_NUM_THREADS=$DAMASK_NUM_THREADS"
-  echo "Compiler           F90=$F90"
-  [[ "x$IMKL_ROOT"   != "x" ]] && echo "IMKL               $IMKL_ROOT" || \
-  [[ "x$ACML_ROOT"   != "x" ]] && echo "ACML               $ACML_ROOT" || \
-  [[ "x$LAPACK_ROOT" != "x" ]] && echo "LAPACK             $LAPACK_ROOT"
   [[ "x$PETSC_DIR"   != "x" ]] && echo "PETSc location     $PETSC_DIR"
   [[ "x$PETSC_ARCH"  != "x" ]] && echo "PETSc architecture $PETSC_ARCH"
   echo "MSC.Marc/Mentat    $MSC_ROOT"
-  echo "FFTW               $FFTW_ROOT"
-  echo "HDF5               $HDF5_ROOT (for future use)"
   echo
   echo -n "heap  size/MiB     "; echo "`ulimit -d`/1024" | bc
   echo -n "stack size/MiB     "; echo "`ulimit -s`/1024" | bc
