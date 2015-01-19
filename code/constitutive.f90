@@ -795,9 +795,12 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar, Tstar_v, Lp, ipc, ip, el
    phase_thermal, &
    material_phase, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_THERMAL_adiabatic_ID
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_LdAndItsTangent
+ use damage_anisoDuctile, only: &
+   damage_anisoDuctile_LdAndItsTangent
  use thermal_adiabatic, only: &
    thermal_adiabatic_LTAndItsTangent
  
@@ -825,6 +828,11 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar, Tstar_v, Lp, ipc, ip, el
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      call damage_anisoBrittle_LdAndItsTangent(Li_temp, dLi_dTstar_temp, Tstar_v, ipc, ip, el)
+     Li = Li + Li_temp
+     dLi_dTstar = dLi_dTstar + dLi_dTstar_temp
+     
+   case (LOCAL_DAMAGE_anisoDuctile_ID)
+     call damage_anisoDuctile_LdAndItsTangent(Li_temp, dLi_dTstar_temp, Tstar_v, ipc, ip, el)
      Li = Li + Li_temp
      dLi_dTstar = dLi_dTstar + dLi_dTstar_temp
  
@@ -855,9 +863,12 @@ pure function constitutive_getFi(ipc, ip, el)
    phase_thermal, &
    material_phase, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_THERMAL_adiabatic_ID
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_getFd
+ use damage_anisoDuctile, only: &
+   damage_anisoDuctile_getFd
  use thermal_adiabatic, only: &
    thermal_adiabatic_getFT
  
@@ -874,6 +885,9 @@ pure function constitutive_getFi(ipc, ip, el)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      constitutive_getFi = math_mul33x33(constitutive_getFi,damage_anisoBrittle_getFd (ipc, ip, el))
+     
+   case (LOCAL_DAMAGE_anisoDuctile_ID)
+     constitutive_getFi = math_mul33x33(constitutive_getFi,damage_anisoDuctile_getFd (ipc, ip, el))
  
  end select
 
@@ -896,9 +910,12 @@ subroutine constitutive_putFi(Tstar_v, Lp, dt, ipc, ip, el)
    phase_thermal, &
    material_phase, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_THERMAL_adiabatic_ID
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_putFd
+ use damage_anisoDuctile, only: &
+   damage_anisoDuctile_putFd
  use thermal_adiabatic, only: &
    thermal_adiabatic_putFT
  
@@ -917,6 +934,9 @@ subroutine constitutive_putFi(Tstar_v, Lp, dt, ipc, ip, el)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      call damage_anisoBrittle_putFd (Tstar_v, dt, ipc, ip, el)
+     
+   case (LOCAL_DAMAGE_anisoDuctile_ID)
+     call damage_anisoDuctile_putFd (Tstar_v, dt, ipc, ip, el)
  
  end select
 
@@ -943,9 +963,12 @@ pure function constitutive_getFi0(ipc, ip, el)
    phase_thermal, &
    material_phase, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_THERMAL_adiabatic_ID
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_getFd0
+ use damage_anisoDuctile, only: &
+   damage_anisoDuctile_getFd0
  use thermal_adiabatic, only: &
    thermal_adiabatic_getFT0
  
@@ -962,6 +985,9 @@ pure function constitutive_getFi0(ipc, ip, el)
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      constitutive_getFi0 = math_mul33x33(constitutive_getFi0,damage_anisoBrittle_getFd0 (ipc, ip, el))
+     
+   case (LOCAL_DAMAGE_anisoDuctile_ID)
+     constitutive_getFi0 = math_mul33x33(constitutive_getFi0,damage_anisoDuctile_getFd0 (ipc, ip, el))
  
  end select
 
@@ -988,9 +1014,12 @@ pure function constitutive_getPartionedFi0(ipc, ip, el)
    phase_thermal, &
    material_phase, &
    LOCAL_DAMAGE_anisoBrittle_ID, &
+   LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_THERMAL_adiabatic_ID
  use damage_anisoBrittle, only: &
    damage_anisoBrittle_getPartionedFd0
+ use damage_anisoDuctile, only: &
+   damage_anisoDuctile_getPartionedFd0
  use thermal_adiabatic, only: &
    thermal_adiabatic_getPartionedFT0
  
@@ -1008,6 +1037,10 @@ pure function constitutive_getPartionedFi0(ipc, ip, el)
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      constitutive_getPartionedFi0 = math_mul33x33(constitutive_getPartionedFi0, &
                                                   damage_anisoBrittle_getPartionedFd0(ipc, ip, el))
+                                                  
+   case (LOCAL_DAMAGE_anisoDuctile_ID)
+     constitutive_getPartionedFi0 = math_mul33x33(constitutive_getPartionedFi0, &
+                                                  damage_anisoDuctile_getPartionedFd0(ipc, ip, el))
  
  end select
 
