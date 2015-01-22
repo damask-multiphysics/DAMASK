@@ -78,7 +78,7 @@ for file in files:
       else:
         columns.append([table.labels.index(key),info['len']])                                       # remember column and extent of requested data
         if (info['len'] == 1):
-            table.labels.remove(label)                                                              # remove single column head
+          table.labels.remove(label)                                                                # remove single column head
         else:
           for i in xrange(info['len']):
             table.labels.remove('%i_%s'%(i+1,label))                                                # remove multidimensional column head
