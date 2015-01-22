@@ -34,11 +34,6 @@ def meshgrid2(*arrs):
 # --------------------------------------------------------------------
 #                                MAIN
 # --------------------------------------------------------------------
-synonyms = {
-        'grid':              ['resolution'],
-        'size':              ['dimension'],
-        'microstructures':   ['grains'],
-          }
 identifiers = {
         'grid':   ['a','b','c'],
         'size':   ['x','y','z'],
@@ -57,10 +52,12 @@ Generate geometry description and material configuration by standard Voronoi tes
 
 """, version = scriptID)
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar = 'int int int',
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar=' '.join(['int']*3)
                   help='a,b,c grid of hexahedral box [from seeds file]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar = 'float float float',
+parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar=' '.join(['float']*3))
                   help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
+parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3,
+                  help='offset from old to new origin of grid', metavar=' '.join(['float']*3))
 parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int',
                   help='homogenization index to be used [%default]')
 parser.add_option('--phase', dest='phase', type='int', metavar = 'int',
@@ -72,8 +69,9 @@ parser.add_option('-c', '--configuration', dest='config', action='store_true',
 parser.add_option('--secondphase', type='float', dest='secondphase', metavar= 'float',
                   help='volume fraction of randomly distribute second phase [%default]')
 
-parser.set_defaults(grid = (0,0,0))
-parser.set_defaults(size = (0.0,0.0,0.0))
+parser.set_defaults(grid   = (0,0,0))
+parser.set_defaults(size   = (0.0,0.0,0.0))
+parser.set_defaults(origin = (0.0,0.0,0.0))
 parser.set_defaults(homogenization = 1)
 parser.set_defaults(phase          = 1)
 parser.set_defaults(crystallite    = 1)
@@ -148,8 +146,6 @@ for file in files:
   for header in table.info:
     headitems = map(str.lower,header.split())
     if len(headitems) == 0: continue
-    for synonym,alternatives in synonyms.iteritems():
-      if headitems[0] in alternatives: headitems[0] = synonym
     if headitems[0] in mappings.keys():
       if headitems[0] in identifiers.keys():
         for i in xrange(len(identifiers[headitems[0]])):
