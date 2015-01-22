@@ -146,8 +146,6 @@ module plastic_disloUCLA
    plastic_disloUCLA_microstructure, &
    plastic_disloUCLA_LpAndItsTangent, &
    plastic_disloUCLA_dotState, &
-   plastic_disloUCLA_getAccumulatedSlip, &
-   plastic_disloUCLA_getSlipRate, &
    plastic_disloUCLA_postResults
  private :: &
    plastic_disloUCLA_stateInit, &
@@ -353,6 +351,11 @@ subroutine plastic_disloUCLA_init(fileUnit)
            case ('resolved_stress_slip')
              plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
              plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = resolved_stress_slip_ID
+             plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
+           case ('threshold_stress_slip')
+             plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
+             plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = threshold_stress_slip_ID
              plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('edge_dipole_distance')
@@ -1683,95 +1686,6 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage
  enddo twinFamilies
  
 end subroutine plastic_disloUCLA_dotState
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns accumulated slip
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_getAccumulatedSlip(nSlip,accumulatedSlip,ipc, ip, el)
- use lattice, only: &
-   lattice_maxNslipFamily
- use material, only: &
-   mappingConstitutive, &
-   plasticState, &
-   phase_plasticityInstance
-
- implicit none
- real(pReal), dimension(:), allocatable :: &
-   accumulatedSlip
- integer(pInt) :: &
-   nSlip
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   offset, &
-   phase, &
-   instance, &
-   offset_accshear_slip, &
-   f, j, i
-
- offset = mappingConstitutive(1,ipc,ip,el)
- phase = mappingConstitutive(2,ipc,ip,el)
- instance = phase_plasticityInstance(phase)
- nSlip = plastic_disloUCLA_totalNslip(instance)
- allocate(accumulatedSlip(nSlip))
- offset_accshear_slip = 2_pInt*nSlip
-
- j = 0_pInt
- slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
-   slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-      j = j+1_pInt
-      accumulatedSlip(j) = plasticState(phase)%state(offset_accshear_slip+j,offset)
-   enddo slipSystems
- enddo slipFamilies
-   
-end subroutine plastic_disloUCLA_getAccumulatedSlip
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns accumulated slip
-!--------------------------------------------------------------------------------------------------
-subroutine plastic_disloUCLA_getSlipRate(nSlip,slipRate,ipc, ip, el)
- use lattice, only: &
-   lattice_maxNslipFamily
- use material, only: &
-   mappingConstitutive, &
-   plasticState, &
-   phase_plasticityInstance
-
- implicit none
- real(pReal), dimension(:), allocatable :: &
-   slipRate
- integer(pInt) :: &
-   nSlip
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   offset, &
-   phase, &
-   instance, &
-   offset_accshear_slip, &
-   f, j, i
-
- offset = mappingConstitutive(1,ipc,ip,el)
- phase = mappingConstitutive(2,ipc,ip,el)
- instance = phase_plasticityInstance(phase)
- nSlip = plastic_disloUCLA_totalNslip(instance)
- allocate(slipRate(nSlip))
- offset_accshear_slip = 2_pInt*nSlip
-
- j = 0_pInt
- slipFamilies: do f = 1_pInt,lattice_maxNslipFamily
-   slipSystems: do i = 1_pInt,plastic_disloUCLA_Nslip(f,instance)
-      j = j+1_pInt
-      slipRate(j) = plasticState(phase)%dotState(offset_accshear_slip+j,offset)
-   enddo slipSystems
- enddo slipFamilies
-   
-end subroutine plastic_disloUCLA_getSlipRate
 
  
 !--------------------------------------------------------------------------------------------------

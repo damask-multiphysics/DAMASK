@@ -396,6 +396,11 @@ subroutine plastic_dislotwin_init(fileUnit)
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_slip_ID
              plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
+           case ('threshold_stress_slip')
+             plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
+             plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = threshold_stress_slip_ID
+             plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
+                                                       IO_lc(IO_stringValue(line,positions,2_pInt))
            case ('edge_dipole_distance')
              plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = edge_dipole_distance_ID
