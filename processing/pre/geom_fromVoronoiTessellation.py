@@ -52,12 +52,12 @@ Generate geometry description and material configuration by standard Voronoi tes
 
 """, version = scriptID)
 
-parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar=' '.join(['int']*3)
+parser.add_option('-g', '--grid', dest='grid', type='int', nargs = 3, metavar=' '.join(['int']*3),
                   help='a,b,c grid of hexahedral box [from seeds file]')
-parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar=' '.join(['float']*3))
+parser.add_option('-s', '--size', dest='size', type='float', nargs = 3, metavar=' '.join(['float']*3),
                   help='x,y,z size of hexahedral box [1.0 along largest grid point number]')
-parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3,
-                  help='offset from old to new origin of grid', metavar=' '.join(['float']*3))
+parser.add_option('-o', '--origin', dest='origin', type='float', nargs = 3, metavar=' '.join(['float']*3),
+                  help='offset from old to new origin of grid')
 parser.add_option('--homogenization', dest='homogenization', type='int', metavar = 'int',
                   help='homogenization index to be used [%default]')
 parser.add_option('--phase', dest='phase', type='int', metavar = 'int',
