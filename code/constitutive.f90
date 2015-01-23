@@ -1524,8 +1524,8 @@ function constitutive_getSlipDamage(nSlip, Tstar_v, ipc, ip, el)
    el                                                                                               !< element number
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
- real(pReal) :: &
-   constitutive_getSlipDamage(nSlip)
+ real(pReal), dimension(nSlip) :: &
+   constitutive_getSlipDamage
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_isoDuctile_ID)

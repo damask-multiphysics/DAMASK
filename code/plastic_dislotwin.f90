@@ -43,7 +43,7 @@ module plastic_dislotwin
    ['invLambdaTwin   ',  'meanFreePathTwin',  'tauTwinThreshold',  'twinVolume      ']
 
  real(pReal),                                                 parameter,           private :: &
-   kB = 1.38e-23_pReal                                                                              !< Boltzmann constant in J/Kelvin
+   kB = 1.38e-23_pReal                                                                         !< Boltzmann constant in J/Kelvin
 
  integer(pInt),                       dimension(:),           allocatable, target, public :: &
    plastic_dislotwin_Noutput                                                                   !< number of outputs per instance of this plasticity 
@@ -1875,15 +1875,16 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage
  shear_trans     = 0.0_pReal
  shearrate_trans = 0.0_pReal
  probrate_trans  = 0.0_pReal
+#ifdef TRANS
  j = 0_pInt
  do f = 1_pInt,lattice_maxNtransFamily                                 ! loop over all trans families
    index_myFamily = sum(lattice_NtransSystem(1:f-1_pInt,ph))           ! at which index starts my family
 
    !* Projection of shear and shear rate on fault band (twin) systems
    shear_trans     = matmul(plastic_dislotwin_projectionMatrix_Trans(:,:,instance), &
-     plasticState(ph)%state(2_pInt*ns+1_pInt:3_pInt*ns, of))
+     plasticState(ph)%state(2_pInt*ns+1_pInt:3_pInt*ns, of))                                This is not safe
    shearrate_trans = matmul(plastic_dislotwin_projectionMatrix_Trans(:,:,instance), &
-     plasticState(ph)%dotState(2_pInt*ns+1_pInt:3_pInt*ns, of))
+     plasticState(ph)%dotState(2_pInt*ns+1_pInt:3_pInt*ns, of))                                This is not safe
 
    do i = 1_pInt,plastic_dislotwin_Ntrans(f,instance)             ! process each (active) trans system in family
       j = j+1_pInt
@@ -1933,7 +1934,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage
 
    enddo
  enddo
-
+#endif
 end subroutine plastic_dislotwin_dotState
 
  
