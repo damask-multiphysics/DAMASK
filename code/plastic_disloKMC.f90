@@ -665,6 +665,7 @@ subroutine plastic_disloKMC_init(fileUnit)
                 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizePostResults = plastic_disloKMC_sizePostResults(instance)
      plasticState(phase)%nSlip = plastic_disloKMC_totalNslip(instance)
      plasticState(phase)%nTwin = 0_pInt
      plasticState(phase)%nTrans= 0_pInt

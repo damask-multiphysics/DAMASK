@@ -206,7 +206,7 @@ subroutine plastic_disloUCLA_init(fileUnit)
                   f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt, &
                   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
                   Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_nonSchmid, &
-                  index_myFamily, index_otherFamily
+                 offset_slip, index_myFamily, index_otherFamily
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase
  character(len=65536) :: &
@@ -257,16 +257,11 @@ subroutine plastic_disloUCLA_init(fileUnit)
  allocate(plastic_disloUCLA_rhoEdge0(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_rhoEdgeDip0(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_burgersPerSlipFamily(lattice_maxNslipFamily,maxNinstance),source=0.0_pReal)
- allocate(plastic_disloUCLA_kinkheight(lattice_maxNslipFamily,maxNinstance), &
-                                                                               source=0.0_pReal)
- allocate(plastic_disloUCLA_omega(lattice_maxNslipFamily,maxNinstance), &
-                                                                               source=0.0_pReal)
- allocate(plastic_disloUCLA_kinkwidth(lattice_maxNslipFamily,maxNinstance), &
-                                                                               source=0.0_pReal)
- allocate(plastic_disloUCLA_dislolength(lattice_maxNslipFamily,maxNinstance), &
-                                                                               source=0.0_pReal)
- allocate(plastic_disloUCLA_friction(lattice_maxNslipFamily,maxNinstance), &
-                                                                                    source=0.0_pReal)
+ allocate(plastic_disloUCLA_kinkheight(lattice_maxNslipFamily,maxNinstance),   source=0.0_pReal)
+ allocate(plastic_disloUCLA_omega(lattice_maxNslipFamily,maxNinstance),        source=0.0_pReal)
+ allocate(plastic_disloUCLA_kinkwidth(lattice_maxNslipFamily,maxNinstance),    source=0.0_pReal)
+ allocate(plastic_disloUCLA_dislolength(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
+ allocate(plastic_disloUCLA_friction(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
  allocate(plastic_disloUCLA_burgersPerTwinFamily(lattice_maxNtwinFamily,maxNinstance),source=0.0_pReal)
  allocate(plastic_disloUCLA_QedgePerSlipFamily(lattice_maxNslipFamily,maxNinstance),  source=0.0_pReal)
  allocate(plastic_disloUCLA_v0PerSlipFamily(lattice_maxNslipFamily,maxNinstance),     source=0.0_pReal)
@@ -689,6 +684,10 @@ subroutine plastic_disloUCLA_init(fileUnit)
                 
      plasticState(phase)%sizeState = sizeState
      plasticState(phase)%sizeDotState = sizeDotState
+     plasticState(phase)%sizePostResults = plastic_disloUCLA_sizePostResults(instance)
+     plasticState(phase)%nSlip = plastic_disloucla_totalNslip(instance)
+     plasticState(phase)%nTwin = plastic_disloucla_totalNtwin(instance)
+     plasticState(phase)%nTrans= 0_pInt
      allocate(plasticState(phase)%aTolState           (sizeState),                source=0.0_pReal)
      allocate(plasticState(phase)%state0              (sizeState,NofMyPhase),     source=0.0_pReal)
      allocate(plasticState(phase)%partionedState0     (sizeState,NofMyPhase),     source=0.0_pReal)
@@ -707,6 +706,11 @@ subroutine plastic_disloUCLA_init(fileUnit)
        allocate(plasticState(phase)%RK4dotState       (sizeDotState,NofMyPhase),  source=0.0_pReal)
      if (any(numerics_integrator == 5_pInt)) &
        allocate(plasticState(phase)%RKCK45dotState    (6,sizeDotState,NofMyPhase),source=0.0_pReal)
+     offset_slip = 2_pInt*plasticState(phase)%nSlip
+     plasticState(phase)%slipRate => &
+       plasticState(phase)%dotState(offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NofMyPhase)
+     plasticState(phase)%accumulatedSlip => &
+       plasticState(phase)%state   (offset_slip+1:offset_slip+plasticState(phase)%nSlip,1:NofMyPhase)
     !* Process slip related parameters ------------------------------------------------ 
  
      mySlipFamilies: do f = 1_pInt,lattice_maxNslipFamily
