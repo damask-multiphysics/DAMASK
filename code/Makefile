@@ -342,7 +342,7 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
 	$(PREFIX) $(LINKERNAME) $(OPENMP_FLAG_$(F90)) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
     -o DAMASK_spectral.exe DAMASK_spectral_driver.o \
-    $(SPECTRAL_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
+    $(SPECTRAL_FILES) $(LIBRARIES) $(SUFFIX)
     
     
 DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o \
@@ -385,7 +385,7 @@ FEM_FILES      = prec.o DAMASK_interface.o FEZoo.o IO.o libs.o numerics.o debug.
 DAMASK_FEM.exe:                DAMASK_FEM_driver.o
 	$(PREFIX) $(LINKERNAME) $(LINK_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90))  $(OPTIMIZATION_$(MAXOPTI)_$(F90)) \
   -o DAMASK_FEM.exe DAMASK_FEM_driver.o \
-  $(FEM_FILES) $(LIBRARIES) $(LIB_DIRS) $(RUN_PATH) $(SUFFIX)
+  $(FEM_FILES) $(LIBRARIES) $(SUFFIX)
 
 DAMASK_FEM_driver.o:           DAMASK_FEM_driver.f90 FEM_mech.o FEM_thermal.o FEM_damage.o FEM_vacancyDiffusion.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c ../private/FEM/code/DAMASK_FEM_driver.f90 $(SUFFIX)
