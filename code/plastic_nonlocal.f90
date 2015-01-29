@@ -2021,8 +2021,7 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, nSlipDamage, slipDamage, &
-                                            ipc, ip, el)
+subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, ipc, ip, el)
 
 use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
@@ -2048,14 +2047,11 @@ use mesh,     only: mesh_ipVolume
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                nSlipDamage, &
-                                            ipc, &
+integer(pInt), intent(in) ::                ipc, &
                                             ip, &                                                   !< current integration point
                                             el                                                      !< current element number
 real(pReal), intent(in) ::                  Temperature                                             !< temperature
 real(pReal), dimension(6), intent(in) ::    Tstar_v                                                 !< 2nd Piola-Kirchhoff stress in Mandel notation
-real(pReal), dimension(nSlipDamage), intent(in) :: &
-                                            slipDamage
 
 
 !*** output variables
@@ -2121,7 +2117,7 @@ tauThreshold = plasticState(ph)%state(iTauF(1:ns,instance),of)
 
 do s = 1_pInt,ns
   sLattice = slipSystemLattice(s,instance)
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,ph))/slipDamage(s)
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,ph))
   tauNS(s,1) = tau(s)
   tauNS(s,2) = tau(s)
   if (tau(s) > 0.0_pReal) then
@@ -2408,7 +2404,7 @@ end subroutine plastic_nonlocal_deltaState
 !---------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !---------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature,nSlipDamage,slipDamage, &
+subroutine plastic_nonlocal_dotState(Tstar_v, Fe, Fp, Temperature, &
                                      timestep,subfrac, ip,el)
 
 use prec,     only: DAMASK_NaN
@@ -2463,8 +2459,7 @@ implicit none
 
 !*** input variables
 integer(pInt), intent(in) ::                ip, &                                                   !< current integration point
-                                            el, &                                                   !< current element number
-                                            nSlipDamage
+                                            el                                                      !< current element number
 real(pReal), intent(in) ::                  Temperature, &                                          !< temperature
                                             timestep                                                !< substepped crystallite time increment
 real(pReal), dimension(6), intent(in) ::    Tstar_v                                                 !< current 2nd Piola-Kirchhoff stress in Mandel notation
@@ -2473,8 +2468,6 @@ real(pReal), dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), in
 real(pReal), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems), intent(in) :: &
                                             Fe, &                                                   !< elastic deformation gradient
                                             Fp                                                      !< plastic deformation gradient
-real(pReal), dimension(nSlipDamage), intent(in) :: &
-                                            slipDamage
 
  
 !*** local variables
@@ -2639,7 +2632,7 @@ forall (t = 1_pInt:4_pInt) &
 
 do s = 1_pInt,ns   ! loop over slip systems
   sLattice = slipSystemLattice(s,instance)  
-  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,ph))/slipDamage(s) + tauBack(s)
+  tau(s) = math_mul6x6(Tstar_v, lattice_Sslip_v(1:6,1,sLattice,ph)) + tauBack(s)
   if (abs(tau(s)) < 1.0e-15_pReal) tau(s) = 1.0e-15_pReal
 enddo
 

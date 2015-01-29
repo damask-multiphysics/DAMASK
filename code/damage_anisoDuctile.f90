@@ -66,7 +66,6 @@ module damage_anisoDuctile
    damage_anisoDuctile_getDamage, &
    damage_anisoDuctile_putLocalDamage, &
    damage_anisoDuctile_getLocalDamage, &
-   damage_anisoDuctile_getSlipDamage, &
    damage_anisoDuctile_postResults
 
 contains
@@ -254,7 +253,7 @@ subroutine damage_anisoDuctile_init(fileUnit)
      sizeDotState              = 0_pInt
      sizeState                 = sizeDotState + &
                                  1_pInt + & ! time regularised damage
-                                 damage_anisoDuctile_totalNslip(instance) + & ! slip system damages
+                                 1_pInt + & ! damaged plasticity
                                  9 ! Fd
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
@@ -297,16 +296,11 @@ subroutine damage_anisoDuctile_stateInit(phase, instance)
 
  real(pReal), dimension(damageState(phase)%sizeState) :: tempState
 
- tempState(1)                                                 = 1.0_pReal
- tempState(2 : &
-           1 +  damage_anisoDuctile_totalNslip(instance))     =  1.0_pReal 
- tempState(damage_anisoDuctile_totalNslip(instance)+2: &
-           damage_anisoDuctile_totalNslip(instance)+10) = reshape(math_I3, shape=[9])
+ tempState(1)    = 1.0_pReal
+ tempState(2)    = 0.0_pReal
+ tempState(3:11) = reshape(math_I3, shape=[9])
            
- damageState(phase)%state = spread(tempState,2,size(damageState(phase)%state(1,:)))
- damageState(phase)%state0 = damageState(phase)%state
- damageState(phase)%partionedState0 = damageState(phase)%state
- 
+ damageState(phase)%state0 = spread(tempState,2,size(damageState(phase)%state(1,:)))
  
 end subroutine damage_anisoDuctile_stateInit
 
@@ -325,20 +319,22 @@ subroutine damage_anisoDuctile_aTolState(phase,instance)
 
  tempTol = damage_anisoDuctile_aTol_damage(instance)
  damageState(phase)%aTolState = tempTol
+
 end subroutine damage_anisoDuctile_aTolState
  
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine damage_anisoDuctile_microstructure(subdt, ipc, ip, el)
+ use numerics, only: &
+   residualStiffness
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
    plasticState, &
    damageState
  use lattice, only: &
-   lattice_maxNslipFamily
- use lattice, only: &
+   lattice_maxNslipFamily, &
    lattice_DamageMobility
 
  implicit none
@@ -354,36 +350,30 @@ subroutine damage_anisoDuctile_microstructure(subdt, ipc, ip, el)
    instance, &
    index, f, i
  real(pReal) :: &
-   localDamage, &
-   drivingForce
+   localDamage
 
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_damageInstance(phase)
 
- localDamage    = minval(damageState(phase)%state(2:1+damage_anisoDuctile_totalNslip(instance),constituent))
-
  index = 1_pInt
+ damageState(phase)%state(2,constituent) = damageState(phase)%subState0(2,constituent)
  do f = 1_pInt,lattice_maxNslipFamily
-   do i = 1_pInt,damage_anisoDuctile_Nslip(f,instance)                                            ! process each (active) slip system in family
-     if (localDamage == damageState(phase)%state(index+1,constituent)) then
-       drivingForce = plasticState(phase)%accumulatedSlip(index,constituent)/damage_anisoDuctile_critPlasticStrain(f,instance) - &
-                      damage_anisoDuctile_getDamage(ipc, ip, el)
-       damageState(phase)%state(index+1,constituent) = &
-         min(damageState(phase)%state0(index+1,constituent), &
-             (sqrt(drivingForce*drivingForce + 4.0_pReal) - drivingForce)/2.0_pReal)
-     else
-       drivingForce = plasticState(phase)%accumulatedSlip(index,constituent)/damage_anisoDuctile_critPlasticStrain(f,instance)
-       damageState(phase)%state(index+1,constituent) = &
-         min(damageState(phase)%state0(index+1,constituent), &
-             1.0_pReal/drivingForce)                                                                 ! irreversibility
-     endif
+   do i = 1_pInt,damage_anisoDuctile_Nslip(f,instance)                                              ! process each (active) slip system in family
+     damageState(phase)%state(2,constituent) = &
+       damageState(phase)%state(2,constituent) + &
+       subdt* &
+       plasticState(phase)%slipRate(index,constituent)/ &
+       (damage_anisoDuctile_getDamage(ipc, ip, el)**damage_anisoDuctile_N(instance))/ & 
+       damage_anisoDuctile_critPlasticStrain(f,instance) 
+     
      index = index + 1_pInt
    enddo
  enddo
-
- localDamage = minval(damageState(phase)%state(2:1+damage_anisoDuctile_totalNslip(instance),constituent))
-
+ 
+ localDamage = &
+   max(residualStiffness,min(1.0_pReal,1.0_pReal/damageState(phase)%state(2,constituent)))
+ 
  damageState(phase)%state(1,constituent) = &
    localDamage + &
    (damageState(phase)%subState0(1,constituent) - localDamage)* &
@@ -395,8 +385,6 @@ end subroutine damage_anisoDuctile_microstructure
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip, el)
- use numerics, only: &
-   residualStiffness
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
@@ -436,7 +424,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
    phase, &
    constituent, &
    instance, &
-   f, i, index, index_myFamily, k, l, m, n
+   f, i, index_myFamily, k, l, m, n
  real(pReal) :: &
    traction_d, traction_t, traction_n, traction_crit, &
    udotd, dudotd_dt, udott, dudott_dt, udotn, dudotn_dt
@@ -447,13 +435,9 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
  
  Ld = 0.0_pReal
  dLd_dTstar3333 = 0.0_pReal
- 
-
- index = 2_pInt
  do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
    do i = 1_pInt,damage_anisoDuctile_Nslip(f,instance)                                              ! process each (active) slip system in family
-   
      projection_d = math_tensorproduct(lattice_sd(1:3,index_myFamily+i,phase),&
                                        lattice_sn(1:3,index_myFamily+i,phase))
      projection_t = math_tensorproduct(lattice_st(1:3,index_myFamily+i,phase),&
@@ -470,12 +454,13 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
      traction_n    = dot_product(Tstar_v,projection_n_v(1:6))
      
      traction_crit = damage_anisoDuctile_critLoad(f,instance)* &
-                     (damageState(phase)%state0(index,constituent) + residualStiffness)             ! degrading critical load carrying capacity by damage 
+                     damage_anisoDuctile_getDamage(ipc, ip, el)                                     ! degrading critical load carrying capacity by damage 
 
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoDuctile_sdot_0(instance)* &
-       (abs(traction_d)/traction_crit)**damage_anisoDuctile_N(instance)
+       (abs(traction_d)/traction_crit - &
+        abs(traction_d)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
      if (udotd /= 0.0_pReal) then
        Ld = Ld + udotd*projection_d
        dudotd_dt = udotd*damage_anisoDuctile_N(instance)/traction_d
@@ -487,7 +472,8 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
      udott = &
        sign(1.0_pReal,traction_t)* &
        damage_anisoDuctile_sdot_0(instance)* &
-       (abs(traction_t)/traction_crit)**damage_anisoDuctile_N(instance)
+       (abs(traction_t)/traction_crit - &
+        abs(traction_t)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
      if (udott /= 0.0_pReal) then
        Ld = Ld + udott*projection_t
        dudott_dt = udott*damage_anisoDuctile_N(instance)/traction_t
@@ -497,15 +483,15 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
      endif
      udotn = &
        damage_anisoDuctile_sdot_0(instance)* &
-       (max(0.0_pReal,traction_n)/traction_crit)**damage_anisoDuctile_N(instance)
+       (max(0.0_pReal,traction_n)/traction_crit - &
+        max(0.0_pReal,traction_n)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
      if (udotn /= 0.0_pReal) then
        Ld = Ld + udotn*projection_n(1:3,1:3)
        dudotn_dt = udotn*damage_anisoDuctile_N(instance)/traction_n
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLd_dTstar3333(k,l,m,n) = dLd_dTstar3333(k,l,m,n) + &
            dudotn_dt*projection_n(k,l)* projection_n(m,n)
-     endif                
-     index = index + 1_pInt
+     endif 
    enddo
  enddo
  
@@ -539,10 +525,7 @@ pure function damage_anisoDuctile_getFd(ipc, ip, el)
  instance = phase_damageInstance(phase)
 
  damage_anisoDuctile_getFd = &
-   reshape(damageState(phase)% &
-     state(damage_anisoDuctile_totalNslip(instance)+2: &
-           damage_anisoDuctile_totalNslip(instance)+10,constituent), &
-           shape=[3,3])
+   reshape(damageState(phase)%state(3:11,constituent),shape=[3,3])
  
 end function damage_anisoDuctile_getFd
 
@@ -550,8 +533,6 @@ end function damage_anisoDuctile_getFd
 !> @brief calculates derived quantities from state
 !--------------------------------------------------------------------------------------------------
 subroutine damage_anisoDuctile_putFd(Tstar_v, dt, ipc, ip, el)
- use numerics, only: &
-   residualStiffness
  use material, only: &
    mappingConstitutive, &
    phase_damageInstance, &
@@ -559,9 +540,7 @@ subroutine damage_anisoDuctile_putFd(Tstar_v, dt, ipc, ip, el)
  use math, only: &
    math_mul33x33, &
    math_inv33, &
-   math_Plain3333to99, &
    math_I3, &
-   math_identity4th, &
    math_symmetric33, &
    math_Mandel33to6, &
    math_tensorproduct
@@ -591,7 +570,7 @@ subroutine damage_anisoDuctile_putFd(Tstar_v, dt, ipc, ip, el)
    phase, &
    constituent, &
    instance, &
-   f, i, index, index_myFamily
+   f, i, index_myFamily
  real(pReal) :: &
    traction_d, traction_t, traction_n, traction_crit, &
    udotd, udott, udotn
@@ -599,7 +578,7 @@ subroutine damage_anisoDuctile_putFd(Tstar_v, dt, ipc, ip, el)
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
  instance = phase_damageInstance(phase)
- index = 2_pInt
+
  Ld = 0.0_pReal
  do f = 1_pInt,lattice_maxNslipFamily
    index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
@@ -621,12 +600,13 @@ subroutine damage_anisoDuctile_putFd(Tstar_v, dt, ipc, ip, el)
      traction_n    = dot_product(Tstar_v,projection_n_v(1:6))
      
      traction_crit = damage_anisoDuctile_critLoad(f,instance)* &
-                     (damageState(phase)%state0(index,constituent) + residualStiffness)             ! degrading critical load carrying capacity by damage 
+                     damage_anisoDuctile_getDamage(ipc, ip, el)                                     ! degrading critical load carrying capacity by damage 
 
      udotd = &
        sign(1.0_pReal,traction_d)* &
        damage_anisoDuctile_sdot_0(instance)* &
-       (abs(traction_d)/traction_crit)**damage_anisoDuctile_N(instance)
+       (abs(traction_d)/traction_crit - &
+        abs(traction_d)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
      if (udotd /= 0.0_pReal) then
        Ld = Ld + udotd*projection_d
      endif                
@@ -634,26 +614,25 @@ subroutine damage_anisoDuctile_putFd(Tstar_v, dt, ipc, ip, el)
      udott = &
        sign(1.0_pReal,traction_t)* &
        damage_anisoDuctile_sdot_0(instance)* &
-       (abs(traction_t)/traction_crit)**damage_anisoDuctile_N(instance)
+       (abs(traction_t)/traction_crit) - &
+        abs(traction_t)/damage_anisoDuctile_critLoad(f,instance)**damage_anisoDuctile_N(instance)
      if (udott /= 0.0_pReal) then
        Ld = Ld + udott*projection_t
      endif
                      
      udotn = &
        damage_anisoDuctile_sdot_0(instance)* &
-       (max(0.0_pReal,traction_n)/traction_crit)**damage_anisoDuctile_N(instance)
+       (max(0.0_pReal,traction_n)/traction_crit - &
+        max(0.0_pReal,traction_n)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
      if (udotn /= 0.0_pReal) then
        Ld = Ld + udotn*projection_n(1:3,1:3)
      endif     
-           
-     index = index + 1_pInt
    enddo
  enddo
  
- damageState(phase)%state(damage_anisoDuctile_totalNslip(instance)+2: &
-                          damage_anisoDuctile_totalNslip(instance)+10,constituent) = &
-                            reshape(math_mul33x33(math_inv33(math_I3 - dt*Ld), &
-                            damage_anisoDuctile_getFd0(ipc, ip, el)), shape=[9])                             
+ damageState(phase)%state(3:11,constituent) = reshape(math_mul33x33(math_inv33(math_I3 - dt*Ld), &
+                                                                    damage_anisoDuctile_getFd0(ipc, ip, el)), &
+                                                      shape=[9])                             
 
 end subroutine damage_anisoDuctile_putFd 
 
@@ -683,10 +662,7 @@ pure function damage_anisoDuctile_getFd0(ipc, ip, el)
  instance = phase_damageInstance(phase)
 
  damage_anisoDuctile_getFd0 = &
-   reshape(damageState(phase)% &
-     subState0(damage_anisoDuctile_totalNslip(instance)+2: &
-               damage_anisoDuctile_totalNslip(instance)+10,constituent), &
-           shape=[3,3])
+   reshape(damageState(phase)%subState0(3:11,constituent),shape=[3,3])
  
 end function damage_anisoDuctile_getFd0
 
@@ -716,10 +692,7 @@ pure function damage_anisoDuctile_getPartionedFd0(ipc, ip, el)
  instance = phase_damageInstance(phase)
 
  damage_anisoDuctile_getPartionedFd0 = &
-   reshape(damageState(phase)% &
-     partionedState0(damage_anisoDuctile_totalNslip(instance)+2: &
-                     damage_anisoDuctile_totalNslip(instance)+10,constituent), &
-           shape=[3,3])
+   reshape(damageState(phase)%partionedState0(3:11,constituent),shape=[3,3])
  
 end function damage_anisoDuctile_getPartionedFd0
 
@@ -747,7 +720,7 @@ function damage_anisoDuctile_getDamage(ipc, ip, el)
  select case(field_damage_type(material_homog(ip,el)))                                                   
    case (FIELD_DAMAGE_LOCAL_ID)
     damage_anisoDuctile_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
-      state0(1,mappingConstitutive(1,ipc,ip,el))
+      state(1,mappingConstitutive(1,ipc,ip,el))
     
    case (FIELD_DAMAGE_NONLOCAL_ID)
     damage_anisoDuctile_getDamage = fieldDamage(material_homog(ip,el))% &
@@ -798,40 +771,6 @@ function damage_anisoDuctile_getLocalDamage(ipc, ip, el)
    damageState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el))
 
 end function damage_anisoDuctile_getLocalDamage
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns slip system damage
-!--------------------------------------------------------------------------------------------------
-function damage_anisoDuctile_getSlipDamage(ipc, ip, el)
- use numerics, only: &
-   residualStiffness
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal) :: &
-   damage_anisoDuctile_getSlipDamage(damage_anisoDuctile_totalNslip( &
-       phase_damageInstance(mappingConstitutive(2,ipc,ip,el))))
- integer(pInt) :: &
-   phase, &
-   constituent, &
-   instance
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
- 
- damage_anisoDuctile_getSlipDamage = &
-   damageState(phase)%state0(2:1+damage_anisoDuctile_totalNslip(instance),constituent) + &
-   residualStiffness
-
-end function damage_anisoDuctile_getSlipDamage
 
 !--------------------------------------------------------------------------------------------------
 !> @brief return array of constitutive results

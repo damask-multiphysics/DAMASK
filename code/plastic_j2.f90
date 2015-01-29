@@ -362,7 +362,7 @@ end subroutine plastic_j2_init
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,nSlipDamage,slipDamage,ipc,ip,el)
+subroutine plastic_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6, &
    math_Mandel6to33, &
@@ -388,12 +388,9 @@ subroutine plastic_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,nSlipDamage,slipDa
  real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),               intent(in) :: &
-   nSlipDamage, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(nSlipDamage),   intent(in) :: &
-   slipDamage
 
  real(pReal), dimension(3,3) :: &
    Tstar_dev_33                                                                                     !< deviatoric part of the 2nd Piola Kirchhoff stress tensor as 2nd order tensor
@@ -417,7 +414,7 @@ subroutine plastic_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,nSlipDamage,slipDa
    dLp_dTstar99 = 0.0_pReal
  else
    gamma_dot = plastic_j2_gdot0(instance) &
-             * (sqrt(1.5_pReal) * norm_Tstar_dev / (slipDamage(1)*plastic_j2_fTaylor(instance) * &
+             * (sqrt(1.5_pReal) * norm_Tstar_dev / (plastic_j2_fTaylor(instance) * &
                plasticState(mappingConstitutive(2,ipc,ip,el))%state(1,mappingConstitutive(1,ipc,ip,el)))) &
                                                   **plastic_j2_n(instance)
 
@@ -441,7 +438,7 @@ end subroutine plastic_j2_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_j2_dotState(Tstar_v,nSlipDamage,slipDamage,ipc,ip,el)
+subroutine plastic_j2_dotState(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
  use mesh, only: &
@@ -458,12 +455,9 @@ subroutine plastic_j2_dotState(Tstar_v,nSlipDamage,slipDamage,ipc,ip,el)
  real(pReal), dimension(6), intent(in):: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),             intent(in) :: &
-   nSlipDamage, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(nSlipDamage), intent(in) :: &
-   slipDamage
  real(pReal), dimension(6) :: &
    Tstar_dev_v                                                                                      !< deviatoric part of the 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal) :: &
@@ -490,7 +484,7 @@ subroutine plastic_j2_dotState(Tstar_v,nSlipDamage,slipDamage,ipc,ip,el)
 ! strain rate 
  gamma_dot = plastic_j2_gdot0(instance) * ( sqrt(1.5_pReal) * norm_Tstar_dev & 
             / &!-----------------------------------------------------------------------------------
-           (slipDamage(1)*plastic_j2_fTaylor(instance)*plasticState(ph)%state(1,of)) )**plastic_j2_n(instance)
+           (plastic_j2_fTaylor(instance)*plasticState(ph)%state(1,of)) )**plastic_j2_n(instance)
  
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient

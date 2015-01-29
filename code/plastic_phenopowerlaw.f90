@@ -717,8 +717,7 @@ end subroutine plastic_phenopowerlaw_aTolState
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,nSlipDamage,slipDamage, &
-                                                 ipc,ip,el)
+subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -745,14 +744,11 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,nSlipDa
    dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  integer(pInt),               intent(in) :: &
-   nSlipDamage, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
  real(pReal), dimension(6),   intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
- real(pReal), dimension(nSlipDamage), intent(in) :: &
-   slipDamage
 
  integer(pInt) :: &
    instance, & 
@@ -807,11 +803,11 @@ subroutine plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,nSlipDa
                                            lattice_Sslip(1:3,1:3,2*k+1,index_myFamily+i,ph)
      enddo
      gdot_slip_pos = 0.5_pReal*plastic_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_pos)/(slipDamage(j)*plasticState(ph)%state(j,of))) &
+                    ((abs(tau_slip_pos)/(plasticState(ph)%state(j,of))) &
                     **plastic_phenopowerlaw_n_slip(instance))*sign(1.0_pReal,tau_slip_pos)
 
      gdot_slip_neg = 0.5_pReal*plastic_phenopowerlaw_gdot0_slip(instance)* &
-                    ((abs(tau_slip_neg)/(slipDamage(j)*plasticState(ph)%state(j,of))) &
+                    ((abs(tau_slip_neg)/(plasticState(ph)%state(j,of))) &
                     **plastic_phenopowerlaw_n_slip(instance))*sign(1.0_pReal,tau_slip_neg)
                                                                     
      Lp = Lp + (1.0_pReal-plasticState(ph)%state(index_F,of))*&                                  ! 1-F
@@ -871,7 +867,7 @@ end subroutine plastic_phenopowerlaw_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_phenopowerlaw_dotState(Tstar_v,nSlipDamage,slipDamage,ipc,ip,el)
+subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
@@ -891,12 +887,9 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,nSlipDamage,slipDamage,ipc,ip,
  real(pReal), dimension(6),  intent(in) :: &
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  integer(pInt),              intent(in) :: &
-   nSlipDamage, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element                                                                                    !< microstructure state
- real(pReal), dimension(nSlipDamage), intent(in) :: &
-   slipDamage
 
  integer(pInt) :: &
    instance,ph, &
@@ -968,8 +961,8 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,nSlipDamage,slipDamage,ipc,ip,
                                    dot_product(Tstar_v,lattice_Sslip_v(1:6,2*k+1,index_myFamily+i,ph))
      enddo nonSchmidSystems
      gdot_slip(j) = plastic_phenopowerlaw_gdot0_slip(instance)*0.5_pReal* &
-                  ((abs(tau_slip_pos)/(slipDamage(j)*plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
-                  +(abs(tau_slip_neg)/(slipDamage(j)*plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance))&
+                  ((abs(tau_slip_pos)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance) &
+                  +(abs(tau_slip_neg)/(plasticState(ph)%state(j,of)))**plastic_phenopowerlaw_n_slip(instance))&
                   *sign(1.0_pReal,tau_slip_pos) 
    enddo slipSystems1
  enddo slipFamilies1

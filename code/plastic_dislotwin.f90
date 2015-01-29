@@ -1363,7 +1363,7 @@ end subroutine plastic_dislotwin_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,nSlipDamage,slipDamage,ipc,ip,el)
+subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -1399,10 +1399,9 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
    LATTICE_fcc_ID
  
  implicit none
- integer(pInt), intent(in)                  :: nSlipDamage,ipc,ip,el
+ integer(pInt), intent(in)                  :: ipc,ip,el
  real(pReal), intent(in)                    :: Temperature
  real(pReal), dimension(6),   intent(in)    :: Tstar_v
- real(pReal), dimension(nSlipDamage), intent(in) :: slipDamage
  real(pReal), dimension(3,3), intent(out)   :: Lp
  real(pReal), dimension(9,9), intent(out)   :: dLp_dTstar99
 
@@ -1461,7 +1460,7 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  
       !* Calculation of Lp
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))/slipDamage(j)
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
 
       if((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of)) > tol_math_check) then
       !* Stress ratios
@@ -1668,7 +1667,7 @@ end subroutine plastic_dislotwin_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates the rate of change of microstructure
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage,ipc,ip,el)
+subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
  use prec, only: &
    tol_math_check
  use math, only: &
@@ -1706,12 +1705,9 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage
  real(pReal),                intent(in) :: &
    temperature                                                                                      !< temperature at integration point
  integer(pInt),              intent(in) :: &
-   nSlipDamage, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- real(pReal), dimension(nSlipDamage), intent(in) :: &
-   slipDamage
 
  integer(pInt) :: instance,ns,nt,nr,f,i,j,index_myFamily,s1,s2,a,b,sa,sb,ssa,ssb, &
                   ph, &
@@ -1751,7 +1747,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,nSlipDamage,slipDamage
       j = j+1_pInt
  
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))/slipDamage(j)
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))
 
       if((abs(tau_slip(j))-plasticState(ph)%state(7*ns+4*nt+2*nr+j, of)) > tol_math_check) then
       !* Stress ratios

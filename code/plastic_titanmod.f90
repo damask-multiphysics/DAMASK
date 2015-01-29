@@ -1332,8 +1332,7 @@ end subroutine plastic_titanmod_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,nSlipDamage,slipDamage, &
-                                            ipc,ip,el)
+subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,ipc,ip,el)
  use math, only: &
    math_Plain3333to99, &
    math_Mandel6to33
@@ -1365,7 +1364,6 @@ subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,
    dLp_dTstar99                                                                                     !< derivative of Lp with respect to 2nd Piola Kirchhoff stress
 
  integer(pInt),               intent(in) :: &
-   nSlipDamage, &
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
@@ -1373,8 +1371,6 @@ subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor in Mandel notation
  real(pReal),                 intent(in) :: &
    temperature                                                                                      !< temperature at IP 
- real(pReal), dimension(nSlipDamage), intent(in) :: &
-   slipDamage
  integer(pInt) :: &
    index_myFamily, instance, &
    ns,nt, &
@@ -1432,7 +1428,7 @@ subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,
 
       !* Calculation of Lp
       !* Resolved shear stress on slip system
-      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph))/slipDamage(j) 
+      tau_slip(j) = dot_product(Tstar_v,lattice_Sslip_v(:,1,index_myFamily+i,ph)) 
       if(lattice_structure(ph)==LATTICE_hex_ID) then ! only for prismatic and pyr <a> systems in hex
       screwvelocity_prefactor=plastic_titanmod_debyefrequency(instance)* &
         plasticState(ph)%state(4_pInt*ns+nt+j, of)*(plastic_titanmod_burgersPerSlipSys(j,instance)/ &
