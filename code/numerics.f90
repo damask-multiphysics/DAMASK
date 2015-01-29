@@ -66,11 +66,7 @@ module numerics
    charLength                 =  1.0_pReal, &                                                       !< characteristic length scale for gradient problems
    residualStiffness          =  1.0e-6_pReal                                                       !< non-zero residual damage   
  logical, protected, public :: &                                                   
-#if defined(Spectral) || defined(FEM)
-   analyticJaco               = .true.,  &                                                          !< use analytic Jacobian or perturbation, Default for Spectral solver .true.:
-#else
-   analyticJaco               = .false., &                                                          !< use analytic Jacobian or perturbation, Default .false.: calculate Jacobian using perturbations
-#endif
+   analyticJaco               = .true., &                                                           !< use analytic Jacobian or perturbation, Default for Spectral solver .true.:
    usePingPong                = .true., & 
    numerics_timeSyncing       = .false.                                                             !< flag indicating if time synchronization in crystallite is used for nonlocal plasticity
 
