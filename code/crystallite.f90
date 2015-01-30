@@ -1114,7 +1114,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
      ! --- ANALYTIC JACOBIAN ---
 
      !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFiInv,dLpdS,dFpinvdF,dFiinvdF,dLidS,rhs_3333,lhs_3333,&
-     !$OMP                     Fi,invFi,invFi0,detFi,temp_99,temp_33,temp_3333,myNgrains)
+     !$OMP                     Fi,invFi,invFi0,detFi,temp_99,temp_33,temp_3333,myNgrains,error)
        elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
@@ -1169,8 +1169,13 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              lhs_3333 = lhs_3333 + crystallite_subdt(g,i,e)*math_mul3333xx3333(dSdFiInv,temp_3333)
 
              call math_invert(9_pInt,math_identity2nd(9_pInt)+reshape(lhs_3333,shape=[9,9]),temp_99,error)
-             if (error) call IO_error(error_ID=400_pInt,ext_msg='analytic tangent inversion')
-             dSdF = math_mul3333xx3333(reshape(temp_99,shape=[3,3,3,3]),rhs_3333)
+             if (error) then
+               call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=g, &
+                               ext_msg='inversion error in analytic tangent calculation')
+               dSdF = rhs_3333
+             else
+               dSdF = math_mul3333xx3333(reshape(temp_99,shape=[3,3,3,3]),rhs_3333)
+             endif  
              
              dFpinvdF = 0.0_pReal
              temp_3333 = math_mul3333xx3333(dLpdS,dSdF)
@@ -1215,7 +1220,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                crystallite_dPdF(1:3,1:3,p,o,g,i,e) = crystallite_dPdF(1:3,1:3,p,o,g,i,e) - &
-                 crystallite_subF(1:3,1:3,g,i,e)*sum(math_transpose33(Fi)*dFiinvdF(1:3,1:3,p,o))
+                 crystallite_P(1:3,1:3,g,i,e)*sum(math_transpose33(Fi)*dFiinvdF(1:3,1:3,p,o))
 
          enddo; enddo
        enddo elementLooping6
