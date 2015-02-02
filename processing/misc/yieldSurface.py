@@ -35,7 +35,7 @@ def principalStresses(sigmas):
   for i in xrange(np.shape(sigmas)[1]):
     eigenvalues = np.linalg.eigvalsh(np.array(sigmas[:,i]).reshape(3,3))
     lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
-  lambdas = lambdas.reshape(3,np.shape(sigmas)[1]) 
+  lambdas = np.transpose( lambdas.reshape(np.shape(sigmas)[1],3) )
   return lambdas
 
 def stressInvariants(lambdas):
