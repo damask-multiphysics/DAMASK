@@ -51,6 +51,8 @@ def stressInvariants(lambdas):
   Is = Is.reshape(3,np.shape(lambdas)[1])
   return Is
 
+def formatOutput(n, type='%14.6f'):
+  return ''.join([type for i in xrange(n)])
 
 # ---------------------------------------------------------------------------------------------
 # isotropic yield surfaces
@@ -224,33 +226,22 @@ class Criterion(object):
       print('fitting to the %s criterion'%name)
 
   def fit(self,stress):
+    if self.name.lower() == 'tresca':
+      funResidum = Tresca
+      text = '\nCoefficient of Tresca criterion:\nsigma0: '+formatOutput(1)
+    elif self.name.lower() == 'vonmises':
+      funResidum = HuberHenckyMises
+      text = '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: '+formatOutput(1)
+    elif self.name.lower() == 'drucker':
+      funResidum = Drucker
+      text = '\nCoefficient of Drucker criterion:\nsigma0, C_D: '+formatOutput(2)
+    elif self.name.lower() == 'hill48':
+      funResidum = Hill1948
+      text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:\n'+formatOutput(6)
     try:  
-      popt, pcov = curve_fit(Tresca, stress, np.zeros(np.shape(stress)[1]))
-      print '--\nTresca:'
-      print 'sigma0 %f'%popt
-    except Exception as detail:
-      print detail
-      pass
-
-    try:  
-      popt, pcov = curve_fit(HuberHenckyMises, stress, np.zeros(np.shape(stress)[1]))
-      print '--\nHuberHenckyMises:'
-      print 'sigma0 %f'%popt
-    except Exception as detail:
-      print detail
-      pass
-
-    try:  
-      popt, pcov = curve_fit(Drucker, stress, np.zeros(np.shape(stress)[1]))
-      print '--\nDrucker:'
-      print 'sigma0 , C_D ', popt
-    except Exception as detail:
-      print detail
-      pass
-
-    try:
-      popt, pcov = curve_fit(Hill1948, stress, np.zeros(np.shape(stress)[1]))
-      print 'Hill48', popt
+     popt, pcov = \
+       curve_fit(funResidum, stress, np.zeros(np.shape(stress)[1]))
+     print (text%popt)
     except Exception as detail:
       print detail
       pass
@@ -333,17 +324,23 @@ def doSim(delay,thread):
         upper,lower = table.data[line,9],table.data[line-1,9]                                       # values for linear interpolation
         yieldStress[i] = table.data[line-1,0:9] * (upper-threshold)/(upper-lower) \
                        + table.data[line  ,0:9] * (threshold-lower)/(upper-lower)                   # linear interpolation of stress values
+        yieldStress[i][1] = (yieldStress[i][1] + yieldStress[i][3])/2.0
+        yieldStress[i][2] = (yieldStress[i][2] + yieldStress[i][6])/2.0
+        yieldStress[i][5] = (yieldStress[i][5] + yieldStress[i][7])/2.0
+        yieldStress[i][3] = yieldStress[i][1]
+        yieldStress[i][6] = yieldStress[i][2]
+        yieldStress[i][7] = yieldStress[i][5]
         break
       else:
         line+=1
   
   s.acquire()
   global stressAll
-  print len(yieldStress)
+  print('number of yield points of sim %i: %i'%(me,len(yieldStress)))
   print('starting fitting for sim %i from %s'%(me,thread))
   try:
     for i in xrange(int(options.yieldValue[2])):
-      stressAll[i]=np.append(yieldStress[i]/10.e8,stressAll[i])
+      stressAll[i]=np.append(yieldStress[i]/unitGPa,stressAll[i])
       myFit.fit(stressAll[i].reshape(len(stressAll[i])//9,9).transpose())
   except Exception:
     print('could not fit for sim %i from %s'%(me,thread))
@@ -377,17 +374,17 @@ parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3,
                                      help='load: final strain; increments; time %default', metavar='float int float')
 parser.add_option('-g','--geometry', dest='geometry', type='string',
                                      help='name of the geometry file [%default]', metavar='string')
-parser.add_option('--criterion',     dest='criterion', choices=fittingCriteria.keys(),
+parser.add_option('-c','--criterion',     dest='criterion', choices=fittingCriteria.keys(),
                                      help='criterion for stopping simulations [%default]', metavar='string')
-parser.add_option('--fitting',       dest='fitting', choices=thresholdParameter,
+parser.add_option('-f','--fitting',       dest='fitting', choices=thresholdParameter,
                                      help='yield criterion [%default]', metavar='string')
-parser.add_option('--yieldvalue',    dest='yieldValue', type='float', nargs=3,
+parser.add_option('-y','--yieldvalue',    dest='yieldValue', type='float', nargs=3,
                                      help='yield points: start; end; count %default', metavar='float float int')
 parser.add_option('--min',           dest='min', type='int',
                                      help='minimum number of simulations [%default]', metavar='int')
 parser.add_option('--max',           dest='max', type='int',
                                      help='maximum number of iterations [%default]',  metavar='int')
-parser.add_option('--threads',       dest='threads', type='int',
+parser.add_option('-t','--threads',       dest='threads', type='int',
                                      help='number of parallel executions [%default]',  metavar='int')
 parser.set_defaults(min        = 12)
 parser.set_defaults(max        = 30)
@@ -420,6 +417,7 @@ if not os.path.isfile('numerics.config'):
 if not os.path.isfile('material.config'):
   print('material.config file not found')
 
+unitGPa = 10.e8
 N_simulations=0
 s=threading.Semaphore(1)
 
