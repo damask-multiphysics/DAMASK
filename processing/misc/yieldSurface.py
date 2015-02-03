@@ -144,12 +144,42 @@ def generalHosford(sigmas, sigma0, a):
   return r.ravel()
 
 
-def Barlat1991(sigmas, sigma0, a):
+def Barlat1991(sigmas, sigma0, order, \
+              a=1.0, b=1.0, c=1.0, f=1.0, g=1.0, h=1.0):
   '''
-    residuum of Hershey yield criterion (eq. 2.104, sigma_e = sigma0)
+    residuum of Barlat 1997 yield criterion
   '''
+  cos = np.cos; pi = np.pi; abs = np.abs
+  A = a*(sigmas[4] - sigmas[8])
+  B = b*(sigmas[8] - sigmas[0])
+  C = c*(sigmas[0] - sigmas[4])
+  F = f*sigmas[5]
+  G = g*sigmas[2]
+  H = h*sigmas[1]
+  I2 = (F*F + G*G + H*H)/3.0 + ((A-C)*(A-C)+(C-B)*(C-B)+(B-A)*(B-A))/54.0
+  I3 = (C-B)*(A-C)*(B-A)/54.0 + F*G*H - \
+       ((C-B)*F*F+(A-C)*G*G+(B-A)*H*H)/6
+  theta = np.arccos(I3/pow(I2,1.5))
+  Phi = pow(3.0*I2, order/2.0)* (
+    pow(abs(2.0*cos((2.0*theta + pi)/6.0)), order) +
+    pow(abs(2.0*cos((2.0*theta + pi*3.0)/6.0)), order) +
+    pow(abs(2.0*cos((2.0*theta + pi*5.0)/6.0)), order)
+                                 )
+  r   = Phi - 2.0*pow(sigma0, order)
 
-  return None
+  return r.ravel()
+
+def Barlat1991iso(sigmas, sigma0, m):
+  '''
+    residuum of isotropic Barlat 1991 yield criterion (eq. 2.37)
+  '''
+  return Barlat1991(sigmas, sigma0, m)
+
+def Barlat1991aniso(sigmas, sigma0, m, a,b,c,f,g,h):
+  '''
+    residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
+  '''
+  return Barlat1991(sigmas, sigma0, m, a,b,c,f,g,h)
 
 
 def Barlat1994(sigmas, sigma0, a):
