@@ -35,7 +35,7 @@ def principalStresses(sigmas):
   for i in xrange(np.shape(sigmas)[1]):
     eigenvalues = np.linalg.eigvalsh(np.array(sigmas[:,i]).reshape(3,3))
     lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
-  lambdas = np.transpose( lambdas.reshape(np.shape(sigmas)[1],3) )
+  lambdas = np.transpose(lambdas.reshape(np.shape(sigmas)[1],3))
   return lambdas
 
 def stressInvariants(lambdas):
@@ -54,6 +54,9 @@ def stressInvariants(lambdas):
 def formatOutput(n, type='%14.6f'):
   return ''.join([type for i in xrange(n)])
 
+def get_weight(ndim):
+#more to do
+  return np.ones(ndim)
 # ---------------------------------------------------------------------------------------------
 # isotropic yield surfaces
 # ---------------------------------------------------------------------------------------------
@@ -69,7 +72,7 @@ def Tresca(sigmas, sigma0):
   return r.ravel()
 
 
-def HuberHenckyMises(sigmas, sigma0):
+def vonMises(sigmas, sigma0):
   '''
     residuum of Huber-Mises-Hencky yield criterion (eq. 2.37)
   '''
@@ -111,13 +114,6 @@ def Hosford(sigmas, sigma0, a):
 # ---------------------------------------------------------------------------------------------
 # isotropic yield surfaces
 # ---------------------------------------------------------------------------------------------
-
-def vonMises():
-  '''
-    residuum of von Mises quadratic yield criterion (eq. 2.47, theta = sigma0)
-  '''
-  return None
-
 
 def Hill1948(sigmas, F,G,H,L,M,N):
   '''
@@ -166,11 +162,22 @@ def Barlat1994(sigmas, sigma0, a):
 
 
 fittingCriteria = {
-                   'vonMises':{'fit':np.ones(1,'d'),'err':np.inf},
-                   'hill48'  :{'fit':np.ones(6,'d'),'err':np.inf},
+                   'Tresca':  {'fit'  :np.ones(1,'d'),'err':np.inf,
+                               'name' :'Tresca',
+                               'paras':'Initial yield stress:'},
+                   'vonMises':{'fit'  :np.ones(1,'d'),'err':np.inf,
+                               'name' :'Huber-Mises-Hencky(von Mises)',
+                               'paras':'Initial yield stress:'},
+                   'Hill48'  :{'fit'  :np.ones(6,'d'),'err':np.inf,
+                               'name' :'Hill1948',
+                               'paras':'Normalized [F, G, H, L, M, N]'},
+                   'Drucker' :{'fit'  :np.ones(2,'d'),'err':np.inf,
+                               'name' :'Drucker',
+                               'paras':'Initial yield stress, C_D:'},
                    'worst'   :{'err':np.inf},
                    'best'    :{'err':np.inf}
                    }
+
 thresholdParameter = ['totalshear','equivalentStrain']
 
 #---------------------------------------------------------------------------------------------------
@@ -226,11 +233,12 @@ class Criterion(object):
       print('fitting to the %s criterion'%name)
 
   def fit(self,stress):
+    global fitResults
     if self.name.lower() == 'tresca':
       funResidum = Tresca
       text = '\nCoefficient of Tresca criterion:\nsigma0: '+formatOutput(1)
     elif self.name.lower() == 'vonmises':
-      funResidum = HuberHenckyMises
+      funResidum = vonMises
       text = '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: '+formatOutput(1)
     elif self.name.lower() == 'drucker':
       funResidum = Drucker
@@ -238,10 +246,18 @@ class Criterion(object):
     elif self.name.lower() == 'hill48':
       funResidum = Hill1948
       text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:\n'+formatOutput(6)
+
+    if fitResults == []: 
+      initialguess = fittingCriteria[funResidum.__name__]['fit']
+    else: 
+      initialguess = np.array(fitResults[-1])
+    weight = get_weight(np.shape(stress)[1])
     try:  
-     popt, pcov = \
-       curve_fit(funResidum, stress, np.zeros(np.shape(stress)[1]))
-     print (text%popt)
+      popt, pcov = \
+        curve_fit(funResidum, stress, np.zeros(np.shape(stress)[1]),
+                  initialguess, weight)
+      print (text%popt)
+      fitResults.append(popt.tolist())
     except Exception as detail:
       print detail
       pass
@@ -419,6 +435,7 @@ if not os.path.isfile('material.config'):
 
 unitGPa = 10.e8
 N_simulations=0
+fitResults = []
 s=threading.Semaphore(1)
 
 stressAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
