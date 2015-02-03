@@ -192,21 +192,28 @@ def Barlat1994(sigmas, sigma0, a):
 
 
 fittingCriteria = {
-                   'Tresca':  {'fit'  :np.ones(1,'d'),'err':np.inf,
-                               'name' :'Tresca',
+   'Tresca'         :{'fit'  :np.ones(1,'d'),'err':np.inf,
+                      'name' :'Tresca',
                                'paras':'Initial yield stress:'},
-                   'vonMises':{'fit'  :np.ones(1,'d'),'err':np.inf,
-                               'name' :'Huber-Mises-Hencky(von Mises)',
-                               'paras':'Initial yield stress:'},
-                   'Hill48'  :{'fit'  :np.ones(6,'d'),'err':np.inf,
-                               'name' :'Hill1948',
-                               'paras':'Normalized [F, G, H, L, M, N]'},
-                   'Drucker' :{'fit'  :np.ones(2,'d'),'err':np.inf,
-                               'name' :'Drucker',
-                               'paras':'Initial yield stress, C_D:'},
-                   'worst'   :{'err':np.inf},
-                   'best'    :{'err':np.inf}
+   'vonMises'       :{'fit'  :np.ones(1,'d'),'err':np.inf,
+                      'name' :'Huber-Mises-Hencky(von Mises)',
+                      'paras':'Initial yield stress:'},
+   'Hill48'         :{'fit'  :np.ones(6,'d'),'err':np.inf,
+                      'name' :'Hill1948',
+                      'paras':'Normalized [F, G, H, L, M, N]'},
+   'Drucker'        :{'fit'  :np.ones(2,'d'),'err':np.inf,
+                      'name' :'Drucker',
+                      'paras':'Initial yield stress, C_D:'},
+   'Barlat1991iso'  :{'fit'  :np.ones(2,'d'),'err':np.inf,
+                      'name' :'Barlat1991iso',
+                      'paras':'Initial yield stress, m:'},
+   'Barlat1991aniso':{'fit'  :np.ones(8,'d'),'err':np.inf,
+                      'name' :'Barlat1991aniso',
+                      'paras':'Initial yield stress, m, a, b, c, f, g, h:'},
+   'worst'          :{'err':np.inf},
+   'best'           :{'err':np.inf}
                    }
+
 
 thresholdParameter = ['totalshear','equivalentStrain']
 
@@ -276,7 +283,13 @@ class Criterion(object):
     elif self.name.lower() == 'hill48':
       funResidum = Hill1948
       text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:\n'+formatOutput(6)
-
+    elif self.name.lower() == 'barlat91iso':
+      funResidum = Barlat1991iso
+      text = '\nCoefficient of isotropic Barlat 1991 criterion:\nsigma0, m:\n'+formatOutput(2)
+    elif self.name.lower() == 'barlat91aniso':
+      funResidum = Barlat1991iso
+      text = '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, \m, a, b, c, f, g, h:\n' \
+             +formatOutput(8)
     if fitResults == []: 
       initialguess = fittingCriteria[funResidum.__name__]['fit']
     else: 
