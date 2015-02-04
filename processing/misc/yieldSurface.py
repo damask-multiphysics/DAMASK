@@ -51,9 +51,15 @@ def stressInvariants(lambdas):
   Is = Is.reshape(3,np.shape(lambdas)[1])
   return Is
 
-def formatOutput(n, type='%14.6f'):
+def formatOutput(n, type='%-14.6f'):
   return ''.join([type for i in xrange(n)])
 
+def array2tuple(array):
+  '''transform numpy.array into tuple'''
+  try:
+    return tuple(array2tuple(i) for i in array)
+  except TypeError:
+    return array
 def get_weight(ndim):
 #more to do
   return np.ones(ndim)
@@ -198,7 +204,7 @@ fittingCriteria = {
    'vonMises'       :{'fit'  :np.ones(1,'d'),'err':np.inf,
                       'name' :'Huber-Mises-Hencky(von Mises)',
                       'paras':'Initial yield stress:'},
-   'Hill48'         :{'fit'  :np.ones(6,'d'),'err':np.inf,
+   'Hill1948'       :{'fit'  :np.ones(6,'d'),'err':np.inf,
                       'name' :'Hill1948',
                       'paras':'Normalized [F, G, H, L, M, N]'},
    'Drucker'        :{'fit'  :np.ones(2,'d'),'err':np.inf,
@@ -283,9 +289,9 @@ class Criterion(object):
       funResidum = Drucker
       text = '\nCoefficient of Drucker criterion:\nsigma0, C_D: '+formatOutput(2)
       error='The standard deviation errors are: '+formatOutput(2,'%-14.8f')+'\n'
-    elif self.name.lower() == 'hill48':
+    elif self.name.lower() == 'hill1948':
       funResidum = Hill1948
-      text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:\n'+formatOutput(6)
+      text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:'+' '*16+formatOutput(6)
       error='The standard deviation errors are: '+formatOutput(6,'%-14.8f')+'\n'
     elif self.name.lower() == 'barlat91iso':
       funResidum = Barlat1991iso
@@ -301,14 +307,14 @@ class Criterion(object):
     else:
       initialguess = np.array(fitResults[-1])
     weight = get_weight(np.shape(stress)[1])
-    try:  
+    try:
       popt, pcov = \
         curve_fit(funResidum, stress, np.zeros(np.shape(stress)[1]),
                   initialguess, weight)
       perr = np.sqrt(np.diag(pcov))
       fitResults.append(popt.tolist())
-      print (text%popt)
-      print (error%perr)
+      print (text%array2tuple(popt))
+      print (error%array2tuple(perr))
     except Exception as detail:
       print detail
       pass
@@ -410,8 +416,9 @@ def doSim(delay,thread):
     for i in xrange(int(options.yieldValue[2])):
       stressAll[i]=np.append(yieldStress[i]/unitGPa,stressAll[i])
       myFit.fit(stressAll[i].reshape(len(stressAll[i])//9,9).transpose())
-  except Exception:
+  except Exception as detail:
     print('could not fit for sim %i from %s'%(me,thread))
+    print detail
     s.release()
     return
   s.release()
