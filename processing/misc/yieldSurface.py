@@ -122,9 +122,9 @@ def Hill1948(sigmas, F,G,H,L,M,N):
   r =     F*(sigmas[4]-sigmas[8])**2.0\
     +     G*(sigmas[8]-sigmas[0])**2.0\
     +     H*(sigmas[0]-sigmas[4])**2.0\
-    + 2.0*L* sigmas[1]**2.0\
+    + 2.0*L* sigmas[5]**2.0\
     + 2.0*M* sigmas[2]**2.0\
-    + 2.0*N* sigmas[5]**2.0\
+    + 2.0*N* sigmas[1]**2.0\
     - 1.0
   return r.ravel()/2.0
 
@@ -274,33 +274,41 @@ class Criterion(object):
     if self.name.lower() == 'tresca':
       funResidum = Tresca
       text = '\nCoefficient of Tresca criterion:\nsigma0: '+formatOutput(1)
+      error='The standard deviation error is: '+formatOutput(1,'%-14.8f')+'\n'
     elif self.name.lower() == 'vonmises':
       funResidum = vonMises
       text = '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: '+formatOutput(1)
+      error='The standard deviation error is: '+formatOutput(1,'%-14.8f')+'\n'
     elif self.name.lower() == 'drucker':
       funResidum = Drucker
       text = '\nCoefficient of Drucker criterion:\nsigma0, C_D: '+formatOutput(2)
+      error='The standard deviation errors are: '+formatOutput(2,'%-14.8f')+'\n'
     elif self.name.lower() == 'hill48':
       funResidum = Hill1948
       text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:\n'+formatOutput(6)
+      error='The standard deviation errors are: '+formatOutput(6,'%-14.8f')+'\n'
     elif self.name.lower() == 'barlat91iso':
       funResidum = Barlat1991iso
       text = '\nCoefficient of isotropic Barlat 1991 criterion:\nsigma0, m:\n'+formatOutput(2)
+      error='The standard deviation errors are: '+formatOutput(2,'%-14.8f')+'\n'
     elif self.name.lower() == 'barlat91aniso':
-      funResidum = Barlat1991iso
+      funResidum = Barlat1991aniso
       text = '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, \m, a, b, c, f, g, h:\n' \
              +formatOutput(8)
-    if fitResults == []: 
+      error='The standard deviation errors are: '+formatOutput(8,'%-14.8f')
+    if fitResults == []:
       initialguess = fittingCriteria[funResidum.__name__]['fit']
-    else: 
+    else:
       initialguess = np.array(fitResults[-1])
     weight = get_weight(np.shape(stress)[1])
     try:  
       popt, pcov = \
         curve_fit(funResidum, stress, np.zeros(np.shape(stress)[1]),
                   initialguess, weight)
-      print (text%popt)
+      perr = np.sqrt(np.diag(pcov))
       fitResults.append(popt.tolist())
+      print (text%popt)
+      print (error%perr)
     except Exception as detail:
       print detail
       pass
@@ -358,6 +366,7 @@ def doSim(delay,thread):
   else: s.release()
 
   s.acquire()
+  print('-'*10)
   print('reading values for sim %i from %s'%(me,thread))
   s.release()
 
