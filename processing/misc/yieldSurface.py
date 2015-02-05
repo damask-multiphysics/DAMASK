@@ -108,10 +108,10 @@ def Hosford(sigmas, sigma0, a):
     residuum of Hershey yield criterion (eq. 2.43, Y = sigma0)
   '''
   lambdas = principalStresses(sigmas)
-  r   = (lambdas[2,:]-lambdas[1,:])**a\
-      + (lambdas[1,:]-lambdas[0,:])**a\
-      + (lambdas[0,:]-lambdas[2,:])**a\
-      -2.0*sigma0**a
+  r   = (abs(lambdas[2,:]-lambdas[1,:]))**a\
+      + (abs(lambdas[1,:]-lambdas[0,:]))**a\
+      + (abs(lambdas[0,:]-lambdas[2,:]))**a\
+      -2.0*(abs(sigma0))**a
   return r.ravel()
 
 #more to do
@@ -204,16 +204,19 @@ fittingCriteria = {
    'vonMises'       :{'fit'  :np.ones(1,'d'),'err':np.inf,
                       'name' :'Huber-Mises-Hencky(von Mises)',
                       'paras':'Initial yield stress:'},
+   'Hosford'        :{'fit'  :np.ones(2,'d'),'err':np.inf,
+                      'name' :'Gerenal Hosford',
+                      'paras':'Initial yield stress:'},
    'Hill1948'       :{'fit'  :np.ones(6,'d'),'err':np.inf,
                       'name' :'Hill1948',
                       'paras':'Normalized [F, G, H, L, M, N]'},
    'Drucker'        :{'fit'  :np.ones(2,'d'),'err':np.inf,
                       'name' :'Drucker',
                       'paras':'Initial yield stress, C_D:'},
-   'Barlat1991iso'  :{'fit'  :np.ones(2,'d'),'err':np.inf,
+   'Barlat1991iso'  :{'fit'  :np.ones(1,'d'),'err':np.inf,
                       'name' :'Barlat1991iso',
                       'paras':'Initial yield stress, m:'},
-   'Barlat1991aniso':{'fit'  :np.ones(8,'d'),'err':np.inf,
+   'Barlat1991aniso':{'fit'  :np.ones(7,'d'),'err':np.inf,
                       'name' :'Barlat1991aniso',
                       'paras':'Initial yield stress, m, a, b, c, f, g, h:'},
    'worst'          :{'err':np.inf},
@@ -285,6 +288,10 @@ class Criterion(object):
       funResidum = vonMises
       text = '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: '+formatOutput(1)
       error='The standard deviation error is: '+formatOutput(1,'%-14.8f')+'\n'
+    elif self.name.lower() == 'hosford':
+      funResidum = Hosford
+      text = '\nCoefficient of general Hosford criterion:\nsigma0, a: '+formatOutput(2)
+      error='The standard deviation error is: '+formatOutput(2,'%-14.8f')+'\n'
     elif self.name.lower() == 'drucker':
       funResidum = Drucker
       text = '\nCoefficient of Drucker criterion:\nsigma0, C_D: '+formatOutput(2)
@@ -293,15 +300,15 @@ class Criterion(object):
       funResidum = Hill1948
       text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:'+' '*16+formatOutput(6)
       error='The standard deviation errors are: '+formatOutput(6,'%-14.8f')+'\n'
-    elif self.name.lower() == 'barlat91iso':
+    elif self.name.lower() == 'barlat1991iso':
       funResidum = Barlat1991iso
       text = '\nCoefficient of isotropic Barlat 1991 criterion:\nsigma0, m:\n'+formatOutput(2)
-      error='The standard deviation errors are: '+formatOutput(2,'%-14.8f')+'\n'
-    elif self.name.lower() == 'barlat91aniso':
+      error='The standard deviation errors are: '+formatOutput(1,'%-14.8f')+'\n'
+    elif self.name.lower() == 'barlat1991aniso':
       funResidum = Barlat1991aniso
       text = '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, \m, a, b, c, f, g, h:\n' \
              +formatOutput(8)
-      error='The standard deviation errors are: '+formatOutput(8,'%-14.8f')
+      error='The standard deviation errors are: '+formatOutput(7,'%-14.8f')
     if fitResults == []:
       initialguess = fittingCriteria[funResidum.__name__]['fit']
     else:
