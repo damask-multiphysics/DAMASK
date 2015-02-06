@@ -33,7 +33,7 @@ def principalStresses(sigmas):
   '''
   lambdas=np.zeros(0,'d')
   for i in xrange(np.shape(sigmas)[1]):
-    eigenvalues = np.linalg.eigvalsh(np.array(sigmas[:,i]).reshape(3,3))
+    eigenvalues = np.linalg.eigvalsh(sym6to33(sigmas[:,i]))
     lambdas = np.append(lambdas,np.sort(eigenvalues)[::-1]) #append eigenvalues in descending order
   lambdas = np.transpose(lambdas.reshape(np.shape(sigmas)[1],3))
   return lambdas
@@ -53,6 +53,15 @@ def stressInvariants(lambdas):
 
 def formatOutput(n, type='%-14.6f'):
   return ''.join([type for i in xrange(n)])
+
+def sym6to33(sigma6):
+  ''' Shape the symmetric stress tensor(6,1) into (3,3) '''
+  sigma33 = np.empty((3,3))
+  sigma33[0,0] = sigma6[0]; sigma33[1,1] = sigma6[1]; sigma33[2,2] = sigma6[2];
+  sigma33[0,1] = sigma6[3]; sigma33[1,0] = sigma6[3]
+  sigma33[1,2] = sigma6[4]; sigma33[2,1] = sigma6[4]
+  sigma33[2,0] = sigma6[5]; sigma33[0,2] = sigma6[5]
+  return sigma33
 
 def array2tuple(array):
   '''transform numpy.array into tuple'''
@@ -125,12 +134,12 @@ def Hill1948(sigmas, F,G,H,L,M,N):
   '''
     residuum of Hill 1948 quadratic yield criterion (eq. 2.48)
   '''
-  r =     F*(sigmas[4]-sigmas[8])**2.0\
-    +     G*(sigmas[8]-sigmas[0])**2.0\
-    +     H*(sigmas[0]-sigmas[4])**2.0\
-    + 2.0*L* sigmas[5]**2.0\
-    + 2.0*M* sigmas[2]**2.0\
-    + 2.0*N* sigmas[1]**2.0\
+  r =     F*(sigmas[1]-sigmas[2])**2.0\
+    +     G*(sigmas[2]-sigmas[0])**2.0\
+    +     H*(sigmas[0]-sigmas[1])**2.0\
+    + 2.0*L* sigmas[4]**2.0\
+    + 2.0*M* sigmas[5]**2.0\
+    + 2.0*N* sigmas[3]**2.0\
     - 1.0
   return r.ravel()/2.0
 
@@ -156,12 +165,13 @@ def Barlat1991(sigmas, sigma0, order, \
     residuum of Barlat 1997 yield criterion
   '''
   cos = np.cos; pi = np.pi; abs = np.abs
-  A = a*(sigmas[4] - sigmas[8])
-  B = b*(sigmas[8] - sigmas[0])
-  C = c*(sigmas[0] - sigmas[4])
-  F = f*sigmas[5]
-  G = g*sigmas[2]
-  H = h*sigmas[1]
+  A = a*(sigmas[1] - sigmas[2])
+  B = b*(sigmas[2] - sigmas[0])
+  C = c*(sigmas[0] - sigmas[1])
+  F = f*sigmas[4]
+  G = g*sigmas[5]
+  H = h*sigmas[3]
+
   I2 = (F*F + G*G + H*H)/3.0 + ((A-C)*(A-C)+(C-B)*(C-B)+(B-A)*(B-A))/54.0
   I3 = (C-B)*(A-C)*(B-A)/54.0 + F*G*H - \
        ((C-B)*F*F+(A-C)*G*G+(B-A)*H*H)/6
@@ -398,23 +408,17 @@ def doSim(delay,thread):
 
   line = 0
   lines = np.shape(table.data)[0]
-  yieldStress=[None for i in xrange(int(options.yieldValue[2]))]
-  #yieldStress=np.array([int(options.yieldValue[2],3,3),'d']
+  yieldStress = np.empty((int(options.yieldValue[2]),6),'d')
   for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
     while line < lines:
       if table.data[line,9]>= threshold:
         upper,lower = table.data[line,9],table.data[line-1,9]                                       # values for linear interpolation
-        yieldStress[i] = table.data[line-1,0:9] * (upper-threshold)/(upper-lower) \
-                       + table.data[line  ,0:9] * (threshold-lower)/(upper-lower)                   # linear interpolation of stress values
-        #yieldStress[i,:,:] = np.array(data[line-1,0:9] * (upper-threshold)/(upper-lower) \
-        #                            + table.data[line  ,0:9] * (threshold-lower)/(upper-lower)).reshape(3,3)                 # linear interpolation of stress values
-        # yieldStress[i,:,:]=0.5*(yieldStress[i,:,:]+np.transpose(yieldStress[i,:,:])               #symmetrize
-        yieldStress[i][1] = (yieldStress[i][1] + yieldStress[i][3])/2.0
-        yieldStress[i][2] = (yieldStress[i][2] + yieldStress[i][6])/2.0
-        yieldStress[i][5] = (yieldStress[i][5] + yieldStress[i][7])/2.0
-        yieldStress[i][3] = yieldStress[i][1]
-        yieldStress[i][6] = yieldStress[i][2]
-        yieldStress[i][7] = yieldStress[i][5]
+        stress = np.array(table.data[line-1,0:9] * (upper-threshold)/(upper-lower) + \
+                          table.data[line  ,0:9] * (threshold-lower)/(upper-lower)).reshape(3,3)    # linear interpolation of stress values
+        yieldStress[i,0]= stress[0,0]; yieldStress[i,1]=stress[1,1]; yieldStress[i,2]=stress[2,2]
+        yieldStress[i,3]=(stress[0,1] + stress[1,0])/2.0     #   0  3  5
+        yieldStress[i,4]=(stress[1,2] + stress[2,1])/2.0     #   *  1  4  yieldStress
+        yieldStress[i,5]=(stress[2,0] + stress[0,2])/2.0     #   *  *  2
         break
       else:
         line+=1
@@ -426,7 +430,7 @@ def doSim(delay,thread):
   try:
     for i in xrange(int(options.yieldValue[2])):
       stressAll[i]=np.append(yieldStress[i]/unitGPa,stressAll[i])
-      myFit.fit(stressAll[i].reshape(len(stressAll[i])//9,9).transpose())
+      myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())
   except Exception as detail:
     print('could not fit for sim %i from %s'%(me,thread))
     print detail
