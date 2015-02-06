@@ -7,6 +7,7 @@ from scipy.optimize import curve_fit
 from scipy.linalg import svd
 from optparse import OptionParser
 import damask
+from damask.util import curve_fit_bound
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = scriptID.split()[1][:-3]
@@ -208,30 +209,51 @@ def Barlat1994(sigmas, sigma0, a):
 
 
 fittingCriteria = {
-   'Tresca'         :{'fit'  :np.ones(1,'d'),'err':np.inf,
-                      'name' :'Tresca',
-                               'paras':'Initial yield stress:'},
-   'vonMises'       :{'fit'  :np.ones(1,'d'),'err':np.inf,
-                      'name' :'Huber-Mises-Hencky(von Mises)',
-                      'paras':'Initial yield stress:'},
-   'Hosford'        :{'fit'  :np.ones(2,'d'),'err':np.inf,
-                      'name' :'Gerenal Hosford',
-                      'paras':'Initial yield stress:'},
-   'Hill1948'       :{'fit'  :np.ones(6,'d'),'err':np.inf,
-                      'name' :'Hill1948',
-                      'paras':'Normalized [F, G, H, L, M, N]'},
-   'Drucker'        :{'fit'  :np.ones(2,'d'),'err':np.inf,
-                      'name' :'Drucker',
-                      'paras':'Initial yield stress, C_D:'},
-   'Barlat1991iso'  :{'fit'  :np.ones(1,'d'),'err':np.inf,
-                      'name' :'Barlat1991iso',
-                      'paras':'Initial yield stress, m:'},
-   'Barlat1991aniso':{'fit'  :np.ones(7,'d'),'err':np.inf,
-                      'name' :'Barlat1991aniso',
-                      'paras':'Initial yield stress, m, a, b, c, f, g, h:'},
-   'worst'          :{'err':np.inf},
-   'best'           :{'err':np.inf}
-                   }
+  'Tresca'         :{'num'  : 1,'err':np.inf,
+                     'name' : 'Tresca',
+                     'paras': 'Initial yield stress:',
+                     'text' : '\nCoefficient of Tresca criterion:\nsigma0: ',
+                     'error': 'The standard deviation error is: '
+                    },
+  'vonMises'       :{'num'  : 1,'err':np.inf,
+                     'name' : 'Huber-Mises-Hencky(von Mises)',
+                     'paras': 'Initial yield stress:',
+                     'text' : '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: ',
+                     'error': 'The standard deviation error is: '
+                    },
+  'Hosford'        :{'num'  : 2,'err':np.inf,
+                     'name' : 'Gerenal Hosford',
+                     'paras': 'Initial yield stress:',
+                     'text' : '\nCoefficient of Hosford criterion:\nsigma0, a: ',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'Hill1948'       :{'num'  : 6,'err':np.inf,
+                     'name' : 'Hill1948',
+                     'paras': 'Normalized [F, G, H, L, M, N]',
+                     'text' : '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'Drucker'        :{'num'  : 2,'err':np.inf,
+                     'name' : 'Drucker',
+                     'paras': 'Initial yield stress, C_D:',
+                     'text' : '\nCoefficient of Drucker criterion:\nsigma0, C_D: ',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'Barlat1991iso'  :{'num'  : 2,'err':np.inf,
+                     'name' : 'Barlat1991iso',
+                     'paras': 'Initial yield stress, m:',
+                     'text' : '\nCoefficient of isotropic Barlat 1991 criterion:\nsigma0, m:\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'Barlat1991aniso':{'num'  : 7,'err':np.inf,
+                     'name' : 'Barlat1991aniso',
+                     'paras': 'Initial yield stress, m, a, b, c, f, g, h:',
+                     'text' : '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, \m, a, b, c, f, g, h:\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'worst'          :{'err':np.inf},
+  'best'           :{'err':np.inf}
+                  }
 
 
 thresholdParameter = ['totalshear','equivalentStrain']
@@ -290,48 +312,31 @@ class Criterion(object):
 
   def fit(self,stress):
     global fitResults
-    if self.name.lower() == 'tresca':
-      funResidum = Tresca
-      text = '\nCoefficient of Tresca criterion:\nsigma0: '+formatOutput(1)
-      error='The standard deviation error is: '+formatOutput(1,'%-14.8f')+'\n'
-    elif self.name.lower() == 'vonmises':
-      funResidum = vonMises
-      text = '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: '+formatOutput(1)
-      error='The standard deviation error is: '+formatOutput(1,'%-14.8f')+'\n'
-    elif self.name.lower() == 'hosford':
-      funResidum = Hosford
-      text = '\nCoefficient of general Hosford criterion:\nsigma0, a: '+formatOutput(2)
-      error='The standard deviation error is: '+formatOutput(2,'%-14.8f')+'\n'
-    elif self.name.lower() == 'drucker':
-      funResidum = Drucker
-      text = '\nCoefficient of Drucker criterion:\nsigma0, C_D: '+formatOutput(2)
-      error='The standard deviation errors are: '+formatOutput(2,'%-14.8f')+'\n'
-    elif self.name.lower() == 'hill1948':
-      funResidum = Hill1948
-      text = '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:'+' '*16+formatOutput(6)
-      error='The standard deviation errors are: '+formatOutput(6,'%-14.8f')+'\n'
-    elif self.name.lower() == 'barlat1991iso':
-      funResidum = Barlat1991iso
-      text = '\nCoefficient of isotropic Barlat 1991 criterion:\nsigma0, m:\n'+formatOutput(2)
-      error='The standard deviation errors are: '+formatOutput(1,'%-14.8f')+'\n'
-    elif self.name.lower() == 'barlat1991aniso':
-      funResidum = Barlat1991aniso
-      text = '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, \m, a, b, c, f, g, h:\n' \
-             +formatOutput(8)
-      error='The standard deviation errors are: '+formatOutput(7,'%-14.8f')
-    if fitResults == []:
-      initialguess = fittingCriteria[funResidum.__name__]['fit']
-    else:
-      initialguess = np.array(fitResults[-1])
+    if   self.name.lower() == 'tresca'          : funResidum = Tresca
+    elif self.name.lower() == 'vonmises'        : funResidum = vonMises
+    elif self.name.lower() == 'hosford'         : funResidum = Hosford
+    elif self.name.lower() == 'drucker'         : funResidum = Drucker
+    elif self.name.lower() == 'hill1948'        : funResidum = Hill1948
+    elif self.name.lower() == 'barlat1991iso'   : funResidum = Barlat1991iso
+    elif self.name.lower() == 'barlat1991aniso' : funResidum = Barlat1991aniso
+    
+    nameCriterion = funResidum.__name__
+    numParas  = fittingCriteria[nameCriterion]['num']
+    textParas = fittingCriteria[nameCriterion]['text'] + formatOutput(numParas)
+    textError = fittingCriteria[nameCriterion]['error']+ formatOutput(numParas,'%-14.8f')+'\n'
+    bounds = [(None,None)]*numParas              # Default bounds, no bound
+    initialguess0 = np.ones(numParas,'d')        # Default initial guess, depends on bounds
+    if fitResults == [] : initialguess = initialguess0
+    else                : initialguess = np.array(fitResults[-1])
     weight = get_weight(np.shape(stress)[1])
     try:
       popt, pcov = \
-        curve_fit(funResidum, stress, np.zeros(np.shape(stress)[1]),
-                  initialguess, weight)
+        curve_fit_bound(funResidum, stress, np.zeros(np.shape(stress)[1]),
+                        initialguess, weight, bounds)
       perr = np.sqrt(np.diag(pcov))
       fitResults.append(popt.tolist())
-      print (text%array2tuple(popt))
-      print (error%array2tuple(perr))
+      print (textParas%array2tuple(popt))
+      print (textError%array2tuple(perr))
     except Exception as detail:
       print detail
       pass
