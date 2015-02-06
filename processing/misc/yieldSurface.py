@@ -399,12 +399,16 @@ def doSim(delay,thread):
   line = 0
   lines = np.shape(table.data)[0]
   yieldStress=[None for i in xrange(int(options.yieldValue[2]))]
+  #yieldStress=np.array([int(options.yieldValue[2],3,3),'d']
   for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
     while line < lines:
       if table.data[line,9]>= threshold:
         upper,lower = table.data[line,9],table.data[line-1,9]                                       # values for linear interpolation
         yieldStress[i] = table.data[line-1,0:9] * (upper-threshold)/(upper-lower) \
                        + table.data[line  ,0:9] * (threshold-lower)/(upper-lower)                   # linear interpolation of stress values
+        #yieldStress[i,:,:] = np.array(data[line-1,0:9] * (upper-threshold)/(upper-lower) \
+        #                            + table.data[line  ,0:9] * (threshold-lower)/(upper-lower)).reshape(3,3)                 # linear interpolation of stress values
+        # yieldStress[i,:,:]=0.5*(yieldStress[i,:,:]+np.transpose(yieldStress[i,:,:])               #symmetrize
         yieldStress[i][1] = (yieldStress[i][1] + yieldStress[i][3])/2.0
         yieldStress[i][2] = (yieldStress[i][2] + yieldStress[i][6])/2.0
         yieldStress[i][5] = (yieldStress[i][5] + yieldStress[i][7])/2.0
