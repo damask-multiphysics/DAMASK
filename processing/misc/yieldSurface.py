@@ -118,10 +118,10 @@ def Hosford(sigmas, sigma0, a):
     residuum of Hershey yield criterion (eq. 2.43, Y = sigma0)
   '''
   lambdas = principalStresses(sigmas)
-  r   = (abs(lambdas[2,:]-lambdas[1,:]))**a\
-      + (abs(lambdas[1,:]-lambdas[0,:]))**a\
-      + (abs(lambdas[0,:]-lambdas[2,:]))**a\
-      -2.0*(abs(sigma0))**a
+  r   = ((abs(lambdas[2,:]-lambdas[1,:]))**a\
+      +  (abs(lambdas[1,:]-lambdas[0,:]))**a\
+      +  (abs(lambdas[0,:]-lambdas[2,:]))**a) **(1.0/a)\
+      -2.0**(1.0/a)*sigma0
   return r.ravel()
 
 #more to do
@@ -160,8 +160,7 @@ def generalHosford(sigmas, sigma0, a):
   return r.ravel()
 
 
-def Barlat1991(sigmas, sigma0, order, \
-              a=1.0, b=1.0, c=1.0, f=1.0, g=1.0, h=1.0):
+def Barlat1991(sigmas, sigma0, order, a, b, c, f, g, h):
   '''
     residuum of Barlat 1997 yield criterion
   '''
@@ -173,16 +172,17 @@ def Barlat1991(sigmas, sigma0, order, \
   G = g*sigmas[5]
   H = h*sigmas[3]
 
-  I2 = (F*F + G*G + H*H)/3.0 + ((A-C)*(A-C)+(C-B)*(C-B)+(B-A)*(B-A))/54.0
-  I3 = (C-B)*(A-C)*(B-A)/54.0 + F*G*H - \
-       ((C-B)*F*F+(A-C)*G*G+(B-A)*H*H)/6
-  theta = np.arccos(I3/pow(I2,1.5))
-  Phi = pow(3.0*I2, order/2.0)* (
-    pow(abs(2.0*cos((2.0*theta + pi)/6.0)), order) +
-    pow(abs(2.0*cos((2.0*theta + pi*3.0)/6.0)), order) +
-    pow(abs(2.0*cos((2.0*theta + pi*5.0)/6.0)), order)
-                                 )
-  r   = Phi - 2.0*pow(sigma0, order)
+  I2 =   (F*F + G*G  +  H*H)/3.0  + ((A-C)**2+(C-B)**2+(B-A)**2)/54.0
+  I3 =   (C-B)*(A-C) * (B-A)/54.0 + F*G*H - \
+       ( (C-B)*F*F   + (A-C)*G*G  + (B-A)*H*H )/6.0
+  theta = np.arccos(I3/I2**1.5)
+  Phi = np.sqrt(3.0*I2)* (
+        (abs(2.0*cos((2.0*theta + pi)/6.0)))**order +
+        (abs(2.0*cos((2.0*theta + pi*3.0)/6.0)))**order +
+        (abs(2.0*cos(( 2.0*theta + pi*5.0)/6.0)))**order
+                         )**(1.0/order)
+  r   = Phi/2.0**(1.0/order) - sigma0
+
 
   return r.ravel()
 
@@ -190,9 +190,9 @@ def Barlat1991iso(sigmas, sigma0, m):
   '''
     residuum of isotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
-  return Barlat1991(sigmas, sigma0, m)
+  return Barlat1991(sigmas, sigma0, m, 1.0,1.0,1.0,1.0,1.0,1.0)
 
-def Barlat1991aniso(sigmas, sigma0, m, a,b,c,f,g,h):
+def Barlat1991aniso(sigmas, sigma0, a,b,c,f,g,h, m):
   '''
     residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
@@ -209,52 +209,63 @@ def Barlat1994(sigmas, sigma0, a):
 
 
 fittingCriteria = {
-  'Tresca'         :{'num'  : 1,'err':np.inf,
+  'tresca'         :{'func' : Tresca,
+                     'num'  : 1,'err':np.inf,
                      'name' : 'Tresca',
                      'paras': 'Initial yield stress:',
                      'text' : '\nCoefficient of Tresca criterion:\nsigma0: ',
                      'error': 'The standard deviation error is: '
                     },
-  'vonMises'       :{'num'  : 1,'err':np.inf,
+  'vonmises'       :{'func' : vonMises,
+                     'num'  : 1,'err':np.inf,
                      'name' : 'Huber-Mises-Hencky(von Mises)',
                      'paras': 'Initial yield stress:',
                      'text' : '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: ',
                      'error': 'The standard deviation error is: '
                     },
-  'Hosford'        :{'num'  : 2,'err':np.inf,
+  'hosford'        :{'func' : Hosford,
+                     'num'  : 2,'err':np.inf,
                      'name' : 'Gerenal Hosford',
                      'paras': 'Initial yield stress:',
                      'text' : '\nCoefficient of Hosford criterion:\nsigma0, a: ',
                      'error': 'The standard deviation errors are: '
                     },
-  'Hill1948'       :{'num'  : 6,'err':np.inf,
+  'hill1948'       :{'func' : Hill1948,
+                     'num'  : 6,'err':np.inf,
                      'name' : 'Hill1948',
                      'paras': 'Normalized [F, G, H, L, M, N]',
                      'text' : '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:',
                      'error': 'The standard deviation errors are: '
                     },
-  'Drucker'        :{'num'  : 2,'err':np.inf,
+  'drucker'        :{'func' : Drucker,
+                     'num'  : 2,'err':np.inf,
                      'name' : 'Drucker',
                      'paras': 'Initial yield stress, C_D:',
                      'text' : '\nCoefficient of Drucker criterion:\nsigma0, C_D: ',
                      'error': 'The standard deviation errors are: '
                     },
-  'Barlat1991iso'  :{'num'  : 2,'err':np.inf,
+  'barlat1991iso'  :{'func' : Barlat1991iso,
+                     'num'  : 2,'err':np.inf,
                      'name' : 'Barlat1991iso',
                      'paras': 'Initial yield stress, m:',
                      'text' : '\nCoefficient of isotropic Barlat 1991 criterion:\nsigma0, m:\n',
                      'error': 'The standard deviation errors are: '
                     },
-  'Barlat1991aniso':{'num'  : 7,'err':np.inf,
+  'barlat1991aniso':{'func' : Barlat1991aniso,
+                     'num'  : 8,'err':np.inf,
                      'name' : 'Barlat1991aniso',
                      'paras': 'Initial yield stress, m, a, b, c, f, g, h:',
-                     'text' : '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, \m, a, b, c, f, g, h:\n',
+                     'text' : '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, a, b, c, f, g, h, m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'worst'          :{'err':np.inf},
   'best'           :{'err':np.inf}
                   }
 
+for key in fittingCriteria.keys():
+  if 'num' in fittingCriteria[key].keys(): 
+    fittingCriteria[key]['bound']=[(None,None)]*fittingCriteria[key]['num']
+    fittingCriteria[key]['guess']=np.ones(fittingCriteria[key]['num'],'d')
 
 thresholdParameter = ['totalshear','equivalentStrain']
 
@@ -312,21 +323,16 @@ class Criterion(object):
 
   def fit(self,stress):
     global fitResults
-    if   self.name.lower() == 'tresca'          : funResidum = Tresca
-    elif self.name.lower() == 'vonmises'        : funResidum = vonMises
-    elif self.name.lower() == 'hosford'         : funResidum = Hosford
-    elif self.name.lower() == 'drucker'         : funResidum = Drucker
-    elif self.name.lower() == 'hill1948'        : funResidum = Hill1948
-    elif self.name.lower() == 'barlat1991iso'   : funResidum = Barlat1991iso
-    elif self.name.lower() == 'barlat1991aniso' : funResidum = Barlat1991aniso
     
-    nameCriterion = funResidum.__name__
-    numParas  = fittingCriteria[nameCriterion]['num']
-    textParas = fittingCriteria[nameCriterion]['text'] + formatOutput(numParas)
-    textError = fittingCriteria[nameCriterion]['error']+ formatOutput(numParas,'%-14.8f')+'\n'
-    bounds = [(None,None)]*numParas              # Default bounds, no bound
-    initialguess0 = np.ones(numParas,'d')        # Default initial guess, depends on bounds
-    if fitResults == [] : initialguess = initialguess0
+    nameCriterion = self.name.lower()
+    funResidum    = fittingCriteria[nameCriterion]['func']
+    numParas      = fittingCriteria[nameCriterion]['num']
+    textParas     = fittingCriteria[nameCriterion]['text'] + formatOutput(numParas)
+    textError     = fittingCriteria[nameCriterion]['error']+ formatOutput(numParas,'%-14.8f')+'\n'
+    bounds        = fittingCriteria[nameCriterion]['bound']  # Default bounds, no bound
+    guess0        = fittingCriteria[nameCriterion]['guess']  # Default initial guess, depends on bounds
+
+    if fitResults == [] : initialguess = guess0
     else                : initialguess = np.array(fitResults[-1])
     weight = get_weight(np.shape(stress)[1])
     try:
