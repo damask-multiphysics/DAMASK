@@ -206,7 +206,62 @@ def Barlat1994(sigmas, sigma0, a):
 
   return None
 
+def Cazacu_Barlat3D(sigmas, sigma0,
+                    a1,a2,a3,a4,a5,a6, b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11, c):
+  '''
+    residuum of the Cazacu–Barlat (CZ) yield criterion
+  '''
+  s11 = sigmas[0]; s22 = sigmas[1]; s33 = sigmas[2]
+  s12 = sigmas[3]; s23 = sigmas[4]; s31 = sigmas[5]
 
+  J20 = ( a1*(s22-s33)**2 + a2*(s33-s11)**2 + a3*(s11-s22)**2 )/6.0 + \
+          a4* s23**2      + a5* s31**2      + a6* s12**2
+
+  J30 = ( (b1    +b2    )*s11**3  + (b3    +b4    )*s22**3  + ( b1+b4-b2      +  b1+b4-b3     )*s33**3)/27.0- \
+        ( (b1*s22+b2*s33)*s11**2  + (b3*s33+b4*s11)*s22**2  + ((b1+b4-b2)*s11 + (b1+b4-b3)*s22)*s33**2)/9.0 + \
+        ( (b1+b4)*s11*s22*s33/9.0 + b11*s12*s23*s31 )*2.0   - \
+        ( ( 2.0*b9 *s22 - b8*s33  - (2*b9 -b8)*s11 )*s31**2 + 
+          ( 2.0*b10*s33 - b5*s22  - (2*b10-b5)*s11 )*s12**2 +
+          ( (b6+b7)*s11 - b6*s22  - b7*s33         )*s23**2
+        )/3.0
+
+  f0 = (J20**3 - c*J30**2)**(1.0/6.0)
+  k2 = (sigma0/3.0) *18.0 **(1.0/6.0)
+  r  = f0/k2 - 1.0
+  return r.ravel()
+
+def Cazacu_Barlat2D(sigmas, sigma0,
+                    a1,a2,a3,a6, b1,b2,b3,b4,b5,b10, c):
+  '''
+    residuum of the Cazacu–Barlat (CZ) yield criterion for plain stress
+  '''
+  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
+
+  J20 = ( (a2+a3)*s11**2 + (a1+a3)*s22**2 - 2.0*a3*s11*s22 )/6.0 + a6*s12**2
+
+  J30 = ( (b1     + b2    )*s11**3  + (b3    +b4    )*s22**3 )/27.0- \
+        ( (b1*s11 + b4*s22)*s11*s22  )/9.0 + \
+        (  b5*s22 + (2*b10-b5)*s11 )*s12**2/3.0
+
+  f0 = (J20**3 - c*J30**2)**(1.0/6.0)
+  k2 = (sigma0/3.0) *18.0 **(1.0/6.0)
+  r  = f0/k2 - 1.0
+  return r.ravel()
+
+def BBC2003(sigmas, sigma0, a,b,c, d,e,f,g, k):
+  '''
+    residuum of the BBC2003 yield criterion for plain stress
+  '''
+  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
+  k2  = 2.0*k
+
+  Gamma =     s11*(d+e)     + s22*(e+f)
+  Psi   = ( ( s11*(d-e)/2.0 + s22*(e-f)/2.0 )**2 + (g*s12)**2 )**0.5
+
+  sBar  = ( a*(b*Gamma + c*Psi)**k2 + a*(b*Gamma - c*Psi)**k2 + 
+            (1-a)*(2.0*c*Psi)**k2 )**(1.0/k2)
+  r = sBar/sigma0 - 1.0
+  return r.ravel()
 
 fittingCriteria = {
   'tresca'         :{'func' : Tresca,
@@ -227,35 +282,58 @@ fittingCriteria = {
                      'num'  : 2,'err':np.inf,
                      'name' : 'Gerenal Hosford',
                      'paras': 'Initial yield stress:',
-                     'text' : '\nCoefficient of Hosford criterion:\nsigma0, a: ',
+                     'text' : '\nCoefficients of Hosford criterion:\nsigma0, a: ',
                      'error': 'The standard deviation errors are: '
                     },
   'hill1948'       :{'func' : Hill1948,
                      'num'  : 6,'err':np.inf,
                      'name' : 'Hill1948',
                      'paras': 'Normalized [F, G, H, L, M, N]',
-                     'text' : '\nCoefficient of Hill1948 criterion:\n[F, G, H, L, M, N]:',
+                     'text' : '\nCoefficients of Hill1948 criterion:\n[F, G, H, L, M, N]:',
                      'error': 'The standard deviation errors are: '
                     },
   'drucker'        :{'func' : Drucker,
                      'num'  : 2,'err':np.inf,
                      'name' : 'Drucker',
                      'paras': 'Initial yield stress, C_D:',
-                     'text' : '\nCoefficient of Drucker criterion:\nsigma0, C_D: ',
+                     'text' : '\nCoefficients of Drucker criterion:\nsigma0, C_D: ',
                      'error': 'The standard deviation errors are: '
                     },
   'barlat1991iso'  :{'func' : Barlat1991iso,
                      'num'  : 2,'err':np.inf,
                      'name' : 'Barlat1991iso',
                      'paras': 'Initial yield stress, m:',
-                     'text' : '\nCoefficient of isotropic Barlat 1991 criterion:\nsigma0, m:\n',
+                     'text' : '\nCoefficients of isotropic Barlat 1991 criterion:\nsigma0, m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'barlat1991aniso':{'func' : Barlat1991aniso,
                      'num'  : 8,'err':np.inf,
                      'name' : 'Barlat1991aniso',
                      'paras': 'Initial yield stress, m, a, b, c, f, g, h:',
-                     'text' : '\nCoefficient of anisotropic Barlat 1991 criterion:\nsigma0, a, b, c, f, g, h, m:\n',
+                     'text' : '\nCoefficients of anisotropic Barlat 1991 criterion:\nsigma0, a, b, c, f, g, h, m:\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'bbc2003'        :{'func' : BBC2003,
+                     'num'  : 9,'err':np.inf,
+                     'name' : 'Barlat1991aniso',
+                     'paras': 'Initial yield stress, a, b, c, d, e, f, g, k:',
+                     'text' : '\nCoefficients of anisotropic Barlat 1991 criterion:\nsigma0, a, b, c, d, e, f, g, k:\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'Cazacu_Barlat2D':{'func' : Cazacu_Barlat2D,
+                     'num'  : 12,'err':np.inf,
+                     'name' : 'Barlat1991aniso',
+                     'paras': 'Initial yield stress, a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:',
+                     'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
+                               \n Y, a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'Cazacu_Barlat3D':{'func' : Cazacu_Barlat3D,
+                     'num'  : 19,'err':np.inf,
+                     'name' : 'Barlat1991aniso',
+                     'paras': 'Initial yield stress, a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c:',
+                     'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
+                               \n Y, a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c\n',
                      'error': 'The standard deviation errors are: '
                     },
   'worst'          :{'err':np.inf},
