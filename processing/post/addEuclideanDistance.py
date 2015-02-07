@@ -150,7 +150,7 @@ for file in files:
 
 # ------------------------------------------ process data ------------------------------------------
   
-  table.data_readArray(['1_'+options.coords,'2_'+options.coords,'3_'+options.coords,options.id])
+  table.data_readArray([options.coords+'.x',options.coords+'.y',options.coords+'.z',options.id])
 
   coords = [{},{},{}]
   for i in xrange(len(table.data)):
@@ -174,7 +174,7 @@ for file in files:
             p[2]+1] = 1
     convoluted[i,:,:,:] = ndimage.convolve(microstructure,stencil)
   
-  distance = np.ones((len(feature_list),info['grid'][0],info['grid'][1],info['grid'][2]),'d')
+  distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
   
   convoluted = np.sort(convoluted,axis = 0)
   uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                   # initialize unique value counter (exclude myself [= 0])
