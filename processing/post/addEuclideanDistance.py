@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string
+import os,sys,string,re,math
 import numpy as np
-from optparse import OptionParser
 from scipy import ndimage
+from optparse import OptionParser
 import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
@@ -35,11 +35,10 @@ def periodic_3Dpad(array, rimdim=(1,1,1)):
 #                                MAIN
 # --------------------------------------------------------------------
 
-features = [ \
-            {'aliens': 1, 'name': 'biplane'},
-            {'aliens': 1, 'name': 'boundary'},
-            {'aliens': 2, 'name': 'tripleline'},
-            {'aliens': 3, 'name': 'quadruplepoint'}
+features = [
+            {'aliens': 1, 'names': ['boundary','biplane'],},
+            {'aliens': 2, 'names': ['tripleline',],},
+            {'aliens': 3, 'names': ['quadruplepoint',],}
            ]
 
 neighborhoods = {
@@ -61,6 +60,7 @@ neighborhoods = {
                                         [-1, 1,-1],
                                         [ 0, 1,-1],
                                         [ 1, 1,-1],
+#
                                         [-1,-1, 0],
                                         [ 0,-1, 0],
                                         [ 1,-1, 0],
@@ -70,6 +70,7 @@ neighborhoods = {
                                         [-1, 1, 0],
                                         [ 0, 1, 0],
                                         [ 1, 1, 0],
+#
                                         [-1,-1, 1],
                                         [ 0,-1, 1],
                                         [ 1,-1, 1],
@@ -91,28 +92,31 @@ parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
 parser.add_option('-i','--identifier',  dest='id', metavar = 'string',
                                         help='heading of column containing grain identifier [%default]')
-parser.add_option('-t','--type',        dest='type', action='extend', metavar='<string LIST>',
-                                        help='feature type (%s)'%(', '.join(map(lambda x:', '.join([x['name']]),features))))
-parser.add_option('-n','--neighborhood',dest='neigborhood', type='choice', 
-                                        choices=neighborhoods.keys(), metavar='string',
-                                        help='type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
+parser.add_option('-t','--type',          dest = 'type', action = 'extend', type = 'string', metavar = '<string LIST>',
+                  help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
+parser.add_option('-n','--neighborhood',  dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+                  help = 'type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
+parser.add_option('-s', '--scale',        dest = 'scale', type = 'float',
+                  help = 'voxel size [%default]')
 parser.set_defaults(type = [])
 parser.set_defaults(coords = 'ip')
 parser.set_defaults(id = 'texture')
 parser.set_defaults(neighborhood = 'neumann')
+parser.set_defaults(scale = 1.0)
 
 (options,filenames) = parser.parse_args()
 
 if len(options.type) == 0: parser.error('please select a feature type')
-if not set(options.type).issubset(set(map(lambda x: x['name'],features))):
-  parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:', '.join([x['name']]),features))))
 if 'biplane' in options.type and 'boundary' in options.type:
   parser.error("please select only one alias for 'biplane' and 'boundary'")
 
 feature_list = []
 for i,feature in enumerate(features):
-  if feature['name'] in options.type: feature_list.append(i)                                        # remember valid features
-# ------------------------------------------ setup file handles ------------------------------------
+  for name in feature['names']:
+    for myType in options.type:
+      if name.startswith(myType):
+        feature_list.append(i)                                                                      # remember valid features
+        break
 
 files = []
 for name in filenames:
@@ -129,7 +133,7 @@ for file in files:
 
 # --------------- figure out position of labels and coordinates ------------------------------------
   try:
-    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
+    locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
   except ValueError:
     file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
     continue
@@ -140,7 +144,7 @@ for file in files:
 
 # ------------------------------------------ assemble header ---------------------------------------
   for feature in feature_list:
-    table.labels_append('ED_%s(%s)'%(features[feature]['name'],options.id))                         # extend ASCII header with new labels
+    table.labels_append('ED_%s(%s)'%(features[feature]['names'],options.id))                         # extend ASCII header with new labels
 
   table.head_write()
 
@@ -168,23 +172,24 @@ for file in files:
     stencil[p[0]+1,
             p[1]+1,
             p[2]+1] = 1
-
     convoluted[i,:,:,:] = ndimage.convolve(microstructure,stencil)
   
-  distance = np.ones((len(feature_list),grid[0],grid[1],grid[2]),'d')
+  distance = np.ones((len(feature_list),info['grid'][0],info['grid'][1],info['grid'][2]),'d')
   
-  convoluted = np.sort(convoluted,axis=0)
-  uniques = np.zeros(grid)
-  check = np.empty(grid)
-  check[:,:,:] = np.nan
-  for i in xrange(len(neighborhood)):
-    uniques += np.where(convoluted[i,1:-1,1:-1,1:-1] == check,0,1)
-    check = convoluted[i,1:-1,1:-1,1:-1]
+  convoluted = np.sort(convoluted,axis = 0)
+  uniques = np.where(convoluted[0,1:-1,1:-1,1:-1] != 0, 1,0)                   # initialize unique value counter (exclude myself [= 0])
+
+  for i in xrange(1,len(neighborhood)):                                           # check remaining points in neighborhood
+    uniques += np.where(np.logical_and(
+                           convoluted[i,1:-1,1:-1,1:-1] != convoluted[i-1,1:-1,1:-1,1:-1],    # flip of ID difference detected?
+                           convoluted[i,1:-1,1:-1,1:-1] != 0),                                # not myself?
+                           1,0)                                                   # count flip
+
   for i,feature_id in enumerate(feature_list):
-    distance[i,:,:,:] = np.where(uniques > features[feature_id]['aliens'],0.0,1.0)
-  
+    distance[i,:,:,:] = np.where(uniques >= features[feature_id]['aliens'],0.0,1.0) # seed with 0.0 when enough unique neighbor IDs are present
+
   for i in xrange(len(feature_list)):
-    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[unitlength]*3
+    distance[i,:,:,:] = ndimage.morphology.distance_transform_edt(distance[i,:,:,:])*[options.scale]*3
   distance.shape = (len(feature_list),grid.prod())
   
 # ------------------------------------------ process data ------------------------------------------
