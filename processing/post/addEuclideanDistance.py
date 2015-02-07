@@ -96,7 +96,7 @@ parser.add_option('-t','--type',          dest = 'type', action = 'extend', type
                   help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 parser.add_option('-n','--neighborhood',  dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
                   help = 'type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
-parser.add_option('-s', '--scale',        dest = 'scale', type = 'float',
+parser.add_option('-s', '--scale',        dest = 'scale', type = 'float', metavar='float',
                   help = 'voxel size [%default]')
 parser.set_defaults(type = [])
 parser.set_defaults(coords = 'ip')
@@ -107,6 +107,8 @@ parser.set_defaults(scale = 1.0)
 (options,filenames) = parser.parse_args()
 
 if len(options.type) == 0: parser.error('please select a feature type')
+if not set(options.type).issubset(set(map(lambda x: x['name'],features))):
+  parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:', '.join([x['name']]),features))))
 if 'biplane' in options.type and 'boundary' in options.type:
   parser.error("please select only one alias for 'biplane' and 'boundary'")
 
@@ -144,7 +146,7 @@ for file in files:
 
 # ------------------------------------------ assemble header ---------------------------------------
   for feature in feature_list:
-    table.labels_append('ED_%s(%s)'%(features[feature]['names'],options.id))                         # extend ASCII header with new labels
+    table.labels_append('ED_%s(%s)'%(features[feature]['names'][0],options.id))                         # extend ASCII header with new labels
 
   table.head_write()
 
