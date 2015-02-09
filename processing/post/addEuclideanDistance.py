@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 no BOM -*-
 
-import os,sys,string,re,math
+import os,sys,string,re,math,itertools
 import numpy as np
 from scipy import ndimage
 from optparse import OptionParser
@@ -107,8 +107,8 @@ parser.set_defaults(scale = 1.0)
 (options,filenames) = parser.parse_args()
 
 if len(options.type) == 0: parser.error('please select a feature type')
-if not set(options.type).issubset(set(map(lambda x: x['name'],features))):
-  parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:', '.join([x['name']]),features))))
+if not set(options.type).issubset(set(list(itertools.chain(*map(lambda x: x['names'],features))))):
+  parser.error('type must be chosen from (%s)...'%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
 if 'biplane' in options.type and 'boundary' in options.type:
   parser.error("please select only one alias for 'biplane' and 'boundary'")
 
