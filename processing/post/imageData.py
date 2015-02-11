@@ -7,7 +7,7 @@ from optparse import OptionParser
 from PIL import Image, ImageDraw
 import damask
 
-scriptID   = string.replace('$Id: permuteData.py 3828 2014-12-18 19:26:52Z MPIE\m.diehl $','\n','\\n')
+scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
 
 # --------------------------------------------------------------------
