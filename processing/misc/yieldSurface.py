@@ -103,19 +103,21 @@ class Drucker(object):
   '''
     residuum of Drucker yield criterion (eq. 2.41, F = sigma0)
   '''
-  def fun(sigma0, C_D, ydata, sigmas):
-    return DruckerBasis(sigma0, C_D, 1.0, ydata, sigmas)
-  def jac(sigma0, C_D, ydata, sigmas):
-    pass
+  def fun(self, (sigma0, C_D), ydata, sigmas):
+    return DruckerBasis(sigma0, C_D, 1.0, sigmas)
+  def jac(self, (sigma0, C_D), ydata, sigmas):
+    return DruckerBasis(sigma0, C_D, 1.0, sigmas, Jac=True, nParas=2)
+
 
 class generalDrucker(object):
   '''
     residuum of general Drucker yield criterion (eq. 2.42, F = sigma0)
   '''
-  def fun(sigma0, C_D, ydata, sigmas):
-    return DruckerBasis(sigma0, C_D, p, ydata, sigmas)
-  def jac(sigma0, C_D, ydata, sigmas):
-    pass
+  def fun(self, (sigma0, C_D, p), ydata, sigmas):
+    return DruckerBasis(sigma0, C_D, p,  sigmas)
+  def jac(self, (sigma0, C_D, p), ydata, sigmas):
+    return DruckerBasis(sigma0, C_D, p,  sigmas, Jac=True, nParas=3)
+
 
 class Hosford(object):
   '''
@@ -143,7 +145,11 @@ class Hill1948(object):
       + 2.0*L*sigmas[4]**2.0 + 2.0*M*sigmas[5]**2.0 + 2.0*N*sigmas[3]**2.0 - 1.0
     return r.ravel()/2.0
   def jac(self, (F,G,H,L,M,N), ydata, sigmas):
-    pass
+    jF=(sigmas[1]-sigmas[2])**2.0; jG=(sigmas[2]-sigmas[0])**2.0; jH=(sigmas[0]-sigmas[1])**2.0
+    jL=2.0*sigmas[4]**2.0;         jM=2.0*sigmas[5]**2.0;         jN=2.0*sigmas[3]**2.0
+    jaco = []
+    for f,g,h,l,m,n in zip(jF, jG, jH, jL, jM, jN): jaco.append([f,g,h,l,m,n])
+    return np.array(jaco)
 
 #more to do
 # Hill 1979
@@ -232,16 +238,34 @@ def BBC2003(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas):
   r = sBar/sigma0 - 1.0
   return r.ravel()
 
-def DruckerBasis(sigma0, C_D, p, ydata, sigmas):
+def DruckerBasis(sigma0, C_D, p, sigmas, Jac=False, nParas=2):
   s11 = sigmas[0]; s22 = sigmas[1]; s33 = sigmas[2]
   s12 = sigmas[3]; s23 = sigmas[4]; s31 = sigmas[5]
   I1  = s11 + s22 + s33
-  I2  = s11*s22 + s22*s33 + s11*s33 - s12**2 - s23**2 - s31**2
+  I2  = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
   I3  = s11*s22*s33 + 2.0*s12*s23*s31 - s12**2*s33 - s23**2*s11 - s31**2*s22
   J2  = I1**2/3.0 - I2
   J3  = I1**3/13.5 - I1*I2/3.0 + I3
-  r  = (J2**(3.0*p) - C_D*J3**(2.0*p))*27/(sigma0**6.0) - 1.0
-  return r.ravel()
+  left= J2**(3.0*p) - C_D*J3**(2.0*p); right = 3.0**(0.5)/sigma0
+  expo= 1.0/(6.0*p)
+
+  if not Jac:
+    return (left**expo*right - 1.0).ravel()
+  else:
+    jaco = []
+    dfdl = expo*left**(expo-1.0)
+    j1   = -left**expo*right/sigma0
+    j2   = -dfdl*J3**(2*p)*right
+    if nParas == 2:
+      for a,b in zip(j1, j2): jaco.append([a,b])
+      return np.array(jaco)
+    else:
+      ln   = lambda x : np.log(x + 1.0e-32)
+      dldp = 3.0*J2**(3.0*p)*ln(J2) - 2.0*C_D*J3**(2.0*p)*ln(J3)
+      
+      j3   = dfdl*dldp*right + (left**expo)*ln(left)*expo/(-p)*right
+      for a,b,c in zip(j1, j2, j3): jaco.append([a,b,c])
+      return np.array(jaco)
 
 def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
   '''
@@ -258,25 +282,26 @@ def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
     if nParas == 1: return (left - right).ravel()
     else:           return (left/right - 1.0).ravel()
   else:
+    ones = np.ones(np.shape(sigmas)[1])
     if nParas > 1:
       ln   = lambda x : np.log(x + 1.0e-32)
       dbda = F*ln(diff23)*diff23**a + G*ln(diff31)*diff31**a + H*ln(diff12)*diff12**a
       deda = -expo*expo; dldb = expo*left/base; drda = sigma0*(2.0**expo)*ln(2.0)*deda
-      ones = np.ones(np.shape(sigmas)[1]);      jac  = []
+      jaco = []
     
     if   nParas == 1:     # von Mises
       return ones*(-2.0**0.5)
     elif nParas == 2:     # isotropic Hosford
       j1 = ones*(-2.0**expo)                                              # d[]/dsigma0
       j2 = dldb*dbda + left*ln(base)*deda - drda                          # d[]/da
-      for a,b in zip(j1, j2): jac.append([a,b])
-      return np.array(jac)
+      for a,b in zip(j1, j2): jaco.append([a,b])
+      return np.array(jaco)
     elif nParas == 5:           # anisotropic Hosford
       j1 = -left/right/sigma0   #ones*(-2.0**expo)                                               # d[]/dsigma0
       j2 = dldb*diff23**a/right; j3 = dldb*diff31**a/right; j4 = dldb*diff12**a/right
       j5 =(dldb*dbda + left*ln(base)*deda)/right + left*(-right**(-2))*drda    # d[]/da
-      for a,b,c,d,e in zip(j1, j2,j3,j4,j5): jac.append([a,b,c,d,e])
-      return np.array(jac)
+      for a,b,c,d,e in zip(j1, j2,j3,j4,j5): jaco.append([a,b,c,d,e])
+      return np.array(jaco)
       
 def Barlat1991Basis(sigma0, a, b, c, f, g, h, order, sigmas):
   '''
@@ -478,7 +503,7 @@ class Criterion(object):
     try:
       popt, pcov, infodict, errmsg, ierr = \
          leastsqBound (criteria.fun,  initialguess,        args=(ydata,stress),
-                       bounds=bounds, full_output=True)
+                       bounds=bounds, Dfun=criteria.jac,   full_output=True)
       if ierr not in [1, 2, 3, 4]: raise RuntimeError("Optimal parameters not found: " + errmsg)
       if (len(ydata) > len(initialguess)) and pcov is not None:
         s_sq = (criteria.fun(popt, *(ydata,stress))**2).sum()/(len(ydata)-len(initialguess))
