@@ -82,8 +82,6 @@ for file in files:
 
   for i, points in enumerate(grid):
     if points == 1:
-      options.packing[i] = 1
-      options.shift[i]   = 0
       mask = np.ones(3,dtype=bool)
       mask[i]=0
       size[i] = min(size[mask]/grid[mask])                                                          # third spacing equal to smaller of other spacing
