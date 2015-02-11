@@ -55,21 +55,20 @@ if options.tensor  != []: datainfo['tensor']['label']  += options.tensor;  lengt
 if len(options.delta) != length:
   parser.error('length of offset vector does not match column types...')
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
+# --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
-  files.append({'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr})
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
+  filenames = ['STDIN']
 
-# ------------------------------------------ loop over input files ---------------------------------
-for file in files:
-  if file['name'] != 'STDIN': file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
-  else: file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+for name in filenames:
+  if name == 'STDIN':
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],False)                                     # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 

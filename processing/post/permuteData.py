@@ -18,7 +18,7 @@ Permute all values in given column(s).
 
 """, version = scriptID)
 
-parser.add_option('-l','--label',   dest='label', action='extend', metavar='<strig LIST>',
+parser.add_option('-l','--label',   dest='label', action='extend', metavar='<string LIST>',
                                     help='heading(s) of column to permute')
 parser.add_option('-r', '--rnd',    dest='randomSeed', type='int', metavar='int',
                                     help='seed of random number generator [%default]')
@@ -39,17 +39,13 @@ datainfo = {                                                                    
 if options.label != None: datainfo['scalar']['label'] += options.label
 np.random.seed(options.randomSeed)
 
-# ------------------------------------------ setup file handles ------------------------------------
-files = []
+# --- loop over input files -------------------------------------------------------------------------
 for name in filenames:
-  if os.path.exists(name):
-    files.append({'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr})
-
-#--- loop over input files -------------------------------------------------------------------------
-for file in files:
+  if not os.path.exists(name): continue
+  file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
   file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],True)                                      # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
