@@ -172,7 +172,7 @@ class Barlat1991iso(object):
   def fun(self, (sigma0, m), ydata, sigmas):
     return Barlat1991Basis(sigma0, 1.0,1.0,1.0,1.0,1.0,1.0, m, sigmas)
   def jac(self, (sigma0, m), ydata, sigmas):
-    pass
+    return Barlat1991Basis(sigma0, 1.0,1.0,1.0,1.0,1.0,1.0, m, sigmas, Jac=True, nParas=2)
 
 class Barlat1991aniso(object):
   '''
@@ -181,7 +181,7 @@ class Barlat1991aniso(object):
   def fun(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
     return Barlat1991Basis(sigma0, a,b,c,f,g,h, m, sigmas)
   def jac(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
-    pass
+    return Barlat1991Basis(sigma0, a,b,c,f,g,h, m, sigmas, Jac=True, nParas=8)
 
 def Cazacu_Barlat3D(sigma0,a1,a2,a3,a4,a5,a6, b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11, c,
                     ydata, sigmas):
@@ -303,37 +303,71 @@ def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
       for a,b,c,d,e in zip(j1, j2,j3,j4,j5): jaco.append([a,b,c,d,e])
       return np.array(jaco)
       
-def Barlat1991Basis(sigma0, a, b, c, f, g, h, order, sigmas):
+def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
   '''
     residuum of Barlat 1997 yield criterion
   '''
-  cos = np.cos; pi = np.pi; abs = np.abs
-  A = a*(sigmas[1] - sigmas[2])
-  B = b*(sigmas[2] - sigmas[0])
-  C = c*(sigmas[0] - sigmas[1])
-  F = f* sigmas[4]
-  G = g* sigmas[5]
-  H = h* sigmas[3]
+  cos  = np.cos; sin = np.sin;  pi = np.pi;    abs = np.abs
+  dAda = sigmas[1] - sigmas[2];   A = a*dAda
+  dBdb = sigmas[2] - sigmas[0];   B = b*dBdb
+  dCdc = sigmas[0] - sigmas[1];   C = c*dCdc
+  dFdf = sigmas[4];               F = f*dFdf
+  dGdg = sigmas[5];               G = g*dGdg
+  dHdh = sigmas[3];               H = h*dHdh
 
   I2 =   (F*F + G*G  +  H*H)/3.0  + ((A-C)**2+(C-B)**2+(B-A)**2)/54.0
-  I3 =   (C-B)*(A-C) * (B-A)/54.0 + F*G*H - \
-       ( (C-B)*F*F   + (A-C)*G*G  + (B-A)*H*H )/6.0
+  I3 =   (C-B)*(A-C)*(B-A)/54.0 + F*G*H - \
+       ( (C-B)*F*F + (A-C)*G*G  + (B-A)*H*H )/6.0
   theta = np.arccos(I3/I2**1.5)
-  Phi = np.sqrt(3.0*I2)* (
-        (abs(2.0*cos((2.0*theta + pi)/6.0)))**order +
-        (abs(2.0*cos((2.0*theta + pi*3.0)/6.0)))**order +
-        (abs(2.0*cos(( 2.0*theta + pi*5.0)/6.0)))**order
-                         )**(1.0/order)
-#  r   = Phi/2.0**(1.0/order) - sigma0
-  r   = Phi/2.0**(1.0/order)/sigma0 - 1.0
-  # Phi = (3.0*I2)**(order/2.0) * (
-        # (abs(2.0*cos((2.0*theta + pi)/6.0)))    **order +
-        # (abs(2.0*cos((2.0*theta + pi*3.0)/6.0)))**order +
-        # (abs(2.0*cos((2.0*theta + pi*5.0)/6.0)))**order
-                                # )
-  # r   = (Phi - 2.0*sigma0**order)**(1.0/order)
+  phi1 = (2.0*theta + pi)/6.0;      cos1 = 2.0*cos(phi1); absc1 = abs(cos1)
+  phi2 = (2.0*theta + pi*3.0)/6.0;  cos2 = 2.0*cos(phi2); absc2 = abs(cos2)
+  phi3 = (2.0*theta + pi*5.0)/6.0;  cos3 = 2.0*cos(phi3); absc3 = abs(cos3)
+  ratio= np.sqrt(3.0*I2)/sigma0;    expo = 1.0/m
+  left = ( absc1**m + absc2**m + absc3**m )/2.0
+  leftNorm = left**expo
+  r    = ratio*leftNorm - 1.0
 
-  return r.ravel()
+  if not Jac:
+    return r.ravel()
+  else:
+    ln   = lambda x : np.log(x + 1.0e-32)
+    jaco = []
+    dfdl = expo*leftNorm/left
+    js = -(r + 1.0)/sigma0
+    jm = (r+1.0)*ln(left)*(-expo*expo) + ratio*dfdl*0.5*(
+         absc1**m*ln(absc1) + absc2**m*ln(absc2) + absc3**m*ln(absc3) )
+    if nParas == 2:
+      for j1,j2 in zip(js, jm): jaco.append([j1,j2])
+      return np.array(jaco)
+    else:
+      dI2da = (2.0*A-B-C)*dAda/27.0;  dI2df = 2.0*F*dFdf/3.0
+      dI2db = (2.0*B-C-A)*dBdb/27.0;  dI2dg = 2.0*G*dGdg/3.0 
+      dI2dc = (2.0*C-A-B)*dCdc/27.0;  dI2dh = 2.0*H*dHdh/3.0
+      dI3da = dI2da*(B-C)/2.0 + (H**2 - G**2)*dAda/6.0
+      dI3db = dI2db*(C-A)/2.0 + (F**2 - H**2)*dBdb/6.0
+      dI3dc = dI2dc*(A-B)/2.0 + (G**2 - F**2)*dCdc/6.0
+      dI3df = ( (H*G + (B-C)) * F/3.0 )*dFdf
+      dI3dg = ( (F*H + (C-A)) * G/3.0 )*dGdg
+      dI3dh = ( (G*F + (A-B)) * H/3.0 )*dHdh
+
+      darccos = -(1.0 - I3**2/I2**3)**(-0.5)
+      dthedI2 = darccos*I3*(-1.5)*I2**(-2.5)
+      dthedI3 = darccos*I2**(-1.5)
+      dc1dthe = -sin(phi1)/3.0;  dc2dthe = -sin(phi2)/3.0;  dc3dthe = -sin(phi3)/3.0
+      dfdc  = ratio * dfdl * 0.5 * m
+      dfdc1 = dfdc* absc1**(expo-1.0)*np.sign(cos1)
+      dfdc2 = dfdc* absc2**(expo-1.0)*np.sign(cos2)
+      dfdc3 = dfdc* absc3**(expo-1.0)*np.sign(cos3)
+      dfdthe= (dfdc1*dc1dthe + dfdc2*dc2dthe + dfdc2*dc2dthe)*2.0
+      dfdI2 = dfdthe*dthedI2;   dfdI3 = dfdthe*dthedI3
+      ja = dfdI2*dI2da + dfdI3*dI3da;   jf = dfdI2*dI2df + dfdI3*dI3df
+      jb = dfdI2*dI2db + dfdI3*dI3db;   jg = dfdI2*dI2dg + dfdI3*dI3dg
+      jc = dfdI2*dI2dc + dfdI3*dI3dc;   jh = dfdI2*dI2dh + dfdI3*dI3dh
+
+      for j1,j2,j3,j4,j5,j6,j7,j8 in zip(js,ja,jb,jc,jf,jg,jh,jm):
+        jaco.append([j1,j2,j3,j4,j5,j6,j7,j8])
+      return np.array(jaco)
+
 
 fittingCriteria = {
   'tresca'         :{'func' : Tresca,
