@@ -3,7 +3,6 @@
 
 import threading,time,os,subprocess,shlex,string
 import numpy as np
-from scipy.optimize import curve_fit
 from scipy.linalg import svd
 from optparse import OptionParser
 import damask
@@ -183,6 +182,15 @@ class Barlat1991aniso(object):
   def jac(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
     return Barlat1991Basis(sigma0, a,b,c,f,g,h, m, sigmas, Jac=True, nParas=8)
 
+class BBC2003(object):
+  '''
+    residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
+  '''
+  def fun(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
+    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas)
+  def jac(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
+    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas, Jac=True)
+
 def Cazacu_Barlat3D(sigma0,a1,a2,a3,a4,a5,a6, b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11, c,
                     ydata, sigmas):
   '''
@@ -221,21 +229,6 @@ def Cazacu_Barlat2D(sigma0,a1,a2,a3,a6, b1,b2,b3,b4,b5,b10, c,
   f0 = (J20**3 - c*J30**2)**(1.0/6.0)
   k2 = (sigma0/3.0) *18.0 **(1.0/6.0)
   r  = f0/k2 - 1.0
-  return r.ravel()
-
-def BBC2003(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas):
-  '''
-    residuum of the BBC2003 yield criterion for plain stress
-  '''
-  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
-  k2  = 2.0*k
-
-  Gamma =     s11*(d+e)     + s22*(e+f)
-  Psi   = ( ( s11*(d-e)/2.0 + s22*(e-f)/2.0 )**2 + (g*s12)**2 )**0.5
-
-  sBar  = ( a*(b*Gamma + c*Psi)**k2 + a*(b*Gamma - c*Psi)**k2 + 
-            (1-a)*(2.0*c*Psi)**k2 )**(1.0/k2)
-  r = sBar/sigma0 - 1.0
   return r.ravel()
 
 def DruckerBasis(sigma0, C_D, p, sigmas, Jac=False, nParas=2):
@@ -367,6 +360,57 @@ def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
       for j1,j2,j3,j4,j5,j6,j7,j8 in zip(js,ja,jb,jc,jf,jg,jh,jm):
         jaco.append([j1,j2,j3,j4,j5,j6,j7,j8])
       return np.array(jaco)
+
+def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas, Jac=False):
+  '''
+    residuum of the BBC2003 yield criterion for plain stress
+  '''
+  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
+  k2  = 2.0*k
+  M = d+e;  N = e+f;  P = (d-e)/2.0;  Q = (e-f)/2.0; R = g**2
+  Gamma =     M*s11 + N*s22
+  Psi   = ( ( P*s11 + Q*s22 )**2 + s12**2*R )**0.5
+
+  l1  = b*Gamma + c*Psi; l2  = b*Gamma - c*Psi; l3  = 2.0*c*Psi
+  l1s = l1**2;           l2s = l2**2;           l3s = l3**2
+  left = a*l1s**k + a*l2s**k + (1-a)*l3s**k
+  sBar = left**(1.0/k2);  r = sBar/sigma0 - 1.0
+  if not Jac:
+    return r.ravel()
+  else:
+    temp = (P*s11 + Q*s22)/Psi
+    dPsidP = temp*s11;  dPsidQ = temp*s22;  dPsidR = 0.5*s12**2/Psi
+    ln   = lambda x : np.log(x + 1.0e-32)
+    jaco = []
+    expo = 0.5/k;  k1 = k-1.0
+
+    dsBardl = expo*sBar/left/sigma0
+    dsBarde = sBar*ln(left);   dedk = expo/(-k)
+    dldl1 =    a *k*(l1s**k1)*(2.0*l1)
+    dldl2 =    a *k*(l2s**k1)*(2.0*l2)
+    dldl3 = (1-a)*k*(l3s**k1)*(2.0*l3)
+    
+    dldGama = (dldl1 + dldl2)*b
+    dldPsi  = (dldl1 - dldl2 + 2.0*dldl3)*c
+
+    dlda = l1s**k + l2s**k - l3s**k
+    dldb = dldl1*Gamma + dldl2*Gamma
+    dldc = dldl1*Psi   - dldl2*Psi + dldl3*2.0*Psi
+    dldk = a*ln(l1s)*l1s**k + a*ln(l2s)*l2s**k + (1-a)*ln(l3s)*l3s**k
+
+    js = -(r + 1.0)/sigma0
+    ja = dsBardl * dlda
+    jb = dsBardl * dldb
+    jc = dsBardl * dldc
+    jd = dsBardl *(dldGama*s11 + dldPsi*dPsidP*0.5)
+    je = dsBardl *(dldGama*(s11+s22) + dldPsi*(dPsidP*(-0.5) + dPsidQ*0.5) )
+    jf = dsBardl *(dldGama*s22 + dldPsi*dPsidQ*(-0.5))
+    jg = dsBardl * dldPsi * dPsidR * 2.0*g
+    jk = dsBardl * dldk + dsBarde * dedk
+
+    for j1,j2,j3,j4,j5,j6,j7,j8,j9 in zip(js,ja,jb,jc,jd, je, jf,jg,jk):
+        jaco.append([j1,j2,j3,j4,j5,j6,j7,j8,j9])
+    return np.array(jaco)
 
 
 fittingCriteria = {
