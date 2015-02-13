@@ -107,7 +107,6 @@ class Drucker(object):
   def jac(self, (sigma0, C_D), ydata, sigmas):
     return DruckerBasis(sigma0, C_D, 1.0, sigmas, Jac=True, nParas=2)
 
-
 class generalDrucker(object):
   '''
     residuum of general Drucker yield criterion (eq. 2.42, F = sigma0)
@@ -116,7 +115,6 @@ class generalDrucker(object):
     return DruckerBasis(sigma0, C_D, p,  sigmas)
   def jac(self, (sigma0, C_D, p), ydata, sigmas):
     return DruckerBasis(sigma0, C_D, p,  sigmas, Jac=True, nParas=3)
-
 
 class Hosford(object):
   '''
@@ -182,14 +180,26 @@ class Barlat1991aniso(object):
   def jac(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
     return Barlat1991Basis(sigma0, a,b,c,f,g,h, m, sigmas, Jac=True, nParas=8)
 
+class Yld200418p(object):
+  '''
+    residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
+  '''
+  def fun(self, (sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
+                         d12,d21,d23,d32,d31,d13,d44,d55,d66, m), ydata, sigmas):
+    return Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
+                                   d12,d21,d23,d32,d31,d13,d44,d55,d66, m, sigmas)
+  def jac(self, (sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
+                         d12,d21,d23,d32,d31,d13,d44,d55,d66, m), ydata, sigmas):
+    return Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
+                                   d12,d21,d23,d32,d31,d13,d44,d55,d66, m,  sigmas, Jac=True)
 class BBC2003(object):
   '''
     residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
   def fun(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
-    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas)
+    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas)
   def jac(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
-    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas, Jac=True)
+    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=True)
 
 def Cazacu_Barlat3D(sigma0,a1,a2,a3,a4,a5,a6, b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11, c,
                     ydata, sigmas):
@@ -247,17 +257,17 @@ def DruckerBasis(sigma0, C_D, p, sigmas, Jac=False, nParas=2):
   else:
     jaco = []
     dfdl = expo*left**(expo-1.0)
-    j1   = -left**expo*right/sigma0
-    j2   = -dfdl*J3**(2*p)*right
+    js   = -left**expo*right/sigma0
+    jC   = -dfdl*J3**(2*p)*right
     if nParas == 2:
-      for a,b in zip(j1, j2): jaco.append([a,b])
+      for j1, j2 in zip(js, jC): jaco.append([j1, j2])
       return np.array(jaco)
     else:
       ln   = lambda x : np.log(x + 1.0e-32)
       dldp = 3.0*J2**(3.0*p)*ln(J2) - 2.0*C_D*J3**(2.0*p)*ln(J3)
       
-      j3   = dfdl*dldp*right + (left**expo)*ln(left)*expo/(-p)*right
-      for a,b,c in zip(j1, j2, j3): jaco.append([a,b,c])
+      jp   = dfdl*dldp*right + (left**expo)*ln(left)*expo/(-p)*right
+      for j1, j2, j3 in zip(js, jC, jp): jaco.append([j1, j2, j3])
       return np.array(jaco)
 
 def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
@@ -268,8 +278,9 @@ def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
   diff23  = abs(lambdas[1,:] - lambdas[2,:])
   diff31  = abs(lambdas[2,:] - lambdas[0,:])
   diff12  = abs(lambdas[0,:] - lambdas[1,:])
-  base    = F*diff23**a + G*diff31**a + H*diff12**a; expo = 1.0/a
-  left    = base**expo;    right = 2.0**expo*sigma0
+  base    = F*diff23**a + G*diff31**a + H*diff12**a;   expo = 1.0/a
+  left    = base**expo
+  right   = 2.0**expo*sigma0
   
   if not Jac:
     if nParas == 1: return (left - right).ravel()
@@ -279,21 +290,25 @@ def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
     if nParas > 1:
       ln   = lambda x : np.log(x + 1.0e-32)
       dbda = F*ln(diff23)*diff23**a + G*ln(diff31)*diff31**a + H*ln(diff12)*diff12**a
-      deda = -expo*expo; dldb = expo*left/base; drda = sigma0*(2.0**expo)*ln(2.0)*deda
+      deda = -expo*expo
+      drda = sigma0*(2.0**expo)*ln(2.0)*deda
+      dldb = expo*left/base
       jaco = []
     
     if   nParas == 1:     # von Mises
       return ones*(-2.0**0.5)
     elif nParas == 2:     # isotropic Hosford
-      j1 = ones*(-2.0**expo)                                              # d[]/dsigma0
-      j2 = dldb*dbda + left*ln(base)*deda - drda                          # d[]/da
-      for a,b in zip(j1, j2): jaco.append([a,b])
+      js = ones*(-2.0**expo)                                              # d[]/dsigma0
+      ja = dldb*dbda + left*ln(base)*deda - drda                          # d[]/da
+      for j1,j2 in zip(js, ja): jaco.append([j1,j2])
       return np.array(jaco)
     elif nParas == 5:           # anisotropic Hosford
-      j1 = -left/right/sigma0   #ones*(-2.0**expo)                                               # d[]/dsigma0
-      j2 = dldb*diff23**a/right; j3 = dldb*diff31**a/right; j4 = dldb*diff12**a/right
-      j5 =(dldb*dbda + left*ln(base)*deda)/right + left*(-right**(-2))*drda    # d[]/da
-      for a,b,c,d,e in zip(j1, j2,j3,j4,j5): jaco.append([a,b,c,d,e])
+      js = -left/right/sigma0   #ones*(-2.0**expo)                                               # d[]/dsigma0
+      jF = dldb*diff23**a/right
+      jG = dldb*diff31**a/right
+      jH = dldb*diff12**a/right
+      ja =(dldb*dbda + left*ln(base)*deda)/right + left*(-right**(-2))*drda    # d[]/da
+      for j1,j2,j3,j4,j5 in zip(js, jF,jG,jH,ja): jaco.append([j1,j2,j3,j4,j5])
       return np.array(jaco)
       
 def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
@@ -312,9 +327,12 @@ def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
   I3 =   (C-B)*(A-C)*(B-A)/54.0 + F*G*H - \
        ( (C-B)*F*F + (A-C)*G*G  + (B-A)*H*H )/6.0
   theta = np.arccos(I3/I2**1.5)
-  phi1 = (2.0*theta + pi)/6.0;      cos1 = 2.0*cos(phi1); absc1 = abs(cos1)
-  phi2 = (2.0*theta + pi*3.0)/6.0;  cos2 = 2.0*cos(phi2); absc2 = abs(cos2)
-  phi3 = (2.0*theta + pi*5.0)/6.0;  cos3 = 2.0*cos(phi3); absc3 = abs(cos3)
+  phi1 = (2.0*theta + pi)/6.0
+  phi2 = (2.0*theta + pi*3.0)/6.0
+  phi3 = (2.0*theta + pi*5.0)/6.0
+  cos1 = 2.0*cos(phi1);  absc1 = abs(cos1)
+  cos2 = 2.0*cos(phi2);  absc2 = abs(cos2)
+  cos3 = 2.0*cos(phi3);  absc3 = abs(cos3)
   ratio= np.sqrt(3.0*I2)/sigma0;    expo = 1.0/m
   left = ( absc1**m + absc2**m + absc3**m )/2.0
   leftNorm = left**expo
@@ -333,9 +351,12 @@ def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
       for j1,j2 in zip(js, jm): jaco.append([j1,j2])
       return np.array(jaco)
     else:
-      dI2da = (2.0*A-B-C)*dAda/27.0;  dI2df = 2.0*F*dFdf/3.0
-      dI2db = (2.0*B-C-A)*dBdb/27.0;  dI2dg = 2.0*G*dGdg/3.0 
-      dI2dc = (2.0*C-A-B)*dCdc/27.0;  dI2dh = 2.0*H*dHdh/3.0
+      dI2da = (2.0*A-B-C)*dAda/27.0
+      dI2db = (2.0*B-C-A)*dBdb/27.0
+      dI2dc = (2.0*C-A-B)*dCdc/27.0
+      dI2df = 2.0*F*dFdf/3.0
+      dI2dg = 2.0*G*dGdg/3.0
+      dI2dh = 2.0*H*dHdh/3.0
       dI3da = dI2da*(B-C)/2.0 + (H**2 - G**2)*dAda/6.0
       dI3db = dI2db*(C-A)/2.0 + (F**2 - H**2)*dBdb/6.0
       dI3dc = dI2dc*(A-B)/2.0 + (G**2 - F**2)*dCdc/6.0
@@ -346,30 +367,35 @@ def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
       darccos = -(1.0 - I3**2/I2**3)**(-0.5)
       dthedI2 = darccos*I3*(-1.5)*I2**(-2.5)
       dthedI3 = darccos*I2**(-1.5)
-      dc1dthe = -sin(phi1)/3.0;  dc2dthe = -sin(phi2)/3.0;  dc3dthe = -sin(phi3)/3.0
+      dc1dthe = -sin(phi1)/3.0
+      dc2dthe = -sin(phi2)/3.0
+      dc3dthe = -sin(phi3)/3.0
       dfdc  = ratio * dfdl * 0.5 * m
       dfdc1 = dfdc* absc1**(expo-1.0)*np.sign(cos1)
       dfdc2 = dfdc* absc2**(expo-1.0)*np.sign(cos2)
       dfdc3 = dfdc* absc3**(expo-1.0)*np.sign(cos3)
       dfdthe= (dfdc1*dc1dthe + dfdc2*dc2dthe + dfdc2*dc2dthe)*2.0
       dfdI2 = dfdthe*dthedI2;   dfdI3 = dfdthe*dthedI3
-      ja = dfdI2*dI2da + dfdI3*dI3da;   jf = dfdI2*dI2df + dfdI3*dI3df
-      jb = dfdI2*dI2db + dfdI3*dI3db;   jg = dfdI2*dI2dg + dfdI3*dI3dg
-      jc = dfdI2*dI2dc + dfdI3*dI3dc;   jh = dfdI2*dI2dh + dfdI3*dI3dh
+      ja = dfdI2*dI2da + dfdI3*dI3da
+      jb = dfdI2*dI2db + dfdI3*dI3db
+      jc = dfdI2*dI2dc + dfdI3*dI3dc
+      jf = dfdI2*dI2df + dfdI3*dI3df
+      jg = dfdI2*dI2dg + dfdI3*dI3dg
+      jh = dfdI2*dI2dh + dfdI3*dI3dh
 
       for j1,j2,j3,j4,j5,j6,j7,j8 in zip(js,ja,jb,jc,jf,jg,jh,jm):
         jaco.append([j1,j2,j3,j4,j5,j6,j7,j8])
       return np.array(jaco)
 
-def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas, Jac=False):
+def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
   '''
     residuum of the BBC2003 yield criterion for plain stress
   '''
   s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
   k2  = 2.0*k
   M = d+e;  N = e+f;  P = (d-e)/2.0;  Q = (e-f)/2.0; R = g**2
-  Gamma =     M*s11 + N*s22
-  Psi   = ( ( P*s11 + Q*s22 )**2 + s12**2*R )**0.5
+  Gamma =    M*s11 + N*s22
+  Psi   = ( (P*s11 + Q*s22)**2 + s12**2*R )**0.5
 
   l1  = b*Gamma + c*Psi; l2  = b*Gamma - c*Psi; l3  = 2.0*c*Psi
   l1s = l1**2;           l2s = l2**2;           l3s = l3**2
@@ -409,7 +435,217 @@ def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, ydata, sigmas, Jac=False):
     jk = dsBardl * dldk + dsBarde * dedk
 
     for j1,j2,j3,j4,j5,j6,j7,j8,j9 in zip(js,ja,jb,jc,jd, je, jf,jg,jk):
-        jaco.append([j1,j2,j3,j4,j5,j6,j7,j8,j9])
+      jaco.append([j1,j2,j3,j4,j5,j6,j7,j8,j9])
+    return np.array(jaco)
+
+def principalStress(p):
+  sin = np.sin;    cos = np.cos
+  s11 = p[0];   s22 = p[1];   s33 = p[2]
+  s12 = p[3];   s23 = p[4];   s31 = p[5]
+  I1  = s11 + s22 + s33
+  I2  = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
+  I3  = s11*s22*s33 + 2.0*s12*s23*s31 - s12**2*s33 - s23**2*s11 - s31**2*s22
+
+  third = 1.0/3.0
+  I1s3I2= (I1**2 - 3.0*I2)**0.5
+  numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
+  denom = I1s3I2**(-3.0)
+  cs    = 0.5*numer*denom
+  phi   = np.arccos(cs)/3.0
+  t1    = I1/3.0; t2 = 2.0/3.0*I1s3I2
+  S1    = t1 + t2*cos(phi)
+  S2    = t1 + t2*cos(phi+np.pi*2.0/3.0)
+  S3    = t1 + t2*cos(phi+np.pi*4.0/3.0)
+
+  return np.array([S1,S2,S3]), np.array([I1,I2,I3])
+
+def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6):
+  sin = np.sin;    cos = np.cos
+  I1 = Invariant[0,:];  I2 = Invariant[1,:];  I3 = Invariant[2,:]
+
+  third = 1.0/3.0
+  I1s3I2= (I1**2 - 3.0*I2)**0.5
+  numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
+  denom = I1s3I2**(-3.0)
+  cs    = 0.5*numer*denom
+  phi   = np.arccos(cs)*third
+
+  dphidcs   = -third/np.sqrt(1.0 - cs**2)
+  dcsddenom = 0.5*numer*(-1.5)*I1s3I2**(-5.0)
+  dcsdI1    = 0.5*(6.0*I1**2 - 9*I2)*denom + dcsddenom*(2.0*I1)
+  dcsdI2    = 0.5*(2.0*I1**3 - 9*I1)*denom + dcsddenom*(-3.0)
+  dcsdI3    = 13.5*denom
+  dphidI1   = dphidcs*dcsdI1
+  dphidI2   = dphidcs*dcsdI2
+  dphidI3   = dphidcs*dcsdI3
+
+  dI1s3I2dI1= I1/I1s3I2;  dI1s3I2dI2 = -1.5/I1s3I2
+  third2    = 2.0*third;     tcoeff  = third2*I1s3I2
+
+  theta  = phi
+  dS1dI1 = third + tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta)
+  dS1dI2 =       + tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta)
+  dS1dI3 =         tcoeff*(-sin(theta))*dphidI3
+
+  theta  = phi + np.pi*2.0/3.0
+  dS2dI1 = third + tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta)
+  dS2dI2 =       + tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta)
+  dS2dI3 =         tcoeff*(-sin(theta))*dphidI3
+
+  theta  = phi + np.pi*4.0/3.0
+  dS3dI1 = third + tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta)
+  dS3dI2 =       + tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta)
+  dS3dI3 =         tcoeff*(-sin(theta))*dphidI3
+
+#   calculate the derivation of principal stress with regards to the anisotropic coefficients  
+  dI1dp0 = dI1dp1 = dI1dp2 = 1.0
+  dI1dp3 = dI1dp4 = dI1dp5 = 0.0
+  dI2dp0 = p[1] + p[2];          dI2dp4 = -2.0*p[4]
+  dI2dp1 = p[2] + p[0];          dI2dp5 = -2.0*p[5]
+  dI2dp2 = p[0] + p[1];          dI2dp3 = -2.0*p[3]
+
+  dI3dp0 = p[1]*p[2] - p[4]**2;  dI3dp4 = -2.0*p[4]*p[0] + 2.0*p[5]*p[3]
+  dI3dp1 = p[2]*p[0] - p[5]**2;  dI3dp5 = -2.0*p[5]*p[1] + 2.0*p[3]*p[4]
+  dI3dp2 = p[0]*p[1] - p[3]**2;  dI3dp3 = -2.0*p[3]*p[2] + 2.0*p[4]*p[5]
+
+  dI1dc12 = dI1dp0*(-s2);  dI2dc12 = dI2dp0*(-s2);  dI3dc12 = dI3dp0*(-s2)  # c12
+  dI1dc21 = dI1dp1*(-s1);  dI2dc21 = dI2dp1*(-s1);  dI3dc21 = dI3dp1*(-s1)  # c21
+  dI1dc23 = dI1dp1*(-s3);  dI2dc23 = dI2dp1*(-s3);  dI3dc23 = dI3dp1*(-s3)  # c23
+  dI1dc32 = dI1dp2*(-s2);  dI2dc32 = dI2dp2*(-s2);  dI3dc32 = dI3dp2*(-s2)  # c32
+  dI1dc31 = dI1dp2*(-s1);  dI2dc31 = dI2dp2*(-s1);  dI3dc31 = dI3dp2*(-s1)  # c31
+  dI1dc13 = dI1dp0*(-s3);  dI2dc13 = dI2dp0*(-s3);  dI3dc13 = dI3dp0*(-s3)  # c13
+  dI1dc44 = dI1dp3*  s4 ;  dI2dc44 = dI2dp3*  s4 ;  dI3dc44 = dI3dp3*  s4   # c44
+  dI1dc55 = dI1dp4*  s5 ;  dI2dc55 = dI2dp4*  s5 ;  dI3dc55 = dI3dp4*  s5   # c55
+  dI1dc66 = dI1dp5*  s6 ;  dI2dc66 = dI2dp5*  s6 ;  dI3dc66 = dI3dp5*  s6   # c66
+
+  dS1dc12 = dS1dI1 * dI1dc12  +  dS1dI2 * dI2dc12  +  dS1dI3 * dI3dc12
+  dS1dc21 = dS1dI1 * dI1dc21  +  dS1dI2 * dI2dc21  +  dS1dI3 * dI3dc21
+  dS1dc23 = dS1dI1 * dI1dc23  +  dS1dI2 * dI2dc23  +  dS1dI3 * dI3dc23
+  dS1dc32 = dS1dI1 * dI1dc32  +  dS1dI2 * dI2dc32  +  dS1dI3 * dI3dc32
+  dS1dc31 = dS1dI1 * dI1dc31  +  dS1dI2 * dI2dc31  +  dS1dI3 * dI3dc31
+  dS1dc13 = dS1dI1 * dI1dc13  +  dS1dI2 * dI2dc13  +  dS1dI3 * dI3dc13
+  dS1dc44 = dS1dI1 * dI1dc44  +  dS1dI2 * dI2dc44  +  dS1dI3 * dI3dc44
+  dS1dc55 = dS1dI1 * dI1dc55  +  dS1dI2 * dI2dc55  +  dS1dI3 * dI3dc55
+  dS1dc66 = dS1dI1 * dI1dc66  +  dS1dI2 * dI2dc66  +  dS1dI3 * dI3dc66
+
+  dS2dc12 = dS2dI1 * dI1dc12  +  dS2dI2 * dI2dc12  +  dS2dI3 * dI3dc12
+  dS2dc21 = dS2dI1 * dI1dc21  +  dS2dI2 * dI2dc21  +  dS2dI3 * dI3dc21
+  dS2dc23 = dS2dI1 * dI1dc23  +  dS2dI2 * dI2dc23  +  dS2dI3 * dI3dc23
+  dS2dc32 = dS2dI1 * dI1dc32  +  dS2dI2 * dI2dc32  +  dS2dI3 * dI3dc32
+  dS2dc31 = dS2dI1 * dI1dc31  +  dS2dI2 * dI2dc31  +  dS2dI3 * dI3dc31
+  dS2dc13 = dS2dI1 * dI1dc13  +  dS2dI2 * dI2dc13  +  dS2dI3 * dI3dc13
+  dS2dc44 = dS2dI1 * dI1dc44  +  dS2dI2 * dI2dc44  +  dS2dI3 * dI3dc44
+  dS2dc55 = dS2dI1 * dI1dc55  +  dS2dI2 * dI2dc55  +  dS2dI3 * dI3dc55
+  dS2dc66 = dS2dI1 * dI1dc66  +  dS2dI2 * dI2dc66  +  dS2dI3 * dI3dc66
+
+  dS3dc12 = dS3dI1 * dI1dc12  +  dS3dI2 * dI2dc12  +  dS3dI3 * dI3dc12
+  dS3dc21 = dS3dI1 * dI1dc21  +  dS3dI2 * dI2dc21  +  dS3dI3 * dI3dc21
+  dS3dc23 = dS3dI1 * dI1dc23  +  dS3dI2 * dI2dc23  +  dS3dI3 * dI3dc23
+  dS3dc32 = dS3dI1 * dI1dc32  +  dS3dI2 * dI2dc32  +  dS3dI3 * dI3dc32
+  dS3dc31 = dS3dI1 * dI1dc31  +  dS3dI2 * dI2dc31  +  dS3dI3 * dI3dc31
+  dS3dc13 = dS3dI1 * dI1dc13  +  dS3dI2 * dI2dc13  +  dS3dI3 * dI3dc13
+  dS3dc44 = dS3dI1 * dI1dc44  +  dS3dI2 * dI2dc44  +  dS3dI3 * dI3dc44
+  dS3dc55 = dS3dI1 * dI1dc55  +  dS3dI2 * dI2dc55  +  dS3dI3 * dI3dc55
+  dS3dc66 = dS3dI1 * dI1dc66  +  dS3dI2 * dI2dc66  +  dS3dI3 * dI3dc66
+
+  return dS1dc12, dS1dc21, dS1dc23, dS1dc32, dS1dc31, dS1dc13, dS1dc44, dS1dc55, dS1dc66, \
+         dS2dc12, dS2dc21, dS2dc23, dS2dc32, dS2dc31, dS2dc13, dS2dc44, dS2dc55, dS2dc66, \
+         dS3dc12, dS3dc21, dS3dc23, dS3dc32, dS3dc31, dS3dc13, dS3dc44, dS3dc55, dS3dc66
+
+def Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
+                            d12,d21,d23,d32,d31,d13,d44,d55,d66, m, sigmas, Jac=False):
+
+  sv = (sigmas[0] + sigmas[1] + sigmas[2])/3.0
+  s1 = sigmas[0]-sv; s2 = sigmas[1]-sv; s3 = sigmas[2]-sv
+  s4 = sigmas[3];    s5 = sigmas[4];    s6 = sigmas[5]
+
+  p  = np.empty_like(sigmas);   q  = np.empty_like(sigmas)
+  p[0] = -c12*s2 - c13*s3
+  p[1] = -c21*s1 - c23*s3
+  p[2] = -c31*s1 - c32*s2
+  p[3] =  c44*s4
+  p[4] =  c55*s5
+  p[5] =  c66*s6
+
+  q[0] = -d12*s2 - d13*s3
+  q[1] = -d21*s1 - d23*s3
+  q[2] = -d31*s1 - d32*s2
+  q[3] =  d44*s4
+  q[4] =  d55*s5
+  q[5] =  d66*s6
+
+  plambdas, pInvariant = principalStress(p)   # no sort
+  qlambdas, qInvariant = principalStress(q)   # no sort
+
+  P1 = plambdas[0,:];  P2 = plambdas[1,:];  P3 = plambdas[2,:]
+  Q1 = qlambdas[0,:];  Q2 = qlambdas[1,:];  Q3 = qlambdas[2,:]
+
+  m2 = m/2.0;  m1 = 1.0/m;  m21 = m2-1.0
+  P1Q1s = (P1-Q1)**2;  P1Q2s = (P1-Q2)**2;  P1Q3s = (P1-Q3)**2
+  P2Q1s = (P2-Q1)**2;  P2Q2s = (P2-Q2)**2;  P2Q3s = (P2-Q3)**2
+  P3Q1s = (P3-Q1)**2;  P3Q2s = (P3-Q2)**2;  P3Q3s = (P3-Q3)**2
+
+  phi= P1Q1s**m2 + P1Q2s**m2 + P1Q3s**m2 + \
+       P2Q1s**m2 + P2Q2s**m2 + P2Q3s**m2 + \
+       P3Q1s**m2 + P3Q2s**m2 + P3Q3s**m2
+  r  = (0.25*phi)**m1/sigma0 - 1.0
+
+  if not Jac:
+    return r.ravel()
+  else:
+    ln     = lambda x : np.log(x + 1.0e-32)
+
+    drdphi =  (r+1.0)*m1/phi
+    dphidm =( (P1Q1s**m2)*ln(P1Q1s) + (P1Q2s**m2)*ln(P1Q2s) + (P1Q3s**m2)*ln(P1Q3s) +
+              (P2Q1s**m2)*ln(P2Q1s) + (P2Q2s**m2)*ln(P2Q2s) + (P2Q3s**m2)*ln(P2Q3s) +
+              (P3Q1s**m2)*ln(P3Q1s) + (P3Q2s**m2)*ln(P3Q2s) + (P3Q3s**m2)*ln(P3Q3s)
+            )*0.5
+    js     = -(r+1.0)/sigma0
+    jm     = drdphi*dphidm + (r+1.0)*ln(0.25*phi)*(-m1*m1)
+
+    dP1dc12, dP1dc21, dP1dc23, dP1dc32, dP1dc31, dP1dc13, dP1dc44, dP1dc55, dP1dc66, \
+    dP2dc12, dP2dc21, dP2dc23, dP2dc32, dP2dc31, dP2dc13, dP2dc44, dP2dc55, dP2dc66, \
+    dP3dc12, dP3dc21, dP3dc23, dP3dc32, dP3dc31, dP3dc13, dP3dc44, dP3dc55, dP3dc66= \
+      principalStrs_Der(p, pInvariant, s1,s2,s3,s4,s5,s6)
+
+    dQ1dd12, dQ1dd21, dQ1dd23, dQ1dd32, dQ1dd31, dQ1dd13, dQ1dd44, dQ1dd55, dQ1dd66, \
+    dQ2dd12, dQ2dd21, dQ2dd23, dQ2dd32, dQ2dd31, dQ2dd13, dQ2dd44, dQ2dd55, dQ2dd66, \
+    dQ3dd12, dQ3dd21, dQ3dd23, dQ3dd32, dQ3dd31, dQ3dd13, dQ3dd44, dQ3dd55, dQ3dd66= \
+      principalStrs_Der(q, qInvariant, s1,s2,s3,s4,s5,s6)
+
+    dphidP1 = m*( P1Q1s**m21*(P1-Q1) + P1Q2s**m21*(P1-Q2) + P1Q3s**m21*(P1-Q3) )
+    dphidP2 = m*( P2Q1s**m21*(P2-Q1) + P2Q2s**m21*(P2-Q2) + P2Q3s**m21*(P2-Q3) )
+    dphidP3 = m*( P3Q1s**m21*(P3-Q1) + P3Q2s**m21*(P3-Q2) + P3Q3s**m21*(P3-Q3) )
+
+    dphidQ1 = m*( P1Q1s**m21*(Q1-P1) + P2Q1s**m21*(Q1-P2) + P3Q1s**m21*(Q1-P3) )
+    dphidQ2 = m*( P1Q2s**m21*(Q2-P1) + P2Q2s**m21*(Q2-P2) + P3Q2s**m21*(Q2-P3) )
+    dphidQ3 = m*( P1Q3s**m21*(Q3-P1) + P2Q3s**m21*(Q3-P2) + P3Q3s**m21*(Q3-P3) )
+
+    jc12 = drdphi*( dphidP1*dP1dc12 + dphidP2*dP2dc12 + dphidP3*dP3dc12 )
+    jc21 = drdphi*( dphidP1*dP1dc21 + dphidP2*dP2dc21 + dphidP3*dP3dc21 )
+    jc23 = drdphi*( dphidP1*dP1dc23 + dphidP2*dP2dc23 + dphidP3*dP3dc23 )
+    jc32 = drdphi*( dphidP1*dP1dc32 + dphidP2*dP2dc32 + dphidP3*dP3dc32 )
+    jc31 = drdphi*( dphidP1*dP1dc31 + dphidP2*dP2dc31 + dphidP3*dP3dc31 )
+    jc13 = drdphi*( dphidP1*dP1dc13 + dphidP2*dP2dc13 + dphidP3*dP3dc13 )
+    jc44 = drdphi*( dphidP1*dP1dc44 + dphidP2*dP2dc44 + dphidP3*dP3dc44 )
+    jc55 = drdphi*( dphidP1*dP1dc55 + dphidP2*dP2dc55 + dphidP3*dP3dc55 )
+    jc66 = drdphi*( dphidP1*dP1dc66 + dphidP2*dP2dc66 + dphidP3*dP3dc66 )
+
+    jd12 = drdphi*( dphidQ1*dQ1dd12 + dphidQ2*dQ2dd12 + dphidQ3*dQ3dd12 )
+    jd21 = drdphi*( dphidQ1*dQ1dd21 + dphidQ2*dQ2dd21 + dphidQ3*dQ3dd21 )
+    jd23 = drdphi*( dphidQ1*dQ1dd23 + dphidQ2*dQ2dd23 + dphidQ3*dQ3dd23 )
+    jd32 = drdphi*( dphidQ1*dQ1dd32 + dphidQ2*dQ2dd32 + dphidQ3*dQ3dd32 )
+    jd31 = drdphi*( dphidQ1*dQ1dd31 + dphidQ2*dQ2dd31 + dphidQ3*dQ3dd31 )
+    jd13 = drdphi*( dphidQ1*dQ1dd13 + dphidQ2*dQ2dd13 + dphidQ3*dQ3dd13 )
+    jd44 = drdphi*( dphidQ1*dQ1dd44 + dphidQ2*dQ2dd44 + dphidQ3*dQ3dd44 )
+    jd55 = drdphi*( dphidQ1*dQ1dd55 + dphidQ2*dQ2dd55 + dphidQ3*dQ3dd55 )
+    jd66 = drdphi*( dphidQ1*dQ1dd66 + dphidQ2*dQ2dd66 + dphidQ3*dQ3dd66 )
+
+    jaco = []
+    for j1,j2,j3,j4,j5,j6,j7,j8,j9,j10,j11,j12,j13,j14,j15,j16,j17,j18,j19,j20 \
+        in zip(js,jc12,jc21,jc23,jc32,jc31,jc13,jc44,jc55,jc66,
+                  jd12,jd21,jd23,jd32,jd31,jd13,jd44,jd55,jd66, jm):
+      jaco.append([j1,j2,j3,j4,j5,j6,j7,j8,j9,j10,j11,j12,j13,j14,j15,j16,j17,j18,j19,j20])
     return np.array(jaco)
 
 
@@ -498,6 +734,14 @@ fittingCriteria = {
                      'paras': 'Initial yield stress, a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c:',
                      'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
                                \n Y, a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'yld200418p'     :{'func' : Yld200418p,
+                     'num'  : 20,'err':np.inf,
+                     'name' : 'Yld200418p',
+                     'paras': 'Equivalent stress,c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m:',
+                     'text' : '\nCoefficients of Yld2004-18p yield criterion: \
+                               \n Y, c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m\n',
                      'error': 'The standard deviation errors are: '
                     },
   'worst'          :{'err':np.inf},
