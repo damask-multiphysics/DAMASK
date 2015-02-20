@@ -201,45 +201,113 @@ class BBC2003(object):
   def jac(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
     return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=True)
 
-def Cazacu_Barlat3D(sigma0,a1,a2,a3,a4,a5,a6, b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11, c,
-                    ydata, sigmas):
+class Cazacu_Barlat2D(object):
   '''
-    residuum of the Cazacu–Barlat (CZ) yield criterion
+  '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
+  def fun(self, (a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c), ydata, sigmas):
+    return Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c, 
+                                self.stress0, sigmas)
+  def jac(self, (a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c), ydata, sigmas):
+    return Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c,  
+                                self.stress0, sigmas,Jac=True)
+
+class Cazacu_Barlat3D(object):
+  '''
+  '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
+  def fun(self, (a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c),ydata, sigmas):
+    return Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
+                                self.stress0, sigmas)
+  def jac(self, (a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c),ydata, sigmas):
+    return Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
+                                self.stress0, sigmas,Jac=True)
+def Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
+                         sigma0,sigmas, Jac = False):
+  '''
+    residuum of the 3D Cazacu–Barlat (CZ) yield criterion
   '''
   s11 = sigmas[0]; s22 = sigmas[1]; s33 = sigmas[2]
   s12 = sigmas[3]; s23 = sigmas[4]; s31 = sigmas[5]
+  s123, s321 = s11*s22*s33, s12*s23*s31
+  s1_2, s2_2, s3_2 = s11**2,   s22**2,   s33**2
+  s1_3, s2_3, s3_3 = s11*s1_2, s22*s2_2, s33*s3_2
+  s12_2, s23_2, s31_2 = s12**2, s23**2, s31**2
+  d12_2, d23_2, d31_2 = (s11-s22)**2, (s22-s33)**2, (s33-s11)**2
   
-  J20 = ( a1*(s22-s33)**2 + a2*(s33-s11)**2 + a3*(s11-s22)**2 )/6.0 + \
-          a4* s23**2      + a5* s31**2      + a6* s12**2
-
-  J30 = ( (b1    +b2    )*s11**3  + (b3    +b4    )*s22**3  + ( b1+b4-b2      +  b1+b4-b3     )*s33**3)/27.0- \
-        ( (b1*s22+b2*s33)*s11**2  + (b3*s33+b4*s11)*s22**2  + ((b1+b4-b2)*s11 + (b1+b4-b3)*s22)*s33**2)/9.0 + \
-        ( (b1+b4)*s11*s22*s33/9.0 + b11*s12*s23*s31 )*2.0   - \
-        ( ( 2.0*b9 *s22 - b8*s33  - (2*b9 -b8)*s11 )*s31**2 + 
-          ( 2.0*b10*s33 - b5*s22  - (2*b10-b5)*s11 )*s12**2 +
-          ( (b6+b7)*s11 - b6*s22  - b7*s33         )*s23**2
+  J20 = ( a1*d12_2 + a2*d23_2 + a3*d31_2 )/6.0 + a4*s12_2 + a5*s23_2 + a6*s31_2
+  J30 = ( (b1    +b2    )*s1_3  + (b3    +b4    )*s2_3  + ( b1+b4-b2      +  b1+b4-b3     )*s3_3 )/27.0- \
+        ( (b1*s22+b2*s33)*s1_2  + (b3*s33+b4*s11)*s2_2  + ((b1+b4-b2)*s11 + (b1+b4-b3)*s22)*s3_2 )/9.0 + \
+        ( (b1+b4)*s123/9.0 + b11*s321 )*2.0 - \
+        ( ( 2.0*b9 *s22 - b8*s33  - (2.0*b9 -b8)*s11 )*s31_2 + 
+          ( 2.0*b10*s33 - b5*s22  - (2.0*b10-b5)*s11 )*s12_2 +
+          ( (b6+b7)*s11 - b6*s22  - b7*s33           )*s23_2
         )/3.0
-  f0 = (J20**3 - c*J30**2)**(1.0/6.0)
-  k2 = (sigma0/3.0) *18.0 **(1.0/6.0)
-  r  = f0/k2 - 1.0
-  return r.ravel()
+  f0 = (J20**3 - c*J30**2)/18.0
+  r  = f0**(1.0/6.0)*(3.0/sigma0)
+  
+  if not Jac:
+    return (r - 1.0).ravel()
+  else:
+    drdf = r/f0/108.0
+    dj2  =  drdf*3.0*J20**2.0
+    dj3  = -drdf*2.0*J30*c
+    jc   = -drdf*J30**2
 
-def Cazacu_Barlat2D(sigma0,a1,a2,a3,a6, b1,b2,b3,b4,b5,b10, c,
-                    ydata, sigmas):
+    ja1,ja2,ja3 =  dj2*d12_2/6.0, dj2*d23_2/6.0, dj2*d31_2/6.0
+    ja4,ja5,ja6 =  dj2*s12_2,     dj2*s23_2,     dj2*s31_2
+    jb1 = dj3*( (s1_3 + 2.0*s3_3)/27.0 - s22*s1_2/9.0 - (s11+s22)*s3_2/9.0 + s123/4.5 )
+    jb2 = dj3*( (s1_3 -     s3_3)/27.0 - s33*s1_2/9.0 +  s11     *s3_2/9.0 )
+    jb3 = dj3*( (s2_3 -     s3_3)/27.0 - s33*s2_2/9.0 +  s22     *s3_2/9.0 )
+    jb4 = dj3*( (s2_3 + 2.0*s3_3)/27.0 - s11*s2_2/9.0 - (s11+s22)*s3_2/9.0 + s123/4.5 )
+
+    jb5, jb10 = dj3*(s22 - s11)*s12_2/3.0,  dj3*(s11 - s33)*s12_2/3.0*2.0
+    jb6, jb7  = dj3*(s22 - s11)*s23_2/3.0,  dj3*(s33 - s11)*s23_2/3.0
+    jb8, jb9  = dj3*(s33 - s11)*s31_2/3.0,  dj3*(s11 - s22)*s31_2/3.0*2.0
+    jb11      = dj3*s321*2.0
+
+    jaco = []
+    for jac in zip(ja1,ja2,ja3,ja4,ja5,ja6,jb1,jb2,jb3,jb4,jb5,jb6,jb7,jb8,jb9,jb10,jb11,jc):
+      jaco.append(jac)
+    return np.array(jaco)
+
+def Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c, 
+                         sigma0,sigmas, Jac = False):
   '''
-    residuum of the Cazacu–Barlat (CZ) yield criterion for plain stress
+    residuum of the 2D Cazacu–Barlat (CZ) yield criterion for plain stress
   '''
   s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
+  s1_2, s2_2 = s11**2, s22**2
+  s1_3, s2_3 = s11*s1_2, s22*s2_2
+  s12_2 = s12**2
 
-  J20 = ( (a2+a3)*s11**2 + (a1+a3)*s22**2 - 2.0*a3*s11*s22 )/6.0 + a6*s12**2
+  J20 = ( a1*(s11-s22)**2 + a2*s2_2 + a3*s1_2 )/6.0 + a4*s12_2
+  J30 = ( (b1+b2)*s1_3 + (b3+b4)*s2_3 )/27.0 - ( (b1*s11 + b4*s22)*s11*s22 )/9.0 + \
+        (  b5*s22 + (2*b10-b5)*s11 )*s12_2/3.0
 
-  J30 = ( (b1     + b2    )*s11**3  + (b3    +b4    )*s22**3 )/27.0- \
-        ( (b1*s11 + b4*s22)*s11*s22  )/9.0 + \
-        (  b5*s22 + (2*b10-b5)*s11 )*s12**2/3.0
-  f0 = (J20**3 - c*J30**2)**(1.0/6.0)
-  k2 = (sigma0/3.0) *18.0 **(1.0/6.0)
-  r  = f0/k2 - 1.0
-  return r.ravel()
+  f0 = (J20**3 - c*J30**2)/18.0
+  r  = f0**(1.0/6.0)*(3.0/sigma0)
+  
+  if not Jac:
+    return (r - 1.0).ravel()
+  else:
+    drdf = r/f0/108.0
+    dj2  =  drdf*3.0*J20**2.0
+    dj3  = -drdf*2.0*J30*c
+    jc   = -drdf*J30**2
+
+    ja1,ja2,ja3,ja4 = dj2*(s11-s22)**2/6.0, dj2*s2_2/6.0, dj2*s1_2/6.0, dj2*s12_2
+    jb1, jb2 = s1_3/27.0 - s1_2*s22/9.0,  s1_3/27.0
+    jb4, jb3 = s2_3/27.0 - s2_2*s11/9.0,  s2_3/27.0
+    jb5, jb10= -s12_2*(s11 - s22)/3.0,    s12_2*s11*2.0/3.0
+
+    jaco = []    
+    for jac in zip(ja1,ja2,ja3,ja4,jb1,jb2,jb3,jb4,jb5,jb10,jc):
+      jaco.append(jac)
+    return np.array(jaco)
+
 
 def DruckerBasis(sigma0, C_D, p, sigmas, Jac=False, nParas=2):
   s11 = sigmas[0]; s22 = sigmas[1]; s33 = sigmas[2]
@@ -721,19 +789,19 @@ fittingCriteria = {
                      'error': 'The standard deviation errors are: '
                     },
   'Cazacu_Barlat2D':{'func' : Cazacu_Barlat2D,
-                     'num'  : 12,'err':np.inf,
+                     'num'  : 11,'err':np.inf,
                      'name' : 'Cazacu Barlat for plain stress',
-                     'paras': 'Initial yield stress, a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:',
+                     'paras': 'a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:',
                      'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
-                               \n Y, a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:\n',
+                               \n a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'Cazacu_Barlat3D':{'func' : Cazacu_Barlat3D,
-                     'num'  : 19,'err':np.inf,
+                     'num'  : 18,'err':np.inf,
                      'name' : 'Cazacu Barlat',
-                     'paras': 'Initial yield stress, a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c:',
+                     'paras': 'a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c:',
                      'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
-                               \n Y, a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c\n',
+                               \n a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c\n',
                      'error': 'The standard deviation errors are: '
                     },
   'yld200418p'     :{'func' : Yld200418p,
@@ -920,7 +988,7 @@ def doSim(delay,thread):
         upper,lower = table.data[line,9],table.data[line-1,9]                                       # values for linear interpolation
         stress = np.array(table.data[line-1,0:9] * (upper-threshold)/(upper-lower) + \
                           table.data[line  ,0:9] * (threshold-lower)/(upper-lower)).reshape(3,3)    # linear interpolation of stress values
-        dstrain= np.array(table.data[line,10:] - table.data[line-1,10:])
+        dstrain= np.array(table.data[line,10:] - table.data[line-1,10:]).reshape(3,3)
 
         yieldStress[i,0]= stress[0,0]; yieldStress[i,1]=stress[1,1]; yieldStress[i,2]=stress[2,2]
         yieldStress[i,3]=(stress[0,1] + stress[1,0])/2.0     #   0  3  5
