@@ -472,8 +472,8 @@ def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6):
 
   dphidcs   = -third/np.sqrt(1.0 - cs**2)
   dcsddenom = 0.5*numer*(-1.5)*I1s3I2**(-5.0)
-  dcsdI1    = 0.5*(6.0*I1**2 - 9*I2)*denom + dcsddenom*(2.0*I1)
-  dcsdI2    = 0.5*(2.0*I1**3 - 9*I1)*denom + dcsddenom*(-3.0)
+  dcsdI1    = 0.5*(6.0*I1**2 - 9.0*I2)*denom + dcsddenom*(2.0*I1)
+  dcsdI2    = 0.5*(          - 9.0*I1)*denom + dcsddenom*(-3.0)
   dcsdI3    = 13.5*denom
   dphidI1   = dphidcs*dcsdI1
   dphidI2   = dphidcs*dcsdI2
@@ -497,7 +497,7 @@ def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6):
   dS3dI2 =       + tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta)
   dS3dI3 =         tcoeff*(-sin(theta))*dphidI3
 
-#   calculate the derivation of principal stress with regards to the anisotropic coefficients  
+# calculate the derivation of principal stress with regards to the anisotropic coefficients  
   dI1dp0 = dI1dp1 = dI1dp2 = 1.0
   dI1dp3 = dI1dp4 = dI1dp5 = 0.0
   dI2dp0 = p[1] + p[2];          dI2dp4 = -2.0*p[4]
@@ -908,32 +908,42 @@ def doSim(delay,thread):
   for l in [thresholdKey,'1_Cauchy']:
     if l not in table.labels: print '%s not found'%l
   s.release()
-  table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey])
+  table.data_readArray(['%i_Cauchy'%(i+1) for i in xrange(9)]+[thresholdKey]+['%i_ln(V)'%(i+1) for i in xrange(9)])
 
   line = 0
   lines = np.shape(table.data)[0]
-  yieldStress = np.empty((int(options.yieldValue[2]),6),'d')
+  yieldStress     = np.empty((int(options.yieldValue[2]),6),'d')
+  deformationRate = np.empty((int(options.yieldValue[2]),6),'d')
   for i,threshold in enumerate(np.linspace(options.yieldValue[0],options.yieldValue[1],options.yieldValue[2])):
     while line < lines:
       if table.data[line,9]>= threshold:
         upper,lower = table.data[line,9],table.data[line-1,9]                                       # values for linear interpolation
         stress = np.array(table.data[line-1,0:9] * (upper-threshold)/(upper-lower) + \
                           table.data[line  ,0:9] * (threshold-lower)/(upper-lower)).reshape(3,3)    # linear interpolation of stress values
+        dstrain= np.array(table.data[line,10:] - table.data[line-1,10:])
+
         yieldStress[i,0]= stress[0,0]; yieldStress[i,1]=stress[1,1]; yieldStress[i,2]=stress[2,2]
         yieldStress[i,3]=(stress[0,1] + stress[1,0])/2.0     #   0  3  5
         yieldStress[i,4]=(stress[1,2] + stress[2,1])/2.0     #   *  1  4  yieldStress
         yieldStress[i,5]=(stress[2,0] + stress[0,2])/2.0     #   *  *  2
+
+#       D*dt = 0.5(L+L^T)*dt = 0.5*d(lnF + lnF^T) = dlnV
+        deformationRate[i,0]= dstrain[0,0]; deformationRate[i,1]=dstrain[1,1]; deformationRate[i,2]=dstrain[2,2]
+        deformationRate[i,3]=(dstrain[0,1] + dstrain[1,0])/2.0     #   0  3  5
+        deformationRate[i,4]=(dstrain[1,2] + dstrain[2,1])/2.0     #   *  1  4
+        deformationRate[i,5]=(dstrain[2,0] + dstrain[0,2])/2.0     #   *  *  2
         break
       else:
         line+=1
-  
+
   s.acquire()
-  global stressAll
+  global stressAll, strainAll
   print('number of yield points of sim %i: %i'%(me,len(yieldStress)))
   print('starting fitting for sim %i from %s'%(me,thread))
   try:
     for i in xrange(int(options.yieldValue[2])):
-      stressAll[i]=np.append(yieldStress[i]/unitGPa,stressAll[i])
+      stressAll[i]=np.append(stressAll[i], yieldStress[i]/unitGPa)
+      strainAll[i]=np.append(strainAll[i], deformationRate[i])
       myFit.fit(stressAll[i].reshape(len(stressAll[i])//6,6).transpose())
   except Exception as detail:
     print('could not fit for sim %i from %s'%(me,thread))
@@ -1017,6 +1027,7 @@ fitResults = []
 s=threading.Semaphore(1)
 
 stressAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
+strainAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 myLoad = Loadcase(options.load[0],options.load[1],options.load[2])
 myFit = Criterion(options.criterion)
 
