@@ -80,6 +80,8 @@ class Tresca(object):
   '''
     residuum of Tresca yield criterion (eq. 2.26)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self,sigma0, ydata, sigmas):
     lambdas = principalStresses(sigmas)
     r = np.amax(np.array([abs(lambdas[2,:]-lambdas[1,:]),\
@@ -93,6 +95,8 @@ class vonMises(object):
   '''
     residuum of Huber-Mises-Hencky yield criterion (eq. 2.37)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, sigma0, ydata, sigmas):
     return HosfordBasis(sigma0, 1.0,1.0,1.0, 2.0, sigmas)
   def jac(self, sigma0, ydata, sigmas):
@@ -102,6 +106,8 @@ class Drucker(object):
   '''
     residuum of Drucker yield criterion (eq. 2.41, F = sigma0)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, C_D), ydata, sigmas):
     return DruckerBasis(sigma0, C_D, 1.0, sigmas)
   def jac(self, (sigma0, C_D), ydata, sigmas):
@@ -111,6 +117,8 @@ class generalDrucker(object):
   '''
     residuum of general Drucker yield criterion (eq. 2.42, F = sigma0)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, C_D, p), ydata, sigmas):
     return DruckerBasis(sigma0, C_D, p,  sigmas)
   def jac(self, (sigma0, C_D, p), ydata, sigmas):
@@ -120,6 +128,8 @@ class Hosford(object):
   '''
     residuum of Hershey yield criterion (eq. 2.43, Y = sigma0)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, a), ydata, sigmas):
     return HosfordBasis(sigma0, 1.0,1.0,1.0, a, sigmas)
   def jac(self, (sigma0, a), ydata, sigmas):
@@ -137,6 +147,8 @@ class Hill1948(object):
   '''
     residuum of Hill 1948 quadratic yield criterion (eq. 2.48)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (F,G,H,L,M,N), ydata, sigmas):
     r = F*(sigmas[1]-sigmas[2])**2.0 + G*(sigmas[2]-sigmas[0])**2.0 + H*(sigmas[0]-sigmas[1])**2.0\
       + 2.0*L*sigmas[4]**2.0 + 2.0*M*sigmas[5]**2.0 + 2.0*N*sigmas[3]**2.0 - 1.0
@@ -157,6 +169,8 @@ class generalHosford(object):
   '''
     residuum of Hershey yield criterion (eq. 2.104, sigmas = sigma0)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, F, G, H, a), ydata, sigmas, nParas=5):
     return HosfordBasis(sigma0, F, G, H, a, sigmas)
   def jac(self, (sigma0, F, G, H, a), ydata, sigmas):
@@ -166,6 +180,8 @@ class Barlat1991iso(object):
   '''
     residuum of isotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, m), ydata, sigmas):
     return Barlat1991Basis(sigma0, 1.0,1.0,1.0,1.0,1.0,1.0, m, sigmas)
   def jac(self, (sigma0, m), ydata, sigmas):
@@ -175,6 +191,8 @@ class Barlat1991aniso(object):
   '''
     residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
     return Barlat1991Basis(sigma0, a,b,c,f,g,h, m, sigmas)
   def jac(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
@@ -184,6 +202,8 @@ class Yld200418p(object):
   '''
     residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
                          d12,d21,d23,d32,d31,d13,d44,d55,d66, m), ydata, sigmas):
     return Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
@@ -196,6 +216,8 @@ class BBC2003(object):
   '''
     residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
   def fun(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
     return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas)
   def jac(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
@@ -269,8 +291,8 @@ def Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
     jb11      = dj3*s321*2.0
 
     jaco = []
-    for jac in zip(ja1,ja2,ja3,ja4,ja5,ja6,jb1,jb2,jb3,jb4,jb5,jb6,jb7,jb8,jb9,jb10,jb11,jc):
-      jaco.append(jac)
+    for jacv in zip(ja1,ja2,ja3,ja4,ja5,ja6,jb1,jb2,jb3,jb4,jb5,jb6,jb7,jb8,jb9,jb10,jb11,jc):
+      jaco.append(jacv)
     return np.array(jaco)
 
 def Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c, 
@@ -304,8 +326,8 @@ def Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c,
     jb5, jb10= -s12_2*(s11 - s22)/3.0,    s12_2*s11*2.0/3.0
 
     jaco = []    
-    for jac in zip(ja1,ja2,ja3,ja4,jb1,jb2,jb3,jb4,jb5,jb10,jc):
-      jaco.append(jac)
+    for jacv in zip(ja1,ja2,ja3,ja4,jb1,jb2,jb3,jb4,jb5,jb10,jc):
+      jaco.append(jacv)
     return np.array(jaco)
 
 
@@ -328,14 +350,14 @@ def DruckerBasis(sigma0, C_D, p, sigmas, Jac=False, nParas=2):
     js   = -left**expo*right/sigma0
     jC   = -dfdl*J3**(2*p)*right
     if nParas == 2:
-      for j1, j2 in zip(js, jC): jaco.append([j1, j2])
+      for jacv in zip(js, jC): jaco.append(jacv)
       return np.array(jaco)
     else:
       ln   = lambda x : np.log(x + 1.0e-32)
       dldp = 3.0*J2**(3.0*p)*ln(J2) - 2.0*C_D*J3**(2.0*p)*ln(J3)
       
       jp   = dfdl*dldp*right + (left**expo)*ln(left)*expo/(-p)*right
-      for j1, j2, j3 in zip(js, jC, jp): jaco.append([j1, j2, j3])
+      for jacv in zip(js, jC, jp): jaco.append(jacv)
       return np.array(jaco)
 
 def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
@@ -368,7 +390,8 @@ def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
     elif nParas == 2:     # isotropic Hosford
       js = ones*(-2.0**expo)                                              # d[]/dsigma0
       ja = dldb*dbda + left*ln(base)*deda - drda                          # d[]/da
-      for j1,j2 in zip(js, ja): jaco.append([j1,j2])
+      for jacv in zip(js, ja): 
+        jaco.append(jacv)
       return np.array(jaco)
     elif nParas == 5:           # anisotropic Hosford
       js = -left/right/sigma0   #ones*(-2.0**expo)                                               # d[]/dsigma0
@@ -376,7 +399,8 @@ def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
       jG = dldb*diff31**a/right
       jH = dldb*diff12**a/right
       ja =(dldb*dbda + left*ln(base)*deda)/right + left*(-right**(-2))*drda    # d[]/da
-      for j1,j2,j3,j4,j5 in zip(js, jF,jG,jH,ja): jaco.append([j1,j2,j3,j4,j5])
+      for jacv in zip(js, jF,jG,jH,ja): 
+        jaco.append(jacv)
       return np.array(jaco)
       
 def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
@@ -416,7 +440,7 @@ def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
     jm = (r+1.0)*ln(left)*(-expo*expo) + ratio*dfdl*0.5*(
          absc1**m*ln(absc1) + absc2**m*ln(absc2) + absc3**m*ln(absc3) )
     if nParas == 2:
-      for j1,j2 in zip(js, jm): jaco.append([j1,j2])
+      for jacv in zip(js, jm): jaco.append(jacv)
       return np.array(jaco)
     else:
       dI2da = (2.0*A-B-C)*dAda/27.0
@@ -451,8 +475,8 @@ def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
       jg = dfdI2*dI2dg + dfdI3*dI3dg
       jh = dfdI2*dI2dh + dfdI3*dI3dh
 
-      for j1,j2,j3,j4,j5,j6,j7,j8 in zip(js,ja,jb,jc,jf,jg,jh,jm):
-        jaco.append([j1,j2,j3,j4,j5,j6,j7,j8])
+      for jacv in zip(js,ja,jb,jc,jf,jg,jh,jm):
+        jaco.append(jacv)
       return np.array(jaco)
 
 def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
@@ -502,8 +526,8 @@ def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
     jg = dsBardl * dldPsi * dPsidR * 2.0*g
     jk = dsBardl * dldk + dsBarde * dedk
 
-    for j1,j2,j3,j4,j5,j6,j7,j8,j9 in zip(js,ja,jb,jc,jd, je, jf,jg,jk):
-      jaco.append([j1,j2,j3,j4,j5,j6,j7,j8,j9])
+    for jacv in zip(js,ja,jb,jc,jd, je, jf,jg,jk):
+      jaco.append(jacv)
     return np.array(jaco)
 
 def principalStress(p):
@@ -710,10 +734,9 @@ def Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
     jd66 = drdphi*( dphidQ1*dQ1dd66 + dphidQ2*dQ2dd66 + dphidQ3*dQ3dd66 )
 
     jaco = []
-    for j1,j2,j3,j4,j5,j6,j7,j8,j9,j10,j11,j12,j13,j14,j15,j16,j17,j18,j19,j20 \
-        in zip(js,jc12,jc21,jc23,jc32,jc31,jc13,jc44,jc55,jc66,
+    for jacv in zip(js,jc12,jc21,jc23,jc32,jc31,jc13,jc44,jc55,jc66,
                   jd12,jd21,jd23,jd32,jd31,jd13,jd44,jd55,jd66, jm):
-      jaco.append([j1,j2,j3,j4,j5,j6,j7,j8,j9,j10,j11,j12,j13,j14,j15,j16,j17,j18,j19,j20])
+      jaco.append(jacv)
     return np.array(jaco)
 
 
@@ -879,13 +902,13 @@ class Criterion(object):
     global fitResults
 
     nameCriterion = self.name.lower()
-    criteriaClass = fittingCriteria[nameCriterion]['func'];  criteria = criteriaClass()
+    criteriaClass = fittingCriteria[nameCriterion]['func']
     numParas      = fittingCriteria[nameCriterion]['num']
     textParas     = fittingCriteria[nameCriterion]['text'] + formatOutput(numParas)
     textError     = fittingCriteria[nameCriterion]['error']+ formatOutput(numParas,'%-14.8f')+'\n'
     bounds        = fittingCriteria[nameCriterion]['bound']  # Default bounds, no bound
     guess0        = fittingCriteria[nameCriterion]['guess']  # Default initial guess, depends on bounds
-
+    criteria      = criteriaClass(0.0)
     if fitResults == [] : initialguess = guess0
     else                : initialguess = np.array(fitResults[-1])
     weight = get_weight(np.shape(stress)[1])
