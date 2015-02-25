@@ -149,8 +149,19 @@ class Hill1948(object):
     jF=(sigmas[1]-sigmas[2])**2.0; jG=(sigmas[2]-sigmas[0])**2.0; jH=(sigmas[0]-sigmas[1])**2.0
     jL=2.0*sigmas[4]**2.0;         jM=2.0*sigmas[5]**2.0;         jN=2.0*sigmas[3]**2.0
     jaco = []
-    for f,g,h,l,m,n in zip(jF, jG, jH, jL, jM, jN): jaco.append([f,g,h,l,m,n])
+    for jacv in zip(jF, jG, jH, jL, jM, jN): jaco.append(jacv)
     return np.array(jaco)
+
+class Hill1979(object):
+  '''
+    residuum of Hill 1979 quadratic yield criterion (eq. 2.48)
+  '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
+  def fun(self, (f,g,h,a,b,c,m), ydata, sigmas):
+    return Hill1979Basis(self.stress0, f,g,h,a,b,c,m, sigmas)
+  def jac(self, (f,g,h,a,b,c,m), ydata, sigmas):
+    return Hill1979Basis(self.stress0, f,g,h,a,b,c,m, sigmas, Jac=True)
 
 class generalHosford(object):
   '''
@@ -361,6 +372,40 @@ def DruckerBasis(sigma0, C_D, p, sigmas, Jac=False, nParas=2):
       jp   = dfdl*dldp*right + (left**expo)*ln(left)*expo/(-p)*right
       for jacv in zip(js, jC, jp): jaco.append(jacv)
       return np.array(jaco)
+
+def Hill1979Basis(sigma0, f,g,h,a,b,c,m, sigmas, Jac=False):
+
+  s1,s2,s3  = principalStresses(sigmas)
+  d23 = s2-s3;  d123 = 2.0*s1 - s2 - s3
+  d31 = s3-s1;  d231 = 2.0*s2 - s3 - s1
+  d12 = s1-s2;  d312 = 2.0*s3 - s1 - s2
+
+  d23s = d23**2; d123s = d123**2
+  d31s = d31**2; d231s = d231**2
+  d12s = d12**2; d312s = d312**2
+
+  m2 = m/2.0;  mi = 1.0/m
+  base = f* d23s**m2 + g* d31s**m2 + h* d12s**m2 + \
+         a*d123s**m2 + b*d231s**m2 + c*d312s**m2
+  left = base**mi
+  r = left/sigma0
+
+  if not Jac:
+    return (r-1.0).ravel()
+  else:
+    ln   = lambda x : np.log(x + 1.0e-32)
+    drdb = r/base*mi
+    dbdm = ( f* d23s**m2*ln( d23s) + g* d31s**m2*ln( d31s) +  h*d12s**m2*ln( d12s) +
+             a*d123s**m2*ln(d123s) + b*d231s**m2*ln(d231s) + c*d312s**m2*ln(d312s) )*0.5
+    jf = drdb*d23s**m2;   ja = drdb*d123s**m2
+    jg = drdb*d31s**m2;   jb = drdb*d231s**m2
+    jh = drdb*d12s**m2;   jc = drdb*d312s**m2
+    jm = drdb*dbdm + r*ln(base)*(-mi*mi)
+
+    jaco = []
+    for jacv in zip(jf,jg,jh,ja,jb,jc,jm): 
+      jaco.append(jacv)
+    return np.array(jaco)
 
 def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
   '''
@@ -912,6 +957,13 @@ fittingCriteria = {
                      'name' : 'Hill1948',
                      'paras': 'Normalized [F, G, H, L, M, N]:',
                      'text' : '\nCoefficients of Hill1948 criterion:\n[F, G, H, L, M, N]:'+' '*16,
+                     'error': 'The standard deviation errors are: '
+                    },
+  'hill1979'       :{'func' : Hill1979,
+                     'num'  : 7,'err':np.inf,
+                     'name' : 'Hill1979',
+                     'paras': 'f,g,h,a,b,c,m:',
+                     'text' : '\nCoefficients of Hill1979 criterion:\n f,g,h,a,b,c,m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'drucker'        :{'func' : Drucker,
