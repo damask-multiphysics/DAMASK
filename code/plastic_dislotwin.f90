@@ -995,7 +995,7 @@ subroutine plastic_dislotwin_init(fileUnit)
            do k = 1_pInt,plastic_dislotwin_Ntrans(o,instance)                                   ! loop over (active) systems in other family (trans)
              plastic_dislotwin_projectionMatrix_Trans(index_myFamily+j,index_otherFamily+k,instance) = &
                    lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,phase))+j, &
-                                                sum(lattice_NtransSystem(1:o-1,phase))+k, phase)
+                                            sum(lattice_NtransSystem(1:o-1,phase))+k, phase)
          enddo; enddo
  
        enddo transSystemsLoop
@@ -1303,7 +1303,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  !* 1/mean free distance between 2 martensite lamellar from different systems seen by a moving dislocation
  plasticState(ph)%state((5_pInt*ns+3_pInt*nt+2_pInt*nr+1_pInt):(6_pInt*ns+3_pInt*nt+2_pInt*nr), of) = 0.0_pReal
  if (nr > 0_pInt .and. ns > 0_pInt) &
-   plasticState(ph)%state((5_pInt*ns+3_pInt*nt+2_pInt*nr+1):(6_pInt*ns+3_pInt*nt+2_pInt*nr), of) = &
+   plasticState(ph)%state((5_pInt*ns+3_pInt*nt+2_pInt*nr+1_pInt):(6_pInt*ns+3_pInt*nt+2_pInt*nr), of) = &
      ftransOverLamellarSize(1:nr)/(1.0_pReal-sumftr)
  
  !* mean free path between 2 obstacles seen by a moving dislocation
@@ -1876,10 +1876,10 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    index_myFamily = sum(lattice_NtransSystem(1:f-1_pInt,ph))           ! at which index starts my family
 
    !* Projection of shear and shear rate on fault band (twin) systems
-   if (nr > 0_pInt .and. ns == nr) then
-     shear_trans     = matmul(plastic_dislotwin_projectionMatrix_Trans(:,:,instance), &
+   if (nr > 0_pInt) then
+     shear_trans     = matmul(plastic_dislotwin_projectionMatrix_Trans(1:nr,1:ns,instance), &
        plasticState(ph)%state(2_pInt*ns+1_pInt:3_pInt*ns, of))
-     shearrate_trans = matmul(plastic_dislotwin_projectionMatrix_Trans(:,:,instance), &
+     shearrate_trans = matmul(plastic_dislotwin_projectionMatrix_Trans(1:nr,1:ns,instance), &
        plasticState(ph)%dotState(2_pInt*ns+1_pInt:3_pInt*ns, of))
    endif
 
