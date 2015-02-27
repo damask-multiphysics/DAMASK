@@ -33,8 +33,7 @@ def d_print(info, data, separator=False):
 parser = argparse.ArgumentParser(prog="geoFromBarycentic",
                                  description='''Generate geom file through \
                                    Barycentric interpolating seeds file.''',
-                                 epilog="requires numpy, scipy, and \
-                                   ezxtal(https://github.com/KedoKudo/ezxtal.git).")
+                                 epilog="requires numpy, and scipy.")
 parser.add_argument("seeds",
                     help="seeds file in DAMASK format:\
                           http://damask.mpie.de/Documentation/AsciiTableFormat",
