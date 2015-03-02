@@ -10,7 +10,7 @@
 # maintain meaningful microstructure(reduce artifacts).
 
 
-import sys, os
+import sys, os, string
 import numpy as np
 import argparse
 from scipy.spatial import Delaunay
@@ -27,6 +27,27 @@ def d_print(info, data, separator=False):
     if(separator): print "*"*80
     print info
     print data
+
+
+def meshgrid2(*arrs):
+  '''
+  code inspired by http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
+  '''
+  arrs = tuple(reversed(arrs))
+  arrs = tuple(arrs)
+  lens = np.array(map(len, arrs))
+  dim = len(arrs)
+  ans = []
+  for i, arr in enumerate(arrs):
+    slc = np.ones(dim,'i')
+    slc[i] = lens[i]
+    arr2 = np.asarray(arr).reshape(slc)
+    for j, sz in enumerate(lens):
+      if j != i:
+        arr2 = arr2.repeat(sz, axis=j)
+
+    ans.insert(0,arr2)
+  return tuple(ans)
 
 
 #prepare command line interface
@@ -176,8 +197,6 @@ else:
             for dy in [-y, 0, y]
             for dx in [-x, 0, x]]
     s_coords = tmp
-    for item in tmp:
-        print item
 
 if (args.seedsFile):
     with open("new_seed.seeds", "w") as f:
@@ -210,6 +229,15 @@ if(args.debug):
     d_print("vertices:", s_coords[tri.simplices])
 
 #populate grid points (only 3D for now)
+'''
+#populating grid using meshgrid2
+x = (np.arange(args.grid[0])+0.5)*args.size[0]/args.grid[0]
+y = (np.arange(args.grid[1])+0.5)*args.size[1]/args.grid[1]
+z = (np.arange(args.grid[2])+0.5)*args.size[2]/args.grid[2]
+mesh_pts = np.transpose(np.vstack(map(np.ravel, meshgrid2(x, y, z))))
+print mesh_pts
+'''
+#this is actually faster than using meshgrid2
 mesh_pts = [[(i+0.5)*args.size[0]/args.grid[0],
              (j+0.5)*args.size[1]/args.grid[1],
              (k+0.5)*args.size[2]/args.grid[2]]
