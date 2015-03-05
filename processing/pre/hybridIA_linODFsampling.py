@@ -372,9 +372,9 @@ for method in  methods:
       fileConfig.write('#-------------------#\n')
 
       for i,ID in enumerate(xrange(nSamples)):
-        fileConfig.write('[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
+        fileConfig.write('[Grain%s]\n'%(str(ID+1).zfill(formatwidth)) + \
                          'crystallite %i\n'%options.crystallite + \
-                         '(constituent)   phase %i   texture %s   fraction 1.0\n'%(options.phase,str(ID).rjust(formatwidth)))
+                         '(constituent)   phase %i   texture %s   fraction 1.0\n'%(options.phase,str(ID+1).rjust(formatwidth)))
 
       fileConfig.write('\n#-------------------#')
       fileConfig.write('\n<texture>\n')
@@ -382,9 +382,9 @@ for method in  methods:
       for ID in xrange(nSamples):
         eulers = re.split(r'[\t]', Orientations[method][ID].strip())
 
-        fileConfig.write('[Grain%s]\n'%(str(ID).zfill(formatwidth)) + \
+        fileConfig.write('[Grain%s]\n'%(str(ID+1).zfill(formatwidth)) + \
                          '(gauss)   phi1 %10.5f   Phi %10.5f   phi2 %10.6f   scatter 0.0   fraction 1.0\n'\
                          %(float(eulers[0]),float(eulers[1]),float(eulers[2])))
       fileConfig.close()
     except:
-      print 'unable to write material .config file:', nameSampledODF+'.'+method+str(nSamples)+'.config'
+      print 'unable to write material.config file:', nameSampledODF+'.'+method+str(nSamples)+'.config'
