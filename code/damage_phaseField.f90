@@ -331,7 +331,7 @@ subroutine damage_phaseField_microstructure(C, Fe, Cv, subdt, ipc, ip, el)
                 (Cv*damage_phaseField_specificVacancyFormationEnergy(instance) + &
                  sum(abs(stress*strain)))/damage_phaseField_surfaceEnergy(instance)           
  damageState(phase)%state(2,constituent) = &
-   (1.0_pReal - Cv)*(1.0_pReal - Cv)/drivingForce
+   max(residualStiffness,(1.0_pReal - Cv)*(1.0_pReal - Cv)/drivingForce)
        
  damageState(phase)%state(1,constituent) = &
    damageState(phase)%state(2,constituent) + &

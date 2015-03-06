@@ -390,7 +390,9 @@ subroutine damage_anisoBrittle_microstructure(Tstar_v, subdt, ipc, ip, el)
  localDamage = max(residualStiffness,1.0_pReal/damageState(phase)%state(2,constituent)) 
  
  damageState(phase)%state(1,constituent) = &
-   localDamage
+   localDamage + &
+   (damageState(phase)%subState0(1,constituent) - localDamage)* &
+   exp(-subdt/lattice_DamageMobility(phase))
 
 end subroutine damage_anisoBrittle_microstructure
 
