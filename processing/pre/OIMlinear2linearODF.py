@@ -48,7 +48,7 @@ if not os.path.exists(options.file):
 inName = options.file
 outName = os.path.splitext(inName)[0]+'.linearODF'
 nPhi1,nPHI,nPhi2 = options.step
-dPhi1,dPHI,dPhi2 = [sampleSym[options.symmetry][i]/options.step[i] for i in xrange(3)]
+dPhi1,dPHI,dPhi2 = [sampleSym[options.symmetry][i]/float(options.step[i]) for i in xrange(3)]
 
 N = (nPhi1-1)*(nPHI-1)*(nPhi2-1)
 
@@ -96,7 +96,7 @@ for iPhi1 in range(nPhi1-1):
 inFile.close()
 outFile.write('%-6i%-6i%-6i  #Ranges of phi1, Phi, phi2\n'%sampleSym[options.symmetry])
 outFile.write('%-6.2f%-6.2f%-6.2f  #Deltas of phi1, Phi, phi2\n'%(dPhi1,dPHI,dPhi2))
-outFile.write('%-6i%-6i%-6i  #Angular steps needed to be converted\n'%(nPhi1-1,nPHI-1,nPhi2-1))
+#outFile.write('%-6i%-6i%-6i  #Angular steps needed to be converted\n'%(nPhi1-1,nPHI-1,nPhi2-1))
 outFile.write('cell-centered data\n')
 outFile.write('\n')
 
@@ -104,4 +104,3 @@ for i in range(N):
   outFile.write('%g\n'%(linear[i]))
   
 outFile.close()
-
