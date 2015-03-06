@@ -74,28 +74,18 @@ toRadians = np.pi/180.0 if options.degrees else 1.0                             
 pole = np.array(options.pole)
 pole /= np.linalg.norm(pole)
 
-#--- setup file handles --------------------------------------------------------------------------  
-files = []
+# --- loop over input files -------------------------------------------------------------------------
 if filenames == []:
-  files.append({'name':'STDIN',
-                'input':sys.stdin,
-                'output':sys.stdout,
-                'croak':sys.stderr,
-               })
-else:
-  for name in filenames:
-    if os.path.exists(name):
-      files.append({'name':name,
-                    'croak':sys.stdout,
-                    })
+  filenames = ['STDIN']
 
-#--- loop over input files ------------------------------------------------------------------------
-for file in files:
-  if file['name'] != 'STDIN':
-    file['input']  = open(file['name'])
-    file['output'] = open(file['name']+'_tmp','w')
-
-  file['croak'].write('\033[1m' + scriptName + '\033[0m' + (': '+file['name'] if file['name'] != 'STDIN' else '') + '\n')
+for name in filenames:
+  if name == 'STDIN':
+    file = {'name':'STDIN', 'input':sys.stdin, 'output':sys.stdout, 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m\n')
+  else:
+    if not os.path.exists(name): continue
+    file = {'name':name, 'input':open(name), 'output':open(name+'_tmp','w'), 'croak':sys.stderr}
+    file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
   table = damask.ASCIItable(file['input'],file['output'],buffered = False)                          # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
