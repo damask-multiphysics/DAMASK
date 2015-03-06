@@ -326,12 +326,10 @@ class Quaternion:
 
       if type.lower() == 'bunge' or type.lower() == 'zxz':
         if   abs(self.x - self.y) < 1e-8:
-          print 'q.x approx q.y !!'
           x = self.w**2 - self.z**2
           y = 2.*self.w*self.z
           angles[0] = math.atan2(y,x)
         elif abs(self.w - self.z) < 1e-8:
-          print 'q.w approx q.z !!'
           x = self.x**2 - self.y**2
           y = 2.*self.x*self.y
           angles[0] = math.atan2(y,x)
@@ -417,7 +415,7 @@ class Quaternion:
           y = - c1 * s2 * s3 + s1 * s2 * c3
           z =   c1 * c2 * s3 + s1 * c2 * c3
         else:
-          print 'unknown Euler convention'
+#          print 'unknown Euler convention'
           w = c1 * c2 * c3 - s1 * s2 * s3
           x = s1 * s2 * c3 + c1 * c2 * s3
           y = s1 * c2 * c3 + c1 * s2 * s3
