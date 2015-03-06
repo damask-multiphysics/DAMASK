@@ -151,6 +151,8 @@ subroutine CPFEM_init
    crystallite_F0, &
    crystallite_Fp0, &
    crystallite_Lp0, &
+   crystallite_Fi0, &
+   crystallite_Li0, &
    crystallite_dPdF0, &
    crystallite_Tstar0_v, &
    crystallite_localPlasticity
@@ -191,8 +193,16 @@ subroutine CPFEM_init
    read (777,rec=1) crystallite_Fp0
    close (777)
 
+   call IO_read_realFile(777,'convergedFi',modelName,size(crystallite_Fi0))
+   read (777,rec=1) crystallite_Fi0
+   close (777)
+
    call IO_read_realFile(777,'convergedLp',modelName,size(crystallite_Lp0))
    read (777,rec=1) crystallite_Lp0
+   close (777)
+
+   call IO_read_realFile(777,'convergedLi',modelName,size(crystallite_Li0))
+   read (777,rec=1) crystallite_Li0
    close (777)
 
    call IO_read_realFile(777,'convergeddPdF',modelName,size(crystallite_dPdF0))
@@ -314,8 +324,12 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_F0, &
    crystallite_Fp0, &
    crystallite_Fp, &
+   crystallite_Fi0, &
+   crystallite_Fi, &
    crystallite_Lp0, &
    crystallite_Lp, &
+   crystallite_Li0, &
+   crystallite_Li, &
    crystallite_dPdF0, &
    crystallite_dPdF, &
    crystallite_Tstar0_v, &
@@ -400,6 +414,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    crystallite_F0  = crystallite_partionedF                                                    ! crystallite deformation (_subF is perturbed...)
    crystallite_Fp0 = crystallite_Fp                                                            ! crystallite plastic deformation
    crystallite_Lp0 = crystallite_Lp                                                            ! crystallite plastic velocity
+   crystallite_Fi0 = crystallite_Fi                                                            ! crystallite intermediate deformation
+   crystallite_Li0 = crystallite_Li                                                            ! crystallite intermediate velocity
    crystallite_dPdF0 = crystallite_dPdF                                                        ! crystallite stiffness
    crystallite_Tstar0_v = crystallite_Tstar_v                                                  ! crystallite 2nd Piola Kirchhoff stress
 
@@ -439,8 +455,16 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      write (777,rec=1) crystallite_Fp0
      close (777)
 
+     call IO_write_jobRealFile(777,'convergedFi',size(crystallite_Fi0))
+     write (777,rec=1) crystallite_Fi0
+     close (777)
+
      call IO_write_jobRealFile(777,'convergedLp',size(crystallite_Lp0))
      write (777,rec=1) crystallite_Lp0
+     close (777)
+
+     call IO_write_jobRealFile(777,'convergedLi',size(crystallite_Li0))
+     write (777,rec=1) crystallite_Li0
      close (777)
 
      call IO_write_jobRealFile(777,'convergeddPdF',size(crystallite_dPdF0))

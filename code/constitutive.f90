@@ -28,10 +28,6 @@ module constitutive
    constitutive_microstructure, &
    constitutive_LpAndItsTangent, &
    constitutive_LiAndItsTangent, &
-   constitutive_getFi, &
-   constitutive_putFi, &
-   constitutive_getFi0, &
-   constitutive_getPartionedFi0, &
    constitutive_TandItsTangent, &
    constitutive_collectDotState, &
    constitutive_collectDeltaState, &
@@ -678,11 +674,15 @@ end subroutine constitutive_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
+subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v, Fi, ipc, ip, el)
  use prec, only: &
    pReal 
  use math, only: &
-   math_identity2nd
+   math_transpose33, &
+   math_mul33x33, &
+   math_Mandel6to33, &
+   math_Mandel33to6, &
+   math_Plain99to3333
  use material, only: &
    phase_plasticity, &
    phase_plasticityInstance, &
@@ -719,42 +719,66 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar, Tstar_v, ipc, ip, el)
    el                                                                                               !< element number
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
    Lp                                                                                               !< plastic velocity gradient
- real(pReal),   intent(out), dimension(9,9) :: &
-   dLp_dTstar                                                                                       !< derivative of Lp with respect to Tstar (4th-order tensor)
+ real(pReal),   intent(out), dimension(3,3,3,3) :: &
+   dLp_dTstar3333, &                                                                                !< derivative of Lp with respect to Tstar (4th-order tensor)
+   dLp_dFi3333                                                                                      !< derivative of Lp with respect to Fi (4th-order tensor)
+ real(pReal), dimension(6) :: &                           
+   Mstar_v                                                                                          !< Mandel stress work conjugate with Lp
+ real(pReal), dimension(9,9) :: &
+   dLp_dMstar                                                                                       !< derivative of Lp with respect to Mstar (4th-order tensor)
+ real(pReal), dimension(3,3) :: &
+   temp_33
+ integer(pInt) :: &
+   i, j    
 
+ Mstar_v = math_Mandel33to6(math_mul33x33(math_mul33x33(math_transpose33(Fi),Fi), &
+                            math_Mandel6to33(Tstar_v)))
  select case (phase_plasticity(material_phase(ipc,ip,el)))
  
    case (PLASTICITY_NONE_ID)
      Lp = 0.0_pReal
-     dLp_dTstar = 0.0_pReal
+     dLp_dMstar = 0.0_pReal
    case (PLASTICITY_J2_ID)
-     call plastic_j2_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,ipc,ip,el)
+     call plastic_j2_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_PHENOPOWERLAW_ID)
-     call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v,ipc,ip,el)
+     call plastic_phenopowerlaw_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v,ipc,ip,el)
    case (PLASTICITY_NONLOCAL_ID)
-     call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
                                            constitutive_getTemperature(ipc,ip,el), &
                                            ipc,ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
-     call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
                                             constitutive_getTemperature(ipc,ip,el), &
                                             ipc,ip,el)
    case (PLASTICITY_DISLOKMC_ID)
-     call plastic_dislokmc_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     call plastic_dislokmc_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
                                            constitutive_getTemperature(ipc,ip,el), &
                                            ipc,ip,el)
    case (PLASTICITY_DISLOUCLA_ID)
-     call plastic_disloucla_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     call plastic_disloucla_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
                                            constitutive_getTemperature(ipc,ip,el), &
                                            ipc,ip,el)  
    case (PLASTICITY_TITANMOD_ID)
-     call plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar,Tstar_v, &
+     call plastic_titanmod_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
                                            constitutive_getTemperature(ipc,ip,el), &
                                            ipc,ip,el)
 
  end select
+
+ dLp_dTstar3333 = math_Plain99to3333(dLp_dMstar)
+ temp_33 = math_mul33x33(Fi,math_Mandel6to33(Tstar_v))
+ do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+   dLp_dFi3333(i,j,1:3,1:3) = math_mul33x33(temp_33,math_transpose33(dLp_dTstar3333(i,j,1:3,1:3))) + &
+                              math_mul33x33(math_mul33x33(Fi,dLp_dTstar3333(i,j,1:3,1:3)),math_Mandel6to33(Tstar_v))
+ enddo; enddo    
+ temp_33 = math_mul33x33(math_transpose33(Fi),Fi)
+ do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+   dLp_dTstar3333(i,j,1:3,1:3) = math_mul33x33(temp_33,dLp_dTstar3333(i,j,1:3,1:3))
+ enddo; enddo    
  
 end subroutine constitutive_LpAndItsTangent
 
@@ -762,9 +786,15 @@ end subroutine constitutive_LpAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar, Tstar_v, Lp, ipc, ip, el)
+subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar3333, dLi_dFi3333, Tstar_v, Fi, Lp, ipc, ip, el)
  use prec, only: &
    pReal 
+ use math, only: &
+   math_I3, &
+   math_inv33, &
+   math_det33, &
+   math_transpose33, &
+   math_mul33x33
  use material, only: &
    phase_damage, &
    phase_thermal, &
@@ -787,246 +817,60 @@ subroutine constitutive_LiAndItsTangent(Li, dLi_dTstar, Tstar_v, Lp, ipc, ip, el
  real(pReal),   intent(in),  dimension(6) :: &
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(in),  dimension(3,3) :: &
+   Fi, &                                                                                            !< intermediate deformation gradient
    Lp                                                                                               !< plastic velocity gradient
  real(pReal),   intent(out), dimension(3,3) :: &
    Li                                                                                               !< intermediate velocity gradient
- real(pReal),   intent(out), dimension(9,9) :: &
-   dLi_dTstar                                                                                       !< derivative of Li with respect to Tstar (2nd-order tensor)
+ real(pReal),   intent(out), dimension(3,3,3,3) :: &
+   dLi_dTstar3333, &                                                                                !< derivative of Li with respect to Tstar (4th-order tensor)
+   dLi_dFi3333
  real(pReal), dimension(3,3) :: &
    Li_temp                                                                                          !< intermediate velocity gradient
- real(pReal), dimension(9,9) :: &
-   dLi_dTstar_temp                                                                                  !< derivative of Li with respect to Tstar (4th-order tensor)
+ real(pReal), dimension(3,3,3,3) :: &
+   dLi_dTstar_temp                                                                              
+ real(pReal), dimension(3,3) :: &
+   FiInv, &
+   temp_33
+ real(pReal) :: &
+   detFi
+ integer(pInt) :: &
+   i, j    
 
  Li = 0.0_pReal
- dLi_dTstar = 0.0_pReal
+ dLi_dTstar3333  = 0.0_pReal
+ dLi_dFi3333     = 0.0_pReal
  
  select case (phase_damage(material_phase(ipc,ip,el)))
    case (LOCAL_DAMAGE_anisoBrittle_ID)
      call damage_anisoBrittle_LdAndItsTangent(Li_temp, dLi_dTstar_temp, Tstar_v, ipc, ip, el)
      Li = Li + Li_temp
-     dLi_dTstar = dLi_dTstar + dLi_dTstar_temp
+     dLi_dTstar3333 = dLi_dTstar3333 + dLi_dTstar_temp
      
    case (LOCAL_DAMAGE_anisoDuctile_ID)
      call damage_anisoDuctile_LdAndItsTangent(Li_temp, dLi_dTstar_temp, Tstar_v, ipc, ip, el)
      Li = Li + Li_temp
-     dLi_dTstar = dLi_dTstar + dLi_dTstar_temp
- 
+     dLi_dTstar3333 = dLi_dTstar3333 + dLi_dTstar_temp
  end select
 
  select case (phase_thermal(material_phase(ipc,ip,el)))
    case (LOCAL_THERMAL_adiabatic_ID)
      call thermal_adiabatic_LTAndItsTangent(Li_temp, dLi_dTstar_temp, Tstar_v, Lp, ipc, ip, el)
      Li = Li + Li_temp
-     dLi_dTstar = dLi_dTstar + dLi_dTstar_temp
+     dLi_dTstar3333 = dLi_dTstar3333 + dLi_dTstar_temp
 
  end select
+ 
+ FiInv = math_inv33(Fi)
+ detFi = math_det33(Fi)
+ Li = math_mul33x33(math_mul33x33(Fi,Li),FiInv)*detFi                                               !< push forward to intermediate configuration
+ temp_33 = math_mul33x33(FiInv,Li)
+ do i = 1_pInt, 3_pInt; do j = 1_pInt, 3_pInt
+   dLi_dTstar3333(1:3,1:3,i,j) = math_mul33x33(math_mul33x33(Fi,dLi_dTstar3333(1:3,1:3,i,j)),FiInv)*detFi
+   dLi_dFi3333   (1:3,1:3,i,j) = dLi_dFi3333(1:3,1:3,i,j) + Li*FiInv(j,i)
+   dLi_dFi3333   (1:3,i,1:3,j) = dLi_dFi3333(1:3,i,1:3,j) + math_I3*temp_33(j,i) + Li*FiInv(j,i)
+ enddo; enddo    
  
 end subroutine constitutive_LiAndItsTangent
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_getFi(ipc, ip, el)
- use prec, only: &
-   pReal 
- use math, only: &
-   math_I3, &
-   math_mul33x33
- use material, only: &
-   phase_damage, &
-   phase_thermal, &
-   material_phase, &
-   LOCAL_DAMAGE_anisoBrittle_ID, &
-   LOCAL_DAMAGE_anisoDuctile_ID, &
-   LOCAL_THERMAL_adiabatic_ID
- use damage_anisoBrittle, only: &
-   damage_anisoBrittle_getFd
- use damage_anisoDuctile, only: &
-   damage_anisoDuctile_getFd
- use thermal_adiabatic, only: &
-   thermal_adiabatic_getFT
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal),   dimension(3,3) :: &
-   constitutive_getFi                                                                              !< intermediate deformation gradient
-
- constitutive_getFi = math_I3
- 
- select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_anisoBrittle_ID)
-     constitutive_getFi = math_mul33x33(constitutive_getFi,damage_anisoBrittle_getFd (ipc, ip, el))
-     
-   case (LOCAL_DAMAGE_anisoDuctile_ID)
-     constitutive_getFi = math_mul33x33(constitutive_getFi,damage_anisoDuctile_getFd (ipc, ip, el))
- 
- end select
-
- select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_adiabatic_ID)
-     constitutive_getFi = math_mul33x33(constitutive_getFi,thermal_adiabatic_getFT (ipc, ip, el))
-
- end select
- 
-end function constitutive_getFi
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
-!--------------------------------------------------------------------------------------------------
-subroutine constitutive_putFi(Tstar_v, Lp, dt, ipc, ip, el)
- use prec, only: &
-   pReal 
- use material, only: &
-   phase_damage, &
-   phase_thermal, &
-   material_phase, &
-   LOCAL_DAMAGE_anisoBrittle_ID, &
-   LOCAL_DAMAGE_anisoDuctile_ID, &
-   LOCAL_THERMAL_adiabatic_ID
- use damage_anisoBrittle, only: &
-   damage_anisoBrittle_putFd
- use damage_anisoDuctile, only: &
-   damage_anisoDuctile_putFd
- use thermal_adiabatic, only: &
-   thermal_adiabatic_putFT
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
- real(pReal),   intent(in),  dimension(3,3) :: &
-   Lp                                                                                               !< plastic velocity gradient
- real(pReal),   intent(in) :: &
-   dt
- 
- select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_anisoBrittle_ID)
-     call damage_anisoBrittle_putFd (Tstar_v, dt, ipc, ip, el)
-     
-   case (LOCAL_DAMAGE_anisoDuctile_ID)
-     call damage_anisoDuctile_putFd (Tstar_v, dt, ipc, ip, el)
- 
- end select
-
- select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_adiabatic_ID)
-     call thermal_adiabatic_putFT (Tstar_v, Lp, dt, ipc, ip, el)
-
- end select
- 
-end subroutine constitutive_putFi
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_getFi0(ipc, ip, el)
- use prec, only: &
-   pReal 
- use math, only: &
-   math_I3, &
-   math_mul33x33
- use material, only: &
-   phase_damage, &
-   phase_thermal, &
-   material_phase, &
-   LOCAL_DAMAGE_anisoBrittle_ID, &
-   LOCAL_DAMAGE_anisoDuctile_ID, &
-   LOCAL_THERMAL_adiabatic_ID
- use damage_anisoBrittle, only: &
-   damage_anisoBrittle_getFd0
- use damage_anisoDuctile, only: &
-   damage_anisoDuctile_getFd0
- use thermal_adiabatic, only: &
-   thermal_adiabatic_getFT0
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal),   dimension(3,3) :: &
-   constitutive_getFi0                                                                              !< intermediate deformation gradient
-
- constitutive_getFi0 = math_I3
- 
- select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_anisoBrittle_ID)
-     constitutive_getFi0 = math_mul33x33(constitutive_getFi0,damage_anisoBrittle_getFd0 (ipc, ip, el))
-     
-   case (LOCAL_DAMAGE_anisoDuctile_ID)
-     constitutive_getFi0 = math_mul33x33(constitutive_getFi0,damage_anisoDuctile_getFd0 (ipc, ip, el))
- 
- end select
-
- select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_adiabatic_ID)
-     constitutive_getFi0 = math_mul33x33(constitutive_getFi0,thermal_adiabatic_getFT0 (ipc, ip, el))
-
- end select
- 
-end function constitutive_getFi0
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief  contains the constitutive equation for calculating the intermediate deformation gradient  
-!--------------------------------------------------------------------------------------------------
-pure function constitutive_getPartionedFi0(ipc, ip, el)
- use prec, only: &
-   pReal 
- use math, only: &
-   math_I3, &
-   math_mul33x33
- use material, only: &
-   phase_damage, &
-   phase_thermal, &
-   material_phase, &
-   LOCAL_DAMAGE_anisoBrittle_ID, &
-   LOCAL_DAMAGE_anisoDuctile_ID, &
-   LOCAL_THERMAL_adiabatic_ID
- use damage_anisoBrittle, only: &
-   damage_anisoBrittle_getPartionedFd0
- use damage_anisoDuctile, only: &
-   damage_anisoDuctile_getPartionedFd0
- use thermal_adiabatic, only: &
-   thermal_adiabatic_getPartionedFT0
- 
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal),   dimension(3,3) :: &
-   constitutive_getPartionedFi0                                                                     !< intermediate deformation gradient
-
- constitutive_getPartionedFi0 = math_I3
- 
- select case (phase_damage(material_phase(ipc,ip,el)))
-   case (LOCAL_DAMAGE_anisoBrittle_ID)
-     constitutive_getPartionedFi0 = math_mul33x33(constitutive_getPartionedFi0, &
-                                                  damage_anisoBrittle_getPartionedFd0(ipc, ip, el))
-                                                  
-   case (LOCAL_DAMAGE_anisoDuctile_ID)
-     constitutive_getPartionedFi0 = math_mul33x33(constitutive_getPartionedFi0, &
-                                                  damage_anisoDuctile_getPartionedFd0(ipc, ip, el))
- 
- end select
-
- select case (phase_thermal(material_phase(ipc,ip,el)))
-   case (LOCAL_THERMAL_adiabatic_ID)
-     constitutive_getPartionedFi0 = math_mul33x33(constitutive_getPartionedFi0, &
-                                                  thermal_adiabatic_getPartionedFT0(ipc, ip, el))
-
- end select
- 
-end function constitutive_getPartionedFi0
 
 
 !--------------------------------------------------------------------------------------------------
@@ -1034,7 +878,7 @@ end function constitutive_getPartionedFi0
 !> the elastic deformation gradient depending on the selected elastic law (so far no case switch
 !! because only hooke is implemented
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+subroutine constitutive_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
  use prec, only: &
    pReal
 
@@ -1044,13 +888,15 @@ subroutine constitutive_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in),  dimension(3,3) :: &
-   Fe                                                                                               !< elastic deformation gradient
+   Fe, &                                                                                            !< elastic deformation gradient
+   Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
    T                                                                                                !< 2nd Piola-Kirchhoff stress tensor
  real(pReal),   intent(out), dimension(3,3,3,3) :: &
-   dT_dFe                                                                                           !< derivative of 2nd P-K stress with respect to elastic deformation gradient
+   dT_dFe, &                                                                                        !< derivative of 2nd P-K stress with respect to elastic deformation gradient
+   dT_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
  
- call constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+ call constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
 
  
 end subroutine constitutive_TandItsTangent
@@ -1060,7 +906,7 @@ end subroutine constitutive_TandItsTangent
 !> @brief returns the 2nd Piola-Kirchhoff stress tensor and its tangent with respect to 
 !> the elastic deformation gradient using hookes law
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
+subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, dT_dFi, Fe, Fi, ipc, ip, el)
  use prec, only: &
    pReal
  use math, only : &
@@ -1083,21 +929,28 @@ subroutine constitutive_hooke_TandItsTangent(T, dT_dFe, Fe, ipc, ip, el)
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
  real(pReal),   intent(in),  dimension(3,3) :: &
-   Fe                                                                                               !< elastic deformation gradient
+   Fe, &                                                                                            !< elastic deformation gradient
+   Fi                                                                                               !< intermediate deformation gradient
  real(pReal),   intent(out), dimension(3,3) :: &
-   T                                                                                                !< 2nd Piola-Kirchhoff stress tensor
- real(pReal),   intent(out), dimension(3,3,3,3) :: & 
-   dT_dFe                                                                                           !< dT/dFe
+   T                                                                                                !< 2nd Piola-Kirchhoff stress tensor in lattice configuration
+ real(pReal),   intent(out), dimension(3,3,3,3) :: &
+   dT_dFe, &                                                                                        !< derivative of 2nd P-K stress with respect to elastic deformation gradient
+   dT_dFi                                                                                           !< derivative of 2nd P-K stress with respect to intermediate deformation gradient
  
- integer(pInt) :: i, j, k, l
+ integer(pInt) :: i, j
+ real(pReal), dimension(3,3) :: E
  real(pReal), dimension(3,3,3,3) :: C
 
- C = math_Mandel66to3333(constitutive_damagedC(ipc,ip,el))
- T = math_mul3333xx33(C,0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3))
+ C = math_Mandel66to3333(constitutive_damagedC(ipc,ip,el))                                          !< elastic stiffness in lattice configuration
+ E = 0.5_pReal*(math_mul33x33(math_transpose33(Fe),Fe)-math_I3)                                     !< Green-Lagrange strain in unloaded configuration
+ T = math_mul3333xx33(C,math_mul33x33(math_mul33x33(math_transpose33(Fi),E),Fi))                    !< 2PK stress in lattice configuration in work conjugate with GL strain pulled back to lattice configuration
  
  dT_dFe = 0.0_pReal
- forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt, k=1_pInt:3_pInt, l=1_pInt:3_pInt) &
-   dT_dFe(i,j,k,l) = sum(C(i,j,l,1:3)*Fe(k,1:3))                                                     ! dT*_ij/dFe_kl
+ forall (i=1_pInt:3_pInt, j=1_pInt:3_pInt)
+   dT_dFe(i,j,1:3,1:3) = &
+     math_mul33x33(Fe,math_mul33x33(math_mul33x33(Fi,C(i,j,1:3,1:3)),math_transpose33(Fi)))         !< dT_ij/dFe_kl = C_ijmn * Fi_lm * Fi_on * Fe_ko
+   dT_dFi(i,j,1:3,1:3) = 2.0_pReal*math_mul33x33(math_mul33x33(E,Fi),C(i,j,1:3,1:3))                !< dT_ij/dFi_kl = C_ijln * E_km * Fe_mn                                            
+ end forall
  
 end subroutine constitutive_hooke_TandItsTangent
 
@@ -1470,9 +1323,12 @@ function constitutive_getDamageDiffusion33(ipc, ip, el)
    material_phase, &
    phase_damage, &
    LOCAL_DAMAGE_isoBrittle_ID, &
+   LOCAL_DAMAGE_anisoBrittle_ID, &
    LOCAL_DAMAGE_phaseField_ID
  use damage_isoBrittle, only: &
    damage_isoBrittle_getDamageDiffusion33
+ use damage_anisoBrittle, only: &
+   damage_anisoBrittle_getDamageDiffusion33
  use damage_phaseField, only: &
    damage_phaseField_getDamageDiffusion33
 
@@ -1487,6 +1343,8 @@ function constitutive_getDamageDiffusion33(ipc, ip, el)
  select case(phase_damage(material_phase(ipc,ip,el)))                                                   
    case (LOCAL_DAMAGE_isoBrittle_ID)
     constitutive_getDamageDiffusion33 = damage_isoBrittle_getDamageDiffusion33(ipc, ip, el)
+   case (LOCAL_DAMAGE_anisoBrittle_ID)
+    constitutive_getDamageDiffusion33 = damage_anisoBrittle_getDamageDiffusion33(ipc, ip, el)
    case (LOCAL_DAMAGE_phaseField_ID)
     constitutive_getDamageDiffusion33 = damage_phaseField_getDamageDiffusion33(ipc, ip, el)
    case default

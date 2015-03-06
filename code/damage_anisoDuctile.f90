@@ -59,10 +59,6 @@ module damage_anisoDuctile
    damage_anisoDuctile_aTolState, &
    damage_anisoDuctile_microstructure, &
    damage_anisoDuctile_LdAndItsTangent, &
-   damage_anisoDuctile_getFd, &
-   damage_anisoDuctile_putFd, &
-   damage_anisoDuctile_getFd0, &
-   damage_anisoDuctile_getPartionedFd0, &
    damage_anisoDuctile_getDamage, &
    damage_anisoDuctile_putLocalDamage, &
    damage_anisoDuctile_getLocalDamage, &
@@ -253,8 +249,7 @@ subroutine damage_anisoDuctile_init(fileUnit)
      sizeDotState              = 0_pInt
      sizeState                 = sizeDotState + &
                                  1_pInt + & ! time regularised damage
-                                 1_pInt + & ! damaged plasticity
-                                 9 ! Fd
+                                 1_pInt     ! damaged plasticity
      damageState(phase)%sizeState = sizeState
      damageState(phase)%sizeDotState = sizeDotState
      damageState(phase)%sizePostResults = damage_anisoDuctile_sizePostResults(instance)
@@ -298,7 +293,6 @@ subroutine damage_anisoDuctile_stateInit(phase, instance)
 
  tempState(1)    = 1.0_pReal
  tempState(2)    = 0.0_pReal
- tempState(3:11) = reshape(math_I3, shape=[9])
            
  damageState(phase)%state0 = spread(tempState,2,size(damageState(phase)%state(1,:)))
  
@@ -384,7 +378,7 @@ end subroutine damage_anisoDuctile_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
-subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip, el)
+subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc, ip, el)
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
@@ -401,7 +395,10 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
    math_identity4th, &
    math_symmetric33, &
    math_Mandel33to6, &
-   math_tensorproduct
+   math_tensorproduct, &
+   math_det33, &
+   math_mul33x33, &
+   math_transpose33
  
  implicit none
  integer(pInt), intent(in) :: &
@@ -412,9 +409,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
    Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
  real(pReal),   intent(out), dimension(3,3) :: &
    Ld                                                                                               !< damage velocity gradient
- real(pReal),   intent(out), dimension(9,9) :: &
-   dLd_dTstar                                                                                       !< derivative of Ld with respect to Tstar (2nd-order tensor)
- real(pReal),   dimension(3,3,3,3) :: &
+ real(pReal),   intent(out), dimension(3,3,3,3) :: &
    dLd_dTstar3333                                                                                   !< derivative of Ld with respect to Tstar (4th-order tensor)
  real(pReal),   dimension(3,3) :: &
    projection_d, projection_t, projection_n                                                         !< projection modes 3x3 tensor
@@ -466,7 +461,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
        dudotd_dt = udotd*damage_anisoDuctile_N(instance)/traction_d
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLd_dTstar3333(k,l,m,n) = dLd_dTstar3333(k,l,m,n) + &
-           dudotd_dt*projection_d(k,l)* projection_d(m,n)
+           dudotd_dt*projection_d(k,l)*projection_d(m,n)
      endif                
  
      udott = &
@@ -486,215 +481,16 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar, Tstar_v, ipc, ip,
        (max(0.0_pReal,traction_n)/traction_crit - &
         max(0.0_pReal,traction_n)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
      if (udotn /= 0.0_pReal) then
-       Ld = Ld + udotn*projection_n(1:3,1:3)
+       Ld = Ld + udotn*projection_n
        dudotn_dt = udotn*damage_anisoDuctile_N(instance)/traction_n
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
          dLd_dTstar3333(k,l,m,n) = dLd_dTstar3333(k,l,m,n) + &
-           dudotn_dt*projection_n(k,l)* projection_n(m,n)
+           dudotn_dt*projection_n(k,l)*projection_n(m,n)
      endif 
    enddo
  enddo
- 
- dLd_dTstar = math_Plain3333to99(dLd_dTstar3333)
- 
+  
 end subroutine damage_anisoDuctile_LdAndItsTangent
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns local damage deformation gradient
-!--------------------------------------------------------------------------------------------------
-pure function damage_anisoDuctile_getFd(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   phase, &
-   constituent, &
-   instance
- real(pReal), dimension(3,3) :: &
-   damage_anisoDuctile_getFd
- 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
-
- damage_anisoDuctile_getFd = &
-   reshape(damageState(phase)%state(3:11,constituent),shape=[3,3])
- 
-end function damage_anisoDuctile_getFd
-
-!--------------------------------------------------------------------------------------------------
-!> @brief calculates derived quantities from state
-!--------------------------------------------------------------------------------------------------
-subroutine damage_anisoDuctile_putFd(Tstar_v, dt, ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
- use math, only: &
-   math_mul33x33, &
-   math_inv33, &
-   math_I3, &
-   math_symmetric33, &
-   math_Mandel33to6, &
-   math_tensorproduct
- use lattice, only: &
-   lattice_maxNslipFamily, &
-   lattice_NslipSystem, &
-   lattice_sd, &
-   lattice_st, &
-   lattice_sn
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- real(pReal),   intent(in),  dimension(6) :: &
-   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
- real(pReal),   intent(in) :: &
-   dt
- real(pReal), dimension(3,3) :: &
-   Ld                                                                                               !< damage velocity gradient
- real(pReal),   dimension(3,3) :: &
-   projection_d, projection_t, projection_n                                                         !< projection modes 3x3 tensor
- real(pReal),   dimension(6) :: &
-   projection_d_v, projection_t_v, projection_n_v                                                   !< projection modes 3x3 vector
- integer(pInt) :: &
-   phase, &
-   constituent, &
-   instance, &
-   f, i, index_myFamily
- real(pReal) :: &
-   traction_d, traction_t, traction_n, traction_crit, &
-   udotd, udott, udotn
-
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
-
- Ld = 0.0_pReal
- do f = 1_pInt,lattice_maxNslipFamily
-   index_myFamily = sum(lattice_NslipSystem(1:f-1_pInt,phase))                                      ! at which index starts my family
-   do i = 1_pInt,damage_anisoDuctile_Nslip(f,instance)                                              ! process each (active) slip system in family
-   
-     projection_d = math_tensorproduct(lattice_sd(1:3,index_myFamily+i,phase),&
-                                       lattice_sn(1:3,index_myFamily+i,phase))
-     projection_t = math_tensorproduct(lattice_st(1:3,index_myFamily+i,phase),&
-                                       lattice_sn(1:3,index_myFamily+i,phase))
-     projection_n = math_tensorproduct(lattice_sn(1:3,index_myFamily+i,phase),&
-                                       lattice_sn(1:3,index_myFamily+i,phase))
-
-     projection_d_v(1:6) = math_Mandel33to6(math_symmetric33(projection_d(1:3,1:3)))
-     projection_t_v(1:6) = math_Mandel33to6(math_symmetric33(projection_t(1:3,1:3)))
-     projection_n_v(1:6) = math_Mandel33to6(math_symmetric33(projection_n(1:3,1:3)))
-   
-     traction_d    = dot_product(Tstar_v,projection_d_v(1:6))
-     traction_t    = dot_product(Tstar_v,projection_t_v(1:6))
-     traction_n    = dot_product(Tstar_v,projection_n_v(1:6))
-     
-     traction_crit = damage_anisoDuctile_critLoad(f,instance)* &
-                     damage_anisoDuctile_getDamage(ipc, ip, el)                                     ! degrading critical load carrying capacity by damage 
-
-     udotd = &
-       sign(1.0_pReal,traction_d)* &
-       damage_anisoDuctile_sdot_0(instance)* &
-       (abs(traction_d)/traction_crit - &
-        abs(traction_d)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
-     if (udotd /= 0.0_pReal) then
-       Ld = Ld + udotd*projection_d
-     endif                
- 
-     udott = &
-       sign(1.0_pReal,traction_t)* &
-       damage_anisoDuctile_sdot_0(instance)* &
-       (abs(traction_t)/traction_crit) - &
-        abs(traction_t)/damage_anisoDuctile_critLoad(f,instance)**damage_anisoDuctile_N(instance)
-     if (udott /= 0.0_pReal) then
-       Ld = Ld + udott*projection_t
-     endif
-                     
-     udotn = &
-       damage_anisoDuctile_sdot_0(instance)* &
-       (max(0.0_pReal,traction_n)/traction_crit - &
-        max(0.0_pReal,traction_n)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
-     if (udotn /= 0.0_pReal) then
-       Ld = Ld + udotn*projection_n(1:3,1:3)
-     endif     
-   enddo
- enddo
- 
- damageState(phase)%state(3:11,constituent) = reshape(math_mul33x33(math_inv33(math_I3 - dt*Ld), &
-                                                                    damage_anisoDuctile_getFd0(ipc, ip, el)), &
-                                                      shape=[9])                             
-
-end subroutine damage_anisoDuctile_putFd 
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns local damage deformation gradient
-!--------------------------------------------------------------------------------------------------
-pure function damage_anisoDuctile_getFd0(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   phase, &
-   constituent, &
-   instance
- real(pReal), dimension(3,3) :: &
-   damage_anisoDuctile_getFd0
- 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
-
- damage_anisoDuctile_getFd0 = &
-   reshape(damageState(phase)%subState0(3:11,constituent),shape=[3,3])
- 
-end function damage_anisoDuctile_getFd0
-
-!--------------------------------------------------------------------------------------------------
-!> @brief returns local damage deformation gradient
-!--------------------------------------------------------------------------------------------------
-pure function damage_anisoDuctile_getPartionedFd0(ipc, ip, el)
- use material, only: &
-   mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
-
- implicit none
- integer(pInt), intent(in) :: &
-   ipc, &                                                                                           !< grain number
-   ip, &                                                                                            !< integration point number
-   el                                                                                               !< element number
- integer(pInt) :: &
-   phase, &
-   constituent, &
-   instance
- real(pReal), dimension(3,3) :: &
-   damage_anisoDuctile_getPartionedFd0
- 
- phase = mappingConstitutive(2,ipc,ip,el)
- constituent = mappingConstitutive(1,ipc,ip,el)
- instance = phase_damageInstance(phase)
-
- damage_anisoDuctile_getPartionedFd0 = &
-   reshape(damageState(phase)%partionedState0(3:11,constituent),shape=[3,3])
- 
-end function damage_anisoDuctile_getPartionedFd0
 
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage

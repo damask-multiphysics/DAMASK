@@ -43,21 +43,30 @@ module crystallite
    crystallite_Fp, &                                                                                !< current plastic def grad (end of converged time step)
    crystallite_Fp0, &                                                                               !< plastic def grad at start of FE inc
    crystallite_partionedFp0,&                                                                       !< plastic def grad at start of homog inc
+   crystallite_Fi, &                                                                                !< current intermediate def grad (end of converged time step)
+   crystallite_Fi0, &                                                                               !< intermediate def grad at start of FE inc
+   crystallite_partionedFi0,&                                                                       !< intermediate def grad at start of homog inc
    crystallite_F0, &                                                                                !< def grad at start of FE inc
    crystallite_partionedF,  &                                                                       !< def grad to be reached at end of homog inc
    crystallite_partionedF0, &                                                                       !< def grad at start of homog inc
    crystallite_Lp, &                                                                                !< current plastic velocitiy grad (end of converged time step)
    crystallite_Lp0, &                                                                               !< plastic velocitiy grad at start of FE inc
    crystallite_partionedLp0,&                                                                       !< plastic velocity grad at start of homog inc
+   crystallite_Li, &                                                                                !< current intermediate velocitiy grad (end of converged time step)
+   crystallite_Li0, &                                                                               !< intermediate velocitiy grad at start of FE inc
+   crystallite_partionedLi0,&                                                                       !< intermediate velocity grad at start of homog inc
    crystallite_P                                                                                    !< 1st Piola-Kirchhoff stress per grain
  real(pReal),                dimension(:,:,:,:,:),    allocatable, private :: &
    crystallite_Fe, &                                                                                !< current "elastic" def grad (end of converged time step)
    crystallite_subFe0,&                                                                             !< "elastic" def grad at start of crystallite inc
    crystallite_invFp, &                                                                             !< inverse of current plastic def grad (end of converged time step)
    crystallite_subFp0,&                                                                             !< plastic def grad at start of crystallite inc
+   crystallite_invFi, &                                                                             !< inverse of current intermediate def grad (end of converged time step)
+   crystallite_subFi0,&                                                                             !< intermediate def grad at start of crystallite inc
    crystallite_subF,  &                                                                             !< def grad to be reached at end of crystallite inc
    crystallite_subF0, &                                                                             !< def grad at start of crystallite inc
    crystallite_subLp0,&                                                                             !< plastic velocity grad at start of crystallite inc
+   crystallite_subLi0,&                                                                             !< intermediate velocity grad at start of crystallite inc
    crystallite_disorientation                                                                       !< disorientation between two neighboring ips (only calculated for single grain IPs)
  real(pReal),                dimension(:,:,:,:,:,:,:), allocatable, public :: &
    crystallite_dPdF, &                                                                              !< current individual dPdF per grain (end of converged time step)
@@ -93,7 +102,9 @@ module crystallite
                  defgrad_ID, &
                  fe_ID, &
                  fp_ID, &
+                 fi_ID, &
                  lp_ID, &
+                 li_ID, &
                  e_ID, &
                  ee_ID, &
                  p_ID, &
@@ -225,12 +236,21 @@ subroutine crystallite_init
  allocate(crystallite_subFp0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_Fp(3,3,gMax,iMax,eMax),                source=0.0_pReal)
  allocate(crystallite_invFp(3,3,gMax,iMax,eMax),             source=0.0_pReal)
+ allocate(crystallite_Fi0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedFi0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subFi0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Fi(3,3,gMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_invFi(3,3,gMax,iMax,eMax),             source=0.0_pReal)
  allocate(crystallite_Fe(3,3,gMax,iMax,eMax),                source=0.0_pReal)
  allocate(crystallite_subFe0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_Lp0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
  allocate(crystallite_partionedLp0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
  allocate(crystallite_subLp0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
  allocate(crystallite_Lp(3,3,gMax,iMax,eMax),                source=0.0_pReal)
+ allocate(crystallite_Li0(3,3,gMax,iMax,eMax),               source=0.0_pReal)
+ allocate(crystallite_partionedLi0(3,3,gMax,iMax,eMax),      source=0.0_pReal)
+ allocate(crystallite_subLi0(3,3,gMax,iMax,eMax),            source=0.0_pReal)
+ allocate(crystallite_Li(3,3,gMax,iMax,eMax),                source=0.0_pReal)
  allocate(crystallite_dPdF(3,3,3,3,gMax,iMax,eMax),          source=0.0_pReal)
  allocate(crystallite_dPdF0(3,3,3,3,gMax,iMax,eMax),         source=0.0_pReal)
  allocate(crystallite_partioneddPdF0(3,3,3,3,gMax,iMax,eMax),source=0.0_pReal)
@@ -311,8 +331,12 @@ subroutine crystallite_init
              crystallite_outputID(output,section) = fe_ID
            case ('fp')
              crystallite_outputID(output,section) = fp_ID
+           case ('fi')
+             crystallite_outputID(output,section) = fi_ID
            case ('lp')
              crystallite_outputID(output,section) = lp_ID
+           case ('li')
+             crystallite_outputID(output,section) = li_ID
            case ('e')
              crystallite_outputID(output,section) = e_ID
            case ('ee')
@@ -345,7 +369,7 @@ subroutine crystallite_init
          mySize = 4_pInt
        case(eulerangles_ID)
          mySize = 3_pInt
-       case(defgrad_ID,fe_ID,fp_ID,lp_ID,e_ID,ee_ID,p_ID,s_ID)
+       case(defgrad_ID,fe_ID,fp_ID,fi_ID,lp_ID,li_ID,e_ID,ee_ID,p_ID,s_ID)
          mySize = 9_pInt
        case(elasmatrix_ID)
          mySize = 36_pInt
@@ -389,10 +413,12 @@ subroutine crystallite_init
      myNgrains = homogenization_Ngrains(mesh_element(3,e))                                            ! look up homogenization-->grainCount
      forall (i = FEsolving_execIP(1,e):FEsolving_execIP(2,e), g = 1_pInt:myNgrains)
        crystallite_Fp0(1:3,1:3,g,i,e) = math_EulerToR(material_EulerAngles(1:3,g,i,e))                ! plastic def gradient reflects init orientation
+       crystallite_Fi0(1:3,1:3,g,i,e) = math_I3
        crystallite_F0(1:3,1:3,g,i,e)  = math_I3
        crystallite_localPlasticity(g,i,e) = phase_localPlasticity(material_phase(g,i,e))
        crystallite_Fe(1:3,1:3,g,i,e)  = math_transpose33(crystallite_Fp0(1:3,1:3,g,i,e))
        crystallite_Fp(1:3,1:3,g,i,e)  = crystallite_Fp0(1:3,1:3,g,i,e)
+       crystallite_Fi(1:3,1:3,g,i,e)  = crystallite_Fi0(1:3,1:3,g,i,e)
        crystallite_requested(g,i,e) = .true.
      endforall
    enddo
@@ -401,6 +427,7 @@ subroutine crystallite_init
  if(any(.not. crystallite_localPlasticity) .and. .not. usePingPong) call IO_error(601_pInt)         ! exit if nonlocal but no ping-pong
 
  crystallite_partionedFp0 = crystallite_Fp0
+ crystallite_partionedFi0 = crystallite_Fi0
  crystallite_partionedF0 = crystallite_F0
  crystallite_partionedF = crystallite_F0
 
@@ -431,19 +458,27 @@ subroutine crystallite_init
  if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fe:                    ', shape(crystallite_Fe)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fp:                    ', shape(crystallite_Fp)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fi:                    ', shape(crystallite_Fi)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Lp:                    ', shape(crystallite_Lp)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Li:                    ', shape(crystallite_Li)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_F0:                    ', shape(crystallite_F0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fp0:                   ', shape(crystallite_Fp0)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Fi0:                   ', shape(crystallite_Fi0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Lp0:                   ', shape(crystallite_Lp0)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_Li0:                   ', shape(crystallite_Li0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedF:            ', shape(crystallite_partionedF)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedF0:           ', shape(crystallite_partionedF0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedFp0:          ', shape(crystallite_partionedFp0)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedFi0:          ', shape(crystallite_partionedFi0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedLp0:          ', shape(crystallite_partionedLp0)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_partionedLi0:          ', shape(crystallite_partionedLi0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF:                  ', shape(crystallite_subF)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subF0:                 ', shape(crystallite_subF0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFe0:                ', shape(crystallite_subFe0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFp0:                ', shape(crystallite_subFp0)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subFi0:                ', shape(crystallite_subFi0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_subLp0:                ', shape(crystallite_subLp0)
+   write(6,'(a35,1x,7(i8,1x))') 'crystallite_subLi0:                ', shape(crystallite_subLi0)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_P:                     ', shape(crystallite_P)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Tstar_v:               ', shape(crystallite_Tstar_v)
    write(6,'(a35,1x,7(i8,1x))') 'crystallite_Tstar0_v:              ', shape(crystallite_Tstar0_v)
@@ -514,6 +549,8 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    math_mul66x6, &
    math_Mandel6to33, &
    math_Mandel33to6, &
+   math_Plain3333to99, &
+   math_Plain99to3333, &
    math_I3, &
    math_mul3333xx3333, &
    math_mul33xx33, &
@@ -541,10 +578,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  use constitutive, only:  &
    constitutive_TandItsTangent, &
    constitutive_LpAndItsTangent, &
-   constitutive_LiAndItsTangent, &
-   constitutive_getFi, &
-   constitutive_getFi0, &
-   constitutive_getPartionedFi0
+   constitutive_LiAndItsTangent
 
  implicit none
  logical, intent(in) :: &
@@ -564,8 +598,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    F_backup, &
    Fp_backup, &
    InvFp_backup, &
+   Fi_backup, &
+   InvFi_backup, &
    Fe_backup, &
    Lp_backup, &
+   Li_backup, &
    P_backup
  real(pReal), dimension(6,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    Tstar_v_backup
@@ -586,19 +623,16 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
  logical, dimension(homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
                                                        convergenceFlag_backup
  ! local variables used for calculating analytic Jacobian
- real(pReal)                     ::   detFi
- real(pReal), dimension(3,3)     ::   temp_33, &
-                                      Fi, &
-                                      invFi, &
-                                      invFi0
+ real(pReal), dimension(3,3)     ::   temp_33
  real(pReal), dimension(3,3,3,3) ::   dSdFe, &
                                       dSdF, &
-                                      dSdFiInv, &
-                                      junk2, &
+                                      dSdFi, &
                                       dLidS, &
+                                      dLidFi, &
                                       dLpdS, &
+                                      dLpdFi, &
+                                      dFidS, &
                                       dFpinvdF, &
-                                      dFiinvdF, &
                                       rhs_3333, &
                                       lhs_3333, &
                                       temp_3333
@@ -615,8 +649,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                          math_transpose33(crystallite_partionedF0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fp0', &
                                          math_transpose33(crystallite_partionedFp0(1:3,1:3,debug_g,debug_i,debug_e))
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Fi0', &
+                                         math_transpose33(crystallite_partionedFi0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Lp0', &
                                          math_transpose33(crystallite_partionedLp0(1:3,1:3,debug_g,debug_i,debug_e))
+   write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> Li0', &
+                                         math_transpose33(crystallite_partionedLi0(1:3,1:3,debug_g,debug_i,debug_e))
    write(6,'(a,/,3(12x,3(f14.9,1x)/))') '<< CRYST >> F  ', &
                                          math_transpose33(crystallite_partionedF(1:3,1:3,debug_g,debug_i,debug_e))
  endif
@@ -640,12 +678,14 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
        vacancyState(mappingConstitutive(2,g,i,e))%partionedState0(:,mappingConstitutive(1,g,i,e))
        crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_partionedFp0(1:3,1:3,g,i,e)                  ! ...plastic def grad
        crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_partionedLp0(1:3,1:3,g,i,e)                  ! ...plastic velocity grad
+       crystallite_subFi0(1:3,1:3,g,i,e) = crystallite_partionedFi0(1:3,1:3,g,i,e)                  ! ...intermediate def grad
+       crystallite_subLi0(1:3,1:3,g,i,e) = crystallite_partionedLi0(1:3,1:3,g,i,e)                  ! ...intermediate velocity grad
        crystallite_dPdF0(1:3,1:3,1:3,1:3,g,i,e) = crystallite_partioneddPdF0(1:3,1:3,1:3,1:3,g,i,e) ! ...stiffness
        crystallite_subF0(1:3,1:3,g,i,e) = crystallite_partionedF0(1:3,1:3,g,i,e)                    ! ...def grad
        crystallite_subTstar0_v(1:6,g,i,e) = crystallite_partionedTstar0_v(1:6,g,i,e)                !...2nd PK stress
        crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(crystallite_subF0(1:3,1:3,g,i,e), &
-                                             math_inv33(crystallite_subFp0(1:3,1:3,g,i,e))), &
-                                             math_inv33(constitutive_getFi0(g,i,e)))                ! only needed later on for stiffness calculation
+                                                                       math_inv33(crystallite_subFp0(1:3,1:3,g,i,e))), &
+                                                         math_inv33(crystallite_subFi0(1:3,1:3,g,i,e)))! only needed later on for stiffness calculation
        crystallite_subFrac(g,i,e) = 0.0_pReal
        crystallite_subStep(g,i,e) = 1.0_pReal/subStepSizeCryst
        crystallite_todo(g,i,e) = .true.
@@ -912,10 +952,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                crystallite_subF0(1:3,1:3,g,i,e) = crystallite_subF(1:3,1:3,g,i,e)                    ! ...def grad
                !$OMP FLUSH(crystallite_subF0)
                crystallite_subLp0(1:3,1:3,g,i,e) = crystallite_Lp(1:3,1:3,g,i,e)                     ! ...plastic velocity gradient
+               crystallite_subLi0(1:3,1:3,g,i,e) = crystallite_Li(1:3,1:3,g,i,e)                     ! ...intermediate velocity gradient
                crystallite_subFp0(1:3,1:3,g,i,e) = crystallite_Fp(1:3,1:3,g,i,e)                     ! ...plastic def grad
+               crystallite_subFi0(1:3,1:3,g,i,e) = crystallite_Fi(1:3,1:3,g,i,e)                     ! ...intermediate def grad
                crystallite_subFe0(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(crystallite_subF (1:3,1:3,g,i,e), &
                                                                                crystallite_invFp(1:3,1:3,g,i,e)), &
-                                                                 math_inv33(constitutive_getFi(g,i,e)))  ! only needed later on for stiffness calculation
+                                                                 crystallite_invFi(1:3,1:3,g,i,e))  ! only needed later on for stiffness calculation
                !if abbrevation, make c and p private in omp
                plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e)) = &
                plasticState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e))
@@ -967,7 +1009,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              !$OMP FLUSH(crystallite_Fp)
              crystallite_invFp(1:3,1:3,g,i,e) = math_inv33(crystallite_Fp(1:3,1:3,g,i,e))
              !$OMP FLUSH(crystallite_invFp)
+             crystallite_Fi(1:3,1:3,g,i,e) = crystallite_subFi0(1:3,1:3,g,i,e)                       ! ...intermediate def grad
+             !$OMP FLUSH(crystallite_Fi)
+             crystallite_invFi(1:3,1:3,g,i,e) = math_inv33(crystallite_Fi(1:3,1:3,g,i,e))
+             !$OMP FLUSH(crystallite_invFi)
              crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)                    ! ...plastic velocity grad
+             crystallite_Li(1:3,1:3,g,i,e)    = crystallite_subLi0(1:3,1:3,g,i,e)                    ! ...intermediate velocity grad
              plasticState(mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
              plasticState(mappingConstitutive(2,g,i,e))%subState0(:,mappingConstitutive(1,g,i,e))
              damageState( mappingConstitutive(2,g,i,e))%state(    :,mappingConstitutive(1,g,i,e)) = &
@@ -1003,10 +1050,9 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                                * (crystallite_partionedF(1:3,1:3,g,i,e) &
                                              - crystallite_partionedF0(1:3,1:3,g,i,e))
              !$OMP FLUSH(crystallite_subF)
-             crystallite_Fe(1:3,1:3,g,i,e) = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), crystallite_invFp(1:3,1:3,g,i,e))
              crystallite_Fe(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(crystallite_subF (1:3,1:3,g,i,e), &
                                                                          crystallite_invFp(1:3,1:3,g,i,e)), &
-                                                           math_inv33(constitutive_getFi(g,i,e)))
+                                                           crystallite_invFi(1:3,1:3,g,i,e))
              crystallite_subdt(g,i,e) = crystallite_subStep(g,i,e) * crystallite_dt(g,i,e)
              crystallite_converged(g,i,e) = .false.                                                  ! start out non-converged
            endif
@@ -1083,11 +1129,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              e,'(',mesh_element(1,e),')',i,g
          invFp = math_inv33(crystallite_partionedFp0(1:3,1:3,g,i,e))
          Fe_guess = math_mul33x33(math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), invFp), &
-                                  math_inv33(constitutive_getPartionedFi0(g,i,e)))
-         call constitutive_TandItsTangent(Tstar, junk2, Fe_guess,g,i,e)
-         crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(Fe_guess,constitutive_getPartionedFi0(g,i,e)), &
-                                                      math_mul33x33(Tstar,transpose(invFp)))* &
-                                        math_det33(constitutive_getPartionedFi0(g,i,e))              
+                                  math_inv33(crystallite_partionedFi0(1:3,1:3,g,i,e)))
+         call constitutive_TandItsTangent(Tstar,dSdFe,dSdFi,Fe_guess,crystallite_partionedFi0(1:3,1:3,g,i,e),g,i,e)
+         crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(crystallite_partionedF(1:3,1:3,g,i,e), invFp), &
+                                                      math_mul33x33(Tstar,transpose(invFp)))             
        endif
        if (iand(debug_level(debug_crystallite), debug_levelExtensive) /= 0_pInt &
            .and. ((e == debug_e .and. i == debug_i .and. g == debug_g) &
@@ -1097,8 +1142,12 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                                           math_transpose33(crystallite_P(1:3,1:3,g,i,e))*1.0e-6_pReal
          write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST >> Fp', &
                                           math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
+         write(6,'(a,/,3(12x,3(f14.9,1x)/))')   '<< CRYST >> Fi', &
+                                          math_transpose33(crystallite_Fi(1:3,1:3,g,i,e))
          write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST >> Lp', &
                                           math_transpose33(crystallite_Lp(1:3,1:3,g,i,e))
+         write(6,'(a,/,3(12x,3(f14.9,1x)/),/)') '<< CRYST >> Li', &
+                                          math_transpose33(crystallite_Li(1:3,1:3,g,i,e))
          flush(6)
        endif
      enddo
@@ -1113,37 +1162,44 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
      ! --- ANALYTIC JACOBIAN ---
 
-     !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFiInv,dLpdS,dFpinvdF,dFiinvdF,dLidS,rhs_3333,lhs_3333,&
-     !$OMP                     Fi,invFi,invFi0,detFi,temp_99,temp_33,temp_3333,myNgrains,error)
+     !$OMP PARALLEL DO PRIVATE(dSdF,dSdFe,dSdFi,dLpdS,dLpdFi,dFpinvdF,dLidS,dLidFi,dFidS,&
+     !$OMP                     rhs_3333,lhs_3333,temp_99,temp_33,temp_3333,myNgrains,error)
        elementLooping6: do e = FEsolving_execElem(1),FEsolving_execElem(2)
          myNgrains = homogenization_Ngrains(mesh_element(3,e))
          do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)                                            ! iterate over IPs of this element to be processed
            do g = 1_pInt,myNgrains
-             Fi       = constitutive_getFi(g,i,e)
-             detFi    = math_det33(Fi)
-             invFi    = math_inv33(Fi)
-             invFi0   = math_inv33(constitutive_getFi0(g,i,e))
-             call constitutive_TandItsTangent(temp_33,dSdFe,crystallite_Fe(1:3,1:3,g,i,e),g,i,e)      ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dSdFe(1:3,1:3,o,p) = math_mul33x33(invFi,math_mul33x33(dSdFe(1:3,1:3,o,p), &
-                                                                      math_transpose33(invFi)))*detFi
-             dSdFiInv = 0.0_pReal
-             temp_33  = math_mul33x33(temp_33,math_transpose33(invFi))*detFi
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dSdFiInv(o,1:3,p,1:3) = dSdFiInv(o,1:3,p,1:3) + math_I3(o,p)*temp_33
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dSdFiInv(1:3,o,p,1:3) = dSdFiInv(1:3,o,p,1:3) + math_I3(o,p)*math_transpose33(temp_33)
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dSdFiInv(1:3,1:3,o,p) = dSdFiInv(1:3,1:3,o,p) - math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e))*invFi(p,o)
+             call constitutive_TandItsTangent(temp_33,dSdFe,dSdFi,crystallite_Fe(1:3,1:3,g,i,e), &
+                                              crystallite_Fi(1:3,1:3,g,i,e),g,i,e)                     ! call constitutive law to calculate elastic stress tangent
 
-             call constitutive_LpAndItsTangent(temp_33,temp_99,crystallite_Tstar_v(1:6,g,i,e), &
-                                               g,i,e)
-             dLpdS = reshape(temp_99,shape=[3,3,3,3])
-             call constitutive_LiAndItsTangent(temp_33,temp_99,crystallite_Tstar_v(1:6,g,i,e), &
-                                               crystallite_Lp(1:3,1:3,g,i,e), g,i,e)
-             dLidS    = reshape(temp_99,shape=[3,3,3,3])
-             
-             temp_33   = math_transpose33(math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e),invFi))  
+             call constitutive_LiAndItsTangent(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,g,i,e), &
+                                               crystallite_Fi(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e), &
+                                               g,i,e)                                                  ! call constitutive law to calculate Li tangent in lattice configuration
+             temp_33 = math_inv33(crystallite_subFi0(1:3,1:3,g,i,e))
+             lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
+             do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+               lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) + &
+                                       crystallite_subdt(g,i,e)*math_mul33x33(temp_33,dLidFi(1:3,1:3,o,p))
+               lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) + &
+                                       crystallite_invFi(1:3,1:3,g,i,e)*crystallite_invFi(p,o,g,i,e)
+               rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) - &
+                                       crystallite_subdt(g,i,e)*math_mul33x33(temp_33,dLidS(1:3,1:3,o,p))
+             enddo; enddo
+             call math_invert(9_pInt,math_Plain3333to99(lhs_3333),temp_99,error)
+             if (error) then
+               call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=g, &
+                               ext_msg='inversion error in analytic tangent calculation')
+               dFidS = 0.0_pReal
+             else
+               dFidS = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
+             endif  
+             dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
+
+             call constitutive_LpAndItsTangent(temp_33,dLpdS,dLpdFi,crystallite_Tstar_v(1:6,g,i,e), &
+                                               crystallite_Fi(1:3,1:3,g,i,e),g,i,e)                    ! call constitutive law to calculate Lp tangent in lattice configuration 
+             dLpdS = math_mul3333xx3333(dLpdFi,dFidS) + dLpdS
+
+             temp_33   = math_transpose33(math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e), &
+                                                        crystallite_invFi(1:3,1:3,g,i,e)))  
              rhs_3333 = 0.0_pReal
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                rhs_3333(p,o,1:3,1:3) = math_mul33x33(dSdFe(p,o,1:3,1:3),temp_33)
@@ -1152,29 +1208,25 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              temp_33 = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
                                      math_inv33(crystallite_subFp0(1:3,1:3,g,i,e)))
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               temp_3333(1:3,1:3,p,o) = math_mul33x33(math_mul33x33(temp_33,dLpdS(1:3,1:3,p,o)),invFi)
+               temp_3333(1:3,1:3,p,o) = math_mul33x33(math_mul33x33(temp_33,dLpdS(1:3,1:3,p,o)), &
+                                                      crystallite_invFi(1:3,1:3,g,i,e))
              
              temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
-                                                   crystallite_invFp(1:3,1:3,g,i,e)), invFi0)
+                                                   crystallite_invFp(1:3,1:3,g,i,e)), &
+                                     math_inv33(crystallite_subFi0(1:3,1:3,g,i,e)))
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                temp_3333(1:3,1:3,p,o) = temp_3333(1:3,1:3,p,o) + math_mul33x33(temp_33,dLidS(1:3,1:3,p,o))
              
-             lhs_3333 = crystallite_subdt(g,i,e)*math_mul3333xx3333(dSdFe,temp_3333)
+             lhs_3333 = crystallite_subdt(g,i,e)*math_mul3333xx3333(dSdFe,temp_3333) + &
+                        math_mul3333xx3333(dSdFi,dFidS)
 
-             temp_3333 = 0.0_pReal
-             temp_33 = math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e), invFi0)
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               temp_3333(1:3,1:3,p,o) = math_mul33x33(temp_33,dLidS(1:3,1:3,p,o))
-
-             lhs_3333 = lhs_3333 + crystallite_subdt(g,i,e)*math_mul3333xx3333(dSdFiInv,temp_3333)
-
-             call math_invert(9_pInt,math_identity2nd(9_pInt)+reshape(lhs_3333,shape=[9,9]),temp_99,error)
+             call math_invert(9_pInt,math_identity2nd(9_pInt)+math_Plain3333to99(lhs_3333),temp_99,error)
              if (error) then
                call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=g, &
                                ext_msg='inversion error in analytic tangent calculation')
                dSdF = rhs_3333
              else
-               dSdF = math_mul3333xx3333(reshape(temp_99,shape=[3,3,3,3]),rhs_3333)
+               dSdF = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
              endif  
              
              dFpinvdF = 0.0_pReal
@@ -1182,30 +1234,24 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                dFpinvdF(1:3,1:3,p,o) = -crystallite_subdt(g,i,e)* &
                                         math_mul33x33(math_inv33(crystallite_subFp0(1:3,1:3,g,i,e)), &
-                                                      math_mul33x33(temp_3333(1:3,1:3,p,o),invFi))
-             
-             dFiinvdF = 0.0_pReal
-             temp_3333 = math_mul3333xx3333(dLidS,dSdF)
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               dFiinvdF(1:3,1:3,p,o) = -crystallite_subdt(g,i,e)* &
-                                        math_mul33x33(math_inv33(crystallite_Fp(1:3,1:3,g,i,e)), &
-                                                      math_mul33x33(invFi0,temp_3333(1:3,1:3,p,o)))
+                                                      math_mul33x33(temp_3333(1:3,1:3,p,o), &
+                                                                    crystallite_invFi(1:3,1:3,g,i,e)))
              
              crystallite_dPdF(1:3,1:3,1:3,1:3,g,i,e) = 0.0_pReal
              temp_33 = math_mul33x33(crystallite_invFp(1:3,1:3,g,i,e), &
                                   math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)), &
-                                                math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))*detFi
+                                                math_transpose33(crystallite_invFp(1:3,1:3,g,i,e))))
              forall(p=1_pInt:3_pInt) &
                crystallite_dPdF(p,1:3,p,1:3,g,i,e) = math_transpose33(temp_33)
 
              temp_33 = math_mul33x33(math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)), &
-                                  math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))*detFi
+                                  math_transpose33(crystallite_invFp(1:3,1:3,g,i,e)))
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                crystallite_dPdF(1:3,1:3,p,o,g,i,e) = crystallite_dPdF(1:3,1:3,p,o,g,i,e) + &
                  math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e),dFpinvdF(1:3,1:3,p,o)),temp_33)
 
              temp_33 = math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
-                                  crystallite_invFp(1:3,1:3,g,i,e))*detFi
+                                  crystallite_invFp(1:3,1:3,g,i,e))
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                crystallite_dPdF(1:3,1:3,p,o,g,i,e) = crystallite_dPdF(1:3,1:3,p,o,g,i,e) + &
                  math_mul33x33(math_mul33x33(temp_33,dSdF(1:3,1:3,p,o)), &
@@ -1213,14 +1259,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
              temp_33 = math_mul33x33(math_mul33x33(crystallite_subF(1:3,1:3,g,i,e), &
                                                 crystallite_invFp(1:3,1:3,g,i,e)), &
-                                  math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)))*detFi
+                                  math_Mandel6to33(crystallite_Tstar_v(1:6,g,i,e)))
              forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
                crystallite_dPdF(1:3,1:3,p,o,g,i,e) = crystallite_dPdF(1:3,1:3,p,o,g,i,e) + &
                  math_mul33x33(temp_33,math_transpose33(dFpinvdF(1:3,1:3,p,o)))
-
-             forall(p=1_pInt:3_pInt, o=1_pInt:3_pInt) &
-               crystallite_dPdF(1:3,1:3,p,o,g,i,e) = crystallite_dPdF(1:3,1:3,p,o,g,i,e) - &
-                 crystallite_P(1:3,1:3,g,i,e)*sum(math_transpose33(Fi)*dFiinvdF(1:3,1:3,p,o))
 
          enddo; enddo
        enddo elementLooping6
@@ -1259,8 +1301,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
            F_backup(1:3,1:3,g,i,e)       = crystallite_subF(1:3,1:3,g,i,e)                            ! ... and kinematics
            Fp_backup(1:3,1:3,g,i,e)      = crystallite_Fp(1:3,1:3,g,i,e)
            InvFp_backup(1:3,1:3,g,i,e)   = crystallite_invFp(1:3,1:3,g,i,e)
+           Fi_backup(1:3,1:3,g,i,e)      = crystallite_Fi(1:3,1:3,g,i,e)
+           InvFi_backup(1:3,1:3,g,i,e)   = crystallite_invFi(1:3,1:3,g,i,e)
            Fe_backup(1:3,1:3,g,i,e)      = crystallite_Fe(1:3,1:3,g,i,e)
            Lp_backup(1:3,1:3,g,i,e)      = crystallite_Lp(1:3,1:3,g,i,e)
+           Li_backup(1:3,1:3,g,i,e)      = crystallite_Li(1:3,1:3,g,i,e)
            Tstar_v_backup(1:6,g,i,e)     = crystallite_Tstar_v(1:6,g,i,e)
            P_backup(1:3,1:3,g,i,e)       = crystallite_P(1:3,1:3,g,i,e)
            convergenceFlag_backup(g,i,e) = crystallite_converged(g,i,e)
@@ -1308,8 +1353,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
 
                    crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e) 
                    crystallite_invFp(1:3,1:3,g,i,e) = InvFp_backup(1:3,1:3,g,i,e)
+                   crystallite_Fi(1:3,1:3,g,i,e)    = Fi_backup(1:3,1:3,g,i,e) 
+                   crystallite_invFi(1:3,1:3,g,i,e) = InvFi_backup(1:3,1:3,g,i,e)
                    crystallite_Fe(1:3,1:3,g,i,e)    = Fe_backup(1:3,1:3,g,i,e)
                    crystallite_Lp(1:3,1:3,g,i,e)    = Lp_backup(1:3,1:3,g,i,e)
+                   crystallite_Li(1:3,1:3,g,i,e)    = Li_backup(1:3,1:3,g,i,e)
                    crystallite_Tstar_v(1:6,g,i,e)   = Tstar_v_backup(1:6,g,i,e)
                  endforall
                enddo
@@ -1339,8 +1387,10 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
                    vacancyState(mappingConstitutive(2,g,i,e))%dotState_backup(:,mappingConstitutive(1,g,i,e))
 
                    crystallite_Fp(1:3,1:3,g,i,e)    = crystallite_subFp0(1:3,1:3,g,i,e) 
+                   crystallite_Fi(1:3,1:3,g,i,e)    = crystallite_subFi0(1:3,1:3,g,i,e) 
                    crystallite_Fe(1:3,1:3,g,i,e)    = crystallite_subFe0(1:3,1:3,g,i,e)
                    crystallite_Lp(1:3,1:3,g,i,e)    = crystallite_subLp0(1:3,1:3,g,i,e)
+                   crystallite_Li(1:3,1:3,g,i,e)    = crystallite_subLi0(1:3,1:3,g,i,e)
                    crystallite_Tstar_v(1:6,g,i,e)   = crystallite_subTstar0_v(1:6,g,i,e)
                  endforall
                enddo
@@ -1445,8 +1495,11 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
          crystallite_subF(1:3,1:3,g,i,e)  = F_backup(1:3,1:3,g,i,e)
          crystallite_Fp(1:3,1:3,g,i,e)    = Fp_backup(1:3,1:3,g,i,e)
          crystallite_invFp(1:3,1:3,g,i,e) = InvFp_backup(1:3,1:3,g,i,e)
+         crystallite_Fi(1:3,1:3,g,i,e)    = Fi_backup(1:3,1:3,g,i,e)
+         crystallite_invFi(1:3,1:3,g,i,e) = InvFi_backup(1:3,1:3,g,i,e)
          crystallite_Fe(1:3,1:3,g,i,e)    = Fe_backup(1:3,1:3,g,i,e)
          crystallite_Lp(1:3,1:3,g,i,e)    = Lp_backup(1:3,1:3,g,i,e)
+         crystallite_Li(1:3,1:3,g,i,e)    = Li_backup(1:3,1:3,g,i,e)
          crystallite_Tstar_v(1:6,g,i,e)   = Tstar_v_backup(1:6,g,i,e)
          crystallite_P(1:3,1:3,g,i,e)     = P_backup(1:3,1:3,g,i,e)
          crystallite_converged(g,i,e)     = convergenceFlag_backup(g,i,e)
@@ -3552,11 +3605,10 @@ logical function crystallite_integrateStress(&
                          debug_g, &
                          debug_cumLpCalls, &
                          debug_cumLpTicks, &
-                         debug_StressLoopDistribution
+                         debug_StressLoopLpDistribution, &
+                         debug_StressLoopLiDistribution
  use constitutive, only: constitutive_LpAndItsTangent, &
                          constitutive_LiAndItsTangent, &
-                         constitutive_getFi0, &
-                         constitutive_putFi, &
                          constitutive_TandItsTangent
  use math, only:         math_mul33x33, &
                          math_mul33xx33, &
@@ -3576,7 +3628,8 @@ logical function crystallite_integrateStress(&
                          math_Mandel33to6, &
                          math_Plain3333to99, &
                          math_Plain33to9, &
-                         math_Plain9to33
+                         math_Plain9to33, &
+                         math_Plain99to3333
  use mesh, only:         mesh_element
 
  implicit none
@@ -3592,6 +3645,8 @@ logical function crystallite_integrateStress(&
                                      Fp_new, &                                                       ! plastic deformation gradient at end of timestep
                                      Fe_new, &                                                       ! elastic deformation gradient at end of timestep
                                      invFp_new, &                                                    ! inverse of Fp_new
+                                     Fi_new, &                                                       ! gradient of intermediate deformation stages
+                                     invFi_new, &
                                      invFp_current, &                                                ! inverse of Fp_current
                                      invFi_current, &                                                ! inverse of Fp_current
                                      Lpguess, &                                                      ! current guess for plastic velocity gradient
@@ -3607,32 +3662,26 @@ logical function crystallite_integrateStress(&
                                      residuumLi_old, &                                               ! last residuum of intermediate velocity gradient
                                      deltaLi, &                                                      ! direction of next guess
                                      Tstar, &                                                        ! 2nd Piola-Kirchhoff Stress in plastic (lattice) configuration
-                                     Tstar_unloaded, &                                               ! 2nd Piola-Kirchhoff Stress in unloaded configuration
                                      A, &
                                      B, &
                                      Fe, &                                                           ! elastic deformation gradient
-                                     Fi, &                                                           ! gradient of intermediate deformation stages
-                                     invFi, &
                                      temp_33
  real(pReal), dimension(6)::         Tstar_v                                                         ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
  real(pReal), dimension(9)::         work                                                            ! needed for matrix inversion by LAPACK
  integer(pInt), dimension(9) ::      ipiv                                                            ! needed for matrix inversion by LAPACK
  real(pReal), dimension(9,9) ::      dLp_dT_constitutive99, &                                        ! partial derivative of plastic velocity gradient calculated by constitutive law
-                                     dLi_dT_constitutive99, &                                        ! partial derivative of intermediate velocity gradient calculated by constitutive law
-                                     dT_dFe99, &                                                     ! partial derivative of 2nd Piola-Kirchhoff stress calculated by constitutive law
-                                     dFe_dLp99, &                                                    ! partial derivative of elastic deformation gradient
-                                     dFe_dLi99, &
-                                     dFiInv_dLi99, &
-                                     dT_dFiInv99, &
                                      dRLp_dLp, &                                                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
                                      dRLp_dLp2, &                                                    ! working copy of dRdLp
                                      dRLi_dLi                                                        ! partial derivative of residuumI (Jacobian for NEwton-Raphson scheme)
  real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
-                                     dT_dFe3333_unloaded, &
+                                     dT_dFi3333, &
                                      dFe_dLp3333, &                                                  ! partial derivative of elastic deformation gradient
                                      dFe_dLi3333, &
-                                     dFiInv_dLi3333, &
-                                     dT_dFiInv3333
+                                     dFi_dLi3333, &
+                                     dLp_dFi3333, &
+                                     dLi_dFi3333, &
+                                     dLp_dT3333, &
+                                     dLi_dT3333
  real(pReal)                         det, &                                                          ! determinant
                                      detInvFi, &
                                      steplengthLp0, &
@@ -3687,8 +3736,11 @@ logical function crystallite_integrateStress(&
 
  !* feed local variables
 
- Fp_current =   crystallite_subFp0(1:3,1:3,g,i,e)                   ! "Fp_current" is only used as temp var here...
- Lpguess    =   crystallite_Lp    (1:3,1:3,g,i,e)                   ! ... and take it as first guess
+ Fp_current  =   crystallite_subFp0(1:3,1:3,g,i,e)                   ! "Fp_current" is only used as temp var here...
+ Lpguess     =   crystallite_Lp    (1:3,1:3,g,i,e)                   ! ... and take it as first guess
+ Fi_current  =   crystallite_subFi0(1:3,1:3,g,i,e)                   ! intermediate configuration, assume decomposition as F = Fe Fi Fp
+ Liguess     =   crystallite_Li    (1:3,1:3,g,i,e)                   ! ... and take it as first guess
+ Liguess_old =   Liguess
 
 
  !* inversion of Fp_current...
@@ -3705,19 +3757,12 @@ logical function crystallite_integrateStress(&
 #endif
    return
  endif
- A = math_mul33x33(Fg_new,invFp_current)                                    ! intermediate tensor needed later to calculate dFe_dLp
-
- !* feed local variables
-
- Fi_current = constitutive_getFi0(g,i,e)                                    ! intermediate configuration, assume decomposition as F = Fe Fi Fp
- call constitutive_LiAndItsTangent(Liguess, dLi_dT_constitutive99, &
-                                   crystallite_Tstar_v(1:6,g,i,e), Lpguess, g, i, e)
- Liguess_old = Liguess
+ A = math_mul33x33(Fg_new,invFp_current)                           ! intermediate tensor needed later to calculate dFe_dLp
 
  !* inversion of Fi_current...
 
  invFi_current = math_inv33(Fi_current)
- if (all(invFi_current == 0.0_pReal)) then                          ! ... failed?
+ if (all(invFi_current == 0.0_pReal)) then                         ! ... failed?
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip g ',&
@@ -3748,9 +3793,9 @@ logical function crystallite_integrateStress(&
      return
    endif IloopsExeced
 
-   invFi    = math_mul33x33(invFi_current,math_I3 - dt*Liguess)
-   detInvFi = math_det33(invFi)
-   Fi       = math_inv33(invFi)
+   invFi_new = math_mul33x33(invFi_current,math_I3 - dt*Liguess)
+   Fi_new    = math_inv33(invFi_new)
+   detInvFi  = math_det33(invFi_new)
 
    NiterationStressLp = 0_pInt
    jacoCounterLp      = 0_pInt
@@ -3773,23 +3818,9 @@ logical function crystallite_integrateStress(&
      !* calculate (elastic) 2nd Piola--Kirchhoff stress tensor and its tangent from constitutive law
 
      B  = math_I3 - dt*Lpguess
-     Fe = math_mul33x33(math_mul33x33(A,B),invFi)                                                       ! current elastic deformation tensor
-     call constitutive_TandItsTangent(Tstar_unloaded, dT_dFe3333_unloaded, Fe, g,i,e)                   ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
-     Tstar = math_mul33x33(invFi, &
-               math_mul33x33(Tstar_unloaded,math_transpose33(invFi)))/detInvFi                          ! push Tstar forward from unloaded to plastic (lattice) configuration 
-     dT_dFe3333    = 0.0_pReal
-     dT_dFiInv3333 = 0.0_pReal
-     temp_33 = math_mul33x33(Tstar_unloaded,math_transpose33(invFi))/detInvFi                          ! push Tstar forward from unloaded to plastic (lattice) configuration 
-     do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-       dT_dFe3333   (1:3,1:3,o,p)    = &
-         math_mul33x33(invFi,math_mul33x33(dT_dFe3333_unloaded(1:3,1:3,o,p), &
-                                           math_transpose33(invFi)))/detInvFi 
-       dT_dFiInv3333(o,1:3,p,1:3) = dT_dFiInv3333(o,1:3,p,1:3) + math_I3(o,p)*temp_33
-       dT_dFiInv3333(1:3,o,p,1:3) = dT_dFiInv3333(1:3,o,p,1:3) + math_I3(o,p)*math_transpose33(temp_33)
-       dT_dFiInv3333(1:3,1:3,o,p) = dT_dFiInv3333(1:3,1:3,o,p) - Tstar*invFi(p,o)
-     enddo; enddo 
+     Fe = math_mul33x33(math_mul33x33(A,B), invFi_new)                                                  ! current elastic deformation tensor
+     call constitutive_TandItsTangent(Tstar, dT_dFe3333, dT_dFi3333, Fe, Fi_new, g, i, e)               ! call constitutive law to calculate 2nd Piola-Kirchhoff stress and its derivative in unloaded configuration
      Tstar_v = math_Mandel33to6(Tstar)
-
 
      !* calculate plastic velocity gradient and its tangent from constitutive law
 
@@ -3797,8 +3828,8 @@ logical function crystallite_integrateStress(&
        call system_clock(count=tick,count_rate=tickrate,count_max=maxticks)
      endif
 
-     call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT_constitutive99, Tstar_v, &
-                                       g, i, e)
+     call constitutive_LpAndItsTangent(Lp_constitutive, dLp_dT3333, dLp_dFi3333, &
+                                       Tstar_v, Fi_new, g, i, e)
 
      if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
        call system_clock(count=tock,count_rate=tickrate,count_max=maxticks)
@@ -3855,13 +3886,11 @@ logical function crystallite_integrateStress(&
      if (mod(jacoCounterLp, iJacoLpresiduum) == 0_pInt) then
        dFe_dLp3333 = 0.0_pReal
        do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-         dFe_dLp3333(o,1:3,p,1:3) = A(o,p)*math_transpose33(invFi)                                    ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+         dFe_dLp3333(o,1:3,p,1:3) = A(o,p)*math_transpose33(invFi_new)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
        enddo; enddo
        dFe_dLp3333 = - dt * dFe_dLp3333
-       dFe_dLp99   =   math_Plain3333to99(dFe_dLp3333)
-       dT_dFe99    =   math_Plain3333to99(dT_dFe3333)
        dRLp_dLp    =   math_identity2nd(9_pInt) &
-                     - math_mul99x99(dLp_dT_constitutive99, math_mul99x99(dT_dFe99 , dFe_dLp99))
+                     - math_Plain3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dT3333,dT_dFe3333),dFe_dLp3333))
        dRLp_dLp2   = dRLp_dLp                                                                         ! will be overwritten in first call to LAPACK routine
        work = math_plain33to9(residuumLp)
 #if(FLOAT==8)
@@ -3879,8 +3908,8 @@ logical function crystallite_integrateStress(&
                       .or. .not. iand(debug_level(debug_crystallite), debug_levelSelective) /= 0_pInt)) then
              write(6,*)
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLp',transpose(dRLp_dLp)
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(dFe_dLp99)
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFe_constitutive',transpose(dT_dFe99)
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(math_Plain3333to99(dFe_dLp3333))
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFe_constitutive',transpose(math_Plain3333to99(dT_dFe3333))
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(dLp_dT_constitutive99)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> A',math_transpose33(A)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> B',math_transpose33(B)
@@ -3899,10 +3928,17 @@ logical function crystallite_integrateStress(&
 
    enddo LpLoop
 
+   if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+     !$OMP CRITICAL (distributionStress)
+      debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) = &
+        debug_StressLoopLpDistribution(NiterationStressLp,numerics_integrationMode) + 1_pInt
+     !$OMP END CRITICAL (distributionStress)
+   endif
+
    !* calculate intermediate velocity gradient and its tangent from constitutive law
 
-   call constitutive_LiAndItsTangent(Li_constitutive, dLi_dT_constitutive99, Tstar_v, Lpguess, &
-                                     g, i, e)
+   call constitutive_LiAndItsTangent(Li_constitutive, dLi_dT3333, dLi_dFi3333, &
+                                     Tstar_v, Fi_new, Lpguess, g, i, e)
 
    !* update current residuum and check for convergence of loop
 
@@ -3928,18 +3964,20 @@ logical function crystallite_integrateStress(&
 
    if (mod(jacoCounterLi, iJacoLpresiduum) == 0_pInt) then
      temp_33     = math_mul33x33(math_mul33x33(A,B),invFi_current)
-     dFe_dLi3333    = 0.0_pReal
-     dFiInv_dLi3333 = 0.0_pReal
+     dFe_dLi3333 = 0.0_pReal
+     dFi_dLi3333 = 0.0_pReal
      do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-       dFe_dLi3333   (1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
-       dFiInv_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
+       dFe_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+       dFi_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
      enddo; enddo
-     dT_dFiInv99  =   math_Plain3333to99(dT_dFiInv3333)
-     dFe_dLi99    =   math_Plain3333to99(dFe_dLi3333)
-     dFiInv_dLi99 =   math_Plain3333to99(dFiInv_dLi3333)
-     dRLi_dLi     =   math_identity2nd(9_pInt) &
-                    - math_mul99x99(dLi_dT_constitutive99, math_mul99x99(dT_dFe99, dFe_dLi99) + &
-                                                           math_mul99x99(dT_dFiInv99, dFiInv_dLi99))
+     do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+       dFi_dLi3333(1:3,1:3,o,p) = math_mul33x33(math_mul33x33(Fi_new,dFi_dLi3333(1:3,1:3,o,p)),Fi_new)
+     enddo; enddo
+
+     dRLi_dLi  = math_identity2nd(9_pInt) &
+               - math_Plain3333to99(math_mul3333xx3333(dLi_dT3333, math_mul3333xx3333(dT_dFe3333, dFe_dLi3333) + &
+                                                                   math_mul3333xx3333(dT_dFi3333, dFi_dLi3333)))  &
+               - math_Plain3333to99(math_mul3333xx3333(dLi_dFi3333, dFi_dLi3333))
      work = math_plain33to9(residuumLi)
 #if(FLOAT==8)
      call dgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                      ! solve dRLi/dLp * delta Li = -res for delta Li
@@ -3955,6 +3993,13 @@ logical function crystallite_integrateStress(&
 
    Liguess = Liguess + steplengthLi * deltaLi
  enddo LiLoop  
+
+ if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
+   !$OMP CRITICAL (distributionStress)
+    debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) = &
+      debug_StressLoopLiDistribution(NiterationStressLi,numerics_integrationMode) + 1_pInt
+   !$OMP END CRITICAL (distributionStress)
+ endif
 
  !* calculate new plastic and elastic deformation gradient
 
@@ -3974,22 +4019,24 @@ logical function crystallite_integrateStress(&
 #endif
    return
  endif
- Fe_new = math_mul33x33(math_mul33x33(Fg_new,invFp_new),invFi)    ! calc resulting Fe
+ Fe_new = math_mul33x33(math_mul33x33(Fg_new,invFp_new),invFi_new)    ! calc resulting Fe
 
  !* calculate 1st Piola-Kirchhoff stress
 
  crystallite_P(1:3,1:3,g,i,e) = math_mul33x33(math_mul33x33(Fg_new,invFp_new), &
                                               math_mul33x33(math_Mandel6to33(Tstar_v), &
-                                                            math_transpose33(invFp_new)))/detInvFi
+                                                            math_transpose33(invFp_new)))
 
  !* store local values in global variables
 
  crystallite_Lp(1:3,1:3,g,i,e)    = Lpguess
+ crystallite_Li(1:3,1:3,g,i,e)    = Liguess
  crystallite_Tstar_v(1:6,g,i,e)   = Tstar_v
  crystallite_Fp(1:3,1:3,g,i,e)    = Fp_new
+ crystallite_Fi(1:3,1:3,g,i,e)    = Fi_new
  crystallite_Fe(1:3,1:3,g,i,e)    = Fe_new
  crystallite_invFp(1:3,1:3,g,i,e) = invFp_new
- call constitutive_putFi(Tstar_v, Lpguess, dt, g, i, e)
+ crystallite_invFi(1:3,1:3,g,i,e) = invFi_new
 
  !* set return flag to true
 
@@ -4004,15 +4051,9 @@ logical function crystallite_integrateStress(&
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fe Lp Fe^-1', &
               math_transpose33(math_mul33x33(Fe_new, math_mul33x33(crystallite_Lp(1:3,1:3,g,i,e), math_inv33(Fe_new))))    ! transpose to get correct print out order
    write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fp',math_transpose33(crystallite_Fp(1:3,1:3,g,i,e))
+   write(6,'(a,/,3(12x,3(f12.7,1x)/))') '<< CRYST >> Fi',math_transpose33(crystallite_Fi(1:3,1:3,g,i,e))
  endif
 #endif
-
- if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
-   !$OMP CRITICAL (distributionStress)
-    debug_StressLoopDistribution(NiterationStressLp,numerics_integrationMode) = &
-      debug_StressLoopDistribution(NiterationStressLp,numerics_integrationMode) + 1_pInt
-   !$OMP END CRITICAL (distributionStress)
- endif
 
 end function crystallite_integrateStress
 
@@ -4275,10 +4316,18 @@ function crystallite_postResults(ipc, ip, el)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_transpose33(crystallite_Fp(1:3,1:3,ipc,ip,el)),[mySize])
+     case (fi_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(math_transpose33(crystallite_Fi(1:3,1:3,ipc,ip,el)),[mySize])
      case (lp_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &
          reshape(math_transpose33(crystallite_Lp(1:3,1:3,ipc,ip,el)),[mySize])
+     case (li_ID)
+       mySize = 9_pInt
+       crystallite_postResults(c+1:c+mySize) = &
+         reshape(math_transpose33(crystallite_Li(1:3,1:3,ipc,ip,el)),[mySize])
      case (p_ID)
        mySize = 9_pInt
        crystallite_postResults(c+1:c+mySize) = &

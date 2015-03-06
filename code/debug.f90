@@ -73,7 +73,8 @@ module debug
    debug_MaterialpointLoopDistribution
 
  integer(pInt), dimension(:,:), allocatable, public :: &
-   debug_StressLoopDistribution, &                                                                  !< distribution of stress iterations until convergence
+   debug_StressLoopLiDistribution, &                                                                !< distribution of stress iterations until convergence
+   debug_StressLoopLpDistribution, &                                                                !< distribution of stress iterations until convergence
    debug_StateLoopDistribution                                                                      !< distribution of state iterations until convergence
  
  real(pReal), public :: &
@@ -137,10 +138,14 @@ subroutine debug_init
 #include "compilation_info.f90"
  endif mainProcess
  
- if (allocated(debug_StressLoopDistribution)) &
-    deallocate(debug_StressLoopDistribution)
-      allocate(debug_StressLoopDistribution(nStress+1,2))
-               debug_StressLoopDistribution = 0_pInt
+ if (allocated(debug_StressLoopLpDistribution)) &
+    deallocate(debug_StressLoopLpDistribution)
+      allocate(debug_StressLoopLpDistribution(nStress+1,2))
+               debug_StressLoopLpDistribution = 0_pInt
+ if (allocated(debug_StressLoopLiDistribution)) &
+    deallocate(debug_StressLoopLiDistribution)
+      allocate(debug_StressLoopLiDistribution(nStress+1,2))
+               debug_StressLoopLiDistribution = 0_pInt
  if (allocated(debug_StateLoopDistribution)) &
     deallocate(debug_StateLoopDistribution)
       allocate(debug_StateLoopDistribution(nState+1,2))
@@ -311,7 +316,8 @@ subroutine debug_reset
 
  implicit none
 
- debug_StressLoopDistribution              = 0_pInt
+ debug_StressLoopLpDistribution            = 0_pInt
+ debug_StressLoopLiDistribution            = 0_pInt
  debug_StateLoopDistribution               = 0_pInt
  debug_CrystalliteLoopDistribution         = 0_pInt
  debug_MaterialpointStateLoopDistribution  = 0_pInt
@@ -378,18 +384,32 @@ subroutine debug_info
      endif
    
      integral = 0_pInt
-     write(6,'(3/,a)') 'distribution_StressLoop :    stress  stiffness'
+     write(6,'(3/,a)') 'distribution_StressLoopLp :    stress  stiffness'
      do j=1_pInt,nStress+1_pInt
-       if (any(debug_StressLoopDistribution(j,:)     /= 0_pInt )) then
-         integral = integral + j*(debug_StressLoopDistribution(j,1) + debug_StressLoopDistribution(j,2))
+       if (any(debug_StressLoopLpDistribution(j,:)     /= 0_pInt )) then
+         integral = integral + j*(debug_StressLoopLpDistribution(j,1) + debug_StressLoopLpDistribution(j,2))
          exceed = ' '
          if (j > nStress) exceed = '+'                                                              ! last entry gets "+"
-         write(6,'(i25,a1,i10,1x,i10)') min(nStress,j),exceed,debug_StressLoopDistribution(j,1),&
-                                                              debug_StressLoopDistribution(j,2)
+         write(6,'(i25,a1,i10,1x,i10)') min(nStress,j),exceed,debug_StressLoopLpDistribution(j,1),&
+                                                              debug_StressLoopLpDistribution(j,2)
        endif
      enddo
-     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopDistribution(:,1)), &
-                                                               sum(debug_StressLoopDistribution(:,2))
+     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopLpDistribution(:,1)), &
+                                                               sum(debug_StressLoopLpDistribution(:,2))
+     
+     integral = 0_pInt
+     write(6,'(3/,a)') 'distribution_StressLoopLi :    stress  stiffness'
+     do j=1_pInt,nStress+1_pInt
+       if (any(debug_StressLoopLiDistribution(j,:)     /= 0_pInt )) then
+         integral = integral + j*(debug_StressLoopLiDistribution(j,1) + debug_StressLoopLiDistribution(j,2))
+         exceed = ' '
+         if (j > nStress) exceed = '+'                                                              ! last entry gets "+"
+         write(6,'(i25,a1,i10,1x,i10)') min(nStress,j),exceed,debug_StressLoopLiDistribution(j,1),&
+                                                              debug_StressLoopLiDistribution(j,2)
+       endif
+     enddo
+     write(6,'(a15,i10,2(1x,i10))') '          total',integral,sum(debug_StressLoopLiDistribution(:,1)), &
+                                                               sum(debug_StressLoopLiDistribution(:,2))
      
      integral = 0_pInt
      write(6,'(2/,a)') 'distribution_CrystalliteStateLoop :'
