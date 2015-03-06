@@ -297,9 +297,14 @@ class Quaternion:
     def asAngleAxis(self):
       if self.w > 1:
           self.normalize()
-      angle = 2 * math.acos(self.w)
-      s = math.sqrt(1 - self.w ** 2)
-      if s < 0.001:
+
+      s = math.sqrt(1. - self.w**2)
+      x = 2*self.w**2 - 1.
+      y = 2*self.w * s
+      
+      angle = math.atan2(y,x)
+      
+      if angle < 1e-3:
           return angle, numpy.array([1.0, 0.0, 0.0])
       else:
           return angle, numpy.array([self.x / s, self.y / s, self.z / s])
@@ -311,22 +316,49 @@ class Quaternion:
           return numpy.array([float('inf')]*3)
 
     def asEulers(self,type='bunge'):
+      '''
+      conversion taken from:
+      Melcher, A.; Unser, A.; Reichhardt, M.; Nestler, B.; Pötschke, M.; Selzer, M.
+      Conversion of EBSD data by a quaternion based algorithm to be used for grain structure simulations
+      Technische Mechanik 30 (2010) pp 401--413
+      '''
       angles = [0.0,0.0,0.0]
-      if type.lower() == 'bunge' or type.lower() == 'zxz':
-        angles[0] =  math.atan2( self.x*self.z+self.y*self.w,
-                                -self.y*self.z+self.x*self.w)
-#          angles[1] =  math.acos(-self.x**2-self.y**2+self.z**2+self.w**2)
-        angles[1] =  math.acos(1.0 - 2*(self.x**2+self.y**2))
-        angles[2] =  math.atan2( self.x*self.z-self.y*self.w,
-                                +self.y*self.z+self.x*self.w)
 
-        if angles[0] < 0.0:
-          angles[0] += 2*math.pi
-        if angles[1] < 0.0:
-          angles[1] += math.pi
-          angles[2] *= -1
-        if angles[2] < 0.0:
-          angles[2] += 2*math.pi
+      if type.lower() == 'bunge' or type.lower() == 'zxz':
+        if   abs(self.x - self.y) < 1e-8:
+          print 'q.x approx q.y !!'
+          x = self.w**2 - self.z**2
+          y = 2.*self.w*self.z
+          angles[0] = math.atan2(y,x)
+        elif abs(self.w - self.z) < 1e-8:
+          print 'q.w approx q.z !!'
+          x = self.x**2 - self.y**2
+          y = 2.*self.x*self.y
+          angles[0] = math.atan2(y,x)
+          angles[1] = math.pi
+        else:
+          chi = math.sqrt((self.w**2 + self.z**2)*(self.x**2 + self.y**2))
+
+          x = (self.w * self.x - self.y * self.z)/2./chi
+          y = (self.w * self.y + self.x * self.z)/2./chi
+          angles[0] = math.atan2(y,x)
+
+          x = self.w**2 + self.z**2 - (self.x**2 + self.y**2)
+          y = 2.*chi
+          angles[1] = math.atan2(y,x)
+
+          x = (self.w * self.x + self.y * self.z)/2./chi
+          y = (self.z * self.x - self.y * self.w)/2./chi
+          angles[2] = math.atan2(y,x)
+
+#        if angles[0] < 0.0:
+#          angles[0] += 2*math.pi
+#        if angles[1] < 0.0:
+#          angles[1] += math.pi
+#          angles[2] *= -1
+#        if angles[2] < 0.0:
+#          angles[2] += 2*math.pi
+          
       return angles
 
 
@@ -740,13 +772,13 @@ class Orientation:
     return 'Symmetry: %s\n' % (self.symmetry) + \
            'Quaternion: %s\n' % (self.quaternion) + \
            'Matrix:\n%s\n' % ( '\n'.join(['\t'.join(map(str,self.asMatrix()[i,:])) for i in range(3)]) ) + \
-           'Bunge Eulers: %s' % ('\t'.join(map(lambda x:str(numpy.degrees(x)),self.asEulers('Bunge'))) )
+           'Bunge Eulers / deg: %s' % ('\t'.join(map(lambda x:str(numpy.degrees(x)),self.asEulers('bunge'))) )
 
   def asQuaternion(self):
     return self.quaternion.asList()
 
 
-  def asEulers(self,type):
+  def asEulers(self,type='bunge'):
     return self.quaternion.asEulers(type)
 
 
@@ -781,10 +813,11 @@ class Orientation:
     for me in self.symmetry.equivalentQuaternions(self.quaternion):
       me.conjugate()
       for they in other.symmetry.equivalentQuaternions(other.quaternion):
-        theQ = me * they
+#        theQ = me * they
+        theQ = they * me
 #        if theQ.x < 0.0 or theQ.y < 0.0 or theQ.z < 0.0: theQ.conjugate()                   # speed up scanning since minimum angle is usually found for positive x,y,z
-        breaker = lowerSymmetry.inDisorientationSST(theQ.asRodrigues()) \
-               or lowerSymmetry.inDisorientationSST(theQ.conjugated().asRodrigues())
+        breaker = lowerSymmetry.inDisorientationSST(theQ.asRodrigues()) #\
+#               or lowerSymmetry.inDisorientationSST(theQ.conjugated().asRodrigues())
         if breaker: break
       if breaker: break
 
