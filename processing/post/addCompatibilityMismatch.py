@@ -58,10 +58,13 @@ for file in files:
 
 # --------------- figure out size and grid ---------------------------------------------------------
   try:
-    locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
+    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
-    continue
+    try:
+      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
+    except ValueError:
+      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
+      continue
 
   coords = [{},{},{}]
   while table.data_read():                                                                          # read next data line of ASCII table
@@ -101,7 +104,7 @@ for file in files:
 
 # ------------------------------------------ read deformation gradient field -----------------------
   table.data_rewind()
-  F = np.array([0.0 for i in xrange(N*9)]).reshape([3,3]+list(grid))
+  F = np.zeros(N*9,'d').reshape([3,3]+list(grid))
   idx = 0
   while table.data_read():    
     (x,y,z) = damask.util.gridLocation(idx,grid)                                                     # figure out (x,y,z) position from line count

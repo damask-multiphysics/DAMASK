@@ -133,12 +133,15 @@ for file in files:
   table.head_read()                                                                                 # read ASCII header info
   table.info_append(scriptID + '\t' + ' '.join(sys.argv[1:]))
 
-# --------------- figure out position of labels and coordinates ------------------------------------
+# --------------- figure out size and grid ---------------------------------------------------------
   try:
-    locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
+    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
-    continue
+    try:
+      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
+    except ValueError:
+      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
+      continue
 
   if options.id not in table.labels:
     file['croak'].write('column %s not found...\n'%options.id)

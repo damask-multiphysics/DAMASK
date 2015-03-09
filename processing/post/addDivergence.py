@@ -78,9 +78,9 @@ for file in files:
     locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
   except ValueError:
     try:
-      locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
+      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
     except ValueError:
-      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords)
+      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
       continue
 
   coords = [{},{},{}]

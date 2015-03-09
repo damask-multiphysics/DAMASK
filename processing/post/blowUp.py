@@ -54,11 +54,14 @@ for file in files:
 
 # --------------- figure out size and grid ---------------------------------------------------------
   try:
-    locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
     elemCol = table.labels.index('elem')
+    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate (%s.x) and/or elem data found...\n'%options.coords)
-    continue
+    try:
+      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
+    except ValueError:
+      file['croak'].write('no coordinate (1_%s/%s.x) and/or elem data found...\n'%(options.coords,options.coords))
+      continue
 
   if (any(options.grid)==0 or any(options.size)==0.0):
     coords = [{},{},{}]

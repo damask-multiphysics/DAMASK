@@ -24,11 +24,8 @@ parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
 parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
                                         help='heading of columns containing tensor field values')
-parser.add_option('-l', '--linear',     dest='linearreconstruction', action='store_true',
-                                        help='use linear reconstruction of geometry [%default]')
 parser.set_defaults(coords  = 'ip')
 parser.set_defaults(defgrad = 'f' )
-parser.set_defaults(linearreconstruction = False)
 
 (options,filenames) = parser.parse_args()
 
@@ -55,10 +52,13 @@ for file in files:
 
 # --------------- figure out size and grid ---------------------------------------------------------
   try:
-    locationCol = table.labels.index('%s.x'%options.coords)                                         # columns containing location data
+    locationCol = table.labels.index('1_%s'%options.coords)                                         # columns containing location data
   except ValueError:
-    file['croak'].write('no coordinate data (%s.x) found...\n'%options.coords)
-    continue
+    try:
+      locationCol = table.labels.index('%s.x'%options.coords)                                       # columns containing location data (legacy naming scheme)
+    except ValueError:
+      file['croak'].write('no coordinate data (1_%s/%s.x) found...\n'%(options.coords,options.coords))
+      continue
 
   coords = [{},{},{}]
   while table.data_read():                                                                          # read next data line of ASCII table
@@ -106,10 +106,7 @@ for file in files:
 
 # ------------------------------------------ calculate coordinates ---------------------------------
   Favg = damask.core.math.tensorAvg(F)
-  if options.linearreconstruction:
-    centroids = damask.core.mesh.deformedCoordsLin(size,F,Favg)
-  else:
-    centroids = damask.core.mesh.deformedCoordsFFT(size,F,Favg)
+  centroids = damask.core.mesh.deformedCoordsFFT(size,F,Favg)
   
 # ------------------------------------------ process data ------------------------------------------
   table.data_rewind()
