@@ -756,7 +756,7 @@ subroutine plastic_dislotwin_init(fileUnit)
                                                             maxNinstance), source=0.0_pReal)
  allocate(plastic_dislotwin_forestProjectionEdge(maxTotalNslip,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
- allocate(plastic_dislotwin_projectionMatrix_Trans(maxTotalNtrans,maxTotalNtrans,maxNinstance), &
+ allocate(plastic_dislotwin_projectionMatrix_Trans(maxTotalNtrans,maxTotalNslip,maxNinstance), &
                                                                                        source=0.0_pReal)
  allocate(plastic_dislotwin_Ctwin66(6,6,maxTotalNtwin,maxNinstance),              source=0.0_pReal)
  allocate(plastic_dislotwin_Ctwin3333(3,3,3,3,maxTotalNtwin,maxNinstance),        source=0.0_pReal)
@@ -991,11 +991,11 @@ subroutine plastic_dislotwin_init(fileUnit)
 
          !* Projection matrices for shear from slip systems to fault-band (twin) systems for strain-induced martensite nucleation
          do o = 1_pInt,lattice_maxNtransFamily
-           index_otherFamily = sum(plastic_dislotwin_Ntrans(1:o-1_pInt,instance))
-           do k = 1_pInt,plastic_dislotwin_Ntrans(o,instance)                                   ! loop over (active) systems in other family (trans)
+           index_otherFamily = sum(plastic_dislotwin_Nslip(1:o-1_pInt,instance))
+           do k = 1_pInt,plastic_dislotwin_Nslip(o,instance)                                   ! loop over (active) systems in other family (trans)
              plastic_dislotwin_projectionMatrix_Trans(index_myFamily+j,index_otherFamily+k,instance) = &
                    lattice_projectionTrans( sum(lattice_NtransSystem(1:f-1,phase))+j, &
-                                            sum(lattice_NtransSystem(1:o-1,phase))+k, phase)
+                                            sum(lattice_NslipSystem(1:o-1,phase))+k, phase)
          enddo; enddo
  
        enddo transSystemsLoop
@@ -1877,9 +1877,9 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
 
    !* Projection of shear and shear rate on fault band (twin) systems
    if (nr > 0_pInt) then
-     shear_trans     = matmul(plastic_dislotwin_projectionMatrix_Trans(1:nr,1:ns,instance), &
+     shear_trans     = matmul(plastic_dislotwin_projectionMatrix_Trans(:,:,instance), &
        plasticState(ph)%state(2_pInt*ns+1_pInt:3_pInt*ns, of))
-     shearrate_trans = matmul(plastic_dislotwin_projectionMatrix_Trans(1:nr,1:ns,instance), &
+     shearrate_trans = matmul(plastic_dislotwin_projectionMatrix_Trans(:,:,instance), &
        plasticState(ph)%dotState(2_pInt*ns+1_pInt:3_pInt*ns, of))
    endif
 
