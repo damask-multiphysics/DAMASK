@@ -154,7 +154,7 @@ class Hill1948(object):
 
 class Hill1979(object):
   '''
-    residuum of Hill 1979 quadratic yield criterion (eq. 2.48)
+    residuum of Hill 1979 non-quadratic yield criterion (eq. 2.48)
   '''
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
@@ -925,84 +925,84 @@ def KarafillisBoyceBasis(sigma0, c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26
 
 fittingCriteria = {
   'tresca'         :{'func' : Tresca,
-                     'num'  : 1,'err':np.inf,
+                     'num'  : 1,
                      'name' : 'Tresca',
                      'paras': 'Initial yield stress:',
                      'text' : '\nCoefficient of Tresca criterion:\nsigma0: ',
                      'error': 'The standard deviation error is: '
                     },
   'vonmises'       :{'func' : vonMises,
-                     'num'  : 1,'err':np.inf,
+                     'num'  : 1,
                      'name' : 'Huber-Mises-Hencky(von Mises)',
                      'paras': 'Initial yield stress:',
                      'text' : '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: ',
                      'error': 'The standard deviation error is: '
                     },
   'hosfordiso'     :{'func' : Hosford,
-                     'num'  : 2,'err':np.inf,
+                     'num'  : 2,
                      'name' : 'Gerenal isotropic Hosford',
                      'paras': 'Initial yield stress, a:',
                      'text' : '\nCoefficients of Hosford criterion:\nsigma0, a: ',
                      'error': 'The standard deviation errors are: '
                     },
   'hosfordaniso'   :{'func' : generalHosford,
-                     'num'  : 5,'err':np.inf,
+                     'num'  : 5,
                      'name' : 'Gerenal isotropic Hosford',
                      'paras': 'Initial yield stress, F, G, H, a:',
                      'text' : '\nCoefficients of Hosford criterion:\nsigma0, F, G, H, a: ',
                      'error': 'The standard deviation errors are: '
                     },
   'hill1948'       :{'func' : Hill1948,
-                     'num'  : 6,'err':np.inf,
+                     'num'  : 6,
                      'name' : 'Hill1948',
                      'paras': 'Normalized [F, G, H, L, M, N]:',
                      'text' : '\nCoefficients of Hill1948 criterion:\n[F, G, H, L, M, N]:'+' '*16,
                      'error': 'The standard deviation errors are: '
                     },
   'hill1979'       :{'func' : Hill1979,
-                     'num'  : 7,'err':np.inf,
+                     'num'  : 7,
                      'name' : 'Hill1979',
                      'paras': 'f,g,h,a,b,c,m:',
                      'text' : '\nCoefficients of Hill1979 criterion:\n f,g,h,a,b,c,m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'drucker'        :{'func' : Drucker,
-                     'num'  : 2,'err':np.inf,
+                     'num'  : 2,
                      'name' : 'Drucker',
                      'paras': 'Initial yield stress, C_D:',
                      'text' : '\nCoefficients of Drucker criterion:\nsigma0, C_D: ',
                      'error': 'The standard deviation errors are: '
                     },
   'gdrucker'       :{'func' : generalDrucker,
-                     'num'  : 3,'err':np.inf,
+                     'num'  : 3,
                      'name' : 'General Drucker',
                      'paras': 'Initial yield stress, C_D, p:',
                      'text' : '\nCoefficients of Drucker criterion:\nsigma0, C_D, p: ',
                      'error': 'The standard deviation errors are: '
                     },
   'barlat1991iso'  :{'func' : Barlat1991iso,
-                     'num'  : 2,'err':np.inf,
+                     'num'  : 2,
                      'name' : 'Barlat1991iso',
                      'paras': 'Initial yield stress, m:',
                      'text' : '\nCoefficients of isotropic Barlat 1991 criterion:\nsigma0, m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'barlat1991aniso':{'func' : Barlat1991aniso,
-                     'num'  : 8,'err':np.inf,
+                     'num'  : 8,
                      'name' : 'Barlat1991aniso',
                      'paras': 'Initial yield stress, a, b, c, f, g, h, m:',
                      'text' : '\nCoefficients of anisotropic Barlat 1991 criterion:\nsigma0, a, b, c, f, g, h, m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'bbc2003'        :{'func' : BBC2003,
-                     'num'  : 9,'err':np.inf,
+                     'num'  : 9,
                      'name' : 'Banabic-Balan-Comsa 2003',
                      'paras': 'Initial yield stress, a, b, c, d, e, f, g, k:',
                      'text' : '\nCoefficients of anisotropic Barlat 1991 criterion:\nsigma0, a, b, c, d, e, f, g, k:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'Cazacu_Barlat2D':{'func' : Cazacu_Barlat2D,
-                     'num'  : 11,'err':np.inf,
+                     'num'  : 11,
                      'name' : 'Cazacu Barlat for plain stress',
                      'paras': 'a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:',
                      'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
@@ -1010,7 +1010,7 @@ fittingCriteria = {
                      'error': 'The standard deviation errors are: '
                     },
   'Cazacu_Barlat3D':{'func' : Cazacu_Barlat3D,
-                     'num'  : 18,'err':np.inf,
+                     'num'  : 18,
                      'name' : 'Cazacu Barlat',
                      'paras': 'a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c:',
                      'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
@@ -1018,7 +1018,7 @@ fittingCriteria = {
                      'error': 'The standard deviation errors are: '
                     },
   'yld200418p'     :{'func' : Yld200418p,
-                     'num'  : 20,'err':np.inf,
+                     'num'  : 20,
                      'name' : 'Yld200418p',
                      'paras': 'Equivalent stress,c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m:',
                      'text' : '\nCoefficients of Yld2004-18p yield criterion: \
@@ -1026,15 +1026,13 @@ fittingCriteria = {
                      'error': 'The standard deviation errors are: '
                     },
   'karafillis'     :{'func' : KarafillisBoyce,
-                     'num'  : 16,'err':np.inf,
+                     'num'  : 16,
                      'name' : 'Yld200418p',
                      'paras': 'c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,b1,b2,a,alpha',
                      'text' : '\nCoefficients of Karafillis-Boyce yield criterion: \
                                \n c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,b1,b2,a,alpha\n',
                      'error': 'The standard deviation errors are: '
-                    },
-  'worst'          :{'err':np.inf},
-  'best'           :{'err':np.inf}
+                    }
                   }
 
 for key in fittingCriteria.keys():
@@ -1052,16 +1050,33 @@ class Loadcase():
   '''
 
 # ------------------------------------------------------------------
-  def __init__(self,finalStrain,incs,time,ND=3,RD=1):
+  def __init__(self,finalStrain,incs,time,ND=3,RD=1,nSet=1,dimension=3,vegter=False):
     print('using the random load case generator')
     self.finalStrain = finalStrain
     self.incs = incs
     self.time = time
     self.ND = ND
     self.RD = RD
+    self.nSet = nSet
+    self.dimension = dimension
+    self.vegter = vegter
     self.NgeneratedLoadCases = 0
+    if self.vegter:
+      self.vegterLoadcase = self._vegterLoadcase()
 
-  def getLoadcase(self):
+  def getLoadcase(self,number):
+    if self.dimension == 3:
+      print 'generate random 3D load case'
+      return self._getLoadcase3D()
+    else:
+      if self.vegter is True:
+        print 'generate load case for Vegter'
+        return self._getLoadcase2dVegter(number)
+      else:
+        print 'generate random 2D load case'
+        return self._getLoadcase2dRandom()
+
+  def getLoadcase3D(self):
     self.NgeneratedLoadCases+=1
     defgrad=['*']*9
     stress =[0]*9
@@ -1085,17 +1100,68 @@ class Loadcase():
           ' incs %s'%self.incs+\
           ' time %s'%self.time
 
-  def getVegterLoadcase(self): #for a 2D simulation, I would use this generator befor switching to a random 2D generator
-    defgrad=['*']*9
-    stress =[0]*9
+  def _getLoadcase2dVegter(self,number): #for a 2D simulation, I would use this generator before switching to a random 2D generator
     NDzero=[[1,2,3,6],[1,3,5,7],[2,5,6,7]] # no deformation / * for stress
     # biaxial f1 = f2
     # shear   f1 = -f2
     # unixaial f1 , f2 =0
     # plane strain f1 , s2 =0
     # modulo to get one out of 4
+    stress =['*', '*', '0']*3
+    defgrad = self.vegterLoadcase[number-1]
 
+    return 'f '+' '.join(str(c) for c in defgrad)+\
+          ' p '+' '.join(str(c) for c in stress)+\
+          ' incs %s'%self.incs+\
+          ' time %s'%self.time
+
+  def _vegterLoadcase(self):
+    '''
+      generate the stress points for Vegter criteria
+    '''
+    theta = np.linspace(0.0,np.pi/2.0,self.nSet)
+    f = [0.0, 0.0, '*']*3;  loadcase = []
+    for i in xrange(self.nSet*4): loadcase.append(f)
+
+    # more to do for F
+    F = np.array([  [[1.1, 0.1], [0.1, 1.1]],              # uniaxial tension
+                    [[1.1, 0.1], [0.1, 1.1]],              # shear
+                    [[1.1, 0.1], [0.1, 1.1]],              # eq-biaxial
+                    [[1.1, 0.1], [0.1, 1.1]],              # eq-biaxial
+                 ])
+    for i,t in enumerate(theta):
+      R = np.array([np.cos(t), np.sin(t), -np.sin(t), np.cos(t)]).reshape(2,2)
+      for j in xrange(4): 
+        loadcase[i*4+j][0],loadcase[i*4+j][1],loadcase[i*4+j][3],loadcase[i*4+j][4] = np.dot(R.T,np.dot(F[j],R)).reshape(4)
+    return loadcase
+
+  def _getLoadcase2dRandom(self):
+    '''
+      generate random stress points for 2D tests
+    '''
     self.NgeneratedLoadCases+=1
+    defgrad=['0', '0', '*']*3
+    stress =['*', '*', '0']*3
+    defgrad[0],defgrad[1],defgrad[3],defgrad[4] = (np.random.random_sample(4)-.5)*self.finalStrain*2.0 + np.eye(2).reshape(4)
+
+    return 'f '+' '.join(str(c) for c in defgrad)+\
+          ' p '+' '.join(str(c) for c in stress)+\
+          ' incs %s'%self.incs+\
+          ' time %s'%self.time
+  def _defgradScale(self, defgrad, finalStrain):
+    '''
+    '''
+    defgrad0 = (np.array([ 0.0 if i is '*' else i for i in defgrad ]))
+    det0 = 1.0 - numpy.linalg.det(defgrad0.reshape(3,3))
+    if defgrad0[0] == 0.0: defgrad0[0] = det0/(defgrad0[4]*defgrad0[8]-defgrad0[5]*defgrad0[7])
+    if defgrad0[4] == 0.0: defgrad0[4] = det0/(defgrad0[0]*defgrad0[8]-defgrad0[2]*defgrad0[6])
+    if defgrad0[8] == 0.0: defgrad0[8] = det0/(defgrad0[0]*defgrad0[4]-defgrad0[1]*defgrad0[3])
+    strain   = np.dot(defgrad0.reshape(3,3).T,defgrad0.reshape(3,3)) - np.eye(3)
+    eqstrain = 2.0/3.0*np.sqrt( 1.5*(strain[0][0]**2+strain[1][1]**2+strain[2][2]**2) + 
+                                3.0*(strain[0][1]**2+strain[1][2]**2+strain[2][0]**2) )
+    r = finalStrain*1.25/eqstrain
+#    if r>1.0: defgrad =( np.array([i*r if i is not '*' else i for i in defgrad]))
+
 
 #---------------------------------------------------------------------------------------------------
 class Criterion(object):
@@ -1125,6 +1191,7 @@ class Criterion(object):
     criteria      = criteriaClass(0.0)
     if fitResults == [] : initialguess = guess0
     else                : initialguess = np.array(fitResults[-1])
+
     weight = get_weight(np.shape(stress)[1])
     ydata  = np.zeros(np.shape(stress)[1])
     try:
@@ -1169,7 +1236,7 @@ class myThread (threading.Thread):
 def doSim(delay,thread):
   
   s.acquire()
-  me=getLoadcase()
+  me=loadcaseNo()
   if not os.path.isfile('%s.load'%me):
     print('generating loadcase for sim %s from %s'%(me,thread))
     f=open('%s.load'%me,'w')
@@ -1258,7 +1325,7 @@ def doSim(delay,thread):
     return
   s.release()
 
-def getLoadcase():
+def loadcaseNo():
   global N_simulations
   N_simulations+=1
   return N_simulations
@@ -1296,6 +1363,10 @@ parser.add_option('--max',           dest='max', type='int',
                                      help='maximum number of iterations [%default]',  metavar='int')
 parser.add_option('-t','--threads',       dest='threads', type='int',
                                      help='number of parallel executions [%default]',  metavar='int')
+parser.add_option('-d','--dimension',     dest='dimension', type='int',
+                                     help='dimension of the virtual test [%default]',  metavar='int')
+parser.add_option('-v', '--vegter',  dest='vegter', action='store_true',
+                  help='Vegter criteria [%default]')                                     
 parser.set_defaults(min        = 12)
 parser.set_defaults(max        = 30)
 parser.set_defaults(threads    = 4)
@@ -1304,6 +1375,9 @@ parser.set_defaults(load       = (0.010,100,100.0))
 parser.set_defaults(criterion  = 'worst')
 parser.set_defaults(fitting    = 'totalshear')
 parser.set_defaults(geometry   = '20grains16x16x16')
+parser.set_defaults(dimension  = 3)
+parser.set_defaults(vegter     = 'False')
+
 
 options = parser.parse_args()[0]
 
@@ -1327,6 +1401,8 @@ if not os.path.isfile('numerics.config'):
 if not os.path.isfile('material.config'):
   print('material.config file not found')
 
+if options.vegter is True: 
+  options.dimension = 2
 unitGPa = 10.e8
 N_simulations=0
 fitResults = []
@@ -1334,7 +1410,8 @@ s=threading.Semaphore(1)
 
 stressAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 strainAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
-myLoad = Loadcase(options.load[0],options.load[1],options.load[2])
+myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
+                  nSet = 10, dimension = options.dimension, vegter = options.vegter)
 myFit = Criterion(options.criterion)
 
 threads=[]
