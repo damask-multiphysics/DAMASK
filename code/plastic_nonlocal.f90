@@ -436,422 +436,422 @@ allocate(nonSchmidCoeff(lattice_maxNnonSchmid,maxNinstances),                  s
      select case(tag)
        case ('(output)')
          select case(IO_lc(IO_stringValue(line,positions,2_pInt)))
-           case('rho')
+           case ('rho')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('delta')
+           case ('delta')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = delta_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_edge')
+           case ('rho_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_screw')
+           case ('rho_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl')
+           case ('rho_sgl')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('delta_sgl')
+           case ('delta_sgl')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = delta_sgl_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge')
+           case ('rho_sgl_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_pos')
+           case ('rho_sgl_edge_pos')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_pos_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_neg')
+           case ('rho_sgl_edge_neg')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_neg_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw')
+           case ('rho_sgl_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_pos')
+           case ('rho_sgl_screw_pos')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_pos_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_neg')
+           case ('rho_sgl_screw_neg')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_neg_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_mobile')
+           case ('rho_sgl_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_mobile')
+           case ('rho_sgl_edge_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_pos_mobile')
+           case ('rho_sgl_edge_pos_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_pos_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_neg_mobile')
+           case ('rho_sgl_edge_neg_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_neg_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_mobile')
+           case ('rho_sgl_screw_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_pos_mobile')
+           case ('rho_sgl_screw_pos_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_pos_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_neg_mobile')
+           case ('rho_sgl_screw_neg_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_neg_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_immobile')
+           case ('rho_sgl_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_immobile')
+           case ('rho_sgl_edge_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_pos_immobile')
+           case ('rho_sgl_edge_pos_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_pos_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_edge_neg_immobile')
+           case ('rho_sgl_edge_neg_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_edge_neg_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_immobile')
+           case ('rho_sgl_screw_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_pos_immobile')
+           case ('rho_sgl_screw_pos_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_pos_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_sgl_screw_neg_immobile')
+           case ('rho_sgl_screw_neg_immobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_sgl_screw_neg_immobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dip')
+           case ('rho_dip')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dip_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('delta_dip')
+           case ('delta_dip')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = delta_dip_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dip_edge')
+           case ('rho_dip_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dip_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dip_screw')
+           case ('rho_dip_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dip_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('excess_rho')
+           case ('excess_rho')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = excess_rho_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('excess_rho_edge')
+           case ('excess_rho_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = excess_rho_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('excess_rho_screw')
+           case ('excess_rho_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = excess_rho_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_forest')
+           case ('rho_forest')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_forest_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('shearrate')
+           case ('shearrate')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = shearrate_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('resolvedstress')
+           case ('resolvedstress')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = resolvedstress_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('resolvedstress_external')
+           case ('resolvedstress_external')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = resolvedstress_external_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('resolvedstress_back')
+           case ('resolvedstress_back')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = resolvedstress_back_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('resistance')
+           case ('resistance')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = resistance_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot')
+           case ('rho_dot')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_sgl')
+           case ('rho_dot_sgl')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_sgl_mobile')
+           case ('rho_dot_sgl_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_dip')
+           case ('rho_dot_dip')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_dip_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_gen')
+           case ('rho_dot_gen')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_gen_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_gen_edge')
+           case ('rho_dot_gen_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_gen_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_gen_screw')
+           case ('rho_dot_gen_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_gen_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_sgl2dip')
+           case ('rho_dot_sgl2dip')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl2dip_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_sgl2dip_edge')
+           case ('rho_dot_sgl2dip_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl2dip_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_sgl2dip_screw')
+           case ('rho_dot_sgl2dip_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_sgl2dip_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_ann_ath')
+           case ('rho_dot_ann_ath')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ann_ath_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_ann_the')
+           case ('rho_dot_ann_the')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ann_the_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_ann_the_edge')
+           case ('rho_dot_ann_the_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ann_the_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_ann_the_screw')
+           case ('rho_dot_ann_the_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_ann_the_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_edgejogs')
+           case ('rho_dot_edgejogs')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_edgejogs_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_flux')
+           case ('rho_dot_flux')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_flux_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_flux_mobile')
+           case ('rho_dot_flux_mobile')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_flux_mobile_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_flux_edge')
+           case ('rho_dot_flux_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_flux_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('rho_dot_flux_screw')
+           case ('rho_dot_flux_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = rho_dot_flux_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('velocity_edge_pos')
+           case ('velocity_edge_pos')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = velocity_edge_pos_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('velocity_edge_neg')
+           case ('velocity_edge_neg')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = velocity_edge_neg_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('velocity_screw_pos')
+           case ('velocity_screw_pos')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = velocity_screw_pos_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('velocity_screw_neg')
+           case ('velocity_screw_neg')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = velocity_screw_neg_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('slipdirection.x')
+           case ('slipdirection.x')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipdirectionx_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('slipdirection.y')
+           case ('slipdirection.y')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipdirectiony_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('slipdirection.z')
+           case ('slipdirection.z')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipdirectionz_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('slipnormal.x')
+           case ('slipnormal.x')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipnormalx_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('slipnormal.y')
+           case ('slipnormal.y')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipnormaly_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('slipnormal.z')
+           case ('slipnormal.z')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = slipnormalz_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_edge_pos.x')
+           case ('fluxdensity_edge_pos.x')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_posx_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_edge_pos.y')
+           case ('fluxdensity_edge_pos.y')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_posy_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_edge_pos.z')
+           case ('fluxdensity_edge_pos.z')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_posz_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_edge_neg.x')
+           case ('fluxdensity_edge_neg.x')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_negx_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_edge_neg.y')
+           case ('fluxdensity_edge_neg.y')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_negy_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_edge_neg.z')
+           case ('fluxdensity_edge_neg.z')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_edge_negz_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_screw_pos.x')
+           case ('fluxdensity_screw_pos.x')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_posx_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_screw_pos.y')
+           case ('fluxdensity_screw_pos.y')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_posy_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_screw_pos.z')
+           case ('fluxdensity_screw_pos.z')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_posz_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_screw_neg.x')
+           case ('fluxdensity_screw_neg.x')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_negx_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_screw_neg.y')
+           case ('fluxdensity_screw_neg.y')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_negy_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('fluxdensity_screw_neg.z')
+           case ('fluxdensity_screw_neg.z')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = fluxdensity_screw_negz_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('maximumdipoleheight_edge')
+           case ('maximumdipoleheight_edge')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = maximumdipoleheight_edge_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('maximumdipoleheight_screw')
+           case ('maximumdipoleheight_screw')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = maximumdipoleheight_screw_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('accumulatedshear')
+           case ('accumulatedshear','accumulated_shear')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = accumulatedshear_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &
                IO_lc(IO_stringValue(line,positions,2_pInt))
-           case('dislocationstress')
+           case ('dislocationstress')
              plastic_nonlocal_Noutput(instance) = plastic_nonlocal_Noutput(instance) + 1_pInt
              plastic_nonlocal_outputID(plastic_nonlocal_Noutput(instance),instance) = dislocationstress_ID
              plastic_nonlocal_output(plastic_nonlocal_Noutput(instance),instance) = &

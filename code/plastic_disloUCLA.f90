@@ -328,7 +328,7 @@ subroutine plastic_disloUCLA_init(fileUnit)
              plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = dipole_density_ID
              plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('shear_rate_slip')
+           case ('shear_rate_slip','shearrate_slip')
              plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
              plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = shear_rate_slip_ID
              plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
@@ -368,7 +368,7 @@ subroutine plastic_disloUCLA_init(fileUnit)
              plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = twin_fraction_ID
              plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('shear_rate_twin')
+           case ('shear_rate_twin','shearrate_twin')
              plastic_disloUCLA_Noutput(instance) = plastic_disloUCLA_Noutput(instance) + 1_pInt
              plastic_disloUCLA_outputID(plastic_disloUCLA_Noutput(instance),instance) = shear_rate_twin_ID
              plastic_disloUCLA_output(plastic_disloUCLA_Noutput(instance),instance) = &

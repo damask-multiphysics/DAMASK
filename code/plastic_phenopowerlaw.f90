@@ -269,7 +269,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = resistance_slip_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('accumulatedshear_slip')
+           case ('accumulatedshear_slip','accumulated_shear_slip')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_slip_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
@@ -294,7 +294,7 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = resistance_twin_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &
                                                            IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('accumulatedshear_twin')
+           case ('accumulatedshear_twin','accumulated_shear_twin')
              plastic_phenopowerlaw_Noutput(instance) = plastic_phenopowerlaw_Noutput(instance) + 1_pInt
              plastic_phenopowerlaw_outputID(plastic_phenopowerlaw_Noutput(instance),instance) = accumulatedshear_twin_ID
              plastic_phenopowerlaw_output(plastic_phenopowerlaw_Noutput(instance),instance) = &

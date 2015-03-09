@@ -320,7 +320,7 @@ subroutine plastic_disloKMC_init(fileUnit)
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = dipole_density_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('shear_rate_slip')
+           case ('shear_rate_slip','shearrate_slip')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = shear_rate_slip_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
@@ -360,7 +360,7 @@ subroutine plastic_disloKMC_init(fileUnit)
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = twin_fraction_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('shear_rate_twin')
+           case ('shear_rate_twin','shearrate_twin')
              plastic_disloKMC_Noutput(instance) = plastic_disloKMC_Noutput(instance) + 1_pInt
              plastic_disloKMC_outputID(plastic_disloKMC_Noutput(instance),instance) = shear_rate_twin_ID
              plastic_disloKMC_output(plastic_disloKMC_Noutput(instance),instance) = &

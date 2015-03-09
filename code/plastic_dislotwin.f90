@@ -376,7 +376,7 @@ subroutine plastic_dislotwin_init(fileUnit)
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = dipole_density_ID
              plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('shear_rate_slip')
+           case ('shear_rate_slip','shearrate_slip')
              plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_slip_ID
              plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
@@ -416,7 +416,7 @@ subroutine plastic_dislotwin_init(fileUnit)
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = twin_fraction_ID
              plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('shear_rate_twin')
+           case ('shear_rate_twin','shearrate_twin')
              plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_twin_ID
              plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
@@ -446,7 +446,7 @@ subroutine plastic_dislotwin_init(fileUnit)
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = resolved_stress_shearband_ID
              plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
                                                        IO_lc(IO_stringValue(line,positions,2_pInt))
-           case ('shear_rate_shearband')
+           case ('shear_rate_shearband','shearrate_shearband')
              plastic_dislotwin_Noutput(instance) = plastic_dislotwin_Noutput(instance) + 1_pInt
              plastic_dislotwin_outputID(plastic_dislotwin_Noutput(instance),instance) = shear_rate_shearband_ID
              plastic_dislotwin_output(plastic_dislotwin_Noutput(instance),instance) = &
