@@ -680,7 +680,7 @@ def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6, Karafillis=False):
     dS2dc4 = dS2dp3*s4;  dS2dc5 = dS2dp4*s5;  dS2dc6 = dS2dp5*s6
     dS3dc4 = dS3dp3*s4;  dS3dc5 = dS3dp4*s5;  dS3dc6 = dS3dp5*s6
 
-    return dS1dc1,dS1dc2,dS1dc3,dS1dc4,dS1dc5,dS1dc6,\
+    return dS1dc1,dS1dc2,dS1dc3,dS1dc4,dS1dc5,dS1dc6,\               # use array type?
            dS2dc1,dS2dc2,dS2dc3,dS2dc4,dS2dc5,dS2dc6,\
            dS3dc1,dS3dc2,dS3dc3,dS3dc4,dS3dc5,dS3dc6
   else:
@@ -1052,13 +1052,17 @@ class Loadcase():
   '''
 
 # ------------------------------------------------------------------
-  def __init__(self,finalStrain,incs,time):
+  def __init__(self,finalStrain,incs,time,ND=3,RD=1):
     print('using the random load case generator')
     self.finalStrain = finalStrain
     self.incs = incs
     self.time = time
+    self.ND = ND
+    self.RD = RD
+    self.NgeneratedLoadCases = 0
 
-  def getLoadcase(self,N=0):
+  def getLoadcase(self):
+    self.NgeneratedLoadCases+=1
     defgrad=['*']*9
     stress =[0]*9
     values=(np.random.random_sample(9)-.5)*self.finalStrain*2
@@ -1080,6 +1084,18 @@ class Loadcase():
           ' p '+' '.join(str(c) for c in stress)+\
           ' incs %s'%self.incs+\
           ' time %s'%self.time
+
+  def getVegterLoadcase(self): #for a 2D simulation, I would use this generator befor switching to a random 2D generator
+    defgrad=['*']*9
+    stress =[0]*9
+    NDzero=[[1,2,3,6],[1,3,5,7],[2,5,6,7]] # no deformation / * for stress
+    # biaxial f1 = f2
+    # shear   f1 = -f2
+    # unixaial f1 , f2 =0
+    # plane strain f1 , s2 =0
+    # modulo to get one out of 4
+
+    self.NgeneratedLoadCases+=1
 
 #---------------------------------------------------------------------------------------------------
 class Criterion(object):
@@ -1263,7 +1279,7 @@ Performs calculations with various loads on given geometry file and fits yield s
 
 """, version=string.replace(scriptID,'\n','\\n')
 )
-
+# maybe make an option to specifiy if 2D/3D fitting should be done?
 parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3,
                                      help='load: final strain; increments; time %default', metavar='float int float')
 parser.add_option('-g','--geometry', dest='geometry', type='string',
