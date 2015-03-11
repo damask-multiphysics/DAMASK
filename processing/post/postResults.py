@@ -53,8 +53,8 @@ class MPIEspectral_result:    # mimic py_post result object
   file = None
   dataOffset = 0
   N_elemental_scalars = 0
-  resolution = [0,0,0]
-  dimension = [0.0,0.0,0.0]
+  grid = [0,0,0]
+  size = [0.0,0.0,0.0]
   theTitle = ''
   wd = ''
   geometry = ''
@@ -92,13 +92,16 @@ class MPIEspectral_result:    # mimic py_post result object
     self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i',default=1)
     self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
     self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i',default=0)[0]
-    #self._increments[0] -= 1                                                 # delete zero'th entry (might be needed for older spectralOuts
     self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d',default=0.0)
     self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i',default=0)
-    self.dimension    = self._keyedPackedArray('dimension',count=3,type='d')
-    self.resolution   = self._keyedPackedArray('resolution',count=3,type='i')
-    self.N_nodes      = (self.resolution[0]+1)*(self.resolution[1]+1)*(self.resolution[2]+1)
-    self.N_elements   =  self.resolution[0]   * self.resolution[1]   * self.resolution[2]
+    self.size         = self._keyedPackedArray('size',count=3,type='d')
+    if self.size == [None,None,None]:                                                               # no size found, try legacy alias 'dimension'
+      self.size       = self._keyedPackedArray('dimension',count=3,type='d')
+    self.grid         = self._keyedPackedArray('grid',count=3,type='i')
+    if self.grid == [None,None,None]:
+      self.grid         = self._keyedPackedArray('resolution',count=3,type='i')
+    self.N_nodes      = (self.grid[0]+1)*(self.grid[1]+1)*(self.grid[2]+1)
+    self.N_elements   =  self.grid[0]   * self.grid[1]   * self.grid[2]
     self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i',default=0)[0]
     self.N_positions  = (self.filesize-self.dataOffset)/(8+self.N_elements*self.N_element_scalars*8)
     self.N_increments = 1                                                    # add zero'th entry
@@ -112,8 +115,8 @@ class MPIEspectral_result:    # mimic py_post result object
       'workdir: %s'%self.wd,
       'geometry: %s'%self.geometry,
       'loadcases: %i'%self.N_loadcases,
-      'resolution: %s'%(','.join(map(str,self.resolution))),
-      'dimension: %s'%(','.join(map(str,self.dimension))),
+      'grid: %s'%(','.join(map(str,self.grid))),
+      'size: %s'%(','.join(map(str,self.size))),
       'header size: %i'%self.dataOffset,
       'actual   file size: %i'%self.filesize,
       'expected file size: %i'%(self.dataOffset+self.N_increments*(8+self.N_elements*self.N_element_scalars*8)),
@@ -191,12 +194,12 @@ class MPIEspectral_result:    # mimic py_post result object
     return n+1
 
   def node(self,n):
-    a = self.resolution[0]+1
-    b = self.resolution[1]+1
-    c = self.resolution[2]+1
-    return vector([self.dimension[0] *       (n%a) / self.resolution[0],
-                   self.dimension[1] *   ((n/a)%b) / self.resolution[1],
-                   self.dimension[2] * ((n/a/b)%c) / self.resolution[2],
+    a = self.grid[0]+1
+    b = self.grid[1]+1
+    c = self.grid[2]+1
+    return vector([self.size[0] *       (n%a) / self.grid[0],
+                   self.size[1] *   ((n/a)%b) / self.grid[1],
+                   self.size[2] * ((n/a/b)%c) / self.grid[2],
             ])
 
   def element_sequence(self,e):
@@ -206,10 +209,10 @@ class MPIEspectral_result:    # mimic py_post result object
     return e+1
  
   def element(self,e):
-    a = self.resolution[0]+1
-    b = self.resolution[1]+1
-    c = self.resolution[2]+1
-    basenode = 1 + e+e/self.resolution[0] + e/self.resolution[0]/self.resolution[1]*a
+    a = self.grid[0]+1
+    b = self.grid[1]+1
+    c = self.grid[2]+1
+    basenode = 1 + e+e/self.grid[0] + e/self.grid[0]/self.grid[1]*a
     basenode2 = basenode+a*b
     return (element([basenode ,basenode +1,basenode +a+1,basenode +a,
                     basenode2 ,basenode2+1,basenode2+a+1,basenode2+a,
