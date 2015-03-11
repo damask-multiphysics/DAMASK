@@ -92,7 +92,9 @@ for name in filenames:
             'croak':sys.stderr}
     file['croak'].write('\033[1m'+scriptName+'\033[0m: '+file['name']+'\n')
 
-  table = damask.ASCIItable(file['input'],file['output'],buffered=False)                            # make unbuffered ASCII_table
+  table = damask.ASCIItable(file['input'],file['output'],
+                            buffered = False,
+                            labels = options.label != None)                                        # make unbuffered ASCII_table
   table.head_read()                                                                                 # read ASCII header info
 
 # --------------- figure out column to process -----------------------------------------------------
