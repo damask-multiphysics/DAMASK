@@ -27,7 +27,7 @@ parser.add_option('-g','--grid',        dest='resolution', type='int', nargs=3, 
                                         help='resolution in x,y,z [autodetect]')
 parser.add_option('-s','--size',        dest='dimension', type='float', nargs=3, metavar='int int int',
                                         help='dimension in x,y,z [autodetect]')
-parser.set_defaults(coords  = 'ip')
+parser.set_defaults(coords  = 'ipinitialcoord')
 parser.set_defaults(packing = [2,2,2])
 parser.set_defaults(grid    = [0,0,0])
 parser.set_defaults(size    = [0.0,0.0,0.0])

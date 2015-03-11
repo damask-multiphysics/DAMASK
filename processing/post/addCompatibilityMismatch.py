@@ -30,7 +30,7 @@ parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string ',
                                         help='column heading for coordinates [%defgrad]')
 parser.set_defaults(noVolume = False)
 parser.set_defaults(noShape = False)
-parser.set_defaults(coords  = 'ip')
+parser.set_defaults(coords  = 'ipinitialcoord')
 parser.set_defaults(defgrad = 'f')
 
 (options,filenames) = parser.parse_args()

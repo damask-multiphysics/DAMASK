@@ -1003,8 +1003,8 @@ standard = ['inc'] + \
            {True: ['time'],
             False:[]}[options.time] + \
            ['elem','node','ip','grain'] + \
-           {True: ['1_node','2_node','3_node'],
-            False:['1_ip','2_ip','3_ip']}[options.nodalScalar != []]
+           {True: ['1_nodeinitialcoord','2_nodeinitialcoord','3_nodeinitialcoord'],
+            False:['1_ipinitialcoord','2_ipinitialcoord','3_ipinitialcoord']}[options.nodalScalar != []]
 
 # ---------------------------   loop over positions   --------------------------------
 

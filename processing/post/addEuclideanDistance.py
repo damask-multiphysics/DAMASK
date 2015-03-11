@@ -92,14 +92,14 @@ parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
 parser.add_option('-i','--identifier',  dest='id', metavar = 'string',
                                         help='heading of column containing grain identifier [%default]')
-parser.add_option('-t','--type',          dest = 'type', action = 'extend', type = 'string', metavar = '<string LIST>',
-                  help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
-parser.add_option('-n','--neighborhood',  dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
-                  help = 'type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
-parser.add_option('-s', '--scale',        dest = 'scale', type = 'float', metavar='float',
-                  help = 'voxel size [%default]')
+parser.add_option('-t','--type',        dest = 'type', action = 'extend', type = 'string', metavar = '<string LIST>',
+                                        help = 'feature type (%s) '%(', '.join(map(lambda x:'|'.join(x['names']),features))) )
+parser.add_option('-n','--neighborhood',dest='neighborhood', choices = neighborhoods.keys(), metavar = 'string',
+                                        help = 'type of neighborhood (%s) [neumann]'%(', '.join(neighborhoods.keys())))
+parser.add_option('-s', '--scale',      dest = 'scale', type = 'float', metavar='float',
+                                        help = 'voxel size [%default]')
 parser.set_defaults(type = [])
-parser.set_defaults(coords = 'ip')
+parser.set_defaults(coords = 'ipinitialcoord')
 parser.set_defaults(id = 'texture')
 parser.set_defaults(neighborhood = 'neumann')
 parser.set_defaults(scale = 1.0)
@@ -155,7 +155,7 @@ for file in files:
 
 # ------------------------------------------ process data ------------------------------------------
   
-  table.data_readArray([options.coords+'.x',options.coords+'.y',options.coords+'.z',options.id])
+  table.data_readArray(['1_'+options.coords,'2_'+options.coords,'3_'+options.coords,options.id])
 
   coords = [{},{},{}]
   for i in xrange(len(table.data)):

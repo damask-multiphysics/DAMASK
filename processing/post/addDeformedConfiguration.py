@@ -24,7 +24,7 @@ parser.add_option('-c','--coordinates', dest='coords', metavar='string',
                                         help='column heading for coordinates [%default]')
 parser.add_option('-f','--defgrad',     dest='defgrad', metavar='string',
                                         help='heading of columns containing tensor field values')
-parser.set_defaults(coords  = 'ip')
+parser.set_defaults(coords  = 'ipinitialcoord')
 parser.set_defaults(defgrad = 'f' )
 
 (options,filenames) = parser.parse_args()

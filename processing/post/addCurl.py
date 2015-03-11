@@ -27,7 +27,7 @@ parser.add_option('-v','--vector',      dest='vector', action='extend', metavar=
                                         help='heading of columns containing vector field values')
 parser.add_option('-t','--tensor',      dest='tensor', action='extend', metavar='<string LIST>',
                                         help='heading of columns containing tensor field values')
-parser.set_defaults(coords = 'ip')
+parser.set_defaults(coords = 'ipinitialcoord')
 parser.set_defaults(vector = [])
 parser.set_defaults(tensor = [])
 

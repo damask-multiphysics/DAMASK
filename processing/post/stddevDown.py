@@ -29,7 +29,7 @@ parser.add_option('-r','--resolution',  dest='resolution', type='int', nargs=3, 
                                         help='resolution in x,y,z [autodetect]')
 parser.add_option('-d','--dimension',   dest='dimension', type='float', nargs=3, \
                                         help='dimension in x,y,z [autodetect]')
-parser.set_defaults(coords     = 'ip')
+parser.set_defaults(coords     = 'ipinitialcoord')
 parser.set_defaults(packing    = [2,2,2])
 parser.set_defaults(shift      = [0,0,0])
 parser.set_defaults(resolution = [0,0,0])

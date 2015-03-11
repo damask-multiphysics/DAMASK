@@ -52,7 +52,7 @@ parser.add_option('-f','--defgrad',    dest='defgrad', type='string',\
                                        help='column heading for position of deformation gradient [%default]')
 
 parser.set_defaults(deformedCentroids    = 'ip_deformed')
-parser.set_defaults(undeformedCentroids  = 'ip')
+parser.set_defaults(undeformedCentroids  = 'ipinitialcoord')
 parser.set_defaults(defgrad              = 'f')
 
 (options,filenames) = parser.parse_args()
