@@ -260,6 +260,62 @@ class Cazacu_Barlat3D(object):
   def jac(self, (a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c),ydata, sigmas):
     return Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
                                 self.stress0, sigmas,Jac=True)
+class Vegter(object):
+  '''
+    Vegter yield criterion
+  '''
+  def __init__(self, refPts, refNormals,nspace=11):
+    self.refPts, self.refNormals = self._getRefPointsNormals(refPts, refNormals)
+    self.hingePts = self._getHingePoints()
+    self.nspace = nspace
+  def _getRefPointsNormals(self,refPtsQtr,refNormalsQtr):
+    if len(refPtsQtr) == 12:
+      refPts   = refPtsQtr
+      refNormals = refNormalsQtr
+    else:
+      refPts = np.empty([13,2])
+      refNormals = np.empty([13,2])
+      refPts[12] = refPtsQtr[0]
+      refNormals[12] = refNormalsQtr[0]
+      for i in xrange(3):
+        refPts[i]   = refPtsQtr[i]
+        refPts[i+3] = refPtsQtr[3-i][::-1]
+        refPts[i+6] =-refPtsQtr[i]
+        refPts[i+9] =-refPtsQtr[3-i][::-1]
+        refNormals[i]   = refNormalsQtr[i]
+        refNormals[i+3] = refNormalsQtr[3-i][::-1]
+        refNormals[i+6] =-refNormalsQtr[i]
+        refNormals[i+9] =-refNormalsQtr[3-i][::-1]
+    return refPts,refNormals
+
+  def _getHingePoints(self):
+    '''
+      calculate the hinge point B according to the reference points A,C and the normals n,m
+      refPoints  = np.array([[p1_x, p1_y], [p2_x, p2_y]]);
+      refNormals = np.array([[n1_x, n1_y], [n2_x, n2_y]])
+    '''
+    def hingPoint(points, normals):
+      A1 = points[0][0];   A2 = points[0][1]
+      C1 = points[1][0];   C2 = points[1][1]
+      n1 = normals[0][0];  n2 = normals[0][1]
+      m1 = normals[1][0];  m2 = normals[1][1]
+      B1 = (m2*(n1*A1 + n2*A2) - n2*(m1*C1 + m2*C2))/(n1*m2-m1*n2)
+      B2 = (n1*(m1*C1 + m2*C2) - m1*(n1*A1 + n2*A2))/(n1*m2-m1*n2)
+      return np.array([B1,B2])
+    return np.array([hingPoint(self.refPts[i:i+2],self.refNormals[i:i+2]) for i in xrange(len(self.refPts)-1)])
+
+  def getBezier(self):
+    def bezier(R,H):
+      b = []
+      for mu in np.linspace(0.0,1.0,self.nspace):
+        b.append(np.array(R[0]*np.ones_like(mu) + 2.0*mu*(H - R[0]) + mu**2*(R[0]+R[1] - 2.0*H)))
+      return b
+    return np.array([bezier(self.refPts[i:i+2],self.hingePts[i]) for i in xrange(len(self.refPts)-1)])
+
+refPts = np.array([[37.6369,-37.6369],[65.4151,0.0],[76.7269,40.4230],[67.2145,67.2145]])
+halfsqrt = np.sqrt(0.5)
+refNormals = np.array([[halfsqrt,-halfsqrt],[0.88779,-0.4602],[1.0,0.0],[halfsqrt,halfsqrt]])
+
 def Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
                          sigma0,sigmas, Jac = False):
   '''
