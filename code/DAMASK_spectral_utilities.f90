@@ -37,8 +37,13 @@ module DAMASK_spectral_utilities
 
 !--------------------------------------------------------------------------------------------------
 ! debug fftw 
- complex(pReal),private, dimension(:,:,:), pointer :: scalarField_real, &                           !< scalar field real representation for debug of FFTW
-                                                      scalarField_fourier                           !< scalar field complex representation for debug of FFTW
+ complex(pReal),private, dimension(:,:,:),         pointer :: scalarField_real, &                   !< scalar field real representation for debug of FFTW
+                                                              scalarField_fourier                   !< scalar field complex representation for debug of FFTW
+
+!--------------------------------------------------------------------------------------------------
+! geometry reconstruction
+ !real(pReal),    private, dimension(:,:,:,:),   pointer :: coords_real
+ !complex(pReal), private, dimension(:,:,:,:),   pointer :: coords_fourier
  
 !--------------------------------------------------------------------------------------------------
 ! debug divergence
@@ -52,7 +57,8 @@ module DAMASK_spectral_utilities
    planBack, &                                                                                      !< FFTW plan F(k) to F(x)
    planDebugForth, &                                                                                !< FFTW plan for scalar field (proof that order of usual transform is correct)
    planDebugBack, &                                                                                 !< FFTW plan for scalar field inverse (proof that order of usual transform is correct)
-   planDiv                                                                                          !< plan for FFTW in case of debugging divergence calculation
+   planDiv!, &                                                                                       !< FFTW plan in case of debugging divergence calculation
+   !planCoords                                                                                       !< FFTW plan for geometry reconstruction
 
 !--------------------------------------------------------------------------------------------------
 ! variables controlling debugging
@@ -100,7 +106,8 @@ module DAMASK_spectral_utilities
    utilities_constitutiveResponse, &
    utilities_calculateRate, &
    utilities_forwardField, &
-   utilities_destroy
+   utilities_destroy, &
+   utilities_updateIPcoords
  private :: &
    utilities_getFilter
 
@@ -162,7 +169,8 @@ subroutine utilities_init()
    tensorField, &                                                                                   !< field cotaining data for FFTW in real and fourier space (in place)
    scalarField_realC, &                                                                             !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
    scalarField_fourierC, &                                                                          !< field cotaining data for FFTW in fourier space when debugging FFTW (no in place)
-   div                                                                                              !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
+   div!, &                                                                                           !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
+   !coords_fftw
  write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
  write(6,'(a)')     ' $Id$'
  write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
@@ -223,6 +231,9 @@ subroutine utilities_init()
  tensorField = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3)*9_pInt,C_SIZE_T))                    ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
  call c_f_pointer(tensorField, field_real, [grid(1)+2_pInt-mod(grid(1),2_pInt),grid(2),grid(3),3,3])! place a pointer for a real representation on tensorField
  call c_f_pointer(tensorField, field_fourier,[grid1Red,                        grid(2),grid(3),3,3])! place a pointer for a complex representation on tensorField
+ !coords_fftw = fftw_alloc_complex(int(grid1Red*grid(2)*grid(3)*3_pInt,C_SIZE_T))                    ! allocate aligned data using a C function, C_SIZE_T is of type integer(8)
+ !call c_f_pointer(tensorField, coords_real,[grid(1)+2_pInt-mod(grid(1),2_pInt),grid(2),grid(3),3])  ! place a pointer for a real representation on coords_fftw
+ !call c_f_pointer(tensorField, coords_fourier,[grid1Red,                       grid(2),grid(3),3])  ! place a pointer for a real representation on coords_fftw
 
 !--------------------------------------------------------------------------------------------------
 ! general initialization of FFTW (see manual on fftw.org for more details)
@@ -243,6 +254,17 @@ subroutine utilities_init()
                             field_real,[grid(3),grid(2) ,grid(1)+2_pInt-mod(grid(1),2_pInt)], &     ! output data, physical length in each dimension in reversed order
                                      1, grid(3)*grid(2)*(grid(1)+2_pInt-mod(grid(1),2_pInt)), &     ! striding,    product of physical length in the 3 dimensions
                                                                        fftw_planner_flag)           ! planner precision
+
+!--------------------------------------------------------------------------------------------------
+! allocation and FFTW initialization
+
+
+! planCoords = fftw_plan_many_dft_c2r(3_pInt,[grid(3),grid(2) ,grid(1)],3_pInt,&
+!                             coords_fourier,[grid(3),grid(2) ,grid1Red],&
+!                                    1_pInt,  grid(3)*grid(2)* grid1Red,&
+!                                coords_real,[grid(3),grid(2) ,grid(1)+2_pInt-mod(grid(1),2_pInt)],&
+!                                    1_pInt,  grid(3)*grid(2)*(grid(1)+2_pInt-mod(grid(1),2_pInt)),&
+!                                                                      fftw_planner_flag)
 
 !--------------------------------------------------------------------------------------------------
 ! depending on debug options, allocate more memory and create additional plans 
@@ -992,8 +1014,72 @@ subroutine utilities_destroy()
  if (debugFFTW) call fftw_destroy_plan(planDebugBack)
  call fftw_destroy_plan(planForth)
  call fftw_destroy_plan(planBack)
+ !call fftw_destroy_plan(planCoords)
 
 end subroutine utilities_destroy
+
+
+!--------------------------------------------------------------------------------------------------
+!> @brief calculate coordinates in current configuration for given defgrad field
+! using integration in Fourier space. Similar as in mesh.f90, but using data already defined for
+! convolution
+!--------------------------------------------------------------------------------------------------
+subroutine utilities_updateIPcoords(F)
+ use math
+ use mesh, only: &
+   mesh_ipCoordinates 
+ implicit none
+
+ real(pReal),   dimension(3,3,grid(1),grid(2),grid(3)), intent(in) :: F
+ integer(pInt) :: i, j, k, m
+ integer(pInt), dimension(3) :: k_s
+ real(pReal),   dimension(3) :: step, offset_coords, integrator
+ real(pReal),   dimension(3,3) :: Favg
+
+ field_real = 0.0_pReal
+ field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3) = reshape(F,[grid(1),grid(2),grid(3),3,3],&
+                                                               order=[4,5,1,2,3])           
+ call utilities_FFTforward()
+
+ integrator = geomsize * 0.5_pReal / PI
+ step = geomsize/real(grid, pReal)
+ 
+!--------------------------------------------------------------------------------------------------
+! average F
+ Favg = real(field_fourier(1,1,1,1:3,1:3),pReal)/real(product(grid),pReal)
+
+!--------------------------------------------------------------------------------------------------
+! integration in Fourier space
+ field_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
+ do k = 1_pInt, grid(3)
+   k_s(3) = k-1_pInt
+   if(k > grid(3)/2_pInt+1_pInt) k_s(3) = k_s(3)-grid(3)
+   do j = 1_pInt, grid(2)
+     k_s(2) = j-1_pInt
+     if(j > grid(2)/2_pInt+1_pInt) k_s(2) = k_s(2)-grid(2)
+     do i = 1_pInt, grid1Red
+       k_s(1) = i-1_pInt
+       do m = 1_pInt,3_pInt
+         field_fourier(i,j,k,m,1) = sum(field_fourier(i,j,k,m,1:3)*&
+                                       cmplx(0.0_pReal,real(k_s,pReal)*integrator,pReal))
+       enddo
+       if (any(k_s /= 0_pInt)) field_fourier(i,j,k,1:3,1) = &
+                               field_fourier(i,j,k,1:3,1) / cmplx(-sum(k_s*k_s),0.0_pReal,pReal)
+ enddo; enddo; enddo
+ call utilities_FFTbackward()
+
+!--------------------------------------------------------------------------------------------------
+! add average to fluctuation and put (0,0,0) on (0,0,0)
+ offset_coords = math_mul33x3(Favg,step/2.0_pReal) - field_real(1,1,1,1:3,1)
+ m = 1_pInt
+ do k = 1_pInt,grid(3); do j = 1_pInt,grid(2); do i = 1_pInt,grid(1)
+   mesh_ipCoordinates(1:3,1,m) = field_real(i,j,k,1:3,1) &
+                               + offset_coords &
+                               + math_mul33x3(Favg,step*real([i,j,k]-1_pInt,pReal))
+   m = m+1_pInt
+ enddo; enddo; enddo
+
+end subroutine utilities_updateIPcoords
 
 
 end module DAMASK_spectral_utilities

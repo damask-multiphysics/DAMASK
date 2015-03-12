@@ -111,13 +111,11 @@ subroutine basicPETSc_init(temperature)
    Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
+   utilities_updateIPcoords, &
    grid, &
    grid1Red, &
    wgt, &
-   geomSize 
- use mesh, only: &
-   mesh_ipCoordinates, &
-   mesh_deformedCoordsFFT
+   geomSize
  use math, only: &
    math_invSym3333
    
@@ -194,8 +192,7 @@ subroutine basicPETSc_init(temperature)
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
  endif
 
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+ call utilities_updateIPcoords(F)
  call Utilities_constitutiveResponse(F_lastInc, &
     reshape(F(0:8,0:grid(1)-1_pInt,0:grid(2)-1_pInt,0:grid(3)-1_pInt),[3,3,grid(1),grid(2),grid(3)]), &
     temperature, &
@@ -474,11 +471,9 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
    geomSize, &
    Utilities_calculateRate, &
    Utilities_forwardField, &
+   utilities_updateIPcoords, &
    tBoundaryCondition, &
    cutBack
- use mesh, only: &
-   mesh_ipCoordinates,&
-   mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobRealFile
  use FEsolving, only: &
@@ -523,8 +518,8 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
    write (777,rec=1) C_volAvgLastInc
    close(777)
  endif 
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                             F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+
+ call utilities_updateIPcoords(F)
  if (cutBack) then 
    F_aim = F_aim_lastInc
    F    = reshape(F_lastInc,    [9,grid(1),grid(2),grid(3)]) 
@@ -546,8 +541,7 @@ subroutine BasicPETSc_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,r
 
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
-   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+   call utilities_updateIPcoords(F)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
                   timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
    F_lastInc2 = F_lastInc
