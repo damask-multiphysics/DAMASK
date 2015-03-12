@@ -1032,7 +1032,7 @@ function mesh_spectral_getGrid(fileUnit)
    read(myFileUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
    select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
-     case ('resolution','grid')
+     case ('grid')
        gotGrid = .true.
        do j = 2_pInt,6_pInt,2_pInt
          select case (IO_lc(IO_stringValue(line,positions,j)))
@@ -1107,7 +1107,7 @@ function mesh_spectral_getSize(fileUnit)
    read(myFileUnit,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
    select case ( IO_lc(IO_StringValue(line,positions,1,.true.)) )
-     case ('dimension', 'size')
+     case ('size')
        gotSize = .true.
        do j = 2_pInt,6_pInt,2_pInt
          select case (IO_lc(IO_stringValue(line,positions,j)))
