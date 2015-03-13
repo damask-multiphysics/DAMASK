@@ -257,7 +257,7 @@ ODF = {}
 ODF['limits'] = [math.radians(float(limit)) for limit in fileBinnedODF.readline().split()[0:3]]
 ODF['deltas'] = [math.radians(float(delta)) for delta in fileBinnedODF.readline().split()[0:3]]
 #ODF['intervals'] = [int(interval) for interval in fileBinnedODF.readline().split()[0:3]]
-ODF['intervals'] = [int(round(limit/delta)-1) for limit,delta in zip(ODF['limits'],ODF['deltas'])]
+ODF['intervals'] = [int(round(limit/delta)) for limit,delta in zip(ODF['limits'],ODF['deltas'])]
 nBins = ODF['intervals'][0]*ODF['intervals'][1]*ODF['intervals'][2]
 
 print 'Limit:    ', [math.degrees(limit) for limit in ODF['limits']]
