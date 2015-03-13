@@ -733,6 +733,7 @@ parser.set_defaults(getIncrements= False)
 
 # --- basic sanity checks
 
+
 if files == []:
   parser.print_help()
   parser.error('no file specified...')
@@ -750,7 +751,7 @@ if options.filetype == None:
       options.filetype = theType
       break
       
-options.filetype = options.filetype.lower()
+if options.filetype != None: options.filetype = options.filetype.lower()
 
 if options.filetype == 'marc':  offset_pos = 1
 else:                           offset_pos = 0
