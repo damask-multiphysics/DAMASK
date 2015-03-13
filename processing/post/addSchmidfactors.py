@@ -249,7 +249,7 @@ Add columns listing Schmid factors (and optional trace vector of selected system
 
 parser.add_option('-l','--lattice',   dest='lattice', type='choice',
                                       choices=('fcc','bcc','hex'), metavar='string',
-                                      help="type of neighborhood ('fcc','bcc','hex') [%default]")
+                                      help="type of lattice structure {'fcc','bcc','hex'} [%default]")
 parser.add_option('--direction',      dest='forcedirection', type='int', nargs=3, metavar='int int int',
                                       help='force direction in lab coordinates %default')
 parser.add_option('-n','--normal',    dest='stressnormal', type='int', nargs=3, metavar='int int int',
@@ -263,7 +263,7 @@ parser.add_option('-r','--rank',      dest='rank', type='int', nargs=3, metavar=
 parser.add_option('-e', '--eulers',   dest='eulers', metavar='string',
                                       help='Euler angles label')
 parser.add_option('-d', '--degrees',  dest='degrees', action='store_true',
-                                      help = 'Euler angles are given in degrees [%default]')
+                                      help='Euler angles are given in degrees [%default]')
 parser.set_defaults(lattice = 'fcc')
 parser.set_defaults(forcedirection = [0, 0, 1])
 parser.set_defaults(stressnormal = None)
