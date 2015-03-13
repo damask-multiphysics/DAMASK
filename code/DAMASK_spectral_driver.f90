@@ -341,8 +341,8 @@ program DAMASK_spectral_Driver
    write(resUnit) 'load',       trim(loadCaseFile)                                                  ! ... and write header
    write(resUnit) 'workingdir', trim(getSolverWorkingDirectoryName())
    write(resUnit) 'geometry',   trim(geometryFile)
-   write(resUnit) 'resolution', grid
-   write(resUnit) 'dimension',  geomSize
+   write(resUnit) 'grid',       grid
+   write(resUnit) 'size',       geomSize
    write(resUnit) 'materialpoint_sizeResults', materialpoint_sizeResults
    write(resUnit) 'loadcases',  size(loadCases)
    write(resUnit) 'frequencies', loadCases%outputfrequency                                          ! one entry per currentLoadCase
