@@ -312,9 +312,40 @@ class Vegter(object):
       return b
     return np.array([bezier(self.refPts[i:i+2],self.hingePts[i]) for i in xrange(len(self.refPts)-1)])
 
-refPts = np.array([[37.6369,-37.6369],[65.4151,0.0],[76.7269,40.4230],[67.2145,67.2145]])
-halfsqrt = np.sqrt(0.5)
-refNormals = np.array([[halfsqrt,-halfsqrt],[0.88779,-0.4602],[1.0,0.0],[halfsqrt,halfsqrt]])
+def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
+  '''
+    0-pure shear; 1-uniaxial; 2-plane strain; 3-equi-biaxial
+  '''
+  def getFourierParas(r):
+    # get the value after Fourier transformation
+    nset = len(r)
+    lmatrix = np.empty([nset,nset])
+    theta = np.linspace(0.0,np.pi/2,nset)
+    for i,th in enumerate(theta):
+      lmatrix[i] = np.array([np.cos(2*j*th) for j in xrange(nset)])
+    return np.linalg.solve(lmatrix, r)
+
+  nps = len(stress)
+  if nps%4 != 0:
+    print ('Warning: the number of stress points is uncorrect, stress points of %s are missing in set %i'%(
+      ['eq-biaxial, plane strain & uniaxial', 'eq-biaxial & plane strain','eq-biaxial'][nps%4-1],nps/4+1))
+  else:
+    nset = nps/4
+    strsSet = stress.reshape(nset,4,2)
+  refPts = np.empty([4,2])
+
+  fouriercoeffs = np.array([np.cos(2.0*i*theta) for i in xrange(nset)])
+  for i in xrange(2):
+    refPts[3,i] = sum(strsSet[:,3,i])/nset
+    for j in xrange(3):
+      refPts[j,i] = np.dot(getFourierParas(strsSet[:,j,i]), fouriercoeffs)
+
+  rhoUn = np.dot(getFourierParas(-lankford/(lankford+1)), fouriercoeffs)
+  rhoBi = (rhoBi0+1 + (rhoBi0-1)*np.cos(2.0*theta))/(rhoBi0+1 - (rhoBi0-1)*np.cos(2.0*theta))
+  nVec = lambda rho : np.array([1.0,rho]/np.sqrt(1.0+rho**2))
+  refNormals = np.array([nVec(-1.0),nVec(rhoUn),nVec(0.0),nVec(rhoBi)])
+
+  vegter = Vegter(refPts, refNormals)
 
 def Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
                          sigma0,sigmas, Jac = False):
