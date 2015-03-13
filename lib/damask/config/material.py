@@ -148,7 +148,7 @@ class Material():
 
     for line in content:
       line = line.split('#')[0].strip()                   # kill comments and extra whitespace
-      line = line.split('#')[0].strip()                   # kill comments and extra whitespace
+      line = line.split('/')[0].strip()                   # kill comments and extra whitespace
       line = line.lower()                                 # be case insensitive
       if line:                                            # content survives...
         match_part = re_part.match(line)
