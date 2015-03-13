@@ -237,6 +237,17 @@ class BBC2003(object):
   def jac(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
     return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=True)
 
+class BBC2005(object):
+  '''
+    residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
+  '''
+  def __init__(self, uniaxialStress):
+    self.stress0 = uniaxialStress
+  def fun(self, (a,b,L, M, N, P, Q, R, k), ydata, sigmas):
+    return BBC2005Basis(self.stress0, a,b,L, M, N, P, Q, R, k, sigmas)
+  def jac(self, (a,b,L, M, N, P, Q, R, k), ydata, sigmas):
+    return BBC2005Basis(self.stress0, a,b,L, M, N, P, Q, R, k, sigmas, Jac=True)
+
 class Cazacu_Barlat2D(object):
   '''
   '''
@@ -664,6 +675,57 @@ def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
       jaco.append(jacv)
     return np.array(jaco)
 
+def BBC2005Basis(sigma0, a,b,L, M, N, P, Q, R, k, sigmas, Jac=False):
+  '''
+    residuum of the BBC2005 yield criterion for plain stress
+  '''
+  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
+  k2  = 2.0*k
+  Gamma  =    L*s11 + M*s22
+  Lambda = ( (N*s11 - P*s22)**2 + s12**2 )**0.5
+  Psi    = ( (Q*s11 - R*s22)**2 + s12**2 )**0.5
+
+  l1  = Lambda + Gamma; l2  = Lambda - Gamma; l3  = Lambda + Psi; l4  = Lambda - Psi
+  l1s = l1**2;          l2s = l2**2;          l3s = l3**2;        l4s = l4**2
+  left = a*l1s**k + a*l2s**k + b*l3s**k + b*l4s**k
+  sBar = left**(1.0/k2);  r = sBar/sigma0 - 1.0
+  if not Jac:
+    return r.ravel()
+  else:
+    ln   = lambda x : np.log(x + 1.0e-32)
+    jaco = []
+    expo = 0.5/k;  k1 = k-1.0
+
+    dsBardl = expo*sBar/left/sigma0
+    dsBarde = sBar*ln(left);   dedk = expo/(-k)
+    dldl1 = a*k*(l1s**k1)*(2.0*l1)
+    dldl2 = a*k*(l2s**k1)*(2.0*l2)
+    dldl3 = b*k*(l3s**k1)*(2.0*l3)
+    dldl4 = b*k*(l4s**k1)*(2.0*l4)
+    
+    dldLambda = dldl1 + dldl2 + dldl3 + dldl4
+    dldGama   = dldl1 - dldl2
+    dldPsi    = dldl3 - dldl4
+    temp = (N*s11 - P*s22)/Lambda
+    dLambdadN = s11*temp; dLambdadP = -s22*temp
+    temp = (Q*s11 - R*s22)/Psi
+    dPsidQ = s11*temp; dPsidR = -s22*temp
+    dldk = a*ln(l1s)*l1s**k + a*ln(l2s)*l2s**k + b*ln(l3s)*l3s**k + b*ln(l4s)*l4s**k
+
+    ja = dsBardl * (l1s**k + l2s**k)
+    jb = dsBardl * (l3s**k + l4s**k)
+    jL = dsBardl * dldGama*s11
+    jM = dsBardl * dldGama*s22
+    jN = dsBardl * dldLambda*dLambdadN
+    jP = dsBardl * dldLambda*dLambdadP
+    jQ = dsBardl * dldPsi*dPsidQ
+    jR = dsBardl * dldPsi*dPsidR
+    jk = dsBardl * dldk + dsBarde * dedk
+
+    for jacv in zip(ja,jb,jL,jM, jN, jP,jQ,jR,jk):
+      jaco.append(jacv)
+    return np.array(jaco)
+
 def principalStress(p):
   sin = np.sin;    cos = np.cos
   s11 = p[0];   s22 = p[1];   s33 = p[2]
@@ -1086,6 +1148,13 @@ fittingCriteria = {
                      'name' : 'Banabic-Balan-Comsa 2003',
                      'paras': 'Initial yield stress, a, b, c, d, e, f, g, k:',
                      'text' : '\nCoefficients of anisotropic Barlat 1991 criterion:\nsigma0, a, b, c, d, e, f, g, k:\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'bbc2005'        :{'func' : BBC2005,
+                     'num'  : 9,'err':np.inf,
+                     'name' : 'Banabic-Balan-Comsa 2003',
+                     'paras': 'a, b, L ,M, N, P, Q, R, k:',
+                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: a, b, L ,M, N, P, Q, R, k:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'Cazacu_Barlat2D':{'func' : Cazacu_Barlat2D,
