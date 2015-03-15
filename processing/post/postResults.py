@@ -85,24 +85,59 @@ class MPIEspectral_result:    # mimic py_post result object
       if self.file.read(3) == 'eoh': break
       self.dataOffset += 1
     self.dataOffset   += 7
-    self.theTitle     = self._keyedString('load')
-    self.wd           = self._keyedString('workingdir')
-    self.geometry     = self._keyedString('geometry')
-    self.N_loadcases  = self._keyedPackedArray('loadcases',count=1,type='i',default=1)[0]
-    self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i',default=1)
-    self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
-    self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i',default=0)[0]
-    self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d',default=0.0)
-    self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i',default=0)
-    self.size         = self._keyedPackedArray('size',count=3,type='d')
+#search for the old keywords without ':' in case not found the new ones. Old ones are critical, if e.g. a load file is called 'load'
+    self.theTitle     = self._keyedString('load:')
+    if self.theTitle == None:
+      self.theTitle     = self._keyedString('load')
+
+    self.wd           = self._keyedString('workingdir:')
+    if self.wd == None:
+      self.wd           = self._keyedString('workingdir')
+
+    self.geometry     = self._keyedString('geometry:')
+    if self.geometry == None:
+      self.geometry     = self._keyedString('geometry')
+
+    self.N_loadcases  = self._keyedPackedArray('loadcases:',count=1,type='i',default=1)[0]
+    if self.N_loadcases == None:
+      self.N_loadcases  = self._keyedPackedArray('loadcases',count=1,type='i',default=1)[0]
+
+    self._frequencies = self._keyedPackedArray('frequencies:',count=self.N_loadcases,type='i',default=1)
+    if all ( i == None for i in self._frequencies) == None:
+      self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i',default=1)
+    
+    self._increments  = self._keyedPackedArray('increments:',count=self.N_loadcases,type='i')
+    if all (i == None for i in self._increments) == None:
+      self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
+    
+    self.startingIncrement = self._keyedPackedArray('startingIncrement:',count=1,type='i',default=0)[0]
+    if self.startingIncrement == None:
+      self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i',default=0)[0]
+
+   
+    self._times       = self._keyedPackedArray('times:',count=self.N_loadcases,type='d',default=0.0)
+    if all (i == None for i in self._times) == None:
+      self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d',default=0.0)
+
+    self._logscales   = self._keyedPackedArray('logscales:',count=self.N_loadcases,type='i',default=0)
+    if all (i == None for i in self._logscales) == None:
+      self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i',default=0)
+    
+    self.size         = self._keyedPackedArray('size:',count=3,type='d')
     if self.size == [None,None,None]:                                                               # no size found, try legacy alias 'dimension'
       self.size       = self._keyedPackedArray('dimension',count=3,type='d')
-    self.grid         = self._keyedPackedArray('grid',count=3,type='i')
+    
+    self.grid         = self._keyedPackedArray('grid:',count=3,type='i')
     if self.grid == [None,None,None]:
       self.grid         = self._keyedPackedArray('resolution',count=3,type='i')
+    
     self.N_nodes      = (self.grid[0]+1)*(self.grid[1]+1)*(self.grid[2]+1)
     self.N_elements   =  self.grid[0]   * self.grid[1]   * self.grid[2]
-    self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i',default=0)[0]
+
+    self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults:',count=1,type='i',default=0)[0]
+    if self.element_scalars == None:
+      self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i',default=0)[0]
+
     self.N_positions  = (self.filesize-self.dataOffset)/(8+self.N_elements*self.N_element_scalars*8)
     self.N_increments = 1                                                    # add zero'th entry
     for i in range(self.N_loadcases):
@@ -130,14 +165,12 @@ class MPIEspectral_result:    # mimic py_post result object
 
     key = {'name':'','pos':0}
     filepos = 0
-    while key['name'] != identifier and key['name'] != 'eoh' and filepos < self.dataOffset:
+    tag = self.file.read(4)                                           # read the starting tag
+    while tag+key['name']+tag != tag+identifier+tag and filepos < self.dataOffset:
       self.file.seek(filepos)
-      tag = self.file.read(4)                                         # read the starting/ending tag
       key['name'] = self.file.read(len(identifier))                   # anticipate identifier
       key['pos']  = self.file.tell()                                  # remember position right after identifier
-      self.file.seek(filepos+4)                                       # start looking after opening tag
-      filepos += 4 + self.file.read(self.dataOffset).find(tag) + 4    # locate end of closing tag
-
+      filepos += 1                                                    # try next position
     return key
 
 

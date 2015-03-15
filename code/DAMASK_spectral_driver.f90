@@ -338,18 +338,18 @@ program DAMASK_spectral_Driver
  else                                                                                               ! open new files ...
    open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
                                '.spectralOut',form='UNFORMATTED',status='REPLACE')
-   write(resUnit) 'load',       trim(loadCaseFile)                                                  ! ... and write header
-   write(resUnit) 'workingdir', trim(getSolverWorkingDirectoryName())
-   write(resUnit) 'geometry',   trim(geometryFile)
-   write(resUnit) 'grid',       grid
-   write(resUnit) 'size',       geomSize
-   write(resUnit) 'materialpoint_sizeResults', materialpoint_sizeResults
-   write(resUnit) 'loadcases',  size(loadCases)
-   write(resUnit) 'frequencies', loadCases%outputfrequency                                          ! one entry per currentLoadCase
-   write(resUnit) 'times',      loadCases%time                                                      ! one entry per currentLoadCase
-   write(resUnit) 'logscales',  loadCases%logscale
-   write(resUnit) 'increments', loadCases%incs                                                      ! one entry per currentLoadCase
-   write(resUnit) 'startingIncrement', restartInc - 1_pInt                                          ! start with writing out the previous inc
+   write(resUnit) 'load:',       trim(loadCaseFile)                                                 ! ... and write header
+   write(resUnit) 'workingdir:', trim(getSolverWorkingDirectoryName())
+   write(resUnit) 'geometry:',   trim(geometryFile)
+   write(resUnit) 'grid:',       grid
+   write(resUnit) 'size:',       geomSize
+   write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
+   write(resUnit) 'loadcases:',  size(loadCases)
+   write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per currentLoadCase
+   write(resUnit) 'times:',      loadCases%time                                                     ! one entry per currentLoadCase
+   write(resUnit) 'logscales:',  loadCases%logscale
+   write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per currentLoadCase
+   write(resUnit) 'startingIncrement:', restartInc - 1_pInt                                         ! start with writing out the previous inc
    write(resUnit) 'eoh'                                                                             ! end of header
    write(resUnit) materialpoint_results                                                             ! initial (non-deformed or read-in) results
    open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
