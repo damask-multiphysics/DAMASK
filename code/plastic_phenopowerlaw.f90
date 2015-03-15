@@ -1019,7 +1019,7 @@ subroutine plastic_phenopowerlaw_dotState(Tstar_v,ipc,ip,el)
        c_TwinTwin * left_TwinTwin(j) * &
        dot_product(plastic_phenopowerlaw_hardeningMatrix_TwinTwin(j,1:nTwin,instance), &
                    right_TwinTwin*gdot_twin)                                                        ! dot gamma_twin modulated by right-side twin factor
-     if (plasticState(ph)%state(index_F,of) < 0.98_pReal) &                                                           ! ensure twin volume fractions stays below 1.0
+     if (plasticState(ph)%state(index_F,of) < 0.98_pReal) &                                         ! ensure twin volume fractions stays below 1.0
        plasticState(ph)%dotState(index_F,of) = plasticState(ph)%dotState(index_F,of) + &
                                                       gdot_twin(j)/lattice_shearTwin(index_myFamily+i,ph)
      plasticState(ph)%dotState(offset_accshear_twin+j,of) = abs(gdot_twin(j))

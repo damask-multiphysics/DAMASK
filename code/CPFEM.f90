@@ -77,9 +77,9 @@ subroutine CPFEM_initAll(temperature,el,ip)
 #endif
 
  implicit none
- integer(pInt), intent(in) ::                        el, &                                         ! FE el number
-                                                     ip                                            ! FE integration point number
- real(pReal), intent(in) ::                          temperature                                   ! temperature
+ integer(pInt), intent(in) ::                        el, &                                          !< FE el number
+                                                     ip                                             !< FE integration point number
+ real(pReal), intent(in) ::                          temperature                                    !< temperature
 
  !$OMP CRITICAL (init)
    if (.not. CPFEM_init_done) then
@@ -525,7 +525,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    CPFEM_cs(1:6,ip,elCP) = rnd * CPFEM_odd_stress
    CPFEM_dcsde(1:6,1:6,ip,elCP) = CPFEM_odd_jacobian * math_identity2nd(6)
 #endif
-#if defined(Marc4DAMASK) || defined(Abaqus)
+#if defined(Marc4DAMASK) || defined(Abaqus) 
    call field_putFieldTemperature(ip,elCP,temperature) 
 #endif
    materialpoint_F0(1:3,1:3,ip,elCP) = ffn
