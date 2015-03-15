@@ -54,5 +54,5 @@ except (ImportError,AttributeError) as e:
                                            'compile_CoreModule.py',
                                           ):
     sys.stderr.write('\nWARNING: Core module (Fortran code) not available, \n'\
-                     'try to run setup_processing.sh or compile_CoreModule.py\n'\
+                     "try to run 'make processing'\n"\
                      'Error message when importing core.so: %s\n\n'%e)
