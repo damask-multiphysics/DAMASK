@@ -741,11 +741,8 @@ def principalStress(p):
   cs    = 0.5*numer*denom
   phi   = np.arccos(cs)/3.0
   t1    = I1/3.0; t2 = 2.0/3.0*I1s3I2
-  S1    = t1 + t2*cos(phi)
-  S2    = t1 + t2*cos(phi+np.pi*2.0/3.0)
-  S3    = t1 + t2*cos(phi+np.pi*4.0/3.0)
-
-  return np.array([S1,S2,S3]), np.array([I1,I2,I3])
+  S     = np.array( [t1 + t2*cos(phi), t1+t2*cos(phi+np.pi*2.0/3.0), t1+t2*cos(phi+np.pi*4.0/3.0)])
+  return S, np.array([I1,I2,I3])
 
 def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6, Karafillis=False):
   sin = np.sin;    cos = np.cos
@@ -763,119 +760,48 @@ def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6, Karafillis=False):
   dcsdI1    = 0.5*(6.0*I1**2 - 9.0*I2)*denom + dcsddenom*(2.0*I1)
   dcsdI2    = 0.5*(          - 9.0*I1)*denom + dcsddenom*(-3.0)
   dcsdI3    = 13.5*denom
-  dphidI1   = dphidcs*dcsdI1
-  dphidI2   = dphidcs*dcsdI2
-  dphidI3   = dphidcs*dcsdI3
+  dphidI1, dphidI2, dphidI3 = dphidcs*dcsdI1, dphidcs*dcsdI2, dphidcs*dcsdI3
 
   dI1s3I2dI1= I1/I1s3I2;  dI1s3I2dI2 = -1.5/I1s3I2
   third2    = 2.0*third;     tcoeff  = third2*I1s3I2
-
-  theta  = phi
-  dS1dI1 = third + tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta)
-  dS1dI2 =       + tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta)
-  dS1dI3 =         tcoeff*(-sin(theta))*dphidI3
-
-  theta  = phi + np.pi*2.0/3.0
-  dS2dI1 = third + tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta)
-  dS2dI2 =       + tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta)
-  dS2dI3 =         tcoeff*(-sin(theta))*dphidI3
-
-  theta  = phi + np.pi*4.0/3.0
-  dS3dI1 = third + tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta)
-  dS3dI2 =       + tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta)
-  dS3dI3 =         tcoeff*(-sin(theta))*dphidI3
-
+  
+  dSidIj = lambda theta : ( tcoeff*(-sin(theta))*dphidI1 + third2*dI1s3I2dI1*cos(theta) + third, 
+                            tcoeff*(-sin(theta))*dphidI2 + third2*dI1s3I2dI2*cos(theta), 
+                            tcoeff*(-sin(theta))*dphidI3)
+  dSdI = np.array([dSidIj(phi),dSidIj(phi+np.pi*2.0/3.0),dSidIj(phi+np.pi*4.0/3.0)]) # i=1,2,3; j=1,2,3
+  
 # calculate the derivation of principal stress with regards to the anisotropic coefficients  
-  dI1dp0 = dI1dp1 = dI1dp2 = 1.0
-  dI1dp3 = dI1dp4 = dI1dp5 = 0.0
-  dI2dp0 = p[1] + p[2];          dI2dp4 = -2.0*p[4]
-  dI2dp1 = p[2] + p[0];          dI2dp5 = -2.0*p[5]
-  dI2dp2 = p[0] + p[1];          dI2dp3 = -2.0*p[3]
-
-  dI3dp0 = p[1]*p[2] - p[4]**2;  dI3dp4 = -2.0*p[4]*p[0] + 2.0*p[5]*p[3]
-  dI3dp1 = p[2]*p[0] - p[5]**2;  dI3dp5 = -2.0*p[5]*p[1] + 2.0*p[3]*p[4]
-  dI3dp2 = p[0]*p[1] - p[3]**2;  dI3dp3 = -2.0*p[3]*p[2] + 2.0*p[4]*p[5]
+  one    = np.ones_like(p[0]); zero = np.zeros_like(p[0])
+  dIdp = np.array([ [one,    one,    one,    zero,   zero,   zero], 
+                    [p[1]+p[2], p[2]+p[0], p[0]+p[1], -2.0*p[3], -2.0*p[4], -2.0*p[5]],
+                    [p[1]*p[2]-p[4]**2, p[2]*p[0]-p[5]**2, p[0]*p[1]-p[3]**2, 
+                     -2.0*p[3]*p[2]+2.0*p[4]*p[5], -2.0*p[4]*p[0]+2.0*p[5]*p[3], -2.0*p[5]*p[1]+2.0*p[3]*p[4]]
+                  ]) 
 
   if Karafillis:
-    dS1dp0 = dS1dI1*dI1dp0 + dS1dI2*dI2dp0 + dS1dI3*dI3dp0
-    dS1dp1 = dS1dI1*dI1dp1 + dS1dI2*dI2dp1 + dS1dI3*dI3dp1
-    dS1dp2 = dS1dI1*dI1dp2 + dS1dI2*dI2dp2 + dS1dI3*dI3dp2
-    dS1dp3 = dS1dI1*dI1dp3 + dS1dI2*dI2dp3 + dS1dI3*dI3dp3
-    dS1dp4 = dS1dI1*dI1dp4 + dS1dI2*dI2dp4 + dS1dI3*dI3dp4
-    dS1dp5 = dS1dI1*dI1dp5 + dS1dI2*dI2dp5 + dS1dI3*dI3dp5
-    dS2dp0 = dS2dI1*dI1dp0 + dS2dI2*dI2dp0 + dS2dI3*dI3dp0
-    dS2dp1 = dS2dI1*dI1dp1 + dS2dI2*dI2dp1 + dS2dI3*dI3dp1
-    dS2dp2 = dS2dI1*dI1dp2 + dS2dI2*dI2dp2 + dS2dI3*dI3dp2
-    dS2dp3 = dS2dI1*dI1dp3 + dS2dI2*dI2dp3 + dS2dI3*dI3dp3
-    dS2dp4 = dS2dI1*dI1dp4 + dS2dI2*dI2dp4 + dS2dI3*dI3dp4
-    dS2dp5 = dS2dI1*dI1dp5 + dS2dI2*dI2dp5 + dS2dI3*dI3dp5
-    dS3dp0 = dS3dI1*dI1dp0 + dS3dI2*dI2dp0 + dS3dI3*dI3dp0
-    dS3dp1 = dS3dI1*dI1dp1 + dS3dI2*dI2dp1 + dS3dI3*dI3dp1
-    dS3dp2 = dS3dI1*dI1dp2 + dS3dI2*dI2dp2 + dS3dI3*dI3dp2
-    dS3dp3 = dS3dI1*dI1dp3 + dS3dI2*dI2dp3 + dS3dI3*dI3dp3
-    dS3dp4 = dS3dI1*dI1dp4 + dS3dI2*dI2dp4 + dS3dI3*dI3dp4
-    dS3dp5 = dS3dI1*dI1dp5 + dS3dI2*dI2dp5 + dS3dI3*dI3dp5
-
-    dS1dc1 = ( dS1dp0*0.0     + dS1dp1*(s2-s3) + dS1dp2*(s3-s2) )/3.0
-    dS1dc2 = ( dS1dp0*(s1-s3) + dS1dp1*0.0     + dS1dp2*(s3-s1) )/3.0
-    dS1dc3 = ( dS1dp0*(s1-s2) + dS1dp1*(s2-s1) + dS1dp2*0.0     )/3.0
-    dS2dc1 = ( dS2dp0*0.0     + dS2dp1*(s2-s3) + dS2dp2*(s3-s2) )/3.0
-    dS2dc2 = ( dS2dp0*(s1-s3) + dS2dp1*0.0     + dS2dp2*(s3-s1) )/3.0
-    dS2dc3 = ( dS2dp0*(s1-s2) + dS2dp1*(s2-s1) + dS2dp2*0.0     )/3.0
-    dS3dc1 = ( dS3dp0*0.0     + dS3dp1*(s2-s3) + dS3dp2*(s3-s2) )/3.0
-    dS3dc2 = ( dS3dp0*(s1-s3) + dS3dp1*0.0     + dS3dp2*(s3-s1) )/3.0
-    dS3dc3 = ( dS3dp0*(s1-s2) + dS3dp1*(s2-s1) + dS3dp2*0.0     )/3.0
-    dS1dc4 = dS1dp3*s4;  dS1dc5 = dS1dp4*s5;  dS1dc6 = dS1dp5*s6
-    dS2dc4 = dS2dp3*s4;  dS2dc5 = dS2dp4*s5;  dS2dc6 = dS2dp5*s6
-    dS3dc4 = dS3dp3*s4;  dS3dc5 = dS3dp4*s5;  dS3dc6 = dS3dp5*s6
-
-    return dS1dc1,dS1dc2,dS1dc3,dS1dc4,dS1dc5,dS1dc6,\               # use array type?
-           dS2dc1,dS2dc2,dS2dc3,dS2dc4,dS2dc5,dS2dc6,\
-           dS3dc1,dS3dc2,dS3dc3,dS3dc4,dS3dc5,dS3dc6
+    dSdp = np.empty_like(dIdp)
+    dSdc = np.empty_like(dIdp)
+    zero   = np.zeros_like(s1)
+    dpdc = np.array([[zero,s2-s3,s3-s2], [s1-s3,zero,s3-s1], [s1-s2,s2-s1,zero]])
+    for i in xrange(3):
+      for j in xrange(6):
+        dSdp[i,j] = dSdI[i,0]*dIdp[0,j]+dSdI[i,1]*dIdp[1,j]+dSdI[i,2]*dIdp[2,j]
+      for j in xrange(3):
+        dSdc[i,j] = (dSdp[i,0]*dpdc[j,0]+dSdp[i,1]*dpdc[j,1]+dSdp[i,2]*dpdc[j,2])/3.0
+      dSdc[i,3:6] = dSdp[i,3]*s4,dSdp[i,4]*s5,dSdp[i,5]*s6
+    return dSdc
   else:
-    dI1dc12 = dI1dp0*(-s2);  dI2dc12 = dI2dp0*(-s2);  dI3dc12 = dI3dp0*(-s2)  # c12
-    dI1dc21 = dI1dp1*(-s1);  dI2dc21 = dI2dp1*(-s1);  dI3dc21 = dI3dp1*(-s1)  # c21
-    dI1dc23 = dI1dp1*(-s3);  dI2dc23 = dI2dp1*(-s3);  dI3dc23 = dI3dp1*(-s3)  # c23
-    dI1dc32 = dI1dp2*(-s2);  dI2dc32 = dI2dp2*(-s2);  dI3dc32 = dI3dp2*(-s2)  # c32
-    dI1dc31 = dI1dp2*(-s1);  dI2dc31 = dI2dp2*(-s1);  dI3dc31 = dI3dp2*(-s1)  # c31
-    dI1dc13 = dI1dp0*(-s3);  dI2dc13 = dI2dp0*(-s3);  dI3dc13 = dI3dp0*(-s3)  # c13
-    dI1dc44 = dI1dp3*  s4 ;  dI2dc44 = dI2dp3*  s4 ;  dI3dc44 = dI3dp3*  s4   # c44
-    dI1dc55 = dI1dp4*  s5 ;  dI2dc55 = dI2dp4*  s5 ;  dI3dc55 = dI3dp4*  s5   # c55
-    dI1dc66 = dI1dp5*  s6 ;  dI2dc66 = dI2dp5*  s6 ;  dI3dc66 = dI3dp5*  s6   # c66
+    dIdc = np.empty([3,9,len(s1)])
+    dSdc = np.empty_like(dIdc)
 
-    dS1dc12 = dS1dI1 * dI1dc12  +  dS1dI2 * dI2dc12  +  dS1dI3 * dI3dc12
-    dS1dc21 = dS1dI1 * dI1dc21  +  dS1dI2 * dI2dc21  +  dS1dI3 * dI3dc21
-    dS1dc23 = dS1dI1 * dI1dc23  +  dS1dI2 * dI2dc23  +  dS1dI3 * dI3dc23
-    dS1dc32 = dS1dI1 * dI1dc32  +  dS1dI2 * dI2dc32  +  dS1dI3 * dI3dc32
-    dS1dc31 = dS1dI1 * dI1dc31  +  dS1dI2 * dI2dc31  +  dS1dI3 * dI3dc31
-    dS1dc13 = dS1dI1 * dI1dc13  +  dS1dI2 * dI2dc13  +  dS1dI3 * dI3dc13
-    dS1dc44 = dS1dI1 * dI1dc44  +  dS1dI2 * dI2dc44  +  dS1dI3 * dI3dc44
-    dS1dc55 = dS1dI1 * dI1dc55  +  dS1dI2 * dI2dc55  +  dS1dI3 * dI3dc55
-    dS1dc66 = dS1dI1 * dI1dc66  +  dS1dI2 * dI2dc66  +  dS1dI3 * dI3dc66
-
-    dS2dc12 = dS2dI1 * dI1dc12  +  dS2dI2 * dI2dc12  +  dS2dI3 * dI3dc12
-    dS2dc21 = dS2dI1 * dI1dc21  +  dS2dI2 * dI2dc21  +  dS2dI3 * dI3dc21
-    dS2dc23 = dS2dI1 * dI1dc23  +  dS2dI2 * dI2dc23  +  dS2dI3 * dI3dc23
-    dS2dc32 = dS2dI1 * dI1dc32  +  dS2dI2 * dI2dc32  +  dS2dI3 * dI3dc32
-    dS2dc31 = dS2dI1 * dI1dc31  +  dS2dI2 * dI2dc31  +  dS2dI3 * dI3dc31
-    dS2dc13 = dS2dI1 * dI1dc13  +  dS2dI2 * dI2dc13  +  dS2dI3 * dI3dc13
-    dS2dc44 = dS2dI1 * dI1dc44  +  dS2dI2 * dI2dc44  +  dS2dI3 * dI3dc44
-    dS2dc55 = dS2dI1 * dI1dc55  +  dS2dI2 * dI2dc55  +  dS2dI3 * dI3dc55
-    dS2dc66 = dS2dI1 * dI1dc66  +  dS2dI2 * dI2dc66  +  dS2dI3 * dI3dc66
-
-    dS3dc12 = dS3dI1 * dI1dc12  +  dS3dI2 * dI2dc12  +  dS3dI3 * dI3dc12
-    dS3dc21 = dS3dI1 * dI1dc21  +  dS3dI2 * dI2dc21  +  dS3dI3 * dI3dc21
-    dS3dc23 = dS3dI1 * dI1dc23  +  dS3dI2 * dI2dc23  +  dS3dI3 * dI3dc23
-    dS3dc32 = dS3dI1 * dI1dc32  +  dS3dI2 * dI2dc32  +  dS3dI3 * dI3dc32
-    dS3dc31 = dS3dI1 * dI1dc31  +  dS3dI2 * dI2dc31  +  dS3dI3 * dI3dc31
-    dS3dc13 = dS3dI1 * dI1dc13  +  dS3dI2 * dI2dc13  +  dS3dI3 * dI3dc13
-    dS3dc44 = dS3dI1 * dI1dc44  +  dS3dI2 * dI2dc44  +  dS3dI3 * dI3dc44
-    dS3dc55 = dS3dI1 * dI1dc55  +  dS3dI2 * dI2dc55  +  dS3dI3 * dI3dc55
-    dS3dc66 = dS3dI1 * dI1dc66  +  dS3dI2 * dI2dc66  +  dS3dI3 * dI3dc66
-
-    return dS1dc12, dS1dc21, dS1dc23, dS1dc32, dS1dc31, dS1dc13, dS1dc44, dS1dc55, dS1dc66, \
-           dS2dc12, dS2dc21, dS2dc23, dS2dc32, dS2dc31, dS2dc13, dS2dc44, dS2dc55, dS2dc66, \
-           dS3dc12, dS3dc21, dS3dc23, dS3dc32, dS3dc31, dS3dc13, dS3dc44, dS3dc55, dS3dc66
+    for i in xrange(3):
+      dIdc[i]=np.array([dIdp[i,0]*(-s2), dIdp[i,1]*(-s1), dIdp[i,1]*(-s3),
+                        dIdp[i,2]*(-s2), dIdp[i,2]*(-s1), dIdp[i,0]*(-s3),
+                        dIdp[i,3]*  s4,  dIdp[i,4]*  s5,  dIdp[i,5]*  s6 ])
+    for i in xrange(3):
+      for j in xrange(9):
+        dSdc[i,j] = dSdI[i,0]*dIdc[0,j]+dSdI[i,1]*dIdc[1,j]+dSdI[i,2]*dIdc[2,j]
+    return dSdc
 
 def Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
                             d12,d21,d23,d32,d31,d13,d44,d55,d66, m, sigmas, Jac=False):
@@ -883,21 +809,11 @@ def Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
   sv = (sigmas[0] + sigmas[1] + sigmas[2])/3.0
   s1 = sigmas[0]-sv; s2 = sigmas[1]-sv; s3 = sigmas[2]-sv
   s4 = sigmas[3];    s5 = sigmas[4];    s6 = sigmas[5]
-
-  p  = np.empty_like(sigmas);   q  = np.empty_like(sigmas)
-  p[0] = -c12*s2 - c13*s3
-  p[1] = -c21*s1 - c23*s3
-  p[2] = -c31*s1 - c32*s2
-  p[3] =  c44*s4
-  p[4] =  c55*s5
-  p[5] =  c66*s6
-
-  q[0] = -d12*s2 - d13*s3
-  q[1] = -d21*s1 - d23*s3
-  q[2] = -d31*s1 - d32*s2
-  q[3] =  d44*s4
-  q[4] =  d55*s5
-  q[5] =  d66*s6
+  
+  ys = lambda s1,s2,s3,s4,s5,s6,c12,c21,c23,c32,c13,c31,c44,c55,c66: np.array( [
+         -c12*s2-c13*s3, -c21*s1-c23*s3, -c31*s1-c32*s2, c44*s4, c55*s5, c66*s6 ])
+  p = ys(s1,s2,s3,s4,s5,s6,c12,c21,c23,c32,c13,c31,c44,c55,c66)
+  q = ys(s1,s2,s3,s4,s5,s6,d12,d21,d23,d32,d13,d31,d44,d55,d66)
 
   plambdas, pInvariant = principalStress(p)   # no sort
   qlambdas, qInvariant = principalStress(q)   # no sort
@@ -923,77 +839,35 @@ def Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
     drdphi =  (r+1.0)*m1/phi
     dphidm =( (P1Q1s**m2)*ln(P1Q1s) + (P1Q2s**m2)*ln(P1Q2s) + (P1Q3s**m2)*ln(P1Q3s) +
               (P2Q1s**m2)*ln(P2Q1s) + (P2Q2s**m2)*ln(P2Q2s) + (P2Q3s**m2)*ln(P2Q3s) +
-              (P3Q1s**m2)*ln(P3Q1s) + (P3Q2s**m2)*ln(P3Q2s) + (P3Q3s**m2)*ln(P3Q3s)
-            )*0.5
-    js     = -(r+1.0)/sigma0
+              (P3Q1s**m2)*ln(P3Q1s) + (P3Q2s**m2)*ln(P3Q2s) + (P3Q3s**m2)*ln(P3Q3s) )*0.5
     jm     = drdphi*dphidm + (r+1.0)*ln(0.25*phi)*(-m1*m1)
 
-    dP1dc12, dP1dc21, dP1dc23, dP1dc32, dP1dc31, dP1dc13, dP1dc44, dP1dc55, dP1dc66, \
-    dP2dc12, dP2dc21, dP2dc23, dP2dc32, dP2dc31, dP2dc13, dP2dc44, dP2dc55, dP2dc66, \
-    dP3dc12, dP3dc21, dP3dc23, dP3dc32, dP3dc31, dP3dc13, dP3dc44, dP3dc55, dP3dc66= \
-      principalStrs_Der(p, pInvariant, s1,s2,s3,s4,s5,s6)
-
-    dQ1dd12, dQ1dd21, dQ1dd23, dQ1dd32, dQ1dd31, dQ1dd13, dQ1dd44, dQ1dd55, dQ1dd66, \
-    dQ2dd12, dQ2dd21, dQ2dd23, dQ2dd32, dQ2dd31, dQ2dd13, dQ2dd44, dQ2dd55, dQ2dd66, \
-    dQ3dd12, dQ3dd21, dQ3dd23, dQ3dd32, dQ3dd31, dQ3dd13, dQ3dd44, dQ3dd55, dQ3dd66= \
-      principalStrs_Der(q, qInvariant, s1,s2,s3,s4,s5,s6)
-
-    dphidP1 = m*( P1Q1s**m21*(P1-Q1) + P1Q2s**m21*(P1-Q2) + P1Q3s**m21*(P1-Q3) )
-    dphidP2 = m*( P2Q1s**m21*(P2-Q1) + P2Q2s**m21*(P2-Q2) + P2Q3s**m21*(P2-Q3) )
-    dphidP3 = m*( P3Q1s**m21*(P3-Q1) + P3Q2s**m21*(P3-Q2) + P3Q3s**m21*(P3-Q3) )
-
-    dphidQ1 = m*( P1Q1s**m21*(Q1-P1) + P2Q1s**m21*(Q1-P2) + P3Q1s**m21*(Q1-P3) )
-    dphidQ2 = m*( P1Q2s**m21*(Q2-P1) + P2Q2s**m21*(Q2-P2) + P3Q2s**m21*(Q2-P3) )
-    dphidQ3 = m*( P1Q3s**m21*(Q3-P1) + P2Q3s**m21*(Q3-P2) + P3Q3s**m21*(Q3-P3) )
-
-    jc12 = drdphi*( dphidP1*dP1dc12 + dphidP2*dP2dc12 + dphidP3*dP3dc12 )
-    jc21 = drdphi*( dphidP1*dP1dc21 + dphidP2*dP2dc21 + dphidP3*dP3dc21 )
-    jc23 = drdphi*( dphidP1*dP1dc23 + dphidP2*dP2dc23 + dphidP3*dP3dc23 )
-    jc32 = drdphi*( dphidP1*dP1dc32 + dphidP2*dP2dc32 + dphidP3*dP3dc32 )
-    jc31 = drdphi*( dphidP1*dP1dc31 + dphidP2*dP2dc31 + dphidP3*dP3dc31 )
-    jc13 = drdphi*( dphidP1*dP1dc13 + dphidP2*dP2dc13 + dphidP3*dP3dc13 )
-    jc44 = drdphi*( dphidP1*dP1dc44 + dphidP2*dP2dc44 + dphidP3*dP3dc44 )
-    jc55 = drdphi*( dphidP1*dP1dc55 + dphidP2*dP2dc55 + dphidP3*dP3dc55 )
-    jc66 = drdphi*( dphidP1*dP1dc66 + dphidP2*dP2dc66 + dphidP3*dP3dc66 )
-
-    jd12 = drdphi*( dphidQ1*dQ1dd12 + dphidQ2*dQ2dd12 + dphidQ3*dQ3dd12 )
-    jd21 = drdphi*( dphidQ1*dQ1dd21 + dphidQ2*dQ2dd21 + dphidQ3*dQ3dd21 )
-    jd23 = drdphi*( dphidQ1*dQ1dd23 + dphidQ2*dQ2dd23 + dphidQ3*dQ3dd23 )
-    jd32 = drdphi*( dphidQ1*dQ1dd32 + dphidQ2*dQ2dd32 + dphidQ3*dQ3dd32 )
-    jd31 = drdphi*( dphidQ1*dQ1dd31 + dphidQ2*dQ2dd31 + dphidQ3*dQ3dd31 )
-    jd13 = drdphi*( dphidQ1*dQ1dd13 + dphidQ2*dQ2dd13 + dphidQ3*dQ3dd13 )
-    jd44 = drdphi*( dphidQ1*dQ1dd44 + dphidQ2*dQ2dd44 + dphidQ3*dQ3dd44 )
-    jd55 = drdphi*( dphidQ1*dQ1dd55 + dphidQ2*dQ2dd55 + dphidQ3*dQ3dd55 )
-    jd66 = drdphi*( dphidQ1*dQ1dd66 + dphidQ2*dQ2dd66 + dphidQ3*dQ3dd66 )
-
-    jaco = []
-    for jacv in zip(js,jc12,jc21,jc23,jc32,jc31,jc13,jc44,jc55,jc66,
-                  jd12,jd21,jd23,jd32,jd31,jd13,jd44,jd55,jd66, jm):
-      jaco.append(jacv)
-    return np.array(jaco)
+    dPdc = principalStrs_Der(p, pInvariant, s1,s2,s3,s4,s5,s6)
+    dQdd = principalStrs_Der(q, qInvariant, s1,s2,s3,s4,s5,s6)
+    dphidP = m*np.array([ P1Q1s**m21*(P1-Q1) + P1Q2s**m21*(P1-Q2) + P1Q3s**m21*(P1-Q3),
+                          P2Q1s**m21*(P2-Q1) + P2Q2s**m21*(P2-Q2) + P2Q3s**m21*(P2-Q3),
+                          P3Q1s**m21*(P3-Q1) + P3Q2s**m21*(P3-Q2) + P3Q3s**m21*(P3-Q3) ])
+    dphidQ = m*np.array([ P1Q1s**m21*(Q1-P1) + P2Q1s**m21*(Q1-P2) + P3Q1s**m21*(Q1-P3),
+                          P1Q2s**m21*(Q2-P1) + P2Q2s**m21*(Q2-P2) + P3Q2s**m21*(Q2-P3),
+                          P1Q3s**m21*(Q3-P1) + P2Q3s**m21*(Q3-P2) + P3Q3s**m21*(Q3-P3)])
+    
+    jc = drdphi*(dphidP[0]*dPdc[0]+dphidP[1]*dPdc[1]+dphidP[2]*dPdc[2])
+    jd = drdphi*(dphidQ[0]*dQdd[0]+dphidQ[1]*dQdd[1]+dphidQ[2]*dQdd[2])
+    return np.vstack((jc,jd, jm)).T
 
 def KarafillisBoyceBasis(sigma0, c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,
                          b1, b2, a, alpha , sigmas, Jac=False):
   s1 = sigmas[0]; s2 = sigmas[1]; s3 = sigmas[2]
   s4 = sigmas[3]; s5 = sigmas[4]; s6 = sigmas[5]
 
-  p  = np.empty_like(sigmas);   q  = np.empty_like(sigmas)
-  p[0] =  ( (c12+c13)*s1 - c13*s2 - c12*s3 )/3.0
-  p[1] =  ( (c13+c11)*s2 - c13*s1 - c11*s3 )/3.0
-  p[2] =  ( (c11+c12)*s3 - c12*s1 - c11*s2 )/3.0
-  p[3] =  c14*s4
-  p[4] =  c15*s5
-  p[5] =  c16*s6
+  ks = lambda s1,s2,s3,s4,s5,s6,c11,c12,c13,c14,c15,c16: np.array( [
+       ((c12+c13)*s1-c13*s2-c12*s3)/3.0,  ((c13+c11)*s2-c13*s1-c11*s3)/3.0,
+       ((c11+c12)*s3-c12*s1-c11*s2)/3.0,  c14*s4, c15*s5, c16*s6    ])
+  p = ks(s1,s2,s3,s4,s5,s6,c11,c12,c13,c14,c15,c16)
+  q = ks(s1,s2,s3,s4,s5,s6,c21,c22,c23,c24,c25,c26)
 
-  q[0] =  ( (c22+c23)*s1 - c23*s2 - c22*s3 )/3.0
-  q[1] =  ( (c23+c21)*s2 - c23*s1 - c21*s3 )/3.0
-  q[2] =  ( (c21+c22)*s3 - c22*s1 - c21*s2 )/3.0
-  q[3] =  c24*s4
-  q[4] =  c25*s5
-  q[5] =  c26*s6
-
-  plambdas, pInvariant = principalStress(p)   # no sort
-  qlambdas, qInvariant = principalStress(q)   # no sort
+  plambdas, pInvariant = principalStress(p)
+  qlambdas, qInvariant = principalStress(q)
 
   P1 = plambdas[0,:];  P2 = plambdas[1,:];  P3 = plambdas[2,:]
   Q1 = qlambdas[0,:];  Q2 = qlambdas[1,:];  Q3 = qlambdas[2,:]
@@ -1024,22 +898,15 @@ def KarafillisBoyceBasis(sigma0, c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26
     dsda = alpha*phi1**a*ln(phi1) + (1.0-alpha)*phi2**a*ln(phi2)
 
     dphi1dphi10 = phi1/phi10/b1;  dphi2dphi20 = phi2/phi20/b2
-    dphi1dP1 = dphi1dphi10*b1*( P3P1s**b1h1*(P1-P3) + P1P2s**b1h1*(P1-P2))
-    dphi1dP2 = dphi1dphi10*b1*( P2P3s**b1h1*(P2-P3) + P1P2s**b1h1*(P2-P1))
-    dphi1dP3 = dphi1dphi10*b1*( P3P1s**b1h1*(P3-P1) + P2P3s**b1h1*(P3-P2))
+    dphi1dP = np.array([ dphi1dphi10*b1*( P3P1s**b1h1*(P1-P3) + P1P2s**b1h1*(P1-P2)),
+                         dphi1dphi10*b1*( P2P3s**b1h1*(P2-P3) + P1P2s**b1h1*(P2-P1)),
+                         dphi1dphi10*b1*( P3P1s**b1h1*(P3-P1) + P2P3s**b1h1*(P3-P2)) ])
+    dphi2dQ = np.array([ dphi2dphi20*b2*Q1s*b2h1*Q1,
+                         dphi2dphi20*b2*Q2s*b2h1*Q2,
+                         dphi2dphi20*b2*Q3s*b2h1*Q3 ])
 
-    dphi2dQ1 = dphi2dphi20*b2*Q1s*b2h1*Q1
-    dphi2dQ2 = dphi2dphi20*b2*Q2s*b2h1*Q2
-    dphi2dQ3 = dphi2dphi20*b2*Q3s*b2h1*Q3
-
-    dP1dc1,dP1dc2,dP1dc3,dP1dc4,dP1dc5,dP1dc6, \
-    dP2dc1,dP2dc2,dP2dc3,dP2dc4,dP2dc5,dP2dc6, \
-    dP3dc1,dP3dc2,dP3dc3,dP3dc4,dP3dc5,dP3dc6= \
-      principalStrs_Der(p, pInvariant, s1,s2,s3,s4,s5,s6, Karafillis=True)
-    dQ1dc1,dQ1dc2,dQ1dc3,dQ1dc4,dQ1dc5,dQ1dc6, \
-    dQ2dc1,dQ2dc2,dQ2dc3,dQ2dc4,dQ2dc5,dQ2dc6, \
-    dQ3dc1,dQ3dc2,dQ3dc3,dQ3dc4,dQ3dc5,dQ3dc6= \
-      principalStrs_Der(q, qInvariant, s1,s2,s3,s4,s5,s6, Karafillis=True)
+    dPdc= principalStrs_Der(p, pInvariant, s1,s2,s3,s4,s5,s6, Karafillis=True)
+    dQdc= principalStrs_Der(q, qInvariant, s1,s2,s3,s4,s5,s6, Karafillis=True)
 
     dphi10db1 = ( (P2P3s**b1h)*ln(P2P3s)+(P3P1s**b1h)*ln(P3P1s)+(P1P2s**b1h)*ln(P1P2s) )*0.5
     dphi20db2 = ( (P2P3s**b1h)*ln(P2P3s)+(P3P1s**b1h)*ln(P3P1s)+(P1P2s**b1h)*ln(P1P2s) )*0.5
@@ -1050,26 +917,11 @@ def KarafillisBoyceBasis(sigma0, c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26
     jb1 = drds * (     alpha *a*phi1**(a-1)) * dphi1db1
     jb2 = drds * ((1.0-alpha)*a*phi2**(a-1)) * dphi2db2
     jalpha = drds * (phi1**a - phi2**a)
+    
+    jc1 = drdphi1*(dphi1dP[0]*dPdc[0]+dphi1dP[1]*dPdc[1]+dphi1dP[2]*dPdc[2])
+    jc2 = drdphi2*(dphi2dQ[0]*dQdc[0]+dphi2dQ[1]*dQdc[1]+dphi2dQ[2]*dQdc[2])
 
-    jc11 = drdphi1*( dphi1dP1*dP1dc1 + dphi1dP2*dP2dc1 + dphi1dP3*dP3dc1 )
-    jc12 = drdphi1*( dphi1dP1*dP1dc2 + dphi1dP2*dP2dc2 + dphi1dP3*dP3dc2 )
-    jc13 = drdphi1*( dphi1dP1*dP1dc3 + dphi1dP2*dP2dc3 + dphi1dP3*dP3dc3 )
-    jc14 = drdphi1*( dphi1dP1*dP1dc4 + dphi1dP2*dP2dc4 + dphi1dP3*dP3dc4 )
-    jc15 = drdphi1*( dphi1dP1*dP1dc5 + dphi1dP2*dP2dc5 + dphi1dP3*dP3dc5 )
-    jc16 = drdphi1*( dphi1dP1*dP1dc6 + dphi1dP2*dP2dc6 + dphi1dP3*dP3dc6 )
-
-    jc21 = drdphi2*( dphi2dQ1*dQ1dc1 + dphi2dQ2*dQ2dc1 + dphi2dQ3*dQ3dc1 )
-    jc22 = drdphi2*( dphi2dQ1*dQ1dc2 + dphi2dQ2*dQ2dc2 + dphi2dQ3*dQ3dc2 )
-    jc23 = drdphi2*( dphi2dQ1*dQ1dc3 + dphi2dQ2*dQ2dc3 + dphi2dQ3*dQ3dc3 )
-    jc24 = drdphi2*( dphi2dQ1*dQ1dc4 + dphi2dQ2*dQ2dc4 + dphi2dQ3*dQ3dc4 )
-    jc25 = drdphi2*( dphi2dQ1*dQ1dc5 + dphi2dQ2*dQ2dc5 + dphi2dQ3*dQ3dc5 )
-    jc26 = drdphi2*( dphi2dQ1*dQ1dc6 + dphi2dQ2*dQ2dc6 + dphi2dQ3*dQ3dc6 )
-
-    jaco = []
-    for jacv in zip(jc11,jc12,jc13,jc14,jc15,jc16,jc21,jc22,jc23,jc24,jc25,jc26,
-                    jb1,jb2,ja,jalpha):
-      jaco.append(jacv)
-    return np.array(jaco)
+    return np.vstack((jc1,jc2,jb1,jb2,ja,jalpha)).T
 
 
 fittingCriteria = {
