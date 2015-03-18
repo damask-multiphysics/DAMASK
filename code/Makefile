@@ -17,7 +17,7 @@ SHELL = /bin/sh
 # STANDARD_CHECK = checking for Fortran 2008, compiler dependend
 ########################################################################################
 
-include $(PETSC_DIR)/conf/variables
+include $(PETSC_DIR)/lib/petsc-conf/variables
 INCLUDE_DIRS := $(PETSC_FC_INCLUDES) -DPETSc -I../lib
 LIBRARIES    := $(PETSC_WITH_EXTERNAL_LIB)
 COMPILERNAME ?= $(FC)
@@ -302,8 +302,8 @@ PRECISION_gfortran :=-fdefault-real-8 -fdefault-double-8 -DFLOAT=8 -DINT=4
 #-fdefault-integer-8:         Use it to set precision to 8 bytes for integer, don't use it for the standard case of pInt=4 (there is no -fdefault-integer-4)
 
 ###################################################################################################
-COMPILE         =$(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
-COMPILE_MAXOPTI =$(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
+COMPILE         =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(OPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
+COMPILE_MAXOPTI =$(OPENMP_FLAG_$(F90)) $(COMPILE_OPTIONS_$(F90)) $(STANDARD_CHECK_$(F90)) $(OPTIMIZATION_$(MAXOPTI)_$(F90)) $(INCLUDE_DIRS) $(PRECISION_$(F90))
 ###################################################################################################
 DAMAGE_FILES = \
    damage_none.o damage_isoBrittle.o damage_isoDuctile.o damage_gurson.o damage_anisoBrittle.o damage_anisoDuctile.o damage_phaseField.o
@@ -326,8 +326,8 @@ HOMOGENIZATION_FILES = \
 # Spectral Solver
 #####################
 DAMASK_spectral.exe: IGNORE          := \#
-DAMASK_spectral.exe: COMPILE         += $(OPENMP_FLAG_$(F90)) -DSpectral
-DAMASK_spectral.exe: COMPILE_MAXOPTI += $(OPENMP_FLAG_$(F90)) -DSpectral
+DAMASK_spectral.exe: COMPILE         += -DSpectral
+DAMASK_spectral.exe: COMPILE_MAXOPTI += -DSpectral
 DAMASK_spectral.exe: MESHNAME        := mesh.f90
 DAMASK_spectral.exe: INTERFACENAME   := DAMASK_spectral_interface.f90
 

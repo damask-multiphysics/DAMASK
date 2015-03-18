@@ -17,7 +17,7 @@ module DAMASK_spectral_SolverBasicPETSc
 
  implicit none
  private
-#include <finclude/petsc.h90>
+#include <petsc-finclude/petsc.h90>
 
  character (len=*), parameter, public :: &
    DAMASK_spectral_SolverBasicPETSC_label = 'basicpetsc'

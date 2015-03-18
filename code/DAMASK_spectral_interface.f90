@@ -17,7 +17,7 @@ module DAMASK_interface
  implicit none
  private
 #ifdef PETSc
-#include <finclude/petscsys.h>
+#include <petsc-finclude/petscsys.h>
 #endif
  logical,             public, protected :: appendToOutFile = .false.                                !< Append to existing spectralOut file (in case of restart, not in case of regridding)
  integer(pInt),       public, protected :: spectralRestartInc = 1_pInt                              !< Increment at which calculation starts

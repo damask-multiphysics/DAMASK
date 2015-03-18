@@ -15,7 +15,7 @@ module DAMASK_spectral_utilities
  implicit none
  private
 #ifdef PETSc
-#include <finclude/petscsys.h>
+#include <petsc-finclude/petscsys.h>
 #endif
  logical,       public                                         :: cutBack =.false.                  !< cut back of BVP solver in case convergence is not achieved or a material point is terminally ill
  integer(pInt), public, parameter  :: maxPhaseFields = 2_pInt
