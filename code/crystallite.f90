@@ -444,6 +444,7 @@ subroutine crystallite_init
                           crystallite_Tstar_v(1:6,g,i,e), &
                           crystallite_Fe(1:3,1:3,g,i,e), &
                           crystallite_Fp(1:3,1:3,g,i,e), &
+                          crystallite_Lp(1:3,1:3,g,i,e), &
                           crystallite_subdt(g,i,e), g,i,e)                                          ! update dependent state variables to be consistent with basic states
       enddo
      enddo
@@ -1720,6 +1721,7 @@ subroutine crystallite_integrateStateRK4()
          call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                          crystallite_Lp(1:3,1:3,g,i,e), &
                                           crystallite_subdt(g,i,e), g, i, e)                               ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -2054,6 +2056,7 @@ subroutine crystallite_integrateStateRKCK45()
          call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                          crystallite_Lp(1:3,1:3,g,i,e), &
                                           crystallite_subdt(g,i,e), g, i, e)                               ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -2333,6 +2336,7 @@ subroutine crystallite_integrateStateRKCK45()
        call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                         crystallite_Fe(1:3,1:3,g,i,e), &
                                         crystallite_Fp(1:3,1:3,g,i,e), &
+                                        crystallite_Lp(1:3,1:3,g,i,e), &
                                         crystallite_subdt(g,i,e), g, i, e)                                 ! update dependent state variables to be consistent with basic states
   enddo; enddo; enddo
  !$OMP ENDDO
@@ -2583,6 +2587,7 @@ subroutine crystallite_integrateStateAdaptiveEuler()
          call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), & 
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                          crystallite_Lp(1:3,1:3,g,i,e), &
                                           crystallite_subdt(g,i,e), g, i, e)                              ! update dependent state variables to be consistent with basic states
      enddo; enddo; enddo
    !$OMP ENDDO
@@ -2941,6 +2946,7 @@ eIter = FEsolving_execElem(1:2)
          call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                          crystallite_Lp(1:3,1:3,g,i,e), &
                                           crystallite_subdt(g,i,e), g, i, e)                                ! update dependent state variables to be consistent with basic states
    enddo; enddo; enddo
    !$OMP ENDDO
@@ -3207,6 +3213,7 @@ subroutine crystallite_integrateStateFPI()
          call constitutive_microstructure(crystallite_Tstar_v(1:6,g,i,e), &
                                           crystallite_Fe(1:3,1:3,g,i,e), &
                                           crystallite_Fp(1:3,1:3,g,i,e), &
+                                          crystallite_Lp(1:3,1:3,g,i,e), &
                                           crystallite_subdt(g,i,e), g, i, e)                                ! update dependent state variables to be consistent with basic states
        p = mappingConstitutive(2,g,i,e) 
        c = mappingConstitutive(1,g,i,e)  
@@ -3669,8 +3676,7 @@ logical function crystallite_integrateStress(&
  real(pReal), dimension(6)::         Tstar_v                                                         ! 2nd Piola-Kirchhoff Stress in Mandel-Notation
  real(pReal), dimension(9)::         work                                                            ! needed for matrix inversion by LAPACK
  integer(pInt), dimension(9) ::      ipiv                                                            ! needed for matrix inversion by LAPACK
- real(pReal), dimension(9,9) ::      dLp_dT_constitutive99, &                                        ! partial derivative of plastic velocity gradient calculated by constitutive law
-                                     dRLp_dLp, &                                                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
+ real(pReal), dimension(9,9) ::      dRLp_dLp, &                                                     ! partial derivative of residuum (Jacobian for NEwton-Raphson scheme)
                                      dRLp_dLp2, &                                                    ! working copy of dRdLp
                                      dRLi_dLi                                                        ! partial derivative of residuumI (Jacobian for NEwton-Raphson scheme)
  real(pReal), dimension(3,3,3,3)::   dT_dFe3333, &                                                   ! partial derivative of 2nd Piola-Kirchhoff stress
@@ -3910,7 +3916,7 @@ logical function crystallite_integrateStress(&
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dR_dLp',transpose(dRLp_dLp)
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dFe_dLp',transpose(math_Plain3333to99(dFe_dLp3333))
              write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dT_dFe_constitutive',transpose(math_Plain3333to99(dT_dFe3333))
-             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(dLp_dT_constitutive99)
+             write(6,'(a,/,9(12x,9(e15.3,1x)/))') '<< CRYST >> dLp_dT_constitutive',transpose(math_Plain3333to99(dLp_dT3333))
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> A',math_transpose33(A)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> B',math_transpose33(B)
              write(6,'(a,/,3(12x,3(e20.7,1x)/))') '<< CRYST >> Lp_constitutive',math_transpose33(Lp_constitutive)

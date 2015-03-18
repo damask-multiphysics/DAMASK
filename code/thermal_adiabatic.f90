@@ -39,6 +39,7 @@ module thermal_adiabatic
    thermal_adiabatic_init, &
    thermal_adiabatic_stateInit, &
    thermal_adiabatic_aTolState, &
+   thermal_adiabatic_microstructure, &
    thermal_adiabatic_LTAndItsTangent, &
    thermal_adiabatic_getTemperature, &
    thermal_adiabatic_putTemperature, &
@@ -247,6 +248,47 @@ subroutine thermal_adiabatic_aTolState(phase,instance)
  thermalState(phase)%aTolState = tempTol
 end subroutine thermal_adiabatic_aTolState
  
+!--------------------------------------------------------------------------------------------------
+!> @brief  calculates derived quantities from state  
+!--------------------------------------------------------------------------------------------------
+subroutine thermal_adiabatic_microstructure(Tstar_v, Lp, subdt, ipc, ip, el)
+ use lattice, only: &
+   lattice_massDensity, &
+   lattice_specificHeat, &
+   lattice_thermalExpansion33
+ use material, only: &
+   mappingConstitutive, &
+   phase_thermalInstance, &
+   thermalState
+ use math, only: &
+   math_Mandel6to33
+ 
+ implicit none
+ integer(pInt), intent(in) :: &
+   ipc, &                                                                                           !< grain number
+   ip, &                                                                                            !< integration point number
+   el                                                                                               !< element number
+ real(pReal),   intent(in),  dimension(6) :: &
+   Tstar_v                                                                                          !< 2nd Piola-Kirchhoff stress
+ real(pReal),   intent(in),  dimension(3,3) :: &
+   Lp                                                                                               !< plastic velocity gradient
+ real(pReal),   intent(in) :: &
+   subdt
+ integer(pInt) :: &
+   phase, &
+   constituent
+
+ phase = mappingConstitutive(2,ipc,ip,el)
+ constituent = mappingConstitutive(1,ipc,ip,el)
+ 
+ thermalState(phase)%state(1,constituent) = &
+   thermalState(phase)%subState0(1,constituent) + &
+   subdt* &
+   0.95_pReal*sum(abs(math_Mandel6to33(Tstar_v))*Lp)/ &
+   (lattice_massDensity(phase)*lattice_specificHeat(phase))
+ 
+end subroutine thermal_adiabatic_microstructure
+
 !--------------------------------------------------------------------------------------------------
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------

@@ -567,12 +567,13 @@ end function constitutive_damagedC
 !--------------------------------------------------------------------------------------------------
 !> @brief calls microstructure function of the different constitutive models
 !--------------------------------------------------------------------------------------------------
-subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
+subroutine constitutive_microstructure(Tstar_v, Fe, Fp, Lp, subdt, ipc, ip, el)
  use prec, only: &
    pReal 
  use material, only: &
    phase_plasticity, &
    phase_damage, &
+   phase_thermal, &
    phase_vacancy, &
    material_phase, &
    PLASTICITY_dislotwin_ID, &
@@ -586,7 +587,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
    LOCAL_DAMAGE_anisoDuctile_ID, &
    LOCAL_DAMAGE_gurson_ID, &
    LOCAL_DAMAGE_phaseField_ID, &
-   LOCAL_VACANCY_generation_ID
+   LOCAL_VACANCY_generation_ID, &
+   LOCAL_THERMAL_adiabatic_ID
  use plastic_titanmod, only: &
    plastic_titanmod_microstructure
  use plastic_nonlocal, only: &
@@ -611,6 +613,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
    damage_phaseField_microstructure
  use vacancy_generation, only: &
    vacancy_generation_microstructure    
+ use thermal_adiabatic, only: &
+   thermal_adiabatic_microstructure
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -621,7 +625,8 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
    Tstar_v                                                                                          !< 2nd Piola Kirchhoff stress tensor (Mandel)
  real(pReal),   intent(in), dimension(3,3) :: &
    Fe, &                                                                                            !< elastic deformation gradient
-   Fp                                                                                               !< plastic deformation gradient
+   Fp, &                                                                                            !< plastic deformation gradient
+   Lp
  real(pReal),   intent(in) :: &
    subdt                                                                                            !< timestep
 
@@ -656,6 +661,12 @@ subroutine constitutive_microstructure(Tstar_v, Fe, Fp, subdt, ipc, ip, el)
      call damage_phaseField_microstructure(constitutive_homogenizedC(ipc,ip,el), Fe, &
                                            constitutive_getVacancyConcentration(ipc, ip, el), &
                                            subdt, ipc, ip, el)
+
+ end select
+
+ select case (phase_thermal(material_phase(ipc,ip,el)))
+   case (LOCAL_THERMAL_adiabatic_ID)
+     call thermal_adiabatic_microstructure(Tstar_v, Lp, subdt, ipc, ip, el)
 
  end select
 
