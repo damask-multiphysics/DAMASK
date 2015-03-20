@@ -1175,25 +1175,29 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              call constitutive_LiAndItsTangent(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,g,i,e), &
                                                crystallite_Fi(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e), &
                                                g,i,e)                                                  ! call constitutive law to calculate Li tangent in lattice configuration
-             temp_33 = math_inv33(crystallite_subFi0(1:3,1:3,g,i,e))
-             lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
-             do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
-               lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) + &
-                                       crystallite_subdt(g,i,e)*math_mul33x33(temp_33,dLidFi(1:3,1:3,o,p))
-               lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) + &
-                                       crystallite_invFi(1:3,1:3,g,i,e)*crystallite_invFi(p,o,g,i,e)
-               rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) - &
-                                       crystallite_subdt(g,i,e)*math_mul33x33(temp_33,dLidS(1:3,1:3,o,p))
-             enddo; enddo
-             call math_invert(9_pInt,math_Plain3333to99(lhs_3333),temp_99,error)
-             if (error) then
-               call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=g, &
-                               ext_msg='inversion error in analytic tangent calculation')
+             if (sum(abs(dLidS)) == 0.0_pReal) then
                dFidS = 0.0_pReal
-             else
-               dFidS = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
+             else  
+               temp_33 = math_inv33(crystallite_subFi0(1:3,1:3,g,i,e))
+               lhs_3333 = 0.0_pReal; rhs_3333 = 0.0_pReal
+               do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+                 lhs_3333(1:3,1:3,o,p) = lhs_3333(1:3,1:3,o,p) + &
+                                         crystallite_subdt(g,i,e)*math_mul33x33(temp_33,dLidFi(1:3,1:3,o,p))
+                 lhs_3333(1:3,o,1:3,p) = lhs_3333(1:3,o,1:3,p) + &
+                                         crystallite_invFi(1:3,1:3,g,i,e)*crystallite_invFi(p,o,g,i,e)
+                 rhs_3333(1:3,1:3,o,p) = rhs_3333(1:3,1:3,o,p) - &
+                                         crystallite_subdt(g,i,e)*math_mul33x33(temp_33,dLidS(1:3,1:3,o,p))
+               enddo; enddo
+               call math_invert(9_pInt,math_Plain3333to99(lhs_3333),temp_99,error)
+               if (error) then
+                 call IO_warning(warning_ID=600_pInt,el=e,ip=i,g=g, &
+                                 ext_msg='inversion error in analytic tangent calculation')
+                 dFidS = 0.0_pReal
+               else
+                 dFidS = math_mul3333xx3333(math_Plain99to3333(temp_99),rhs_3333)
+               endif
+               dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
              endif  
-             dLidS = math_mul3333xx3333(dLidFi,dFidS) + dLidS
 
              call constitutive_LpAndItsTangent(temp_33,dLpdS,dLpdFi,crystallite_Tstar_v(1:6,g,i,e), &
                                                crystallite_Fi(1:3,1:3,g,i,e),g,i,e)                    ! call constitutive law to calculate Lp tangent in lattice configuration 
