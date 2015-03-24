@@ -242,7 +242,7 @@ for filename in args:
   locol = -1
   
   for col,head in enumerate(headings):
-    if head == {True:'ip.x',False:'node.x'}[options.cell]:
+    if head == {True:'1_ipinitialcoord',False:'1_nodeinitialcoord'}[options.cell]:
       locol = col
       maxcol = max(maxcol,col+3)
       break
