@@ -267,26 +267,16 @@ class MPIEspectral_result:    # mimic py_post result object
     return self.N_element_scalars
 
   def element_scalar(self,e,idx):
-    fourByteLimit = 2**31 -1 -8
     incStart =  self.dataOffset \
-             +  self.position*8*( 1 + self.N_elements*self.N_element_scalars*8//fourByteLimit \
-                                    + self.N_elements*self.N_element_scalars)
+             +  self.position*8*(self.N_elements*self.N_element_scalars)
                                 # header & footer + extra header and footer for 4 byte int range (Fortran)
                                 # values
     where = (e*self.N_element_scalars + idx)*8
     try:
-      if where%fourByteLimit + 8 >= fourByteLimit:                                                  # danger of reading into fortran record footer at 4 byte limit
-        data=''
-        for i in xrange(8):
-          self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
-          data  += self.file.read(1)
-          where += 1
-        value = struct.unpack('d',data)[0]
-      else: 
-        self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
-        value = struct.unpack('d',self.file.read(8))[0]
+      self.file.seek(incStart+where)
+      value = struct.unpack('d',self.file.read(8))[0]
     except:
-      print 'seeking',incStart+where+(where//fourByteLimit)*8+4
+      print 'seeking',incStart+where
       print 'e',e,'idx',idx
       sys.exit(1)
     return [elemental_scalar(node,value) for node in self.element(e).items]
