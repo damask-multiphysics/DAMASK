@@ -45,11 +45,9 @@ module DAMASK_spectral_solverAL
 ! common pointwise data
  real(pReal), private, dimension(:,:,:,:,:), allocatable :: &
    F_lastInc, &                                                                                     !< field of previous compatible deformation gradients
-   F_lastInc2, &                                                                                    !< field of 2nd previous compatible deformation gradients
    F_lambda_lastInc, &                                                                              !< field of previous incompatible deformation gradient 
    Fdot, &                                                                                          !< field of assumed rate of compatible deformation gradient
    F_lambdaDot                                                                                      !< field of assumed rate of incopatible deformation gradient
- complex(pReal),private, dimension(:,:,:,:,:), allocatable :: inertiaField_fourier
 
 !--------------------------------------------------------------------------------------------------
 ! stress, stiffness and compliance average etc.
@@ -70,7 +68,7 @@ module DAMASK_spectral_solverAL
    S_scale = 0.0_pReal
  
  real(pReal), private :: &
-   err_BC, &                                                                                    !< deviation from stress BC
+   err_BC, &                                                                                        !< deviation from stress BC
    err_curl, &                                                                                      !< RMS of curl of F
    err_div                                                                                          !< RMS of div of P
  logical, private :: ForwardData
@@ -118,19 +116,21 @@ subroutine AL_init(temperature)
   debug_spectralRestart
  use FEsolving, only: &
    restartInc
+ use numerics, only: &
+   worldrank, &
+   worldsize
  use DAMASK_interface, only: &
    getSolverJobName
  use DAMASK_spectral_Utilities, only: &
    Utilities_init, &
    Utilities_constitutiveResponse, &
    Utilities_updateGamma, &
-   grid, &
+   Utilities_updateIPcoords, &
    grid1Red, &
-   geomSize, &
    wgt
  use mesh, only: &
-   mesh_ipCoordinates, &
-   mesh_deformedCoordsFFT
+   gridLocal, &
+   gridGlobal
  use math, only: &
    math_invSym3333
    
@@ -144,30 +144,41 @@ subroutine AL_init(temperature)
  PetscErrorCode :: ierr
  PetscObject :: dummy
  PetscScalar, pointer, dimension(:,:,:,:) :: xx_psc, F, F_lambda
+ integer(pInt), dimension(:), allocatable :: localK  
+ integer(pInt) :: proc
+ character(len=1024) :: rankStr
  
  call Utilities_init()
- write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
- write(6,'(a)') ' $Id$'
- write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
+ if (worldrank == 0_pInt) then
+   write(6,'(/,a)') ' <<<+-  DAMASK_spectral_solverAL init  -+>>>'
+   write(6,'(a)') ' $Id$'
+   write(6,'(a15,a)')   ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+ endif
 
- allocate (P            (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
+ allocate (P               (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
 !--------------------------------------------------------------------------------------------------
 ! allocate global fields
- allocate (F_lastInc    (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
- allocate (F_lastInc2   (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
- allocate (Fdot         (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
- allocate (F_lambda_lastInc(3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
- allocate (F_lambdaDot     (3,3,grid(1),grid(2),grid(3)),source = 0.0_pReal)
- allocate (inertiaField_fourier (grid1Red,grid(2),grid(3),3,3),source = cmplx(0.0_pReal,0.0_pReal,pReal))
+ allocate (F_lastInc       (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
+ allocate (Fdot            (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
+ allocate (F_lambda_lastInc(3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
+ allocate (F_lambdaDot     (3,3,gridLocal(1),gridLocal(2),gridLocal(3)),source = 0.0_pReal)
     
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
  call SNESCreate(PETSC_COMM_WORLD,snes,ierr); CHKERRQ(ierr)
- call DMDACreate3d(PETSC_COMM_WORLD,                               &
-           DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &
-           DMDA_STENCIL_BOX,grid(1),grid(2),grid(3),PETSC_DECIDE,PETSC_DECIDE,PETSC_DECIDE, &
-           18,1,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,PETSC_NULL_INTEGER,da,ierr)
+ allocate(localK(worldsize), source = 0); localK(worldrank+1) = gridLocal(3)
+ do proc = 1, worldsize
+   call MPI_Bcast(localK(proc),1,MPI_INTEGER,proc-1,PETSC_COMM_WORLD,ierr)
+ enddo  
+ call DMDACreate3d(PETSC_COMM_WORLD, &
+        DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, DM_BOUNDARY_NONE, &                                     ! cut off stencil at boundary
+        DMDA_STENCIL_BOX, &                                                                         ! Moore (26) neighborhood around central point
+        gridGlobal(1),gridGlobal(2),gridGlobal(3), &                                                ! global grid
+        1 , 1, worldsize, &
+        18, 0, &                                                                                    ! #dof (F tensor), ghost boundary width (domain overlap)
+        gridLocal (1),gridLocal (2),localK, &                                                       ! local grid
+        da,ierr)                                                                                    ! handle, error
  CHKERRQ(ierr)
  call DMCreateGlobalVector(da,solution_vec,ierr); CHKERRQ(ierr)
  call DMDASNESSetFunctionLocal(da,INSERT_VALUES,AL_formResidual,dummy,ierr)
@@ -183,53 +194,51 @@ subroutine AL_init(temperature)
  F => xx_psc(0:8,:,:,:)
  F_lambda => xx_psc(9:17,:,:,:)
  if (restartInc == 1_pInt) then                                                                     ! no deformation (no restart)
-   F_lastInc     = spread(spread(spread(math_I3,3,grid(1)),4,grid(2)),5,grid(3))                    ! initialize to identity
-   F_lastInc2 = F_lastInc
-   F = reshape(F_lastInc,[9,grid(1),grid(2),grid(3)])
+   F_lastInc     = spread(spread(spread(math_I3,3,gridLocal(1)),4,gridLocal(2)),5,gridLocal(3))     ! initialize to identity
+   F = reshape(F_lastInc,[9,gridLocal(1),gridLocal(2),gridLocal(3)])
    F_lambda = F
    F_lambda_lastInc = F_lastInc
 
  elseif (restartInc > 1_pInt) then                                                                  ! read in F to calculate coordinates and initialize CPFEM general
-   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading values of increment ', restartInc - 1_pInt, ' from file'
    flush(6)
-   call IO_read_realFile(777,'F', trim(getSolverJobName()),size(F))
+   write(rankStr,'(a1,i0)')'_',worldrank
+   call IO_read_realFile(777,'F'//trim(rankStr), trim(getSolverJobName()),size(F))
    read (777,rec=1) F
    close (777)
-   call IO_read_realFile(777,'F_lastInc', trim(getSolverJobName()),size(F_lastInc))
+   call IO_read_realFile(777,'F_lastInc'//trim(rankStr), trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
-   call IO_read_realFile(777,'F_lastInc2', trim(getSolverJobName()),size(F_lastInc2))
-   read (777,rec=1) F_lastInc2
-   close (777)
-   call IO_read_realFile(777,'F_lambda',trim(getSolverJobName()),size(F_lambda))
+   call IO_read_realFile(777,'F_lambda'//trim(rankStr),trim(getSolverJobName()),size(F_lambda))
    read (777,rec=1) F_lambda
    close (777)
-   call IO_read_realFile(777,'F_lambda_lastInc',&
+   call IO_read_realFile(777,'F_lambda_lastInc'//trim(rankStr),&
                                         trim(getSolverJobName()),size(F_lambda_lastInc))
    read (777,rec=1) F_lambda_lastInc
    close (777)
-   call IO_read_realFile(777,'F_aim', trim(getSolverJobName()),size(F_aim))
-   read (777,rec=1) F_aim
-   close (777)
-   call IO_read_realFile(777,'F_aim_lastInc', trim(getSolverJobName()),size(F_aim_lastInc))
-   read (777,rec=1) F_aim_lastInc
-   close (777)
-   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-   read (777,rec=1) f_aimDot
-   close (777)
+   if (worldrank == 0_pInt) then
+     call IO_read_realFile(777,'F_aim', trim(getSolverJobName()),size(F_aim))
+     read (777,rec=1) F_aim
+     close (777)
+     call IO_read_realFile(777,'F_aim_lastInc', trim(getSolverJobName()),size(F_aim_lastInc))
+     read (777,rec=1) F_aim_lastInc
+     close (777)
+     call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+     read (777,rec=1) f_aimDot
+     close (777)
+   endif
  endif
  
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                              F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
- call Utilities_constitutiveResponse(F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]),&
-   temperature,0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
+ call utilities_updateIPcoords(F)
+ call Utilities_constitutiveResponse(F_lastInc,F,&
+                   temperature,0.0_pReal,P,C_volAvg,C_minMaxAvg,temp33_Real,.false.,math_I3)
  nullify(F)
  nullify(F_lambda)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
                              
- if (restartInc > 1_pInt) then                                                                      ! using old values from files
+ if (restartInc > 1_pInt .and. worldrank == 0_pInt) then                                            ! using old values from files
    if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
@@ -256,7 +265,8 @@ end subroutine AL_init
 !> @brief solution for the AL scheme with internal iterations
 !--------------------------------------------------------------------------------------------------
 type(tSolutionState) function &
-  AL_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc,rotation_BC,density)
+  AL_solution(incInfoIn,guess,timeinc,timeinc_old,loadCaseTime,P_BC,F_BC,temperature_bc, &
+                                                                     rotation_BC,density)
  use numerics, only: &
    update_gamma
  use math, only: &
@@ -342,7 +352,10 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    itmax, &
    itmin, &
    polarAlpha, &
-   polarBeta
+   polarBeta, &
+   worldrank
+ use mesh, only: &
+   gridLocal
  use IO, only: &
    IO_intOut
  use math, only: &
@@ -353,11 +366,9 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    math_mul33x33, &
    PI
  use DAMASK_spectral_Utilities, only: &
-   grid, &
-   geomSize, &
    wgt, &
-   field_real, &
-   field_fourier, &
+   field_realMPI, &
+   field_fourierMPI, &
    Utilities_FFTforward, &
    Utilities_fourierConvolution, &
    Utilities_inverseLaplace, &
@@ -371,6 +382,8 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
    debug_spectralRotation
  use homogenization, only: &
    materialpoint_dPdF
+ use FEsolving, only: &
+   terminallyIll
 
  implicit none
 !--------------------------------------------------------------------------------------------------
@@ -410,43 +423,30 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
  call SNESGetIterationNumber(snes,PETScIter,ierr); CHKERRQ(ierr)
 
  F_av = sum(sum(sum(F,dim=5),dim=4),dim=3) * wgt
+ call MPI_Allreduce(MPI_IN_PLACE,F_av,9,MPI_DOUBLE,MPI_SUM,PETSC_COMM_WORLD,ierr)
  
  if(nfuncs== 0 .and. PETScIter == 0) totalIter = -1_pInt                                            ! new increment
  if(totalIter <= PETScIter) then                                                                    ! new iteration
 !--------------------------------------------------------------------------------------------------
 ! report begin of new iteration
    totalIter = totalIter + 1_pInt
-   write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
+   if (worldrank == 0_pInt) then
+     write(6,'(1x,a,3(a,'//IO_intOut(itmax)//'))') trim(incInfo), &
                     ' @ Iteration ', itmin, '≤',totalIter, '≤', itmax
-   if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
-     write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
-                                   math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
+     if (iand(debug_level(debug_spectral),debug_spectralRotation) /= 0) &
+       write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim (lab) =', &
+                             math_transpose33(math_rotate_backward33(F_aim,params%rotation_BC))
    write(6,'(/,a,/,3(3(f12.7,1x)/))',advance='no') ' deformation gradient aim =', &
                                  math_transpose33(F_aim)
+   endif
    flush(6)
  endif
 
 !--------------------------------------------------------------------------------------------------
-! evaluate inertia
- dynamic: if (params%density > 0.0_pReal) then
-   residual_F = ((F - F_lastInc)/params%timeinc - (F_lastInc - F_lastInc2)/params%timeincOld)/&
-                                                  ((params%timeinc + params%timeincOld)/2.0_pReal)
-   residual_F = params%density*product(geomSize/grid)*residual_F
-   field_real = 0.0_pReal
-   field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3) = reshape(residual_F,[grid(1),grid(2),grid(3),3,3],&
-                                                               order=[4,5,1,2,3])                   ! field real has a different order
-   call Utilities_FFTforward()
-   call Utilities_inverseLaplace()
-   inertiaField_fourier = field_fourier
- else dynamic
-   inertiaField_fourier = cmplx(0.0_pReal,0.0_pReal,pReal)
- endif dynamic
-
-!--------------------------------------------------------------------------------------------------
 ! 
- field_real = 0.0_pReal
- do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
-   field_real(i,j,k,1:3,1:3) = &
+ field_realMPI = 0.0_pReal
+ do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, gridLocal(1)
+   field_realMPI(1:3,1:3,i,j,k) = &
      polarBeta*math_mul3333xx33(C_scale,F(1:3,1:3,i,j,k) - math_I3) -&
      polarAlpha*math_mul33x33(F(1:3,1:3,i,j,k), &
                               math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3))
@@ -456,26 +456,25 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! doing convolution in Fourier space 
  call Utilities_FFTforward()
- field_fourier = field_fourier + polarAlpha*inertiaField_fourier
  call Utilities_fourierConvolution(math_rotate_backward33(polarBeta*F_aim,params%rotation_BC)) 
  call Utilities_FFTbackward()
 
 !--------------------------------------------------------------------------------------------------
 ! constructing residual                         
- residual_F_lambda = polarBeta*F - reshape(field_real(1:grid(1),1:grid(2),1:grid(3),1:3,1:3),&
-                                      [3,3,grid(1),grid(2),grid(3)],order=[3,4,5,1,2])
+ residual_F_lambda = polarBeta*F - field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3))
 
 !--------------------------------------------------------------------------------------------------
 ! evaluate constitutive response
  P_avLastEval = P_av
  call Utilities_constitutiveResponse(F_lastInc,F - residual_F_lambda/polarBeta,params%temperature,params%timeinc, &
                                      residual_F,C_volAvg,C_minMaxAvg,P_av,ForwardData,params%rotation_BC)
+ call MPI_Allreduce(MPI_IN_PLACE,terminallyIll,1,MPI_LOGICAL,MPI_LOR,PETSC_COMM_WORLD,ierr)
  ForwardData = .False.
 
 !--------------------------------------------------------------------------------------------------
 ! calculate divergence
- field_real = 0.0_pReal
- field_real = reshape(residual_F,[grid(1),grid(2),grid(3),3,3],order=[4,5,1,2,3]) 
+ field_realMPI = 0.0_pReal
+ field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = residual_F
  call Utilities_FFTforward()
  err_div = Utilities_divergenceRMS()
  call Utilities_FFTbackward()
@@ -483,19 +482,19 @@ subroutine AL_formResidual(in,x_scal,f_scal,dummy,ierr)
 !--------------------------------------------------------------------------------------------------
 ! constructing residual
  e = 0_pInt
- do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
+ do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, gridLocal(1)
    e = e + 1_pInt
    residual_F(1:3,1:3,i,j,k) = math_mul3333xx33(math_invSym3333(materialpoint_dPdF(1:3,1:3,1:3,1:3,1,e) + C_scale), &
                                                 residual_F(1:3,1:3,i,j,k) - &
                                                 math_mul33x33(F(1:3,1:3,i,j,k), &
-                                                           math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3))) &
-                            + residual_F_lambda(1:3,1:3,i,j,k)
+                                                math_mul3333xx33(C_scale,F_lambda(1:3,1:3,i,j,k) - math_I3))) &
+                                                + residual_F_lambda(1:3,1:3,i,j,k)
  enddo; enddo; enddo
  
 !--------------------------------------------------------------------------------------------------
 ! calculating curl 
- field_real = 0.0_pReal
- field_real = reshape(F,[grid(1),grid(2),grid(3),3,3],order=[4,5,1,2,3]) 
+ field_realMPI = 0.0_pReal
+ field_realMPI(1:3,1:3,1:gridLocal(1),1:gridLocal(2),1:gridLocal(3)) = F
  call Utilities_FFTforward()
  err_curl = Utilities_curlRMS()
  call Utilities_FFTbackward()
@@ -515,7 +514,8 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
    err_curl_tolRel, &
    err_curl_tolAbs, &
    err_stress_tolAbs, &
-   err_stress_tolRel
+   err_stress_tolRel, &
+   worldrank
  use math, only: &
    math_mul3333xx33
  use FEsolving, only: &
@@ -562,15 +562,17 @@ subroutine AL_converged(snes_local,PETScIter,xnorm,snorm,fnorm,reason,dummy,ierr
 
 !--------------------------------------------------------------------------------------------------
 ! report
- write(6,'(1/,a)') ' ... reporting .............................................................'
- write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error curl =       ', &
+ if (worldrank == 0_pInt) then
+   write(6,'(1/,a)') ' ... reporting .............................................................'
+   write(6,'(/,a,f12.2,a,es8.2,a,es9.2,a)') ' error curl =       ', &
             err_curl/curlTol,' (',err_curl,' -,   tol =',curlTol,')'
- write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
+   write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error divergence = ', &
             err_div/divTol,  ' (',err_div, ' / m, tol =',divTol,')'
- write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error BC =         ', &
+   write(6,'  (a,f12.2,a,es8.2,a,es9.2,a)') ' error BC =         ', &
             err_BC/BC_tol, ' (',err_BC,    ' Pa,  tol =',BC_tol,')' 
- write(6,'(/,a)') ' ==========================================================================='
- flush(6) 
+   write(6,'(/,a)') ' ==========================================================================='
+   flush(6) 
+ endif
 
 end subroutine AL_converged
 
@@ -583,16 +585,16 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
    math_mul3333xx33, &
    math_transpose33, &
    math_rotate_backward33
+ use numerics, only: &
+   worldrank 
+ use mesh, only: &
+   gridLocal
  use DAMASK_spectral_Utilities, only: &
-   grid, &
-   geomSize, &
    Utilities_calculateRate, &
    Utilities_forwardField, &
+   Utilities_updateIPcoords, &
    tBoundaryCondition, &
    cutBack
- use mesh, only: &
-   mesh_ipCoordinates,&
-   mesh_deformedCoordsFFT
  use IO, only: &
    IO_write_JobRealFile
  use FEsolving, only: &
@@ -613,6 +615,7 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  PetscScalar, dimension(:,:,:,:), pointer :: xx_psc, F, F_lambda
  integer(pInt) :: i, j, k
  real(pReal), dimension(3,3) :: F_lambda33
+ character(len=1024) :: rankStr
 
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
@@ -620,47 +623,48 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
  F => xx_psc(0:8,:,:,:)
  F_lambda => xx_psc(9:17,:,:,:)
  if (restartWrite) then
-   write(6,'(/,a)') ' writing converged results for restart'
-   flush(6)
-   call IO_write_jobRealFile(777,'F',size(F))                                                     ! writing deformation gradient field to file
+   if (worldrank == 0_pInt) then
+     write(6,'(/,a)') ' writing converged results for restart'
+     flush(6)
+   endif
+   write(rankStr,'(a1,i0)')'_',worldrank
+   call IO_write_jobRealFile(777,'F'//trim(rankStr),size(F))                                                       ! writing deformation gradient field to file
    write (777,rec=1) F
    close (777)
-   call IO_write_jobRealFile(777,'F_lastInc',size(F_lastInc))                                     ! writing F_lastInc field to file
+   call IO_write_jobRealFile(777,'F_lastInc'//trim(rankStr),size(F_lastInc))                                       ! writing F_lastInc field to file
    write (777,rec=1) F_lastInc
    close (777)
-   call IO_write_jobRealFile(777,'F_lastInc2',size(F_lastInc2))                                   ! writing F_lastInc field to file
-   write (777,rec=1) F_lastInc2
-   close (777)
-   call IO_write_jobRealFile(777,'F_lambda',size(F_lambda))                                       ! writing deformation gradient field to file
+   call IO_write_jobRealFile(777,'F_lambda'//trim(rankStr),size(F_lambda))                                         ! writing deformation gradient field to file
    write (777,rec=1) F_lambda
    close (777)
-   call IO_write_jobRealFile(777,'F_lambda_lastInc',size(F_lambda_lastInc))                       ! writing F_lastInc field to file
+   call IO_write_jobRealFile(777,'F_lambda_lastInc'//trim(rankStr),size(F_lambda_lastInc))                         ! writing F_lastInc field to file
    write (777,rec=1) F_lambda_lastInc
    close (777)
-   call IO_write_jobRealFile(777,'F_aim',size(F_aim))
-   write (777,rec=1) F_aim
-   close(777)
-   call IO_write_jobRealFile(777,'F_aim_lastInc',size(F_aim_lastInc))
-   write (777,rec=1) F_aim_lastInc
-   close(777)
-   call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
-   write (777,rec=1) F_aimDot
-   close(777)
-   call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
-   write (777,rec=1) C_volAvg
-   close(777)
-   call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
-   write (777,rec=1) C_volAvgLastInc
-   close(777)
+   if (worldrank == 0_pInt) then
+     call IO_write_jobRealFile(777,'F_aim',size(F_aim))
+     write (777,rec=1) F_aim
+     close(777)
+     call IO_write_jobRealFile(777,'F_aim_lastInc',size(F_aim_lastInc))
+     write (777,rec=1) F_aim_lastInc
+     close(777)
+     call IO_write_jobRealFile(777,'F_aimDot',size(F_aimDot))
+     write (777,rec=1) F_aimDot
+     close(777)
+     call IO_write_jobRealFile(777,'C_volAvg',size(C_volAvg))
+     write (777,rec=1) C_volAvg
+     close(777)
+     call IO_write_jobRealFile(777,'C_volAvgLastInc',size(C_volAvgLastInc))
+     write (777,rec=1) C_volAvgLastInc
+     close(777)
+   endif
 
  endif 
- mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                             F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+ call utilities_updateIPcoords(F)
 
  if (cutBack) then 
    F_aim    = F_aim_lastInc
-   F_lambda = reshape(F_lambda_lastInc,[9,grid(1),grid(2),grid(3)]) 
-   F        = reshape(F_lastInc,       [9,grid(1),grid(2),grid(3)]) 
+   F_lambda = reshape(F_lambda_lastInc,[9,gridLocal(1),gridLocal(2),gridLocal(3)]) 
+   F        = reshape(F_lastInc,       [9,gridLocal(1),gridLocal(2),gridLocal(3)]) 
    C_volAvg = C_volAvgLastInc
  else
    ForwardData = .True.
@@ -679,25 +683,24 @@ subroutine AL_forward(guess,timeinc,timeinc_old,loadCaseTime,F_BC,P_BC,rotation_
 
 !--------------------------------------------------------------------------------------------------
 ! update coordinates and rate and forward last inc
-   mesh_ipCoordinates = reshape(mesh_deformedCoordsFFT(geomSize,reshape(&
-                                            F,[3,3,grid(1),grid(2),grid(3)])),[3,1,product(grid)])
+   call utilities_updateIPcoords(F)
    Fdot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,grid(1),grid(2),grid(3)]))
+                  timeinc_old,guess,F_lastInc,reshape(F,[3,3,gridLocal(1),gridLocal(2),gridLocal(3)]))
    F_lambdaDot =  Utilities_calculateRate(math_rotate_backward33(f_aimDot,rotation_BC), &
-                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)]))  
-   F_lastInc2       = F_lastInc                
-   F_lastInc        = reshape(F,       [3,3,grid(1),grid(2),grid(3)])
-   F_lambda_lastInc = reshape(F_lambda,[3,3,grid(1),grid(2),grid(3)])
+                  timeinc_old,guess,F_lambda_lastInc,reshape(F_lambda,[3,3,gridLocal(1), &
+                                                          gridLocal(2),gridLocal(3)]))  
+   F_lastInc        = reshape(F,       [3,3,gridLocal(1),gridLocal(2),gridLocal(3)])
+   F_lambda_lastInc = reshape(F_lambda,[3,3,gridLocal(1),gridLocal(2),gridLocal(3)])
  endif
 
  F_aim = F_aim + f_aimDot * timeinc
  F = reshape(Utilities_forwardField(timeinc,F_lastInc,Fdot, &                                       ! ensure that it matches rotated F_aim
                                     math_rotate_backward33(F_aim,rotation_BC)), &
-             [9,grid(1),grid(2),grid(3)])
+             [9,gridLocal(1),gridLocal(2),gridLocal(3)])
  F_lambda = reshape(Utilities_forwardField(timeinc,F_lambda_lastInc,F_lambdadot), &
-                    [9,grid(1),grid(2),grid(3)])                                                    ! does not have any average value as boundary condition
+                    [9,gridLocal(1),gridLocal(2),gridLocal(3)])                                     ! does not have any average value as boundary condition
  if (.not. guess) then                                                                              ! large strain forwarding
-   do k = 1_pInt, grid(3); do j = 1_pInt, grid(2); do i = 1_pInt, grid(1)
+   do k = 1_pInt, gridLocal(3); do j = 1_pInt, gridLocal(2); do i = 1_pInt, gridLocal(1)
       F_lambda33 = reshape(F_lambda(1:9,i,j,k),[3,3])
       F_lambda33 = math_mul3333xx33(S_scale,math_mul33x33(F_lambda33, &
                                   math_mul3333xx33(C_scale,&

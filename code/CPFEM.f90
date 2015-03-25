@@ -159,6 +159,7 @@ subroutine CPFEM_init
 
  implicit none
  integer(pInt) :: k,l,m,ph,homog
+ character(len=1024) :: rankStr
 
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  CPFEM init  -+>>>'
@@ -180,40 +181,42 @@ subroutine CPFEM_init
      write(6,'(a)') '<< CPFEM >> restored state variables of last converged step from binary files'
      flush(6)
    endif
+   
+   write(rankStr,'(a1,i0)')'_',worldrank
 
-   call IO_read_intFile(777,'recordedPhase',modelName,size(material_phase))
+   call IO_read_intFile(777,'recordedPhase'//trim(rankStr),modelName,size(material_phase))
    read (777,rec=1) material_phase
    close (777)
 
-   call IO_read_realFile(777,'convergedF',modelName,size(crystallite_F0))
+   call IO_read_realFile(777,'convergedF'//trim(rankStr),modelName,size(crystallite_F0))
    read (777,rec=1) crystallite_F0
    close (777)
 
-   call IO_read_realFile(777,'convergedFp',modelName,size(crystallite_Fp0))
+   call IO_read_realFile(777,'convergedFp'//trim(rankStr),modelName,size(crystallite_Fp0))
    read (777,rec=1) crystallite_Fp0
    close (777)
 
-   call IO_read_realFile(777,'convergedFi',modelName,size(crystallite_Fi0))
+   call IO_read_realFile(777,'convergedFi'//trim(rankStr),modelName,size(crystallite_Fi0))
    read (777,rec=1) crystallite_Fi0
    close (777)
 
-   call IO_read_realFile(777,'convergedLp',modelName,size(crystallite_Lp0))
+   call IO_read_realFile(777,'convergedLp'//trim(rankStr),modelName,size(crystallite_Lp0))
    read (777,rec=1) crystallite_Lp0
    close (777)
 
-   call IO_read_realFile(777,'convergedLi',modelName,size(crystallite_Li0))
+   call IO_read_realFile(777,'convergedLi'//trim(rankStr),modelName,size(crystallite_Li0))
    read (777,rec=1) crystallite_Li0
    close (777)
 
-   call IO_read_realFile(777,'convergeddPdF',modelName,size(crystallite_dPdF0))
+   call IO_read_realFile(777,'convergeddPdF'//trim(rankStr),modelName,size(crystallite_dPdF0))
    read (777,rec=1) crystallite_dPdF0
    close (777)
 
-   call IO_read_realFile(777,'convergedTstar',modelName,size(crystallite_Tstar0_v))
+   call IO_read_realFile(777,'convergedTstar'//trim(rankStr),modelName,size(crystallite_Tstar0_v))
    read (777,rec=1) crystallite_Tstar0_v
    close (777)
 
-   call IO_read_realFile(777,'convergedStateConst',modelName)
+   call IO_read_realFile(777,'convergedStateConst'//trim(rankStr),modelName)
    m = 0_pInt
    readPlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
      do k = 1_pInt, plasticState(ph)%sizeState
@@ -224,7 +227,7 @@ subroutine CPFEM_init
    enddo readPlasticityInstances
    close (777)
 
-   call IO_read_realFile(777,'convergedStateHomog',modelName)
+   call IO_read_realFile(777,'convergedStateHomog'//trim(rankStr),modelName)
    m = 0_pInt
    readHomogInstances: do homog = 1_pInt, material_Nhomogenization
      do k = 1_pInt, homogState(homog)%sizeState
@@ -265,7 +268,8 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
 #endif
  use numerics, only: &
    defgradTolerance, &
-   iJacoStiffness
+   iJacoStiffness, &
+   worldrank
  use debug, only: &
    debug_level, &
    debug_CPFEM, &
@@ -376,6 +380,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
  integer(pInt)                                       elCP, &                                        ! crystal plasticity element number
                                                      i, j, k, l, m, n, ph, homog
  logical                                             updateJaco                                     ! flag indicating if JAcobian has to be updated
+ character(len=1024) :: rankStr
 
 #if defined(Marc4DAMASK) || defined(Abaqus)
  elCP = mesh_FEasCP('elem',elFE)
@@ -442,40 +447,42 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    if (restartWrite) then
      if (iand(debug_level(debug_CPFEM), debug_levelBasic) /= 0_pInt) &
         write(6,'(a)') '<< CPFEM >> writing state variables of last converged step to binary files'
+   
+     write(rankStr,'(a1,i0)')'_',worldrank
 
-     call IO_write_jobRealFile(777,'recordedPhase',size(material_phase))
+     call IO_write_jobRealFile(777,'recordedPhase'//trim(rankStr),size(material_phase))
      write (777,rec=1) material_phase
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedF',size(crystallite_F0))
+     call IO_write_jobRealFile(777,'convergedF'//trim(rankStr),size(crystallite_F0))
      write (777,rec=1) crystallite_F0
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedFp',size(crystallite_Fp0))
+     call IO_write_jobRealFile(777,'convergedFp'//trim(rankStr),size(crystallite_Fp0))
      write (777,rec=1) crystallite_Fp0
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedFi',size(crystallite_Fi0))
+     call IO_write_jobRealFile(777,'convergedFi'//trim(rankStr),size(crystallite_Fi0))
      write (777,rec=1) crystallite_Fi0
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedLp',size(crystallite_Lp0))
+     call IO_write_jobRealFile(777,'convergedLp'//trim(rankStr),size(crystallite_Lp0))
      write (777,rec=1) crystallite_Lp0
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedLi',size(crystallite_Li0))
+     call IO_write_jobRealFile(777,'convergedLi'//trim(rankStr),size(crystallite_Li0))
      write (777,rec=1) crystallite_Li0
      close (777)
 
-     call IO_write_jobRealFile(777,'convergeddPdF',size(crystallite_dPdF0))
+     call IO_write_jobRealFile(777,'convergeddPdF'//trim(rankStr),size(crystallite_dPdF0))
      write (777,rec=1) crystallite_dPdF0
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedTstar',size(crystallite_Tstar0_v))
+     call IO_write_jobRealFile(777,'convergedTstar'//trim(rankStr),size(crystallite_Tstar0_v))
      write (777,rec=1) crystallite_Tstar0_v
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedStateConst')
+     call IO_write_jobRealFile(777,'convergedStateConst'//trim(rankStr))
      m = 0_pInt
      writePlasticityInstances: do ph = 1_pInt, size(phase_plasticity)
        do k = 1_pInt, plasticState(ph)%sizeState
@@ -486,7 +493,7 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
      enddo writePlasticityInstances
      close (777)
 
-     call IO_write_jobRealFile(777,'convergedStateHomog')
+     call IO_write_jobRealFile(777,'convergedStateHomog'//trim(rankStr))
      m = 0_pInt
      writeHomogInstances: do homog = 1_pInt, material_Nhomogenization
        do k = 1_pInt, homogState(homog)%sizeState

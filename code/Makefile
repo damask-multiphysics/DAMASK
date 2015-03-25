@@ -336,7 +336,7 @@ SPECTRAL_FILES = prec.o DAMASK_interface.o IO.o libs.o numerics.o debug.o math.o
                  FEsolving.o mesh.o material.o lattice.o \
                  $(DAMAGE_FILES) $(THERMAL_FILES) $(VACANCY_FILES) $(PLASTIC_FILES) \
                  crystallite.o $(HOMOGENIZATION_FILES) CPFEM.o \
-                 DAMASK_spectral_utilities.o DAMASK_spectral_solverBasic.o \
+                 DAMASK_spectral_utilities.o \
                  DAMASK_spectral_solverAL.o DAMASK_spectral_solverBasicPETSc.o DAMASK_spectral_solverPolarisation.o
 
 DAMASK_spectral.exe: DAMASK_spectral_driver.o 
@@ -345,16 +345,13 @@ DAMASK_spectral.exe: DAMASK_spectral_driver.o
     $(SPECTRAL_FILES) $(LIBRARIES) $(SUFFIX)
     
     
-DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 DAMASK_spectral_solverBasic.o \
-                                                     DAMASK_spectral_solverAL.o \
-                                                     DAMASK_spectral_solverBasicPETSc.o \
-                                                     DAMASK_spectral_solverPolarisation.o
+DAMASK_spectral_driver.o: DAMASK_spectral_driver.f90 \
+                          DAMASK_spectral_solverAL.o \
+                          DAMASK_spectral_solverBasicPETSc.o \
+                          DAMASK_spectral_solverPolarisation.o
 	$(PREFIX) $(COMPILERNAME) $(COMPILE_MAXOPTI) -c DAMASK_spectral_driver.f90 $(SUFFIX)
 
 DAMASK_spectral_solverAL.o:    DAMASK_spectral_solverAL.f90 \
-                               DAMASK_spectral_utilities.o
-  
-DAMASK_spectral_solverBasic.o: DAMASK_spectral_solverBasic.f90 \
                                DAMASK_spectral_utilities.o
   
 DAMASK_spectral_solverPolarisation.o:    DAMASK_spectral_solverPolarisation.f90 \
@@ -370,8 +367,8 @@ DAMASK_spectral_utilities.o:   DAMASK_spectral_utilities.f90 \
 # FEM Solver
 #####################
 VPATH := ../private/FEM/code
-DAMASK_FEM.exe: COMPILE         += -DFEM -DmultiphysicsOut
-DAMASK_FEM.exe: COMPILE_MAXOPTI += -DFEM -DmultiphysicsOut
+DAMASK_FEM.exe: COMPILE         += -DFEM
+DAMASK_FEM.exe: COMPILE_MAXOPTI += -DFEM
 DAMASK_FEM.exe: MESHNAME        := ../private/FEM/code/meshFEM.f90
 DAMASK_FEM.exe: INTERFACENAME   := ../private/FEM/code/DAMASK_FEM_interface.f90
 DAMASK_FEM.exe: INCLUDE_DIRS    += -I./

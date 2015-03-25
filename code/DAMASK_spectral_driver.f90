@@ -41,12 +41,17 @@ program DAMASK_spectral_Driver
    debug_spectral, &
    debug_levelBasic
  use math                                                                                           ! need to include the whole module for FFTW
+ use mesh, only: &
+   gridGlobal, &
+   geomSizeGlobal
  use CPFEM, only: &
    CPFEM_initAll
  use FEsolving, only: &
    restartWrite, &
    restartInc
  use numerics, only: &
+   worldrank, &
+   worldsize, &
    maxCutBack, &
    spectral_solver, &
    continueCalculation
@@ -54,17 +59,17 @@ program DAMASK_spectral_Driver
    materialpoint_sizeResults, &
    materialpoint_results
  use DAMASK_spectral_Utilities, only: &
-   grid, &
-   geomSize, &
    tBoundaryCondition, &
    tSolutionState, &
    cutBack
- use DAMASK_spectral_SolverBasic
  use DAMASK_spectral_SolverBasicPETSC
  use DAMASK_spectral_SolverAL
  use DAMASK_spectral_SolverPolarisation
 
  implicit none
+
+#include <petsc-finclude/petscsys.h>
+
  type tLoadCase
    real(pReal), dimension (3,3) :: rotation               = math_I3                                 !< rotation of BC
    type(tBoundaryCondition) ::     P, &                                                             !< stress BC
@@ -129,14 +134,19 @@ program DAMASK_spectral_Driver
  character(len=1024)  :: incInfo                                                                    !< string parsed to solution with information about current load case
  type(tLoadCase), allocatable, dimension(:) :: loadCases                                            !< array of all load cases
  type(tSolutionState) solres
+ integer(kind=MPI_OFFSET_KIND) :: my_offset
+ integer, dimension(:), allocatable :: outputSize
+ PetscErrorCode :: ierr
  external :: quit
 !--------------------------------------------------------------------------------------------------
 ! init DAMASK (all modules)
  call CPFEM_initAll(temperature = 300.0_pReal, el = 1_pInt, ip = 1_pInt)
- write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_driver init  -+>>>'
- write(6,'(a)')     ' $Id$'
- write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
+ mainProcess: if (worldrank == 0) then
+   write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_driver init  -+>>>'
+   write(6,'(a)')     ' $Id$'
+   write(6,'(a15,a)') ' Current time: ',IO_timeStamp()
 #include "compilation_info.f90"
+ endif mainProcess
 
 !--------------------------------------------------------------------------------------------------
 ! reading basic information from load case file and allocate data structure containing load cases
@@ -256,72 +266,72 @@ program DAMASK_spectral_Driver
 ! consistency checks and output of load case
  loadCases(1)%followFormerTrajectory = .false.                                                      ! cannot guess along trajectory for first inc of first currentLoadCase
  errorID = 0_pInt
- checkLoadcases: do currentLoadCase = 1_pInt, size(loadCases)
-   write (loadcase_string, '(i6)' ) currentLoadCase
-   write(6,'(1x,a,i6)') 'load case: ', currentLoadCase
-   if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
-     write(6,'(2x,a)') 'drop guessing along trajectory'
-   if (loadCases(currentLoadCase)%deformation%myType=='l') then
-     do j = 1_pInt, 3_pInt
-       if (any(loadCases(currentLoadCase)%deformation%maskLogical(j,1:3) .eqv. .true.) .and. &
-           any(loadCases(currentLoadCase)%deformation%maskLogical(j,1:3) .eqv. .false.)) &
-                                                                  errorID = 832_pInt                ! each row should be either fully or not at all defined
-     enddo
-     write(6,'(2x,a)') 'velocity gradient:'
-   else if (loadCases(currentLoadCase)%deformation%myType=='f') then
-     write(6,'(2x,a)') 'deformation gradient at end of load case:'
-   else
-     write(6,'(2x,a)') 'deformation gradient rate:'
-   endif
-   write(6,'(3(3(3x,f12.7,1x)/))',advance='no') &
-              merge(math_transpose33(loadCases(currentLoadCase)%deformation%values), &
-              reshape(spread(huge(1.0_pReal),1,9),[ 3,3]), &                                        ! print *** (huge) for undefined
-              transpose(loadCases(currentLoadCase)%deformation%maskLogical))
-   if (any(loadCases(currentLoadCase)%P%maskLogical .eqv. &
-            loadCases(currentLoadCase)%deformation%maskLogical)) errorID = 831_pInt                 ! exclusive or masking only
-   if (any(loadCases(currentLoadCase)%P%maskLogical .and. &                                   
-           transpose(loadCases(currentLoadCase)%P%maskLogical) .and. &
-           reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
-           errorID = 838_pInt                                                                       ! no rotation is allowed by stress BC
-   write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'stress / GPa:',&
-              1e-9_pReal*merge(math_transpose33(loadCases(currentLoadCase)%P%values),&
-              reshape(spread(huge(1.0_pReal),1,9),[ 3,3]),&
-              transpose(loadCases(currentLoadCase)%P%maskLogical))
-  if (any(abs(math_mul33x33(loadCases(currentLoadCase)%rotation, &
-              math_transpose33(loadCases(currentLoadCase)%rotation))-math_I3) >&
-              reshape(spread(tol_math_check,1,9),[ 3,3]))&
-              .or. abs(math_det33(loadCases(currentLoadCase)%rotation)) > &
-              1.0_pReal + tol_math_check) errorID = 846_pInt                                          ! given rotation matrix contains strain
-   if (any(loadCases(currentLoadCase)%rotation /= math_I3)) &
-     write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
-              math_transpose33(loadCases(currentLoadCase)%rotation)
-   write(6,'(2x,a,f12.6)') 'temperature:', loadCases(currentLoadCase)%temperature
-   write(6,'(2x,a,f12.6)') 'density:    ', loadCases(currentLoadCase)%density
-   if (loadCases(currentLoadCase)%time < 0.0_pReal)          errorID = 834_pInt                     ! negative time increment
-   write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
-   if (loadCases(currentLoadCase)%incs < 1_pInt)             errorID = 835_pInt                     ! non-positive incs count
-   write(6,'(2x,a,i5)')    'increments: ', loadCases(currentLoadCase)%incs
-   if (loadCases(currentLoadCase)%outputfrequency < 1_pInt)  errorID = 836_pInt                     ! non-positive result frequency
-   write(6,'(2x,a,i5)')    'output  frequency:  ', &
-              loadCases(currentLoadCase)%outputfrequency
-   write(6,'(2x,a,i5,/)')    'restart frequency:  ', &
-              loadCases(currentLoadCase)%restartfrequency
-   if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)               ! exit with error message
- enddo checkLoadcases
+ if (worldrank == 0) then
+   checkLoadcases: do currentLoadCase = 1_pInt, size(loadCases)
+     write (loadcase_string, '(i6)' ) currentLoadCase
+     write(6,'(1x,a,i6)') 'load case: ', currentLoadCase
+     if (.not. loadCases(currentLoadCase)%followFormerTrajectory) &
+       write(6,'(2x,a)') 'drop guessing along trajectory'
+     if (loadCases(currentLoadCase)%deformation%myType=='l') then
+       do j = 1_pInt, 3_pInt
+         if (any(loadCases(currentLoadCase)%deformation%maskLogical(j,1:3) .eqv. .true.) .and. &
+             any(loadCases(currentLoadCase)%deformation%maskLogical(j,1:3) .eqv. .false.)) &
+                                                                    errorID = 832_pInt              ! each row should be either fully or not at all defined
+       enddo
+       write(6,'(2x,a)') 'velocity gradient:'
+     else if (loadCases(currentLoadCase)%deformation%myType=='f') then
+       write(6,'(2x,a)') 'deformation gradient at end of load case:'
+     else
+       write(6,'(2x,a)') 'deformation gradient rate:'
+     endif
+     write(6,'(3(3(3x,f12.7,1x)/))',advance='no') &
+                merge(math_transpose33(loadCases(currentLoadCase)%deformation%values), &
+                reshape(spread(huge(1.0_pReal),1,9),[ 3,3]), &                                      ! print *** (huge) for undefined
+                transpose(loadCases(currentLoadCase)%deformation%maskLogical))
+     if (any(loadCases(currentLoadCase)%P%maskLogical .eqv. &
+              loadCases(currentLoadCase)%deformation%maskLogical)) errorID = 831_pInt               ! exclusive or masking only
+     if (any(loadCases(currentLoadCase)%P%maskLogical .and. &                                   
+             transpose(loadCases(currentLoadCase)%P%maskLogical) .and. &
+             reshape([ .false.,.true.,.true.,.true.,.false.,.true.,.true.,.true.,.false.],[ 3,3]))) &
+             errorID = 838_pInt                                                                     ! no rotation is allowed by stress BC
+     write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'stress / GPa:',&
+                1e-9_pReal*merge(math_transpose33(loadCases(currentLoadCase)%P%values),&
+                reshape(spread(huge(1.0_pReal),1,9),[ 3,3]),&
+                transpose(loadCases(currentLoadCase)%P%maskLogical))
+    if (any(abs(math_mul33x33(loadCases(currentLoadCase)%rotation, &
+                math_transpose33(loadCases(currentLoadCase)%rotation))-math_I3) >&
+                reshape(spread(tol_math_check,1,9),[ 3,3]))&
+                .or. abs(math_det33(loadCases(currentLoadCase)%rotation)) > &
+                1.0_pReal + tol_math_check) errorID = 846_pInt                                      ! given rotation matrix contains strain
+     if (any(loadCases(currentLoadCase)%rotation /= math_I3)) &
+       write(6,'(2x,a,/,3(3(3x,f12.7,1x)/))',advance='no') 'rotation of loadframe:',&
+                math_transpose33(loadCases(currentLoadCase)%rotation)
+     write(6,'(2x,a,f12.6)') 'temperature:', loadCases(currentLoadCase)%temperature
+     write(6,'(2x,a,f12.6)') 'density:    ', loadCases(currentLoadCase)%density
+     if (loadCases(currentLoadCase)%time < 0.0_pReal)          errorID = 834_pInt                   ! negative time increment
+     write(6,'(2x,a,f12.6)') 'time:       ', loadCases(currentLoadCase)%time
+     if (loadCases(currentLoadCase)%incs < 1_pInt)             errorID = 835_pInt                   ! non-positive incs count
+     write(6,'(2x,a,i5)')    'increments: ', loadCases(currentLoadCase)%incs
+     if (loadCases(currentLoadCase)%outputfrequency < 1_pInt)  errorID = 836_pInt                   ! non-positive result frequency
+     write(6,'(2x,a,i5)')    'output  frequency:  ', &
+                loadCases(currentLoadCase)%outputfrequency
+     write(6,'(2x,a,i5,/)')    'restart frequency:  ', &
+                loadCases(currentLoadCase)%restartfrequency
+     if (errorID > 0_pInt) call IO_error(error_ID = errorID, ext_msg = loadcase_string)             ! exit with error message
+   enddo checkLoadcases
+ endif
 
 !--------------------------------------------------------------------------------------------------
 ! doing initialization depending on selected solver 
  select case (spectral_solver)
-   case (DAMASK_spectral_SolverBasic_label)
-     call basic_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverBasicPETSc_label)
      call basicPETSc_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverAL_label)
-     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
      call AL_init(loadCases(1)%temperature)
    case (DAMASK_spectral_SolverPolarisation_label)
-     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0) &
+     if(iand(debug_level(debug_spectral),debug_levelBasic)/= 0 .and. worldrank == 0_pInt) &
        call IO_warning(42_pInt, ext_msg='debug Divergence')
      call Polarisation_init(loadCases(1)%temperature)
    case default
@@ -330,34 +340,52 @@ program DAMASK_spectral_Driver
  
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
- if (appendToOutFile) then                                                                          ! after restart, append to existing results file
-   open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-                               '.spectralOut',form='UNFORMATTED', position='APPEND', status='OLD')
-   open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-                               '.sta',form='FORMATTED', position='APPEND', status='OLD')
- else                                                                                               ! open new files ...
-   open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-                               '.spectralOut',form='UNFORMATTED',status='REPLACE')
-   write(resUnit) 'load:',       trim(loadCaseFile)                                                 ! ... and write header
-   write(resUnit) 'workingdir:', trim(getSolverWorkingDirectoryName())
-   write(resUnit) 'geometry:',   trim(geometryFile)
-   write(resUnit) 'grid:',       grid
-   write(resUnit) 'size:',       geomSize
-   write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
-   write(resUnit) 'loadcases:',  size(loadCases)
-   write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per currentLoadCase
-   write(resUnit) 'times:',      loadCases%time                                                     ! one entry per currentLoadCase
-   write(resUnit) 'logscales:',  loadCases%logscale
-   write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per currentLoadCase
-   write(resUnit) 'startingIncrement:', restartInc - 1_pInt                                         ! start with writing out the previous inc
-   write(resUnit) 'eoh'                                                                             ! end of header
-   write(resUnit) materialpoint_results                                                             ! initial (non-deformed or read-in) results
-   open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
-                               '.sta',form='FORMATTED',status='REPLACE')
-   write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                   ! statistics file
-   if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0) &
-     write(6,'(/,a)') ' header of result file written out'
-   flush(6)
+ if (.not. appendToOutFile) then                                                                      ! after restart, append to existing results file
+   if (worldrank == 0) then
+     open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                 '.spectralOut',form='UNFORMATTED',status='REPLACE')
+     write(resUnit) 'load:',       trim(loadCaseFile)                                                 ! ... and write header
+     write(resUnit) 'workingdir:', trim(getSolverWorkingDirectoryName())
+     write(resUnit) 'geometry:',   trim(geometryFile)
+     write(resUnit) 'grid:',       gridGlobal
+     write(resUnit) 'size:',       geomSizeGlobal
+     write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
+     write(resUnit) 'loadcases:',  size(loadCases)
+     write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per currentLoadCase
+     write(resUnit) 'times:',      loadCases%time                                                     ! one entry per currentLoadCase
+     write(resUnit) 'logscales:',  loadCases%logscale
+     write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per currentLoadCase
+     write(resUnit) 'startingIncrement:', restartInc - 1_pInt                                         ! start with writing out the previous inc
+     write(resUnit) 'eoh'    
+     close(resUnit)                                                                                   ! end of header
+   endif
+ endif  
+ allocate(outputSize(worldsize), source = 0_pInt); outputSize(worldrank+1) = sizeof(materialpoint_results)
+ call MPI_Allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
+ call MPI_File_open(PETSC_COMM_WORLD, &
+                    trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
+                    MPI_MODE_WRONLY + MPI_MODE_APPEND, &
+                    MPI_INFO_NULL, &
+                    resUnit, &
+                    ierr)
+ call MPI_File_get_position(resUnit,my_offset,ierr)
+ my_offset = my_offset + sum(outputSize(1:worldrank))
+ call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
+ call MPI_File_write(resUnit, materialpoint_results, size(materialpoint_results), &
+                     MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+ if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0 .and. worldrank == 0_pInt) &
+   write(6,'(/,a)') ' header of result file written out'
+ flush(6)
+
+ if (worldrank == 0) then
+   if (appendToOutFile) then                                                                        ! after restart, append to existing results file
+     open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                 '.sta',form='FORMATTED', position='APPEND', status='OLD')
+   else                                                                                             ! open new files ...
+     open(newunit=statUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
+                                 '.sta',form='FORMATTED',status='REPLACE')
+     write(statUnit,'(a)') 'Increment Time CutbackLevel Converged IterationsNeeded'                 ! statistics file
+   endif
  endif
 
 !--------------------------------------------------------------------------------------------------
@@ -405,7 +433,6 @@ program DAMASK_spectral_Driver
 !--------------------------------------------------------------------------------------------------
 ! forward solution 
          select case(spectral_solver)
-           case (DAMASK_spectral_SolverBasic_label)
            case (DAMASK_spectral_SolverBasicPETSC_label)
              call BasicPETSC_forward (&
                  guess,timeinc,timeIncOld,remainingLoadCaseTime, &
@@ -430,31 +457,26 @@ program DAMASK_spectral_Driver
            
 !--------------------------------------------------------------------------------------------------
 ! report begin of new increment
-         write(6,'(/,a)') ' ###########################################################################'
-         write(6,'(1x,a,es12.5'//&
-                 ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
-                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
-                 ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
-                 'Time', time, &
-                 's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
-                 '-', stepFraction, '/', subStepFactor**cutBackLevel,&
-                 ' of load case ', currentLoadCase,'/',size(loadCases)
-         flush(6)
-         write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
-               ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
-               'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
-               '-',stepFraction, '/', subStepFactor**cutBackLevel
-         select case(spectral_solver)
+         if (worldrank == 0) then
+           write(6,'(/,a)') ' ###########################################################################'
+           write(6,'(1x,a,es12.5'//&
+                   ',a,'//IO_intOut(inc)//',a,'//IO_intOut(loadCases(currentLoadCase)%incs)//&
+                   ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//&
+                   ',a,'//IO_intOut(currentLoadCase)//',a,'//IO_intOut(size(loadCases))//')') &
+                   'Time', time, &
+                   's: Increment ', inc, '/', loadCases(currentLoadCase)%incs,&
+                   '-', stepFraction, '/', subStepFactor**cutBackLevel,&
+                   ' of load case ', currentLoadCase,'/',size(loadCases)
+           flush(6)
+           write(incInfo,'(a,'//IO_intOut(totalIncsCounter)//',a,'//IO_intOut(sum(loadCases%incs))//&
+                 ',a,'//IO_intOut(stepFraction)//',a,'//IO_intOut(subStepFactor**cutBackLevel)//')') &
+                 'Increment ',totalIncsCounter,'/',sum(loadCases%incs),&
+                 '-',stepFraction, '/', subStepFactor**cutBackLevel
+         endif     
          
 !--------------------------------------------------------------------------------------------------
 ! calculate solution 
-           case (DAMASK_spectral_SolverBasic_label)
-             solres = basic_solution (&
-                 incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
-                 P_BC               = loadCases(currentLoadCase)%P, &
-                 F_BC               = loadCases(currentLoadCase)%deformation, &
-                 temperature_bc     = loadCases(currentLoadCase)%temperature, &
-                 rotation_BC        = loadCases(currentLoadCase)%rotation)
+         select case(spectral_solver)
            case (DAMASK_spectral_SolverBasicPETSC_label)
              solres = BasicPETSC_solution (&
                  incInfo,guess,timeinc,timeIncOld,remainingLoadCaseTime, &
@@ -486,7 +508,7 @@ program DAMASK_spectral_Driver
          cutBack = .False.                                                                   
          if(solres%termIll .or. .not. solres%converged) then                                        ! no solution found
            if (cutBackLevel < maxCutBack) then                                                      ! do cut back
-             write(6,'(/,a)') ' cut back detected'
+             if (worldrank == 0) write(6,'(/,a)') ' cut back detected'
              cutBack = .True.
              stepFraction = (stepFraction - 1_pInt) * subStepFactor                                 ! adjust to new denominator
              cutBackLevel = cutBackLevel + 1_pInt
@@ -505,28 +527,36 @@ program DAMASK_spectral_Driver
          else
            guess = .true.                                                                           ! start guessing after first converged (sub)inc
          endif
-         if (.not. cutBack) &
-           write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
-                             solres%converged, solres%iterationsNeeded                              ! write statistics about accepted solution
-           flush(statUnit)
+         if (.not. cutBack) then
+           if (worldrank == 0) then
+             write(statUnit,*) totalIncsCounter, time, cutBackLevel, &
+                               solres%converged, solres%iterationsNeeded                            ! write statistics about accepted solution
+             flush(statUnit)
+           endif 
+         endif  
        enddo subIncLooping
        cutBackLevel = max(0_pInt, cutBackLevel - 1_pInt)                                            ! try half number of subincs next inc
        if(solres%converged) then                                                                    ! report converged inc
          convergedCounter = convergedCounter + 1_pInt
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
+         if (worldrank == 0) &
+           write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &
                                      ' increment ', totalIncsCounter, ' converged'
        else
-         write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                     ! report non-converged inc
+         if (worldrank == 0) &
+           write(6,'(/,a,'//IO_intOut(totalIncsCounter)//',a)') &                                   ! report non-converged inc
                                      ' increment ', totalIncsCounter, ' NOT converged'
          notConvergedCounter = notConvergedCounter + 1_pInt
        endif; flush(6)
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
-         write(6,'(1/,a)') ' ... writing results to file ......................................'
-         write(resUnit)  materialpoint_results                                                      ! write result to file
-         flush(resUnit)
+         if (worldrank == 0) &
+           write(6,'(1/,a)') ' ... writing results to file ......................................'
+         my_offset = my_offset + sum(outputSize)
+         call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
+         call MPI_File_write(resUnit, materialpoint_results, size(materialpoint_results), &
+                             MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
-                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! ToDo first call to CPFEM_general will write? 
+                      mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write? 
          restartWrite = .true.
          lastRestartWritten = inc
        endif 
@@ -538,9 +568,20 @@ program DAMASK_spectral_Driver
     enddo incLooping
  enddo loadCaseLooping
  
+!--------------------------------------------------------------------------------------------------
+! report summary of whole calculation
+ if (worldrank == 0) then
+   write(6,'(/,a)') ' ###########################################################################'
+   write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
+                                     notConvergedCounter + convergedCounter, ' (', &
+                                     real(convergedCounter, pReal)/&
+                                     real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
+                                     ' %) increments converged!'
+ endif
+ call MPI_file_close(resUnit,ierr)
+ close(statUnit)
+
  select case (spectral_solver)
-   case (DAMASK_spectral_SolverBasic_label)
-     call basic_destroy()
    case (DAMASK_spectral_SolverBasicPETSC_label)
      call BasicPETSC_destroy()
    case (DAMASK_spectral_SolverAL_label)
@@ -549,16 +590,6 @@ program DAMASK_spectral_Driver
      call Polarisation_destroy()
  end select
  
-!--------------------------------------------------------------------------------------------------
-! report summary of whole calculation
- write(6,'(/,a)') ' ###########################################################################'
- write(6,'(1x,i6.6,a,i6.6,a,f5.1,a)') convergedCounter, ' out of ', &
-                                   notConvergedCounter + convergedCounter, ' (', &
-                                   real(convergedCounter, pReal)/&
-                                   real(notConvergedCounter + convergedCounter,pReal)*100.0_pReal, &
-                                   ' %) increments converged!'
- close(resUnit)
- close(statUnit)
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)
 
@@ -576,22 +607,28 @@ end program DAMASK_spectral_Driver
 subroutine quit(stop_id)
  use prec, only: &
    pInt
+ use numerics, only: &
+   worldrank  
    
  implicit none
  integer(pInt), intent(in) :: stop_id
  integer, dimension(8) :: dateAndTime                                                               ! type default integer
 
- call date_and_time(values = dateAndTime)
- write(6,'(/,a)') 'DAMASK terminated on:'
- write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
-                                                      dateAndTime(2),'/',&
-                                                      dateAndTime(1) 
- write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
-                                                      dateAndTime(6),':',&
-                                                      dateAndTime(7)  
+ if (worldrank == 0_pInt) then
+   call date_and_time(values = dateAndTime)
+   write(6,'(/,a)') 'DAMASK terminated on:'
+   write(6,'(a,2(i2.2,a),i4.4)') 'Date:               ',dateAndTime(3),'/',&
+                                                        dateAndTime(2),'/',&
+                                                        dateAndTime(1) 
+   write(6,'(a,2(i2.2,a),i2.2)') 'Time:               ',dateAndTime(5),':',&
+                                                        dateAndTime(6),':',&
+                                                        dateAndTime(7)  
+ endif
+ 
  if (stop_id == 0_pInt) stop 0                                                                      ! normal termination
  if (stop_id <  0_pInt) then                                                                        ! trigger regridding
-   write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
+   if (worldrank == 0_pInt) &
+     write(0,'(a,i6)') 'restart information available at ', stop_id*(-1_pInt)
    stop 2
  endif
  if (stop_id == 3_pInt) stop 3                                                                      ! not all incs converged

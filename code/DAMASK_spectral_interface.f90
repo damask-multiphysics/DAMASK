@@ -84,7 +84,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
 !--------------------------------------------------------------------------------------------------
 ! PETSc Init
 #ifdef PETSc
-  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                    ! according to PETSc manual, that should be the first line in the code
+  call PetscInitialize(PETSC_NULL_CHARACTER,ierr)                                                   ! according to PETSc manual, that should be the first line in the code
  CHKERRQ(ierr)                                                                                      ! this is a macro definition, it is case sensitive
 
  open(6, encoding='UTF-8')                                                                          ! modern fortran compilers (gfortran >4.4, ifort >11 support it)
@@ -161,7 +161,7 @@ subroutine DAMASK_interface_init(loadCaseParameterIn,geometryParameterIn)
            write(6,'(a)')  ' Help:'
            write(6,'(/,a)')'   --help'
            write(6,'(a,/)')'        Prints this message and exits'
-           call quit(0_pInt)                                                                              ! normal Termination
+           call quit(0_pInt)                                                                        ! normal Termination
          endif mainProcess2
        case ('-l', '--load', '--loadcase')
          loadcaseArg = IIO_stringValue(commandLine,positions,i+1_pInt)

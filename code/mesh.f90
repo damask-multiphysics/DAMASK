@@ -15,7 +15,7 @@ module mesh
  implicit none
  private
  integer(pInt), public, protected :: &
-   mesh_NcpElems, &                                                                                 !< total number of CP elements in mesh
+   mesh_NcpElems, &                                                                                 !< total number of CP elements in local mesh
    mesh_NelemSets, &
    mesh_maxNelemInSet, &
    mesh_Nmaterials, &
@@ -28,6 +28,18 @@ module mesh
    mesh_maxNsharedElems, &                                                                          !< max number of CP elements sharing a node
    mesh_maxNcellnodes, &                                                                            !< max number of cell nodes in any CP element
    mesh_Nelems                                                                                      !< total number of elements in mesh
+
+#ifdef Spectral
+ integer(pInt), public, protected :: &
+   mesh_NcpElemsGlobal, &                                                                           !< total number of CP elements in global mesh
+   gridGlobal(3), &
+   gridLocal (3), &
+   gridOffset
+ real(pReal), public, protected :: &
+   geomSizeGlobal(3), &
+   geomSizeLocal (3), &
+   geomSizeOffset
+#endif
 
  integer(pInt), dimension(:,:), allocatable, public, protected :: &
    mesh_element, &                                                                                  !< FEid, type(internal representation), material, texture, node indices as CP IDs
@@ -103,9 +115,14 @@ module mesh
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
 #endif
 
-#ifdef Spectral
- include 'fftw3.f03'
+#ifdef PETSc
+#include <petsc-finclude/petscsys.h>
 #endif
+
+#ifdef Spectral
+ include 'fftw3-mpi.f03'
+#endif
+
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
@@ -470,6 +487,9 @@ contains
 !! Order and routines strongly depend on type of solver
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_init(ip,el)
+#ifdef Spectral
+ use, intrinsic :: iso_c_binding
+#endif
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
@@ -503,6 +523,9 @@ subroutine mesh_init(ip,el)
    modelName
  
  implicit none
+#ifdef Spectral
+ integer(C_INTPTR_T) :: gridMPI(3), alloc_local, local_K, local_K_offset
+#endif
  integer(pInt), parameter :: FILEUNIT = 222_pInt
  integer(pInt), intent(in) :: el, ip
  integer(pInt) :: j
@@ -540,8 +563,25 @@ subroutine mesh_init(ip,el)
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
 #ifdef Spectral
+ call fftw_mpi_init()
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
+ 
+ gridGlobal = mesh_spectral_getGrid(fileUnit)
+ gridMPI = gridGlobal
+ alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
+                                      MPI_COMM_WORLD, local_K, local_K_offset)
+ gridLocal(1) = gridGlobal(1)
+ gridLocal(2) = gridGlobal(2)
+ gridLocal(3) = local_K
+ gridOffset  = local_K_offset
+ 
+ geomSizeGlobal = mesh_spectral_getSize(fileUnit)
+ geomSizeLocal(1) = geomSizeGlobal(1)
+ geomSizeLocal(2) = geomSizeGlobal(2)
+ geomSizeLocal(3) = geomSizeGlobal(3)*real(gridLocal(3))/real(gridGlobal(3))
+ geomSizeOffset = geomSizeGlobal(3)*real(gridOffset)  /real(gridGlobal(3))
+ if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
  call mesh_spectral_count(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
  call mesh_spectral_mapNodesAndElems
@@ -656,10 +696,12 @@ subroutine mesh_init(ip,el)
 #endif
 
  close (FILEUNIT)
- call mesh_tell_statistics
- call mesh_write_meshfile
- call mesh_write_cellGeom
- call mesh_write_elemGeom
+ if (worldrank == 0_pInt) then
+   call mesh_tell_statistics
+   call mesh_write_meshfile
+   call mesh_write_cellGeom
+   call mesh_write_elemGeom
+ endif
 
  if (usePingPong .and. (mesh_Nelems /= mesh_NcpElems)) &
    call IO_error(600_pInt)                                                                          ! ping-pong must be disabled when having non-DAMASK elements
@@ -1201,15 +1243,15 @@ end function mesh_spectral_getHomogenization
 !! 'mesh_Nelems', 'mesh_Nnodes' and 'mesh_NcpElems'
 !--------------------------------------------------------------------------------------------------
 subroutine mesh_spectral_count(fileUnit)
- 
+
  implicit none
  integer(pInt),              intent(in) :: fileUnit
- integer(pInt), dimension(3)            :: grid
 
- grid     = mesh_spectral_getGrid(fileUnit)
- mesh_Nelems = product(grid)
- mesh_NcpElems = mesh_Nelems
- mesh_Nnodes = product(grid+1_pInt)
+ mesh_Nelems  = product(gridLocal)
+ mesh_NcpElems= mesh_Nelems
+ mesh_Nnodes  = product(gridLocal + 1_pInt)
+ 
+ mesh_NcpElemsGlobal = product(gridGlobal)
 
 end subroutine mesh_spectral_count
 
@@ -1262,27 +1304,18 @@ subroutine mesh_spectral_build_nodes(fileUnit)
 
  implicit none
  integer(pInt),              intent(in) :: fileUnit
- integer(pInt)                          :: n
- integer(pInt), dimension(3)            :: grid
- real(pReal),   dimension(3)            :: geomSize
+ integer(pInt)                          :: n, i, j, k
 
  allocate (mesh_node0 (3,mesh_Nnodes), source = 0.0_pReal)
  allocate (mesh_node  (3,mesh_Nnodes), source = 0.0_pReal)
  
- grid     = mesh_spectral_getGrid(fileUnit)
- geomSize = mesh_spectral_getSize(fileUnit)
-
- forall (n = 0_pInt:mesh_Nnodes-1_pInt)
-   mesh_node0(1,n+1_pInt) = mesh_unitlength * &
-           geomSize(1)*real(mod(n,(grid(1)+1_pInt) ),pReal) &
-                                                  / real(grid(1),pReal)
-   mesh_node0(2,n+1_pInt) = mesh_unitlength * &
-           geomSize(2)*real(mod(n/(grid(1)+1_pInt),(grid(2)+1_pInt)),pReal) &
-                                                  / real(grid(2),pReal)
-   mesh_node0(3,n+1_pInt) = mesh_unitlength * &
-           geomSize(3)*real(mod(n/(grid(1)+1_pInt)/(grid(2)+1_pInt),(grid(3)+1_pInt)),pReal) &
-                                                  / real(grid(3),pReal)
- end forall 
+ n = 0_pInt
+ do k = 1, gridLocal(3); do j = 1, gridLocal(2); do i = 1, gridLocal(1)
+   n = n + 1_pInt
+   mesh_node0(1,n) = real(i)*geomSizeLocal(1)/real(gridLocal(1))
+   mesh_node0(2,n) = real(j)*geomSizeLocal(2)/real(gridLocal(2))
+   mesh_node0(3,n) = real(k)*geomSizeLocal(3)/real(gridLocal(3)) + geomSizeOffset
+ enddo; enddo; enddo 
 
  mesh_node = mesh_node0
 
@@ -1315,11 +1348,11 @@ subroutine mesh_spectral_build_elements(fileUnit)
    headerLength = 0_pInt, &
    maxIntCount, &
    homog, &
-   elemType
+   elemType, &
+   elemOffset
  integer(pInt),     dimension(:), allocatable :: &
-   microstructures
- integer(pInt),     dimension(3) :: &
-   grid
+   microstructures, &
+   mesh_microGlobal
  integer(pInt),     dimension(1,1) :: &
    dummySet = 0_pInt
  character(len=65536) :: &
@@ -1328,7 +1361,6 @@ subroutine mesh_spectral_build_elements(fileUnit)
  character(len=64), dimension(1) :: &
    dummyName = ''
 
- grid  = mesh_spectral_getGrid(fileUnit)
  homog = mesh_spectral_getHomogenization(fileUnit)
 
 !--------------------------------------------------------------------------------------------------
@@ -1358,7 +1390,8 @@ subroutine mesh_spectral_build_elements(fileUnit)
    maxIntCount = max(maxIntCount, i)
  enddo
  allocate (mesh_element    (4_pInt+mesh_maxNnodes,mesh_NcpElems), source = 0_pInt)
- allocate (microstructures (1_pInt+maxIntCount), source = 1_pInt)
+ allocate (microstructures (1_pInt+maxIntCount),  source = 1_pInt)
+ allocate (mesh_microGlobal(mesh_NcpElemsGlobal), source = 1_pInt)
 
 !--------------------------------------------------------------------------------------------------
 ! read in microstructures
@@ -1367,31 +1400,39 @@ subroutine mesh_spectral_build_elements(fileUnit)
    read(fileUnit,'(a65536)') line
  enddo
  
- elemType = FE_mapElemtype('C3D8R') 
  e = 0_pInt
- do while (e < mesh_NcpElems .and. microstructures(1) > 0_pInt)                                     ! fill expected number of elements, stop at end of data (or blank line!)
+ do while (e < mesh_NcpElemsGlobal .and. microstructures(1) > 0_pInt)                               ! fill expected number of elements, stop at end of data (or blank line!)
    microstructures = IO_continuousIntValues(fileUnit,maxIntCount,dummyName,dummySet,0_pInt)         ! get affected elements
    do i = 1_pInt,microstructures(1_pInt)
      e = e+1_pInt                                                                                   ! valid element entry
-     mesh_element( 1,e) = e                                                                         ! FE id
-     mesh_element( 2,e) = elemType                                                                  ! elem type
-     mesh_element( 3,e) = homog                                                                     ! homogenization
-     mesh_element( 4,e) = microstructures(1_pInt+i)                                                 ! microstructure
-     mesh_element( 5,e) = e + (e-1_pInt)/grid(1) + &
-                                       ((e-1_pInt)/(grid(1)*grid(2)))*(grid(1)+1_pInt)              ! base node
-     mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
-     mesh_element( 7,e) = mesh_element(5,e) + grid(1) + 2_pInt
-     mesh_element( 8,e) = mesh_element(5,e) + grid(1) + 1_pInt
-     mesh_element( 9,e) = mesh_element(5,e) +(grid(1) + 1_pInt) * (grid(2) + 1_pInt)                ! second floor base node
-     mesh_element(10,e) = mesh_element(9,e) + 1_pInt
-     mesh_element(11,e) = mesh_element(9,e) + grid(1) + 2_pInt
-     mesh_element(12,e) = mesh_element(9,e) + grid(1) + 1_pInt
-     mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                         ! needed for statistics
-     mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
+     mesh_microGlobal(e) = microstructures(1_pInt+i)
    enddo
  enddo
 
+ elemType = FE_mapElemtype('C3D8R') 
+ elemOffset = gridLocal(1)*gridLocal(2)*gridOffset
+ e = 0_pInt
+ do while (e < mesh_NcpElems)                                                                       ! fill expected number of elements, stop at end of data (or blank line!)
+   e = e+1_pInt                                                                                     ! valid element entry
+   mesh_element( 1,e) = e                                                                           ! FE id
+   mesh_element( 2,e) = elemType                                                                    ! elem type
+   mesh_element( 3,e) = homog                                                                       ! homogenization
+   mesh_element( 4,e) = mesh_microGlobal(e+elemOffset)                                              ! microstructure
+   mesh_element( 5,e) = e + (e-1_pInt)/gridLocal(1) + &
+                                     ((e-1_pInt)/(gridLocal(1)*gridLocal(2)))*(gridLocal(1)+1_pInt) ! base node
+   mesh_element( 6,e) = mesh_element(5,e) + 1_pInt
+   mesh_element( 7,e) = mesh_element(5,e) + gridLocal(1) + 2_pInt
+   mesh_element( 8,e) = mesh_element(5,e) + gridLocal(1) + 1_pInt
+   mesh_element( 9,e) = mesh_element(5,e) +(gridLocal(1) + 1_pInt) * (gridLocal(2) + 1_pInt)        ! second floor base node
+   mesh_element(10,e) = mesh_element(9,e) + 1_pInt
+   mesh_element(11,e) = mesh_element(9,e) + gridLocal(1) + 2_pInt
+   mesh_element(12,e) = mesh_element(9,e) + gridLocal(1) + 1_pInt
+   mesh_maxValStateVar(1) = max(mesh_maxValStateVar(1),mesh_element(3,e))                           ! needed for statistics
+   mesh_maxValStateVar(2) = max(mesh_maxValStateVar(2),mesh_element(4,e))              
+ enddo
+
  deallocate(microstructures)
+ deallocate(mesh_microGlobal)
  if (e /= mesh_NcpElems) call IO_error(880_pInt,e)
 
 end subroutine mesh_spectral_build_elements
@@ -1409,39 +1450,35 @@ subroutine mesh_spectral_build_ipNeighborhood(fileUnit)
  integer(pInt) :: &
   x,y,z, &
   e
- integer(pInt),     dimension(3) :: &
-  grid
  allocate(mesh_ipNeighborhood(3,mesh_maxNipNeighbors,mesh_maxNips,mesh_NcpElems),source=0_pInt)
  
- grid = mesh_spectral_getGrid(fileUnit)
-
  e = 0_pInt
- do z = 0_pInt,grid(3)-1_pInt
-   do y = 0_pInt,grid(2)-1_pInt
-     do x = 0_pInt,grid(1)-1_pInt
+ do z = 0_pInt,gridLocal(3)-1_pInt
+   do y = 0_pInt,gridLocal(2)-1_pInt
+     do x = 0_pInt,gridLocal(1)-1_pInt
        e = e + 1_pInt
-         mesh_ipNeighborhood(1,1,1,e) = z * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + modulo(x+1_pInt,grid(1)) &
+         mesh_ipNeighborhood(1,1,1,e) = z * gridLocal(1) * gridLocal(2) &
+                                      + y * gridLocal(1) &
+                                      + modulo(x+1_pInt,gridLocal(1)) &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,2,1,e) = z * grid(1) * grid(2) &
-                                      + y * grid(1) &
-                                      + modulo(x-1_pInt,grid(1)) &
+         mesh_ipNeighborhood(1,2,1,e) = z * gridLocal(1) * gridLocal(2) &
+                                      + y * gridLocal(1) &
+                                      + modulo(x-1_pInt,gridLocal(1)) &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,3,1,e) = z * grid(1) * grid(2) &
-                                      + modulo(y+1_pInt,grid(2)) * grid(1) &
+         mesh_ipNeighborhood(1,3,1,e) = z * gridLocal(1) * gridLocal(2) &
+                                      + modulo(y+1_pInt,gridLocal(2)) * gridLocal(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,4,1,e) = z * grid(1) * grid(2) &
-                                      + modulo(y-1_pInt,grid(2)) * grid(1) &
+         mesh_ipNeighborhood(1,4,1,e) = z * gridLocal(1) * gridLocal(2) &
+                                      + modulo(y-1_pInt,gridLocal(2)) * gridLocal(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,grid(3)) * grid(1) * grid(2) &
-                                      + y * grid(1) &
+         mesh_ipNeighborhood(1,5,1,e) = modulo(z+1_pInt,gridLocal(3)) * gridLocal(1) * gridLocal(2) &
+                                      + y * gridLocal(1) &
                                       + x &
                                       + 1_pInt
-         mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,grid(3)) * grid(1) * grid(2) &
-                                      + y * grid(1) &
+         mesh_ipNeighborhood(1,6,1,e) = modulo(z-1_pInt,gridLocal(3)) * gridLocal(1) * gridLocal(2) &
+                                      + y * gridLocal(1) &
                                       + x &
                                       + 1_pInt
          mesh_ipNeighborhood(2,1:6,1,e) = 1_pInt
@@ -1484,8 +1521,8 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    math_mul33x3
 
  implicit none
- logical, intent(in)                                    :: adaptive                                  ! if true, choose adaptive grid based on resNewInput, otherwise keep it constant
- integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                               ! f2py cannot handle optional arguments correctly (they are always present)
+ logical, intent(in)                                    :: adaptive                                 ! if true, choose adaptive grid based on resNewInput, otherwise keep it constant
+ integer(pInt), dimension(3), optional, intent(in)      :: resNewInput                              ! f2py cannot handle optional arguments correctly (they are always present)
  integer(pInt), dimension(3), optional, intent(in)      :: minRes
  integer(pInt), dimension(3)                            :: mesh_regrid, ratio, grid
  integer(pInt),                         parameter       :: FILEUNIT = 777_pInt
@@ -1576,7 +1613,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      if (minRes(1) > 0_pInt .or. minRes(2) > 0_pInt) then
         if (minRes(3) /= 1_pInt .or. &
            mod(minRes(1),2_pInt) /= 0_pInt .or. &
-           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')        ! as f2py has problems with present, use pyf file for initialization to -1
+           mod(minRes(2),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '2D minRes')         ! as f2py has problems with present, use pyf file for initialization to -1
    endif; endif
  else
    spatialDim = 3_pInt
@@ -1584,7 +1621,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      if (any(minRes > 0_pInt)) then
         if (mod(minRes(1),2_pInt) /= 0_pInt .or. &
             mod(minRes(2),2_pInt) /= 0_pInt .or. &
-            mod(minRes(3),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '3D minRes')       ! as f2py has problems with present, use pyf file for initialization to -1
+            mod(minRes(3),2_pInt) /= 0_pInt)  call IO_error(890_pInt, ext_msg = '3D minRes')        ! as f2py has problems with present, use pyf file for initialization to -1
    endif; endif
  endif
  
@@ -1601,12 +1638,12 @@ function mesh_regrid(adaptive,resNewInput,minRes)
      else
        possibleResNew(i,1:2) = [ratio(i)-1_pInt, ratio(i) + 1_pInt]
      endif
-     if (.not.present(minRes)) then                                                                ! calling from fortran, optional argument not given
+     if (.not.present(minRes)) then                                                                 ! calling from fortran, optional argument not given
        possibleResNew = possibleResNew
-     else                                                                                          ! optional argument is there
+     else                                                                                           ! optional argument is there
        if (any(minRes<1_pInt)) then
-         possibleResNew = possibleResNew                                                           ! f2py calling, but without specification (or choosing invalid values), standard from pyf = -1
-       else                                                                                        ! given useful values
+         possibleResNew = possibleResNew                                                            ! f2py calling, but without specification (or choosing invalid values), standard from pyf = -1
+       else                                                                                         ! given useful values
          forall(k = 1_pInt:3_pInt, j = 1_pInt:3_pInt) &
            possibleResNew(j,k) = max(possibleResNew(j,k), minRes(j))
        endif
@@ -1656,7 +1693,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
- call IO_write_jobFile(FILEUNIT,'IDX')                                                                   ! make it a general open-write file
+ call IO_write_jobFile(FILEUNIT,'IDX')                                                              ! make it a general open-write file
  write(FILEUNIT, '(A)') '1 header'
  write(FILEUNIT, '(A)') 'Numbered indices as per the large set'
  do i = 1_pInt, NpointsNew
@@ -1675,7 +1712,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  N_Digits = adjustl(N_Digits)
  formatString = '(I'//trim(N_Digits)//'.'//trim(N_Digits)//',a)'
 
- call IO_write_jobFile(FILEUNIT,'idx')                                                                   ! make it a general open-write file
+ call IO_write_jobFile(FILEUNIT,'idx')                                                              ! make it a general open-write file
  write(FILEUNIT, '(A)') '1 header'
  write(FILEUNIT, '(A)') 'Numbered indices as per the small set'
  do i = 1_pInt, NpointsNew
@@ -1841,7 +1878,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  deallocate(Tstar)
  deallocate(TstarNew)
  
-! for the state, we first have to know the size------------------------------------------------------------------ 
+! for the state, we first have to know the size----------------------------------------------------
  allocate(sizeStateConst(1,1,mesh_NcpElems))
  call IO_read_intFile(FILEUNIT,'sizeStateConst',trim(getSolverJobName()),size(sizeStateConst))
  read (FILEUNIT,rec=1) sizeStateConst
@@ -2641,7 +2678,7 @@ subroutine mesh_marc_map_elementSets(fileUnit)
       elemSet = elemSet+1_pInt
       mesh_nameElemSet(elemSet) = trim(IO_stringValue(line,myPos,4_pInt))
       mesh_mapElemSet(:,elemSet) = &
-            IO_continuousIntValues(fileUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
+        IO_continuousIntValues(fileUnit,mesh_maxNelemInSet,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
    endif
  enddo
  
@@ -2679,7 +2716,7 @@ subroutine mesh_marc_count_cpElements(fileUnit)
        do i=1_pInt,3_pInt+hypoelasticTableStyle  ! Skip 3 or 4 lines
          read (fileUnit,610,END=620) line
        enddo
-       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)  ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)?
+       mesh_NcpElems = mesh_NcpElems + IO_countContinuousIntValues(fileUnit)                        ! why not simply mesh_NcpElems = IO_countContinuousIntValues(fileUnit)?
      exit
    endif
  enddo
@@ -2769,7 +2806,7 @@ subroutine mesh_marc_map_nodes(fileUnit)
    read (fileUnit,610,END=650) line
    myPos = IO_stringPos(line,maxNchunks)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
-     read (fileUnit,610,END=650) line                                                                 ! skip crap line
+     read (fileUnit,610,END=650) line                                                               ! skip crap line
      do i = 1_pInt,mesh_Nnodes
        read (fileUnit,610,END=650) line
        mesh_mapFEtoCPnode(1_pInt,i) = IO_fixedIntValue (line,[ 0_pInt,10_pInt],1_pInt)
@@ -2816,7 +2853,7 @@ subroutine mesh_marc_build_nodes(fileUnit)
    read (fileUnit,610,END=670) line
    myPos = IO_stringPos(line,maxNchunks)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'coordinates' ) then
-     read (fileUnit,610,END=670) line                                                                 ! skip crap line
+     read (fileUnit,610,END=670) line                                                               ! skip crap line
      do i=1_pInt,mesh_Nnodes
        read (fileUnit,610,END=670) line
        m = mesh_FEasCP('node',IO_fixedIntValue(line,node_ends,1_pInt))
@@ -2865,10 +2902,10 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
    read (fileUnit,610,END=630) line
    myPos = IO_stringPos(line,maxNchunks)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
-     read (fileUnit,610,END=630) line                                                                 ! Garbage line
-     do i=1_pInt,mesh_Nelems                                                                          ! read all elements
+     read (fileUnit,610,END=630) line                                                               ! Garbage line
+     do i=1_pInt,mesh_Nelems                                                                        ! read all elements
        read (fileUnit,610,END=630) line
-       myPos = IO_stringPos(line,maxNchunks)                                                          ! limit to id and type
+       myPos = IO_stringPos(line,maxNchunks)                                                        ! limit to id and type
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
        if (e /= 0_pInt) then
          t = FE_mapElemtype(IO_stringValue(line,myPos,2_pInt))
@@ -2878,7 +2915,7 @@ subroutine mesh_marc_count_cpSizes(fileUnit)
          mesh_maxNips =         max(mesh_maxNips,FE_Nips(g))
          mesh_maxNipNeighbors = max(mesh_maxNipNeighbors,FE_NipNeighbors(c))
          mesh_maxNcellnodes =   max(mesh_maxNcellnodes,FE_Ncellnodes(g))
-         call IO_skipChunks(fileUnit,FE_Nnodes(t)-(myPos(1_pInt)-2_pInt))                             ! read on if FE_Nnodes exceeds node count present on current line
+         call IO_skipChunks(fileUnit,FE_Nnodes(t)-(myPos(1_pInt)-2_pInt))                           ! read on if FE_Nnodes exceeds node count present on current line
        endif
      enddo
      exit
@@ -2905,7 +2942,7 @@ subroutine mesh_marc_build_elements(fileUnit)
  implicit none
  integer(pInt), intent(in) :: fileUnit
 
- integer(pInt), parameter :: maxNchunks = 66_pInt                                                  ! limit to 64 nodes max (plus ID, type)
+ integer(pInt), parameter :: maxNchunks = 66_pInt                                                   ! limit to 64 nodes max (plus ID, type)
  integer(pInt), dimension (1_pInt+2_pInt*maxNchunks) :: myPos
  character(len=300) line
 
@@ -2921,26 +2958,26 @@ subroutine mesh_marc_build_elements(fileUnit)
    read (fileUnit,610,END=620) line
    myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
    if( IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'connectivity' ) then
-     read (fileUnit,610,END=620) line                                                                 ! garbage line
+     read (fileUnit,610,END=620) line                                                               ! garbage line
      do i = 1_pInt,mesh_Nelems
        read (fileUnit,610,END=620) line
        myPos = IO_stringPos(line,maxNchunks)
        e = mesh_FEasCP('elem',IO_intValue(line,myPos,1_pInt))
-       if (e /= 0_pInt) then                                                                          ! disregard non CP elems
-         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                          ! FE id
-         t = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))                                        ! elem type
+       if (e /= 0_pInt) then                                                                        ! disregard non CP elems
+         mesh_element(1,e) = IO_IntValue (line,myPos,1_pInt)                                        ! FE id
+         t = FE_mapElemtype(IO_StringValue(line,myPos,2_pInt))                                      ! elem type
          mesh_element(2,e) = t
          nNodesAlreadyRead = 0_pInt
          do j = 1_pInt,myPos(1)-2_pInt
-           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,myPos,j+2_pInt))            ! CP ids of nodes
+           mesh_element(4_pInt+j,e) = mesh_FEasCP('node',IO_IntValue(line,myPos,j+2_pInt))          ! CP ids of nodes
          enddo  
          nNodesAlreadyRead = myPos(1) - 2_pInt
-         do while(nNodesAlreadyRead < FE_Nnodes(t))                                                   ! read on if not all nodes in one line
+         do while(nNodesAlreadyRead < FE_Nnodes(t))                                                 ! read on if not all nodes in one line
            read (fileUnit,610,END=620) line
            myPos = IO_stringPos(line,maxNchunks)
            do j = 1_pInt,myPos(1)
              mesh_element(4_pInt+nNodesAlreadyRead+j,e) &
-               = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                        ! CP ids of nodes
+               = mesh_FEasCP('node',IO_IntValue(line,myPos,j))                                      ! CP ids of nodes
            enddo
            nNodesAlreadyRead = nNodesAlreadyRead + myPos(1)
          enddo
@@ -2950,33 +2987,33 @@ subroutine mesh_marc_build_elements(fileUnit)
    endif
  enddo
  
-620 rewind(fileUnit)                                                                                  ! just in case "initial state" appears before "connectivity"
+620 rewind(fileUnit)                                                                                ! just in case "initial state" appears before "connectivity"
  read (fileUnit,610,END=620) line
  do
    myPos(1:1+2*2) = IO_stringPos(line,2_pInt)
    if( (IO_lc(IO_stringValue(line,myPos,1_pInt)) == 'initial') .and. &
        (IO_lc(IO_stringValue(line,myPos,2_pInt)) == 'state') ) then
-     if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                            ! read extra line for new style
-     read (fileUnit,610,END=630) line                                                                 ! read line with index of state var
+     if (initialcondTableStyle == 2_pInt) read (fileUnit,610,END=620) line                          ! read extra line for new style
+     read (fileUnit,610,END=630) line                                                               ! read line with index of state var
      myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
-     sv = IO_IntValue(line,myPos,1_pInt)                                                              ! figure state variable index
-     if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                      ! only state vars 2 and 3 of interest
-       read (fileUnit,610,END=620) line                                                               ! read line with value of state var
+     sv = IO_IntValue(line,myPos,1_pInt)                                                            ! figure state variable index
+     if( (sv == 2_pInt).or.(sv == 3_pInt) ) then                                                    ! only state vars 2 and 3 of interest
+       read (fileUnit,610,END=620) line                                                             ! read line with value of state var
        myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
-       do while (scan(IO_stringValue(line,myPos,1_pInt),'+-',back=.true.)>1)                          ! is noEfloat value?
-         myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                       ! state var's value
-         mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                   ! remember max val of homogenization and microstructure index
+       do while (scan(IO_stringValue(line,myPos,1_pInt),'+-',back=.true.)>1)                        ! is noEfloat value?
+         myVal = nint(IO_fixedNoEFloatValue(line,[0_pInt,20_pInt],1_pInt),pInt)                     ! state var's value
+         mesh_maxValStateVar(sv-1_pInt) = max(myVal,mesh_maxValStateVar(sv-1_pInt))                 ! remember max val of homogenization and microstructure index
          if (initialcondTableStyle == 2_pInt) then
-           read (fileUnit,610,END=630) line                                                           ! read extra line
-           read (fileUnit,610,END=630) line                                                           ! read extra line
+           read (fileUnit,610,END=630) line                                                         ! read extra line
+           read (fileUnit,610,END=630) line                                                         ! read extra line
          endif
-         contInts = IO_continuousIntValues&                                                           ! get affected elements
+         contInts = IO_continuousIntValues&                                                         ! get affected elements
                    (fileUnit,mesh_NcpElems,mesh_nameElemSet,mesh_mapElemSet,mesh_NelemSets)
          do i = 1_pInt,contInts(1)
            e = mesh_FEasCP('elem',contInts(1_pInt+i))
            mesh_element(1_pInt+sv,e) = myVal
          enddo
-         if (initialcondTableStyle == 0_pInt) read (fileUnit,610,END=620) line                        ! ignore IP range for old table style
+         if (initialcondTableStyle == 0_pInt) read (fileUnit,610,END=620) line                      ! ignore IP range for old table style
          read (fileUnit,610,END=630) line
          myPos(1:1+2*1) = IO_stringPos(line,1_pInt)
        enddo
@@ -3368,7 +3405,7 @@ subroutine mesh_abaqus_map_elements(fileUnit)
    endselect
  enddo
 
-660 call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))                  ! should be mesh_NcpElems
+660 call math_qsort(mesh_mapFEtoCPelem,1_pInt,int(size(mesh_mapFEtoCPelem,2_pInt),pInt))            ! should be mesh_NcpElems
 
  if (int(size(mesh_mapFEtoCPelem),pInt) < 2_pInt) call IO_error(error_ID=907_pInt)
 
@@ -3827,10 +3864,10 @@ subroutine mesh_build_nodeTwins
                maximumNode, &
                n1, &
                n2
- integer(pInt), dimension(mesh_Nnodes+1) :: minimumNodes, maximumNodes ! list of surface nodes (minimum and maximum coordinate value) with first entry giving the number of nodes
- real(pReal)   minCoord, maxCoord, &     ! extreme positions in one dimension
-               tolerance                 ! tolerance below which positions are assumed identical
- real(pReal), dimension(3) ::  distance  ! distance between two nodes in all three coordinates
+ integer(pInt), dimension(mesh_Nnodes+1) :: minimumNodes, maximumNodes                              ! list of surface nodes (minimum and maximum coordinate value) with first entry giving the number of nodes
+ real(pReal)   minCoord, maxCoord, &                                                                ! extreme positions in one dimension
+               tolerance                                                                            ! tolerance below which positions are assumed identical
+ real(pReal), dimension(3) ::  distance                                                             ! distance between two nodes in all three coordinates
  logical, dimension(mesh_Nnodes) :: unpaired
  
  allocate(mesh_nodeTwins(3,mesh_Nnodes))
@@ -3838,8 +3875,8 @@ subroutine mesh_build_nodeTwins
  
  tolerance = 0.001_pReal * minval(mesh_ipVolume) ** 0.333_pReal
  
- do dir = 1_pInt,3_pInt                                    ! check periodicity in directions of x,y,z
-   if (mesh_periodicSurface(dir)) then                     ! only if periodicity is requested
+ do dir = 1_pInt,3_pInt                                                                             ! check periodicity in directions of x,y,z
+   if (mesh_periodicSurface(dir)) then                                                              ! only if periodicity is requested
  
      
      !*** find out which nodes sit on the surface 
@@ -3849,7 +3886,7 @@ subroutine mesh_build_nodeTwins
      maximumNodes = 0_pInt
      minCoord = minval(mesh_node0(dir,:))
      maxCoord = maxval(mesh_node0(dir,:))
-     do node = 1_pInt,mesh_Nnodes                     ! loop through all nodes and find surface nodes
+     do node = 1_pInt,mesh_Nnodes                                                                   ! loop through all nodes and find surface nodes
        if (abs(mesh_node0(dir,node) - minCoord) <= tolerance) then
          minimumNodes(1) = minimumNodes(1) + 1_pInt
          minimumNodes(minimumNodes(1)+1_pInt) = node
@@ -3869,10 +3906,10 @@ subroutine mesh_build_nodeTwins
          do n2 = 1_pInt,maximumNodes(1)
            maximumNode = maximumNodes(n2+1_pInt)
            distance = abs(mesh_node0(:,minimumNode) - mesh_node0(:,maximumNode))
-           if (sum(distance) - distance(dir) <= tolerance) then        ! minimum possible distance (within tolerance)
+           if (sum(distance) - distance(dir) <= tolerance) then                                     ! minimum possible distance (within tolerance)
              mesh_nodeTwins(dir,minimumNode) = maximumNode
              mesh_nodeTwins(dir,maximumNode) = minimumNode
-             unpaired(maximumNode) = .false.                           ! remember this node, we don't have to look for his partner again
+             unpaired(maximumNode) = .false.                                                        ! remember this node, we don't have to look for his partner again
              exit
            endif
          enddo
@@ -4146,15 +4183,15 @@ subroutine mesh_tell_statistics
  
  myDebug = debug_level(debug_mesh)
 
- if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=170_pInt) ! no homogenization specified
- if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=180_pInt) ! no microstructure specified
+ if (mesh_maxValStateVar(1) < 1_pInt) call IO_error(error_ID=170_pInt)                              ! no homogenization specified
+ if (mesh_maxValStateVar(2) < 1_pInt) call IO_error(error_ID=180_pInt)                              ! no microstructure specified
  
  allocate (mesh_HomogMicro(mesh_maxValStateVar(1),mesh_maxValStateVar(2))); mesh_HomogMicro = 0_pInt
 do e = 1_pInt,mesh_NcpElems
-  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,el=e) ! no homogenization specified
-  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,el=e) ! no microstructure specified
+  if (mesh_element(3,e) < 1_pInt) call IO_error(error_ID=170_pInt,el=e)                             ! no homogenization specified
+  if (mesh_element(4,e) < 1_pInt) call IO_error(error_ID=180_pInt,el=e)                             ! no microstructure specified
   mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) = &
-  mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1_pInt ! count combinations of homogenization and microstructure
+  mesh_HomogMicro(mesh_element(3,e),mesh_element(4,e)) + 1_pInt                                     ! count combinations of homogenization and microstructure
 enddo
 !$OMP CRITICAL (write2out)
   if (iand(myDebug,debug_levelBasic) /= 0_pInt) then
@@ -4173,8 +4210,8 @@ enddo
     write (myFmt,'(a,i32.32,a)') '(9x,a2,1x,',mesh_maxValStateVar(2),'(i8))'
     write(6,myFmt) '+-',math_range(mesh_maxValStateVar(2))
     write (myFmt,'(a,i32.32,a)') '(i8,1x,a2,1x,',mesh_maxValStateVar(2),'(i8))'
-    do i=1_pInt,mesh_maxValStateVar(1)      ! loop over all (possibly assigned) homogenizations
-      write(6,myFmt) i,'| ',mesh_HomogMicro(i,:) ! loop over all (possibly assigned) microstructures
+    do i=1_pInt,mesh_maxValStateVar(1)                                                              ! loop over all (possibly assigned) homogenizations
+      write(6,myFmt) i,'| ',mesh_HomogMicro(i,:)                                                    ! loop over all (possibly assigned) microstructures
     enddo
     write(6,'(/,a,/)') ' Input Parser: ADDITIONAL MPIE OPTIONS'
     write(6,*) 'periodic surface : ', mesh_periodicSurface
