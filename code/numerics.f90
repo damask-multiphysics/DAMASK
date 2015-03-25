@@ -87,7 +87,7 @@ module numerics
  character(len=64), private :: &
    fftw_plan_mode             = 'FFTW_PATIENT'                                                      !< reads the planing-rigor flag, see manual on www.fftw.org, Default FFTW_PATIENT: use patient planner flag
  character(len=64), protected, public :: & 
-   spectral_solver            = 'basic'  , &                                                        !< spectral solution method 
+   spectral_solver            = 'basicpetsc'  , &                                                   !< spectral solution method 
    spectral_filter            = 'none'                                                              !< spectral filtering method
  character(len=1024), protected, public :: &
    petsc_options              = '-snes_type ngmres &
