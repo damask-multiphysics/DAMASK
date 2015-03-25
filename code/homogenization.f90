@@ -228,47 +228,46 @@ subroutine homogenization_init()
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for homogenization output
- call IO_write_jobFile(FILEUNIT,'outputHomogenization')
- do p = 1,material_Nhomogenization
-   i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
-   knownHomogenization = .true.                                                                     ! assume valid
-   select case(homogenization_type(p))                                                              ! split per homogenization type
-     case (HOMOGENIZATION_NONE_ID)
-       outputName = HOMOGENIZATION_NONE_label
-       thisNoutput => null()
-       thisOutput => null()
-       thisSize   => null()
-     case (HOMOGENIZATION_ISOSTRAIN_ID)
-       outputName = HOMOGENIZATION_ISOSTRAIN_label
-       thisNoutput => homogenization_isostrain_Noutput
-       thisOutput => homogenization_isostrain_output
-       thisSize   => homogenization_isostrain_sizePostResult
-     case (HOMOGENIZATION_RGC_ID)
-       outputName = HOMOGENIZATION_RGC_label
-       thisNoutput => homogenization_RGC_Noutput
-       thisOutput => homogenization_RGC_output
-       thisSize   => homogenization_RGC_sizePostResult
-     case default
-       knownHomogenization = .false.
-   end select   
-   write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
-   if (knownHomogenization) then
-     write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
-     write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
-     if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID) then
-       do e = 1,thisNoutput(i)
-         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
-       enddo
+ if (worldrank == 0_pInt) then
+   call IO_write_jobFile(FILEUNIT,'outputHomogenization')
+   do p = 1,material_Nhomogenization
+     i = homogenization_typeInstance(p)                                                               ! which instance of this homogenization type
+     knownHomogenization = .true.                                                                     ! assume valid
+     select case(homogenization_type(p))                                                              ! split per homogenization type
+       case (HOMOGENIZATION_NONE_ID)
+         outputName = HOMOGENIZATION_NONE_label
+         thisNoutput => null()
+         thisOutput => null()
+         thisSize   => null()
+       case (HOMOGENIZATION_ISOSTRAIN_ID)
+         outputName = HOMOGENIZATION_ISOSTRAIN_label
+         thisNoutput => homogenization_isostrain_Noutput
+         thisOutput => homogenization_isostrain_output
+         thisSize   => homogenization_isostrain_sizePostResult
+       case (HOMOGENIZATION_RGC_ID)
+         outputName = HOMOGENIZATION_RGC_label
+         thisNoutput => homogenization_RGC_Noutput
+         thisOutput => homogenization_RGC_output
+         thisSize   => homogenization_RGC_sizePostResult
+       case default
+         knownHomogenization = .false.
+     end select   
+     write(FILEUNIT,'(/,a,/)')  '['//trim(homogenization_name(p))//']'
+     if (knownHomogenization) then
+       write(FILEUNIT,'(a)') '(type)'//char(9)//trim(outputName)
+       write(FILEUNIT,'(a,i4)') '(ngrains)'//char(9),homogenization_Ngrains(p)
+       if (homogenization_type(p) /= HOMOGENIZATION_NONE_ID) then
+         do e = 1,thisNoutput(i)
+           write(FILEUNIT,'(a,i4)') trim(thisOutput(e,i))//char(9),thisSize(e,i)
+         enddo
+       endif  
      endif  
-   endif  
-#ifdef multiphysicsOut
-   write(FILEUNIT,'(a)') '(field)'
-   do e = 1_pInt,field_Noutput(p)
-     write(FILEUNIT,'(a,i4)') trim(field_output(e,p))//char(9),field_sizePostResult(e,p)
+     do e = 1_pInt,field_Noutput(p)
+       write(FILEUNIT,'(a,i4)') trim(field_output(e,p))//char(9),field_sizePostResult(e,p)
+     enddo
    enddo
-#endif
- enddo
- close(FILEUNIT)
+   close(FILEUNIT)
+ endif  
 
 !--------------------------------------------------------------------------------------------------
 ! allocate and initialize global variables
@@ -310,16 +309,12 @@ subroutine homogenization_init()
  enddo  
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
-#ifdef multiphysicsOut
                                + field_maxSizePostResults &                                         ! field size & field result  
-#endif
                            + homogenization_maxNgrains * (1 + crystallite_maxSizePostResults &      ! crystallite size & crystallite results
-#ifdef multiphysicsOut
+                                                        + 1 + constitutive_maxSizePostResults &     ! constitutive size & constitutive results
                                                             + constitutive_damage_maxSizePostResults &     
                                                             + constitutive_thermal_maxSizePostResults &    
-                                                            + constitutive_vacancy_maxSizePostResults &    
-#endif
-                                                        + 1 + constitutive_maxSizePostResults)      ! constitutive size & constitutive results
+                                                            + constitutive_vacancy_maxSizePostResults)   
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
  
  mainProcess: if (worldrank == 0) then 
@@ -751,28 +746,21 @@ subroutine materialpoint_postResults
          thePos = thePos + theSize
        endif
 
-#ifdef multiphysicsOut
        theSize = field_sizePostResults(mappingHomogenization(2,i,e))
        if (theSize > 0_pInt) then                                                                   ! any homogenization results to mention?
          materialpoint_results(thePos+1:thePos+theSize,i,e) = field_postResults(i,e)                ! tell field results 
          thePos = thePos + theSize
        endif
-#endif
        
        materialpoint_results(thePos+1,i,e) = real(myNgrains,pReal)                                  ! tell number of grains at materialpoint
        thePos = thePos + 1_pInt
 
        grainLooping :do g = 1,myNgrains
-#ifdef multiphysicsOut
          theSize = 1 + crystallite_sizePostResults(myCrystallite) + &
                    1 + plasticState(material_phase(g,i,e))%sizePostResults + &                    !ToDo
                        damageState(material_phase(g,i,e))%sizePostResults + &     
                        thermalState(material_phase(g,i,e))%sizePostResults + &
                        vacancyState(material_phase(g,i,e))%sizePostResults
-#else
-         theSize = (1 + crystallite_sizePostResults(myCrystallite)) + &
-                   (1 + plasticState(material_phase(g,i,e))%sizePostResults)  
-#endif
          materialpoint_results(thePos+1:thePos+theSize,i,e) = crystallite_postResults(g,i,e)        ! tell crystallite results
          thePos = thePos + theSize
        enddo grainLooping

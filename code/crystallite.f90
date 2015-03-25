@@ -395,16 +395,18 @@ subroutine crystallite_init
 
 !--------------------------------------------------------------------------------------------------
 ! write description file for crystallite output
- call IO_write_jobFile(FILEUNIT,'outputCrystallite')
+ if (worldrank == 0_pInt) then
+   call IO_write_jobFile(FILEUNIT,'outputCrystallite')
 
- do p = 1_pInt,material_Ncrystallite
-   write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(p))//']'
-   do e = 1_pInt,crystallite_Noutput(p)
-     write(FILEUNIT,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
+   do p = 1_pInt,material_Ncrystallite
+     write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(p))//']'
+     do e = 1_pInt,crystallite_Noutput(p)
+       write(FILEUNIT,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
+     enddo
    enddo
- enddo
 
- close(FILEUNIT)
+   close(FILEUNIT)
+ endif  
 
 !--------------------------------------------------------------------------------------------------
 ! initialize
@@ -4229,18 +4231,12 @@ function crystallite_postResults(ipc, ip, el)
    ip, &                         !< integration point index
    ipc                           !< grain index
 
-#ifdef multiphysicsOut
  real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el))) + &
                         1+plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                           damageState( material_phase(ipc,ip,el))%sizePostResults + &
                           thermalState(material_phase(ipc,ip,el))%sizePostResults + &
                           vacancyState(material_phase(ipc,ip,el))%sizePostResults) :: & 
    crystallite_postResults
-#else
- real(pReal), dimension(1+crystallite_sizePostResults(microstructure_crystallite(mesh_element(4,el)))+ &
-                        1+plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
-   crystallite_postResults
-#endif
  real(pReal), dimension(3,3) :: &
    Ee
  real(pReal), dimension(4) :: &

@@ -242,164 +242,164 @@ subroutine constitutive_init(temperature_init)
  
 !--------------------------------------------------------------------------------------------------
 ! write description file for constitutive phase output
- call IO_write_jobFile(FILEUNIT,'outputConstitutive') 
- do phase = 1_pInt,material_Nphase
-   instance = phase_plasticityInstance(phase)                                                       ! which instance of a plasticity is present phase
-   knownPlasticity = .true.                                                                         ! assume valid
-   select case(phase_plasticity(phase))                                                             ! split per constititution
-     case (PLASTICITY_NONE_ID)
-       outputName = PLASTICITY_NONE_label
-       thisNoutput => null()
-       thisOutput => null()                                                                         ! plastic_none_output
-       thisSize   => null()                                                                         ! plastic_none_sizePostResult
-     case (PLASTICITY_J2_ID)
-       outputName = PLASTICITY_J2_label
-       thisNoutput => plastic_j2_Noutput
-       thisOutput => plastic_j2_output
-       thisSize   => plastic_j2_sizePostResult
-     case (PLASTICITY_PHENOPOWERLAW_ID)
-       outputName = PLASTICITY_PHENOPOWERLAW_label
-       thisNoutput => plastic_phenopowerlaw_Noutput
-       thisOutput => plastic_phenopowerlaw_output
-       thisSize   => plastic_phenopowerlaw_sizePostResult
-     case (PLASTICITY_DISLOTWIN_ID)
-       outputName = PLASTICITY_DISLOTWIN_label
-       thisNoutput => plastic_dislotwin_Noutput
-       thisOutput => plastic_dislotwin_output
-       thisSize   => plastic_dislotwin_sizePostResult
-     case (PLASTICITY_DISLOKMC_ID)
-       outputName = PLASTICITY_DISLOKMC_label
-       thisNoutput => plastic_dislokmc_Noutput
-       thisOutput => plastic_dislokmc_output
-       thisSize   => plastic_dislokmc_sizePostResult
-     case (PLASTICITY_DISLOUCLA_ID)
-       outputName = PLASTICITY_DISLOUCLA_label
-       thisNoutput => plastic_disloucla_Noutput
-       thisOutput => plastic_disloucla_output
-       thisSize   => plastic_disloucla_sizePostResult  
-     case (PLASTICITY_TITANMOD_ID)
-       outputName = PLASTICITY_TITANMOD_label
-       thisNoutput => plastic_titanmod_Noutput
-       thisOutput => plastic_titanmod_output
-       thisSize   => plastic_titanmod_sizePostResult
-     case (PLASTICITY_NONLOCAL_ID)
-       outputName = PLASTICITY_NONLOCAL_label
-       thisNoutput => plastic_nonlocal_Noutput
-       thisOutput => plastic_nonlocal_output
-       thisSize   => plastic_nonlocal_sizePostResult
-     case default
-       knownPlasticity = .false.
-   end select   
-   write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
-   if (knownPlasticity) then
-     write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
-     if (phase_plasticity(phase) /= PLASTICITY_NONE_ID) then
-       do e = 1_pInt,thisNoutput(instance)
-         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
-       enddo
+ if (worldrank == 0_pInt) then
+   call IO_write_jobFile(FILEUNIT,'outputConstitutive') 
+   do phase = 1_pInt,material_Nphase
+     instance = phase_plasticityInstance(phase)                                                       ! which instance of a plasticity is present phase
+     knownPlasticity = .true.                                                                         ! assume valid
+     select case(phase_plasticity(phase))                                                             ! split per constititution
+       case (PLASTICITY_NONE_ID)
+         outputName = PLASTICITY_NONE_label
+         thisNoutput => null()
+         thisOutput => null()                                                                         ! plastic_none_output
+         thisSize   => null()                                                                         ! plastic_none_sizePostResult
+       case (PLASTICITY_J2_ID)
+         outputName = PLASTICITY_J2_label
+         thisNoutput => plastic_j2_Noutput
+         thisOutput => plastic_j2_output
+         thisSize   => plastic_j2_sizePostResult
+       case (PLASTICITY_PHENOPOWERLAW_ID)
+         outputName = PLASTICITY_PHENOPOWERLAW_label
+         thisNoutput => plastic_phenopowerlaw_Noutput
+         thisOutput => plastic_phenopowerlaw_output
+         thisSize   => plastic_phenopowerlaw_sizePostResult
+       case (PLASTICITY_DISLOTWIN_ID)
+         outputName = PLASTICITY_DISLOTWIN_label
+         thisNoutput => plastic_dislotwin_Noutput
+         thisOutput => plastic_dislotwin_output
+         thisSize   => plastic_dislotwin_sizePostResult
+       case (PLASTICITY_DISLOKMC_ID)
+         outputName = PLASTICITY_DISLOKMC_label
+         thisNoutput => plastic_dislokmc_Noutput
+         thisOutput => plastic_dislokmc_output
+         thisSize   => plastic_dislokmc_sizePostResult
+       case (PLASTICITY_DISLOUCLA_ID)
+         outputName = PLASTICITY_DISLOUCLA_label
+         thisNoutput => plastic_disloucla_Noutput
+         thisOutput => plastic_disloucla_output
+         thisSize   => plastic_disloucla_sizePostResult  
+       case (PLASTICITY_TITANMOD_ID)
+         outputName = PLASTICITY_TITANMOD_label
+         thisNoutput => plastic_titanmod_Noutput
+         thisOutput => plastic_titanmod_output
+         thisSize   => plastic_titanmod_sizePostResult
+       case (PLASTICITY_NONLOCAL_ID)
+         outputName = PLASTICITY_NONLOCAL_label
+         thisNoutput => plastic_nonlocal_Noutput
+         thisOutput => plastic_nonlocal_output
+         thisSize   => plastic_nonlocal_sizePostResult
+       case default
+         knownPlasticity = .false.
+     end select   
+     write(FILEUNIT,'(/,a,/)') '['//trim(phase_name(phase))//']'
+     if (knownPlasticity) then
+       write(FILEUNIT,'(a)') '(plasticity)'//char(9)//trim(outputName)
+       if (phase_plasticity(phase) /= PLASTICITY_NONE_ID) then
+         do e = 1_pInt,thisNoutput(instance)
+           write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+         enddo
+       endif
      endif
-   endif
-#ifdef multiphysicsOut
-   instance = phase_damageInstance(phase)                                                           ! which instance of a plasticity is present phase
-   knownDamage = .true.
-   select case(phase_damage(phase))                                                                 ! split per constititution
-     case (LOCAL_DAMAGE_none_ID)
-       outputName = LOCAL_DAMAGE_NONE_label
-       thisNoutput => null()
-       thisOutput => null()
-       thisSize   => null()
-     case (LOCAL_DAMAGE_isoBrittle_ID)
-       outputName = LOCAL_DAMAGE_isoBrittle_LABEL
-       thisNoutput => damage_isoBrittle_Noutput
-       thisOutput => damage_isoBrittle_output
-       thisSize   => damage_isoBrittle_sizePostResult
-     case (LOCAL_DAMAGE_isoDuctile_ID)
-       outputName = LOCAL_DAMAGE_isoDuctile_LABEL
-       thisNoutput => damage_isoDuctile_Noutput
-       thisOutput => damage_isoDuctile_output
-       thisSize   => damage_isoDuctile_sizePostResult
-     case (LOCAL_DAMAGE_anisoBrittle_ID)
-       outputName = LOCAL_DAMAGE_anisoBrittle_label
-       thisNoutput => damage_anisoBrittle_Noutput
-       thisOutput => damage_anisoBrittle_output
-       thisSize   => damage_anisoBrittle_sizePostResult
-     case (LOCAL_DAMAGE_anisoDuctile_ID)
-       outputName = LOCAL_DAMAGE_anisoDuctile_LABEL
-       thisNoutput => damage_anisoDuctile_Noutput
-       thisOutput => damage_anisoDuctile_output
-       thisSize   => damage_anisoDuctile_sizePostResult
-     case (LOCAL_DAMAGE_gurson_ID)
-       outputName = LOCAL_DAMAGE_gurson_label
-       thisNoutput => damage_gurson_Noutput
-       thisOutput => damage_gurson_output
-       thisSize   => damage_gurson_sizePostResult
-     case (LOCAL_DAMAGE_phaseField_ID)
-       outputName = LOCAL_DAMAGE_phaseField_label
-       thisNoutput => damage_phaseField_Noutput
-       thisOutput => damage_phaseField_output
-       thisSize   => damage_phaseField_sizePostResult
-     case default
-       knownDamage = .false.
-   end select   
-   if (knownDamage) then
-     write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
-     if (phase_damage(phase) /= LOCAL_DAMAGE_none_ID) then
-       do e = 1_pInt,thisNoutput(instance)
-         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
-       enddo
+     instance = phase_damageInstance(phase)                                                           ! which instance of a plasticity is present phase
+     knownDamage = .true.
+     select case(phase_damage(phase))                                                                 ! split per constititution
+       case (LOCAL_DAMAGE_none_ID)
+         outputName = LOCAL_DAMAGE_NONE_label
+         thisNoutput => null()
+         thisOutput => null()
+         thisSize   => null()
+       case (LOCAL_DAMAGE_isoBrittle_ID)
+         outputName = LOCAL_DAMAGE_isoBrittle_LABEL
+         thisNoutput => damage_isoBrittle_Noutput
+         thisOutput => damage_isoBrittle_output
+         thisSize   => damage_isoBrittle_sizePostResult
+       case (LOCAL_DAMAGE_isoDuctile_ID)
+         outputName = LOCAL_DAMAGE_isoDuctile_LABEL
+         thisNoutput => damage_isoDuctile_Noutput
+         thisOutput => damage_isoDuctile_output
+         thisSize   => damage_isoDuctile_sizePostResult
+       case (LOCAL_DAMAGE_anisoBrittle_ID)
+         outputName = LOCAL_DAMAGE_anisoBrittle_label
+         thisNoutput => damage_anisoBrittle_Noutput
+         thisOutput => damage_anisoBrittle_output
+         thisSize   => damage_anisoBrittle_sizePostResult
+       case (LOCAL_DAMAGE_anisoDuctile_ID)
+         outputName = LOCAL_DAMAGE_anisoDuctile_LABEL
+         thisNoutput => damage_anisoDuctile_Noutput
+         thisOutput => damage_anisoDuctile_output
+         thisSize   => damage_anisoDuctile_sizePostResult
+       case (LOCAL_DAMAGE_gurson_ID)
+         outputName = LOCAL_DAMAGE_gurson_label
+         thisNoutput => damage_gurson_Noutput
+         thisOutput => damage_gurson_output
+         thisSize   => damage_gurson_sizePostResult
+       case (LOCAL_DAMAGE_phaseField_ID)
+         outputName = LOCAL_DAMAGE_phaseField_label
+         thisNoutput => damage_phaseField_Noutput
+         thisOutput => damage_phaseField_output
+         thisSize   => damage_phaseField_sizePostResult
+       case default
+         knownDamage = .false.
+     end select   
+     if (knownDamage) then
+       write(FILEUNIT,'(a)') '(damage)'//char(9)//trim(outputName)
+       if (phase_damage(phase) /= LOCAL_DAMAGE_none_ID) then
+         do e = 1_pInt,thisNoutput(instance)
+           write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+         enddo
+       endif
      endif
-   endif
-   instance = phase_thermalInstance(phase)                                                              ! which instance is present phase
-   knownThermal = .true.
-   select case(phase_thermal(phase))                                                                 ! split per constititution
-     case (LOCAL_THERMAL_isothermal_ID)
-       outputName = LOCAL_THERMAL_ISOTHERMAL_label
-       thisNoutput => null()
-       thisOutput => null()
-       thisSize   => null()
-     case (LOCAL_THERMAL_adiabatic_ID)
-       outputName = LOCAL_THERMAL_ADIABATIC_label
-       thisNoutput => thermal_adiabatic_Noutput
-       thisOutput => thermal_adiabatic_output
-       thisSize   => thermal_adiabatic_sizePostResult
-     case default
-       knownThermal = .false.
-   end select   
-   if (knownThermal) then
-     write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
-     if (phase_thermal(phase) /= LOCAL_THERMAL_isothermal_ID) then
-       do e = 1_pInt,thisNoutput(instance)
-         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
-       enddo
+     instance = phase_thermalInstance(phase)                                                              ! which instance is present phase
+     knownThermal = .true.
+     select case(phase_thermal(phase))                                                                 ! split per constititution
+       case (LOCAL_THERMAL_isothermal_ID)
+         outputName = LOCAL_THERMAL_ISOTHERMAL_label
+         thisNoutput => null()
+         thisOutput => null()
+         thisSize   => null()
+       case (LOCAL_THERMAL_adiabatic_ID)
+         outputName = LOCAL_THERMAL_ADIABATIC_label
+         thisNoutput => thermal_adiabatic_Noutput
+         thisOutput => thermal_adiabatic_output
+         thisSize   => thermal_adiabatic_sizePostResult
+       case default
+         knownThermal = .false.
+     end select   
+     if (knownThermal) then
+       write(FILEUNIT,'(a)') '(thermal)'//char(9)//trim(outputName)
+       if (phase_thermal(phase) /= LOCAL_THERMAL_isothermal_ID) then
+         do e = 1_pInt,thisNoutput(instance)
+           write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+         enddo
+       endif
      endif
-   endif
-   instance = phase_vacancyInstance(phase)                                                              ! which instance is present phase
-   knownVacancy = .true.
-   select case(phase_vacancy(phase))                                                                 ! split per constititution
-     case (LOCAL_VACANCY_constant_ID)
-       outputName = LOCAL_VACANCY_constant_label
-       thisNoutput => null()
-       thisOutput => null()
-       thisSize   => null()
-     case (LOCAL_VACANCY_generation_ID)
-       outputName = LOCAL_VACANCY_generation_label
-       thisNoutput => vacancy_generation_Noutput
-       thisOutput => vacancy_generation_output
-       thisSize   => vacancy_generation_sizePostResult
-     case default
-       knownVacancy = .false.
-   end select   
-   if (knownVacancy) then
-     write(FILEUNIT,'(a)') '(vacancy)'//char(9)//trim(outputName)
-     if (phase_vacancy(phase) /= LOCAL_VACANCY_constant_ID) then
-       do e = 1_pInt,thisNoutput(instance)
-         write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
-       enddo
+     instance = phase_vacancyInstance(phase)                                                              ! which instance is present phase
+     knownVacancy = .true.
+     select case(phase_vacancy(phase))                                                                 ! split per constititution
+       case (LOCAL_VACANCY_constant_ID)
+         outputName = LOCAL_VACANCY_constant_label
+         thisNoutput => null()
+         thisOutput => null()
+         thisSize   => null()
+       case (LOCAL_VACANCY_generation_ID)
+         outputName = LOCAL_VACANCY_generation_label
+         thisNoutput => vacancy_generation_Noutput
+         thisOutput => vacancy_generation_output
+         thisSize   => vacancy_generation_sizePostResult
+       case default
+         knownVacancy = .false.
+     end select   
+     if (knownVacancy) then
+       write(FILEUNIT,'(a)') '(vacancy)'//char(9)//trim(outputName)
+       if (phase_vacancy(phase) /= LOCAL_VACANCY_constant_ID) then
+         do e = 1_pInt,thisNoutput(instance)
+           write(FILEUNIT,'(a,i4)') trim(thisOutput(e,instance))//char(9),thisSize(e,instance)
+         enddo
+       endif
      endif
-   endif
-#endif
- enddo
- close(FILEUNIT)
+   enddo
+   close(FILEUNIT)
+ endif
  
  constitutive_maxSizeDotState = 0_pInt
  constitutive_maxSizePostResults = 0_pInt
@@ -1739,7 +1739,6 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    plastic_titanmod_postResults
  use plastic_nonlocal, only: &
    plastic_nonlocal_postResults
-#ifdef multiphysicsOut
  use damage_isoBrittle, only: &
    damage_isoBrittle_postResults
  use damage_isoDuctile, only: &
@@ -1756,23 +1755,17 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    thermal_adiabatic_postResults
  use vacancy_generation, only: &
    vacancy_generation_postResults
-#endif
 
  implicit none
  integer(pInt), intent(in) :: &
    ipc, &                                                                                           !< grain number
    ip, &                                                                                            !< integration point number
    el                                                                                               !< element number
-#ifdef multiphysicsOut
  real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults + &
                         damageState( material_phase(ipc,ip,el))%sizePostResults + &
                         thermalState(material_phase(ipc,ip,el))%sizePostResults + &
                         vacancyState(material_phase(ipc,ip,el))%sizePostResults) :: & 
    constitutive_postResults
-#else
- real(pReal), dimension(plasticState(material_phase(ipc,ip,el))%sizePostResults) :: &
-   constitutive_postResults
-#endif
  real(pReal),  intent(in), dimension(3,3,homogenization_maxNgrains,mesh_maxNips,mesh_NcpElems) :: &
    FeArray                                                                                          !< elastic deformation gradient
  real(pReal),  intent(in), dimension(6) :: &
@@ -1806,7 +1799,6 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
        plastic_nonlocal_postResults (Tstar_v,FeArray,ip,el)
  end select
 
-#ifdef multiphysicsOut
  startPos = endPos + 1_pInt
  endPos = endPos + damageState(material_phase(ipc,ip,el))%sizePostResults
  select case (phase_damage(material_phase(ipc,ip,el)))
@@ -1837,7 +1829,6 @@ function constitutive_postResults(Tstar_v, FeArray, ipc, ip, el)
    case (LOCAL_VACANCY_generation_ID)
      constitutive_postResults(startPos:endPos) = vacancy_generation_postResults(ipc, ip, el)
  end select
-#endif
   
 end function constitutive_postResults
 
