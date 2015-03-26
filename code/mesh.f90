@@ -117,12 +117,10 @@ module mesh
 
 #ifdef PETSc
 #include <petsc-finclude/petscsys.h>
-#endif
-
-#ifdef Spectral
  include 'fftw3-mpi.f03'
+#else
+ include 'fftw3.f03'
 #endif
-
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
 ! Hence, I suggest to prefix with "FE_"
@@ -563,6 +561,7 @@ subroutine mesh_init(ip,el)
  myDebug = (iand(debug_level(debug_mesh),debug_levelBasic) /= 0_pInt)
 
 #ifdef Spectral
+#ifdef PETSc
  call fftw_mpi_init()
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
@@ -581,6 +580,18 @@ subroutine mesh_init(ip,el)
  geomSizeLocal(2) = geomSizeGlobal(2)
  geomSizeLocal(3) = geomSizeGlobal(3)*real(gridLocal(3))/real(gridGlobal(3))
  geomSizeOffset = geomSizeGlobal(3)*real(gridOffset)  /real(gridGlobal(3))
+#else
+ call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
+ if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
+ 
+ gridGlobal = mesh_spectral_getGrid(fileUnit)
+ gridLocal  = gridGlobal
+ gridOffset = 0_pInt
+ 
+ geomSizeGlobal = mesh_spectral_getSize(fileUnit)
+ geomSizeLocal  = geomSizeGlobal
+ geomSizeOffset = 0.0_pReal
+#endif
  if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
  call mesh_spectral_count(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
