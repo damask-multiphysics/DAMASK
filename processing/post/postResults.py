@@ -138,7 +138,7 @@ class MPIEspectral_result:    # mimic py_post result object
     if self.element_scalars == None:
       self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i',default=0)[0]
 
-    self.N_positions  = (self.filesize-self.dataOffset)/(8+self.N_elements*self.N_element_scalars*8)
+    self.N_positions  = (self.filesize-self.dataOffset)/(self.N_elements*self.N_element_scalars*8)
     self.N_increments = 1                                                    # add zero'th entry
     for i in range(self.N_loadcases):
       self.N_increments += self._increments[i]//self._frequencies[i]
@@ -268,7 +268,7 @@ class MPIEspectral_result:    # mimic py_post result object
 
   def element_scalar(self,e,idx):
     incStart =  self.dataOffset \
-             +  self.position*8*(self.N_elements*self.N_element_scalars)
+             +  self.position*8*self.N_elements*self.N_element_scalars
                                 # header & footer + extra header and footer for 4 byte int range (Fortran)
                                 # values
     where = (e*self.N_element_scalars + idx)*8

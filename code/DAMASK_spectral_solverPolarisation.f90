@@ -217,17 +217,15 @@ subroutine Polarisation_init(temperature)
                                         trim(getSolverJobName()),size(F_tau_lastInc))
    read (777,rec=1) F_tau_lastInc
    close (777)
-   if (worldrank == 0_pInt) then
-     call IO_read_realFile(777,'F_aim', trim(getSolverJobName()),size(F_aim))
-     read (777,rec=1) F_aim
-     close (777)
-     call IO_read_realFile(777,'F_aim_lastInc', trim(getSolverJobName()),size(F_aim_lastInc))
-     read (777,rec=1) F_aim_lastInc
-     close (777)
-     call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-     read (777,rec=1) f_aimDot
-     close (777)
-   endif
+   call IO_read_realFile(777,'F_aim', trim(getSolverJobName()),size(F_aim))
+   read (777,rec=1) F_aim
+   close (777)
+   call IO_read_realFile(777,'F_aim_lastInc', trim(getSolverJobName()),size(F_aim_lastInc))
+   read (777,rec=1) F_aim_lastInc
+   close (777)
+   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   read (777,rec=1) f_aimDot
+   close (777)
  endif
 
  call Utilities_updateIPcoords(F)
@@ -237,8 +235,8 @@ subroutine Polarisation_init(temperature)
  nullify(F_tau)
  call DMDAVecRestoreArrayF90(da,solution_vec,xx_psc,ierr); CHKERRQ(ierr)                            ! write data back to PETSc
 
- if (restartInc > 1_pInt .and. worldrank == 0_pInt) then                                            ! using old values from files
-   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+ if (restartInc > 1_pInt) then                                            ! using old values from files
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
    flush(6)

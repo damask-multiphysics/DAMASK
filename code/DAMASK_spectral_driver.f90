@@ -340,6 +340,8 @@ program DAMASK_spectral_Driver
  
 !--------------------------------------------------------------------------------------------------
 ! write header of output file
+ allocate(outputSize(worldsize), source = 0_pInt); outputSize(worldrank+1) = size(materialpoint_results)*8
+ call MPI_Allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
  if (.not. appendToOutFile) then                                                                      ! after restart, append to existing results file
    if (worldrank == 0) then
      open(newunit=resUnit,file=trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//&
@@ -359,20 +361,28 @@ program DAMASK_spectral_Driver
      write(resUnit) 'eoh'    
      close(resUnit)                                                                                   ! end of header
    endif
+   call MPI_File_open(PETSC_COMM_WORLD, &
+                      trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
+                      MPI_MODE_WRONLY + MPI_MODE_APPEND, &
+                      MPI_INFO_NULL, &
+                      resUnit, &
+                      ierr)
+   call MPI_File_get_position(resUnit,my_offset,ierr)
+   my_offset = my_offset + sum(outputSize(1:worldrank))
+   call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
+   call MPI_File_write(resUnit, materialpoint_results, size(materialpoint_results), &
+                       MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+ else
+   call MPI_File_open(PETSC_COMM_WORLD, &
+                      trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
+                      MPI_MODE_WRONLY + MPI_MODE_APPEND, &
+                      MPI_INFO_NULL, &
+                      resUnit, &
+                      ierr)
+   call MPI_File_get_position(resUnit,my_offset,ierr)
+   my_offset = my_offset + sum(outputSize(1:worldrank))
+   call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
  endif  
- allocate(outputSize(worldsize), source = 0_pInt); outputSize(worldrank+1) = size(materialpoint_results)*8
- call MPI_Allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
- call MPI_File_open(PETSC_COMM_WORLD, &
-                    trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
-                    MPI_MODE_WRONLY + MPI_MODE_APPEND, &
-                    MPI_INFO_NULL, &
-                    resUnit, &
-                    ierr)
- call MPI_File_get_position(resUnit,my_offset,ierr)
- my_offset = my_offset + sum(outputSize(1:worldrank))
- call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
- call MPI_File_write(resUnit, materialpoint_results, size(materialpoint_results), &
-                     MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
  if (iand(debug_level(debug_spectral),debug_levelBasic) /= 0 .and. worldrank == 0_pInt) &
    write(6,'(/,a)') ' header of result file written out'
  flush(6)

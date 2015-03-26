@@ -1315,18 +1315,23 @@ subroutine mesh_spectral_build_nodes(fileUnit)
 
  implicit none
  integer(pInt),              intent(in) :: fileUnit
- integer(pInt)                          :: n, i, j, k
+ integer(pInt)                          :: n
 
  allocate (mesh_node0 (3,mesh_Nnodes), source = 0.0_pReal)
  allocate (mesh_node  (3,mesh_Nnodes), source = 0.0_pReal)
  
- n = 0_pInt
- do k = 1, gridLocal(3); do j = 1, gridLocal(2); do i = 1, gridLocal(1)
-   n = n + 1_pInt
-   mesh_node0(1,n) = real(i)*geomSizeLocal(1)/real(gridLocal(1))
-   mesh_node0(2,n) = real(j)*geomSizeLocal(2)/real(gridLocal(2))
-   mesh_node0(3,n) = real(k)*geomSizeLocal(3)/real(gridLocal(3)) + geomSizeOffset
- enddo; enddo; enddo 
+ forall (n = 0_pInt:mesh_Nnodes-1_pInt)
+   mesh_node0(1,n+1_pInt) = mesh_unitlength * &
+           geomSizeLocal(1)*real(mod(n,(gridLocal(1)+1_pInt) ),pReal) &
+                                                  / real(gridLocal(1),pReal)
+   mesh_node0(2,n+1_pInt) = mesh_unitlength * &
+           geomSizeLocal(2)*real(mod(n/(gridLocal(1)+1_pInt),(gridLocal(2)+1_pInt)),pReal) &
+                                                  / real(gridLocal(2),pReal)
+   mesh_node0(3,n+1_pInt) = mesh_unitlength * &
+           geomSizeLocal(3)*real(mod(n/(gridLocal(1)+1_pInt)/(gridLocal(2)+1_pInt),(gridLocal(3)+1_pInt)),pReal) &
+                                                  / real(gridLocal(3),pReal) + &
+           geomSizeOffset                                       
+ end forall 
 
  mesh_node = mesh_node0
 
@@ -1599,14 +1604,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
 !--------------------------------------------------------------------------------------------------
 ! read in deformation gradient to calculate coordinates, shape depend of selected solver
  select case(spectral_solver)
-   case('basic')
-     allocate(spectralF33(3,3,grid(1),grid(2),grid(3)))
-     call IO_read_realFile(FILEUNIT,'F',trim(getSolverJobName()),size(spectralF33))
-     read (FILEUNIT,rec=1) spectralF33
-     close (FILEUNIT)
-     Favg = sum(sum(sum(spectralF33,dim=5),dim=4),dim=3) * wgt
-     coordinates = reshape(mesh_deformedCoordsFFT(geomSize,spectralF33),[3,mesh_NcpElems])
-   case('basicpetsc','al')
+   case('basicpetsc','al','polarization')
      allocate(spectralF9(9,grid(1),grid(2),grid(3)))
      call IO_read_realFile(FILEUNIT,'F',trim(getSolverJobName()),size(spectralF9))
      read (FILEUNIT,rec=1) spectralF9
@@ -1750,15 +1748,8 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  
 !--------------------------------------------------------------------------------------------------
 ! set F to average values
- select case(spectral_solver)
-   case('basic')
-     allocate(spectralF33New(3,3,resNew(1),resNew(2),resNew(3)))
-     spectralF33New = spread(spread(spread(Favg,3,resNew(1)),4,resNew(2)),5,resNew(3))
-     call IO_write_jobRealFile(FILEUNIT,'F',size(spectralF33New))
-     write (FILEUNIT,rec=1) spectralF33New
-     close (FILEUNIT)
-     
-   case('basicpetsc','al')
+ select case(spectral_solver)     
+   case('basicpetsc','al','polarization')
      allocate(spectralF9New(9,resNew(1),resNew(2),resNew(3)))
      spectralF9New = spread(spread(spread(reshape(Favg,[9]),2,resNew(1)),3,resNew(2)),4,resNew(3))
      call IO_write_jobRealFile(FILEUNIT,'F',size(spectralF9New))

@@ -193,11 +193,9 @@ subroutine basicPETSc_init(temperature)
    call IO_read_realFile(777,'F_lastInc'//trim(rankStr),trim(getSolverJobName()),size(F_lastInc))
    read (777,rec=1) F_lastInc
    close (777)
-   if (worldrank == 0_pInt) then
-     call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
-     read (777,rec=1) f_aimDot
-     close (777)
-   endif
+   call IO_read_realFile(777,'F_aimDot',trim(getSolverJobName()),size(f_aimDot))
+   read (777,rec=1) f_aimDot
+   close (777)
    F_aim         = reshape(sum(sum(sum(F,dim=4),dim=3),dim=2) * wgt, [3,3])                         ! average of F
    F_aim_lastInc = sum(sum(sum(F_lastInc,dim=5),dim=4),dim=3) * wgt                                 ! average of F_lastInc 
  endif
@@ -213,8 +211,8 @@ subroutine basicPETSc_init(temperature)
     math_I3)
  call DMDAVecRestoreArrayF90(da,solution_vec,F,ierr); CHKERRQ(ierr)                                 ! write data back to PETSc
 
- if (restartInc > 1_pInt .and. worldrank == 0_pInt) then                                                                      ! using old values from files                                                    
-   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0) &
+ if (restartInc > 1_pInt) then                                                                      ! using old values from files                                                    
+   if (iand(debug_level(debug_spectral),debug_spectralRestart)/= 0 .and. worldrank == 0_pInt) &
      write(6,'(/,a,'//IO_intOut(restartInc-1_pInt)//',a)') &
      'reading more values of increment', restartInc - 1_pInt, 'from file'
    flush(6)
