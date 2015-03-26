@@ -360,7 +360,7 @@ program DAMASK_spectral_Driver
      close(resUnit)                                                                                   ! end of header
    endif
  endif  
- allocate(outputSize(worldsize), source = 0_pInt); outputSize(worldrank+1) = sizeof(materialpoint_results)
+ allocate(outputSize(worldsize), source = 0_pInt); outputSize(worldrank+1) = size(materialpoint_results)*8
  call MPI_Allreduce(MPI_IN_PLACE,outputSize,worldsize,MPI_INT,MPI_SUM,PETSC_COMM_WORLD,ierr)
  call MPI_File_open(PETSC_COMM_WORLD, &
                     trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
@@ -589,6 +589,8 @@ program DAMASK_spectral_Driver
    case (DAMASK_spectral_SolverPolarisation_label)
      call Polarisation_destroy()
  end select
+ 
+ call PetscFinalize(ierr); CHKERRQ(ierr)
  
  if (notConvergedCounter > 0_pInt) call quit(3_pInt)                                                ! error if some are not converged
  call quit(0_pInt)                                                                                  ! no complains ;)

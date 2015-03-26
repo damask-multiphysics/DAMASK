@@ -578,7 +578,6 @@ subroutine BasicPETSc_destroy()
  call VecDestroy(solution_vec,ierr); CHKERRQ(ierr)
  call SNESDestroy(snes,ierr); CHKERRQ(ierr)
  call DMDestroy(da,ierr); CHKERRQ(ierr)
- call PetscFinalize(ierr); CHKERRQ(ierr)
  call Utilities_destroy()
 
 end subroutine BasicPETSc_destroy
