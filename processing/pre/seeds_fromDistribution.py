@@ -120,7 +120,7 @@ class myThread (threading.Thread):
         currentHist.append(np.histogram(currentData,bins=target[i]['bins'])[0])
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
 
-      s.acquire()
+      s.acquire()                                                                                    # do the evaluation serially
       bestMatch = match
 #--- count bin classes with no mismatch ----------------------------------------------------------------------
       myMatch=0
@@ -130,26 +130,26 @@ class myThread (threading.Thread):
 
       if myNmicrostructures == nMicrostructures:
         for i in xrange(min(nMicrostructures,myMatch+options.bins)):
-          if currentError[i] > target[i]['error']:
+          if currentError[i] > target[i]['error']:                                                   # worse fitting, next try
             randReset = True
             break
-          elif currentError[i] < target[i]['error']:
-            bestSeedsUpdate = time.time()
+          elif currentError[i] < target[i]['error']:                                                 # better fit
+            bestSeedsUpdate = time.time()                                                            # save time of better fit
             print 'Thread %i: Better match (%i bins, %6.4f --> %6.4f)'%(self.threadID,i+1,target[i]['error'],currentError[i])
             print '          target: ',target[i]['histogram']
             print '          best:   ',currentHist[i]
-            currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')
+            currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')                    # name of new seed file (use time as unique identifier)
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
             bestSeedsVFile = StringIO()
             sys.stdout.flush()
-            with open(currentSeedsName+'.seeds','w') as currentSeedsFile:
+            with open(currentSeedsName+'.seeds','w') as currentSeedsFile:                            # write to new file
               for line in perturbedSeedsVFile:
                 currentSeedsFile.write(line)
                 bestSeedsVFile.write(line)
-            for j in xrange(nMicrostructures):
+            for j in xrange(nMicrostructures):                                                       # save new errors for all bins
               target[j]['error'] = currentError[j]
-            if myMatch > match:
+            if myMatch > match:                                                                      # one or more bins have no deviation
               print 'Stage %i cleared'%(myMatch)
               match=myMatch
               sys.stdout.flush()
