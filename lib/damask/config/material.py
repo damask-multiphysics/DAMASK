@@ -151,12 +151,12 @@ class Material():
       line = line.split('/echo/')[0].strip()              # remove '/echo/' tags
       line = line.lower()                                 # be case insensitive
       if line:                                            # content survives...
-        match_part = re_part.match(line)
+        match_part = re_part.match(line.split()[0])
         if match_part:                                    # found <part> separator
           active = (match_part.group(1) == part)          # only active in <part>
           continue
         if active:
-          match_sec  = re_sec.match(line)
+          match_sec  = re_sec.match(line.split()[0])
           if match_sec:                                   # found [section]
             name_section = match_sec.group(1)             # remember name ...
             if '__order__' not in self.data[part]: self.data[part]['__order__'] = []
