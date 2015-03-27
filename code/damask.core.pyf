@@ -107,28 +107,6 @@ python module core ! in
             ! function definition
             real*8 dimension(3,3),                                                                           :: math_tensorAvg
         end function math_tensorAvg
-
-        function math_logstrainSpat(F) ! in :math:math.f90
-            ! input variables
-            real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: F
-            ! output variables
-            real*8,  dimension(3,3,size(F,3),size(F,4),size(F,5)),             depend(F)                     :: math_logstrainSpat            
-        end function math_logstrainSpat
-
-        function math_logstrainMat(F) ! in :math:math.f90
-            ! input variables
-            real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: F
-            ! function
-            real*8,  dimension(3,3,size(F,3),size(F,4),size(F,5)),             depend(F)                     :: math_logstrainMat            
-        end function math_logstrainMat
-
-        function math_cauchy(F,P) ! in :math:math.f90
-            ! input variables
-            real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: F
-            real*8, dimension(:,:,:,:,:),       intent(in)                                                   :: P
-            ! function
-            real*8,  dimension(3,3,size(F,3),size(F,4),size(F,5)),             depend(F)                     :: math_cauchy  
-        end function math_cauchy
         
      end module math
 
@@ -157,14 +135,6 @@ python module core ! in
             real*8,  dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1), depend(centres)  :: mesh_nodesAroundCentres
             real*8,  dimension(3,size(centres,2)+1,size(centres,3)+1,size(centres,4)+1), depend(centres)  :: wrappedCentres
         end function mesh_nodesAroundCentres
-
-        function mesh_deformedCoordsLinear(gDim,F,FavgIn) ! in :mesh:mesh.f90
-            real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F
-            real*8,  dimension(3),                             intent(in)                  :: gDim
-            real*8,  dimension(3,3),                           intent(in), optional        :: FavgIn = -1.0
-            real*8,  dimension(3,size(F,3),size(F,4),size(F,5)),                 depend(F) :: mesh_deformedCoordsLinear  
-            real*8,  dimension(3,0:size(F,3)-1,0:size(F,4)-1,0:size(F,5)-1,0:7), depend(F) :: coordsAvgOrder
-        end function mesh_deformedCoordsLinear
 
         function mesh_deformedCoordsFFT(gDim,F,FavgIn,scalingIn) ! in :mesh:mesh.f90
             real*8,  dimension(:,:,:,:,:),                     intent(in)                  :: F

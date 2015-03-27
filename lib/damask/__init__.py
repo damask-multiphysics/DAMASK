@@ -36,14 +36,10 @@ try:
   core.math.periodicNearestNeighbor  = core.math.math_periodicNearestNeighbor
   core.math.periodicNearestNeighborDistances  = core.math.math_periodicNearestNeighborDistances
   core.math.tensorAvg                = core.math.math_tensorAvg
-  core.math.logstrainSpat            = core.math.math_logstrainSpat
-  core.math.logstrainMat             = core.math.math_logstrainMat
-  core.math.cauchy                   = core.math.math_cauchy
   core.FEsolving.init                = core.FEsolving.FE_init
   core.mesh.init                     = core.mesh.mesh_init
   core.mesh.regrid                   = core.mesh.mesh_regrid
   core.mesh.nodesAroundCentres       = core.mesh.mesh_nodesAroundCentres
-  core.mesh.deformedCoordsLinear     = core.mesh.mesh_deformedCoordsLinear
   core.mesh.deformedCoordsFFT        = core.mesh.mesh_deformedCoordsFFT
   core.mesh.volumeMismatch           = core.mesh.mesh_volumeMismatch
   core.mesh.shapeMismatch            = core.mesh.mesh_shapeMismatch

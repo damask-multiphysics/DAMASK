@@ -191,8 +191,6 @@ parser.add_option('--filenodalcoords', dest='filenodalcoords', metavar = 'string
                                     help='ASCII table containing nodal coords')
 parser.add_option('--labelnodalcoords', dest='labelnodalcoords', nargs=3,
                                     help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
-parser.add_option('-l', '--linear', dest='linearreconstruction', action='store_true',
-                                    help='use linear reconstruction of geometry [%default]')
                   
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(separator = 't')
@@ -210,7 +208,6 @@ parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)
 parser.set_defaults(filenodalcoords = '')
 parser.set_defaults(labelnodalcoords = ('coord.x','coord.y','coord.z'))
-parser.set_defaults(linearreconstruction = False)
 
 sep = {'n': '\n', 't': '\t', 's': ' '}
 
@@ -219,7 +216,6 @@ sep = {'n': '\n', 't': '\t', 's': ' '}
 options.scaling += [1.0 for i in xrange(max(0,3-len(options.scaling)))]
 options.scaling = map(float, options.scaling)
 
-if np.any(options.scaling != 1.0) and options.linearreconstruction:  print 'cannot scale for linear reconstruction'
 if np.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 
 for filename in args:
@@ -329,10 +325,7 @@ for filename in args:
     F = np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
                                          column['tensor'][options.defgrad]+9]),
                                                              (3,3,grid[0],grid[1],grid[2]))
-    if options.linearreconstruction:
-      centroids = damask.core.mesh.deformedCoordsLinear(dim,F,Favg)
-    else:
-      centroids = damask.core.mesh.deformedCoordsFFT(dim,F,Favg,options.scaling)
+    centroids = damask.core.mesh.deformedCoordsFFT(dim,F,Favg,options.scaling)
     nodes = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
 
   else:
