@@ -38,21 +38,18 @@ def principalStresses(sigmas):
   lambdas = np.transpose(lambdas.reshape(np.shape(sigmas)[1],3))
   return lambdas
 
-def stressInvariants(lambdas):
-  '''
-    computes stress invariants (i.e. eigenvalues) for a set of principal Cauchy stresses.
-  '''
-  Is=np.zeros(0,'d')
-  for i in xrange(np.shape(lambdas)[1]):
-    I = np.array([lambdas[0,i]+lambdas[1,i]+lambdas[2,i],\
-                  lambdas[0,i]*lambdas[1,i]+lambdas[1,i]*lambdas[2,i]+lambdas[2,i]*lambdas[0,i],\
-                  lambdas[0,i]*lambdas[1,i]*lambdas[2,i]])
-    Is = np.append(Is,I)
-  Is = Is.reshape(3,np.shape(lambdas)[1])
-  return Is
+def invariant(sigmas):
+    s11,s22,s33,s12,s23,s31 = sigmas
+    I1  = s11 + s22 + s33
+    I2  = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
+    I3  = s11*s22*s33 + 2.0*s12*s23*s31 - s12**2*s33 - s23**2*s11 - s31**2*s22
+    return (I1,I2,I3)
 
 def formatOutput(n, type='%-14.6f'):
   return ''.join([type for i in xrange(n)])
+
+def math_ln(x):
+  return np.log(x + 1.0e-32)
 
 def sym6to33(sigma6):
   ''' Shape the symmetric stress tensor(6,1) into (3,3) '''
@@ -98,9 +95,9 @@ class vonMises(object):
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
   def fun(self, sigma0, ydata, sigmas):
-    return HosfordBasis(sigma0, 1.0,1.0,1.0, 2.0, sigmas)
+    return HosfordBasis(sigma0, (0.5,0.5,0.5), 2.0, sigmas)
   def jac(self, sigma0, ydata, sigmas):
-    return HosfordBasis(sigma0, 1.0,1.0,1.0, 2.0, sigmas, Jac=True, nParas=1)
+    return HosfordBasis(sigma0, (0.5,0.5,0.5), 2.0, sigmas, Jac=True, nParas=1)
 
 class Drucker(object):
   '''
@@ -131,26 +128,20 @@ class Hosford(object):
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
   def fun(self, (sigma0, a), ydata, sigmas):
-    return HosfordBasis(sigma0, 1.0,1.0,1.0, a, sigmas)
+    return HosfordBasis(sigma0, (0.5,0.5,0.5), a, sigmas)
   def jac(self, (sigma0, a), ydata, sigmas):
-    return HosfordBasis(sigma0, 1.0,1.0,1.0, a, sigmas, Jac=True, nParas=2)
+    return HosfordBasis(sigma0, (0.5,0.5,0.5), a, sigmas, Jac=True, nParas=2)
 
 class Hill1948(object):
   '''
-    residuum of Hill 1948 quadratic yield criterion (eq. 2.48)
+    residuum of Hill 1948 quadratic yield criterion (eq. 2.48) Right
   '''
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
   def fun(self, (F,G,H,L,M,N), ydata, sigmas):
-    r = F*(sigmas[1]-sigmas[2])**2.0 + G*(sigmas[2]-sigmas[0])**2.0 + H*(sigmas[0]-sigmas[1])**2.0\
-      + 2.0*L*sigmas[4]**2.0 + 2.0*M*sigmas[5]**2.0 + 2.0*N*sigmas[3]**2.0 - 1.0
-    return r.ravel()/2.0
+    return Hill1948Basis((F,G,H,L,M,N),sigmas)
   def jac(self, (F,G,H,L,M,N), ydata, sigmas):
-    jF=(sigmas[1]-sigmas[2])**2.0; jG=(sigmas[2]-sigmas[0])**2.0; jH=(sigmas[0]-sigmas[1])**2.0
-    jL=2.0*sigmas[4]**2.0;         jM=2.0*sigmas[5]**2.0;         jN=2.0*sigmas[3]**2.0
-    jaco = []
-    for jacv in zip(jF, jG, jH, jL, jM, jN): jaco.append(jacv)
-    return np.array(jaco)
+    return Hill1948Basis((F,G,H,L,M,N),sigmas, Jac=True)     
 
 class Hill1979(object):
   '''
@@ -159,9 +150,9 @@ class Hill1979(object):
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
   def fun(self, (f,g,h,a,b,c,m), ydata, sigmas):
-    return Hill1979Basis(self.stress0, f,g,h,a,b,c,m, sigmas)
+    return Hill1979Basis(self.stress0, (f,g,h,a,b,c),m, sigmas)
   def jac(self, (f,g,h,a,b,c,m), ydata, sigmas):
-    return Hill1979Basis(self.stress0, f,g,h,a,b,c,m, sigmas, Jac=True)
+    return Hill1979Basis(self.stress0, (f,g,h,a,b,c),m, sigmas, Jac=True)
 
 class generalHosford(object):
   '''
@@ -169,10 +160,10 @@ class generalHosford(object):
   '''
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
-  def fun(self, (sigma0, F, G, H, a), ydata, sigmas, nParas=5):
-    return HosfordBasis(sigma0, F, G, H, a, sigmas)
-  def jac(self, (sigma0, F, G, H, a), ydata, sigmas):
-    return HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=True, nParas=5)
+  def fun(self, (F, G, H, a), ydata, sigmas, nParas=4):
+    return HosfordBasis(self.stress0, (F, G, H), a, sigmas)
+  def jac(self, (F, G, H, a), ydata, sigmas):
+    return HosfordBasis(self.stress0, (F, G, H), a, sigmas, Jac=True, nParas=4)
 
 class Barlat1991iso(object):
   '''
@@ -181,9 +172,9 @@ class Barlat1991iso(object):
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
   def fun(self, (sigma0, m), ydata, sigmas):
-    return Barlat1991Basis(sigma0, 1.0,1.0,1.0,1.0,1.0,1.0, m, sigmas)
+    return Barlat1991Basis(sigma0, np.ones(6), m, sigmas)
   def jac(self, (sigma0, m), ydata, sigmas):
-    return Barlat1991Basis(sigma0, 1.0,1.0,1.0,1.0,1.0,1.0, m, sigmas, Jac=True, nParas=2)
+    return Barlat1991Basis(sigma0, np.ones(6), m, sigmas, Jac=True, nParas=2)
 
 class Barlat1991aniso(object):
   '''
@@ -191,10 +182,10 @@ class Barlat1991aniso(object):
   '''
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
-  def fun(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
-    return Barlat1991Basis(sigma0, a,b,c,f,g,h, m, sigmas)
-  def jac(self, (sigma0, a,b,c,f,g,h, m), ydata, sigmas):
-    return Barlat1991Basis(sigma0, a,b,c,f,g,h, m, sigmas, Jac=True, nParas=8)
+  def fun(self, (a,b,c,f,g,h, m), ydata, sigmas):
+    return Barlat1991Basis(self.stress0, (a,b,c,f,g,h), m, sigmas)
+  def jac(self, (a,b,c,f,g,h, m), ydata, sigmas):
+    return Barlat1991Basis(self.stress0, (a,b,c,f,g,h), m, sigmas, Jac=True, nParas=7)
 
 class Yld200418p(object):
   '''
@@ -202,14 +193,14 @@ class Yld200418p(object):
   '''
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
-  def fun(self, (sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
-                         d12,d21,d23,d32,d31,d13,d44,d55,d66, m), ydata, sigmas):
-    return Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
-                                   d12,d21,d23,d32,d31,d13,d44,d55,d66, m, sigmas)
-  def jac(self, (sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
-                         d12,d21,d23,d32,d31,d13,d44,d55,d66, m), ydata, sigmas):
-    return Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
-                                   d12,d21,d23,d32,d31,d13,d44,d55,d66, m,  sigmas, Jac=True)
+  def fun(self, (c12,c21,c23,c32,c31,c13,c44,c55,c66,
+                 d12,d21,d23,d32,d31,d13,d44,d55,d66, m), ydata, sigmas):
+    return Yld200418pBasis(self.stress0, (c12,c21,c23,c32,c31,c13,c44,c55,c66),
+                                   (d12,d21,d23,d32,d31,d13,d44,d55,d66), m, sigmas)
+  def jac(self, (c12,c21,c23,c32,c31,c13,c44,c55,c66,
+                 d12,d21,d23,d32,d31,d13,d44,d55,d66, m), ydata, sigmas):
+    return Yld200418pBasis(self.stress0, (c12,c21,c23,c32,c31,c13,c44,c55,c66),
+                                   (d12,d21,d23,d32,d31,d13,d44,d55,d66), m,  sigmas, Jac=True)
 
 class KarafillisBoyce(object):
   '''
@@ -219,12 +210,12 @@ class KarafillisBoyce(object):
     self.stress0 = uniaxialStress
   def fun(self, (c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,
                  b1, b2, a, alpha), ydata, sigmas):
-    return KarafillisBoyceBasis(self.stress0, c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,
-                 b1, b2, a, alpha, sigmas)
+    return KarafillisBoyceBasis(self.stress0, (c11,c12,c13,c14,c15,c16),
+                 (c21,c22,c23,c24,c25,c26), b1, b2, a, alpha, sigmas)
   def jac(self, (c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,
                  b1, b2, a, alpha), ydata, sigmas):
-    return KarafillisBoyceBasis(self.stress0, c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,
-                 b1, b2, a, alpha, sigmas, Jac=True)
+    return KarafillisBoyceBasis(self.stress0, (c11,c12,c13,c14,c15,c16),
+                 (c21,c22,c23,c24,c25,c26), b1, b2, a, alpha, sigmas, Jac=True)
 
 class BBC2003(object):
   '''
@@ -232,10 +223,10 @@ class BBC2003(object):
   '''
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
-  def fun(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
-    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas)
-  def jac(self, (sigma0, a,b,c, d,e,f,g, k), ydata, sigmas):
-    return BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=True)
+  def fun(self, (a,b,c, d,e,f,g, k), ydata, sigmas):
+    return BBC2003Basis(self.stress0, a,b,c, d,e,f,g, k, sigmas)
+  def jac(self, (a,b,c, d,e,f,g, k), ydata, sigmas):
+    return BBC2003Basis(self.stress0, a,b,c, d,e,f,g, k, sigmas, Jac=True)
 
 class BBC2005(object):
   '''
@@ -254,11 +245,11 @@ class Cazacu_Barlat2D(object):
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
   def fun(self, (a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c), ydata, sigmas):
-    return Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c, 
-                                self.stress0, sigmas)
+    return Cazacu_BarlatBasis(self.stress0, (a1,a2,a3,a4),
+                              (b1,b2,b3,b4,b5,b10),c,sigmas, nDim = 2)
   def jac(self, (a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c), ydata, sigmas):
-    return Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c,  
-                                self.stress0, sigmas,Jac=True)
+    return Cazacu_BarlatBasis(self.stress0, (a1,a2,a3,a4),
+                              (b1,b2,b3,b4,b5,b10),c,sigmas,Jac=True, nDim = 2)
 
 class Cazacu_Barlat3D(object):
   '''
@@ -266,11 +257,11 @@ class Cazacu_Barlat3D(object):
   def __init__(self, uniaxialStress):
     self.stress0 = uniaxialStress
   def fun(self, (a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c),ydata, sigmas):
-    return Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
-                                self.stress0, sigmas)
+    return Cazacu_BarlatBasis(self.stress0, (a1,a2,a3,a4,a5,a6),
+                                (b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11),c,sigmas)
   def jac(self, (a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c),ydata, sigmas):
-    return Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
-                                self.stress0, sigmas,Jac=True)
+    return Cazacu_BarlatBasis(self.stress0, (a1,a2,a3,a4,a5,a6),
+                                (b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11),c,sigmas,Jac=True)
 class Vegter(object):
   '''
     Vegter yield criterion
@@ -358,271 +349,147 @@ def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
 
   vegter = Vegter(refPts, refNormals)
 
-def Cazacu_Barlat3DBasis(a1,a2,a3,a4,a5,a6,b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11,c,
-                         sigma0,sigmas, Jac = False):
+def Cazacu_BarlatBasis(sigma0,coeffa,coeffb,c,sigmas, Jac = False, nDim = 3):
   '''
-    residuum of the 3D Cazacu–Barlat (CZ) yield criterion
+    residuum of the 3D Cazacu–Barlat (CB) yield criterion
   '''
-  s11 = sigmas[0]; s22 = sigmas[1]; s33 = sigmas[2]
-  s12 = sigmas[3]; s23 = sigmas[4]; s31 = sigmas[5]
-  s123, s321 = s11*s22*s33, s12*s23*s31
-  s1_2, s2_2, s3_2 = s11**2,   s22**2,   s33**2
-  s1_3, s2_3, s3_3 = s11*s1_2, s22*s2_2, s33*s3_2
-  s12_2, s23_2, s31_2 = s12**2, s23**2, s31**2
-  d12_2, d23_2, d31_2 = (s11-s22)**2, (s22-s33)**2, (s33-s11)**2
+  s11,s22,s33,s12,s23,s31 = sigmas
+  if nDim == 2: s33=s23=s31 = np.zeros_like(s11)
+  s1_2, s2_2, s3_2, s12_2, s23_2, s31_2 = np.array([s11,s22,s33,s12,s23,s31])**2
+  s1_3, s2_3, s3_3, s123, s321 = s11*s1_2, s22*s2_2, s33*s3_2,s11*s22*s33, s12*s23*s31
+  d12,d23,d31 = s11-s22, s22-s33, s33-s11
+  
+  jb1 = (s1_3 + 2.0*s3_3)/27.0 - s22*s1_2/9.0 - (s11+s22)*s3_2/9.0 + s123/4.5
+  jb2 = (s1_3 -     s3_3)/27.0 - s33*s1_2/9.0 +  s11     *s3_2/9.0
+  jb3 = (s2_3 -     s3_3)/27.0 - s33*s2_2/9.0 +  s22     *s3_2/9.0
+  jb4 = (s2_3 + 2.0*s3_3)/27.0 - s11*s2_2/9.0 - (s11+s22)*s3_2/9.0 + s123/4.5
 
-  J20 = ( a1*d12_2 + a2*d23_2 + a3*d31_2 )/6.0 + a4*s12_2 + a5*s23_2 + a6*s31_2
-  J30 = ( (b1    +b2    )*s1_3  + (b3    +b4    )*s2_3  + ( b1+b4-b2      +  b1+b4-b3     )*s3_3 )/27.0- \
-        ( (b1*s22+b2*s33)*s1_2  + (b3*s33+b4*s11)*s2_2  + ((b1+b4-b2)*s11 + (b1+b4-b3)*s22)*s3_2 )/9.0 + \
-        ( (b1+b4)*s123/9.0 + b11*s321 )*2.0 - \
-        ( ( 2.0*b9 *s22 - b8*s33  - (2.0*b9 -b8)*s11 )*s31_2 + 
-          ( 2.0*b10*s33 - b5*s22  - (2.0*b10-b5)*s11 )*s12_2 +
-          ( (b6+b7)*s11 - b6*s22  - b7*s33           )*s23_2
-        )/3.0
+  jb5, jb10 = -d12*s12_2/3.0, -d31*s12_2/1.5
+  jb6, jb7  = -d12*s23_2/3.0,  d31*s23_2/3.0
+  jb8, jb9  =  d31*s31_2/3.0,  d12*s31_2/1.5
+  jb11      =  s321*2.0
+  
+  if nDim == 3:
+    dJ2da = np.array([d12**2/6.0, d23**2/6.0, d31**2/6.0, s12_2,s23_2,s31_2])
+    dJ3db = np.array([jb1,jb2,jb3,jb4,jb5,jb6,jb7,jb8,jb9,jb10,jb11])
+  else:  # plane stress
+    dJ2da = np.array([d12**2/6.0, s2_2/6.0, s1_2/6.0, s12_2])
+    dJ3db = np.array([jb1,jb2,jb3,jb4,jb5,jb10])
+
+  J20 = np.dot(coeffa,dJ2da)
+  J30 = np.dot(coeffb,dJ3db)
   f0 = (J20**3 - c*J30**2)/18.0
   r  = f0**(1.0/6.0)*(3.0/sigma0)
 
   if not Jac:
     return (r - 1.0).ravel()
   else:
-    drdf = r/f0/108.0
-    dj2  =  drdf*3.0*J20**2.0
-    dj3  = -drdf*2.0*J30*c
-    jc   = -drdf*J30**2
-
-    ja1,ja2,ja3 =  dj2*d12_2/6.0, dj2*d23_2/6.0, dj2*d31_2/6.0
-    ja4,ja5,ja6 =  dj2*s12_2,     dj2*s23_2,     dj2*s31_2
-    jb1 = dj3*( (s1_3 + 2.0*s3_3)/27.0 - s22*s1_2/9.0 - (s11+s22)*s3_2/9.0 + s123/4.5 )
-    jb2 = dj3*( (s1_3 -     s3_3)/27.0 - s33*s1_2/9.0 +  s11     *s3_2/9.0 )
-    jb3 = dj3*( (s2_3 -     s3_3)/27.0 - s33*s2_2/9.0 +  s22     *s3_2/9.0 )
-    jb4 = dj3*( (s2_3 + 2.0*s3_3)/27.0 - s11*s2_2/9.0 - (s11+s22)*s3_2/9.0 + s123/4.5 )
-
-    jb5, jb10 = dj3*(s22 - s11)*s12_2/3.0,  dj3*(s11 - s33)*s12_2/3.0*2.0
-    jb6, jb7  = dj3*(s22 - s11)*s23_2/3.0,  dj3*(s33 - s11)*s23_2/3.0
-    jb8, jb9  = dj3*(s33 - s11)*s31_2/3.0,  dj3*(s11 - s22)*s31_2/3.0*2.0
-    jb11      = dj3*s321*2.0
-
-    jaco = []
-    for jacv in zip(ja1,ja2,ja3,ja4,ja5,ja6,jb1,jb2,jb3,jb4,jb5,jb6,jb7,jb8,jb9,jb10,jb11,jc):
-      jaco.append(jacv)
-    return np.array(jaco)
-
-def Cazacu_Barlat2DBasis(a1,a2,a3,a4,b1,b2,b3,b4,b5,b10,c, 
-                         sigma0,sigmas, Jac = False):
-  '''
-    residuum of the 2D Cazacu–Barlat (CZ) yield criterion for plain stress
-  '''
-  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
-  s1_2, s2_2 = s11**2, s22**2
-  s1_3, s2_3 = s11*s1_2, s22*s2_2
-  s12_2 = s12**2
-
-  J20 = ( a1*(s11-s22)**2 + a2*s2_2 + a3*s1_2 )/6.0 + a4*s12_2
-  J30 = ( (b1+b2)*s1_3 + (b3+b4)*s2_3 )/27.0 - ( (b1*s11 + b4*s22)*s11*s22 )/9.0 + \
-        (  b5*s22 + (2*b10-b5)*s11 )*s12_2/3.0
-
-  f0 = (J20**3 - c*J30**2)/18.0
-  r  = f0**(1.0/6.0)*(3.0/sigma0)
-
-  if not Jac:
-    return (r - 1.0).ravel()
-  else:
-    drdf = r/f0/108.0
-    dj2  =  drdf*3.0*J20**2.0
-    dj3  = -drdf*2.0*J30*c
-    jc   = -drdf*J30**2
-
-    ja1,ja2,ja3,ja4 = dj2*(s11-s22)**2/6.0, dj2*s2_2/6.0, dj2*s1_2/6.0, dj2*s12_2
-    jb1, jb2 = s1_3/27.0 - s1_2*s22/9.0,  s1_3/27.0
-    jb4, jb3 = s2_3/27.0 - s2_2*s11/9.0,  s2_3/27.0
-    jb5, jb10= -s12_2*(s11 - s22)/3.0,    s12_2*s11*2.0/3.0
-
-    jaco = []    
-    for jacv in zip(ja1,ja2,ja3,ja4,jb1,jb2,jb3,jb4,jb5,jb10,jc):
-      jaco.append(jacv)
-    return np.array(jaco)
+    df = r/f0/108.0
+    return np.vstack((df*3.0*J20**2.0*dJ2da, -df*2.0*J30*c*dJ3db, -df*J30**2)).T
 
 def DruckerBasis(sigma0, C_D, p, sigmas, Jac=False, nParas=2):
-  s11 = sigmas[0]; s22 = sigmas[1]; s33 = sigmas[2]
-  s12 = sigmas[3]; s23 = sigmas[4]; s31 = sigmas[5]
-  I1  = s11 + s22 + s33
-  I2  = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
-  I3  = s11*s22*s33 + 2.0*s12*s23*s31 - s12**2*s33 - s23**2*s11 - s31**2*s22
+  I1,I2,I3 = invariant(sigmas)
   J2  = I1**2/3.0 - I2
   J3  = I1**3/13.5 - I1*I2/3.0 + I3
-  left= J2**(3.0*p) - C_D*J3**(2.0*p); right = 3.0**(0.5)/sigma0
-  expo= 1.0/(6.0*p)
+  J2_3p = J2**(3.0*p);        J3_2p = J3**(2.0*p)
+  left  = J2_3p - C_D*J3_2p
+  r     = left**(1.0/(6.0*p))*3.0**0.5/sigma0
 
   if not Jac:
-    return (left**expo*right - 1.0).ravel()
+    return (r - 1.0).ravel()
   else:
-    jaco = []
-    dfdl = expo*left**(expo-1.0)
-    js   = -left**expo*right/sigma0
-    jC   = -dfdl*J3**(2*p)*right
+    drdl = r/left/(6.0*p)
     if nParas == 2:
-      for jacv in zip(js, jC): jaco.append(jacv)
-      return np.array(jaco)
+      return np.vstack((-r/sigma0, -drdl*J3_2p)).T
     else:
-      ln   = lambda x : np.log(x + 1.0e-32)
-      dldp = 3.0*J2**(3.0*p)*ln(J2) - 2.0*C_D*J3**(2.0*p)*ln(J3)
-      
-      jp   = dfdl*dldp*right + (left**expo)*ln(left)*expo/(-p)*right
-      for jacv in zip(js, jC, jp): jaco.append(jacv)
-      return np.array(jaco)
+      dldp = 3.0*J2_3p*math_ln(J2) - 2.0*C_D*J3_2p*math_ln(J3)
+      jp   = drdl*dldp + r*math_ln(left)/(-6.0*p*p)
+      return np.vstack((-r/sigma0, -drdl*J3_2p, jp)).T
 
-def Hill1979Basis(sigma0, f,g,h,a,b,c,m, sigmas, Jac=False):
+def Hill1948Basis(coeff, sigmas, Jac=False):
+  s11,s22,s33,s12,s23,s31 = sigmas
+  jac = np.array([(s22-s33)**2,(s33-s11)**2,(s11-s22)**2, 2.0*s23**2,2.0*s31**2,2.0*s12**2])
+  if not Jac:
+    return (np.dot(coeff,jac)/2.0-0.5).ravel()
+  else:
+    return jac.T
 
-  s1,s2,s3  = principalStresses(sigmas)
-  d23 = s2-s3;  d123 = 2.0*s1 - s2 - s3
-  d31 = s3-s1;  d231 = 2.0*s2 - s3 - s1
-  d12 = s1-s2;  d312 = 2.0*s3 - s1 - s2
-
-  d23s = d23**2; d123s = d123**2
-  d31s = d31**2; d231s = d231**2
-  d12s = d12**2; d312s = d312**2
-
-  m2 = m/2.0;  mi = 1.0/m
-  base = f* d23s**m2 + g* d31s**m2 + h* d12s**m2 + \
-         a*d123s**m2 + b*d231s**m2 + c*d312s**m2
-  left = base**mi
-  r = left/sigma0
+def Hill1979Basis(sigma0, coeff,m, sigmas, Jac=False):
+  s1,s2,s3 = principalStresses(sigmas)
+  diffs  = np.array([s2-s3, s3-s1, s1-s2, 2.0*s1-s2-s3, 2.0*s2-s3-s1, 2.0*s3-s1-s2])**2 
+  diffsm = diffs**(m/2.0)
+  base   = np.dot(coeff,diffsm)
+  r = base**(1.0/m)/sigma0 #left = base**mi
 
   if not Jac:
     return (r-1.0).ravel()
   else:
-    ln   = lambda x : np.log(x + 1.0e-32)
-    drdb = r/base*mi
-    dbdm = ( f* d23s**m2*ln( d23s) + g* d31s**m2*ln( d31s) +  h*d12s**m2*ln( d12s) +
-             a*d123s**m2*ln(d123s) + b*d231s**m2*ln(d231s) + c*d312s**m2*ln(d312s) )*0.5
-    jf = drdb*d23s**m2;   ja = drdb*d123s**m2
-    jg = drdb*d31s**m2;   jb = drdb*d231s**m2
-    jh = drdb*d12s**m2;   jc = drdb*d312s**m2
-    jm = drdb*dbdm + r*ln(base)*(-mi*mi)
+    drdb = r/base/m
+    dbdm = np.dot(coeff,diffsm*math_ln(diffs)) #****0.5
+    jm = drdb*dbdm + r*math_ln(base)/(-m**2)
+    return np.vstack((drdb*diffsm, jm)).T
 
-    jaco = []
-    for jacv in zip(jf,jg,jh,ja,jb,jc,jm): 
-      jaco.append(jacv)
-    return np.array(jaco)
-
-def HosfordBasis(sigma0, F,G,H, a, sigmas, Jac=False, nParas=1):
+def HosfordBasis(sigma0, coeff, a, sigmas, Jac=False, nParas=1):
   '''
     residuum of Hershey yield criterion (eq. 2.43, Y = sigma0)
   '''
-  lambdas = principalStresses(sigmas)
-  diff23  = abs(lambdas[1,:] - lambdas[2,:])
-  diff31  = abs(lambdas[2,:] - lambdas[0,:])
-  diff12  = abs(lambdas[0,:] - lambdas[1,:])
-  base    = F*diff23**a + G*diff31**a + H*diff12**a;   expo = 1.0/a
-  left    = base**expo
-  right   = 2.0**expo*sigma0
-
+  s1,s2,s3 = principalStresses(sigmas)
+  diffs  = np.abs(np.array([s2-s3, s3-s1, s1-s2]))
+  diffsm = diffs**a
+  base   = np.dot(coeff,diffsm)
+  r      = base**(1.0/a)/sigma0
   if not Jac:
-    if nParas == 1: return (left - right).ravel()
-    else:           return (left/right - 1.0).ravel()
+    return (r - 1.0).ravel()
   else:
-    ones = np.ones(np.shape(sigmas)[1])
-    if nParas > 1:
-      ln   = lambda x : np.log(x + 1.0e-32)
-      dbda = F*ln(diff23)*diff23**a + G*ln(diff31)*diff31**a + H*ln(diff12)*diff12**a
-      deda = -expo*expo
-      drda = sigma0*(2.0**expo)*ln(2.0)*deda
-      dldb = expo*left/base
-      jaco = []
-
-    if   nParas == 1:     # von Mises
-      return ones*(-2.0**0.5)
-    elif nParas == 2:     # isotropic Hosford
-      js = ones*(-2.0**expo)                                              # d[]/dsigma0
-      ja = dldb*dbda + left*ln(base)*deda - drda                          # d[]/da
-      for jacv in zip(js, ja): 
-        jaco.append(jacv)
-      return np.array(jaco)
-    elif nParas == 5:           # anisotropic Hosford
-      js = -left/right/sigma0   #ones*(-2.0**expo)                                               # d[]/dsigma0
-      jF = dldb*diff23**a/right
-      jG = dldb*diff31**a/right
-      jH = dldb*diff12**a/right
-      ja =(dldb*dbda + left*ln(base)*deda)/right + left*(-right**(-2))*drda    # d[]/da
-      for jacv in zip(js, jF,jG,jH,ja): 
-        jaco.append(jacv)
-      return np.array(jaco)
-
-def Barlat1991Basis(sigma0, a, b, c, f, g, h, m, sigmas, Jac=False, nParas=2):
+    if   nParas == 1:             # von Mises
+      return -r/sigma0
+    else:
+      dbda = np.dot(coeff,diffsm*math_ln(diffs))
+      dldb = r/base/a
+      ja = dldb*dbda + r*math_ln(base)/(-a**a)
+      if nParas == 2:             # isotropic Hosford
+        return np.vstack((-r/sigma0, ja)).T
+      else:                       # anisotropic Hosford
+        return np.vstack((dldb*diffsm, ja)).T
+      
+def Barlat1991Basis(sigma0, coeff, m, sigmas, Jac=False, nParas=2):
   '''
     residuum of Barlat 1997 yield criterion
   '''
-  cos  = np.cos; sin = np.sin;  pi = np.pi;    abs = np.abs
-  dAda = sigmas[1] - sigmas[2];   A = a*dAda
-  dBdb = sigmas[2] - sigmas[0];   B = b*dBdb
-  dCdc = sigmas[0] - sigmas[1];   C = c*dCdc
-  dFdf = sigmas[4];               F = f*dFdf
-  dGdg = sigmas[5];               G = g*dGdg
-  dHdh = sigmas[3];               H = h*dHdh
+  cos = np.cos; sin = np.sin; pi = np.pi; abs = np.abs
+  s1,s2,s3,s4,s5,s6 = sigmas
+  dXdx = np.array([s2-s3,s3-s1,s1-s2,s5,s6,s4])
+  A,B,C,F,G,H = np.array(coeff)[:,None]*dXdx
 
-  I2 =   (F*F + G*G  +  H*H)/3.0  + ((A-C)**2+(C-B)**2+(B-A)**2)/54.0
-  I3 =   (C-B)*(A-C)*(B-A)/54.0 + F*G*H - \
-       ( (C-B)*F*F + (A-C)*G*G  + (B-A)*H*H )/6.0
-  theta = np.arccos(I3/I2**1.5)
-  phi1 = (2.0*theta + pi)/6.0
-  phi2 = (2.0*theta + pi*3.0)/6.0
-  phi3 = (2.0*theta + pi*5.0)/6.0
-  cos1 = 2.0*cos(phi1);  absc1 = abs(cos1)
-  cos2 = 2.0*cos(phi2);  absc2 = abs(cos2)
-  cos3 = 2.0*cos(phi3);  absc3 = abs(cos3)
-  ratio= np.sqrt(3.0*I2)/sigma0;    expo = 1.0/m
+  I2 = (F*F + G*G + H*H)/3.0+ ((A-C)**2+(C-B)**2+(B-A)**2)/54.0
+  I3 = (C-B)*(A-C)*(B-A)/54.0 + F*G*H - ((C-B)*F*F + (A-C)*G*G + (B-A)*H*H)/6.0
+  phi1 = np.arccos(I3/I2**1.5)/3.0 + pi/6.0; absc1 = 2.0*abs(cos(phi1))
+  phi2 = phi1                      + pi/3.0; absc2 = 2.0*abs(cos(phi2))
+  phi3 = phi2                      + pi/3.0; absc3 = 2.0*abs(cos(phi3))
   left = ( absc1**m + absc2**m + absc3**m )/2.0
-  leftNorm = left**expo
-  r    = ratio*leftNorm - 1.0
+  r    = left**(1.0/m)*np.sqrt(3.0*I2)/sigma0
 
   if not Jac:
-    return r.ravel()
+    return (r - 1.0).ravel()
   else:
-    ln   = lambda x : np.log(x + 1.0e-32)
-    jaco = []
-    dfdl = expo*leftNorm/left
-    js = -(r + 1.0)/sigma0
-    jm = (r+1.0)*ln(left)*(-expo*expo) + ratio*dfdl*0.5*(
-         absc1**m*ln(absc1) + absc2**m*ln(absc2) + absc3**m*ln(absc3) )
+    dfdl = r/left/m
+    jm = r*math_ln(left)/(-m**2) + dfdl*0.5*(
+         absc1**m*math_ln(absc1) + absc2**m*math_ln(absc2) + absc3**m*math_ln(absc3) ) 
     if nParas == 2:
-      for jacv in zip(js, jm): jaco.append(jacv)
-      return np.array(jaco)
+      js = -(r + 1.0)/sigma0
+      return np.vstack((js,jm)).T
     else:
-      dI2da = (2.0*A-B-C)*dAda/27.0
-      dI2db = (2.0*B-C-A)*dBdb/27.0
-      dI2dc = (2.0*C-A-B)*dCdc/27.0
-      dI2df = 2.0*F*dFdf/3.0
-      dI2dg = 2.0*G*dGdg/3.0
-      dI2dh = 2.0*H*dHdh/3.0
-      dI3da = dI2da*(B-C)/2.0 + (H**2 - G**2)*dAda/6.0
-      dI3db = dI2db*(C-A)/2.0 + (F**2 - H**2)*dBdb/6.0
-      dI3dc = dI2dc*(A-B)/2.0 + (G**2 - F**2)*dCdc/6.0
-      dI3df = ( (H*G + (B-C)) * F/3.0 )*dFdf
-      dI3dg = ( (F*H + (C-A)) * G/3.0 )*dGdg
-      dI3dh = ( (G*F + (A-B)) * H/3.0 )*dHdh
-
+      da,db,dc = (2.0*A-B-C)/18.0, (2.0*B-C-A)/18.0, (2.0*C-A-B)/18.0
+      dI2dx = np.array([da, db, dc, F,G,H])/1.5*dXdx
+      dI3dx = np.array([da*(B-C) + (H**2-G**2)/2.0, db*(C-A) + (F**2-H**2)/2.0, dc*(A-B) + (G**2-F**2)/2.0,
+                        (H*G + (B-C))*F, (F*H + (C-A))*G, (G*F + (A-B))*H])/3.0*dXdx
       darccos = -(1.0 - I3**2/I2**3)**(-0.5)
-      dthedI2 = darccos*I3*(-1.5)*I2**(-2.5)
-      dthedI3 = darccos*I2**(-1.5)
-      dc1dthe = -sin(phi1)/3.0
-      dc2dthe = -sin(phi2)/3.0
-      dc3dthe = -sin(phi3)/3.0
-      dfdc  = ratio * dfdl * 0.5 * m
-      dfdc1 = dfdc* absc1**(expo-1.0)*np.sign(cos1)
-      dfdc2 = dfdc* absc2**(expo-1.0)*np.sign(cos2)
-      dfdc3 = dfdc* absc3**(expo-1.0)*np.sign(cos3)
-      dfdthe= (dfdc1*dc1dthe + dfdc2*dc2dthe + dfdc2*dc2dthe)*2.0
-      dfdI2 = dfdthe*dthedI2;   dfdI3 = dfdthe*dthedI3
-      ja = dfdI2*dI2da + dfdI3*dI3da
-      jb = dfdI2*dI2db + dfdI3*dI3db
-      jc = dfdI2*dI2dc + dfdI3*dI3dc
-      jf = dfdI2*dI2df + dfdI3*dI3df
-      jg = dfdI2*dI2dg + dfdI3*dI3dg
-      jh = dfdI2*dI2dh + dfdI3*dI3dh
 
-      for jacv in zip(js,ja,jb,jc,jf,jg,jh,jm):
-        jaco.append(jacv)
-      return np.array(jaco)
+      dfdc  = dfdl*0.5*m
+      dfdcos = lambda phi : dfdc*(2.0*abs(cos(phi)))**(1.0/m-1.0)*np.sign(cos(phi))*(-sin(phi)/1.5)
+      dfdthe= (dfdcos(phi1) + dfdcos(phi2) + dfdcos(phi3)) 
+      dfdI2 = dfdthe*darccos*I3*(-1.5)*I2**(-2.5);   dfdI3 = dfdthe*darccos*I2**(-1.5)
+      return np.vstack((dfdI2*dI2dx + dfdI3*dI3dx, jm)).T
 
 def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
   '''
@@ -634,8 +501,10 @@ def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
   Gamma =    M*s11 + N*s22
   Psi   = ( (P*s11 + Q*s22)**2 + s12**2*R )**0.5
 
-  l1  = b*Gamma + c*Psi; l2  = b*Gamma - c*Psi; l3  = 2.0*c*Psi
-  l1s = l1**2;           l2s = l2**2;           l3s = l3**2
+  l1  = b*Gamma + c*Psi;   l1s = l1**2
+  l2  = b*Gamma - c*Psi;   l2s = l2**2
+  l3  = 2.0*c*Psi;         l3s = l3**2
+                       
   left = a*l1s**k + a*l2s**k + (1-a)*l3s**k
   sBar = left**(1.0/k2);  r = sBar/sigma0 - 1.0
   if not Jac:
@@ -644,7 +513,7 @@ def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
     temp = (P*s11 + Q*s22)/Psi
     dPsidP = temp*s11;  dPsidQ = temp*s22;  dPsidR = 0.5*s12**2/Psi
     ln   = lambda x : np.log(x + 1.0e-32)
-    jaco = []
+
     expo = 0.5/k;  k1 = k-1.0
 
     dsBardl = expo*sBar/left/sigma0
@@ -661,7 +530,6 @@ def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
     dldc = dldl1*Psi   - dldl2*Psi + dldl3*2.0*Psi
     dldk = a*ln(l1s)*l1s**k + a*ln(l2s)*l2s**k + (1-a)*ln(l3s)*l3s**k
 
-    js = -(r + 1.0)/sigma0
     ja = dsBardl * dlda
     jb = dsBardl * dldb
     jc = dsBardl * dldc
@@ -670,10 +538,7 @@ def BBC2003Basis(sigma0, a,b,c, d,e,f,g, k, sigmas, Jac=False):
     jf = dsBardl *(dldGama*s22 + dldPsi*dPsidQ*(-0.5))
     jg = dsBardl * dldPsi * dPsidR * 2.0*g
     jk = dsBardl * dldk + dsBarde * dedk
-
-    for jacv in zip(js,ja,jb,jc,jd, je, jf,jg,jk):
-      jaco.append(jacv)
-    return np.array(jaco)
+    return np.vstack((ja,jb,jc,jd, je, jf,jg,jk)).T
 
 def BBC2005Basis(sigma0, a,b,L, M, N, P, Q, R, k, sigmas, Jac=False):
   '''
@@ -693,7 +558,6 @@ def BBC2005Basis(sigma0, a,b,L, M, N, P, Q, R, k, sigmas, Jac=False):
     return r.ravel()
   else:
     ln   = lambda x : np.log(x + 1.0e-32)
-    jaco = []
     expo = 0.5/k;  k1 = k-1.0
 
     dsBardl = expo*sBar/left/sigma0
@@ -702,7 +566,7 @@ def BBC2005Basis(sigma0, a,b,L, M, N, P, Q, R, k, sigmas, Jac=False):
     dldl2 = a*k*(l2s**k1)*(2.0*l2)
     dldl3 = b*k*(l3s**k1)*(2.0*l3)
     dldl4 = b*k*(l4s**k1)*(2.0*l4)
-    
+
     dldLambda = dldl1 + dldl2 + dldl3 + dldl4
     dldGama   = dldl1 - dldl2
     dldPsi    = dldl3 - dldl4
@@ -711,28 +575,15 @@ def BBC2005Basis(sigma0, a,b,L, M, N, P, Q, R, k, sigmas, Jac=False):
     temp = (Q*s11 - R*s22)/Psi
     dPsidQ = s11*temp; dPsidR = -s22*temp
     dldk = a*ln(l1s)*l1s**k + a*ln(l2s)*l2s**k + b*ln(l3s)*l3s**k + b*ln(l4s)*l4s**k
-
-    ja = dsBardl * (l1s**k + l2s**k)
-    jb = dsBardl * (l3s**k + l4s**k)
-    jL = dsBardl * dldGama*s11
-    jM = dsBardl * dldGama*s22
-    jN = dsBardl * dldLambda*dLambdadN
-    jP = dsBardl * dldLambda*dLambdadP
-    jQ = dsBardl * dldPsi*dPsidQ
-    jR = dsBardl * dldPsi*dPsidR
-    jk = dsBardl * dldk + dsBarde * dedk
-
-    for jacv in zip(ja,jb,jL,jM, jN, jP,jQ,jR,jk):
-      jaco.append(jacv)
-    return np.array(jaco)
+    
+    J = dsBardl * np.array( [
+      l1s**k+l2s**k, l3s**k+l4s**k,dldGama*s11,dldGama*s22,dldLambda*dLambdadN,
+      dldLambda*dLambdadP, dldPsi*dPsidQ, dldPsi*dPsidR, dldk+dsBarde*dedk ])
+    return np.vstack(J).T
 
 def principalStress(p):
   sin = np.sin;    cos = np.cos
-  s11 = p[0];   s22 = p[1];   s33 = p[2]
-  s12 = p[3];   s23 = p[4];   s31 = p[5]
-  I1  = s11 + s22 + s33
-  I2  = s11*s22 + s22*s33 + s33*s11 - s12**2 - s23**2 - s31**2
-  I3  = s11*s22*s33 + 2.0*s12*s23*s31 - s12**2*s33 - s23**2*s11 - s31**2*s22
+  I1,I2,I3 = invariant(p)
 
   third = 1.0/3.0
   I1s3I2= (I1**2 - 3.0*I2)**0.5
@@ -741,12 +592,11 @@ def principalStress(p):
   cs    = 0.5*numer*denom
   phi   = np.arccos(cs)/3.0
   t1    = I1/3.0; t2 = 2.0/3.0*I1s3I2
-  S     = np.array( [t1 + t2*cos(phi), t1+t2*cos(phi+np.pi*2.0/3.0), t1+t2*cos(phi+np.pi*4.0/3.0)])
-  return S, np.array([I1,I2,I3])
+  return np.array( [t1 + t2*cos(phi), t1+t2*cos(phi+np.pi*2.0/3.0), t1+t2*cos(phi+np.pi*4.0/3.0)])
 
-def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6, Karafillis=False):
+def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), Karafillis=False):
   sin = np.sin;    cos = np.cos
-  I1 = Invariant[0,:];  I2 = Invariant[1,:];  I3 = Invariant[2,:]
+  I1,I2,I3 = invariant(p)
 
   third = 1.0/3.0
   I1s3I2= (I1**2 - 3.0*I2)**0.5
@@ -771,156 +621,96 @@ def principalStrs_Der(p, Invariant, s1, s2, s3, s4, s5, s6, Karafillis=False):
   dSdI = np.array([dSidIj(phi),dSidIj(phi+np.pi*2.0/3.0),dSidIj(phi+np.pi*4.0/3.0)]) # i=1,2,3; j=1,2,3
   
 # calculate the derivation of principal stress with regards to the anisotropic coefficients  
-  one    = np.ones_like(p[0]); zero = np.zeros_like(p[0])
-  dIdp = np.array([ [one,    one,    one,    zero,   zero,   zero], 
-                    [p[1]+p[2], p[2]+p[0], p[0]+p[1], -2.0*p[3], -2.0*p[4], -2.0*p[5]],
-                    [p[1]*p[2]-p[4]**2, p[2]*p[0]-p[5]**2, p[0]*p[1]-p[3]**2, 
-                     -2.0*p[3]*p[2]+2.0*p[4]*p[5], -2.0*p[4]*p[0]+2.0*p[5]*p[3], -2.0*p[5]*p[1]+2.0*p[3]*p[4]]
-                  ]) 
-
+  one    = np.ones_like(s1); zero = np.zeros_like(s1); dim  = len(s1)
+  dIdp = np.array([[one,    one,    one,    zero,   zero,   zero], 
+                   [p[1]+p[2], p[2]+p[0], p[0]+p[1], -2.0*p[3], -2.0*p[4], -2.0*p[5]],
+                   [p[1]*p[2]-p[4]**2, p[2]*p[0]-p[5]**2, p[0]*p[1]-p[3]**2, 
+                    -2.0*p[3]*p[2]+2.0*p[4]*p[5], -2.0*p[4]*p[0]+2.0*p[5]*p[3], -2.0*p[5]*p[1]+2.0*p[3]*p[4]] ]) 
   if Karafillis:
-    dSdp = np.empty_like(dIdp)
-    dSdc = np.empty_like(dIdp)
-    zero   = np.zeros_like(s1)
     dpdc = np.array([[zero,s2-s3,s3-s2], [s1-s3,zero,s3-s1], [s1-s2,s2-s1,zero]])
-    for i in xrange(3):
-      for j in xrange(6):
-        dSdp[i,j] = dSdI[i,0]*dIdp[0,j]+dSdI[i,1]*dIdp[1,j]+dSdI[i,2]*dIdp[2,j]
-      for j in xrange(3):
-        dSdc[i,j] = (dSdp[i,0]*dpdc[j,0]+dSdp[i,1]*dpdc[j,1]+dSdp[i,2]*dpdc[j,2])/3.0
-      dSdc[i,3:6] = dSdp[i,3]*s4,dSdp[i,4]*s5,dSdp[i,5]*s6
-    return dSdc
+    dSdp = np.array([np.dot(dSdI[:,:,i],dIdp[:,:,i]).T for i in xrange(dim)]).T
+    return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i].T).T/3.0 for i in xrange(dim)]).T,
+                           np.vstack([dSdp[:,3]*s4,dSdp[:,4]*s5,dSdp[:,5]*s6]).T.reshape(dim,3,3).T), axis=1)
   else:
-    dIdc = np.empty([3,9,len(s1)])
-    dSdc = np.empty_like(dIdc)
+    dIdc=np.array([[-dIdp[i,0]*s2, -dIdp[i,1]*s1, -dIdp[i,1]*s3,
+                    -dIdp[i,2]*s2, -dIdp[i,2]*s1, -dIdp[i,0]*s3,
+                     dIdp[i,3]*s4,  dIdp[i,4]*s5,  dIdp[i,5]*s6 ] for i in xrange(3)])
+    return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in xrange(dim)]).T
 
-    for i in xrange(3):
-      dIdc[i]=np.array([dIdp[i,0]*(-s2), dIdp[i,1]*(-s1), dIdp[i,1]*(-s3),
-                        dIdp[i,2]*(-s2), dIdp[i,2]*(-s1), dIdp[i,0]*(-s3),
-                        dIdp[i,3]*  s4,  dIdp[i,4]*  s5,  dIdp[i,5]*  s6 ])
-    for i in xrange(3):
-      for j in xrange(9):
-        dSdc[i,j] = dSdI[i,0]*dIdc[0,j]+dSdI[i,1]*dIdc[1,j]+dSdI[i,2]*dIdc[2,j]
-    return dSdc
-
-def Yld200418pBasis(sigma0, c12,c21,c23,c32,c31,c13,c44,c55,c66,
-                            d12,d21,d23,d32,d31,d13,d44,d55,d66, m, sigmas, Jac=False):
-
+def Yld200418pBasis(sigma0, C, D, m, sigmas, Jac=False):
+  '''
+    C: c12,c21,c23,c32,c13,c31,c44,c55,c66
+    D: d12,d21,d23,d32,d31,d13,d44,d55,d66
+  '''
   sv = (sigmas[0] + sigmas[1] + sigmas[2])/3.0
-  s1 = sigmas[0]-sv; s2 = sigmas[1]-sv; s3 = sigmas[2]-sv
-  s4 = sigmas[3];    s5 = sigmas[4];    s6 = sigmas[5]
-  
-  ys = lambda s1,s2,s3,s4,s5,s6,c12,c21,c23,c32,c13,c31,c44,c55,c66: np.array( [
-         -c12*s2-c13*s3, -c21*s1-c23*s3, -c31*s1-c32*s2, c44*s4, c55*s5, c66*s6 ])
-  p = ys(s1,s2,s3,s4,s5,s6,c12,c21,c23,c32,c13,c31,c44,c55,c66)
-  q = ys(s1,s2,s3,s4,s5,s6,d12,d21,d23,d32,d13,d31,d44,d55,d66)
+  sdev = np.vstack((sigmas[0:3]-sv,sigmas[3:6]))
+  ys = lambda sdev, C: np.array([-C[0]*sdev[1]-C[5]*sdev[2], -C[1]*sdev[0]-C[2]*sdev[2], 
+                                 -C[4]*sdev[0]-C[3]*sdev[1],  C[6]*sdev[3],C[7]*sdev[4], C[8]*sdev[5]])
+  p,q = ys(sdev, C), ys(sdev, D)
+  pLambdas, qLambdas = principalStress(p), principalStress(q)   # no sort
 
-  plambdas, pInvariant = principalStress(p)   # no sort
-  qlambdas, qInvariant = principalStress(q)   # no sort
-
-  P1 = plambdas[0,:];  P2 = plambdas[1,:];  P3 = plambdas[2,:]
-  Q1 = qlambdas[0,:];  Q2 = qlambdas[1,:];  Q3 = qlambdas[2,:]
-
-  m2 = m/2.0;  m1 = 1.0/m;  m21 = m2-1.0
-  P1Q1s = (P1-Q1)**2;  P1Q2s = (P1-Q2)**2;  P1Q3s = (P1-Q3)**2
-  P2Q1s = (P2-Q1)**2;  P2Q2s = (P2-Q2)**2;  P2Q3s = (P2-Q3)**2
-  P3Q1s = (P3-Q1)**2;  P3Q2s = (P3-Q2)**2;  P3Q3s = (P3-Q3)**2
-
-  phi= P1Q1s**m2 + P1Q2s**m2 + P1Q3s**m2 + \
-       P2Q1s**m2 + P2Q2s**m2 + P2Q3s**m2 + \
-       P3Q1s**m2 + P3Q2s**m2 + P3Q3s**m2
+  m2 = m/2.0;  m1 = 1.0/m;  m21 = m2-1.0; x3 = xrange(3); dim = len(sv)
+  PiQj  = np.array([(pLambdas[i,:]-qLambdas[j,:]) for i in x3 for j in x3])
+  QiPj  = np.array([(qLambdas[i,:]-pLambdas[j,:]) for i in x3 for j in x3]).reshape(3,3,dim)
+  PiQjs = PiQj**2
+  phi   = np.sum(PiQjs**m2,axis=0)
   r  = (0.25*phi)**m1/sigma0 - 1.0
 
   if not Jac:
     return r.ravel()
   else:
-    ln     = lambda x : np.log(x + 1.0e-32)
-
     drdphi =  (r+1.0)*m1/phi
-    dphidm =( (P1Q1s**m2)*ln(P1Q1s) + (P1Q2s**m2)*ln(P1Q2s) + (P1Q3s**m2)*ln(P1Q3s) +
-              (P2Q1s**m2)*ln(P2Q1s) + (P2Q2s**m2)*ln(P2Q2s) + (P2Q3s**m2)*ln(P2Q3s) +
-              (P3Q1s**m2)*ln(P3Q1s) + (P3Q2s**m2)*ln(P3Q2s) + (P3Q3s**m2)*ln(P3Q3s) )*0.5
-    jm     = drdphi*dphidm + (r+1.0)*ln(0.25*phi)*(-m1*m1)
+    dphidm = np.sum(PiQjs**m2*math_ln(PiQjs),axis=0)*0.5
+    dPdc, dQdd = principalStrs_Der(p, sdev), principalStrs_Der(q, sdev)
+    PiQjs3d = (PiQjs**m21).reshape(3,3,dim)
+    dphidP = -m*np.array([np.diag(np.dot(PiQjs3d[:,:,i], QiPj   [:,:,i])) for i in xrange(dim)]).T
+    dphidQ =  m*np.array([np.diag(np.dot(QiPj   [:,:,i], PiQjs3d[:,:,i])) for i in xrange(dim)]).T
 
-    dPdc = principalStrs_Der(p, pInvariant, s1,s2,s3,s4,s5,s6)
-    dQdd = principalStrs_Der(q, qInvariant, s1,s2,s3,s4,s5,s6)
-    dphidP = m*np.array([ P1Q1s**m21*(P1-Q1) + P1Q2s**m21*(P1-Q2) + P1Q3s**m21*(P1-Q3),
-                          P2Q1s**m21*(P2-Q1) + P2Q2s**m21*(P2-Q2) + P2Q3s**m21*(P2-Q3),
-                          P3Q1s**m21*(P3-Q1) + P3Q2s**m21*(P3-Q2) + P3Q3s**m21*(P3-Q3) ])
-    dphidQ = m*np.array([ P1Q1s**m21*(Q1-P1) + P2Q1s**m21*(Q1-P2) + P3Q1s**m21*(Q1-P3),
-                          P1Q2s**m21*(Q2-P1) + P2Q2s**m21*(Q2-P2) + P3Q2s**m21*(Q2-P3),
-                          P1Q3s**m21*(Q3-P1) + P2Q3s**m21*(Q3-P2) + P3Q3s**m21*(Q3-P3)])
-    
-    jc = drdphi*(dphidP[0]*dPdc[0]+dphidP[1]*dPdc[1]+dphidP[2]*dPdc[2])
-    jd = drdphi*(dphidQ[0]*dQdd[0]+dphidQ[1]*dQdd[1]+dphidQ[2]*dQdd[2])
+    jm = drdphi*dphidm + (r+1.0)*math_ln(0.25*phi)*(-m1*m1)
+    jc = drdphi*np.sum([dphidP[i]*dPdc[i] for i in x3],axis=0)
+    jd = drdphi*np.sum([dphidQ[i]*dQdd[i] for i in x3],axis=0)
     return np.vstack((jc,jd, jm)).T
 
-def KarafillisBoyceBasis(sigma0, c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,
-                         b1, b2, a, alpha , sigmas, Jac=False):
-  s1 = sigmas[0]; s2 = sigmas[1]; s3 = sigmas[2]
-  s4 = sigmas[3]; s5 = sigmas[4]; s6 = sigmas[5]
+def KarafillisBoyceBasis(sigma0, C1,C2, b1, b2, a, alpha , sigmas, Jac=False):
+  ks = lambda (s1,s2,s3,s4,s5,s6),(c1,c2,c3,c4,c5,c6): np.array( [
+         ((c2+c3)*s1-c3*s2-c2*s3)/3.0,  ((c3+c1)*s2-c3*s1-c1*s3)/3.0,
+         ((c1+c2)*s3-c2*s1-c1*s2)/3.0,  c4*s4, c5*s5, c6*s6 ])
+  p,q = ks(sigmas, C1), ks(sigmas, C2)
+  plambdas,qlambdas = principalStress(p), principalStress(q)
+  b1i,b2i,ai,rb2 = 1.0/b1, 1.0/b2, 1.0/a, 3.0**b2/(2.0**b2+2.0)
 
-  ks = lambda s1,s2,s3,s4,s5,s6,c11,c12,c13,c14,c15,c16: np.array( [
-       ((c12+c13)*s1-c13*s2-c12*s3)/3.0,  ((c13+c11)*s2-c13*s1-c11*s3)/3.0,
-       ((c11+c12)*s3-c12*s1-c11*s2)/3.0,  c14*s4, c15*s5, c16*s6    ])
-  p = ks(s1,s2,s3,s4,s5,s6,c11,c12,c13,c14,c15,c16)
-  q = ks(s1,s2,s3,s4,s5,s6,c21,c22,c23,c24,c25,c26)
+  difP  = np.array([plambdas[1]-plambdas[2], plambdas[2]-plambdas[0], plambdas[0]-plambdas[1]])
+  difPs = difP**2; difPb1 = difPs**(b1/2.0-1.0)
+  Qs    = qlambdas**2
 
-  plambdas, pInvariant = principalStress(p)
-  qlambdas, qInvariant = principalStress(q)
-
-  P1 = plambdas[0,:];  P2 = plambdas[1,:];  P3 = plambdas[2,:]
-  Q1 = qlambdas[0,:];  Q2 = qlambdas[1,:];  Q3 = qlambdas[2,:]
-
-  b1h = b1/2.0; b1h1 = b1h-1.0; b2h = b2/2.0; b2h1 = b2h-1.0
-  b1i = 1.0/b1; b2i = 1.0/b2
-  ai = 1.0/a
-  P2P3s = (P2-P3)**2;  Q1s = Q1**2
-  P3P1s = (P3-P1)**2;  Q2s = Q2**2
-  P1P2s = (P1-P2)**2;  Q3s = Q3**2
-
-  phi10 = P2P3s**b1h + P3P1s**b1h + P1P2s**b1h
-  phi20 = Q1s**b2h+Q2s**b2h+Q3s**b2h;  rb2 = 3.0**b2/(2.0**b2+2.0)
-  phi1  = (0.5*phi10)**b1i
-  phi2  = (rb2*phi20)**b2i
-
-  Stress = alpha*phi1**a + (1.0-alpha)*phi2**a; EqStress = Stress**ai
-  r  = EqStress/sigma0 - 1.0
+  phi10, phi20 = np.sum(difPs**(b1/2.0),axis = 0), np.sum(Qs**(b2/2.0),axis = 0)
+  phi1,  phi2  = (0.5*phi10)**b1i, (rb2*phi20)**b2i
+  Stress = alpha*phi1**a + (1.0-alpha)*phi2**a
+  r      = Stress**ai/sigma0
 
   if not Jac:
-    return r.ravel()
+    return (r-1.0).ravel()
   else:
-    ln     = lambda x : np.log(x + 1.0e-32)
+    drds = r*ai/Stress
+    dsda = alpha*phi1**a*math_ln(phi1) + (1.0-alpha)*phi2**a*math_ln(phi2)
 
-    drds    = (r+1.0)*ai/Stress
-    drdphi1 =  drds*     alpha *a*phi1**(a-1.0)
-    drdphi2 =  drds*(1.0-alpha)*a*phi2**(a-1.0)
-    dsda = alpha*phi1**a*ln(phi1) + (1.0-alpha)*phi2**a*ln(phi2)
+    dphi1dP = phi1/phi10*np.array([       -difPb1[1]*difP[1]+difPb1[2]*difP[2],
+      difPb1[0]*difP[0]-difPb1[2]*difP[2], difPb1[1]*difP[1]-difPb1[0]*difP[0]])
+    dphi2dQ = phi2/phi20*Qs*qlambdas*(b2/2.0-1.0)
+    dPdc = principalStrs_Der(p, sigmas, Karafillis=True)
+    dQdc = principalStrs_Der(q, sigmas, Karafillis=True)
+    dphi10db1 = np.sum(difPs**(b1/2.0)*math_ln(difPs), axis=0)*0.5
+    dphi20db2 = np.sum(   Qs**(b2/2.0)*math_ln(   Qs), axis=0)*0.5
 
-    dphi1dphi10 = phi1/phi10/b1;  dphi2dphi20 = phi2/phi20/b2
-    dphi1dP = np.array([ dphi1dphi10*b1*( P3P1s**b1h1*(P1-P3) + P1P2s**b1h1*(P1-P2)),
-                         dphi1dphi10*b1*( P2P3s**b1h1*(P2-P3) + P1P2s**b1h1*(P2-P1)),
-                         dphi1dphi10*b1*( P3P1s**b1h1*(P3-P1) + P2P3s**b1h1*(P3-P2)) ])
-    dphi2dQ = np.array([ dphi2dphi20*b2*Q1s*b2h1*Q1,
-                         dphi2dphi20*b2*Q2s*b2h1*Q2,
-                         dphi2dphi20*b2*Q3s*b2h1*Q3 ])
-
-    dPdc= principalStrs_Der(p, pInvariant, s1,s2,s3,s4,s5,s6, Karafillis=True)
-    dQdc= principalStrs_Der(q, qInvariant, s1,s2,s3,s4,s5,s6, Karafillis=True)
-
-    dphi10db1 = ( (P2P3s**b1h)*ln(P2P3s)+(P3P1s**b1h)*ln(P3P1s)+(P1P2s**b1h)*ln(P1P2s) )*0.5
-    dphi20db2 = ( (P2P3s**b1h)*ln(P2P3s)+(P3P1s**b1h)*ln(P3P1s)+(P1P2s**b1h)*ln(P1P2s) )*0.5
-    drb2db2   = rb2*ln(3.0) - rb2*ln(2.0)/(1.0+2.0**(1.0-b2))
-    dphi1db1  =  phi1*ln(phi10)*(-b1i*b1i) + b1i*phi1/(0.5*phi10)* 0.5*dphi10db1
-    dphi2db2  =  phi2*ln(phi20)*(-b2i*b2i) + b2i*phi2/(rb2*phi20)*(rb2*dphi20db2 + drb2db2*phi20)
-    ja  = drds*dsda - (r+1.0)*ln(Stress)/a/a  #drda
-    jb1 = drds * (     alpha *a*phi1**(a-1)) * dphi1db1
-    jb2 = drds * ((1.0-alpha)*a*phi2**(a-1)) * dphi2db2
+    drb2db2   = rb2*math_ln(3.0) - rb2*math_ln(2.0)/(1.0+2.0**(1.0-b2))
+    dphi1db1  = phi1*math_ln(phi10)*(-b1i*b1i) + b1i*phi1/(0.5*phi10)* 0.5*dphi10db1
+    dphi2db2  = phi2*math_ln(phi20)*(-b2i*b2i) + b2i*phi2/(rb2*phi20)*(rb2*dphi20db2 + drb2db2*phi20)
+    ja  = drds*dsda - r*math_ln(Stress)/a/a  #drda
+    jb1 = dphi1db1*(drds*a*phi1**(a-1)*alpha ) 
+    jb2 = dphi2db2*(drds*a*phi2**(a-1)*(1.0-alpha))
+    jc1 = np.sum([dphi1dP[i]*dPdc[i] for i in xrange(3)],axis=0)*drds*a*phi1**(a-1.0)*alpha 
+    jc2 = np.sum([dphi2dQ[i]*dQdc[i] for i in xrange(3)],axis=0)*drds*a*phi2**(a-1.0)*(1.0-alpha)
     jalpha = drds * (phi1**a - phi2**a)
-    
-    jc1 = drdphi1*(dphi1dP[0]*dPdc[0]+dphi1dP[1]*dPdc[1]+dphi1dP[2]*dPdc[2])
-    jc2 = drdphi2*(dphi2dQ[0]*dQdc[0]+dphi2dQ[1]*dQdc[1]+dphi2dQ[2]*dQdc[2])
-
     return np.vstack((jc1,jc2,jb1,jb2,ja,jalpha)).T
 
 
