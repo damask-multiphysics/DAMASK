@@ -113,7 +113,7 @@ for file in files:
 #--- read data ------------------------------------------------------------------------------------
   microstructure = np.zeros(info['grid'].prod(),'i')
   i = 0
-  table.data_rewind()
+
   while table.data_read():
     items = table.data
     if len(items) > 2:
