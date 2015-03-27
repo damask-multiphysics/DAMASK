@@ -372,6 +372,8 @@ program DAMASK_spectral_Driver
    call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
    call MPI_File_write(resUnit, materialpoint_results, size(materialpoint_results), &
                        MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+   my_offset = my_offset + sum(outputSize)
+   call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
  else
    call MPI_File_open(PETSC_COMM_WORLD, &
                       trim(getSolverWorkingDirectoryName())//trim(getSolverJobName())//'.spectralOut', &
@@ -560,10 +562,10 @@ program DAMASK_spectral_Driver
        if (mod(inc,loadCases(currentLoadCase)%outputFrequency) == 0_pInt) then                      ! at output frequency
          if (worldrank == 0) &
            write(6,'(1/,a)') ' ... writing results to file ......................................'
-         my_offset = my_offset + sum(outputSize)
-         call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
          call MPI_File_write(resUnit, materialpoint_results, size(materialpoint_results), &
                              MPI_DOUBLE, MPI_STATUS_IGNORE, ierr)
+         my_offset = my_offset + sum(outputSize)
+         call MPI_File_seek (resUnit,my_offset,MPI_SEEK_SET,ierr)
        endif
        if( loadCases(currentLoadCase)%restartFrequency > 0_pInt .and. &                             ! at frequency of writing restart information set restart parameter for FEsolving 
                       mod(inc,loadCases(currentLoadCase)%restartFrequency) == 0_pInt) then          ! first call to CPFEM_general will write? 
