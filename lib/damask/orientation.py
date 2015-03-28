@@ -822,6 +822,20 @@ class Orientation:
     return Orientation(quaternion=theQ,symmetry=self.symmetry.lattice) #, me.conjugated(), they
 
 
+  def inversePole(self,axis,SST = True):
+    '''
+    axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)
+    '''
+
+    if SST:                                                                                   # pole requested to be within SST
+      for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):             # test all symmetric equivalent orientations
+        pole = q.conjugated()*axis                                                            # align crystal direction to axis
+        if self.symmetry.inSST(pole): break
+    else:
+      pole = q.conjugated()*axis                                                              # align crystal direction to axis
+
+    return pole
+
   def IPFcolor(self,axis):
     '''
     TSL color of inverse pole figure for given axis
