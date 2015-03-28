@@ -335,7 +335,6 @@ for filename in filenames:
 
 
   # Build kdtree from mesh IPs and match mesh IPs to point grid
-  # could also be done with nearest neighbor search from damask.core, would possibly be faster ?
 
   if options.verbose: sys.stdout.write("\nBUILDING MAPPING OF GRID POINTS")
   kdTree = vtkKdTree()
