@@ -523,14 +523,11 @@ def ParseOutputFormat(filename,what,me):
 
 
 # -----------------------------
-def ParsePostfile(p,filename, outputFormat, legacyFormat):
+def ParsePostfile(p,filename, outputFormat):
 #
 # parse postfile in order to get position and labels of outputs
 # needs "outputFormat" for mapping of output names to postfile output indices
 # -----------------------------
-
-  startVar = {True: 'GrainCount',
-              False:'HomogenizationCount'}
 
   # --- build statistics
 
@@ -567,21 +564,17 @@ def ParsePostfile(p,filename, outputFormat, legacyFormat):
     stat['LabelOfElementalTensor'][labelIndex] = label
   
   if 'User Defined Variable 1' in stat['IndexOfLabel']:       # output format without dedicated names?
-    stat['IndexOfLabel'][startVar[legacyFormat]] = stat['IndexOfLabel']['User Defined Variable 1']  # adjust first named entry
+    stat['IndexOfLabel']['HomogenizationCount'] = stat['IndexOfLabel']['User Defined Variable 1']  # adjust first named entry
   
-  if startVar[legacyFormat] in stat['IndexOfLabel']:          # does the result file contain relevant user defined output at all?
-    startIndex = stat['IndexOfLabel'][startVar[legacyFormat]]
-    stat['LabelOfElementalScalar'][startIndex] = startVar[legacyFormat]
+  if 'HomogenizationCount' in stat['IndexOfLabel']:          # does the result file contain relevant user defined output at all?
+    startIndex = stat['IndexOfLabel']['HomogenizationCount']
+    stat['LabelOfElementalScalar'][startIndex] = 'HomogenizationCount'
     
     # We now have to find a mapping for each output label as defined in the .output* files to the output position in the post file
     # Since we know where the user defined outputs start ("startIndex"), we can simply assign increasing indices to the labels
     # given in the .output* file  
 
     offset = 1
-    if legacyFormat:
-      stat['LabelOfElementalScalar'][startIndex + offset] = startVar[not legacyFormat]    # add HomogenizationCount as second
-      offset += 1
-    
     for (name,N) in outputFormat['Homogenization']['outputs']:
       for i in range(N):
         label = {False:   '%s'%(    name),
@@ -589,20 +582,18 @@ def ParsePostfile(p,filename, outputFormat, legacyFormat):
         stat['IndexOfLabel'][label] = startIndex + offset
         stat['LabelOfElementalScalar'][startIndex + offset] = label
         offset += 1
-    
-    if not legacyFormat:
-      stat['IndexOfLabel'][startVar[not legacyFormat]] = startIndex + offset
-      stat['LabelOfElementalScalar'][startIndex + offset] = startVar[not legacyFormat]        # add GrainCount
-      offset += 1
+    stat['IndexOfLabel']['GrainCount'] = startIndex + offset
+    stat['LabelOfElementalScalar'][startIndex + offset] = 'GrainCount'                            # add GrainCount
+    offset += 1
 
     if '(ngrains)' in outputFormat['Homogenization']['specials']:
       for grain in range(outputFormat['Homogenization']['specials']['(ngrains)']):
 
-        stat['IndexOfLabel']['%i_CrystalliteCount'%(grain+1)] = startIndex + offset              # report crystallite count
-        stat['LabelOfElementalScalar'][startIndex + offset] = '%i_CrystalliteCount'%(grain+1)    # add GrainCount
+        stat['IndexOfLabel']['%i_CrystalliteCount'%(grain+1)] = startIndex + offset                 # report crystallite count
+        stat['LabelOfElementalScalar'][startIndex + offset] = '%i_CrystalliteCount'%(grain+1)       # add GrainCount
         offset += 1
 
-        for (name,N) in outputFormat['Crystallite']['outputs']:                           # add crystallite outputs
+        for (name,N) in outputFormat['Crystallite']['outputs']:                                     # add crystallite outputs
           for i in range(N):
             label = {False:   '%i_%s'%(grain+1,    name),
                       True:'%i_%i_%s'%(grain+1,i+1,name)}[N > 1]
@@ -673,8 +664,6 @@ of already processed data points for evaluation.
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')
-parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
-                  help='legacy user result block (starts with GrainCount) [%default]')
 parser.add_option('-n','--nodal', action='store_true', dest='nodal', \
                   help='data is extrapolated to nodal value [%default]')
 parser.add_option(    '--prefix', dest='prefix', \
@@ -734,7 +723,6 @@ parser.add_option_group(group_general)
 parser.add_option_group(group_special)
 
 parser.set_defaults(info = False)
-parser.set_defaults(legacy = False)
 parser.set_defaults(nodal = False)
 parser.set_defaults(prefix = '')
 parser.set_defaults(suffix = '')
@@ -849,7 +837,7 @@ for what in me:
 bg.set_message('opening result file...')
 p = OpenPostfile(filename+extension,options.filetype,options.nodal)
 bg.set_message('parsing result file...')
-stat = ParsePostfile(p, filename, outputFormat,options.legacy)
+stat = ParsePostfile(p, filename, outputFormat)
 if options.filetype == 'marc':
   stat['NumberOfIncrements'] -= 1             # t16 contains one "virtual" increment (at 0)
 
