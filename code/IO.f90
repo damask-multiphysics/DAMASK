@@ -83,7 +83,6 @@ module IO
 #endif
  private :: &
    IO_fixedFloatValue, &
-   IO_lcInplace ,&
    IO_verifyFloatValue, &
    IO_verifyIntValue, &
    hybridIA_reps
@@ -107,6 +106,9 @@ subroutine IO_init
 #include <petsc-finclude/petscsys.h>
  PetscErrorCode :: ierr
 #endif
+ external :: &
+   MPI_Comm_rank, &
+   MPI_Abort
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)
@@ -1142,32 +1144,6 @@ pure function IO_lc(string)
  enddo
 
 end function IO_lc
-
-
-!--------------------------------------------------------------------------------------------------
-!> @brief changes character string to lower case in place
-!--------------------------------------------------------------------------------------------------
-pure subroutine IO_lcInplace(string)
-
- implicit none
- character(len=*), intent(inout) :: string                                                         !< string to convert in place
- character(len=len(string))      :: IO_lc
-
- character(26), parameter :: LOWER = 'abcdefghijklmnopqrstuvwxyz'
- character(26), parameter :: UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ' 
-
- integer                         :: i,n                                                            ! no pInt (len returns default integer)
-
- do i=1,len(string)
-   n = index(UPPER,string(i:i))
-   if (n/=0) then 
-     IO_lc(i:i) = LOWER(n:n)
-   else
-     IO_lc(i:i) = string(i:i)
-   endif 
- enddo
-
-end subroutine IO_lcInplace
 
 
 !--------------------------------------------------------------------------------------------------

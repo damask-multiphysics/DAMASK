@@ -210,6 +210,10 @@ subroutine numerics_init
    tag ,&
    line
 !$ character(len=6) DAMASK_NumThreadsString                                                         ! environment variable DAMASK_NUM_THREADS
+ external :: &
+   MPI_Comm_rank, &
+   MPI_Comm_size, &
+   MPI_Abort
 
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)

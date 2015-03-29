@@ -119,7 +119,9 @@ subroutine prec_init
  PetscErrorCode :: ierr
 #endif
  external :: &
-   quit
+   quit, &
+   MPI_Comm_rank, &
+   MPI_Abort
    
 #ifdef PETSc
  call MPI_Comm_rank(PETSC_COMM_WORLD,worldrank,ierr);CHKERRQ(ierr)

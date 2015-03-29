@@ -1746,16 +1746,17 @@ end function math_qToEulerAxisAngle
 !--------------------------------------------------------------------------------------------------
 pure function math_qToRodrig(Q)
  use prec, only: &
-   DAMASK_NaN
+   DAMASK_NaN, &
+   tol_math_check
 
  implicit none
  real(pReal), dimension(4), intent(in) :: Q
  real(pReal), dimension(3) :: math_qToRodrig
 
- if (Q(1) /= 0.0_pReal) then                                   ! unless rotation by 180 deg
+ if (abs(Q(1)) > tol_math_check) then                                                               ! unless rotation by 180 deg
    math_qToRodrig = Q(2:4)/Q(1)
  else
-   math_qToRodrig = DAMASK_NaN                        ! NaN since Rodrig is unbound for 180 deg...
+   math_qToRodrig = DAMASK_NaN                                                                      ! NaN since Rodrig is unbound for 180 deg...
  endif
 
 end function math_qToRodrig
@@ -1799,15 +1800,19 @@ end function math_sampleRandomOri
 !> @brief draw a random sample from Gauss component with noise (in radians) half-width
 !--------------------------------------------------------------------------------------------------
 function math_sampleGaussOri(center,noise)
+ use prec, only: &
+   tol_math_check
 
  implicit none
- real(pReal), dimension(3) :: math_sampleGaussOri, center, disturb
+ real(pReal), intent(in) :: noise
+ real(pReal), dimension(3), intent(in) :: center 
+ real(pReal) :: cosScatter,scatter
+ real(pReal), dimension(3) :: math_sampleGaussOri, disturb
  real(pReal), dimension(3), parameter :: ORIGIN = [0.0_pReal,0.0_pReal,0.0_pReal]
  real(pReal), dimension(5) :: rnd
- real(pReal) :: noise,scatter,cosScatter
- integer(pInt) i
+ integer(pInt) :: i
 
- if (noise==0.0_pReal) then
+ if (abs(noise) < tol_math_check) then
    math_sampleGaussOri = center
    return
  endif
@@ -1835,6 +1840,8 @@ end function math_sampleGaussOri
 !> @brief draw a random sample from Fiber component with noise (in radians)
 !--------------------------------------------------------------------------------------------------
 function math_sampleFiberOri(alpha,beta,noise)
+ use prec, only: &
+   tol_math_check
 
  implicit none
  real(pReal), dimension(3) :: math_sampleFiberOri, fiberInC,fiberInS,axis
@@ -1863,7 +1870,7 @@ function math_sampleFiberOri(alpha,beta,noise)
 
 ! ---# rotation matrix from sample to crystal system #---
  angle = -acos(dot_product(fiberInC,fiberInS))
- if(angle /= 0.0_pReal) then
+ if(abs(angle) > tol_math_check) then
 !   rotation axis between sample and crystal system (cross product)
    forall(i=1_pInt:3_pInt) axis(i) = fiberInC(rotMap(1,i))*fiberInS(rotMap(2,i))-fiberInC(rotMap(2,i))*fiberInS(rotMap(1,i))
    oRot = math_EulerAxisAngleToR(math_vectorproduct(fiberInC,fiberInS),angle)
@@ -1879,12 +1886,12 @@ function math_sampleFiberOri(alpha,beta,noise)
 ! ---# rotation about random axis perpend to fiber #---
 ! random axis pependicular to fiber axis
    axis(1:2) = rnd(2:3)
-   if (fiberInS(3) /= 0.0_pReal) then
+   if (abs(fiberInS(3)) > tol_math_check) then
      axis(3)=-(axis(1)*fiberInS(1)+axis(2)*fiberInS(2))/fiberInS(3)
-   else if(fiberInS(2) /= 0.0_pReal) then
+   else if(abs(fiberInS(2)) > tol_math_check) then
      axis(3)=axis(2)
      axis(2)=-(axis(1)*fiberInS(1)+axis(3)*fiberInS(3))/fiberInS(2)
-   else if(fiberInS(1) /= 0.0_pReal) then
+   else if(abs(fiberInS(1)) > tol_math_check) then
      axis(3)=axis(1)
      axis(1)=-(axis(2)*fiberInS(2)+axis(3)*fiberInS(3))/fiberInS(1)
    end if
@@ -1912,6 +1919,8 @@ end function math_sampleFiberOri
 !> @brief draw a random sample from Gauss variable
 !--------------------------------------------------------------------------------------------------
 real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
+ use prec, only: &
+   tol_math_check
 
  implicit none
  real(pReal), intent(in) ::            meanvalue, &      ! meanvalue of gauss distribution
@@ -1921,7 +1930,7 @@ real(pReal) function math_sampleGaussVar(meanvalue, stddev, width)
  real(pReal) ::                        scatter, &        ! normalized scatter around meanvalue
                                        myWidth
 
- if (stddev == 0.0_pReal) then
+ if (abs(stddev) < tol_math_check) then
    math_sampleGaussVar = meanvalue
    return
  endif
@@ -2629,10 +2638,10 @@ end function math_binomial
 integer(pInt) pure function math_multinomial(alpha)
 
  implicit none
- integer(pInt), intent(in) :: alpha(:)
+ integer(pInt), intent(in), dimension(:) :: alpha
  integer(pInt) :: i
  
- math_multinomial = 1.0_pInt
+ math_multinomial = 1_pInt
  do i = 1, size(alpha)
    math_multinomial = math_multinomial*math_binomial(sum(alpha(1:i)),alpha(i))
  enddo  
