@@ -826,13 +826,13 @@ class Orientation:
     '''
     axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)
     '''
-
-    if SST:                                                                                   # pole requested to be within SST
-      for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):             # test all symmetric equivalent orientations
-        pole = q.conjugated()*axis                                                            # align crystal direction to axis
-        if self.symmetry.inSST(pole): break
-    else:
-      pole = q.conjugated()*axis                                                              # align crystal direction to axis
+    
+    for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                 # test all symmetric equivalent orientations
+      if SST:                                                                                   # pole requested to be within SST
+          pole = q.conjugated()*axis                                                            # align crystal direction to axis
+          if self.symmetry.inSST(pole): break
+      else:
+        pole = q.conjugated()*axis                                                              # align crystal direction to axis
 
     return pole
 
