@@ -15,7 +15,7 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Uniformly scale values scalar/special, vector, or tensor columns by given factor.
+Uniformly scale values in scalar/special, vector, or tensor columns by given factor.
 
 """, version = scriptID)
 

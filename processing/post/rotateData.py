@@ -15,13 +15,13 @@ scriptName = os.path.splitext(scriptID.split()[1])[0]
 # --------------------------------------------------------------------
 
 parser = OptionParser(option_class=damask.extendableOption, usage='%prog options [file[s]]', description = """
-Uniformly scale values of scalar, vector, or tensor columns by given factor.
+Rotate vector and/or tensor column data by given angle around given axis.
 
 """, version = scriptID)
 
-parser.add_option('-v','--vector',  dest = 'vector', action = 'extend', metavar = 'string',
+parser.add_option('-v','--vector',  dest = 'vector', action = 'extend', metavar = '<string LIST>',
                                     help = 'column heading of vector to rotate')
-parser.add_option('-t','--tensor',  dest = 'tensor', action = 'extend', metavar = 'string',
+parser.add_option('-t','--tensor',  dest = 'tensor', action = 'extend', metavar = '<string LIST>',
                                     help = 'column heading of tensor to rotate')
 parser.add_option('-r', '--rotation',dest = 'rotation', type = 'float', nargs = 4, metavar = ' '.join(['float']*4),
                                     help = 'angle and axis to rotate data %default')
