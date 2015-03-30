@@ -175,8 +175,11 @@ subroutine utilities_init()
    scalarFieldMPI, &                                                                                !< field cotaining data for FFTW in real space when debugging FFTW (no in place)
    div, &                                                                                           !< field cotaining data for FFTW in real and fourier space when debugging divergence (in place)
    coordsMPI
- integer(C_INTPTR_T) :: gridFFTW(3), alloc_local, local_K, local_K_offset, &
-                        dimSize = 3, scalarSize = 1, vecSize = 3, tensorSize = 9
+ integer(C_INTPTR_T) :: gridFFTW(3), alloc_local, local_K, local_K_offset
+ integer(C_INTPTR_T), parameter :: &
+   scalarSize = 1_C_INTPTR_T, &
+   vecSize = 3_C_INTPTR_T, &
+   tensorSize = 9_C_INTPTR_T
  
  mainProcess: if (worldrank == 0) then
    write(6,'(/,a)')   ' <<<+-  DAMASK_spectral_utilities init  -+>>>'
@@ -192,7 +195,7 @@ subroutine utilities_init()
  debugFFTW       = iand(debug_level(debug_SPECTRAL),debug_SPECTRALFFTW)       /= 0
  debugRotation   = iand(debug_level(debug_SPECTRAL),debug_SPECTRALROTATION)   /= 0
  debugPETSc      = iand(debug_level(debug_SPECTRAL),debug_SPECTRALPETSC)      /= 0
-#ifdef PETSc
+
  if(debugPETSc .and. worldrank == 0_pInt) write(6,'(3(/,a),/)') &
                 ' Initializing PETSc with debug options: ', &
                 trim(PETScDebug), &
@@ -201,9 +204,6 @@ subroutine utilities_init()
  call PetscOptionsClear(ierr); CHKERRQ(ierr)
  if(debugPETSc) call PetscOptionsInsertString(trim(PETSCDEBUG),ierr); CHKERRQ(ierr)
  call PetscOptionsInsertString(trim(petsc_options),ierr); CHKERRQ(ierr)
-#else
- if(debugPETSc) call IO_warning(41_pInt, ext_msg='debug PETSc')
-#endif
 
  grid1Red = gridLocal(1)/2_pInt + 1_pInt
  wgt = 1.0/real(product(gridGlobal),pReal)
@@ -233,32 +233,36 @@ subroutine utilities_init()
 
 !--------------------------------------------------------------------------------------------------
 ! MPI allocation
- gridFFTW = gridGlobal
+ gridFFTW = int(gridGlobal,C_INTPTR_T)
  alloc_local = fftw_mpi_local_size_3d(gridFFTW(3), gridFFTW(2), gridFFTW(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
  tensorFieldMPI = fftw_alloc_complex(9*alloc_local)
- call c_f_pointer(tensorFieldMPI, field_realMPI,   [dimSize,dimSize,2*(gridFFTW(1)/2 + 1),gridFFTW(2),local_K]) 
- call c_f_pointer(tensorFieldMPI, field_fourierMPI,[dimSize,dimSize,   gridFFTW(1)/2 + 1 ,gridFFTW(2),local_K]) 
+ call c_f_pointer(tensorFieldMPI, field_realMPI,    [3_C_INTPTR_T,3_C_INTPTR_T, &
+                  2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])
+ call c_f_pointer(tensorFieldMPI, field_fourierMPI, [3_C_INTPTR_T,3_C_INTPTR_T, &
+                  gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T ,              gridFFTW(2),local_K])
  allocate (xi(3,grid1Red,gridLocal(2),gridLocal(3)),source = 0.0_pReal)                             ! frequencies, only half the size for first dimension
  
  coordsMPI = fftw_alloc_complex(3*alloc_local)
- call c_f_pointer(coordsMPI, coords_realMPI,    [dimSize,2*(gridFFTW(1)/2 + 1),gridFFTW(2),local_K])  ! place a pointer for a real representation on coords_fftw
- call c_f_pointer(coordsMPI, coords_fourierMPI, [dimSize,   gridFFTW(1)/2 + 1 ,gridFFTW(2),local_K])  ! place a pointer for a real representation on coords_fftw
+ call c_f_pointer(coordsMPI, coords_realMPI,   [3_C_INTPTR_T,&
+                  2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])      ! place a pointer for a real representation on coords_fftw
+ call c_f_pointer(coordsMPI, coords_fourierMPI,[3_C_INTPTR_T,&
+                  gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T,               gridFFTW(2),local_K])      ! place a pointer for a real representation on coords_fftw
 
 !--------------------------------------------------------------------------------------------------
 ! MPI fftw plans
- planForthMPI = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], tensorSize, &     ! dimension, logical length in each dimension in reversed order, no. of transforms
+ planForthMPI = fftw_mpi_plan_many_dft_r2c(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], tensorSize, &  ! dimension, logical length in each dimension in reversed order, no. of transforms
                                          FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &          ! default iblock and oblock
                                                         field_realMPI, field_fourierMPI, &          ! input data, output data
                                                        MPI_COMM_WORLD, fftw_planner_flag)           ! use all processors, planer precision
- planBackMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], tensorSize, &     ! dimension, logical length in each dimension in reversed order, no. of transforms
+ planBackMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], tensorSize, &  ! dimension, logical length in each dimension in reversed order, no. of transforms
                                          FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &          ! default iblock and oblock
                                                          field_fourierMPI,field_realMPI, &          ! input data, output data
                                                        MPI_COMM_WORLD, fftw_planner_flag)           ! all processors, planer precision
    
 !--------------------------------------------------------------------------------------------------
 ! Coordinates MPI fftw plans
- planCoordsMPI  =  fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], vecSize, &     ! dimension, logical length in each dimension in reversed order, no. of transforms
+ planCoordsMPI  =  fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2),gridFFTW(1)], vecSize, &  ! dimension, logical length in each dimension in reversed order, no. of transforms
                                          FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &          ! default iblock and oblock
                                                        coords_fourierMPI,coords_realMPI, &          ! input data, output data
                                                        MPI_COMM_WORLD, fftw_planner_flag)           ! use all processors, planer precision
@@ -267,8 +271,10 @@ subroutine utilities_init()
 ! depending on debug options, allocate more memory and create additional plans 
  if (debugDivergence) then
    div = fftw_alloc_complex(3*alloc_local)
-   call c_f_pointer(div,divRealMPI,   [dimSize,2*(gridFFTW(1)/2 + 1),gridFFTW(2),local_K])
-   call c_f_pointer(div,divFourierMPI,[dimSize,   gridFFTW(1)/2 + 1 ,gridFFTW(2),local_K])
+   call c_f_pointer(div,divRealMPI,   [3_C_INTPTR_T,&
+                    2_C_INTPTR_T*(gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T),gridFFTW(2),local_K])
+   call c_f_pointer(div,divFourierMPI,[3_C_INTPTR_T,&
+                    gridFFTW(1)/2_C_INTPTR_T + 1_C_INTPTR_T,               gridFFTW(2),local_K])
    planDivMPI  = fftw_mpi_plan_many_dft_c2r(3, [gridFFTW(3),gridFFTW(2) ,gridFFTW(1)],vecSize, &
                                             FFTW_MPI_DEFAULT_BLOCK, FFTW_MPI_DEFAULT_BLOCK, &
                                                                  divFourierMPI, divRealMPI, &

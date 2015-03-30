@@ -33,7 +33,7 @@ module numerics
  integer, protected, public :: &
    DAMASK_NumThreadsInt       =  0                                                                  !< value stored in environment variable DAMASK_NUM_THREADS, set to zero if no OpenMP directive
  integer(pInt), public :: &
-   numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution ; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
+   numerics_integrationMode   =  0_pInt                                                             !< integrationMode 1 = central solution; integrationMode 2 = perturbation, Default 0: undefined, is not read from file
  integer(pInt), dimension(2) , protected, public :: &
    numerics_integrator        =  1_pInt                                                             !< method used for state integration (central & perturbed state), Default 1: fix-point iteration for both states
  real(pReal), protected, public :: &
