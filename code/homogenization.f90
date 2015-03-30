@@ -8,6 +8,9 @@
 !--------------------------------------------------------------------------------------------------
 module homogenization
  use prec, only: &
+#ifdef FEM
+   tOutputData, &
+#endif
    pInt, &
    pReal
 
@@ -21,8 +24,16 @@ module homogenization
    materialpoint_P                                                                                  !< first P--K stress of IP
  real(pReal),   dimension(:,:,:,:,:,:), allocatable, public ::  &
    materialpoint_dPdF                                                                               !< tangent of first P--K stress at IP
+#ifdef FEM
+ type(tOutputData), dimension(:),       allocatable, public :: &
+   homogOutput
+ type(tOutputData), dimension(:,:),     allocatable, public :: &
+   crystalliteOutput, &
+   phaseOutput
+#else
  real(pReal),   dimension(:,:,:),       allocatable, public :: &
    materialpoint_results                                                                            !< results array of material point
+#endif
  integer(pInt),                                      public, protected  :: &
    materialpoint_sizeResults, &
    homogenization_maxSizePostResults, &
@@ -48,7 +59,7 @@ module homogenization
                  damage_ID, &
                  vacancy_concentration_ID
  end enum
- integer(pInt),               dimension(:),   allocatable, private, protected :: &
+ integer(pInt),               dimension(:),   allocatable, public, protected :: &
    field_sizePostResults
  integer(pInt),               dimension(:,:), allocatable, private :: &
    field_sizePostResult
@@ -123,6 +134,9 @@ subroutine homogenization_init()
    constitutive_thermal_maxSizePostResults, &
    constitutive_vacancy_maxSizePostResults
  use crystallite, only: &
+#ifdef FEM
+   crystallite_sizePostResults, &
+#endif
    crystallite_maxSizePostResults
  use material
  use homogenization_none
@@ -307,6 +321,31 @@ subroutine homogenization_init()
    homogenization_maxSizePostResults = max(homogenization_maxSizePostResults,homogState(p)%sizePostResults)
    field_maxSizePostResults          = max(field_maxSizePostResults,field_sizePostResults(p))
  enddo  
+
+#ifdef FEM
+ allocate(homogOutput      (material_Nhomogenization                         ))
+ allocate(crystalliteOutput(material_Ncrystallite,  homogenization_maxNgrains))
+ allocate(phaseOutput      (material_Nphase,        homogenization_maxNgrains))
+ do p = 1, material_Nhomogenization 
+   homogOutput(p)%sizeResults = homogState(p)%sizePostResults + field_sizePostResults(p)
+   homogOutput(p)%sizeIpCells = count(material_homog==p)
+   allocate(homogOutput(p)%output(homogOutput(p)%sizeResults,homogOutput(p)%sizeIpCells))
+ enddo                                                        
+ do p = 1, material_Ncrystallite; do e = 1, homogenization_maxNgrains
+   crystalliteOutput(p,e)%sizeResults = crystallite_sizePostResults(p)
+   crystalliteOutput(p,e)%sizeIpCells = count(microstructure_crystallite(mesh_element(4,:)) == p .and. &
+                                              homogenization_Ngrains    (mesh_element(3,:)) >= e)*mesh_maxNips
+   allocate(crystalliteOutput(p,e)%output(crystalliteOutput(p,e)%sizeResults,crystalliteOutput(p,e)%sizeIpCells))
+ enddo; enddo                                                        
+ do p = 1, material_Nphase; do e = 1, homogenization_maxNgrains
+   phaseOutput(p,e)%sizeResults = plasticState(p)%sizePostResults + &
+                                  damageState (p)%sizePostResults + &
+                                  thermalState(p)%sizePostResults + &
+                                  vacancyState(p)%sizePostResults
+   phaseOutput(p,e)%sizeIpCells = count(material_phase(e,:,:) == p)
+   allocate(phaseOutput(p,e)%output(phaseOutput(p,e)%sizeResults,phaseOutput(p,e)%sizeIpCells))
+ enddo; enddo                                                        
+#else
  materialpoint_sizeResults = 1 &                                                                    ! grain count
                            + 1 + homogenization_maxSizePostResults &                                ! homogSize & homogResult
                                + field_maxSizePostResults &                                         ! field size & field result  
@@ -316,6 +355,7 @@ subroutine homogenization_init()
                                                             + constitutive_thermal_maxSizePostResults &    
                                                             + constitutive_vacancy_maxSizePostResults)   
  allocate(materialpoint_results(materialpoint_sizeResults,mesh_maxNips,mesh_NcpElems))
+#endif
  
  mainProcess: if (worldrank == 0) then 
    write(6,'(/,a)')   ' <<<+-  homogenization init  -+>>>'
@@ -342,7 +382,9 @@ subroutine homogenization_init()
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_requested:        ', shape(materialpoint_requested)
    write(6,'(a32,1x,7(i8,1x))')   'materialpoint_converged:        ', shape(materialpoint_converged)
    write(6,'(a32,1x,7(i8,1x),/)') 'materialpoint_doneAndHappy:     ', shape(materialpoint_doneAndHappy)
+#ifndef FEM
    write(6,'(a32,1x,7(i8,1x),/)') 'materialpoint_results:          ', shape(materialpoint_results)
+#endif
    write(6,'(a32,1x,7(i8,1x))')   'maxSizePostResults: ', homogenization_maxSizePostResults
  endif
  flush(6)
@@ -703,9 +745,18 @@ subroutine materialpoint_postResults
    FEsolving_execElem, &
    FEsolving_execIP
  use mesh, only: &
+#ifdef FEM
+   mesh_maxNips, &
+#endif
    mesh_element
  use material, only: &
    mappingHomogenization, &
+#ifdef FEM
+   mappingConstitutive, &  
+   homogenization_maxNgrains, &
+   material_Ncrystallite, &
+   material_Nphase, & 
+#endif
    homogState, &
    plasticState, &
    damageState, &
@@ -715,8 +766,17 @@ subroutine materialpoint_postResults
    homogenization_Ngrains, &
    microstructure_crystallite
  use constitutive, only: &
+#ifdef FEM
+   constitutive_maxSizePostResults, &
+   constitutive_damage_maxSizePostResults, &
+   constitutive_thermal_maxSizePostResults, &
+   constitutive_vacancy_maxSizePostResults, & 
+#endif
    constitutive_postResults
  use crystallite, only: &
+#ifdef FEM
+   crystallite_maxSizePostResults, &
+#endif
    crystallite_sizePostResults, &
    crystallite_postResults
 
@@ -729,6 +789,63 @@ subroutine materialpoint_postResults
    g, &                                                                                             !< grain number
    i, &                                                                                             !< integration point number
    e                                                                                                !< element number
+#ifdef FEM
+ integer(pInt) :: &
+   myHomog, &
+   myPhase, &
+   crystalliteCtr(material_Ncrystallite,  homogenization_maxNgrains), &
+   phaseCtr      (material_Nphase,        homogenization_maxNgrains)   
+ real(pReal), dimension(1+crystallite_maxSizePostResults + &
+                        1+constitutive_maxSizePostResults + &
+                          constitutive_damage_maxSizePostResults + &
+                          constitutive_thermal_maxSizePostResults + &
+                          constitutive_vacancy_maxSizePostResults) :: & 
+   crystalliteResults
+
+
+
+ crystalliteCtr = 0_pInt; phaseCtr = 0_pInt
+ elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
+   myNgrains = homogenization_Ngrains(mesh_element(3,e))
+   myCrystallite = microstructure_crystallite(mesh_element(4,e))
+   IpLooping: do i = FEsolving_execIP(1,e),FEsolving_execIP(2,e)
+     myHomog = mappingHomogenization(2,i,e)
+     thePos =  mappingHomogenization(1,i,e)
+     homogOutput(myHomog)%output(1: &
+                                 homogState(myHomog)%sizePostResults, &
+                                 thePos) = homogenization_postResults(i,e)
+     homogOutput(myHomog)%output(homogState(myHomog)%sizePostResults+1: &
+                                 homogState(myHomog)%sizePostResults+field_sizePostResults(myHomog), &
+                                 thePos) = field_postResults(i,e)
+     
+     grainLooping :do g = 1,myNgrains
+       myPhase = mappingConstitutive(2,g,i,e)
+       crystalliteResults(1:1+crystallite_sizePostResults(myCrystallite) + &
+                            1+plasticState(myPhase)%sizePostResults + &
+                              damageState (myPhase)%sizePostResults + &
+                              thermalState(myPhase)%sizePostResults + &
+                              vacancyState(myPhase)%sizePostResults) = crystallite_postResults(g,i,e)
+       if (microstructure_crystallite(mesh_element(4,e)) == myCrystallite .and. &
+           homogenization_Ngrains    (mesh_element(3,e)) >= g) then
+         crystalliteCtr(myCrystallite,g) = crystalliteCtr(myCrystallite,g) + 1_pInt
+         crystalliteOutput(myCrystallite,g)% &
+           output(1:crystalliteOutput(myCrystallite,g)%sizeResults,crystalliteCtr(myCrystallite,g)) = &  
+             crystalliteResults(2:1+crystallite_sizePostResults(myCrystallite))
+       endif
+       if (material_phase(g,i,e) == myPhase) then
+         phaseCtr(myPhase,g) = phaseCtr(myPhase,g) + 1_pInt
+         phaseOutput(myPhase,g)% &
+           output(1:phaseOutput(myPhase,g)%sizeResults,phaseCtr(myPhase,g)) = &  
+             crystalliteResults(3 + crystallite_sizePostResults(myCrystallite): &
+                                    plasticState(myphase)%sizePostResults + &                    
+                                    damageState (myphase)%sizePostResults + &     
+                                    thermalState(myphase)%sizePostResults + &
+                                    vacancyState(myphase)%sizePostResults)
+       endif
+     enddo grainLooping
+   enddo IpLooping
+ enddo elementLooping
+#else
 
  !$OMP PARALLEL DO PRIVATE(myNgrains,myCrystallite,thePos,theSize)
    elementLooping: do e = FEsolving_execElem(1),FEsolving_execElem(2)
@@ -767,6 +884,7 @@ subroutine materialpoint_postResults
      enddo IpLooping
    enddo elementLooping
  !$OMP END PARALLEL DO
+#endif
 
 end subroutine materialpoint_postResults
  

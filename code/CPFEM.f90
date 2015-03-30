@@ -343,7 +343,9 @@ subroutine CPFEM_general(mode, ffn, ffn1, temperature, dt, elFE, ip)
    materialpoint_F0, &
    materialpoint_P, &
    materialpoint_dPdF, &
+#if defined(Marc4DAMASK) || defined(Abaqus)
    materialpoint_results, &
+#endif
    materialpoint_sizeResults, &
    materialpoint_stressAndItsTangent, &
    materialpoint_postResults, &

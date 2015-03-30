@@ -101,6 +101,16 @@ type, public :: p_intvec
      field                                                                                          !< field data
  end type 
 
+#ifdef FEM
+ type, public :: tOutputData
+   integer(pInt) :: &
+     sizeIpCells = 0_pInt , &
+     sizeResults = 0_pInt
+   real(pReal), allocatable, dimension(:,:) :: &
+     output                                                                                         !< output data
+ end type 
+#endif
+
  public :: &
    prec_init
  
