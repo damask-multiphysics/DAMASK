@@ -85,7 +85,7 @@ class MPIEspectral_result:    # mimic py_post result object
       if self.file.read(3) == 'eoh': break
       self.dataOffset += 1
     self.dataOffset   += 7
-#search for the old keywords without ':' in case not found the new ones. Old ones are critical, if e.g. a load file is called 'load'
+#search first for the new keywords with ':', if not found try to find the old ones
     self.theTitle     = self._keyedString('load:')
     if self.theTitle == None:
       self.theTitle     = self._keyedString('load')
@@ -98,45 +98,45 @@ class MPIEspectral_result:    # mimic py_post result object
     if self.geometry == None:
       self.geometry     = self._keyedString('geometry')
 
-    self.N_loadcases  = self._keyedPackedArray('loadcases:',count=1,type='i',default=1)[0]
+    self.N_loadcases  = self._keyedPackedArray('loadcases:',count=1,type='i')[0]
     if self.N_loadcases == None:
-      self.N_loadcases  = self._keyedPackedArray('loadcases',count=1,type='i',default=1)[0]
+      self.N_loadcases  = self._keyedPackedArray('loadcases',count=1,type='i')[0]
 
-    self._frequencies = self._keyedPackedArray('frequencies:',count=self.N_loadcases,type='i',default=1)
-    if all ( i == None for i in self._frequencies) == None:
-      self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i',default=1)
+    self._frequencies = self._keyedPackedArray('frequencies:',count=self.N_loadcases,type='i')
+    if all ( i == None for i in self._frequencies):
+      self._frequencies = self._keyedPackedArray('frequencies',count=self.N_loadcases,type='i')
     
     self._increments  = self._keyedPackedArray('increments:',count=self.N_loadcases,type='i')
-    if all (i == None for i in self._increments) == None:
+    if all (i == None for i in self._increments):
       self._increments  = self._keyedPackedArray('increments',count=self.N_loadcases,type='i')
-    
-    self.startingIncrement = self._keyedPackedArray('startingIncrement:',count=1,type='i',default=0)[0]
+
+    self.startingIncrement = self._keyedPackedArray('startingIncrement:',count=1,type='i')[0]
     if self.startingIncrement == None:
-      self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i',default=0)[0]
+      self.startingIncrement = self._keyedPackedArray('startingIncrement',count=1,type='i')[0]
 
    
-    self._times       = self._keyedPackedArray('times:',count=self.N_loadcases,type='d',default=0.0)
-    if all (i == None for i in self._times) == None:
-      self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d',default=0.0)
+    self._times       = self._keyedPackedArray('times:',count=self.N_loadcases,type='d')
+    if all (i == None for i in self._times):
+      self._times       = self._keyedPackedArray('times',count=self.N_loadcases,type='d')
 
-    self._logscales   = self._keyedPackedArray('logscales:',count=self.N_loadcases,type='i',default=0)
-    if all (i == None for i in self._logscales) == None:
-      self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i',default=0)
+    self._logscales   = self._keyedPackedArray('logscales:',count=self.N_loadcases,type='i')
+    if all (i == None for i in self._logscales):
+      self._logscales   = self._keyedPackedArray('logscales',count=self.N_loadcases,type='i')
     
     self.size         = self._keyedPackedArray('size:',count=3,type='d')
-    if self.size == [None,None,None]:                                                               # no size found, try legacy alias 'dimension'
+    if self.size == [None,None,None]:                                                               # no 'size' found, try legacy alias 'dimension'
       self.size       = self._keyedPackedArray('dimension',count=3,type='d')
     
     self.grid         = self._keyedPackedArray('grid:',count=3,type='i')
-    if self.grid == [None,None,None]:
+    if self.grid == [None,None,None]:                                                               # no 'grid' found, try legacy alias 'resolution'
       self.grid         = self._keyedPackedArray('resolution',count=3,type='i')
     
     self.N_nodes      = (self.grid[0]+1)*(self.grid[1]+1)*(self.grid[2]+1)
     self.N_elements   =  self.grid[0]   * self.grid[1]   * self.grid[2]
 
-    self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults:',count=1,type='i',default=0)[0]
-    if self.element_scalars == None:
-      self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i',default=0)[0]
+    self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults:',count=1,type='i')[0]
+    if self.N_element_scalars == None:
+      self.N_element_scalars = self._keyedPackedArray('materialpoint_sizeResults',count=1,type='i')[0]
 
     self.N_positions  = (self.filesize-self.dataOffset)/(self.N_elements*self.N_element_scalars*8)
     self.N_increments = 1                                                    # add zero'th entry
@@ -146,6 +146,10 @@ class MPIEspectral_result:    # mimic py_post result object
     
     
   def __str__(self):
+    if options.legacy:
+       tagLen=8
+    else:
+       tagLen=0
     return '\n'.join([
       'workdir: %s'%self.wd,
       'geometry: %s'%self.geometry,
@@ -154,7 +158,7 @@ class MPIEspectral_result:    # mimic py_post result object
       'size: %s'%(','.join(map(str,self.size))),
       'header size: %i'%self.dataOffset,
       'actual   file size: %i'%self.filesize,
-      'expected file size: %i'%(self.dataOffset+self.N_increments*(8+self.N_elements*self.N_element_scalars*8)),
+      'expected file size: %i'%(self.dataOffset+self.N_increments*(tagLen+self.N_elements*self.N_element_scalars*8)),
       'positions in file : %i'%self.N_positions,
       'starting increment: %i'%self.startingIncrement,
       ]
@@ -163,22 +167,27 @@ class MPIEspectral_result:    # mimic py_post result object
 
   def locateKeyValue(self,identifier):
 
-    key = {'name':'','pos':0}
-    filepos = 0
-    tag = self.file.read(4)                                           # read the starting tag
-    while tag+key['name']+tag != tag+identifier+tag and filepos < self.dataOffset:
-      self.file.seek(filepos)
-      key['name'] = self.file.read(len(identifier))                   # anticipate identifier
-      key['pos']  = self.file.tell()                                  # remember position right after identifier
-      filepos += 1                                                    # try next position
-    return key
+    key = {'name':None,'pos':None}
 
+    name = ''
+    filepos=0                                                           # start at the beginning
+    while name != identifier and filepos < self.dataOffset:             # stop searching when found or when reached end of header
+      self.file.seek(filepos)                     
+      dataLen=struct.unpack('i',self.file.read(4))[0]                   # read the starting tag in front of the keyword (Fortran indicates start and end of writing by a 4 byte tag indicating the length of the following data)
+      name = self.file.read(len(identifier))                            # anticipate identifier
+      start=filepos+(4+len(identifier))                                 # this is the position where the values for the found key are stored   
+      filepos=filepos+(4+dataLen+4)                                     # forward to next keyword
+ 
+    if name==identifier:                                                # found the correct name
+      key['pos']  = start                                               # save position
+      key['name'] = name
+    return key    
 
   def _keyedPackedArray(self,identifier,count = 3,type = 'd',default = None):
     bytecount = {'d': 8,'i': 4}
     values = [default]*count
     key = self.locateKeyValue(identifier)
-    if key['name'] == identifier:
+    if key['name'] == identifier and key['pos'] != None:
       self.file.seek(key['pos'])
       for i in range(count):
         values[i] = struct.unpack(type,self.file.read(bytecount[type]))[0]
@@ -267,19 +276,47 @@ class MPIEspectral_result:    # mimic py_post result object
     return self.N_element_scalars
 
   def element_scalar(self,e,idx):
-    incStart =  self.dataOffset \
-             +  self.position*8*self.N_elements*self.N_element_scalars
-                                # header & footer + extra header and footer for 4 byte int range (Fortran)
-                                # values
-    where = (e*self.N_element_scalars + idx)*8
-    try:
-      self.file.seek(incStart+where)
-      value = struct.unpack('d',self.file.read(8))[0]
-    except:
-      print 'seeking',incStart+where
-      print 'e',e,'idx',idx
-      sys.exit(1)
+    if not options.legacy:
+      incStart =  self.dataOffset \
+               +  self.position*8*self.N_elements*self.N_element_scalars
+                                  # header & footer + extra header and footer for 4 byte int range (Fortran)
+                                  # values
+      where = (e*self.N_element_scalars + idx)*8
+      try:
+        self.file.seek(incStart+where)
+        value = struct.unpack('d',self.file.read(8))[0]
+      except:
+        print 'seeking',incStart+where
+        print 'e',e,'idx',idx
+        sys.exit(1)
+    
+    else:
+      fourByteLimit = 2**31 -1 -8
+      incStart =  self.dataOffset \
+               +  self.position*8*( 1 + self.N_elements*self.N_element_scalars*8//fourByteLimit \
+                                    + self.N_elements*self.N_element_scalars)
+                                  # header & footer + extra header and footer for 4 byte int range (Fortran)
+                                  # values
+
+      where = (e*self.N_element_scalars + idx)*8
+      try:
+        if where%fourByteLimit + 8 >= fourByteLimit:                                                  # danger of reading into fortran record footer at 4 byte limit
+          data=''
+          for i in xrange(8):
+            self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
+            data  += self.file.read(1)
+            where += 1
+          value = struct.unpack('d',data)[0]
+        else: 
+          self.file.seek(incStart+where+(where//fourByteLimit)*8+4)
+          value = struct.unpack('d',self.file.read(8))[0]
+      except:
+        print 'seeking',incStart+where+(where//fourByteLimit)*8+4
+        print 'e',e,'idx',idx
+        sys.exit(1)
+
     return [elemental_scalar(node,value) for node in self.element(e).items]
+
 
   def element_scalar_label(elem,idx):
     return 'User Defined Variable %i'%(idx+1)
@@ -529,6 +566,7 @@ def ParsePostfile(p,filename, outputFormat):
 # needs "outputFormat" for mapping of output names to postfile output indices
 # -----------------------------
 
+
   # --- build statistics
 
   stat = { \
@@ -664,6 +702,8 @@ of already processed data points for evaluation.
 
 parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')
+parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
+                  help='legacy user result block (starts with GrainCount) [%default]')
 parser.add_option('-n','--nodal', action='store_true', dest='nodal', \
                   help='data is extrapolated to nodal value [%default]')
 parser.add_option(    '--prefix', dest='prefix', \
@@ -723,6 +763,7 @@ parser.add_option_group(group_general)
 parser.add_option_group(group_special)
 
 parser.set_defaults(info = False)
+parser.set_defaults(legacy = False)
 parser.set_defaults(nodal = False)
 parser.set_defaults(prefix = '')
 parser.set_defaults(suffix = '')
