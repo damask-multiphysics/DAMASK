@@ -353,10 +353,10 @@ program DAMASK_spectral_Driver
      write(resUnit) 'size:',       geomSizeGlobal
      write(resUnit) 'materialpoint_sizeResults:', materialpoint_sizeResults
      write(resUnit) 'loadcases:',  size(loadCases)
-     write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per currentLoadCase
-     write(resUnit) 'times:',      loadCases%time                                                     ! one entry per currentLoadCase
+     write(resUnit) 'frequencies:', loadCases%outputfrequency                                         ! one entry per LoadCase
+     write(resUnit) 'times:',      loadCases%time                                                     ! one entry per LoadCase
      write(resUnit) 'logscales:',  loadCases%logscale
-     write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per currentLoadCase
+     write(resUnit) 'increments:', loadCases%incs                                                     ! one entry per LoadCase
      write(resUnit) 'startingIncrement:', restartInc - 1_pInt                                         ! start with writing out the previous inc
      write(resUnit) 'eoh'    
      close(resUnit)                                                                                   ! end of header
