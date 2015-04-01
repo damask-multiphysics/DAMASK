@@ -2160,68 +2160,28 @@ subroutine crystallite_integrateStateRKCK45()
        mySizeVacancyDotState = vacancyState(p)%sizeDotState
 
        ! --- absolute residuum in state  ---
-       ! NEED TO DO THE ADDITION IN THIS LENGTHY WAY BECAUSE OF PARALLELIZATION
-       ! CAN'T USE A REDUCTION CLAUSE ON A POINTER OR USER DEFINED TYPE
-       
        stateResiduum(1:mySizePlasticDotState,g,i,e) = &
-                 (   DB(1) * plasticState(p)%RKCK45dotState(1,1:mySizePlasticDotState,cc) &
-                   + DB(2) * plasticState(p)%RKCK45dotState(2,1:mySizePlasticDotState,cc) &
-                   + DB(3) * plasticState(p)%RKCK45dotState(3,1:mySizePlasticDotState,cc) &
-                   + DB(4) * plasticState(p)%RKCK45dotState(4,1:mySizePlasticDotState,cc) &
-                   + DB(5) * plasticState(p)%RKCK45dotState(5,1:mySizePlasticDotState,cc) &
-                   + DB(6) * plasticState(p)%RKCK45dotState(6,1:mySizePlasticDotState,cc) &
-                 ) * crystallite_subdt(g,i,e)
+                 matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:mySizePlasticDotState,cc)),DB) &
+                 * crystallite_subdt(g,i,e)
        damageStateResiduum(1:mySizeDamageDotState,g,i,e) = &
-                 (   DB(1) * damageState(p)%RKCK45dotState(1,1:mySizeDamageDotState,cc) &
-                   + DB(2) * damageState(p)%RKCK45dotState(2,1:mySizeDamageDotState,cc) &
-                   + DB(3) * damageState(p)%RKCK45dotState(3,1:mySizeDamageDotState,cc) &
-                   + DB(4) * damageState(p)%RKCK45dotState(4,1:mySizeDamageDotState,cc) &
-                   + DB(5) * damageState(p)%RKCK45dotState(5,1:mySizeDamageDotState,cc) &
-                   + DB(6) * damageState(p)%RKCK45dotState(6,1:mySizeDamageDotState,cc) &
-                 ) * crystallite_subdt(g,i,e)
+                 matmul(transpose(damageState(p)%RKCK45dotState(1:6,1:mySizeDamageDotState,cc)),DB) &
+                 * crystallite_subdt(g,i,e)
        thermalStateResiduum(1:mySizeThermalDotState,g,i,e) = &
-                 (   DB(1) * thermalState(p)%RKCK45dotState(1,1:mySizeThermalDotState,cc) &
-                   + DB(2) * thermalState(p)%RKCK45dotState(2,1:mySizeThermalDotState,cc) &
-                   + DB(3) * thermalState(p)%RKCK45dotState(3,1:mySizeThermalDotState,cc) &
-                   + DB(4) * thermalState(p)%RKCK45dotState(4,1:mySizeThermalDotState,cc) &
-                   + DB(5) * thermalState(p)%RKCK45dotState(5,1:mySizeThermalDotState,cc) &
-                   + DB(6) * thermalState(p)%RKCK45dotState(6,1:mySizeThermalDotState,cc) &
-                 ) * crystallite_subdt(g,i,e)
+                 matmul(transpose(thermalState(p)%RKCK45dotState(1:6,1:mySizeThermalDotState,cc)),DB) &
+                 * crystallite_subdt(g,i,e)
        vacancyStateResiduum(1:mySizeVacancyDotState,g,i,e) = &
-                 (   DB(1) * vacancyState(p)%RKCK45dotState(1,1:mySizeVacancyDotState,cc) &
-                   + DB(2) * vacancyState(p)%RKCK45dotState(2,1:mySizeVacancyDotState,cc) &
-                   + DB(3) * vacancyState(p)%RKCK45dotState(3,1:mySizeVacancyDotState,cc) &
-                   + DB(4) * vacancyState(p)%RKCK45dotState(4,1:mySizeVacancyDotState,cc) &
-                   + DB(5) * vacancyState(p)%RKCK45dotState(5,1:mySizeVacancyDotState,cc) &
-                   + DB(6) * vacancyState(p)%RKCK45dotState(6,1:mySizeVacancyDotState,cc) &
-                 ) * crystallite_subdt(g,i,e)
+                 matmul(transpose(vacancyState(p)%RKCK45dotState(1:6,1:mySizevacancyDotState,cc)),DB) &
+                 * crystallite_subdt(g,i,e)
  
        ! --- dot state ---
-
-       plasticState(p)%dotState (:,cc) = B(1) * plasticState(p)%RKCK45dotState(1,:,cc) &
-                                       + B(2) * plasticState(p)%RKCK45dotState(2,:,cc) &
-                                       + B(3) * plasticState(p)%RKCK45dotState(3,:,cc) &
-                                       + B(4) * plasticState(p)%RKCK45dotState(4,:,cc) &
-                                       + B(5) * plasticState(p)%RKCK45dotState(5,:,cc) &
-                                       + B(6) * plasticState(p)%RKCK45dotState(6,:,cc) 
-       damageState(p)%dotState (:,cc)  = B(1) * damageState( p)%RKCK45dotState(1,:,cc) &
-                                       + B(2) * damageState( p)%RKCK45dotState(2,:,cc) &
-                                       + B(3) * damageState( p)%RKCK45dotState(3,:,cc) &
-                                       + B(4) * damageState( p)%RKCK45dotState(4,:,cc) &
-                                       + B(5) * damageState( p)%RKCK45dotState(5,:,cc) &
-                                       + B(6) * damageState( p)%RKCK45dotState(6,:,cc) 
-       thermalState(p)%dotState (:,cc) = B(1) * thermalState(p)%RKCK45dotState(1,:,cc) &
-                                       + B(2) * thermalState(p)%RKCK45dotState(2,:,cc) &
-                                       + B(3) * thermalState(p)%RKCK45dotState(3,:,cc) &
-                                       + B(4) * thermalState(p)%RKCK45dotState(4,:,cc) &
-                                       + B(5) * thermalState(p)%RKCK45dotState(5,:,cc) &
-                                       + B(6) * thermalState(p)%RKCK45dotState(6,:,cc) 
-       vacancyState(p)%dotState (:,cc) = B(1) * vacancyState(p)%RKCK45dotState(1,:,cc) &
-                                       + B(2) * vacancyState(p)%RKCK45dotState(2,:,cc) &
-                                       + B(3) * vacancyState(p)%RKCK45dotState(3,:,cc) &
-                                       + B(4) * vacancyState(p)%RKCK45dotState(4,:,cc) &
-                                       + B(5) * vacancyState(p)%RKCK45dotState(5,:,cc) &
-                                       + B(6) * vacancyState(p)%RKCK45dotState(6,:,cc) 
+       plasticState(p)%dotState (:,cc) =  &
+                 matmul(transpose(plasticState(p)%RKCK45dotState(1:6,1:mySizePlasticDotState,cc)),B)
+       damageState(p)%dotState (:,cc)  = &
+                 matmul(transpose(damageState(p)%RKCK45dotState(1:6,1:mySizeDamageDotState,cc)),B) 
+       thermalState(p)%dotState (:,cc) = &
+                 matmul(transpose(thermalState(p)%RKCK45dotState(1:6,1:mySizeThermalDotState,cc)),B)
+       vacancyState(p)%dotState (:,cc) = &
+                 matmul(transpose(vacancyState(p)%RKCK45dotState(1:6,1:mySizevacancyDotState,cc)),B)
      endif
    enddo; enddo; enddo
  !$OMP ENDDO
@@ -3897,9 +3857,8 @@ logical function crystallite_integrateStress(&
 
      if (mod(jacoCounterLp, iJacoLpresiduum) == 0_pInt) then
        dFe_dLp3333 = 0.0_pReal
-       do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+       forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
          dFe_dLp3333(o,1:3,p,1:3) = A(o,p)*math_transpose33(invFi_new)                                ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
-       enddo; enddo
        dFe_dLp3333 = - dt * dFe_dLp3333
        dRLp_dLp    =   math_identity2nd(9_pInt) &
                      - math_Plain3333to99(math_mul3333xx3333(math_mul3333xx3333(dLp_dT3333,dT_dFe3333),dFe_dLp3333))
@@ -3978,13 +3937,12 @@ logical function crystallite_integrateStress(&
      temp_33     = math_mul33x33(math_mul33x33(A,B),invFi_current)
      dFe_dLi3333 = 0.0_pReal
      dFi_dLi3333 = 0.0_pReal
-     do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+     forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt)
        dFe_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
        dFi_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
-     enddo; enddo
-     do o=1_pInt,3_pInt; do p=1_pInt,3_pInt
+     end forall
+     forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
        dFi_dLi3333(1:3,1:3,o,p) = math_mul33x33(math_mul33x33(Fi_new,dFi_dLi3333(1:3,1:3,o,p)),Fi_new)
-     enddo; enddo
 
      dRLi_dLi  = math_identity2nd(9_pInt) &
                - math_Plain3333to99(math_mul3333xx3333(dLi_dT3333, math_mul3333xx3333(dT_dFe3333, dFe_dLi3333) + &
