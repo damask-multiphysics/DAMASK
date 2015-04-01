@@ -317,7 +317,6 @@ class MPIEspectral_result:    # mimic py_post result object
 
     return [elemental_scalar(node,value) for node in self.element(e).items]
 
-
   def element_scalar_label(elem,idx):
     return 'User Defined Variable %i'%(idx+1)
 
@@ -565,7 +564,6 @@ def ParsePostfile(p,filename, outputFormat):
 # parse postfile in order to get position and labels of outputs
 # needs "outputFormat" for mapping of output names to postfile output indices
 # -----------------------------
-
 
   # --- build statistics
 

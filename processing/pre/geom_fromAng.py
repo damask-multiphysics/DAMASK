@@ -85,6 +85,7 @@ for file in files:
   point = 0
   for line in file['input']:
     words = line.split()
+    if len(words) == 0: continue                                                                    # ignore empty lines
     if words[0] == '#':                                                                             # process initial comments block
       if len(words) > 2:
         if words[2].lower() == 'hexgrid': 
