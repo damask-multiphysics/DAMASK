@@ -7,8 +7,8 @@ import sys
 
 try:
   import h5py
-except:
-  sys.stderr.write('Could not import h5py.\n') 
+except (ImportError) as e:
+  sys.stderr.write('\nREMARK: h5py module not available \n\n')
 
 class Result():
   '''
