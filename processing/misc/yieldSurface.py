@@ -237,15 +237,16 @@ def Tresca(eqStress, paras, sigmas, mFix, criteria, Jac = False):
   '''
     Tresca yield criterion
     the fitted parameters is: paras(sigma0)
+    eqStress, mFix, criteria are invalid input
   '''
-  lambdas = principalStresses(sigmas)
-  r = np.amax(np.array([abs(lambdas[2,:]-lambdas[1,:]),\
-                        abs(lambdas[1,:]-lambdas[0,:]),\
-                        abs(lambdas[0,:]-lambdas[2,:])]),0) - paras
   if not Jac:
+    lambdas = principalStresses(sigmas)
+    r = np.amax(np.array([abs(lambdas[2,:]-lambdas[1,:]),\
+                          abs(lambdas[1,:]-lambdas[0,:]),\
+                          abs(lambdas[0,:]-lambdas[2,:])]),0) - paras
     return r.ravel()
   else:
-    return -np.ones(len(r))
+    return -np.ones(len(sigmas))
 
 def Cazacu_Barlat(eqStress, paras, sigmas, mFix, criteria, Jac = False):
   '''
@@ -334,7 +335,7 @@ def Hill1948(eqStress, paras, sigmas, mFix, criteria, Jac = False):
   '''
     Hill 1948 yield criterion
     the fitted parameters are F, G, H, L, M, N
-    eqStress, criteria are invalid input
+    eqStress, mFix, criteria are invalid input
   '''
   s11,s22,s33,s12,s23,s31 = sigmas
   jac = np.array([(s22-s33)**2,(s33-s11)**2,(s11-s22)**2, 2.0*s23**2,2.0*s31**2,2.0*s12**2])
@@ -347,6 +348,7 @@ def Hill1979(eqStress,paras, sigmas, mFix, criteria, Jac = False):
   '''
     Hill 1979 yield criterion
     the fitted parameters are: f,g,h,a,b,c,m
+    criteria are invalid input
   '''
   if mFix[0]: m = mFix[1]
   else:       m = paras[-1]
@@ -379,16 +381,16 @@ def Hosford(eqStress, paras, sigmas, mFix, criteria, Jac = False):
 
   if criteria == 'vonmises':
     coeff = np.ones(3)
-    a = 2.0
     sigma0 = paras
+    a = 2.0
   elif criteria == 'hershey':
+    coeff = np.ones(3)
     sigma0 = paras[0]
     if mFix[0]: a = mFix[1]
     else:       a = paras[1]
-    coeff = np.ones(3)
   else:
-    print '11'
-    coeff = paras[0:3]
+    coeff  = paras[0:3]
+    sigma0 = eqStress
     if mFix[0]: a = mFix[1]
     else:       a = paras[3]
 
@@ -421,6 +423,7 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     the fitted parameters are:
       Isotropic: sigma0, m
       Anisotropic: a, b, c, f, g, h, m
+    m is optional
   '''
   if criteria == 'barlat1991iso':
     sigma0 = paras[0]
@@ -451,7 +454,7 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     jm = r*math_ln(left)/(-m**2) + dfdl*0.5*(
          absc1**m*math_ln(absc1) + absc2**m*math_ln(absc2) + absc3**m*math_ln(absc3) ) 
     if criteria == 'barlat1991iso':
-      js = -(r + 1.0)/sigma0
+      js = -r/sigma0
       if mFix[0]: return js
       else:       return np.vstack((js,jm)).T
     else:
@@ -471,7 +474,10 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, Jac=False):
 
 def BBC2003(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
-    residuum of the BBC2003 yield criterion for plain stress
+    BBC2003 yield criterion
+    the fitted parameters are 
+    a, b, c, d, e, f, g, k;  k is optional
+    criteria are invalid input
   '''
   a,b,c, d,e,f,g= paras[0:7]
   if mFix[0]: k = mFix[1]
@@ -524,7 +530,10 @@ def BBC2003(eqStress, paras, sigmas, mFix, criteria, Jac=False):
 
 def BBC2005(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
-    residuum of the BBC2005 yield criterion for plain stress
+    BBC2005 yield criterion
+    the fitted parameters are 
+    a, b, L ,M, N, P, Q, R, k;  k is optional
+    criteria are invalid input
   '''
   a,b,L, M, N, P, Q, R = paras[0:8]
   if mFix[0]: k = mFix[1]
@@ -571,8 +580,11 @@ def BBC2005(eqStress, paras, sigmas, mFix, criteria, Jac=False):
 
 def Yld200418p(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
-    C: c12,c21,c23,c32,c13,c31,c44,c55,c66
-    D: d12,d21,d23,d32,d31,d13,d44,d55,d66
+    Yld2004-18p yield criterion
+    the fitted parameters are 
+    C: c12,c21,c23,c32,c13,c31,c44,c55,c66; D: d12,d21,d23,d32,d31,d13,d44,d55,d66
+    and m, m is optional
+    criteria are invalid input
   '''
   C,D = paras[0:9], paras[9:18]
   if mFix[0]: m = mFix[1]
@@ -610,14 +622,21 @@ def Yld200418p(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     else:       return np.vstack((jc,jd,jm)).T
 
 def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+  '''
+    Karafillis-Boyce yield criterion
+    the fitted parameters are 
+    c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a
+    0<alpha<1, b1,b2,a are optional
+    criteria are invalid input
+  '''
   ks = lambda (s1,s2,s3,s4,s5,s6),(c1,c2,c3,c4,c5,c6): np.array( [
          ((c2+c3)*s1-c3*s2-c2*s3)/3.0,  ((c3+c1)*s2-c3*s1-c1*s3)/3.0,
          ((c1+c2)*s3-c2*s1-c1*s2)/3.0,  c4*s4, c5*s5, c6*s6 ])
 
   C1,C2,alpha  = paras[0:6], paras[6:12], paras[12]
   if mFix[0]: b1=b2=a = mFix[1]
-  else:       b1,b2,a = paras[12:15]
-  print b1,b2,a
+  else:       b1,b2,a = paras[13:16]
+
   p,q = ks(sigmas, C1), ks(sigmas, C2)
   plambdas,qlambdas = principalStress(p), principalStress(q)
   b1i,b2i,ai,rb2 = 1.0/b1, 1.0/b2, 1.0/a, 3.0**b2/(2.0**b2+2.0)
@@ -1109,11 +1128,11 @@ parser.add_option('-t','--threads',       dest='threads', type='int',
 parser.add_option('-d','--dimension',     dest='dimension', type='int',
                                      help='dimension of the virtual test [%default]',  metavar='int')
 parser.add_option('-v', '--vegter',  dest='vegter', action='store_true',
-                  help='Vegter criteria [%default]')                                     
+                  help='Vegter criteria [%default]',  metavar='float')                                     
 parser.add_option('-e', '--exponent',dest='exponent', type='float',
                                      help='exponent of non-quadratic criteria') 
 parser.add_option('-u', '--uniaxial',dest='eqStress', type='float',
-                                     help='Equivalent stress') 
+                                     help='Equivalent stress',  metavar='float') 
 parser.set_defaults(min        = 12)
 parser.set_defaults(max        = 30)
 parser.set_defaults(threads    = 4)
@@ -1145,9 +1164,6 @@ if options.yieldValue[2] != int(options.yieldValue[2]):
 if not os.path.isfile('numerics.config'):
   print('numerics.config file not found')
 
-if not os.path.isfile('material.config'):
-  print('material.config file not found')
-
 numParas = len(fitCriteria[options.criterion]['bound'])
 nExpo = fitCriteria[options.criterion]['nExpo']
 Guess = []
@@ -1161,8 +1177,7 @@ for i in xrange(numParas):
     g = (temp[0]+temp[1])/2.0
     if g == 0: g = temp[1]*0.5
     Guess.append(g)
-print Guess
-print fitCriteria[options.criterion]['bound']
+
 if options.vegter is True: 
   options.dimension = 2
 unitGPa = 10.e8
