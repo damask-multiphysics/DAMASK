@@ -249,7 +249,7 @@ def Tresca(eqStress, paras, sigmas, mFix, criteria, Jac = False):
 
 def Cazacu_Barlat(eqStress, paras, sigmas, mFix, criteria, Jac = False):
   '''
-    Cazacu–Barlat (CB) yield criterion
+    Cazacu-Barlat (CB) yield criterion
     the fitted parameters are:
       a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c for plane stress
       a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c: for general case
