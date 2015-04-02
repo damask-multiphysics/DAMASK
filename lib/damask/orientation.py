@@ -1,5 +1,9 @@
 # -*- coding: UTF-8 no BOM -*-
 
+###################################################
+# NOTE: everything here needs to be a numpy array #
+###################################################
+
 import numpy,math,random
 
 # ******************************************************************************************
@@ -8,7 +12,7 @@ class Rodrigues:
 
     def __init__(self, vector = numpy.zeros(3)):
       self.vector = vector
-    
+
     def asQuaternion(self):
       norm = numpy.linalg.norm(self.vector)
       halfAngle = numpy.arctan(norm)
@@ -24,7 +28,7 @@ class Rodrigues:
 # ******************************************************************************************
 class Quaternion:
 # ******************************************************************************************
-    # All methods and naming conventions based off 
+    # All methods and naming conventions based off
     # http://www.euclideanspace.com/maths/algebra/realNormedAlgebra/quaternions
 
     # w is the real part, (x, y, z) are the imaginary parts
@@ -58,7 +62,7 @@ class Quaternion:
       Q.z = self.z * vRescale
       Q.w = math.cos(exponent*omega)
       return Q
-    
+
     def __ipow__(self, exponent):
       omega = math.acos(self.w)
       vRescale = math.sin(exponent*omega)/math.sin(omega)
@@ -67,7 +71,7 @@ class Quaternion:
       self.z *= vRescale
       self.w = numpy.cos(exponent*omega)
       return self
-    
+
     def __mul__(self, other):
       try:                                                          # quaternion
           Ax = self.x
@@ -125,13 +129,13 @@ class Quaternion:
           By = other.y
           Bz = other.z
           Bw = other.w
-          self.x =  Ax * Bw + Ay * Bz - Az * By + Aw * Bx    
+          self.x =  Ax * Bw + Ay * Bz - Az * By + Aw * Bx
           self.y = -Ax * Bz + Ay * Bw + Az * Bx + Aw * By
           self.z =  Ax * By - Ay * Bx + Az * Bw + Aw * Bz
           self.w = -Ax * Bx - Ay * By - Az * Bz + Aw * Bw
       except: pass
       return self
-    
+
     def __div__(self, other):
       if isinstance(other, (int,float,long)):
         w = self.w / other
@@ -211,7 +215,7 @@ class Quaternion:
              (abs(-self.w-other.w) < 1e-8 and \
               abs(-self.x-other.x) < 1e-8 and \
               abs(-self.y-other.y) < 1e-8 and \
-              abs(-self.z-other.z) < 1e-8) 
+              abs(-self.z-other.z) < 1e-8)
 
     def __ne__(self,other):
       return not __eq__(self,other)
@@ -223,7 +227,7 @@ class Quaternion:
       return self.w ** 2 + \
              self.x ** 2 + \
              self.y ** 2 + \
-             self.z ** 2 
+             self.z ** 2
 
     def identity(self):
       self.w = 1.
@@ -293,7 +297,7 @@ class Quaternion:
       return numpy.array([[1.0-2.0*(self.y*self.y+self.z*self.z),     2.0*(self.x*self.y-self.z*self.w),     2.0*(self.x*self.z+self.y*self.w)],
                           [    2.0*(self.x*self.y+self.z*self.w), 1.0-2.0*(self.x*self.x+self.z*self.z),     2.0*(self.y*self.z-self.x*self.w)],
                           [    2.0*(self.x*self.z-self.y*self.w),     2.0*(self.x*self.w+self.y*self.z), 1.0-2.0*(self.x*self.x+self.y*self.y)]])
-    
+
     def asAngleAxis(self):
       if self.w > 1:
           self.normalize()
@@ -301,9 +305,9 @@ class Quaternion:
       s = math.sqrt(1. - self.w**2)
       x = 2*self.w**2 - 1.
       y = 2*self.w * s
-      
+
       angle = math.atan2(y,x)
-      
+
       if angle < 1e-3:
           return angle, numpy.array([1.0, 0.0, 0.0])
       else:
@@ -356,7 +360,7 @@ class Quaternion:
 #          angles[2] *= -1
 #        if angles[2] < 0.0:
 #          angles[2] += 2*math.pi
-          
+
       return angles
 
 
@@ -435,40 +439,40 @@ class Quaternion:
             (m[2,0] - m[0,2])*s,
             (m[0,1] - m[1,0])*s,
           ])
-        
+
       elif m[0,0] > m[1,1] and m[0,0] > m[2,2]:
         t = m[0,0] - m[1,1] - m[2,2] + 1.0
         s = 0.5/math.sqrt(t)
-        
+
         return cls(
           [ (m[1,2] - m[2,1])*s,
             s*t,
             (m[0,1] + m[1,0])*s,
             (m[2,0] + m[0,2])*s,
           ])
-        
+
       elif m[1,1] > m[2,2]:
         t = -m[0,0] + m[1,1] - m[2,2] + 1.0
         s = 0.5/math.sqrt(t)
-        
+
         return cls(
           [ (m[2,0] - m[0,2])*s,
             (m[0,1] + m[1,0])*s,
             s*t,
             (m[1,2] + m[2,1])*s,
           ])
-        
+
       else:
         t = -m[0,0] - m[1,1] + m[2,2] + 1.0
         s = 0.5/math.sqrt(t)
-        
+
         return cls(
           [ (m[0,1] - m[1,0])*s,
             (m[2,0] + m[0,2])*s,
             (m[1,2] + m[2,1])*s,
             s*t,
           ])
-    
+
 
     @classmethod
     def new_interpolate(cls, q1, q2, t):
@@ -515,7 +519,7 @@ class Symmetry:
 # ******************************************************************************************
 
   lattices = [None,'orthorhombic','tetragonal','hexagonal','cubic',]
-  
+
   def __init__(self, symmetry = None):
     if isinstance(symmetry, basestring) and symmetry.lower() in Symmetry.lattices:
       self.lattice = symmetry.lower()
@@ -635,7 +639,7 @@ class Symmetry:
       return     1.0 >= R[0] and 1.0 >= R[1] \
              and math.sqrt(2.0) >= R[0] + R[1] \
              and math.sqrt(2.0) >= R[2] + 1.0
-    elif self.lattice == 'orthorhombic': 
+    elif self.lattice == 'orthorhombic':
       return     1.0 >= R[0] and 1.0 >= R[1] and 1.0 >= R[2]
     else:
       return True
@@ -651,7 +655,7 @@ class Symmetry:
     if isinstance(R, Quaternion): R = R.asRodrigues()       # translate accidentially passed quaternion
 
     epsilon = 0.0
-    
+
     if self.lattice == 'cubic':
       return R[0] >= R[1]+epsilon                and R[1] >= R[2]+epsilon    and R[2] >= epsilon and self.inFZ(R)
 
@@ -709,7 +713,7 @@ class Symmetry:
       theComponents = -numpy.ones(3,'d')
     else:
       theComponents = numpy.dot(basis,numpy.array([vector[0],vector[1],abs(vector[2])]))
-      
+
     inSST = numpy.all(theComponents >= 0.0)
 
     if color:                                                                      # have to return color array
@@ -733,8 +737,8 @@ class Orientation:
 # ******************************************************************************************
 
   __slots__ = ['quaternion','symmetry']
-  
-  def __init__(self, 
+
+  def __init__(self,
                quaternion = Quaternion.fromIdentity(),
                Rodrigues  = None,
                angleAxis  = None,
@@ -826,7 +830,7 @@ class Orientation:
     '''
     axis rotated according to orientation (using crystal symmetry to ensure location falls into SST)
     '''
-    
+
     for i,q in enumerate(self.symmetry.equivalentQuaternions(self.quaternion)):                 # test all symmetric equivalent orientations
       if SST:                                                                                   # pole requested to be within SST
           pole = q.conjugated()*axis                                                            # align crystal direction to axis
@@ -849,3 +853,23 @@ class Orientation:
       if inSST: break
 
     return color
+
+  @classmethod
+  def getAverageOrientation(cls, orientationList):
+    """RETURN THE AVERAGE ORIENTATION
+    ref: F. Landis Markley, Yang Cheng, John Lucas Crassidis, and Yaakov Oshman.
+         Averaging Quaternions,
+         Journal of Guidance, Control, and Dynamics, Vol. 30, No. 4 (2007), pp. 1193-1197.
+         doi: 10.2514/1.28949
+    usage:
+         a = Orientation(Eulers=np.radians([10, 10, 0]), symmetry='hexagonal')
+         b = Orientation(Eulers=np.radians([20, 0, 0]), symmetry='hexagonal')
+         avg = Orientation.getAverageOrientation([a,b])"""
+    if not all(isinstance(item, Orientation) for item in orientationList):
+        raise TypeError("Only instances of Orientation can be averaged.")
+    n = len(orientationList)
+    tmp_m = orientationList.pop(0).quaternion.asM()
+    for tmp_o in orientationList:
+      tmp_m += tmp_o.quaternion.asM()
+    eig, vec = numpy.linalg.eig(tmp_m/n)
+    return Orientation( quaternion=Quaternion(quatArray=vec.T[eig.argmax()]) )
