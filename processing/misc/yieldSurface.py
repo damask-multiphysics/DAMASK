@@ -421,8 +421,7 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
     Barlat-Lian 1989 yield criteria  PASS
     the fitted parameters are:
-      Isotropic: sigma0, m
-      Anisotropic: a, c, h, p, m
+      Anisotropic: a, c, h, p, m; m is optional
   ''' 
   a, c, h, p = paras[0:4]
   if mFix[0]: m = mFix[1]
@@ -432,10 +431,10 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   k1,k2 = (s11 + h*s22)/2.0, ((s11 - h*s22)**2/4.0 + (p*s12)**2)**0.5
   fs  = np.array([ (k1+k2)**2, (k1-k2)**2, 4.0*k2**2 ]); fm = fs**(m/2.0)                
   left = np.dot(np.array([a,a,c]),fm)
-  r = (0.5*left)**(1.0/m)
+  r = (0.5*left)**(1.0/m)/eqStress
 
   if not Jac:
-    return (r-eqStress).ravel()
+    return (r-1.0).ravel()
   else:
     dk1dh = 0.5*s22
     dk2dh, dk2dp = 0.5/k2*(s11-h*s22)*(-s22), 0.5/k2*2.0*p*s12**2
@@ -611,6 +610,53 @@ def BBC2005(eqStress, paras, sigmas, mFix, criteria, Jac=False):
 
     if mFix[0]: return np.vstack(J).T
     else :      return np.vstack(J, dldk+dsBarde*dedk).T
+
+def Yld2000(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+  '''
+    C: c11,c22,c66  c12=c21=1.0 PASS
+    D: d11,d12,d21,d22,d66 
+  '''
+  C,D = paras[0:3], paras[3:8]
+  if mFix[0]: m = mFix[1]
+  else:       m = paras[-1]
+
+  sdev = np.array([sigmas[0]*2.0/3.0-sigmas[1]/3.0, sigmas[1]*2.0/3.0-sigmas[0]/3.0, sigmas[3]])
+  X = np.array([ C[0]*sdev[0], C[1]*sdev[1], C[2]*sdev[2] ])
+  Y = np.array([ D[0]*sdev[0]+ D[1]*sdev[1], D[2]*sdev[0]+ D[3]*sdev[1], D[4]*sdev[2] ])
+
+  def priStrs((sx,sy,sxy)):
+    temp = np.sqrt( (sx-sy)**2 + 4.0*sxy**2 )
+    return 0.5*(sx+sy + temp), 0.5*(sx+sy - temp)
+
+  (X1,X2), (Y1,Y2) = priStrs(X), priStrs(Y) # Principal values of X, Y
+  phi1, phi21, phi22 = ((X1-X2)**2)**(m/2.0), ((2.0*Y2+Y1)**2)**(m/2.0), ((2.0*Y1+Y2)**2)**(m/2.0) 
+  left = phi1+phi21+phi22
+  r = (0.5*left)**(1.0/m)
+
+  if not Jac:
+    return (r/eqStress-1.0).ravel()
+  else:
+    def dPrincipalds((X1,X2,X12)): 
+      # the derivative of principla with regards to stress
+      temp   = 0.5/( (X1-X2)**2 + 4.0*X12**2 )**0.5
+      dP1dsi = 0.5*np.array([ 1.0+temp*2.0*(X1-X2), 1.0-temp*2.0*(X1-X2),  temp*8.0*X12])
+      dP2dsi = 0.5*np.array([ 1.0-temp*2.0*(X1-X2), 1.0+temp*2.0*(X1-X2), -temp*8.0*X12])
+      return dP1dsi, dP2dsi
+    
+    (dX1dXi, dX2dXi), (dY1dYi, dY2dYi) = dPrincipalds(X), dPrincipalds(Y)
+    dX1dCi, dX2dCi = dX1dXi*sdev,dX2dXi*sdev
+    s1,s2,s12  = sdev
+    dY1dDi, dY2dDi = np.array([dY1dYi[0]*s1, dY1dYi[0]*s2, dY1dYi[1]*s1, dY1dYi[1]*s2, dY1dYi[2]*s12]), \
+                     np.array([dY2dYi[0]*s1, dY2dYi[0]*s2, dY2dYi[1]*s1, dY2dYi[1]*s2, dY2dYi[2]*s12])
+    dldX1, dldX2 = phi1* m/(X1-X2), phi1*m/(X2-X1)
+    dldY1, dldY2 = phi21*m/(2.0*Y2+Y1) + 2.0*phi22*m/(2.0*Y1+Y2), \
+                   phi22*m/(2.0*Y1+Y2) + 2.0*phi21*m/(2.0*Y2+Y1)
+    drdl,  drdm  = r/m/left, r*math_ln(0.5*left)/(-m*m)
+    dldm = ( phi1*math_ln((X1-X2)**2) + phi21*math_ln((2.0*Y2+Y1)**2) + phi22*math_ln((2.0*Y1+Y2)**2) )*0.5
+    jC,jD= drdl*(dldX1*dX1dCi + dldX2*dX2dCi), drdl*(dldY1*dY1dDi + dldY2*dY2dDi)
+    jm   = drdl*dldm + drdm
+    if mFix[0]: return np.vstack((jC,jD)).T
+    else:       return np.vstack((jC,jD,jm)).T
 
 def Yld200418p(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
@@ -818,6 +864,14 @@ fitCriteria = {
                      'paras': 'a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c:',
                      'text' : '\nCoefficients of Cazacu Barlat yield criterion: \
                                \n a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'yld2000'        :{'func' : Yld2000,
+                     'nExpo': 1,'err':np.inf,
+                     'bound': [(None,None)]*8+[(1,8.0)],
+                     'paras': 'c11,c12,c21,c22,c66,d11,d12,d21,d22,d66,m:',
+                     'text' : '\nCoefficients of Yld2000-2D yield criterion: \
+                               \n c11,c12,c21,c22,c66,d11,d12,d21,d22,d66,m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'yld200418p'     :{'func' : Yld200418p,
