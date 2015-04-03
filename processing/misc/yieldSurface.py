@@ -890,7 +890,7 @@ fitCriteria = {
                     },
   'bbc2003'        :{'func' : BBC2003,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]*7+[(0.0,1.0)]+[(1.0,8.0)],
+                     'bound': [(None,None)]*7+[(0.0,1.0)]+[(0.0,12.0)],
                      'paras': 'M, N, P, Q, R, S, T, a, k:',
                      'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: M, N, P, Q, R, S, T, a, k:\n',
                      'error': 'The standard deviation errors are: '
