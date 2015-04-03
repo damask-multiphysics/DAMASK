@@ -417,6 +417,40 @@ def Hosford(eqStress, paras, sigmas, mFix, criteria, Jac = False):
         if mFix[0]: return np.vstack((drdb*diffsm)).T
         else:       return np.vstack((drdb*diffsm, ja)).T
 
+def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+  '''
+    Barlat-Lian 1989 yield criteria  PASS
+    the fitted parameters are:
+      Isotropic: sigma0, m
+      Anisotropic: a, c, h, p, m
+  ''' 
+  a, c, h, p = paras[0:4]
+  if mFix[0]: m = mFix[1]
+  else:       m = paras[-1]
+
+  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
+  k1,k2 = (s11 + h*s22)/2.0, ((s11 - h*s22)**2/4.0 + (p*s12)**2)**0.5
+  fs  = np.array([ (k1+k2)**2, (k1-k2)**2, 4.0*k2**2 ]); fm = fs**(m/2.0)                
+  left = np.dot(np.array([a,a,c]),fm)
+  r = (0.5*left)**(1.0/m)
+
+  if not Jac:
+    return (r-eqStress).ravel()
+  else:
+    dk1dh = 0.5*s22
+    dk2dh, dk2dp = 0.5/k2*(s11-h*s22)*(-s22), 0.5/k2*2.0*p*s12**2
+    dlda,  dldc  = fm[0]+fm[1], fm[2]
+    dldk1, dldk2 = left[0]*m/(k1+k2)+left[1]*m/(k1-k2), left[0]*m/(k1+k2)-left[1]*m/(k1-k2)+left[2]*m/k2
+    drdl,  drdm  = r/m/left, r*math_ln(0.5*left)/(-m*m)
+    dldm = np.dot(np.array([a,a,c]),fm*math_ln(fs))*0.5
+
+    ja,jc = drdl*dlda, drdl*dldc 
+    jh,jp = drdl*(dldk1*dk1dh + dldk2*dk2dh), drdl*dldk2*dk2dp
+    jm    = drdl*dldm + drdm
+
+    if mFix[0]: return np.vstack((ja,jc,jh,jp)).T
+    else:       return np.vstack((ja,jc,jh,jp,jm)).T
+
 def Barlat1991(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
     Barlat 1991 criteria
@@ -733,6 +767,13 @@ fitCriteria = {
                      'bound': [(None,None)]*2+[(0.0,6.0)],
                      'paras': 'Initial yield stress, C_D, p:',
                      'text' : '\nCoefficients of general Drucker criterion:\nsigma0, C_D, p: ',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'barlat1989'     :{'func' : Barlat1989,
+                     'nExpo': 1,'err':np.inf,
+                     'bound': [(-3.0,3.0)]*4+[(0.0,12.0)],
+                     'paras': 'a,c,h,f, m:',
+                     'text' : '\nCoefficients of isotropic Barlat 1989 criterion:a,c,h,f, m:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'barlat1991iso'  :{'func' : Barlat1991,
