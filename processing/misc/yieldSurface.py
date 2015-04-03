@@ -419,7 +419,7 @@ def Hosford(eqStress, paras, sigmas, mFix, criteria, Jac = False):
 
 def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
-    Barlat-Lian 1989 yield criteria  PASS
+    Barlat-Lian 1989 yield criteria
     the fitted parameters are:
       Anisotropic: a, c, h, p, m; m is optional
   ''' 
@@ -505,9 +505,9 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, Jac=False):
       if mFix[0]: return np.vstack((dfdI2*dI2dx+dfdI3*dI3dx)).T
       else:       return np.vstack((dfdI2*dI2dx+dfdI3*dI3dx, jm)).T
 
-def BBC2003(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def BBC2000(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
-    BBC2003 yield criterion
+    BBC2000 yield criterion
     the fitted parameters are 
     a, b, c, d, e, f, g, k;  k is optional
     criteria are invalid input
@@ -560,6 +560,51 @@ def BBC2003(eqStress, paras, sigmas, mFix, criteria, Jac=False):
 
     if mFix[0]: return np.vstack((ja,jb,jc,jd, je, jf,jg)).T
     else:       return np.vstack((ja,jb,jc,jd, je, jf,jg,jk)).T
+
+def BBC2003(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+  '''
+    BBC2003 yield criterion
+    the fitted parameters are 
+    M,N,P,Q,R,S,T,a, k;  k is optional
+    criteria are invalid input
+  '''
+  M,N,P,Q,R,S,T,a = paras[0:8]
+  if mFix[0]: k = mFix[1]
+  else:       k = paras[-1]
+
+  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
+  k1 = k-1.0; k2  = 2.0*k
+  Gamma  = 0.5*    (s11 + M*s22)
+  Psi    = 0.5*( (N*s11 - P*s22)**2 + 4.0*Q*Q*s12**2 )**0.5
+  Lambda = 0.5*( (R*s11 - S*s22)**2 + 4.0*T*T*s12**2 )**0.5
+
+  l1  = Lambda + Psi; l2  = Lambda - Psi; l3  = 2.0*Lambda
+  l1s = l1**2;        l2s = l2**2;        l3s = l3**2
+  left = a*l1s**k + a*l2s**k + (1-a)*l3s**k
+  r = left**(1.0/k2)/eqStress
+  if not Jac:
+    return ( r - 1.0).ravel()
+  else:
+    drdl = 0.5*r/left/k
+    drdk = r*math_ln(left)*(-0.5/k/k)
+    dldl1 =    a* k*(l1s**k1)*(2.0*l1)
+    dldl2 =    a* k*(l2s**k1)*(2.0*l2)
+    dldl3 = (1-a)*k*(l3s**k1)*(2.0*l3)
+
+    dldGama, dldPsi, dldLambda  = dldl1+dldl2, dldl1-dldl2, 2.0*dldl3
+    temp = 0.5/Psi*(N*s11 - P*s22)
+    dPsidN, dPsidP, dPsidQ = s11*temp, -s22*temp, Q*s12**2/temp
+    temp = 0.5/Lambda*(R*s11 - S*s22)
+    dLambdadR, dLambdadS, dLambdadT = s11*temp, -s22*temp, T*s12**2/temp
+    dldk = a*math_ln(l1s)*l1s**k + a*math_ln(l2s)*l2s**k + (1-a)*math_ln(l3s)*l3s**k
+
+    J = drdl * np.array( [ dldGama*s22*0.5,
+      dldPsi*dPsidN, dldPsi*dPsidP, dldPsi*dPsidQ, 
+      dldLambda*dLambdadR, dldLambda*dLambdadS, dldLambda*dLambdadT,
+      l1s**k+l2s**k-l3s**k  ])
+
+    if mFix[0]: return np.vstack(J).T
+    else :      return np.vstack((J, drdl*dldk+drdk)).T
 
 def BBC2005(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   '''
@@ -836,11 +881,18 @@ fitCriteria = {
                      'text' : '\nCoefficients of anisotropic Barlat 1991 criterion: a, b, c, f, g, h, m:\n',
                      'error': 'The standard deviation errors are: '
                     },
-  'bbc2003'        :{'func' : BBC2003,
+  'bbc2000'        :{'func' : BBC2000,
                      'nExpo': 1,'err':np.inf,
                      'bound': [(None,None)]*7+[(1.0,8.0)],
                      'paras': 'a, b, c, d, e, f, g, k:',
                      'text' : '\nCoefficients of Banabic-Balan-Comsa 2003 criterion: a, b, c, d, e, f, g, k:\n',
+                     'error': 'The standard deviation errors are: '
+                    },
+  'bbc2003'        :{'func' : BBC2003,
+                     'nExpo': 1,'err':np.inf,
+                     'bound': [(None,None)]*7+[(0.0,1.0)]+[(1.0,8.0)],
+                     'paras': 'M, N, P, Q, R, S, T, a, k:',
+                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: M, N, P, Q, R, S, T, a, k:\n',
                      'error': 'The standard deviation errors are: '
                     },
   'bbc2005'        :{'func' : BBC2005,
