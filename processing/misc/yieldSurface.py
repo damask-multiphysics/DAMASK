@@ -42,7 +42,6 @@ def principalStress(p):
   sin = np.sin;    cos = np.cos
   I1,I2,I3 = invariant(p)
 
-  third = 1.0/3.0
   I1s3I2= (I1**2 - 3.0*I2)**0.5
   numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
   denom = I1s3I2**(-3.0)
@@ -311,8 +310,12 @@ def Drucker(eqStress, paras, sigmas, mFix, criteria, Jac = False):
     if mFix[0]: p = mFix[1]
     else:       p = paras[-1]
   I1,I2,I3 = invariant(sigmas)
+  #I = invariant(sigmas)
+  #J = np.zeros([3]) 
   J2  = I1**2/3.0 - I2
+  #J[1]  = I[0]**2/3.0 - I[1]
   J3  = I1**3/13.5 - I1*I2/3.0 + I3
+  #J[2]  = I[0]**3/13.5 - I[0]*I[1]/3.0 + I[2] etc.
   J2_3p = J2**(3.0*p)      
   J3_2p = J3**(2.0*p)
   left  = J2_3p - C_D*J3_2p
@@ -355,7 +358,9 @@ def Hill1979(eqStress,paras, sigmas, mFix, criteria, Jac = False):
 
   coeff  = paras[0:6]
   s1,s2,s3 = principalStresses(sigmas)
+  # s= principalStresses(sigmas)
   diffs  = np.array([s2-s3, s3-s1, s1-s2, 2.0*s1-s2-s3, 2.0*s2-s3-s1, 2.0*s3-s1-s2])**2 
+  #diffs  = np.array([s[1]-s[2], s[2]-s[0], etc ...  s1-s2, 2.0*s1-s2-s3, 2.0*s2-s3-s1, 2.0*s3-s1-s2])**2 
   diffsm = diffs**(m/2.0)
   base   = np.dot(coeff,diffsm)
   r = base**(1.0/m)/eqStress #left = base**mi
@@ -424,7 +429,7 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
       Anisotropic: a, c, h, p, m; m is optional
   ''' 
   a, c, h, p = paras[0:4]
-  if mFix[0]: m = mFix[1]
+  if mFix[0]: m = mFix[1] #???
   else:       m = paras[-1]
 
   s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
@@ -796,6 +801,7 @@ def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     jb1 = dphi1db1*(drds*a*phi1**(a-1)*alpha ) 
     jb2 = dphi2db2*(drds*a*phi2**(a-1)*(1.0-alpha))
     jc1 = np.sum([dphi1dP[i]*dPdc[i] for i in xrange(3)],axis=0)*drds*a*phi1**(a-1.0)*alpha 
+    #jc1 = np.sum([dphi1dP[0:3]*dPdc[0:3])*drds*a*phi1**(a-1.0)*alpha 
     jc2 = np.sum([dphi2dQ[i]*dQdc[i] for i in xrange(3)],axis=0)*drds*a*phi2**(a-1.0)*(1.0-alpha)
     jalpha = drds * (phi1**a - phi2**a)
 
@@ -1202,8 +1208,10 @@ def doSim(delay,thread):
         upper,lower = table.data[line,9],table.data[line-1,9]                                       # values for linear interpolation
         stress = np.array(table.data[line-1,0:9] * (upper-threshold)/(upper-lower) + \
                           table.data[line  ,0:9] * (threshold-lower)/(upper-lower)).reshape(3,3)    # linear interpolation of stress values
+        #stress = 0.5*(stress+stress.T)                                                             # symmetrise
+        #for the mapping, a fuction from DAMASK (33to6) simplifies
         dstrain= np.array(table.data[line,10:] - table.data[line-1,10:]).reshape(3,3)
-
+#
         yieldStress[i,0]= stress[0,0]; yieldStress[i,1]=stress[1,1]; yieldStress[i,2]=stress[2,2]
         yieldStress[i,3]=(stress[0,1] + stress[1,0])/2.0     #   0  3  5
         yieldStress[i,4]=(stress[1,2] + stress[2,1])/2.0     #   *  1  4  yieldStress
@@ -1239,7 +1247,7 @@ def loadcaseNo():
   N_simulations+=1
   return N_simulations
 
-def converged():
+def converged():        # is there any meaningfull stopping criterion?
   global N_simulations
   if N_simulations < options.max:
     return False
@@ -1262,6 +1270,7 @@ parser.add_option('-g','--geometry', dest='geometry', type='string',
                                      help='name of the geometry file [%default]', metavar='string')
 parser.add_option('-c','--criterion',     dest='criterion', choices=fitCriteria.keys(),
                                      help='criterion for stopping simulations [%default]', metavar='string')
+# best/worse fitting? Stopping?
 parser.add_option('-f','--fitting',       dest='fitting', choices=thresholdParameter,
                                      help='yield criterion [%default]', metavar='string')
 parser.add_option('-y','--yieldvalue',    dest='yieldValue', type='float', nargs=3,
