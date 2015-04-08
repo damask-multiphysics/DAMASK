@@ -44,28 +44,32 @@ def principalStress(p):
 
   I1s3I2= (I1**2 - 3.0*I2)**0.5
   numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
-  denom = I1s3I2**(-3.0)
-  cs    = 0.5*numer*denom
+  denom = 0.5*I1s3I2**(-3.0)
+  cs    = numer*denom
+
   phi   = np.arccos(cs)/3.0
   t1    = I1/3.0; t2 = 2.0/3.0*I1s3I2
   return np.array( [t1 + t2*cos(phi), t1+t2*cos(phi+np.pi*2.0/3.0), t1+t2*cos(phi+np.pi*4.0/3.0)])
 
-def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), Karafillis=False):
+def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), dim, Karafillis=False):
+  '''
+    The derivative of principal stress with respect to stress
+  '''
   sin = np.sin;    cos = np.cos
   I1,I2,I3 = invariant(p)
 
   third = 1.0/3.0
   I1s3I2= (I1**2 - 3.0*I2)**0.5
   numer = 2.0*I1**3 - 9.0*I1*I2 + 27.0*I3
-  denom = I1s3I2**(-3.0)
-  cs    = 0.5*numer*denom
+  denom = 0.5*I1s3I2**(-3.0)
+  cs    = numer*denom
   phi   = np.arccos(cs)*third
 
   dphidcs   = -third/np.sqrt(1.0 - cs**2)
   dcsddenom = 0.5*numer*(-1.5)*I1s3I2**(-5.0)
-  dcsdI1    = 0.5*(6.0*I1**2 - 9.0*I2)*denom + dcsddenom*(2.0*I1)
-  dcsdI2    = 0.5*(          - 9.0*I1)*denom + dcsddenom*(-3.0)
-  dcsdI3    = 13.5*denom
+  dcsdI1    = (6.0*I1**2 - 9.0*I2)*denom + dcsddenom*(2.0*I1)
+  dcsdI2    = (          - 9.0*I1)*denom + dcsddenom*(-3.0)
+  dcsdI3    = 27.0*denom
   dphidI1, dphidI2, dphidI3 = dphidcs*dcsdI1, dphidcs*dcsdI2, dphidcs*dcsdI3
 
   dI1s3I2dI1= I1/I1s3I2;  dI1s3I2dI2 = -1.5/I1s3I2
@@ -77,21 +81,28 @@ def principalStrs_Der(p, (s1, s2, s3, s4, s5, s6), Karafillis=False):
   dSdI = np.array([dSidIj(phi),dSidIj(phi+np.pi*2.0/3.0),dSidIj(phi+np.pi*4.0/3.0)]) # i=1,2,3; j=1,2,3
   
 # calculate the derivation of principal stress with regards to the anisotropic coefficients  
-  one    = np.ones_like(s1); zero = np.zeros_like(s1); dim  = len(s1)
+  one    = np.ones_like(s1); zero = np.zeros_like(s1); num  = len(s1)
   dIdp = np.array([[one,    one,    one,    zero,   zero,   zero], 
                    [p[1]+p[2], p[2]+p[0], p[0]+p[1], -2.0*p[3], -2.0*p[4], -2.0*p[5]],
                    [p[1]*p[2]-p[4]**2, p[2]*p[0]-p[5]**2, p[0]*p[1]-p[3]**2, 
                     -2.0*p[3]*p[2]+2.0*p[4]*p[5], -2.0*p[4]*p[0]+2.0*p[5]*p[3], -2.0*p[5]*p[1]+2.0*p[3]*p[4]] ]) 
   if Karafillis:
     dpdc = np.array([[zero,s2-s3,s3-s2], [s1-s3,zero,s3-s1], [s1-s2,s2-s1,zero]])
-    dSdp = np.array([np.dot(dSdI[:,:,i],dIdp[:,:,i]).T for i in xrange(dim)]).T
-    return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i].T).T/3.0 for i in xrange(dim)]).T,
-                           np.vstack([dSdp[:,3]*s4,dSdp[:,4]*s5,dSdp[:,5]*s6]).T.reshape(dim,3,3).T), axis=1)
+    dSdp = np.array([np.dot(dSdI[:,:,i],dIdp[:,:,i]).T for i in xrange(num)]).T
+    if dim == 2: temp = np.vstack([dSdp[:,3]*s4]).T.reshape(num,1,3).T
+    else:        temp = np.vstack([dSdp[:,3]*s4,dSdp[:,4]*s5,dSdp[:,5]*s6]).T.reshape(num,3,3).T
+    return np.concatenate((np.array([np.dot(dSdp[:,0:3,i], dpdc[:,:,i].T).T/3.0 for i in xrange(num)]).T,
+                           temp), axis=1)
   else:
-    dIdc=np.array([[-dIdp[i,0]*s2, -dIdp[i,1]*s1, -dIdp[i,1]*s3,
-                    -dIdp[i,2]*s2, -dIdp[i,2]*s1, -dIdp[i,0]*s3,
-                     dIdp[i,3]*s4,  dIdp[i,4]*s5,  dIdp[i,5]*s6 ] for i in xrange(3)])
-    return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in xrange(dim)]).T
+    if dim == 2:
+      dIdc=np.array([[-dIdp[i,0]*s2, -dIdp[i,1]*s1, -dIdp[i,1]*s3,
+                      -dIdp[i,2]*s2, -dIdp[i,2]*s1, -dIdp[i,0]*s3,
+                       dIdp[i,3]*s4 ] for i in xrange(3)])
+    else:
+      dIdc=np.array([[-dIdp[i,0]*s2, -dIdp[i,1]*s1, -dIdp[i,1]*s3,
+                      -dIdp[i,2]*s2, -dIdp[i,2]*s1, -dIdp[i,0]*s3,
+                       dIdp[i,3]*s4,  dIdp[i,4]*s5,  dIdp[i,5]*s6 ] for i in xrange(3)])
+    return np.array([np.dot(dSdI[:,:,i],dIdc[:,:,i]).T for i in xrange(num)]).T
 
 def invariant(sigmas):
     s11,s22,s33,s12,s23,s31 = sigmas
@@ -132,18 +143,19 @@ class Criteria(object):
   '''
     residuum of anisotropic Barlat 1991 yield criterion (eq. 2.37)
   '''
-  def __init__(self, criterion, uniaxialStress,exponent):
+  def __init__(self, criterion, uniaxialStress,exponent, dimension):
     self.stress0 = uniaxialStress
-    if exponent < 0.0:
+    if exponent < 0.0:        # The exponent m is undetermined
       self.mFix = [False, exponent]
-    else:
+    else:                     # The exponent m is fixed
       self.mFix = [True, exponent]
     self.func     = fitCriteria[criterion]['func']
     self.criteria = criterion
+    self.dim      = dimension
   def fun(self, paras, ydata, sigmas):
-    return self.func(self.stress0, paras, sigmas,self.mFix,self.criteria)
+    return self.func(self.stress0, paras, sigmas,self.mFix,self.criteria,self.dim)
   def jac(self, paras, ydata, sigmas):
-    return self.func(self.stress0, paras, sigmas,self.mFix,self.criteria,Jac=True)
+    return self.func(self.stress0, paras, sigmas,self.mFix,self.criteria,self.dim,Jac=True)
 
 class Vegter(object):
   '''
@@ -232,11 +244,11 @@ def VetgerCriterion(stress,lankford, rhoBi0, theta=0.0):
 
   vegter = Vegter(refPts, refNormals)
 
-def Tresca(eqStress, paras, sigmas, mFix, criteria, Jac = False):
+def Tresca(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
   '''
     Tresca yield criterion
     the fitted parameters is: paras(sigma0)
-    eqStress, mFix, criteria are invalid input
+    eqStress, mFix, criteria, dim are invalid input
   '''
   if not Jac:
     lambdas = principalStresses(sigmas)
@@ -247,7 +259,7 @@ def Tresca(eqStress, paras, sigmas, mFix, criteria, Jac = False):
   else:
     return -np.ones(len(sigmas))
 
-def Cazacu_Barlat(eqStress, paras, sigmas, mFix, criteria, Jac = False):
+def Cazacu_Barlat(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
   '''
     Cazacu-Barlat (CB) yield criterion
     the fitted parameters are:
@@ -294,7 +306,7 @@ def Cazacu_Barlat(eqStress, paras, sigmas, mFix, criteria, Jac = False):
     df = r/f0/108.0
     return np.vstack((df*3.0*J20**2.0*dJ2da, -df*2.0*J30*c*dJ3db, -df*J30**2)).T
 
-def Drucker(eqStress, paras, sigmas, mFix, criteria, Jac = False):
+def Drucker(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
   '''
     Drucker yield criterion
     the fitted parameters are 
@@ -334,20 +346,25 @@ def Drucker(eqStress, paras, sigmas, mFix, criteria, Jac = False):
       if mFix[0]: return np.vstack((-r/sigma0, -drdl*J3_2p)).T
       else:       return np.vstack((-r/sigma0, -drdl*J3_2p, jp)).T
 
-def Hill1948(eqStress, paras, sigmas, mFix, criteria, Jac = False):
+def Hill1948(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
   '''
     Hill 1948 yield criterion
-    the fitted parameters are F, G, H, L, M, N
+    the fitted parameters are:
+      F, G, H, L, M, N for 3D
+      F, G, H, N       for 2D
     eqStress, mFix, criteria are invalid input
   '''
   s11,s22,s33,s12,s23,s31 = sigmas
-  jac = np.array([(s22-s33)**2,(s33-s11)**2,(s11-s22)**2, 2.0*s23**2,2.0*s31**2,2.0*s12**2])
+  if dim == 2:      # plane stress
+    jac = np.array([ s22**2, s11**2, (s11-s22)**2, 2.0*s12**2])
+  else:             # general case
+    jac = np.array([(s22-s33)**2,(s33-s11)**2,(s11-s22)**2, 2.0*s23**2,2.0*s31**2,2.0*s12**2])
   if not Jac:
     return (np.dot(paras,jac)/2.0-0.5).ravel()
   else:
     return jac.T
 
-def Hill1979(eqStress,paras, sigmas, mFix, criteria, Jac = False):
+def Hill1979(eqStress,paras, sigmas, mFix, criteria, dim, Jac = False):
   '''
     Hill 1979 yield criterion
     the fitted parameters are: f,g,h,a,b,c,m
@@ -362,20 +379,19 @@ def Hill1979(eqStress,paras, sigmas, mFix, criteria, Jac = False):
   diffs  = np.array([s2-s3, s3-s1, s1-s2, 2.0*s1-s2-s3, 2.0*s2-s3-s1, 2.0*s3-s1-s2])**2 
   #diffs  = np.array([s[1]-s[2], s[2]-s[0], etc ...  s1-s2, 2.0*s1-s2-s3, 2.0*s2-s3-s1, 2.0*s3-s1-s2])**2 
   diffsm = diffs**(m/2.0)
-  base   = np.dot(coeff,diffsm)
-  r = base**(1.0/m)/eqStress #left = base**mi
+  left   = np.dot(coeff,diffsm)
+  r = (0.5*left)**(1.0/m)/eqStress #left = base**mi
 
   if not Jac:
     return (r-1.0).ravel()
   else:
-    drdb = r/base/m
-    dbdm = np.dot(coeff,diffsm*math_ln(diffs)) #****0.5
-    jm = drdb*dbdm + r*math_ln(base)/(-m**2)
+    drdl, dldm = r/left/m, np.dot(coeff,diffsm*math_ln(diffs))*0.5
+    jm = drdl*dldm + r*math_ln(0.5*left)*(-1.0/m/m) #/(-m**2) 
 
-    if mFix[0]: return np.vstack((drdb*diffsm)).T
-    else:       return np.vstack((drdb*diffsm, jm)).T
+    if mFix[0]: return np.vstack((drdl*diffsm)).T
+    else:       return np.vstack((drdl*diffsm, jm)).T
 
-def Hosford(eqStress, paras, sigmas, mFix, criteria, Jac = False):
+def Hosford(eqStress, paras, sigmas, mFix, criteria, dim, Jac = False):
   '''
     Hosford family criteria
     the fitted parameters are:
@@ -385,26 +401,25 @@ def Hosford(eqStress, paras, sigmas, mFix, criteria, Jac = False):
   '''
 
   if criteria == 'vonmises':
-    coeff = np.ones(3)
     sigma0 = paras
+    coeff  = np.ones(3)
     a = 2.0
   elif criteria == 'hershey':
-    coeff = np.ones(3)
     sigma0 = paras[0]
+    coeff  = np.ones(3)
     if mFix[0]: a = mFix[1]
     else:       a = paras[1]
   else:
-    coeff  = paras[0:3]
     sigma0 = eqStress
+    coeff  = paras[0:3]
     if mFix[0]: a = mFix[1]
     else:       a = paras[3]
 
   s1,s2,s3 = principalStresses(sigmas)
-  diffs  = np.abs(np.array([s2-s3, s3-s1, s1-s2]))
-  diffsm = diffs**a
-  base   = np.dot(coeff,diffsm)
-  expo   = 1.0/a
-  r      = (base/2.0)**expo/sigma0
+  diffs  = np.array([s2-s3, s3-s1, s1-s2])**2
+  diffsm = diffs**(a/2.0)
+  left   = np.dot(coeff,diffsm)
+  r      = (0.5*left)**(1.0/a)/sigma0
 
   if not Jac:
     return (r-1.0).ravel()
@@ -412,17 +427,16 @@ def Hosford(eqStress, paras, sigmas, mFix, criteria, Jac = False):
     if criteria == 'vonmises': # von Mises
       return -r/sigma0
     else:
-      dbda = np.dot(coeff,diffsm*math_ln(diffs))
-      drdb = r/base*expo
-      ja = drdb*dbda + r*math_ln(base/2.0)*(-expo*expo)
+      drdl, dlda = r/left/a, np.dot(coeff,diffsm*math_ln(diffs))*0.5
+      ja = drdl*dlda + r*math_ln(0.5*left)*(-1.0/a/a)
       if criteria == 'hershey':  # Hershey
         if mFix[0]: return -r/sigma0
         else:       return np.vstack((-r/sigma0, ja)).T
       else:                                        # Anisotropic Hosford
-        if mFix[0]: return np.vstack((drdb*diffsm)).T
-        else:       return np.vstack((drdb*diffsm, ja)).T
+        if mFix[0]: return np.vstack((drdl*diffsm)).T
+        else:       return np.vstack((drdl*diffsm, ja)).T
 
-def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def Barlat1989(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     Barlat-Lian 1989 yield criteria
     the fitted parameters are:
@@ -432,8 +446,8 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   if mFix[0]: m = mFix[1] #???
   else:       m = paras[-1]
 
-  s11 = sigmas[0]; s22 = sigmas[1]; s12 = sigmas[3]
-  k1,k2 = (s11 + h*s22)/2.0, ((s11 - h*s22)**2/4.0 + (p*s12)**2)**0.5
+  s11,s22,s12 = sigmas[0], sigmas[1], sigmas[3]
+  k1,k2 = 0.5*(s11 + h*s22), (0.25*(s11 - h*s22)**2 + (p*s12)**2)**0.5
   fs  = np.array([ (k1+k2)**2, (k1-k2)**2, 4.0*k2**2 ]); fm = fs**(m/2.0)                
   left = np.dot(np.array([a,a,c]),fm)
   r = (0.5*left)**(1.0/m)/eqStress
@@ -442,10 +456,11 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     return (r-1.0).ravel()
   else:
     dk1dh = 0.5*s22
-    dk2dh, dk2dp = 0.5/k2*(s11-h*s22)*(-s22), 0.5/k2*2.0*p*s12**2
+    dk2dh, dk2dp = 0.25*(s11-h*s22)*(-s22)/k2, p*s12**2/k2
     dlda,  dldc  = fm[0]+fm[1], fm[2]
-    dldk1, dldk2 = left[0]*m/(k1+k2)+left[1]*m/(k1-k2), left[0]*m/(k1+k2)-left[1]*m/(k1-k2)+left[2]*m/k2
-    drdl,  drdm  = r/m/left, r*math_ln(0.5*left)/(-m*m)
+    fm1 = fs**(m/2.0-1.0)*m
+    dldk1, dldk2 = a*fm1[0]*(k1+k2)+a*fm1[1]*(k1-k2), a*fm1[0]*(k1+k2)-a*fm1[1]*(k1-k2)+c*fm1[2]*k2*4.0
+    drdl,  drdm  = r/m/left, r*math_ln(0.5*left)*(-1.0/m/m) 
     dldm = np.dot(np.array([a,a,c]),fm*math_ln(fs))*0.5
 
     ja,jc = drdl*dlda, drdl*dldc 
@@ -455,27 +470,29 @@ def Barlat1989(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     if mFix[0]: return np.vstack((ja,jc,jh,jp)).T
     else:       return np.vstack((ja,jc,jh,jp,jm)).T
 
-def Barlat1991(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def Barlat1991(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     Barlat 1991 criteria
     the fitted parameters are:
       Isotropic: sigma0, m
-      Anisotropic: a, b, c, f, g, h, m
+      Anisotropic: a, b, c, f, g, h, m for 3D
+                   a, b, c, h, m for plane stress
     m is optional
   '''
-  if criteria == 'barlat1991iso':
-    sigma0 = paras[0]
-    coeff  = np.ones(6)
-  else:
-    sigma0 = eqStress
-    coeff  = paras[0:6]   
-  if mFix[0]:m = mFix[1]
-  else:      m = paras[-1]
-      
+  sigma0 = eqStress
+  if dim == 2: coeff = paras[0:4]    # plane stress  
+  else:        coeff = paras[0:6]    # general case
+  if mFix[0]:  m = mFix[1]
+  else:        m = paras[-1]
+
   cos = np.cos; sin = np.sin; pi = np.pi; abs = np.abs
-  s1,s2,s3,s4,s5,s6 = sigmas
-  dXdx = np.array([s2-s3,s3-s1,s1-s2,s5,s6,s4])
-  A,B,C,F,G,H = np.array(coeff)[:,None]*dXdx
+  s11,s22,s33,s12,s23,s31 = sigmas
+  if dim == 2:
+    dXdx = np.array([s22,s33-s11,s11-s22,s12])
+    A,B,C,H = np.array(coeff)[:,None]*dXdx; F=G=0.0
+  else:
+    dXdx = np.array([s22-s33,s33-s11,s11-s22,s23,s31,s12])
+    A,B,C,F,G,H = np.array(coeff)[:,None]*dXdx
 
   I2 = (F*F + G*G + H*H)/3.0+ ((A-C)**2+(C-B)**2+(B-A)**2)/54.0
   I3 = (C-B)*(A-C)*(B-A)/54.0 + F*G*H - ((C-B)*F*F + (A-C)*G*G + (B-A)*H*H)/6.0
@@ -489,28 +506,29 @@ def Barlat1991(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     return (r - 1.0).ravel()
   else:
     dfdl = r/left/m
-    jm = r*math_ln(left)/(-m**2) + dfdl*0.5*(
+    jm = r*math_ln(left)*(-1.0/m/m) + dfdl*0.5*(
          absc1**m*math_ln(absc1) + absc2**m*math_ln(absc2) + absc3**m*math_ln(absc3) ) 
-    if criteria == 'barlat1991iso':
-      js = -r/sigma0
-      if mFix[0]: return js
-      else:       return np.vstack((js,jm)).T
+
+    da,db,dc = (2.0*A-B-C)/18.0, (2.0*B-C-A)/18.0, (2.0*C-A-B)/18.0
+    if dim == 2:
+      dI2dx = np.array([da, db, dc, H])/1.5*dXdx
+      dI3dx = np.array([da*(B-C) + (H**2-G**2)/2.0, db*(C-A) + (F**2-H**2)/2.0, dc*(A-B) + (G**2-F**2)/2.0,
+                       (G*F + (A-B))*H])/3.0*dXdx    
     else:
-      da,db,dc = (2.0*A-B-C)/18.0, (2.0*B-C-A)/18.0, (2.0*C-A-B)/18.0
       dI2dx = np.array([da, db, dc, F,G,H])/1.5*dXdx
       dI3dx = np.array([da*(B-C) + (H**2-G**2)/2.0, db*(C-A) + (F**2-H**2)/2.0, dc*(A-B) + (G**2-F**2)/2.0,
-                        (H*G + (B-C))*F, (F*H + (C-A))*G, (G*F + (A-B))*H])/3.0*dXdx
-      darccos = -(1.0 - I3**2/I2**3)**(-0.5)
+                       (H*G + (B-C))*F, (F*H + (C-A))*G, (G*F + (A-B))*H])/3.0*dXdx
+    darccos = -(1.0 - I3**2/I2**3)**(-0.5)
 
-      dfdc  = dfdl*0.5*m
-      dfdcos = lambda phi : dfdc*(2.0*abs(cos(phi)))**(1.0/m-1.0)*np.sign(cos(phi))*(-sin(phi)/1.5)
-      dfdthe= (dfdcos(phi1) + dfdcos(phi2) + dfdcos(phi3)) 
-      dfdI2 = dfdthe*darccos*I3*(-1.5)*I2**(-2.5);   dfdI3 = dfdthe*darccos*I2**(-1.5)
+    dfdc  = dfdl*0.5*m
+    dfdcos = lambda phi : dfdc*(2.0*abs(cos(phi)))**(1.0/m-1.0)*np.sign(cos(phi))*(-sin(phi)/1.5)
+    dfdthe= (dfdcos(phi1) + dfdcos(phi2) + dfdcos(phi3)) 
+    dfdI2, dfdI3 = dfdthe*darccos*I3*(-1.5)*I2**(-2.5), dfdthe*darccos*I2**(-1.5)
 
-      if mFix[0]: return np.vstack((dfdI2*dI2dx+dfdI3*dI3dx)).T
-      else:       return np.vstack((dfdI2*dI2dx+dfdI3*dI3dx, jm)).T
+    if mFix[0]: return np.vstack((dfdI2*dI2dx + dfdI3*dI3dx)).T
+    else:       return np.vstack((dfdI2*dI2dx + dfdI3*dI3dx, jm)).T
 
-def BBC2000(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def BBC2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     BBC2000 yield criterion
     the fitted parameters are 
@@ -566,7 +584,7 @@ def BBC2000(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     if mFix[0]: return np.vstack((ja,jb,jc,jd, je, jf,jg)).T
     else:       return np.vstack((ja,jb,jc,jd, je, jf,jg,jk)).T
 
-def BBC2003(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def BBC2003(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     BBC2003 yield criterion
     the fitted parameters are 
@@ -611,7 +629,7 @@ def BBC2003(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     if mFix[0]: return np.vstack(J).T
     else :      return np.vstack((J, drdl*dldk+drdk)).T
 
-def BBC2005(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def BBC2005(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     BBC2005 yield criterion
     the fitted parameters are 
@@ -661,7 +679,7 @@ def BBC2005(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     if mFix[0]: return np.vstack(J).T
     else :      return np.vstack(J, dldk+dsBarde*dedk).T
 
-def Yld2000(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def Yld2000(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     C: c11,c22,c66  c12=c21=1.0 PASS
     D: d11,d12,d21,d22,d66 
@@ -708,15 +726,17 @@ def Yld2000(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     if mFix[0]: return np.vstack((jC,jD)).T
     else:       return np.vstack((jC,jD,jm)).T
 
-def Yld200418p(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def Yld200418p(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     Yld2004-18p yield criterion
     the fitted parameters are 
-    C: c12,c21,c23,c32,c13,c31,c44,c55,c66; D: d12,d21,d23,d32,d31,d13,d44,d55,d66
+      C: c12,c21,c23,c32,c13,c31,c44,c55,c66; D: d12,d21,d23,d32,d31,d13,d44,d55,d66 for 3D
+      C: c12,c21,c23,c32,c13,c31,c44; D: d12,d21,d23,d32,d31,d13,d44 for 2D
     and m, m is optional
     criteria are invalid input
   '''
-  C,D = paras[0:9], paras[9:18]
+  if dim == 2: C,D = np.append(paras[0:7],[0.0,0.0]), np.append(paras[7:14],[0.0,0.0])
+  else:        C,D = paras[0:9], paras[9:18]
   if mFix[0]: m = mFix[1]
   else:       m = paras[-1]
 
@@ -727,45 +747,47 @@ def Yld200418p(eqStress, paras, sigmas, mFix, criteria, Jac=False):
   p,q = ys(sdev, C), ys(sdev, D)
   pLambdas, qLambdas = principalStress(p), principalStress(q)   # no sort
 
-  m2 = m/2.0;  m1 = 1.0/m;  m21 = m2-1.0; x3 = xrange(3); dim = len(sv)
+  m2 = m/2.0;  m1 = 1.0/m;  m21 = m2-1.0; x3 = xrange(3); num = len(sv)
   PiQj  = np.array([(pLambdas[i,:]-qLambdas[j,:]) for i in x3 for j in x3])
-  QiPj  = np.array([(qLambdas[i,:]-pLambdas[j,:]) for i in x3 for j in x3]).reshape(3,3,dim)
+  QiPj  = np.array([(qLambdas[i,:]-pLambdas[j,:]) for i in x3 for j in x3]).reshape(3,3,num)
   PiQjs = PiQj**2
-  phi   = np.sum(PiQjs**m2,axis=0)
-  r  = (0.25*phi)**m1/eqStress
+  left  = np.sum(PiQjs**m2,axis=0)
+  r = (0.25*left)**(1.0/m)/eqStress
 
   if not Jac:
     return (r - 1.0).ravel()
   else:
-    drdphi =  r*m1/phi*4.0
-    dphidm = np.sum(PiQjs**m2*math_ln(PiQjs),axis=0)*0.5
-    dPdc, dQdd = principalStrs_Der(p, sdev), principalStrs_Der(q, sdev)
-    PiQjs3d = (PiQjs**m21).reshape(3,3,dim)
-    dphidP = -m*np.array([np.diag(np.dot(PiQjs3d[:,:,i], QiPj   [:,:,i])) for i in xrange(dim)]).T
-    dphidQ =  m*np.array([np.diag(np.dot(QiPj   [:,:,i], PiQjs3d[:,:,i])) for i in xrange(dim)]).T
+    drdl, drdm = r/m/left, r*math_ln(0.25*left)*(-1.0/m/m)
+    dldm = np.sum(PiQjs**m2*math_ln(PiQjs),axis=0)*0.5
+    dPdc, dQdd = principalStrs_Der(p, sdev, dim), principalStrs_Der(q, sdev, dim)
+    PiQjs3d = ( PiQjs**(m2-1.0) ).reshape(3,3,num)
+    dldP = -m*np.array([np.diag(np.dot(PiQjs3d[:,:,i], QiPj   [:,:,i])) for i in xrange(num)]).T
+    dldQ =  m*np.array([np.diag(np.dot(QiPj   [:,:,i], PiQjs3d[:,:,i])) for i in xrange(num)]).T
 
-    jm = drdphi*dphidm + r*math_ln(0.25*phi)*(-m1*m1)
-    jc = drdphi*np.sum([dphidP[i]*dPdc[i] for i in x3],axis=0)
-    jd = drdphi*np.sum([dphidQ[i]*dQdd[i] for i in x3],axis=0)
+    jm = drdl*dldm + drdm
+    jc = drdl*np.sum([dldP[i]*dPdc[i] for i in x3],axis=0)
+    jd = drdl*np.sum([dldQ[i]*dQdd[i] for i in x3],axis=0)
+
 
     if mFix[0]: return np.vstack((jc,jd)).T
     else:       return np.vstack((jc,jd,jm)).T
 
-def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, Jac=False):
+def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, dim, Jac=False):
   '''
     Karafillis-Boyce yield criterion
     the fitted parameters are 
-    c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a
+      c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a for 3D
+      c11,c12,c13,c14,c21,c22,c23,c24,alpha,b1,b2,a for plane stress
     0<alpha<1, b1,b2,a are optional
     criteria are invalid input
   '''
   ks = lambda (s1,s2,s3,s4,s5,s6),(c1,c2,c3,c4,c5,c6): np.array( [
          ((c2+c3)*s1-c3*s2-c2*s3)/3.0,  ((c3+c1)*s2-c3*s1-c1*s3)/3.0,
          ((c1+c2)*s3-c2*s1-c1*s2)/3.0,  c4*s4, c5*s5, c6*s6 ])
-
-  C1,C2,alpha  = paras[0:6], paras[6:12], paras[12]
-  if mFix[0]: b1=b2=a = mFix[1]
-  else:       b1,b2,a = paras[13:16]
+  if dim == 2: C1,C2,alpha = np.append(paras[0:4],[0.0,0.0]), np.append(paras[4:8],[0.0,0.0]), paras[8]
+  else:        C1,C2,alpha  = paras[0:6], paras[6:12], paras[12]
+  if mFix[0]:  b1=b2=a = mFix[1]
+  else:        b1,b2,a = paras[len(paras)-3:len(paras)]
 
   p,q = ks(sigmas, C1), ks(sigmas, C2)
   plambdas,qlambdas = principalStress(p), principalStress(q)
@@ -789,15 +811,15 @@ def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, Jac=False):
     dphi1dP = phi1/phi10*np.array([       -difPb1[1]*difP[1]+difPb1[2]*difP[2],
       difPb1[0]*difP[0]-difPb1[2]*difP[2], difPb1[1]*difP[1]-difPb1[0]*difP[0]])
     dphi2dQ = phi2/phi20*Qs*qlambdas*(b2/2.0-1.0)
-    dPdc = principalStrs_Der(p, sigmas, Karafillis=True)
-    dQdc = principalStrs_Der(q, sigmas, Karafillis=True)
+    dPdc = principalStrs_Der(p, sigmas, dim, Karafillis=True)
+    dQdc = principalStrs_Der(q, sigmas, dim, Karafillis=True)
     dphi10db1 = np.sum(difPs**(b1/2.0)*math_ln(difPs), axis=0)*0.5
     dphi20db2 = np.sum(   Qs**(b2/2.0)*math_ln(   Qs), axis=0)*0.5
 
     drb2db2   = rb2*math_ln(3.0) - rb2*math_ln(2.0)/(1.0+2.0**(1.0-b2))
     dphi1db1  = phi1*math_ln(phi10)*(-b1i*b1i) + b1i*phi1/(0.5*phi10)* 0.5*dphi10db1
     dphi2db2  = phi2*math_ln(phi20)*(-b2i*b2i) + b2i*phi2/(rb2*phi20)*(rb2*dphi20db2 + drb2db2*phi20)
-    ja  = drds*dsda - r*math_ln(Stress)/a/a  #drda
+    ja  = drds*dsda + r*math_ln(Stress)*(-1.0/a/a)  #drda
     jb1 = dphi1db1*(drds*a*phi1**(a-1)*alpha ) 
     jb2 = dphi2db2*(drds*a*phi2**(a-1)*(1.0-alpha))
     jc1 = np.sum([dphi1dP[i]*dPdc[i] for i in xrange(3)],axis=0)*drds*a*phi1**(a-1.0)*alpha 
@@ -812,140 +834,123 @@ def KarafillisBoyce(eqStress, paras, sigmas, mFix, criteria, Jac=False):
 fitCriteria = {
   'tresca'         :{'func' : Tresca,
                      'nExpo': 0,'err':np.inf,
-                     'bound': [(None,None)],
-                     'paras': 'Initial yield stress:',
-                     'text' : '\nCoefficient of Tresca criterion:\nsigma0: ',
+                     'bound': [ [(None,None)] ],
+                     'paras': [ 'sigma0' ],
+                     'text' : '\nCoefficient of Tresca criterion: ',
                      'error': 'The standard deviation error is: '
                     },
   'vonmises'       :{'func' : Hosford,
                      'nExpo': 0,'err':np.inf,
-                     'bound': [(None,None)],
-                     'paras': 'Initial yield stress:',
-                     'text' : '\nCoefficient of Huber-Mises-Hencky criterion:\nsigma0: ',
+                     'bound': [ [(None,None)] ],
+                     'paras': [ 'sigma0' ],
+                     'text' : '\nCoefficient of Huber-Mises-Hencky criterion: ',
                      'error': 'The standard deviation error is: '
                     },
   'hershey'        :{'func' : Hosford,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]+[(2.0,8.0)],
-                     'paras': 'Initial yield stress, a:',
-                     'text' : '\nCoefficients of Hershey criterion:\nsigma0, a: ',
+                     'bound': [ [(None,None)]+[(1.0,8.0)] ],
+                     'paras': [ 'sigma0, a' ],
+                     'text' : '\nCoefficients of Hershey criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
-  'ghosford'       :{'func' : Hosford,
+  'ghosford'       :{'func' : Hosford,                    
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(0.0,2.0)]*3+[(0.0,12.0)],
-                     'paras': 'F, G, H, a:',
-                     'text' : '\nCoefficients of Hosford criterion:F, G, H, a: ',
+                     'bound': [ [(0.0,2.0)]*3+[(1.0,8.0)] ],
+                     'paras': [ 'F, G, H, a' ],
+                     'text' : '\nCoefficients of Hosford criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'hill1948'       :{'func' : Hill1948,
                      'nExpo': 0,'err':np.inf,
-                     'bound': [(None,None)]*6,
-                     'paras': 'Normalized [F, G, H, L, M, N]:',
-                     'text' : '\nCoefficients of Hill1948 criterion:\n[F, G, H, L, M, N]:'+' '*16,
+                     'bound': [ [(None,None)]*6, [(None,None)]*4 ],
+                     'paras': [ 'F, G, H, L, M, N',  'F, G, H, N'],
+                     'text' : '\nCoefficients of Hill1948 criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'hill1979'       :{'func' : Hill1979,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(-2.0,2.0)]*6+[(1.0,8.0)],
-                     'paras': 'f,g,h,a,b,c,m:',
-                     'text' : '\nCoefficients of Hill1979 criterion:\n f,g,h,a,b,c,m:\n',
+                     'bound': [ [(-2.0,2.0)]*6+[(1.0,8.0)] ],
+                     'paras': [ 'f,g,h,a,b,c,m' ],
+                     'text' : '\nCoefficients of Hill1979 criterion: ' ,
                      'error': 'The standard deviation errors are: '
                     },
   'drucker'        :{'func' : Drucker,
                      'nExpo': 0,'err':np.inf,
-                     'bound': [(None,None)]*2,
-                     'paras': 'Initial yield stress, C_D:',
-                     'text' : '\nCoefficients of Drucker criterion:\nsigma0, C_D: ',
+                     'bound': [ [(None,None)]*2 ],
+                     'paras': [ '\sigma, C_D' ],
+                     'text' : '\nCoefficients of Drucker criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'gdrucker'       :{'func' : Drucker,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]*2+[(0.0,6.0)],
-                     'paras': 'Initial yield stress, C_D, p:',
-                     'text' : '\nCoefficients of general Drucker criterion:\nsigma0, C_D, p: ',
+                     'bound': [ [(None,None)]*2+[(1.0,8.0)] ],
+                     'paras': [ '\sigma, C_D, p' ],
+                     'text' : '\nCoefficients of general Drucker criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'barlat1989'     :{'func' : Barlat1989,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(-3.0,3.0)]*4+[(0.0,12.0)],
-                     'paras': 'a,c,h,f, m:',
-                     'text' : '\nCoefficients of isotropic Barlat 1989 criterion:a,c,h,f, m:\n',
+                     'bound': [ [(-3.0,3.0)]*4+[(1.0,8.0)] ],
+                     'paras': [ 'a,c,h,f, m' ],
+                     'text' : '\nCoefficients of isotropic Barlat 1989 criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
-  'barlat1991iso'  :{'func' : Barlat1991,
+  'barlat1991'     :{'func' : Barlat1991,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]+[(0.0,12.0)],
-                     'paras': 'Initial yield stress, m:',
-                     'text' : '\nCoefficients of isotropic Barlat 1991 criterion:\nsigma0, m:\n',
-                     'error': 'The standard deviation errors are: '
-                    },
-  'barlat1991aniso':{'func' : Barlat1991,
-                     'nExpo': 1,'err':np.inf,
-                     'name' : 'Barlat1991',
-                     'bound': [(None,None)]*6+[(0.0,12.0)],
-                     'text' : '\nCoefficients of anisotropic Barlat 1991 criterion: a, b, c, f, g, h, m:\n',
+                     'bound': [ [(-2,2)]*6+[(1.0,8.0)], [(-2,2)]*4+[(1.0,8.0)] ],
+                     'paras': ['a, b, c, f, g, h, m', 'a, b, c, f, m'],
+                     'text' : '\nCoefficients of anisotropic Barlat 1991 criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'bbc2000'        :{'func' : BBC2000,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]*7+[(1.0,8.0)],
-                     'paras': 'a, b, c, d, e, f, g, k:',
-                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2003 criterion: a, b, c, d, e, f, g, k:\n',
+                     'bound': [ [(None,None)]*7+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]+[(1.0,9.0)],
+                     'paras': [ 'd,e,f,g, b,c,a, k' ],
+                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2000 criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'bbc2003'        :{'func' : BBC2003,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]*7+[(0.0,1.0)]+[(0.0,12.0)],
-                     'paras': 'M, N, P, Q, R, S, T, a, k:',
-                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: M, N, P, Q, R, S, T, a, k:\n',
+                     'bound': [ [(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*7+[(0.0,1.0)]+[(1.0,9.0)],
+                     'paras': [ 'M, N, P, Q, R, S, T, a, k' ],
+                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2003 criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'bbc2005'        :{'func' : BBC2005,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]*8+[(0.0,12.0)],
-                     'paras': 'a, b, L ,M, N, P, Q, R, k:',
-                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: a, b, L ,M, N, P, Q, R, k:\n',
+                     'bound': [ [(None,None)]*8+[(1.0,8.0)] ], #[(None,None)]*6+[(0.0,1.0)]*2+[(1.0,9.0)],
+                     'paras': [ 'L ,M, N, P, Q, R, a, b, k' ],
+                     'text' : '\nCoefficients of Banabic-Balan-Comsa 2005 criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
-  'cb2d'           :{'func' : Cazacu_Barlat,
+  'cazacu'          :{'func' : Cazacu_Barlat,
                      'nExpo': 0,'err':np.inf,
-                     'bound': [(None,None)]*11,
-                     'paras': 'a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:',
-                     'text' : '\nCoefficients of Cazacu Barlat yield criterion for plane stress: \
-                               \n a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c:\n',
-                     'error': 'The standard deviation errors are: '
-                    },
-  'cb3d'           :{'func' : Cazacu_Barlat,
-                     'nExpo': 0,'err':np.inf,
-                     'bound': [(None,None)]*18,
-                     'paras': 'a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c:',
-                     'text' : '\nCoefficients of Cazacu Barlat yield criterion: \
-                               \n a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c\n',
+                     'bound': [ [(None,None)]*16+[(-2.5,2.5)]+[(None,None)] ],
+                     'paras': [ 'a1,a2,a3,a4,a5,a6; b1,b2,b3,b4,b5,b6,b7,b8,b9,b10,b11; c','a1,a2,a3,a6; b1,b2,b3,b4,b5,b10; c'],
+                     'text' : '\nCoefficients of Cazacu Barlat yield criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'yld2000'        :{'func' : Yld2000,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]*8+[(1,8.0)],
-                     'paras': 'c11,c12,c21,c22,c66,d11,d12,d21,d22,d66,m:',
-                     'text' : '\nCoefficients of Yld2000-2D yield criterion: \
-                               \n c11,c12,c21,c22,c66,d11,d12,d21,d22,d66,m:\n',
+                     'bound': [ [(None,None)]*8+[(1.0,8.0)] ],
+                     'paras': [ 'a1,a2,a7,a3,a4,a5,a6,a8,m' ],
+                     'text' : '\nCoefficients of Yld2000-2D yield criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'yld200418p'     :{'func' : Yld200418p,
                      'nExpo': 1,'err':np.inf,
-                     'bound': [(None,None)]*18+[(0.0,12.0)],
-                     'paras': 'c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m:',
-                     'text' : '\nCoefficients of Yld2004-18p yield criterion: \
-                               \n c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m\n',
+                     'bound': [ [(None,None)]*18+[(1.0,8.0)], [(None,None)]*14+[(1.0,8.0)] ],
+                     'paras': [ 'c12,c21,c23,c32,c31,c13,c44,c55,c66,d12,d21,d23,d32,d31,d13,d44,d55,d66,m', \
+                                'c12,c21,c23,c32,c31,c13,c44,d12,d21,d23,d32,d31,d13,d44,m' ],
+                     'text' : '\nCoefficients of Yld2004-18p yield criterion: ',
                      'error': 'The standard deviation errors are: '
                     },
   'karafillis'     :{'func' : KarafillisBoyce,
                      'nExpo': 3,'err':np.inf,
-                     'bound': [(None,None)]*12+[(0.0,1.0)]+[(0.0,12.0)]*3,
-                     'paras': 'c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a',
-                     'text' : '\nCoefficients of Karafillis-Boyce yield criterion: \
-                               \n c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a\n',
+                     'bound': [ [(None,None)]*12+[(0.0,1.0)]+[(1.0,8.0)]*3, [(None,None)]*8+[(0.0,1.0)]+[(1.0,8.0)]*3],
+                     'paras': [ 'c11,c12,c13,c14,c15,c16,c21,c22,c23,c24,c25,c26,alpha,b1,b2,a', \
+                                'c11,c12,c13,c14,c21,c22,c23,c24,alpha,b1,b2,a' ],
+                     'text' : '\nCoefficients of Karafillis-Boyce yield criterion: ',
                      'error': 'The standard deviation errors are: '
                     }
                   }
@@ -1080,9 +1085,12 @@ class Criterion(object):
   '''
      Fitting to certain criterion
   '''
-  def __init__(self,name='worst'):
+  def __init__(self, exponent, uniaxial, dimension, name='vonmises'):
     self.name = name
-    self.results = fittingCriteria
+    self.expo = exponent
+    self.uniaxial= uniaxial
+    self.dimen   = dimension
+    self.results = fitCriteria
 
     if self.name.lower() not in map(str.lower, self.results.keys()):
       raise Exception('no suitable fitting criterion selected')
@@ -1094,10 +1102,11 @@ class Criterion(object):
     if options.exponent > 0.0: nExponent = nExpo
     else:                      nExponent = 0
     nameCriterion = self.name.lower()
-    criteria      = Criteria(nameCriterion,self.uniaxial,self.expo)
-    textParas     = fitCriteria[nameCriterion]['text'] + formatOutput(numParas+nExponent)
+    criteria      = Criteria(nameCriterion,self.uniaxial,self.expo, self.dimen)
+    textParas     = fitCriteria[nameCriterion]['text']+fitCriteria[nameCriterion]['paras'][dDim]+':\n' + \
+                    formatOutput(numParas+nExponent)
     textError     = fitCriteria[nameCriterion]['error']+ formatOutput(numParas+nExponent,'%-14.8f')+'\n'
-    bounds        = fitCriteria[nameCriterion]['bound']  # Default bounds, no bound
+    bounds        = fitCriteria[nameCriterion]['bound'][dDim]  # Default bounds, no bound
     guess0        = Guess                                # Default initial guess, depends on bounds
 
     if fitResults == [] : initialguess = guess0
@@ -1264,31 +1273,35 @@ Performs calculations with various loads on given geometry file and fits yield s
 """, version=string.replace(scriptID,'\n','\\n')
 )
 # maybe make an option to specifiy if 2D/3D fitting should be done?
-parser.add_option('-l','--load' ,    dest='load', type='float', nargs=3,
-                                     help='load: final strain; increments; time %default', metavar='float int float')
-parser.add_option('-g','--geometry', dest='geometry', type='string',
-                                     help='name of the geometry file [%default]', metavar='string')
-parser.add_option('-c','--criterion',     dest='criterion', choices=fitCriteria.keys(),
-                                     help='criterion for stopping simulations [%default]', metavar='string')
+
+parser.add_option('-l','--load' ,      dest='load', type='float', nargs=3,
+                                       help='load: final strain; increments; time %default', metavar='float int float')
+parser.add_option('-g','--geometry',   dest='geometry', type='string',
+                                       help='name of the geometry file [%default]', metavar='string')
+parser.add_option('-c','--criterion',  dest='criterion', choices=fitCriteria.keys(),
+                                       help='criterion for stopping simulations [%default]', metavar='string')
 # best/worse fitting? Stopping?
-parser.add_option('-f','--fitting',       dest='fitting', choices=thresholdParameter,
-                                     help='yield criterion [%default]', metavar='string')
-parser.add_option('-y','--yieldvalue',    dest='yieldValue', type='float', nargs=3,
-                                     help='yield points: start; end; count %default', metavar='float float int')
-parser.add_option('--min',           dest='min', type='int',
-                                     help='minimum number of simulations [%default]', metavar='int')
-parser.add_option('--max',           dest='max', type='int',
-                                     help='maximum number of iterations [%default]',  metavar='int')
-parser.add_option('-t','--threads',       dest='threads', type='int',
-                                     help='number of parallel executions [%default]',  metavar='int')
-parser.add_option('-d','--dimension',     dest='dimension', type='int',
-                                     help='dimension of the virtual test [%default]',  metavar='int')
-parser.add_option('-v', '--vegter',  dest='vegter', action='store_true',
-                  help='Vegter criteria [%default]',  metavar='float')                                     
-parser.add_option('-e', '--exponent',dest='exponent', type='float',
-                                     help='exponent of non-quadratic criteria') 
-parser.add_option('-u', '--uniaxial',dest='eqStress', type='float',
-                                     help='Equivalent stress',  metavar='float') 
+parser.add_option('-f','--fitting',    dest='fitting', choices=thresholdParameter,
+                                       help='yield criterion [%default]', metavar='string')
+parser.add_option('-y','--yieldvalue', dest='yieldValue', type='float', nargs=3,
+                                       help='yield points: start; end; count %default', metavar='float float int')
+parser.add_option('--min',             dest='min', type='int',
+                                       help='minimum number of simulations [%default]', metavar='int')
+parser.add_option('--max',             dest='max', type='int',
+                                       help='maximum number of iterations [%default]',  metavar='int')
+parser.add_option('-t','--threads',    dest='threads', type='int',
+                                       help='number of parallel executions [%default]',  metavar='int')
+parser.add_option('-b','--bound',      dest='bounds', type='float', nargs=2,
+                                       help='yield points: start; end; count %default', metavar='float float')
+parser.add_option('-d','--dimension',  dest='dimension', type='int',
+                                       help='dimension of the virtual test [%default]',  metavar='int')
+parser.add_option('-v', '--vegter',    dest='vegter', action='store_true',
+                                       help='Vegter criteria [%default]',  metavar='float') 
+parser.add_option('-e', '--exponent',  dest='exponent', type='float',
+                                       help='exponent of non-quadratic criteria',  metavar='int') 
+parser.add_option('-u', '--uniaxial',  dest='eqStress', type='float',
+                                       help='Equivalent stress',  metavar='float') 
+
 parser.set_defaults(min        = 12)
 parser.set_defaults(max        = 30)
 parser.set_defaults(threads    = 4)
@@ -1317,18 +1330,25 @@ if options.yieldValue[0]>options.yieldValue[1]:
   parser.error('invalid yield start (below yield end)')
 if options.yieldValue[2] != int(options.yieldValue[2]):
   parser.error('count must be an integer')
+if options.dimension not in [2,3]:
+  parser.error('Dimension is wrong, should be 2(plane stress state) or 3(general stress state)')
 if not os.path.isfile('numerics.config'):
   print('numerics.config file not found')
 
-numParas = len(fitCriteria[options.criterion]['bound'])
+if not os.path.isfile('material.config'):
+  print('material.config file not found')
+
+dDim = options.dimension - 3
+numParas = len(fitCriteria[options.criterion]['bound'][dDim])
+
 nExpo = fitCriteria[options.criterion]['nExpo']
 Guess = []
 if options.exponent > 0.0: 
   numParas = numParas-nExpo # User defines the exponents
-  fitCriteria[options.criterion]['bound'] = fitCriteria[options.criterion]['bound'][:numParas]
+  fitCriteria[options.criterion]['bound'][dDim] = fitCriteria[options.criterion]['bound'][dDim][:numParas]
 for i in xrange(numParas):
-  temp = fitCriteria[options.criterion]['bound'][i]
-  if fitCriteria[options.criterion]['bound'][i] == (None,None):Guess.append(1.0)
+  temp = fitCriteria[options.criterion]['bound'][dDim][i]
+  if fitCriteria[options.criterion]['bound'][dDim][i] == (None,None): Guess.append(1.0)
   else: 
     g = (temp[0]+temp[1])/2.0
     if g == 0: g = temp[1]*0.5
@@ -1336,19 +1356,16 @@ for i in xrange(numParas):
 
 if options.vegter is True: 
   options.dimension = 2
-unitGPa = 10.e8
+unitGPa = 10.e5
 N_simulations=0
-fitResults = []
 s=threading.Semaphore(1)
-
-stressAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
-strainAll=[np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
                   nSet = 10, dimension = options.dimension, vegter = options.vegter)
-myFit = Criterion(options.criterion)
+stressAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
+strainAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 
-threads=[]
-
+fitResults = []; fitErrors = []; threads=[]
+myFit = Criterion(options.exponent,options.eqStress, options.dimension, options.criterion)
 for i in range(options.threads):
   threads.append(myThread(i))
   threads[i].start()
@@ -1356,4 +1373,4 @@ for i in range(options.threads):
 for i in range(options.threads):
   threads[i].join()
 
-print 'finished fitting to yield criteria'
+print 'Finished fitting to yield criteria'
