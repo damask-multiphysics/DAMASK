@@ -105,7 +105,7 @@ def vtk_writeASCII_mesh(mesh,data,res,sep):
     plural = {True:'',False:'S'}[type.lower().endswith('s')]
     for item in data[type]['_order_']:
       cmds += [\
-               '%s %s double %i'%(info[type]['name'].upper()+plural,item,info[type]['len']),
+               '%s %s double'%(info[type]['name'].upper()+plural,item),
                {True:'LOOKUP_TABLE default',False:''}[info[type]['name'][:3]=='sca'],
                [[[sep.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
@@ -123,7 +123,7 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
           'powered by %s'%scriptID,
           'ASCII',
           'DATASET UNSTRUCTURED_GRID',
-          'POINTS %i float'%N,
+          'POINTS %i double'%N,
           [[['\t'.join(map(str,coordinates[i,j,k])) for i in range(res[0])] for j in range(res[1])] for k in range(res[2])],
           'CELLS %i %i'%(N,N*2),
           ['1\t%i'%i for i in range(N)],
@@ -136,7 +136,7 @@ def vtk_writeASCII_points(coordinates,data,res,sep):
     plural = {True:'',False:'S'}[type.lower().endswith('s')]
     for item in data[type]:
       cmds += [\
-               '%s %s float'%(type.upper()+plural,item),
+               '%s %s double'%(type.upper()+plural,item),
                {True:'LOOKUP_TABLE default',False:''}[type.lower()[:3]=='sca'],
                [[[sep.join(map(unravel,data[type][item][:,j,k]))] for j in range(res[1])] for k in range(res[2])],
               ]
@@ -187,11 +187,7 @@ parser.add_option('--scaling',      dest='scaling', action='extend', metavar = '
                                     help='scaling of fluctuation')
 parser.add_option('-u', '--unitlength', dest='unitlength', type='float', metavar = 'float',
                                     help='set unit length for 2D model [%default]')
-parser.add_option('--filenodalcoords', dest='filenodalcoords', metavar = 'string',
-                                    help='ASCII table containing nodal coords')
-parser.add_option('--labelnodalcoords', dest='labelnodalcoords', nargs=3,
-                                    help='labels of nodal coords in ASCII table %default', metavar = 'string string string')
-                  
+
 parser.set_defaults(defgrad = 'f')
 parser.set_defaults(separator = 't')
 parser.set_defaults(scalar = [])
@@ -206,8 +202,6 @@ parser.set_defaults(scaling = [])
 parser.set_defaults(undeformed = False)
 parser.set_defaults(unitlength = 0.0)
 parser.set_defaults(cell = True)
-parser.set_defaults(filenodalcoords = '')
-parser.set_defaults(labelnodalcoords = ('coord.x','coord.y','coord.z'))
 
 sep = {'n': '\n', 't': '\t', 's': ' '}
 
@@ -215,8 +209,6 @@ sep = {'n': '\n', 't': '\t', 's': ' '}
 
 options.scaling += [1.0 for i in xrange(max(0,3-len(options.scaling)))]
 options.scaling = map(float, options.scaling)
-
-if np.any(options.scaling != 1.0) and options.filenodalcoords != '': print 'cannot scale when reading coordinate from file'
 
 for filename in args:
   if not os.path.exists(filename):
@@ -321,29 +313,12 @@ for filename in args:
                       np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
                                                              column['tensor'][options.defgrad]+9]),
                                                              (3,3,grid[0],grid[1],grid[2])))
-  if not options.filenodalcoords:
-    F = np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
-                                         column['tensor'][options.defgrad]+9]),
-                                                             (3,3,grid[0],grid[1],grid[2]))
-    centroids = damask.core.mesh.deformedCoordsFFT(dim,F,Favg,options.scaling)
-    nodes = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
 
-  else:
-    nodes = np.zeros(((3,grid[0]+1)*(grid[1]+1)*(grid[2]+1)),'d')
-
-    filenodalcoords = open(options.filenodalcoords)
-    tablenodalcoords = damask.ASCIItable(filenodalcoords)
-    tablenodalcoords.head_read()
-    columns = [tablenodalcoords.labels.index(options.labelnodalcoords[0]),        
-               tablenodalcoords.labels.index(options.labelnodalcoords[1]),
-               tablenodalcoords.labels.index(options.labelnodalcoords[2])]
-    i = 0
-    while tablenodalcoords.data_read():                                                    # read next data line of ASCII table
-      nodes[i,:]=float(tablenodalcoords.data[column[:]])
-      i += 1
-
-    nodes=nodes.reshape(3,grid[0]+1,grid[1]+1,grid[2]+1)
-
+  F = np.reshape(np.transpose(values[:,column['tensor'][options.defgrad]:
+                                       column['tensor'][options.defgrad]+9]),
+                                                           (3,3,grid[0],grid[1],grid[2]))
+  centroids = damask.core.mesh.deformedCoordsFFT(dim,F,Favg,options.scaling)
+  nodes = damask.core.mesh.nodesAroundCentres(dim,Favg,centroids)
 
   fields =  {\
              'tensor': {},\
@@ -459,4 +434,3 @@ for filename in args:
     output(out[what],{'filepointer':vtk},'File')
     vtk.close()
   print
-  
