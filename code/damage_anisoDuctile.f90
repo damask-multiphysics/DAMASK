@@ -397,8 +397,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
    math_Mandel33to6, &
    math_tensorproduct, &
    math_det33, &
-   math_mul33x33, &
-   math_transpose33
+   math_mul33x33
  
  implicit none
  integer(pInt), intent(in) :: &

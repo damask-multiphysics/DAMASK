@@ -353,7 +353,6 @@ subroutine damage_gurson_microstructure(ipc, ip, el)
  use math, only: &
    math_Mandel6to33, &
    math_mul33x33, &
-   math_transpose33, &
    math_I3, &
    math_norm33
 
