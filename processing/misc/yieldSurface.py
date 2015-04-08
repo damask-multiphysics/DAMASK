@@ -1098,7 +1098,7 @@ class Criterion(object):
       print('fitting to the %s criterion'%name)
 
   def fit(self,stress):
-    global fitResults; fitErrors
+    global fitResults; fitErrors; fitResidual
     if options.exponent > 0.0: nExponent = nExpo
     else:                      nExponent = 0
     nameCriterion = self.name.lower()
@@ -1120,6 +1120,9 @@ class Criterion(object):
                        bounds=bounds, Dfun=criteria.jac,   full_output=True)
       if ierr not in [1, 2, 3, 4]:
         raise RuntimeError("Optimal parameters not found: " + errmsg)
+      else:
+        residual = criteria.fun(popt, ydata, stress)
+        fitResidual.append(np.linalg.norm(residual)/len(residual))
       if (len(ydata) > len(initialguess)) and pcov is not None:
         s_sq = (criteria.fun(popt, *(ydata,stress))**2).sum()/(len(ydata)-len(initialguess))
         pcov = pcov * s_sq
@@ -1257,8 +1260,12 @@ def loadcaseNo():
   return N_simulations
 
 def converged():        # is there any meaningfull stopping criterion?
-  global N_simulations
+  global N_simulations; fitResidual
+
   if N_simulations < options.max:
+    if len(fitResidual) > 5:
+      residualList = np.array(fitResidual[len(fitResidual)-5:])
+      if np.std(residualList)/np.max(residualList) < 0.05: return True
     return False
   else:
     return True
@@ -1364,7 +1371,7 @@ myLoad = Loadcase(options.load[0],options.load[1],options.load[2],
 stressAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 strainAll= [np.zeros(0,'d').reshape(0,0) for i in xrange(int(options.yieldValue[2]))]
 
-fitResults = []; fitErrors = []; threads=[]
+fitResults = []; fitErrors = []; fitResidual = []; threads=[]
 myFit = Criterion(options.exponent,options.eqStress, options.dimension, options.criterion)
 for i in range(options.threads):
   threads.append(myThread(i))
