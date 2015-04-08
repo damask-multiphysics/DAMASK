@@ -701,7 +701,7 @@ of already processed data points for evaluation.
 parser.add_option('-i','--info', action='store_true', dest='info', \
                   help='list contents of resultfile [%default]')
 parser.add_option('-l','--legacy', action='store_true', dest='legacy', \
-                  help='legacy user result block (starts with GrainCount) [%default]')
+                  help='legacy data format for spectral solver (no MPI out) [%default]')
 parser.add_option('-n','--nodal', action='store_true', dest='nodal', \
                   help='data is extrapolated to nodal value [%default]')
 parser.add_option(    '--prefix', dest='prefix', \
