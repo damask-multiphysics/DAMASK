@@ -58,7 +58,6 @@ defaults={'DAMASK_BIN':'depending on access rights',
           'F90':compiler,
           'FFTW_ROOT':'/usr',
           'MSC_ROOT' :'/msc',
-          'HDF5_ROOT':'/usr/local',
           'DAMASK_NUM_THREADS':4,
           'blasType':'LAPACK',
           'blasRoot':{'LAPACK':'/usr',
@@ -89,7 +88,7 @@ try:
         defaults['DAMASK_NUM_THREADS'] = int(value)
       if key == 'DAMASK_BIN':
         defaults['DAMASK_BIN'] = value
-      if key in ['F90','FFTW_ROOT','HDF5_ROOT','MSC_ROOT','spectralOptions']:
+      if key in ['F90','FFTW_ROOT','MSC_ROOT','spectralOptions']:
         defaults[key] = value
       for theKey in reversed(BLAS_order):
         if key == theKey+'_ROOT' and value != None and value != '':
@@ -109,9 +108,6 @@ parser.add_option('--with-FFTW-dir','--with-fftw-dir',
 parser.add_option('--with-MSC-dir','--with-msc-dir',          
                                              dest='mscRoot', type='string', metavar='string',
                                              help='root directory of MSC.Marc/Mentat [%default]')
-parser.add_option('--with-HDF5-dir','--with-hdf5-dir',         
-                                             dest='hdf5Root', type='string', metavar='string',
-                                             help='root directory of HDF5 [%default]')
 parser.add_option('--with-OMP-threads','--with-omp-threads',      
                                              dest='threads', type='int', metavar='int',
                                              help='number of openMP threads [%default]')
@@ -128,7 +124,6 @@ parser.set_defaults(prefix   = defaults['DAMASK_BIN'])
 parser.set_defaults(compiler = defaults['F90'])
 parser.set_defaults(fftwRoot = defaults['FFTW_ROOT'])
 parser.set_defaults(mscRoot  = defaults['MSC_ROOT'])
-parser.set_defaults(hdf5Root = defaults['HDF5_ROOT'])
 parser.set_defaults(threads  = defaults['DAMASK_NUM_THREADS'])
 parser.set_defaults(blasType = defaults['blasType'])
 
@@ -153,7 +148,6 @@ options.compiler = options.compiler.lower()
 options.blasType = options.blasType.upper() 
 options.fftwRoot = os.path.normpath(options.fftwRoot)
 options.mscRoot  = os.path.normpath(options.mscRoot)
-options.hdf5Root = os.path.normpath(options.hdf5Root) 
 options.blasRoot = os.path.normpath(options.blasRoot)
 
 locations = {
@@ -232,9 +226,6 @@ try:
       if items[0] == 'MSC_ROOT':
         line = '%s=%s'%(items[0],options.mscRoot)
         options.mscRoot =''
-      if items[0] == 'HDF5_ROOT':
-        line = '%s=%s'%(items[0],options.hdf5Root)
-        options.hdf5Root =''
       if items[0] == 'DAMASK_NUM_THREADS':
         line = '%s=%s'%(items[0],options.threads)
         options.threads =''
@@ -265,8 +256,6 @@ for opt, value in options.__dict__.items():
     output.append('FFTW_ROOT=%s'%value)
   if opt == 'mscRoot' and value != '':
     output.append('MSC_ROOT=%s'%value)
-  if opt == 'hdf5Root' and value != '':
-    output.append('HDF5_ROOT=%s'%value)
   if opt == 'threads' and value != '':
     output.append('DAMASK_NUM_THREADS=%s'%value)
   if opt == 'blasType' and value != '':
