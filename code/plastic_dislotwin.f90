@@ -682,8 +682,8 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (plastic_dislotwin_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
       if (sum(plastic_dislotwin_Ntwin(:,instance)) > 0_pInt) then
-        if (plastic_dislotwin_SFE_0K(instance) == 0.0_pReal .and. &
-            plastic_dislotwin_dSFE_dT(instance) == 0.0_pReal .and. &
+        if (plastic_dislotwin_SFE_0K(instance) <= tiny(0.0_pReal) .and. &
+            plastic_dislotwin_dSFE_dT(instance) <= tiny(0.0_pReal) .and. &
             lattice_structure(phase) == LATTICE_fcc_ID) &
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
         if (plastic_dislotwin_aTolRho(instance) <= 0.0_pReal) &
@@ -708,7 +708,7 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           plastic_dislotwin_pShearBand(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-      if (plastic_dislotwin_dipoleFormationFactor(instance) /= 0.0_pReal .and. &
+      if (plastic_dislotwin_dipoleFormationFactor(instance) > tiny(0.0_pReal) .and. &
           plastic_dislotwin_dipoleFormationFactor(instance) /= 1.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
@@ -1016,7 +1016,6 @@ subroutine plastic_dislotwin_stateInit(ph,instance)
    pi
  use lattice, only: &
    lattice_maxNslipFamily, &
-   lattice_structure, &
    lattice_mu
  use material, only: &
    plasticState
@@ -1195,9 +1194,6 @@ function plastic_dislotwin_homogenizedC(ipc,ip,el)
 subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  use math, only: &
    pi
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
    material_phase, &
    phase_plasticityInstance, &
@@ -1206,9 +1202,7 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
  use lattice, only: &
    lattice_structure, &
    lattice_mu, &
-   lattice_nu, &
-   lattice_maxNslipFamily
-
+   lattice_nu
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -1513,8 +1507,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  
 !--------------------------------------------------------------------------------------------------
 ! Shear banding (shearband) part
- if(plastic_dislotwin_sbVelocity(instance) /= 0.0_pReal .and. &
-    plastic_dislotwin_sbResistance(instance) /= 0.0_pReal) then
+ if(plastic_dislotwin_sbVelocity(instance) > tiny(0.0_pReal) .and. &
+    plastic_dislotwin_sbResistance(instance) > tiny(0.0_pReal)) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
    call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
@@ -1672,9 +1666,6 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    tol_math_check
  use math, only: &
    pi
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
    material_phase, &
    phase_plasticityInstance, &
@@ -1696,8 +1687,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
    lattice_fcc_twinNucleationSlipPair, &
    lattice_fcc_transNucleationTwinPair, &
    lattice_fcc_shearCritTrans, &
-   LATTICE_fcc_ID, &
-   LATTICE_bcc_ID
+   LATTICE_fcc_ID
 
  implicit none
  real(pReal), dimension(6),  intent(in):: &
@@ -1802,7 +1792,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_dislotwin_CAtomicVolume(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)**(3.0_pReal)
       VacancyDiffusion = &
         plastic_dislotwin_D0(instance)*exp(-plastic_dislotwin_Qsd(instance)/(kB*Temperature))
-      if (tau_slip(j) == 0.0_pReal) then
+      if (tau_slip(j) <= tiny(0.0_pReal)) then
         DotRhoEdgeDipClimb(j) = 0.0_pReal
       else
         ClimbVelocity(j) = &
@@ -1912,8 +1902,8 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
           b = lattice_fcc_transNucleationTwinPair(2,j)
           sa  = sign(1_pInt, a)
           sb  = sign(1_pInt, b)
-          ssa = sign(1.0_pReal, shearrate_trans(a))
-          ssb = sign(1.0_pReal, shearrate_trans(b))
+          ssa = int(sign(1.0_pReal, shearrate_trans(a)),pInt)
+          ssb = int(sign(1.0_pReal, shearrate_trans(b)),pInt)
 
           if (sa == ssa .and. sb == ssb) then
             probrate_trans(j) = (abs(shear_trans(a)*shearrate_trans(b)) + abs(shear_trans(b)*shearrate_trans(a)))
@@ -1949,7 +1939,6 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
  use material, only: &
    material_phase, &
    phase_plasticityInstance,& 
-   phase_Noutput, &
    plasticState, &
    mappingConstitutive
  use lattice, only: &
@@ -2266,7 +2255,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
              endif
 
              !* Stress exponent
-             if (gdot_slip(j)==0.0_pReal) then
+             if (gdot_slip(j)<=tiny(0.0_pReal)) then
                plastic_dislotwin_postResults(c+j) = 0.0_pReal
              else
                plastic_dislotwin_postResults(c+j) = (tau/gdot_slip(j))*dgdot_dtauslip

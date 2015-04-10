@@ -3590,7 +3590,6 @@ logical function crystallite_integrateStress(&
                          math_mul99x99, &
                          math_transpose33, &
                          math_inv33, &
-                         math_invert33, &
                          math_invert, &
                          math_det33, &
                          math_norm33, &
@@ -3654,8 +3653,7 @@ logical function crystallite_integrateStress(&
                                      dLi_dFi3333, &
                                      dLp_dT3333, &
                                      dLi_dT3333
- real(pReal)                         det, &                                                          ! determinant
-                                     detInvFi, &
+ real(pReal)                         detInvFi, &                                                     ! determinant of InvFi
                                      steplengthLp0, &
                                      steplengthLp, &
                                      steplengthLi0, &
@@ -3663,7 +3661,6 @@ logical function crystallite_integrateStress(&
                                      dt, &                                                           ! time increment
                                      aTolLp, &
                                      aTolLi
- logical                             error                                                           ! flag indicating an error
  integer(pInt)                       NiterationStressLp, &                                           ! number of stress integrations
                                      NiterationStressLi, &                                           ! number of inner stress integrations
                                      ierr, &                                                         ! error indicator for LAPACK
@@ -3718,7 +3715,7 @@ logical function crystallite_integrateStress(&
  !* inversion of Fp_current...
 
  invFp_current = math_inv33(Fp_current)
- if (all(invFp_current == 0.0_pReal)) then                          ! ... failed?
+ if (all(invFp_current <= tiny(0.0_pReal))) then                     ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
@@ -3729,12 +3726,12 @@ logical function crystallite_integrateStress(&
 #endif
    return
  endif
- A = math_mul33x33(Fg_new,invFp_current)                           ! intermediate tensor needed later to calculate dFe_dLp
+ A = math_mul33x33(Fg_new,invFp_current)                                ! intermediate tensor needed later to calculate dFe_dLp
 
  !* inversion of Fi_current...
 
  invFi_current = math_inv33(Fi_current)
- if (all(invFi_current == 0.0_pReal)) then                         ! ... failed?
+ if (all(invFi_current <= tiny(0.0_pReal))) then                       ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip g ',&
@@ -3974,9 +3971,9 @@ logical function crystallite_integrateStress(&
  !* calculate new plastic and elastic deformation gradient
 
  invFp_new = math_mul33x33(invFp_current,B)
- invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)  ! regularize by det
- call math_invert33(invFp_new,Fp_new,det,error)
- if (error .or. any(Fp_new /= Fp_new)) then
+ invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                               ! regularize by det
+ Fp_new = math_inv33(invFp_new)
+ if (all(Fp_new <= tiny(0.0_pReal))) then                                                           ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',&

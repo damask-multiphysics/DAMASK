@@ -498,9 +498,8 @@ subroutine mesh_init(ip,el)
 #endif
 #ifdef Spectral
    IO_open_file
- use numerics, only: &
-   divergence_correction
 #else
+ use numerics, only: &
    IO_open_InputFile
 #endif
  use debug, only: &
@@ -1547,9 +1546,7 @@ function mesh_regrid(adaptive,resNewInput,minRes)
  integer(pInt), dimension(:),            allocatable    :: indices
  real(pReal)                                            :: wgt
  real(pReal),   dimension(3)                            :: geomSizeNew, geomSize
- real(pReal),   dimension(3,3)                          :: Favg, Favg_LastInc,       &
-                                                           FavgNew, Favg_LastIncNew, &
-                                                           deltaF, deltaF_lastInc
+ real(pReal),   dimension(3,3)                          :: Favg, Favg_LastInc
  real(pReal),   dimension(:,:),           allocatable :: & 
    coordinates,   coordinatesNew  
  real(pReal),   dimension(:,:,:),         allocatable :: & 
@@ -1559,7 +1556,6 @@ function mesh_regrid(adaptive,resNewInput,minRes)
    Tstar,           TstarNew, &
    stateConst 
  real(pReal),   dimension(:,:,:,:,:),     allocatable :: & 
-   spectralF33,  spectralF33New, &
    F,                  FNew, &
    Fp,                FpNew, &
    Lp,                LpNew, &

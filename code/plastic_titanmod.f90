@@ -209,7 +209,6 @@ subroutine plastic_titanmod_init(fileUnit)
    IO_timeStamp, &
    IO_EOF
  use material, only: &
-   homogenization_maxNgrains, &
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
@@ -1074,8 +1073,7 @@ subroutine plastic_titanmod_stateInit(ph,instance)
    lattice_mu
    
  use material, only: &
-   plasticState, &
-   mappingConstitutive 
+   plasticState
 
  implicit none
  integer(pInt), intent(in) :: instance                                                              !< number specifying the instance of the plasticity
@@ -1167,11 +1165,7 @@ end subroutine plastic_titanmod_stateInit
 !> @brief returns the homogenized elasticity matrix
 !--------------------------------------------------------------------------------------------------
 function plastic_titanmod_homogenizedC(ipc,ip,el)
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
@@ -1347,11 +1341,7 @@ subroutine plastic_titanmod_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,temperature,
    lattice_NtwinSystem, &
    lattice_structure, &
    LATTICE_hex_ID
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
@@ -1662,11 +1652,7 @@ subroutine plastic_titanmod_dotState(Tstar_v,temperature,ipc,ip,el)
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
    lattice_NtwinSystem
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance, &
    plasticState, &
@@ -1782,14 +1768,9 @@ end subroutine plastic_titanmod_dotState
 !> @brief return array of constitutive results
 !--------------------------------------------------------------------------------------------------
 function plastic_titanmod_postResults(ipc,ip,el)
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance, &
-   phase_Noutput, &
    plasticState, &
    mappingConstitutive
  

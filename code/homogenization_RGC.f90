@@ -1039,8 +1039,7 @@ subroutine homogenization_RGC_stressPenalty(rPen,nMis,avgF,fDef,ip,el,homID)
  use constitutive, only: &
    constitutive_homogenizedC
  use math, only: &
-   math_civita,&
-   math_invert33
+   math_civita
  use material, only: &
    homogenization_maxNgrains,&
    homogState, &

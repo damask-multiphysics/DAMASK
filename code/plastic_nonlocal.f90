@@ -1413,7 +1413,6 @@ use lattice,  only: lattice_maxNslipFamily
 use math,     only: math_sampleGaussVar
 use mesh,     only: mesh_ipVolume, &
                     mesh_NcpElems, &
-                    mesh_maxNips, &
                     mesh_element, &
                     FE_Nips, &
                     FE_geomtype
@@ -1424,9 +1423,6 @@ use material, only: material_phase, &
                     material_Nphase, &
                     phase_plasticity ,&
                     PLASTICITY_NONLOCAL_ID
- use numerics,only: &
-                    numerics_integrator
-
 implicit none
 
 integer(pInt)        ::       e, &
@@ -1561,20 +1557,16 @@ use math, only: &
   math_mul33x3, &
   math_mul3x3, &
   math_norm3, &
-  math_invert33, &
+  math_inv33, &
   math_transpose33
 use debug, only: &
   debug_level, &
   debug_constitutive, &
-  debug_levelBasic, &
   debug_levelExtensive, &
   debug_levelSelective, &
-  debug_g, &
   debug_i, &
   debug_e
 use mesh, only: &
-  mesh_NcpElems, &
-  mesh_maxNips, &
   mesh_element, &
   mesh_ipNeighborhood, &
   mesh_ipCoordinates, &
@@ -1586,7 +1578,6 @@ use mesh, only: &
   FE_geomtype, &
   FE_celltype
 use material, only: &
-  homogenization_maxNgrains, &
   material_phase, &
   phase_localPlasticity, &
   plasticState, &
@@ -1629,10 +1620,7 @@ integer(pInt)                   neighbor_el, &                ! element number o
                                 n, &
                                 nRealNeighbors                ! number of really existing neighbors
 integer(pInt), dimension(2) ::  neighbors
-real(pReal)                     detFe, &
-                                detFp, &
-                                FVsize, &
-                                temp, &
+real(pReal)                     FVsize, &
                                 correction, &
                                 myRhoForest
 real(pReal), dimension(2) ::    rhoExcessGradient, &
@@ -1664,7 +1652,6 @@ real(pReal), dimension(2,maxval(totalNslip),mesh_maxNipNeighbors) :: &
                                 neighbor_rhoTotal          ! total density at neighboring material point
 real(pReal), dimension(3,totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),2) :: &
                                 m                             ! direction of dislocation motion
-logical                         inversionError
 
 ph = mappingConstitutive(2,1,ip,el)
 of = mappingConstitutive(1,1,ip,el)
@@ -1725,8 +1712,8 @@ forall (s = 1_pInt:ns) &
 tauBack = 0.0_pReal
 
 if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) then
-  call math_invert33(Fe, invFe, detFe, inversionError)
-  call math_invert33(Fp, invFp, detFp, inversionError)
+  invFe = math_inv33(Fe)
+  invFp = math_inv33(Fp)
   rhoExcess(1,1:ns) = rhoSgl(1:ns,1) - rhoSgl(1:ns,2)
   rhoExcess(2,1:ns) = rhoSgl(1:ns,3) - rhoSgl(1:ns,4)
   FVsize = mesh_ipVolume(ip,el) ** (1.0_pReal/3.0_pReal)
@@ -1806,10 +1793,9 @@ if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) 
         rhoExcessDifferences(dir) = neighbor_rhoExcess(c,s,neighbors(1)) &
                                   - neighbor_rhoExcess(c,s,neighbors(2))
       enddo
-      call math_invert33(connections,invConnections,temp,inversionError)
-      if (inversionError) then
+      invConnections = math_inv33(connections)
+      if (all(invConnections <= tiny(0.0_pReal))) &                                                              ! check for failed in version (math_inv33 returns 0) and avoid floating point equality comparison
         call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
-      endif
       rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), &
                                          math_mul33x3(invConnections,rhoExcessDifferences))
     enddo
@@ -1867,10 +1853,8 @@ subroutine plastic_nonlocal_kinetics(v, dv_dtau, dv_dtauNS, tau, tauNS, &
 
 use debug,    only: debug_level, &
                     debug_constitutive, &
-                    debug_levelBasic, &
                     debug_levelExtensive, &
                     debug_levelSelective, &
-                    debug_g, &
                     debug_i, &
                     debug_e
 use material, only: material_phase, &
@@ -2029,10 +2013,8 @@ use math,     only: math_Plain3333to99, &
                     math_Mandel6to33
 use debug,    only: debug_level, &
                     debug_constitutive, &
-                    debug_levelBasic, &
                     debug_levelExtensive, &
                     debug_levelSelective, &
-                    debug_g, &
                     debug_i, &
                     debug_e
 use material, only: material_phase, &
@@ -2226,7 +2208,6 @@ use debug,    only: debug_level, &
                     debug_levelBasic, &
                     debug_levelExtensive, &
                     debug_levelSelective, &
-                    debug_g, &
                     debug_i, &
                     debug_e
 use math,     only: pi, &
@@ -2234,11 +2215,8 @@ use math,     only: pi, &
 use lattice,  only: lattice_Sslip_v ,&
                     lattice_mu, &
                     lattice_nu
-use mesh,     only: mesh_NcpElems, &
-                    mesh_maxNips, &
-                    mesh_ipVolume
-use material, only: homogenization_maxNgrains, &
-                    material_phase, &
+use mesh,     only: mesh_ipVolume
+use material, only: material_phase, &
                     plasticState, &
                     mappingConstitutive, &
                     phase_plasticityInstance
@@ -2360,7 +2338,7 @@ deltaDUpper = dUpper - dUpperOld
 !*** dissociation by stress increase
 deltaRhoDipole2SingleStress = 0.0_pReal
 forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
-                                           (dUpperOld(s,c) - dLower(s,c))/= 0.0_pReal) &
+                                           (dUpperOld(s,c) - dLower(s,c)) > tiny(0.0_pReal)) &
   deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) &
                                            / (dUpperOld(s,c) - dLower(s,c))
 
@@ -2856,11 +2834,11 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
       my_rhoSgl = rhoSgl
       my_v = v
       if(numerics_timeSyncing) then
-        if (subfrac(1_pInt,ip,el) == 0.0_pReal) then
+        if (subfrac(1_pInt,ip,el) <= tiny(0.0_pReal)) then
           my_rhoSgl = rhoSgl0
           my_v = v0
         elseif (neighbor_n > 0_pInt) then
-          if (subfrac(1_pInt,neighbor_ip,neighbor_el) == 0.0_pReal) then
+          if (subfrac(1_pInt,neighbor_ip,neighbor_el) <= tiny(0.0_pReal)) then
             my_rhoSgl = rhoSgl0
             my_v = v0
           endif
@@ -3206,7 +3184,7 @@ end subroutine plastic_nonlocal_updateCompatibility
 function plastic_nonlocal_dislocationstress(Fe, ip, el)
 use math,     only: math_mul33x33, &
                     math_mul33x3, &
-                    math_invert33, &
+                    math_inv33, &
                     math_transpose33, &
                     pi
 use mesh,     only: mesh_NcpElems, &
@@ -3267,8 +3245,7 @@ real(pReal)                     x, y, z, &                                      
                                 R, Rsquare, Rcube, &
                                 denominator, &
                                 flipSign, &
-                                neighbor_ipVolumeSideLength, &                                      
-                                detFe
+                                neighbor_ipVolumeSideLength
 real(pReal), dimension(3) ::    connection, &                                                       !< connection vector between me and my neighbor in the deformed configuration
                                 connection_neighborLattice, &                                       !< connection vector between me and my neighbor in the lattice configuration of my neighbor
                                 connection_neighborSlip, &                                          !< connection vector between me and my neighbor in the slip system frame of my neighbor
@@ -3287,15 +3264,12 @@ real(pReal), dimension(2,maxval(totalNslip)) :: &
                                 rhoExcessDead
 real(pReal), dimension(totalNslip(phase_plasticityInstance(material_phase(1_pInt,ip,el))),8) :: &
                                 rhoSgl                                                              ! single dislocation density (edge+, edge-, screw+, screw-, used edge+, used edge-, used screw+, used screw-)
-logical                         inversionError
 
 ph = material_phase(1_pInt,ip,el)
 instance = phase_plasticityInstance(ph)
 ns = totalNslip(instance)
 p = mappingConstitutive(2,1,ip,el)
 o = mappingConstitutive(1,1,ip,el)
-
-
 
 !*** get basic states
 
@@ -3312,7 +3286,7 @@ endforall
 plastic_nonlocal_dislocationstress = 0.0_pReal
 
 if (.not. phase_localPlasticity(ph)) then
-  call math_invert33(Fe(1:3,1:3,1_pInt,ip,el), invFe, detFe, inversionError)
+  invFe = math_inv33(Fe(1:3,1:3,1_pInt,ip,el))
 
   !* in case of periodic surfaces we have to find out how many periodic images in each direction we need
   
@@ -3335,17 +3309,15 @@ if (.not. phase_localPlasticity(ph)) then
   !* but only consider nonlocal neighbors within a certain cutoff radius R
   
   do neighbor_el = 1_pInt,mesh_NcpElems
-ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el)))
+    ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el)))
       neighbor_phase = material_phase(1_pInt,neighbor_ip,neighbor_el)
       np = mappingConstitutive(2,1,neighbor_ip,neighbor_el)
       no = mappingConstitutive(1,1,neighbor_ip,neighbor_el)
 
-      if (phase_localPlasticity(neighbor_phase)) then
-        cycle
-      endif
+      if (phase_localPlasticity(neighbor_phase)) cycle
       neighbor_instance = phase_plasticityInstance(neighbor_phase)
       neighbor_ns = totalNslip(neighbor_instance)
-      call math_invert33(Fe(1:3,1:3,1,neighbor_ip,neighbor_el), neighbor_invFe, detFe, inversionError)
+      neighbor_invFe = math_inv33(Fe(1:3,1:3,1,neighbor_ip,neighbor_el))
       neighbor_ipVolumeSideLength = mesh_ipVolume(neighbor_ip,neighbor_el) ** (1.0_pReal/3.0_pReal) ! reference volume used here
       
       forall (s = 1_pInt:neighbor_ns, c = 1_pInt:2_pInt)
@@ -3370,9 +3342,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                                  + [real(deltaX,pReal), real(deltaY,pReal), real(deltaZ,pReal)] * meshSize
               connection = neighbor_coords - coords
               distance = sqrt(sum(connection * connection))
-              if (distance > cutoffRadius(instance)) then
-                cycle
-              endif
+              if (distance > cutoffRadius(instance)) cycle
                 
 
               !* the segment length is the minimum of the third root of the control volume and the ip distance
@@ -3424,7 +3394,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (denominator == 0.0_pReal) exit ipLoop
+                    if (denominator <= tiny(0.0_pReal)) exit ipLoop
                       
                     sigma(1,1) = sigma(1,1) - real(side,pReal) &
                                             * flipSign * z / denominator &
@@ -3469,7 +3439,7 @@ ipLoop: do neighbor_ip = 1_pInt,FE_Nips(FE_geomtype(mesh_element(2,neighbor_el))
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (denominator == 0.0_pReal) exit ipLoop
+                    if (denominator <= tiny(0.0_pReal)) exit ipLoop
                     
                     sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z &
                                                                * (1.0_pReal - lattice_nu(ph)) / denominator &
@@ -3571,8 +3541,7 @@ function plastic_nonlocal_postResults(Tstar_v,Fe,ip,el)
    material_phase, &
    mappingConstitutive, &
    plasticState, &
-   phase_plasticityInstance, &
-   phase_Noutput
+   phase_plasticityInstance
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_sd, &
