@@ -10,6 +10,7 @@ import damask
 
 scriptID   = string.replace('$Id$','\n','\\n')
 scriptName = os.path.splitext(scriptID.split()[1])[0]
+
 mismatch = None
 currentSeedsName = None
 
@@ -90,11 +91,11 @@ class myThread (threading.Thread):
       perturbedSeedsTable.head_write()
       outputAlive=True
       ms = 1
-      while outputAlive and perturbedSeedsTable.data_read():                                        # perturbe selecte microstructure
+      while outputAlive and perturbedSeedsTable.data_read():                                        # perturbe selected microstructure
         if ms == selectedMs:
           direction+=direction
           newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction)
-          newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)
+          newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)                                # ensure that the seeds remain in the box (move one side out, other side in)
           newCoords=np.where(newCoords <0.0,newCoords+1.0,newCoords)
           perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
         ms+=1
@@ -117,11 +118,14 @@ class myThread (threading.Thread):
       currentData=np.bincount(perturbedGeomTable.data.astype(int).ravel())[1:]/points
       currentError=[]
       currentHist=[]
-      for i in xrange(nMicrostructures):
+      for i in xrange(nMicrostructures):                                                            # calculate the deviation in all bins per histogram
         currentHist.append(np.histogram(currentData,bins=target[i]['bins'])[0])
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
-
-      s.acquire()                                                                                    # do the evaluation serially
+      
+      if currentError[0]>0.0:                                                                       # as long as not all grains are within the range of the target, use the deviation to left and right as error
+        currentError[0] =((target[0]['bins'][0]-np.min(currentData))**2.0+
+                          (target[0]['bins'][1]-np.max(currentData))**2.0)**0.5
+      s.acquire()                                                                                   # do the evaluation serially
       bestMatch = match
 #--- count bin classes with no mismatch ----------------------------------------------------------------------
       myMatch=0
@@ -131,31 +135,31 @@ class myThread (threading.Thread):
 
       if myNmicrostructures == nMicrostructures:
         for i in xrange(min(nMicrostructures,myMatch+options.bins)):
-          if currentError[i] > target[i]['error']:                                                   # worse fitting, next try
+          if currentError[i] > target[i]['error']:                                                  # worse fitting, next try
             randReset = True
             break
-          elif currentError[i] < target[i]['error']:                                                 # better fit
-            bestSeedsUpdate = time.time()                                                            # save time of better fit
+          elif currentError[i] < target[i]['error']:                                                # better fit
+            bestSeedsUpdate = time.time()                                                           # save time of better fit
             print 'Thread %i: Better match (%i bins, %6.4f --> %6.4f)'%(self.threadID,i+1,target[i]['error'],currentError[i])
             print '          target: ',target[i]['histogram']
             print '          best:   ',currentHist[i]
-            currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')                    # name of new seed file (use time as unique identifier)
+            currentSeedsName = baseFile+'_'+str(bestSeedsUpdate).replace('.','-')                   # name of new seed file (use time as unique identifier)
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
             bestSeedsVFile = StringIO()
             sys.stdout.flush()
-            with open(currentSeedsName+'.seeds','w') as currentSeedsFile:                            # write to new file
+            with open(currentSeedsName+'.seeds','w') as currentSeedsFile:                           # write to new file
               for line in perturbedSeedsVFile:
                 currentSeedsFile.write(line)
                 bestSeedsVFile.write(line)
-            for j in xrange(nMicrostructures):                                                       # save new errors for all bins
+            for j in xrange(nMicrostructures):                                                      # save new errors for all bins
               target[j]['error'] = currentError[j]
-            if myMatch > match:                                                                      # one or more bins have no deviation
+            if myMatch > match:                                                                     # one or more new bins have no deviation
               print 'Stage %i cleared'%(myMatch)
               match=myMatch
               sys.stdout.flush()
             break
-          if i == min(nMicrostructures,myMatch+options.bins)-1:
+          if i == min(nMicrostructures,myMatch+options.bins)-1:                                     # same quality as before (for the considered bins): take it to keep on moving
             bestSeedsUpdate = time.time()
             perturbedSeedsVFile.reset()
             bestSeedsVFile.close()
@@ -165,7 +169,7 @@ class myThread (threading.Thread):
             for j in xrange(nMicrostructures):
               target[j]['error'] = currentError[j]
             randReset = True
-      else:                                                                                                #--- not all grains are tessellated
+      else:                                                                                         #--- not all grains are tessellated
         print 'Thread %i: Microstructure mismatch (%i microstructures mapped)'%(self.threadID,myNmicrostructures)
         randReset = True
 
@@ -265,6 +269,10 @@ for i in xrange(nMicrostructures):
   initialHist = np.histogram(initialData,bins=target[i]['bins'])[0]
   target[i]['error']=np.sqrt(np.square(np.array(target[i]['histogram']-initialHist)).sum())
 
+# as long as not all grain sizes are within the range, the error is the deviation to left and right 
+if target[0]['error'] > 0.0:
+  target[0]['error'] =((target[0]['bins'][0]-np.min(initialData))**2.0+
+                       (target[0]['bins'][1]-np.max(initialData))**2.0)**0.5
 match=0
 for i in xrange(nMicrostructures):
   if target[i]['error'] > 0.0: break
@@ -273,7 +281,7 @@ for i in xrange(nMicrostructures):
 
 if options.maxseeds < 1: maxSeeds = initialMicrostructures
 
-print 'Stage %i cleared'%match
+if match >0: print 'Stage %i cleared'%match
 sys.stdout.flush()
 initialGeomVFile.close()
 
