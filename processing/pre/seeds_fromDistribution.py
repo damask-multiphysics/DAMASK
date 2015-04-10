@@ -47,6 +47,7 @@ class myThread (threading.Thread):
     global target
     global match
     global baseFile
+    global maxSeeds
 
     s.acquire()
     bestMatch = match
@@ -74,7 +75,7 @@ class myThread (threading.Thread):
       s.release()
       
       if randReset:                                                                                 # new direction because current one led to worse fit
-        selectedMs = random.randrange(1,nMicrostructures)
+        selectedMs = random.randrange(1,maxSeeds)
         direction = np.array(((random.random()-0.5)*delta[0],
                               (random.random()-0.5)*delta[1],
                               (random.random()-0.5)*delta[2]))
@@ -197,6 +198,8 @@ parser.add_option('--scale',         dest='scale',type='float', metavar='float',
                                      help='maximum moving distance of perturbed seed in pixel [%default]')
 parser.add_option('--bins',          dest='bins', type='int', metavar='int',
                                      help='bins to sort beyond current best fit [%default]')
+parser.add_option('--maxseeds',      dest='maxseeds', type='int', metavar='int',
+                                     help='maximum number of seeds to move simulateneously [number of seeds]')
 
 parser.set_defaults(seedFile    = 'seeds')
 parser.set_defaults(grid        = (64,64,64))
@@ -206,7 +209,7 @@ parser.set_defaults(target      = 'geom')
 parser.set_defaults(threshold   = 20)
 parser.set_defaults(bins        = 15)
 parser.set_defaults(scale       = 1.0)
-
+parser.set_defaults(maxseeds    = 0)
 
 options = parser.parse_args()[0]
 
@@ -266,6 +269,9 @@ match=0
 for i in xrange(nMicrostructures):
   if target[i]['error'] > 0.0: break
   match = i+1
+
+
+if options.maxseeds < 1: maxSeeds = initialMicrostructures
 
 print 'Stage %i cleared'%match
 sys.stdout.flush()
