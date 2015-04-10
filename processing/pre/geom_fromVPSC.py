@@ -91,10 +91,19 @@ for file in files:
   
   eulerangles = np.array(eulerangles,dtype='f').reshape(info['grid'].prod(),3)
   phase       = np.array(phase,dtype='i').reshape(info['grid'].prod())
-
-  if np.any(np.max(eulerangles[0,:])>=360) or np.any(np.max(eulerangles[1,:])>=180) or np.any(np.max(eulerangles[2,:])>=360):
-    file['croak'].write('Error: euler angles out of bounds.\n')
+  
+  limits = [360,180,360]
+  if any([np.any(eulerangles[:,i]>=limits[i]) for i in [0,1,2]]):
+    file['croak'].write('Error: euler angles out of bound. Ang file might contain unidexed poins.\n')
+    for i,angle in enumerate(['phi1','PHI','phi2']):
+      for n in np.nditer(np.where(eulerangles[:,i]>=limits[i]),['zerosize_ok']):
+        file['croak'].write('%s in line %i (%4.2f %4.2f %4.2f)\n'
+                                     %(angle,n,eulerangles[n,0],eulerangles[n,1],eulerangles[n,2]))
     continue
+  eulerangles=np.around(eulerangles,int(options.precision))                                         # round to desired precision
+  for i,angle in enumerate(['phi1','PHI','phi2']):
+    eulerangles[:,i]%=limits[i]                                                                     # ensure, that rounded euler angles are not out of bounds (modulo by limits)
+
   if options.compress:
     formatString='{0:0>'+str(int(options.precision)+3)+'}'
     euleranglesRadInt = (eulerangles*10**int(options.precision)).astype('int')                      # scale by desired precision and convert to int
