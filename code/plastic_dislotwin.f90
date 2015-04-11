@@ -682,9 +682,9 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (plastic_dislotwin_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOTWIN_label//')')
       if (sum(plastic_dislotwin_Ntwin(:,instance)) > 0_pInt) then
-        if (plastic_dislotwin_SFE_0K(instance) <= tiny(0.0_pReal) .and. &
-            plastic_dislotwin_dSFE_dT(instance) <= tiny(0.0_pReal) .and. &
-            lattice_structure(phase) == LATTICE_fcc_ID) &
+        if (abs(plastic_dislotwin_SFE_0K(instance))  <= tiny(0.0_pReal) .and. &
+            abs(plastic_dislotwin_dSFE_dT(instance)) <= tiny(0.0_pReal) .and. &
+                            lattice_structure(phase) == LATTICE_fcc_ID) &
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOTWIN_label//')')
         if (plastic_dislotwin_aTolRho(instance) <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOTWIN_label//')')   
@@ -708,8 +708,8 @@ subroutine plastic_dislotwin_init(fileUnit)
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           plastic_dislotwin_pShearBand(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='pShearBand ('//PLASTICITY_DISLOTWIN_label//')')
-      if (plastic_dislotwin_dipoleFormationFactor(instance) > tiny(0.0_pReal) .and. &
-          plastic_dislotwin_dipoleFormationFactor(instance) /= 1.0_pReal) &
+      if (abs(plastic_dislotwin_dipoleFormationFactor(instance)) >  tiny(0.0_pReal) .and. &
+               plastic_dislotwin_dipoleFormationFactor(instance) /= 1.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOTWIN_label//')')
       if (plastic_dislotwin_sbVelocity(instance) > 0.0_pReal .and. &
           plastic_dislotwin_qShearBand(instance) <= 0.0_pReal) &
@@ -1507,8 +1507,8 @@ subroutine plastic_dislotwin_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,Temperature
  
 !--------------------------------------------------------------------------------------------------
 ! Shear banding (shearband) part
- if(plastic_dislotwin_sbVelocity(instance) > tiny(0.0_pReal) .and. &
-    plastic_dislotwin_sbResistance(instance) > tiny(0.0_pReal)) then
+ if(abs(plastic_dislotwin_sbVelocity(instance))   > tiny(0.0_pReal) .and. &
+    abs(plastic_dislotwin_sbResistance(instance)) > tiny(0.0_pReal)) then
    gdot_sb = 0.0_pReal
    dgdot_dtausb = 0.0_pReal
    call math_spectralDecompositionSym33(math_Mandel6to33(Tstar_v),eigValues,eigVectors, error)
@@ -1792,7 +1792,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_dislotwin_CAtomicVolume(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)**(3.0_pReal)
       VacancyDiffusion = &
         plastic_dislotwin_D0(instance)*exp(-plastic_dislotwin_Qsd(instance)/(kB*Temperature))
-      if (tau_slip(j) <= tiny(0.0_pReal)) then
+      if (abs(tau_slip(j)) <= tiny(0.0_pReal)) then
         DotRhoEdgeDipClimb(j) = 0.0_pReal
       else
         ClimbVelocity(j) = &
@@ -2255,7 +2255,7 @@ function plastic_dislotwin_postResults(Tstar_v,Temperature,ipc,ip,el)
              endif
 
              !* Stress exponent
-             if (gdot_slip(j)<=tiny(0.0_pReal)) then
+             if (abs(gdot_slip(j))<=tiny(0.0_pReal)) then
                plastic_dislotwin_postResults(c+j) = 0.0_pReal
              else
                plastic_dislotwin_postResults(c+j) = (tau/gdot_slip(j))*dgdot_dtauslip

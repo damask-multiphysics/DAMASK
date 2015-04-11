@@ -286,14 +286,12 @@ use debug,    only: debug_level, &
 use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_maxNipNeighbors
-use material, only: homogenization_maxNgrains, &
-                    phase_plasticity, &
+use material, only: phase_plasticity, &
                     phase_plasticityInstance, &
                     phase_Noutput, &
                     PLASTICITY_NONLOCAL_label, &
                     PLASTICITY_NONLOCAL_ID, &
                     plasticState, &
-!                    material_phase, &
                     material_Nphase, &
                     MATERIAL_partPhase ,&
                     material_phase
@@ -1420,7 +1418,6 @@ use material, only: material_phase, &
                     phase_plasticityInstance, &
                     plasticState, &
                     mappingConstitutive, &
-                    material_Nphase, &
                     phase_plasticity ,&
                     PLASTICITY_NONLOCAL_ID
 implicit none
@@ -1794,7 +1791,7 @@ if (.not. phase_localPlasticity(ph) .and. shortRangeStressCorrection(instance)) 
                                   - neighbor_rhoExcess(c,s,neighbors(2))
       enddo
       invConnections = math_inv33(connections)
-      if (all(invConnections <= tiny(0.0_pReal))) &                                                              ! check for failed in version (math_inv33 returns 0) and avoid floating point equality comparison
+      if (all(abs(invConnections) <= tiny(0.0_pReal))) &                                            ! check for failed in version (math_inv33 returns 0) and avoid floating point equality comparison
         call IO_error(-1_pInt,ext_msg='back stress calculation: inversion error')
       rhoExcessGradient(c) = math_mul3x3(m(1:3,s,c), &
                                          math_mul33x3(invConnections,rhoExcessDifferences))
@@ -2338,7 +2335,7 @@ deltaDUpper = dUpper - dUpperOld
 !*** dissociation by stress increase
 deltaRhoDipole2SingleStress = 0.0_pReal
 forall (c=1_pInt:2_pInt, s=1_pInt:ns, deltaDUpper(s,c) < 0.0_pReal .and. &
-                                           (dUpperOld(s,c) - dLower(s,c)) > tiny(0.0_pReal)) &
+                                        abs(dUpperOld(s,c) - dLower(s,c)) > tiny(0.0_pReal)) &
   deltaRhoDipole2SingleStress(s,8_pInt+c) = rhoDip(s,c) * deltaDUpper(s,c) &
                                            / (dUpperOld(s,c) - dLower(s,c))
 
@@ -2834,11 +2831,11 @@ if (.not. phase_localPlasticity(material_phase(1_pInt,ip,el))) then             
       my_rhoSgl = rhoSgl
       my_v = v
       if(numerics_timeSyncing) then
-        if (subfrac(1_pInt,ip,el) <= tiny(0.0_pReal)) then
+        if (abs(subfrac(1_pInt,ip,el))<= tiny(0.0_pReal)) then
           my_rhoSgl = rhoSgl0
           my_v = v0
         elseif (neighbor_n > 0_pInt) then
-          if (subfrac(1_pInt,neighbor_ip,neighbor_el) <= tiny(0.0_pReal)) then
+          if (abs(subfrac(1_pInt,neighbor_ip,neighbor_el))<= tiny(0.0_pReal)) then
             my_rhoSgl = rhoSgl0
             my_v = v0
           endif
@@ -3394,7 +3391,7 @@ if (.not. phase_localPlasticity(ph)) then
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (denominator <= tiny(0.0_pReal)) exit ipLoop
+                    if (abs(denominator)<= tiny(0.0_pReal)) exit ipLoop
                       
                     sigma(1,1) = sigma(1,1) - real(side,pReal) &
                                             * flipSign * z / denominator &
@@ -3439,7 +3436,7 @@ if (.not. phase_localPlasticity(ph)) then
                     Rsquare = R * R
                     Rcube = Rsquare * R 
                     denominator = R * (R + flipSign * lambda)
-                    if (denominator <= tiny(0.0_pReal)) exit ipLoop
+                    if (abs(denominator)<= tiny(0.0_pReal)) exit ipLoop
                     
                     sigma(1,2) = sigma(1,2) - real(side,pReal) * flipSign * z &
                                                                * (1.0_pReal - lattice_nu(ph)) / denominator &

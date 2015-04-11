@@ -3705,17 +3705,17 @@ logical function crystallite_integrateStress(&
 
  !* feed local variables
 
- Fp_current  =   crystallite_subFp0(1:3,1:3,g,i,e)                   ! "Fp_current" is only used as temp var here...
- Lpguess     =   crystallite_Lp    (1:3,1:3,g,i,e)                   ! ... and take it as first guess
- Fi_current  =   crystallite_subFi0(1:3,1:3,g,i,e)                   ! intermediate configuration, assume decomposition as F = Fe Fi Fp
- Liguess     =   crystallite_Li    (1:3,1:3,g,i,e)                   ! ... and take it as first guess
+ Fp_current  =   crystallite_subFp0(1:3,1:3,g,i,e)                                                  ! "Fp_current" is only used as temp var here...
+ Lpguess     =   crystallite_Lp    (1:3,1:3,g,i,e)                                                  ! ... and take it as first guess
+ Fi_current  =   crystallite_subFi0(1:3,1:3,g,i,e)                                                  ! intermediate configuration, assume decomposition as F = Fe Fi Fp
+ Liguess     =   crystallite_Li    (1:3,1:3,g,i,e)                                                  ! ... and take it as first guess
  Liguess_old =   Liguess
 
 
  !* inversion of Fp_current...
 
  invFp_current = math_inv33(Fp_current)
- if (all(invFp_current <= tiny(0.0_pReal))) then                     ! math_inv33 returns zero when failed, avoid floating point comparison
+ if (all(abs(invFp_current) <= tiny(0.0_pReal))) then                                               ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fp_current at el (elFE) ip g ',&
@@ -3726,12 +3726,12 @@ logical function crystallite_integrateStress(&
 #endif
    return
  endif
- A = math_mul33x33(Fg_new,invFp_current)                                ! intermediate tensor needed later to calculate dFe_dLp
+ A = math_mul33x33(Fg_new,invFp_current)                                                            ! intermediate tensor needed later to calculate dFe_dLp
 
  !* inversion of Fi_current...
 
  invFi_current = math_inv33(Fi_current)
- if (all(invFi_current <= tiny(0.0_pReal))) then                       ! math_inv33 returns zero when failed, avoid floating point comparison
+ if (all(abs(invFi_current) <= tiny(0.0_pReal))) then                                               ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3)') '<< CRYST >> integrateStress failed on inversion of Fi_current at el (elFE) ip g ',&
@@ -3890,7 +3890,7 @@ logical function crystallite_integrateStress(&
        endif
        deltaLp = - math_plain9to33(work)
      endif
-     jacoCounterLp = jacoCounterLp + 1_pInt                             ! increase counter for jaco update
+     jacoCounterLp = jacoCounterLp + 1_pInt                                                         ! increase counter for jaco update
 
      Lpguess = Lpguess + steplengthLp * deltaLp
 
@@ -3910,20 +3910,20 @@ logical function crystallite_integrateStress(&
 
    !* update current residuum and check for convergence of loop
 
-   aTolLi = max(rTol_crystalliteStress * max(math_norm33(Liguess),math_norm33(Li_constitutive)), &    ! absolute tolerance from largest acceptable relative error
-                aTol_crystalliteStress)                                                               ! minimum lower cutoff
+   aTolLi = max(rTol_crystalliteStress * max(math_norm33(Liguess),math_norm33(Li_constitutive)), &  ! absolute tolerance from largest acceptable relative error
+                aTol_crystalliteStress)                                                             ! minimum lower cutoff
    residuumLi = Liguess - Li_constitutive
-   if (any(residuumLi /= residuumLi)) then                                                            ! NaN in residuum...
-     return                                                                                           ! ...me = .false. to inform integrator about problem
-   elseif (math_norm33(residuumLi) < aTolLi) then                                                     ! converged if below absolute tolerance
-     exit LiLoop                                                                                      ! ...leave iteration loop
+   if (any(residuumLi /= residuumLi)) then                                                          ! NaN in residuum...
+     return                                                                                         ! ...me = .false. to inform integrator about problem
+   elseif (math_norm33(residuumLi) < aTolLi) then                                                   ! converged if below absolute tolerance
+     exit LiLoop                                                                                    ! ...leave iteration loop
    elseif (     NiterationStressLi == 1_pInt &
-           .or. math_norm33(residuumLi) < math_norm33(residuumLi_old)) then                           ! not converged, but improved norm of residuum (always proceed in first iteration)...
-     residuumLi_old = residuumLi                                                                      ! ...remember old values and...
+           .or. math_norm33(residuumLi) < math_norm33(residuumLi_old)) then                         ! not converged, but improved norm of residuum (always proceed in first iteration)...
+     residuumLi_old = residuumLi                                                                    ! ...remember old values and...
      Liguess_old    = Liguess
-     steplengthLi   = steplengthLi0                                                                   ! ...proceed with normal step length (calculate new search direction)
-   else                                                                                               ! not converged and residuum not improved...
-     steplengthLi   = 0.5_pReal * steplengthLi                                                        ! ...try with smaller step length in same direction
+     steplengthLi   = steplengthLi0                                                                 ! ...proceed with normal step length (calculate new search direction)
+   else                                                                                             ! not converged and residuum not improved...
+     steplengthLi   = 0.5_pReal * steplengthLi                                                      ! ...try with smaller step length in same direction
      Liguess        = Liguess_old + steplengthLi * deltaLi
      cycle LiLoop
    endif
@@ -3935,7 +3935,7 @@ logical function crystallite_integrateStress(&
      dFe_dLi3333 = 0.0_pReal
      dFi_dLi3333 = 0.0_pReal
      forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt)
-       dFe_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
+       dFe_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*temp_33                                          ! dFe_dLp(i,j,k,l) = -dt * A(i,k) invFi(l,j)
        dFi_dLi3333(1:3,o,1:3,p) = -dt*math_I3(o,p)*invFi_current
      end forall
      forall(o=1_pInt:3_pInt,p=1_pInt:3_pInt) &
@@ -3947,16 +3947,16 @@ logical function crystallite_integrateStress(&
                - math_Plain3333to99(math_mul3333xx3333(dLi_dFi3333, dFi_dLi3333))
      work = math_plain33to9(residuumLi)
 #if(FLOAT==8)
-     call dgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                      ! solve dRLi/dLp * delta Li = -res for delta Li
+     call dgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                    ! solve dRLi/dLp * delta Li = -res for delta Li
 #elif(FLOAT==4)
-     call sgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                      ! solve dRLi/dLp * delta Li = -res for delta Li
+     call sgesv(9,1,dRLi_dLi,9,ipiv,work,9,ierr)                                                    ! solve dRLi/dLp * delta Li = -res for delta Li
 #endif
      if (ierr /= 0_pInt) then
        return
      endif
      deltaLi = - math_plain9to33(work)
    endif
-   jacoCounterLi = jacoCounterLi + 1_pInt                                                             ! increase counter for jaco update
+   jacoCounterLi = jacoCounterLi + 1_pInt                                                           ! increase counter for jaco update
 
    Liguess = Liguess + steplengthLi * deltaLi
  enddo LiLoop  
@@ -3973,7 +3973,7 @@ logical function crystallite_integrateStress(&
  invFp_new = math_mul33x33(invFp_current,B)
  invFp_new = invFp_new / math_det33(invFp_new)**(1.0_pReal/3.0_pReal)                               ! regularize by det
  Fp_new = math_inv33(invFp_new)
- if (all(Fp_new <= tiny(0.0_pReal))) then                                                           ! math_inv33 returns zero when failed, avoid floating point comparison
+ if (all(abs(Fp_new)<= tiny(0.0_pReal))) then                                                       ! math_inv33 returns zero when failed, avoid floating point comparison
 #ifndef _OPENMP
    if (iand(debug_level(debug_crystallite), debug_levelBasic) /= 0_pInt) then
      write(6,'(a,i8,1x,a,i8,a,1x,i2,1x,i3,a,i3)') '<< CRYST >> integrateStress failed on invFp_new inversion at el ip g ',&

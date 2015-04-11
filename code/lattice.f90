@@ -260,7 +260,7 @@ module lattice
      ],[ 4_pInt,LATTICE_fcc_Ntrans])
 
  real(pReal), dimension(LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans), parameter, private :: &            ! Matrix for projection of shear from slip system to fault-band (twin) systems
-   LATTICE_fcc_projectionTrans = reshape([&                                                        ! For ns = nt = nr
+   LATTICE_fcc_projectionTrans = reshape(real([&                                                        ! For ns = nt = nr
      0, 1,-1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &                                                                    
     -1, 0, 1,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
      1,-1, 0,  0, 0, 0,  0, 0, 0,  0, 0, 0, &
@@ -273,7 +273,7 @@ module lattice
      0, 0, 0,  0, 0, 0,  0, 0, 0,  0, 1,-1, &
      0, 0, 0,  0, 0, 0,  0, 0, 0, -1, 0, 1, &
      0, 0, 0,  0, 0, 0,  0, 0, 0,  1,-1, 0  &
-     ],[LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans],order=[2,1])
+     ],pReal),[LATTICE_fcc_Ntrans,LATTICE_fcc_Ntrans],order=[2,1])
 
  real(pReal), parameter, private  :: &
    LATTICE_fcc_projectionTransFactor = sqrt(3.0_pReal/4.0_pReal)
@@ -1374,12 +1374,12 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
        rb(1:3,i)     = lattice_fcc_bainRot(1:3,i)
        ab(i)         = lattice_fcc_bainRot(4,i)
 
-       xb(1:3,i)     = LATTICE_fcc_bainVariant(1:3,i)
-       yb(1:3,i)     = LATTICE_fcc_bainVariant(4:6,i)
-       zb(1:3,i)     = LATTICE_fcc_bainVariant(7:9,i)
+       xb(1:3,i)     = real(LATTICE_fcc_bainVariant(1:3,i),pReal)
+       yb(1:3,i)     = real(LATTICE_fcc_bainVariant(4:6,i),pReal)
+       zb(1:3,i)     = real(LATTICE_fcc_bainVariant(7:9,i),pReal)
 
        ub(1:3,1:3,i) = 0.0_pReal
-       if ((aA > 0.0_pReal) .and. (aM > 0.0_pReal) .and. (cM == 0.0_pReal)) then
+       if ((aA > 0.0_pReal) .and. (aM > 0.0_pReal) .and. (abs(cM) <= tiny(0.0_pReal))) then
          ub(1:3,1:3,i) = (aM/aA)*math_tensorproduct(xb(1:3,i), xb(1:3,i)) + &
                          sqrt(2.0_pReal)*(aM/aA)*math_tensorproduct(yb(1:3,i), yb(1:3,i)) + &
                          sqrt(2.0_pReal)*(aM/aA)*math_tensorproduct(zb(1:3,i), zb(1:3,i))

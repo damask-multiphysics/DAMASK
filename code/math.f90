@@ -745,7 +745,7 @@ pure function math_inv33(A)
         - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
         + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
 
- if (abs(DetA) > tiny(abs(DetA))) then
+ if (abs(DetA) > tiny(DetA)) then
    math_inv33(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
    math_inv33(2,1) = (-A(2,1) * A(3,3) + A(2,3) * A(3,1)) / DetA
    math_inv33(3,1) = ( A(2,1) * A(3,2) - A(2,2) * A(3,1)) / DetA
@@ -783,7 +783,7 @@ pure subroutine math_invert33(A, InvA, DetA, error)
         - A(1,2) * (A(2,1) * A(3,3) - A(2,3) * A(3,1))&
         + A(1,3) * (A(2,1) * A(3,2) - A(2,2) * A(3,1))
 
- if (abs(DetA) <= tiny(abs(DetA))) then
+ if (abs(DetA) <= tiny(DetA)) then
    error = .true.
  else
    InvA(1,1) = ( A(2,2) * A(3,3) - A(2,3) * A(3,2)) / DetA
@@ -1318,7 +1318,7 @@ pure function math_qInv(Q)
  math_qInv = 0.0_pReal
 
  squareNorm = math_qDot(Q,Q)
- if (squareNorm > tiny(squareNorm)) &
+ if (abs(squareNorm) > tiny(squareNorm)) &
    math_qInv = math_qConj(Q) / squareNorm
 
 end function math_qInv

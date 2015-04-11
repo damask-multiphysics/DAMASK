@@ -567,16 +567,13 @@ subroutine mesh_init(ip,el)
  gridMPI = gridGlobal
  alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
- gridLocal(1) = gridGlobal(1)
- gridLocal(2) = gridGlobal(2)
- gridLocal(3) = local_K
- gridOffset  = local_K_offset
+ gridLocal   = [gridGlobal(1:2) int(local_K,pInt)]
+ gridOffset  = int(local_K_offset,pInt)
  
  geomSizeGlobal = mesh_spectral_getSize(fileUnit)
- geomSizeLocal(1) = geomSizeGlobal(1)
- geomSizeLocal(2) = geomSizeGlobal(2)
- geomSizeLocal(3) = geomSizeGlobal(3)*real(gridLocal(3))/real(gridGlobal(3))
- geomSizeOffset = geomSizeGlobal(3)*real(gridOffset)  /real(gridGlobal(3))
+ geomSizeLocal  = [geomSizeGlobal(1:2), &
+                   geomSizeGlobal(3)*real(gridLocal(3),pReal)/real(gridGlobal(3),pReal)]
+ geomSizeOffset  = geomSizeGlobal(3)*real(gridOffset,pReal)  /real(gridGlobal(3),pReal)
 #else
  call IO_open_file(FILEUNIT,geometryFile)                                                           ! parse info from geometry file...
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
@@ -2206,7 +2203,6 @@ function mesh_volumeMismatch(gDim,F,nodes) result(vMismatch)
    debug_level, &
    debug_levelBasic
  use math, only:  &
-   PI, &
    math_det33, &
    math_volTetrahedron
 

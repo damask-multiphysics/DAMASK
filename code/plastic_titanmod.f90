@@ -1225,11 +1225,7 @@ end function plastic_titanmod_homogenizedC
 !--------------------------------------------------------------------------------------------------
 subroutine plastic_titanmod_microstructure(temperature,ipc,ip,el)
 
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase,&
    phase_plasticityInstance, &
    plasticState, &
