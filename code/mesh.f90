@@ -490,18 +490,17 @@ subroutine mesh_init(ip,el)
  use DAMASK_interface
  use, intrinsic :: iso_fortran_env                                                                  ! to get compiler_version and compiler_options (at least for gfortran 4.6 at the moment)
  use IO, only: &
-   IO_timeStamp, &
-   IO_error, &
-   IO_write_jobFile, &
 #ifdef Abaqus
    IO_abaqus_hasNoPart, &
 #endif
 #ifdef Spectral
-   IO_open_file
+   IO_open_file, &
 #else
- use numerics, only: &
-   IO_open_InputFile
+   IO_open_InputFile, &
 #endif
+   IO_timeStamp, &
+   IO_error, &
+   IO_write_jobFile
  use debug, only: &
    debug_e, &
    debug_i, &
