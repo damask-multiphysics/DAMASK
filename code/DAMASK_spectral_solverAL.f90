@@ -96,7 +96,9 @@ module DAMASK_spectral_solverAL
    SNESSetConvergenceTest, &
    SNESSetFromOptions, &
    SNESCreate, &
-   MPI_Abort
+   MPI_Abort, &
+   MPI_Bcast, &
+   MPI_Allreduce
 
 contains
 
