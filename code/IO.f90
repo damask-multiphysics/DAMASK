@@ -572,71 +572,97 @@ function IO_hybridIA(Nast,ODFfileName)
 ! math module is not available
  real(pReal),      parameter  :: PI = 3.14159265358979323846264338327950288419716939937510_pReal
  real(pReal),      parameter  :: INRAD = PI/180.0_pReal
- character(len=*), parameter  :: fileFormat = '(A80)'
 
  integer(pInt) :: i,j,bin,NnonZero,Nset,Nreps,reps,phi1,Phi,phi2
- integer(pInt), dimension(7)                :: myPos
- integer(pInt), dimension(3)                :: steps
- integer(pInt), dimension(:), allocatable   :: binSet
+ integer(pInt), dimension(1_pInt + 7_pInt*2_pInt)  :: positions
+ integer(pInt), dimension(3)                       :: steps
+ integer(pInt), dimension(:), allocatable          :: binSet
  real(pReal) :: center,sum_dV_V,prob,dg_0,C,lowerC,upperC,rnd
  real(pReal), dimension(3)                  :: limits, &
                                                deltas
-
  real(pReal), dimension(:,:,:), allocatable :: dV_V
- character(len=80) :: line
- 
+ character(len=1024) :: line, keyword
+ logical :: gotRange, gotDelta
+ integer(pInt)                                :: headerLength
+ integer(pInt),               parameter       :: FILEUNIT = 999_pInt
+
+ gotRange = .false.
+ gotDelta = .false.
+ IO_hybridIA = -1.0_pReal                                                                           ! initialize return value for case of error
+ center = 0.0_pReal
+ headerLength = 0_pInt
+
 !--------------------------------------------------------------------------------------------------
 ! parse header of ODF file 
- call IO_open_file(999_pInt,ODFfileName)
- IO_hybridIA = -1.0_pReal                                                                           ! initialize return value for case of error
+ call IO_open_file(FILEUNIT,ODFfileName)
 
-!--------------------------------------------------------------------------------------------------
-! limits in phi1, Phi, phi2
- read(999,fmt=fileFormat,end=100) line
- myPos = IO_stringPos(line,3_pInt)
- if (myPos(1) == 3) then                                                                            ! found 3 chunks
-   do i = 1_pInt, 3_pInt
-     limits(i) = IO_floatValue(line,myPos,i)*INRAD
-   enddo
- else                                                                                               ! wrong line format
-   close(999)
-   return
- endif
 
-!--------------------------------------------------------------------------------------------------
-! deltas in phi1, Phi, phi2 
- read(999,fmt=fileFormat,end=100) line
- myPos = IO_stringPos(line,3_pInt)
- if (myPos(1) == 3) then                                                                            ! found 3 chunks
-   do i = 1_pInt, 3_pInt
-     deltas(i) = IO_floatValue(line,myPos,i)*INRAD
-   enddo
- else                                                                                               ! wrong line format
-   close(999)
-   return
- endif
- 
- steps = nint(limits/deltas,pInt)
- allocate(dV_V(steps(3),steps(2),steps(1)))
-
-!--------------------------------------------------------------------------------------------------
-! box boundary/center at origin? 
- read(999,fmt=fileFormat,end=100) line
- if (index(IO_lc(line),'bound')>0) then
-   center = 0.5_pReal
+ read(FILEUNIT,'(a1024)') line
+ positions = IO_stringPos(line,7_pInt)
+ keyword = IO_lc(IO_StringValue(line,positions,2_pInt,.true.))
+ if (keyword(1:4) == 'head') then
+   headerLength = IO_intValue(line,positions,1_pInt) + 1_pInt
  else
-   center = 0.0_pReal
+   call IO_error(error_ID=156_pInt, ext_msg='no header found')
  endif
- 
- read(999,fmt=fileFormat,end=100) line                                                              ! skip blank line
 
+ call IO_checkAndRewind(FILEUNIT)
+ do i = 1_pInt, headerLength
+   read(FILEUNIT,'(a1024)') line
+   positions = IO_stringPos(line,7_pInt)             
+   select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
+     case ('range')
+       gotRange = .true.
+       do j = 2_pInt,6_pInt,2_pInt
+         select case (IO_lc(IO_stringValue(line,positions,j)))
+           case('phi1')
+              limits(1) = IO_floatValue(line,positions,j+1_pInt)
+           case('phi')
+              limits(2) = IO_floatValue(line,positions,j+1_pInt)
+           case('phi2')
+              limits(3) = IO_floatValue(line,positions,j+1_pInt)
+         end select
+       enddo
+       limits = limits*INRAD
+     case ('delta')
+       gotDelta = .true.
+       do j = 2_pInt,6_pInt,2_pInt
+         select case (IO_lc(IO_stringValue(line,positions,j)))
+           case('phi1')
+              deltas(1) = IO_floatValue(line,positions,j+1_pInt)
+           case('phi')
+              deltas(2) = IO_floatValue(line,positions,j+1_pInt)
+           case('phi2')
+              deltas(3) = IO_floatValue(line,positions,j+1_pInt)
+         end select
+       enddo
+       deltas = deltas*INRAD
+     case ('voxelboundary')
+       if ((IO_lc(IO_stringValue(line,positions,2_pInt))) == 'origin') &
+         center = 0.5_pReal
+   end select
+ enddo
+ 
+ if (.not. gotRange) &
+   call IO_error(error_ID = 156_pInt, ext_msg='no range')
+ if (.not. gotDelta) &
+   call IO_error(error_ID = 156_pInt, ext_msg='no delta')
+ if (any(limits<=0.0_pReal)) &
+   call IO_error(error_ID = 156_pInt, ext_msg='invalid range')
+ if (any(deltas<=0.0_pReal)) &
+   call IO_error(error_ID = 156_pInt, ext_msg='invalid deltas')
+
+
+ steps = nint(limits/deltas,pInt)
+
+ allocate(dV_V(steps(3),steps(2),steps(1)),source=0.0_pReal)
  sum_dV_V = 0.0_pReal
- dV_V = 0.0_pReal
  dg_0 = deltas(1)*deltas(3)*2.0_pReal*sin(deltas(2)/2.0_pReal)
  NnonZero = 0_pInt
- 
  do phi1=1_pInt,steps(1); do Phi=1_pInt,steps(2); do phi2=1_pInt,steps(3)
-   read(999,fmt=*,end=100) prob
+   read(FILEUNIT,'(a1024)') line
+   positions = IO_stringPos(line,7_pInt)
+   prob = IO_floatValue(line,positions,1)
    if (prob > 0.0_pReal) then
       NnonZero = NnonZero+1_pInt
       sum_dV_V = sum_dV_V+prob
@@ -645,7 +671,7 @@ function IO_hybridIA(Nast,ODFfileName)
     endif
     dV_V(phi2,Phi,phi1) = prob*dg_0*sin((Phi-1.0_pReal+center)*deltas(2))
  enddo; enddo; enddo  
-
+ close(FILEUNIT)
  dV_V = dV_V/sum_dV_V                                                                               ! normalize to 1
  
 !--------------------------------------------------------------------------------------------------
@@ -700,8 +726,6 @@ function IO_hybridIA(Nast,ODFfileName)
    IO_hybridIA(3,i) = deltas(3)*(real(mod(bin                    ,steps(3)),pReal)+center)          ! phi2
    binSet(j) = binSet(i)
  enddo
-
-100 close(999)
 
 end function IO_hybridIA
 
@@ -1846,13 +1870,9 @@ integer(pInt) pure function hybridIA_reps(dV_V,steps,C)
  integer(pInt) :: phi1,Phi,phi2
  
  hybridIA_reps = 0_pInt
- do phi1=1_pInt,steps(1)
-   do Phi =1_pInt,steps(2)
-     do phi2=1_pInt,steps(3)
-       hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
-     enddo
-   enddo
- enddo
+ do phi1=1_pInt,steps(1); do Phi =1_pInt,steps(2); do phi2=1_pInt,steps(3)
+   hybridIA_reps = hybridIA_reps+nint(C*dV_V(phi2,Phi,phi1), pInt)
+ enddo; enddo; enddo
  
 end function hybridIA_reps
  

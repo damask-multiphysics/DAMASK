@@ -1,7 +1,7 @@
-90 90 90
-5 5 5
-voxel boundary at origin
-
+3 header
+range phi1 90 PHI 90 phi2 90
+delta phi1 5  PHI 5  phi2 5
+voxelBoundary origin
 0.905
 0.4025
 0.1925
