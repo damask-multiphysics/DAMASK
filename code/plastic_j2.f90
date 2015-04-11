@@ -117,7 +117,6 @@ subroutine plastic_j2_init(fileUnit)
 #endif
    IO_EOF
  use material, only: &
-   homogenization_maxNgrains, &
    phase_plasticity, &
    phase_plasticityInstance, &
    phase_Noutput, &
@@ -369,13 +368,9 @@ subroutine plastic_j2_LpAndItsTangent(Lp,dLp_dTstar99,Tstar_v,ipc,ip,el)
    math_Plain3333to99, &
    math_deviatoric33, &
    math_mul33xx33
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
    mappingConstitutive, &
    plasticState, &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance
 
@@ -441,13 +436,9 @@ end subroutine plastic_j2_LpAndItsTangent
 subroutine plastic_j2_dotState(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
    mappingConstitutive, &
    plasticState, &
-   homogenization_maxNgrains, &
    material_phase, &
    phase_plasticityInstance
  
@@ -489,7 +480,7 @@ subroutine plastic_j2_dotState(Tstar_v,ipc,ip,el)
 !--------------------------------------------------------------------------------------------------
 ! hardening coefficient
  if (abs(gamma_dot) > 1e-12_pReal) then
-   if (plastic_j2_tausat_SinhFitA(instance) == 0.0_pReal) then
+   if (abs(plastic_j2_tausat_SinhFitA(instance)) <= tiny(0.0_pReal)) then
      saturation = plastic_j2_tausat(instance)
    else
      saturation = (  plastic_j2_tausat(instance) &
@@ -523,16 +514,11 @@ end subroutine plastic_j2_dotState
 function plastic_j2_postResults(Tstar_v,ipc,ip,el)
  use math, only: &
    math_mul6x6
- use mesh, only: &
-   mesh_NcpElems, &
-   mesh_maxNips
  use material, only: &
-   homogenization_maxNgrains, &
    material_phase, &
    plasticState, &
    mappingConstitutive, &
-   phase_plasticityInstance, &
-   phase_Noutput
+   phase_plasticityInstance
 
  implicit none
  real(pReal), dimension(6),  intent(in) :: &

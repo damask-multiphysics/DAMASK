@@ -69,9 +69,6 @@ subroutine damage_gurson_init(fileUnit)
    debug_level,&
    debug_constitutive,&
    debug_levelBasic
- use mesh, only: &
-   mesh_maxNips, &
-   mesh_NcpElems
  use IO, only: &
    IO_read, &
    IO_lc, &
@@ -86,7 +83,6 @@ subroutine damage_gurson_init(fileUnit)
    IO_timeStamp, &
    IO_EOF
  use material, only: &
-   homogenization_maxNgrains, &
    phase_damage, &
    phase_damageInstance, &
    phase_Noutput, &
@@ -318,9 +314,9 @@ subroutine damage_gurson_dotState(Tstar_v, Lp, ipc, ip, el)
    Tstar_dev
  phase = mappingConstitutive(2,ipc,ip,el)
  constituent = mappingConstitutive(1,ipc,ip,el)
- Tstar_dev = math_Mandel6to33(Tstar_v) - math_trace33(math_Mandel6to33(Tstar_v))/3*math_I3
+ Tstar_dev = math_Mandel6to33(Tstar_v) - math_trace33(math_Mandel6to33(Tstar_v))/3.0_pReal*math_I3
  i1 = sum(Tstar_v(1:3))
- j2 = 0.5_pReal*(math_norm33(Tstar_dev))**2
+ j2 = 0.5_pReal*(math_norm33(Tstar_dev))**2.0_pReal
  j3 = math_j3_33(math_Mandel6to33(Tstar_v))
  
  damageState(phase)%dotState(1,constituent) = &
@@ -348,12 +344,10 @@ end subroutine damage_gurson_dotState
 subroutine damage_gurson_microstructure(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
    damageState
  use math, only: &
    math_Mandel6to33, &
    math_mul33x33, &
-   math_I3, &
    math_norm33
 
  implicit none
@@ -371,10 +365,10 @@ subroutine damage_gurson_microstructure(ipc, ip, el)
  voidFraction =  damageState(phase)%state(2,constituent) + damageState(phase)%state(3,constituent)
  
  if(voidFraction < damage_gurson_crit_void_fraction(phase)) then
-   damageState(phase)%state(4,constituent) =  1_pReal - voidFraction                                ! damage parameter is 1 when no void present
+   damageState(phase)%state(4,constituent) =  1.0_pReal - voidFraction                                ! damage parameter is 1 when no void present
  else 
-   damageState(phase)%state(4,constituent) =  1_pReal - damage_gurson_crit_void_fraction(phase) + &
-                                  5_pReal * (voidFraction - damage_gurson_crit_void_fraction(phase)) ! this accelerated void increase models the effect of void coalescence
+   damageState(phase)%state(4,constituent) =  1.0_pReal - damage_gurson_crit_void_fraction(phase) + &
+                                  5.0_pReal * (voidFraction - damage_gurson_crit_void_fraction(phase)) ! this accelerated void increase models the effect of void coalescence
  endif
                                                        
 end subroutine damage_gurson_microstructure

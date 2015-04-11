@@ -40,12 +40,10 @@ subroutine plastic_none_init
    numerics_integrator
  use material, only: &
    phase_plasticity, &
-   phase_Noutput, &
    PLASTICITY_NONE_label, &
    material_phase, &
    plasticState, &
-   PLASTICITY_none_ID, &
-   MATERIAL_partPhase
+   PLASTICITY_none_ID
 
  implicit none
 

@@ -168,8 +168,6 @@ subroutine plastic_disloUCLA_init(fileUnit)
    math_Mandel3333to66, &
    math_Voigt66to3333, &
    math_mul3x3
- use mesh, only: &
-   mesh_NcpElems
  use IO, only: &
    IO_read, &
    IO_lc, &
@@ -582,17 +580,17 @@ subroutine plastic_disloUCLA_init(fileUnit)
       if (plastic_disloUCLA_Qsd(instance) <= 0.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='Qsd ('//PLASTICITY_DISLOUCLA_label//')')
       if (sum(plastic_disloUCLA_Ntwin(:,instance)) > 0_pInt) then
-        if (plastic_disloUCLA_SFE_0K(instance) == 0.0_pReal .and. &
-            plastic_disloUCLA_dSFE_dT(instance) == 0.0_pReal .and. &
-            lattice_structure(phase) == LATTICE_fcc_ID) &
+        if (abs(plastic_disloUCLA_SFE_0K(instance))  <= tiny(0.0_pReal) .and. &
+            abs(plastic_disloUCLA_dSFE_dT(instance)) <= tiny(0.0_pReal) .and. &
+                            lattice_structure(phase) == LATTICE_fcc_ID) &
           call IO_error(211_pInt,el=instance,ext_msg='SFE0K ('//PLASTICITY_DISLOUCLA_label//')')
         if (plastic_disloUCLA_aTolRho(instance) <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolRho ('//PLASTICITY_DISLOUCLA_label//')')   
         if (plastic_disloUCLA_aTolTwinFrac(instance) <= 0.0_pReal) &
           call IO_error(211_pInt,el=instance,ext_msg='aTolTwinFrac ('//PLASTICITY_DISLOUCLA_label//')')
       endif
-      if (plastic_disloUCLA_dipoleFormationFactor(instance) /= 0.0_pReal .and. &
-          plastic_disloUCLA_dipoleFormationFactor(instance) /= 1.0_pReal) &
+      if (abs(plastic_disloUCLA_dipoleFormationFactor(instance)) >  tiny(0.0_pReal) .and. &
+               plastic_disloUCLA_dipoleFormationFactor(instance) /= 1.0_pReal) &
         call IO_error(211_pInt,el=instance,ext_msg='dipoleFormationFactor ('//PLASTICITY_DISLOUCLA_label//')')
 
 !--------------------------------------------------------------------------------------------------
@@ -953,7 +951,6 @@ end subroutine plastic_disloUCLA_aTolState
 !--------------------------------------------------------------------------------------------------
 function plastic_disloUCLA_homogenizedC(ipc,ip,el)
  use material, only: &
-  homogenization_maxNgrains, &
   phase_plasticityInstance, &
   plasticState, &
   mappingConstitutive
@@ -1445,7 +1442,6 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
  use lattice,  only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
-   lattice_Sslip, &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
@@ -1587,7 +1583,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
      !* Dipole formation
      EdgeDipMinDistance = &
        plastic_disloUCLA_CEdgeDipMinDistance(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)
-     if (tau_slip_pos == 0.0_pReal) then
+     if (abs(tau_slip_pos) <= tiny(0.0_pReal)) then
        DotRhoDipFormation = 0.0_pReal
      else
        EdgeDipDistance = &
@@ -1615,7 +1611,7 @@ subroutine plastic_disloUCLA_dotState(Tstar_v,Temperature,ipc,ip,el)
         plastic_disloUCLA_CAtomicVolume(instance)*plastic_disloUCLA_burgersPerSlipSystem(j,instance)**(3.0_pReal)
      VacancyDiffusion = &
         plastic_disloUCLA_D0(instance)*exp(-plastic_disloUCLA_Qsd(instance)/(kB*Temperature))
-     if (tau_slip_pos == 0.0_pReal) then
+     if (abs(tau_slip_pos) <= tiny(0.0_pReal)) then
        DotRhoEdgeDipClimb = 0.0_pReal
      else
        ClimbVelocity = &
@@ -1698,7 +1694,6 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
  use lattice, only: &
    lattice_Sslip_v, &
    lattice_Stwin_v, &
-   lattice_Sslip, &
    lattice_maxNslipFamily, &
    lattice_maxNtwinFamily, &
    lattice_NslipSystem, &
@@ -1970,7 +1965,7 @@ function plastic_disloUCLA_postResults(Tstar_v,Temperature,ipc,ip,el)
           c = c + nt
         elseif(plastic_disloUCLA_outputID(o,instance) == stress_exponent_ID) then
           do j = 1_pInt, ns
-            if ((gdot_slip_pos(j)+gdot_slip_neg(j))*0.5_pReal==0.0_pReal) then
+            if (abs(gdot_slip_pos(j)+gdot_slip_neg(j))<=tiny(0.0_pReal)) then
               plastic_disloUCLA_postResults(c+j) = 0.0_pReal
             else
               plastic_disloUCLA_postResults(c+j) = (tau_slip_pos(j)+tau_slip_neg(j))/&

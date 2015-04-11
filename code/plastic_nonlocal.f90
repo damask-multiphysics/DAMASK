@@ -293,7 +293,6 @@ use material, only: phase_plasticity, &
                     PLASTICITY_NONLOCAL_label, &
                     PLASTICITY_NONLOCAL_ID, &
                     plasticState, &
-                    material_Nphase, &
                     MATERIAL_partPhase ,&
                     material_phase
 use lattice
@@ -2003,7 +2002,7 @@ end subroutine plastic_nonlocal_kinetics
 !--------------------------------------------------------------------------------------------------
 !> @brief calculates plastic velocity gradient and its tangent
 !--------------------------------------------------------------------------------------------------
-subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, ipc, ip, el)
+subroutine plastic_nonlocal_LpAndItsTangent(Lp, dLp_dTstar99, Tstar_v, Temperature, ip, el)
 
 use math,     only: math_Plain3333to99, &
                     math_mul6x6, &
@@ -2027,8 +2026,7 @@ use mesh,     only: mesh_ipVolume
 implicit none
 
 !*** input variables
-integer(pInt), intent(in) ::                ipc, &
-                                            ip, &                                                   !< current integration point
+integer(pInt), intent(in) ::                ip, &                                                   !< current integration point
                                             el                                                      !< current element number
 real(pReal), intent(in) ::                  Temperature                                             !< temperature
 real(pReal), dimension(6), intent(in) ::    Tstar_v                                                 !< 2nd Piola-Kirchhoff stress in Mandel notation
@@ -3160,7 +3158,7 @@ do n = 1_pInt,Nneighbors
         where (my_compatibility(2,1:ns,s1,n) >= thresholdValue) &
           belowThreshold(1:ns) = .false.
         if (my_compatibilitySum + thresholdValue * nThresholdValues > 1.0_pReal) &
-          where (abs(my_compatibility(1:2,1:ns,s1,n)) == thresholdValue) &
+          where (abs(my_compatibility(1:2,1:ns,s1,n)) == thresholdValue) &                          ! MD: rather check below threshold?
             my_compatibility(1:2,1:ns,s1,n) = sign((1.0_pReal - my_compatibilitySum) &
                                                  / nThresholdValues, my_compatibility(1:2,1:ns,s1,n))
         my_compatibilitySum = my_compatibilitySum + nThresholdValues * thresholdValue

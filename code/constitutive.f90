@@ -760,7 +760,7 @@ subroutine constitutive_LpAndItsTangent(Lp, dLp_dTstar3333, dLp_dFi3333, Tstar_v
    case (PLASTICITY_NONLOCAL_ID)
      call plastic_nonlocal_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
                                            constitutive_getTemperature(ipc,ip,el), &
-                                           ipc,ip,el)
+                                           ip,el)
    case (PLASTICITY_DISLOTWIN_ID)
      call plastic_dislotwin_LpAndItsTangent(Lp,dLp_dMstar,Mstar_v, &
                                             constitutive_getTemperature(ipc,ip,el), &

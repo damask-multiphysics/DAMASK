@@ -461,12 +461,14 @@ module mesh
    mesh_abaqus_count_cpSizes, &
    mesh_abaqus_build_elements, &
 #endif 
-   mesh_get_damaskOptions, &
-   mesh_build_cellconnectivity, &
-   mesh_build_ipAreas, &
+#ifndef Spectral
    mesh_build_nodeTwins, &
    mesh_build_sharedElems, &
    mesh_build_ipNeighborhood, &
+#endif
+   mesh_get_damaskOptions, &
+   mesh_build_cellconnectivity, &
+   mesh_build_ipAreas, &
    mesh_tell_statistics, &
    FE_mapElemtype, &
    mesh_faceMatch, &
@@ -513,9 +515,11 @@ subroutine mesh_init(ip,el)
    worldrank
  use FEsolving, only: &
    FEsolving_execElem, &
+#ifndef Spectral
+   modelName, &
+#endif
    FEsolving_execIP, &
-   calcMode, &
-   modelName
+   calcMode
  
  implicit none
 #ifdef Spectral
@@ -564,7 +568,7 @@ subroutine mesh_init(ip,el)
  if (myDebug) write(6,'(a)') ' Opened geometry file'; flush(6)
  
  gridGlobal = mesh_spectral_getGrid(fileUnit)
- gridMPI = gridGlobal
+ gridMPI = int(gridGlobal,C_INTPTR_T)
  alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
  gridLocal   = [gridGlobal(1:2),int(local_K,pInt)]
@@ -587,13 +591,13 @@ subroutine mesh_init(ip,el)
  geomSizeOffset = 0.0_pReal
 #endif
  if (myDebug) write(6,'(a)') ' Grid partitioned'; flush(6)
- call mesh_spectral_count(FILEUNIT)
+ call mesh_spectral_count()
  if (myDebug) write(6,'(a)') ' Counted nodes/elements'; flush(6)
  call mesh_spectral_mapNodesAndElems
  if (myDebug) write(6,'(a)') ' Mapped nodes and elements'; flush(6)
  call mesh_spectral_count_cpSizes
  if (myDebug) write(6,'(a)') ' Built CP statistics'; flush(6)
- call mesh_spectral_build_nodes(FILEUNIT)
+ call mesh_spectral_build_nodes()
  if (myDebug) write(6,'(a)') ' Built nodes'; flush(6)
  call mesh_spectral_build_elements(FILEUNIT)
  if (myDebug) write(6,'(a)') ' Built elements'; flush(6)
@@ -1247,10 +1251,9 @@ end function mesh_spectral_getHomogenization
 !> @brief Count overall number of nodes and elements in mesh and stores them in
 !! 'mesh_Nelems', 'mesh_Nnodes' and 'mesh_NcpElems'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_count(fileUnit)
+subroutine mesh_spectral_count()
 
  implicit none
- integer(pInt),              intent(in) :: fileUnit
 
  mesh_Nelems  = product(gridLocal)
  mesh_NcpElems= mesh_Nelems
@@ -1305,11 +1308,10 @@ end subroutine mesh_spectral_count_cpSizes
 !> @brief Store x,y,z coordinates of all nodes in mesh.
 !! Allocates global arrays 'mesh_node0' and 'mesh_node'
 !--------------------------------------------------------------------------------------------------
-subroutine mesh_spectral_build_nodes(fileUnit)
+subroutine mesh_spectral_build_nodes()
 
  implicit none
- integer(pInt),              intent(in) :: fileUnit
- integer(pInt)                          :: n
+ integer(pInt) :: n
 
  allocate (mesh_node0 (3,mesh_Nnodes), source = 0.0_pReal)
  allocate (mesh_node  (3,mesh_Nnodes), source = 0.0_pReal)
@@ -3672,9 +3674,9 @@ subroutine mesh_build_ipAreas
    enddo
  !$OMP END PARALLEL DO
  
- end subroutine mesh_build_ipAreas
+end subroutine mesh_build_ipAreas
  
- 
+#ifndef Spectral 
 !--------------------------------------------------------------------------------------------------
 !> @brief assignment of twin nodes for each cp node, allocate globals '_nodeTwins'
 !--------------------------------------------------------------------------------------------------
@@ -3980,6 +3982,7 @@ subroutine mesh_build_ipNeighborhood
  enddo
  
 end subroutine mesh_build_ipNeighborhood
+#endif
 
 
 !--------------------------------------------------------------------------------------------------

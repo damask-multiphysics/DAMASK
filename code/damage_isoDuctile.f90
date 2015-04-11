@@ -393,8 +393,7 @@ end function damage_isoDuctile_getLocalDamage
 !--------------------------------------------------------------------------------------------------
 function damage_isoDuctile_getDamagedC66(C, ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   mappingConstitutive
 
  implicit none
  integer(pInt), intent(in) :: &

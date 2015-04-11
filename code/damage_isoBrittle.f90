@@ -422,8 +422,7 @@ end function damage_isoBrittle_getDamageDiffusion33
 !--------------------------------------------------------------------------------------------------
 function damage_isoBrittle_getDamagedC66(C, ipc, ip, el)
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   mappingConstitutive
 
  implicit none
  integer(pInt), intent(in) :: &

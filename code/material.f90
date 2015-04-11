@@ -1113,8 +1113,6 @@ subroutine material_populateGrains
  use IO, only: &
    IO_error, &
    IO_hybridIA
- use FEsolving, only: &
-   FEsolving_execIP
  use debug, only: &
    debug_level, &
    debug_material, &

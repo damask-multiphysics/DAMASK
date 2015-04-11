@@ -1200,7 +1200,6 @@ subroutine plastic_dislotwin_microstructure(temperature,ipc,ip,el)
    plasticState, &
    mappingConstitutive
  use lattice, only: &
-   lattice_structure, &
    lattice_mu, &
    lattice_nu
 
@@ -1763,7 +1762,7 @@ subroutine plastic_dislotwin_dotState(Tstar_v,Temperature,ipc,ip,el)
       !* Dipole formation
       EdgeDipMinDistance = &
         plastic_dislotwin_CEdgeDipMinDistance(instance)*plastic_dislotwin_burgersPerSlipSystem(j,instance)
-      if (tau_slip(j) == 0.0_pReal) then
+      if (abs(tau_slip(j)) <= tiny(0.0_pReal)) then
         DotRhoDipFormation(j) = 0.0_pReal
       else
         EdgeDipDistance(j) = &

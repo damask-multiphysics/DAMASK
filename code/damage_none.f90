@@ -40,12 +40,10 @@ subroutine damage_none_init
    numerics_integrator
  use material, only: &
    phase_damage, &
-   phase_Noutput, &
    LOCAL_DAMAGE_NONE_label, &
    LOCAL_DAMAGE_NONE_ID, &
    material_phase, &
-   damageState, &
-   MATERIAL_partPhase
+   damageState
 
  implicit none
 
