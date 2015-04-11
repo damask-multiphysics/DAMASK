@@ -287,6 +287,7 @@ use mesh,     only: mesh_NcpElems, &
                     mesh_maxNips, &
                     mesh_maxNipNeighbors
 use material, only: phase_plasticity, &
+                    homogenization_maxNgrains, &
                     phase_plasticityInstance, &
                     phase_Noutput, &
                     PLASTICITY_NONLOCAL_label, &

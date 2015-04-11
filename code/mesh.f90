@@ -567,7 +567,7 @@ subroutine mesh_init(ip,el)
  gridMPI = gridGlobal
  alloc_local = fftw_mpi_local_size_3d(gridMPI(3), gridMPI(2), gridMPI(1)/2 +1, &
                                       MPI_COMM_WORLD, local_K, local_K_offset)
- gridLocal   = [gridGlobal(1:2) int(local_K,pInt)]
+ gridLocal   = [gridGlobal(1:2),int(local_K,pInt)]
  gridOffset  = int(local_K_offset,pInt)
  
  geomSizeGlobal = mesh_spectral_getSize(fileUnit)
