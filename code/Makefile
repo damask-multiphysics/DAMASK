@@ -315,7 +315,7 @@ VACANCY_FILES = \
    vacancy_constant.o vacancy_generation.o
 
 PLASTIC_FILES = \
-   plastic_dislotwin.o plastic_disloKMC.o plastic_disloUCLA.o plastic_j2.o plastic_phenopowerlaw.o \
+   plastic_dislotwin.o plastic_disloUCLA.o plastic_disloKMC.o plastic_j2.o plastic_phenopowerlaw.o \
    plastic_titanmod.o plastic_nonlocal.o plastic_none.o constitutive.o
    
 
@@ -428,14 +428,7 @@ crystallite.o:                 crystallite.f90 \
                                constitutive.o 
                             
 constitutive.o:                constitutive.f90 \
-                               plastic_nonlocal.o \
-                               plastic_titanmod.o \
-                               plastic_dislotwin.o \
-                               plastic_disloKMC.o \
-                               plastic_disloUCLA.o \
-                               plastic_phenopowerlaw.o \
-                               plastic_j2.o \
-                               plastic_none.o \
+                               $(PLASTIC_FILES) \
                                $(DAMAGE_FILES) \
                                $(THERMAL_FILES) \
                                $(VACANCY_FILES)

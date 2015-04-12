@@ -336,7 +336,6 @@ subroutine homogenization_RGC_partitionDeformation(F,avgF,ip,el)
  use material, only: &
    homogenization_maxNgrains, &
    homogenization_Ngrains,&
-   homogState, &
    mappingHomogenization, & 
    homogenization_typeInstance
  use FEsolving, only: &
@@ -904,8 +903,7 @@ subroutine homogenization_RGC_averageStressAndItsTangent(avgP,dAvgPdAvgF,P,dPdF,
  use mesh,  only: mesh_element
  use material, only: &
   homogenization_maxNgrains, &
-   homogState, &
-   mappingHomogenization, &
+  mappingHomogenization, &
   homogenization_Ngrains, &
   homogenization_typeInstance 
  use math, only: math_Plain3333to99
