@@ -19,7 +19,7 @@ Produces a binned grid of two columns from an ASCIItable, i.e. a two-dimensional
 """, version = scriptID)
 
 parser.add_option('-d','--data',    dest='data', nargs=2, type='string', metavar='string string',
-                                    help='column labels containing x and y %default')
+                                    help='column labels containing x and y [%default]')
 parser.add_option('-w','--weight',  dest='weight', metavar='string', type='string',
                                     help='column label containing weight of (x,y) point [%default]')
 parser.add_option('-b','--bins',    dest='bins', nargs=2, type='int', metavar='int int',
@@ -63,8 +63,8 @@ datainfo = {                                                                    
                             'label':[]},
            }
 
-if options.data != None:   datainfo['scalar']['label'] += options.data
-if options.weight != None: datainfo['scalar']['label'] += options.weight
+if options.data   != None: datainfo['scalar']['label'] +=  options.data
+if options.weight != None: datainfo['scalar']['label'] += [options.weight]                          # prevent character splitting of single string value
 
 if len(datainfo['scalar']['label']) < 2:
   parser.error('missing column labels')
