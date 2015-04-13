@@ -355,7 +355,7 @@ subroutine damage_gurson_microstructure(ipc, ip, el)
    ipc, &                                                                                           !< component-ID of integration point
    ip, &                                                                                            !< integration point
    el                                                                                               !< element
- integer(pReal) :: &
+ real(pReal) :: &
    voidFraction
  integer(pInt) :: &
    phase, constituent
