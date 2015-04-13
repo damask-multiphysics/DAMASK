@@ -530,9 +530,14 @@ DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
 #                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
 #      -->   allows the use of 'getcwd'
 prec.o:                        prec.f90
-	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check $(SUFFIX)
+	$(PREFIX) $(COMPILERNAME) $(COMPILE) -c prec.f90 -fno-range-check -fall-intrinsics -fno-fast-math $(SUFFIX)
 # fno-range-check:  Disable range checking on results of simplification of constant expressions during compilation
 #      -->   allows the definition of DAMASK_NaN
+#-fall-intrinsics:  all intrinsic procedures (including the GNU-specific extensions) are accepted. -Wintrinsics-std will be ignored 
+#                   and no user-defined procedure with the same name as any intrinsic will be called except when it is explicitly declared external
+#      -->   allows the use of 'isnan'
+#-fno-fast-math:    
+#      -->   otherwise, when setting -ffast-math, isnan always evaluates to false (I would call it a bug)
 else
 DAMASK_interface.o:            DAMASK_spectral_interface.f90 \
                                $(wildcard DAMASK_FEM_interface.f90) \

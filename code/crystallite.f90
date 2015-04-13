@@ -1524,6 +1524,8 @@ end subroutine crystallite_stressAndItsTangent
 !> @brief integrate stress, state with 4th order explicit Runge Kutta method
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateRK4()
+ use prec, only: &
+   prec_isNaN
  use numerics, only: &
    numerics_integrationMode
  use debug, only: &
@@ -1621,16 +1623,14 @@ subroutine crystallite_integrateStateRK4()
      if (crystallite_todo(g,i,e)) then
        c = mappingConstitutive(1,g,i,e) 
        p = mappingConstitutive(2,g,i,e) 
-       if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or.&
-            any(damageState(p)%dotState(:,c)  /= damageState(p)%dotState(:,c))  .or.&
-            any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c)) .or.&
-            any(vacancyState(p)%dotState(:,c) /= vacancyState(p)%dotState(:,c))) then                   ! NaN occured in dotState
-         if (.not. crystallite_localPlasticity(g,i,e)) then                                             ! if broken non-local...
+       if ( any(prec_isNaN([plasticState(p)%dotState(:,c), damageState(p)%dotState(:,c), &
+                            thermalState(p)%dotState(:,c), vacancyState(p)%dotState(:,c)]))) then   ! NaN occured in any dotState
+         if (.not. crystallite_localPlasticity(g,i,e)) then                                         ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
-             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                      ! ...all non-locals skipped
+             crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                  ! ...all non-locals skipped
            !$OMP END CRITICAL (checkTodo)
-         else                                                                                           ! if broken local...
-           crystallite_todo(g,i,e) = .false.                                                            ! ... skip this one next time
+         else                                                                                       ! if broken local...
+           crystallite_todo(g,i,e) = .false.                                                        ! ... skip this one next time
          endif
        endif
      endif
@@ -1772,10 +1772,8 @@ subroutine crystallite_integrateStateRK4()
 
            p = mappingConstitutive(2,g,i,e) 
            c = mappingConstitutive(1,g,i,e)  
-           if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or.&
-                any(damageState(p)%dotState(:,c)  /=  damageState(p)%dotState(:,c)) .or.&
-                any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c)) .or.&
-                any(vacancyState(p)%dotState(:,c) /= vacancyState(p)%dotState(:,c))) then             ! NaN occured in dotState
+           if (any(prec_isNaN([plasticState(p)%dotState(:,c), damageState(p)%dotState(:,c), &
+                               thermalState(p)%dotState(:,c), vacancyState(p)%dotState(:,c)]))) then   ! NaN occured in any dotState
              if (.not. crystallite_localPlasticity(g,i,e)) then                                            ! if broken non-local...
                !$OMP CRITICAL (checkTodo)
                  crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                     ! ...all non-locals skipped
@@ -1824,6 +1822,8 @@ end subroutine crystallite_integrateStateRK4
 !> adaptive step size  (use 5th order solution to advance = "local extrapolation")
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateRKCK45()
+ use prec, only: &
+   prec_isNaN
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -1948,10 +1948,8 @@ subroutine crystallite_integrateStateRKCK45()
      if (crystallite_todo(g,i,e)) then
        cc = mappingConstitutive(1,g,i,e) 
        p = mappingConstitutive(2,g,i,e) 
-       if ( any(plasticState(p)%dotState(:,cc) /= plasticState(p)%dotState(:,cc)) .or.&
-            any(damageState(p)%dotState(:,cc)  /= damageState(p)%dotState(:,cc))  .or.&
-            any(thermalState(p)%dotState(:,cc) /= thermalState(p)%dotState(:,cc)) .or.&
-            any(vacancyState(p)%dotState(:,cc) /= vacancyState(p)%dotState(:,cc))) then                    ! NaN occured in dotState
+       if (any(prec_isNaN([plasticState(p)%dotState(:,cc), damageState(p)%dotState(:,cc), &
+                           thermalState(p)%dotState(:,cc), vacancyState(p)%dotState(:,cc)]))) then   ! NaN occured in any dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2108,10 +2106,8 @@ subroutine crystallite_integrateStateRKCK45()
 
          p = mappingConstitutive(2,g,i,e) 
          cc = mappingConstitutive(1,g,i,e)  
-       if ( any(plasticState(p)%dotState(:,cc) /= plasticState(p)%dotState(:,cc)) .or.&
-            any(damageState(p)%dotState(:,cc)  /= damageState(p)%dotState(:,cc))  .or.&
-            any(thermalState(p)%dotState(:,cc) /= thermalState(p)%dotState(:,cc)) .or.&
-            any(vacancyState(p)%dotState(:,cc) /= vacancyState(p)%dotState(:,cc))) then                    ! NaN occured in dotState
+         if (any(prec_isNaN([plasticState(p)%dotState(:,cc), damageState(p)%dotState(:,cc), &
+                             thermalState(p)%dotState(:,cc), vacancyState(p)%dotState(:,cc)]))) then   ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
@@ -2359,7 +2355,8 @@ end subroutine crystallite_integrateStateRKCK45
 !> @brief integrate stress, state with 1st order Euler method with adaptive step size
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateAdaptiveEuler()
-
+ use prec, only: &
+   prec_isNaN
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -2470,10 +2467,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e) 
          c = mappingConstitutive(1,g,i,e)  
-         if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or. &
-              any(damageState( p)%dotState(:,c) /= damageState( p)%dotState(:,c)) .or. &
-              any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c)) .or.&
-              any(vacancyState(p)%dotState(:,c) /= vacancyState(p)%dotState(:,c))) then                      ! NaN occured in dotState
+         if (any(prec_isNaN([plasticState(p)%dotState(:,c), damageState(p)%dotState(:,c), &
+                             thermalState(p)%dotState(:,c), vacancyState(p)%dotState(:,c)]))) then   ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2599,10 +2594,8 @@ subroutine crystallite_integrateStateAdaptiveEuler()
        if (crystallite_todo(g,i,e)) then
          p = mappingConstitutive(2,g,i,e)
          c = mappingConstitutive(1,g,i,e)
-         if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or.&
-              any(damageState( p)%dotState(:,c)  /= damageState( p)%dotState(:,c)) .or.&
-              any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c)) .or.&
-              any(vacancyState(p)%dotState(:,c)  /= vacancyState(p)%dotState(:,c))) then             ! NaN occured in dotState
+         if (any(prec_isNaN([plasticState(p)%dotState(:,c), damageState(p)%dotState(:,c), &
+                             thermalState(p)%dotState(:,c), vacancyState(p)%dotState(:,c)]))) then   ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e)) then                                              ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                       ! ...all non-locals skipped
@@ -2749,6 +2742,8 @@ end subroutine crystallite_integrateStateAdaptiveEuler
 !> @brief integrate stress, and state with 1st order explicit Euler method
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateEuler()
+ use prec, only: &
+   prec_isNaN
  use debug, only: &
    debug_level, &
    debug_crystallite, &
@@ -2828,10 +2823,8 @@ eIter = FEsolving_execElem(1:2)
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          c = mappingConstitutive(1,g,i,e) 
          p = mappingConstitutive(2,g,i,e) 
-         if ( any(plasticState(p)%dotState(:,c)  /= plasticState(p)%dotState(:,c)) .or. &
-              any(damageState( p)%dotState(:,c)  /= damageState( p)%dotState(:,c)) .or. &
-              any(thermalState(p)%dotState(:,c)  /= thermalState(p)%dotState(:,c)) .or. &
-              any(vacancyState(p)%dotState(:,c)  /= vacancyState(p)%dotState(:,c))) then                     ! NaN occured in dotState
+         if (any(prec_isNaN([plasticState(p)%dotState(:,c), damageState(p)%dotState(:,c), &
+                             thermalState(p)%dotState(:,c), vacancyState(p)%dotState(:,c)]))) then   ! NaN occured in any dotState
            if (.not. crystallite_localPlasticity(g,i,e) .and. .not. numerics_timeSyncing) then               ! if broken non-local...
              !$OMP CRITICAL (checkTodo)
                crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals skipped
@@ -2975,6 +2968,8 @@ end subroutine crystallite_integrateStateEuler
 !> using Fixed Point Iteration to adapt the stepsize
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_integrateStateFPI()
+ use prec, only: &
+   prec_isNaN
  use debug, only: &
    debug_e, &
    debug_i, &
@@ -3116,11 +3111,8 @@ subroutine crystallite_integrateStateFPI()
      if (crystallite_todo(g,i,e)) then
        p = mappingConstitutive(2,g,i,e) 
        c = mappingConstitutive(1,g,i,e)  
-       if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or. &
-            any(damageState( p)%dotState(:,c) /= damageState( p)%dotState(:,c)) .or. &
-            any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c)) .or. &
-            any(vacancyState(p)%dotState(:,c) /= vacancyState(p)%dotState(:,c))) then                      !NaN occured in dotState
-
+       if (any(prec_isNaN([plasticState(p)%dotState(:,c), damageState(p)%dotState(:,c), &
+                           thermalState(p)%dotState(:,c), vacancyState(p)%dotState(:,c)]))) then   ! NaN occured in any dotState
          if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if broken is a non-local...
            !$OMP CRITICAL (checkTodo)
              crystallite_todo = crystallite_todo .and. crystallite_localPlasticity                         ! ...all non-locals done (and broken)
@@ -3237,10 +3229,8 @@ subroutine crystallite_integrateStateFPI()
        if (crystallite_todo(g,i,e) .and. .not. crystallite_converged(g,i,e)) then
          p = mappingConstitutive(2,g,i,e) 
          c = mappingConstitutive(1,g,i,e)  
-         if ( any(plasticState(p)%dotState(:,c) /= plasticState(p)%dotState(:,c)) .or. &
-              any(damageState( p)%dotState(:,c) /= damageState( p)%dotState(:,c)) .or. &
-              any(thermalState(p)%dotState(:,c) /= thermalState(p)%dotState(:,c)) .or. &
-              any(vacancyState(p)%dotState(:,c) /= vacancyState(p)%dotState(:,c))) then                      ! NaN occured in dotState
+         if (any(prec_isNaN([plasticState(p)%dotState(:,c), damageState(p)%dotState(:,c), &
+                             thermalState(p)%dotState(:,c), vacancyState(p)%dotState(:,c)]))) then   ! NaN occured in any dotState
            crystallite_todo(g,i,e) = .false.                                                                 ! ... skip me next time
            if (.not. crystallite_localPlasticity(g,i,e)) then                                                ! if me is non-local...
              !$OMP CRITICAL (checkTodo)
