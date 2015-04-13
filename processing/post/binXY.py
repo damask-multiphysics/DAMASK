@@ -55,7 +55,7 @@ parser.set_defaults(normCol = False)
 minmax =  np.array([np.array(options.xrange),
                     np.array(options.yrange),
                     np.array(options.zrange)])
-grid =   np.zeros(options.bins,'i')
+grid =   np.zeros(options.bins,'f')
 result = np.zeros((options.bins[0],options.bins[1],3),'f')
 
 datainfo = {                                                                                        # list of requested labels per datatype
@@ -117,7 +117,18 @@ for name in filenames:
     x = int(options.bins[0]*(table.data[i,0]-minmax[0,0])/delta[0])
     y = int(options.bins[1]*(table.data[i,1]-minmax[1,0])/delta[1])
     if x >= 0 and x < options.bins[0] and y >= 0 and y < options.bins[1]:
-      grid[x,y] += 1 if options.weight == None else table.data[i,2]                                        # count (weighted) occurrences
+      grid[x,y] += 1. if options.weight == None else table.data[i,2]                                        # count (weighted) occurrences
+
+  if options.normCol:
+    for x in xrange(options.bins[0]):
+      sum = np.sum(grid[x,:])
+      if sum > 0.0:
+        grid[x,:] /= sum
+  if options.normRow:
+    for y in xrange(options.bins[1]):
+      sum = np.sum(grid[:,y])
+      if sum > 0.0:
+        grid[:,y] /= sum
   
   if (minmax[2] == 0.0).all(): minmax[2] = [grid.min(),grid.max()]                                   # auto scale from data
   if minmax[2,0] == minmax[2,1]:
@@ -138,17 +149,10 @@ for name in filenames:
                        minmax[1,0]+delta[1]/options.bins[1]*(y+0.5),
                        min(1.0,max(0.0,(grid[x,y]-minmax[2,0])/delta[2]))]
 
-  if options.normCol:
-    for x in xrange(options.bins[0]):
-      result[x,:,2] /= np.sum(result[x,:,2])
-  if options.normRow:
-    for y in xrange(options.bins[1]):
-      result[:,y,2] /= np.sum(result[:,y,2])
-
   for i in xrange(2):
     if options.type[i].lower() == 'log': result[:,:,i] = np.exp(result[:,:,i])
 
-  if options.invert: result[:,:,2] = 1.0-result[:,:,2]
+  if options.invert: result[:,:,2] = 1.0 - result[:,:,2]
 
  # ------------------------------------------ output result -----------------------------------------       
   prefix = 'binned%s-%s_'%(options.data[0],options.data[1])+ \
