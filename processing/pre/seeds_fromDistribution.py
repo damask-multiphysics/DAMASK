@@ -76,11 +76,17 @@ class myThread (threading.Thread):
       s.release()
       
       if randReset:                                                                                 # new direction because current one led to worse fit
-        selectedMs = random.randrange(1,maxSeeds)
-        direction = np.array(((random.random()-0.5)*delta[0],
-                              (random.random()-0.5)*delta[1],
-                              (random.random()-0.5)*delta[2]))
         randReset = False
+
+        NmoveGrains = random.randrange(1,maxSeeds)
+        selectedMs = []
+        direction = []
+        for i in xrange(NmoveGrains):
+          selectedMs.append(random.randrange(1,nMicrostructures))
+
+          direction.append(np.array(((random.random()-0.5)*delta[0],
+                                     (random.random()-0.5)*delta[1],
+                                     (random.random()-0.5)*delta[2])))
         
       perturbedSeedsVFile.close()                                                                   # reset virtual file
       perturbedSeedsVFile = StringIO()
@@ -92,9 +98,9 @@ class myThread (threading.Thread):
       outputAlive=True
       ms = 1
       while outputAlive and perturbedSeedsTable.data_read():                                        # perturbe selected microstructure
-        if ms == selectedMs:
+        if ms in selectedMs:
           direction+=direction
-          newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction)
+          newCoords=np.array(tuple(map(float,perturbedSeedsTable.data[0:3]))+direction[i])
           newCoords=np.where(newCoords>=1.0,newCoords-1.0,newCoords)                                # ensure that the seeds remain in the box (move one side out, other side in)
           newCoords=np.where(newCoords <0.0,newCoords+1.0,newCoords)
           perturbedSeedsTable.data[0:3]=[format(f, '8.6f') for f in newCoords]
@@ -123,8 +129,8 @@ class myThread (threading.Thread):
         currentError.append(np.sqrt(np.square(np.array(target[i]['histogram']-currentHist[i])).sum()))
       
       if currentError[0]>0.0:                                                                       # as long as not all grains are within the range of the target, use the deviation to left and right as error
-        currentError[0] =((target[0]['bins'][0]-np.min(currentData))**2.0+
-                          (target[0]['bins'][1]-np.max(currentData))**2.0)**0.5
+        currentError[0] *=((target[0]['bins'][0]-np.min(currentData))**2.0+                        
+                           (target[0]['bins'][1]-np.max(currentData))**2.0)**0.5                    # norm of deviations by number of usual bin deviation
       s.acquire()                                                                                   # do the evaluation serially
       bestMatch = match
 #--- count bin classes with no mismatch ----------------------------------------------------------------------
@@ -271,15 +277,18 @@ for i in xrange(nMicrostructures):
 
 # as long as not all grain sizes are within the range, the error is the deviation to left and right 
 if target[0]['error'] > 0.0:
-  target[0]['error'] =((target[0]['bins'][0]-np.min(initialData))**2.0+
-                       (target[0]['bins'][1]-np.max(initialData))**2.0)**0.5
+  target[0]['error'] *=((target[0]['bins'][0]-np.min(initialData))**2.0+
+                        (target[0]['bins'][1]-np.max(initialData))**2.0)**0.5
 match=0
 for i in xrange(nMicrostructures):
   if target[i]['error'] > 0.0: break
   match = i+1
 
 
-if options.maxseeds < 1: maxSeeds = initialMicrostructures
+if options.maxseeds < 1: 
+  maxSeeds = initialMicrostructures
+else:
+  maxSeeds = options.maxseeds
 
 if match >0: print 'Stage %i cleared'%match
 sys.stdout.flush()
