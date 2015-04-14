@@ -12,7 +12,7 @@
 !!           for details on NaN see https://software.intel.com/en-us/forums/topic/294680
 !--------------------------------------------------------------------------------------------------
 module prec
-#ifndef __GFORTRAN__
+#ifdef __INTEL_COMPILER
  use, intrinsic :: &                                                                                ! unfortunately not in commonly used gfortran versions
   IEEE_arithmetic
 #endif
@@ -24,16 +24,18 @@ module prec
  SPECTRAL SOLVER AND OWN FEM DO NOT SUPPORT SINGLE PRECISION, STOPPING COMPILATION
 #endif
  integer,     parameter, public :: pReal = 4                                                        !< floating point single precition (was selected_real_kind(6,37), number with 6 significant digits, up to 1e+-37)
-#ifndef __GFORTRAN__
- real(pReal), parameter, public :: DAMASK_NaN = IEEE_value(IEEE_quiet_NaN)                          !< quiet NaN
-#else
+#ifdef __INTEL_COMPILER
+ real(pReal), parameter, public :: DAMASK_NaN = Z'7F800001'                                         !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
+#endif
+#ifdef __GFORTRAN__
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7F800001', pReal)                            !< quiet NaN for single precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #endif
 #elif (FLOAT==8)
  integer,     parameter, public :: pReal = 8                                                        !< floating point double precision (was selected_real_kind(15,300), number with 15 significant digits, up to 1e+-300)
-#ifndef __GFORTRAN__
- real(pReal), parameter, public :: DAMASK_NaN = IEEE_value(IEEE_quiet_NaN)                          !< quiet NaN
-#else
+#ifdef __INTEL_COMPILER
+ real(pReal), parameter, public :: DAMASK_NaN = Z'7FF8000000000000'                                 !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
+#endif
+#ifdef __GFORTRAN__
  real(pReal), parameter, public :: DAMASK_NaN = real(Z'7FF8000000000000',pReal)                     !< quiet NaN for double precision (from http://www.hpc.unimelb.edu.au/doc/f90lrm/dfum_035.html, copy can be found in documentation/Code/Fortran)
 #endif
 #else
