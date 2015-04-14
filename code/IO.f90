@@ -589,7 +589,7 @@ function IO_hybridIA(Nast,ODFfileName)
  gotRange = .false.
  gotDelta = .false.
  IO_hybridIA = -1.0_pReal                                                                           ! initialize return value for case of error
- center = 0.0_pReal
+ center = -1.0_pReal
  headerLength = 0_pInt
 
 !--------------------------------------------------------------------------------------------------
@@ -637,21 +637,24 @@ function IO_hybridIA(Nast,ODFfileName)
          end select
        enddo
        deltas = deltas*INRAD
-     case ('voxelboundary')
-       if ((IO_lc(IO_stringValue(line,positions,2_pInt))) == 'origin') &
-         center = 0.5_pReal
+     case ('origin')
+       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'voxelboundary' .or.  &
+           IO_lc(IO_stringValue(line,positions,2_pInt)) == 'boundary') center = 0.5_pReal
+       if (IO_lc(IO_stringValue(line,positions,2_pInt)) == 'voxelcenter' .or.  &
+           IO_lc(IO_stringValue(line,positions,2_pInt)) == 'center') center = 0.0_pReal
    end select
  enddo
  
  if (.not. gotRange) &
-   call IO_error(error_ID = 156_pInt, ext_msg='no range')
+   call IO_error(error_ID = 156_pInt, ext_msg='no range information found')
  if (.not. gotDelta) &
-   call IO_error(error_ID = 156_pInt, ext_msg='no delta')
+   call IO_error(error_ID = 156_pInt, ext_msg='no delta information found')
+ if (center < 0.0_pReal) &
+   call IO_error(error_ID = 156_pInt, ext_msg='no origin information found')
  if (any(limits<=0.0_pReal)) &
    call IO_error(error_ID = 156_pInt, ext_msg='invalid range')
  if (any(deltas<=0.0_pReal)) &
    call IO_error(error_ID = 156_pInt, ext_msg='invalid deltas')
-
 
  steps = nint(limits/deltas,pInt)
 
