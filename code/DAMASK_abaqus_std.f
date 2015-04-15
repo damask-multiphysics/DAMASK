@@ -181,15 +181,17 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  real(pReal), dimension(6,6) :: ddsdde_h
  integer(pInt) :: computationMode, i, cp_en
  logical :: cutBack
- !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Abaqus
- !$ include "omp_lib.h"
+ 
+#ifdef _OPENMP
+ integer :: defaultNumThreadsInt                                                                    !< default value set by Abaqus
+ include "omp_lib.h"
+ defaultNumThreadsInt = omp_get_num_threads()                                                       ! remember number of threads set by Marc
+ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                     ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+#endif
 
  temperature = temp                                                                                 ! temp is intent(in)
  DDSDDT = 0.0_pReal
  DRPLDE = 0.0_pReal
-
- !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
- !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
 
  if (iand(debug_level(debug_abaqus),debug_levelBasic) /= 0 .and. noel == 1 .and. npt == 1) then
    write(6,*) 'el',noel,'ip',npt
@@ -310,7 +312,7 @@ subroutine UMAT(STRESS,STATEV,DDSDDE,SSE,SPD,SCD,&
  statev = materialpoint_results(1:min(nstatv,materialpoint_sizeResults),npt,mesh_FEasCP('elem', noel))
 
  if ( terminallyIll ) pnewdt = 0.5_pReal                                                            ! force cutback directly ?
- !$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
+!$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
 
 end subroutine UMAT
 

@@ -173,11 +173,14 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
  real(pReal), dimension(6,6) :: ddsdde
  real(pReal) :: temp, timeInc, stresspower
  integer(pInt) :: computationMode, n, i, cp_en
- !$ integer :: defaultNumThreadsInt                                                                 !< default value set by Abaqus
- !$ include "omp_lib.h"
 
- !$ defaultNumThreadsInt = omp_get_num_threads()                                                    ! remember number of threads set by Marc
- !$ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                  ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+#ifdef _OPENMP
+ integer :: defaultNumThreadsInt                                                                    !< default value set by Abaqus
+ include "omp_lib.h"
+
+ defaultNumThreadsInt = omp_get_num_threads()                                                       ! remember number of threads set by Marc
+ call omp_set_num_threads(DAMASK_NumThreadsInt)                                                     ! set number of threads for parallel execution set by DAMASK_NUM_THREADS
+#endif
 
  computationMode = CPFEM_CALCRESULTS                                                                ! always calculate
  do n = 1,nblock(1)                                                                                 ! loop over vector of IPs
@@ -265,7 +268,7 @@ subroutine vumat(nBlock, nDir, nshr, nStateV, nFieldV, nProps, lAnneal, &
    enerInelasNew(n) = enerInternNew(n)                                                              ! Dissipated inelastic energy per unit mass(Temporary output)
 
  enddo
- !$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
+!$ call omp_set_num_threads(defaultNumThreadsInt)                                                  ! reset number of threads to stored default value
 
 end subroutine vumat
 
