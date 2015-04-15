@@ -397,8 +397,7 @@ function damage_isoBrittle_getDamageDiffusion33(ipc, ip, el)
  use lattice, only: &
    lattice_DamageDiffusion33
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   mappingConstitutive
 
  implicit none
  integer(pInt), intent(in) :: &
