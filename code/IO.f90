@@ -611,7 +611,7 @@ function IO_hybridIA(Nast,ODFfileName)
    read(FILEUNIT,'(a1024)') line
    positions = IO_stringPos(line,7_pInt)             
    select case ( IO_lc(IO_StringValue(line,positions,1_pInt,.true.)) )
-     case ('range')
+     case ('limit')
        gotRange = .true.
        do j = 2_pInt,6_pInt,2_pInt
          select case (IO_lc(IO_stringValue(line,positions,j)))
