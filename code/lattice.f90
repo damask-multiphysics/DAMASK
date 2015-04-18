@@ -1328,7 +1328,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
                                                       lattice_C66(1:6,1:6,myPhase))
  lattice_mu(myPhase) = 0.2_pReal *(  lattice_C66(1,1,myPhase) &
                                    - lattice_C66(1,2,myPhase) &
-                                   + 3.0_pReal*lattice_C66(4,4,myPhase))                            ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
+                                   + 3.0_pReal*lattice_C66(4,4,myPhase))                             ! (C11iso-C12iso)/2 with C11iso=(3*C11+2*C12+4*C44)/5 and C12iso=(C11+4*C12-2*C44)/5
  lattice_nu(myPhase) = (  lattice_C66(1,1,myPhase) &
                         + 4.0_pReal*lattice_C66(1,2,myPhase) &
                         - 2.0_pReal*lattice_C66(4,4,myPhase)) &
@@ -1338,7 +1338,8 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
  lattice_C3333(1:3,1:3,1:3,1:3,myPhase) = math_Voigt66to3333(lattice_C66(1:6,1:6,myPhase))          ! Literature data is Voigt
  lattice_C66(1:6,1:6,myPhase) = math_Mandel3333to66(lattice_C3333(1:3,1:3,1:3,1:3,myPhase))         ! DAMASK uses Mandel
  do i = 1_pInt, 6_pInt
-   if (abs(lattice_C66(i,i,myPhase))<tol_math_check) call IO_error(135_pInt,el=i,ip=myPhase)
+   if (abs(lattice_C66(i,i,myPhase))<tol_math_check) &
+     call IO_error(135_pInt,el=i,ip=myPhase,ext_msg='matrix diagonal "el"ement of phase "ip"')
  enddo
  lattice_thermalConductivity33(1:3,1:3,myPhase) = lattice_symmetrize33(lattice_structure(myPhase),&
                                                                        lattice_thermalConductivity33(1:3,1:3,myPhase))
@@ -1547,7 +1548,7 @@ subroutine lattice_initializeStructure(myPhase,CoverA,aA,aM,cM)
    lattice_st(1:3,i,myPhase) = math_vectorproduct(lattice_sd(1:3,i,myPhase), &
                                                   lattice_sn(1:3,i,myPhase))
    lattice_Sslip(1:3,1:3,1,i,myPhase) = math_tensorproduct(lattice_sd(1:3,i,myPhase), &
-                                                           lattice_sn(1:3,i,myPhase))
+                                                           lattice_sn(1:3,i,myPhase))               ! calculate Schmid matrix d \otimes n
    do j = 1_pInt,lattice_NnonSchmid(myPhase)
      lattice_Sslip(1:3,1:3,2*j  ,i,myPhase) = sns(1:3,1:3,1,j,i)
      lattice_Sslip(1:3,1:3,2*j+1,i,myPhase) = sns(1:3,1:3,2,j,i)
