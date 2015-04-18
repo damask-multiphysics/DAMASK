@@ -115,11 +115,13 @@ module mesh
  logical, private :: noPart                                                                         !< for cases where the ABAQUS input file does not use part/assembly information
 #endif
 
+#ifdef Spectral
 #ifdef PETSc
 #include <petsc-finclude/petscsys.h>
  include 'fftw3-mpi.f03'
 #else
- include 'fftw3.f03'
+ include 'fftw3.f03'  ! should this be '../lib/fftw3.f03' ?!?
+#endif
 #endif
 
 ! These definitions should actually reside in the FE-solver specific part (different for MARC/ABAQUS)
