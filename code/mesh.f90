@@ -120,7 +120,7 @@ module mesh
 #include <petsc-finclude/petscsys.h>
  include 'fftw3-mpi.f03'
 #else
- include 'fftw3.f03'  ! should this be '../lib/fftw3.f03' ?!?
+ include 'fftw3.f03'
 #endif
 #endif
 
