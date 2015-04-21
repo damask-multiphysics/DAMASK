@@ -1,4 +1,4 @@
-  !--------------------------------------------------------------------------------------------------
+!--------------------------------------------------------------------------------------------------
 ! $Id$
 !--------------------------------------------------------------------------------------------------
 !> @author Franz Roters, Max-Planck-Institut für Eisenforschung GmbH
@@ -202,9 +202,10 @@ subroutine plastic_disloUCLA_init(fileUnit)
  integer(pInt), dimension(1+2*MAXNCHUNKS) :: positions
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,maxTotalNslip,maxTotalNtwin,&
                   f,instance,j,k,l,m,n,o,p,q,r,s,ns,nt, &
-                  Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
-                  Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_nonSchmid, &
-                 offset_slip, index_myFamily, index_otherFamily
+                  Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, &
+                  Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
+                  Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, Nchunks_nonSchmid = 0_pInt, &
+                  offset_slip, index_myFamily, index_otherFamily
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase
  character(len=65536) :: &

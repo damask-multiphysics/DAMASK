@@ -39,7 +39,6 @@ subroutine vacancy_constant_init
    numerics_integrator
  use material, only: &
    phase_vacancy, &
-   phase_Noutput, &
    LOCAL_VACANCY_CONSTANT_label, &
    LOCAL_VACANCY_CONSTANT_ID, &
    material_phase, &

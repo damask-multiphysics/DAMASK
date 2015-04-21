@@ -153,8 +153,10 @@ subroutine plastic_phenopowerlaw_init(fileUnit)
  integer(pInt) :: &
    maxNinstance, &
    instance,phase,j,k, f,o, &
-   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
-   Nchunks_SlipFamilies, Nchunks_TwinFamilies, Nchunks_TransFamilies, Nchunks_nonSchmid, &
+   Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, &
+   Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
+   Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, &
+   Nchunks_TransFamilies = 0_pInt, Nchunks_nonSchmid = 0_pInt, &
    NipcMyPhase, &
    offset_slip, index_myFamily, index_otherFamily, &
    mySize=0_pInt,sizeState,sizeDotState

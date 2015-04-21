@@ -233,12 +233,12 @@ subroutine plastic_titanmod_init(fileUnit)
    s, s1, s2, &
    t, t1, t2, &
    ns, nt, &
-   Nchunks_SlipSlip, Nchunks_SlipTwin, Nchunks_TwinSlip, Nchunks_TwinTwin, &
-   Nchunks_SlipFamilies, Nchunks_TwinFamilies, &
+   Nchunks_SlipSlip = 0_pInt, Nchunks_SlipTwin = 0_pInt, Nchunks_TwinSlip = 0_pInt, Nchunks_TwinTwin = 0_pInt, &
+   Nchunks_SlipFamilies = 0_pInt, Nchunks_TwinFamilies = 0_pInt, &
    offset_slip, mySize, &
    maxTotalNslip,maxTotalNtwin, maxNinstance
  integer(pInt) :: sizeState, sizeDotState
- integer(pInt) :: NofMyPhase  
+ integer(pInt) :: NofMyPhase = 0_pInt  
  character(len=65536) :: &
    tag  = '', &
    line = ''  

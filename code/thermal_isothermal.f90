@@ -44,7 +44,6 @@ subroutine thermal_isothermal_init(temperature_init)
    numerics_integrator
  use material, only: &
    phase_thermal, &
-   phase_Noutput, &
    LOCAL_THERMAL_ISOTHERMAL_label, &
    LOCAL_THERMAL_ISOTHERMAL_ID, &
    material_phase, &

@@ -319,7 +319,7 @@ end subroutine damage_isoBrittle_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage
 !--------------------------------------------------------------------------------------------------
-function damage_isoBrittle_getDamage(ipc, ip, el)
+pure function damage_isoBrittle_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
@@ -327,7 +327,6 @@ function damage_isoBrittle_getDamage(ipc, ip, el)
    damageState, &
    fieldDamage, &
    field_damage_type, &
-   FIELD_DAMAGE_LOCAL_ID, &
    FIELD_DAMAGE_NONLOCAL_ID
 
  implicit none
@@ -338,14 +337,14 @@ function damage_isoBrittle_getDamage(ipc, ip, el)
  real(pReal) :: damage_isoBrittle_getDamage
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_LOCAL_ID)
-    damage_isoBrittle_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
-      state0(1,mappingConstitutive(1,ipc,ip,el))
-    
    case (FIELD_DAMAGE_NONLOCAL_ID)
     damage_isoBrittle_getDamage = fieldDamage(material_homog(ip,el))% &
       field(1,mappingHomogenization(1,ip,el))                                                     ! Taylor type 
 
+   case default
+    damage_isoBrittle_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
+      state0(1,mappingConstitutive(1,ipc,ip,el))
+    
  end select
 
 end function damage_isoBrittle_getDamage
@@ -373,7 +372,7 @@ end subroutine damage_isoBrittle_putLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local damage
 !--------------------------------------------------------------------------------------------------
-function damage_isoBrittle_getLocalDamage(ipc, ip, el)
+pure function damage_isoBrittle_getLocalDamage(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -393,7 +392,7 @@ end function damage_isoBrittle_getLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns brittle damage diffusion tensor 
 !--------------------------------------------------------------------------------------------------
-function damage_isoBrittle_getDamageDiffusion33(ipc, ip, el)
+pure function damage_isoBrittle_getDamageDiffusion33(ipc, ip, el)
  use lattice, only: &
    lattice_DamageDiffusion33
  use material, only: &
@@ -419,7 +418,7 @@ end function damage_isoBrittle_getDamageDiffusion33
 !--------------------------------------------------------------------------------------------------
 !> @brief returns brittle damaged stiffness tensor 
 !--------------------------------------------------------------------------------------------------
-function damage_isoBrittle_getDamagedC66(C, ipc, ip, el)
+pure function damage_isoBrittle_getDamagedC66(C, ipc, ip, el)
  use material, only: &
    mappingConstitutive
 

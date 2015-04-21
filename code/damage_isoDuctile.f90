@@ -318,7 +318,7 @@ end subroutine damage_isoDuctile_microstructure
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage 
 !--------------------------------------------------------------------------------------------------
-function damage_isoDuctile_getDamage(ipc, ip, el)
+pure function damage_isoDuctile_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
@@ -337,7 +337,7 @@ function damage_isoDuctile_getDamage(ipc, ip, el)
  real(pReal) :: damage_isoDuctile_getDamage
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_LOCAL_ID)
+   case default
     damage_isoDuctile_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
       state0(1,mappingConstitutive(1,ipc,ip,el))
     
@@ -372,7 +372,7 @@ end subroutine damage_isoDuctile_putLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local damage
 !--------------------------------------------------------------------------------------------------
-function damage_isoDuctile_getLocalDamage(ipc, ip, el)
+pure function damage_isoDuctile_getLocalDamage(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -391,7 +391,7 @@ end function damage_isoDuctile_getLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns ductile damaged stiffness tensor 
 !--------------------------------------------------------------------------------------------------
-function damage_isoDuctile_getDamagedC66(C, ipc, ip, el)
+pure function damage_isoDuctile_getDamagedC66(C, ipc, ip, el)
  use material, only: &
    mappingConstitutive
 

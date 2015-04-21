@@ -112,7 +112,7 @@ subroutine damage_anisoBrittle_init(fileUnit)
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,instance,o
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase   
- integer(pInt) :: Nchunks_CleavageFamilies, j   
+ integer(pInt) :: Nchunks_CleavageFamilies = 0_pInt, j   
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -338,7 +338,6 @@ subroutine damage_anisoBrittle_microstructure(Tstar_v, subdt, ipc, ip, el)
    damageState
  use lattice, only: &
    lattice_DamageMobility, &
-   lattice_Scleavage, &
    lattice_Scleavage_v, &
    lattice_maxNcleavageFamily, &
    lattice_NcleavageSystem
@@ -400,10 +399,11 @@ end subroutine damage_anisoBrittle_microstructure
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc, ip, el)
+ use prec, only: &
+   tol_math_check
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
+   phase_damageInstance
  use math, only: &
    math_Plain3333to99
  use lattice, only: &
@@ -450,7 +450,7 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
        sign(1.0_pReal,traction_d)* &
        damage_anisoBrittle_sdot_0(instance)* &
        (max(0.0_pReal, abs(traction_d) - traction_crit)/traction_crit)**damage_anisoBrittle_N(instance)
-     if (udotd /= 0.0_pReal) then
+     if (abs(udotd) > tol_math_check) then
        Ld = Ld + udotd*lattice_Scleavage(1:3,1:3,1,index_myFamily+i,phase)
        dudotd_dt = sign(1.0_pReal,traction_d)*udotd*damage_anisoBrittle_N(instance)/ &
                    max(0.0_pReal, abs(traction_d) - traction_crit)
@@ -464,7 +464,7 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
        sign(1.0_pReal,traction_t)* &
        damage_anisoBrittle_sdot_0(instance)* &
        (max(0.0_pReal, abs(traction_t) - traction_crit)/traction_crit)**damage_anisoBrittle_N(instance)
-     if (udott /= 0.0_pReal) then
+     if (abs(udott) > tol_math_check) then
        Ld = Ld + udott*lattice_Scleavage(1:3,1:3,2,index_myFamily+i,phase)
        dudott_dt = sign(1.0_pReal,traction_t)*udott*damage_anisoBrittle_N(instance)/ &
                    max(0.0_pReal, abs(traction_t) - traction_crit)  
@@ -478,7 +478,7 @@ subroutine damage_anisoBrittle_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
        sign(1.0_pReal,traction_n)* &
        damage_anisoBrittle_sdot_0(instance)* &
        (max(0.0_pReal, abs(traction_n) - traction_crit)/traction_crit)**damage_anisoBrittle_N(instance)
-     if (udotn /= 0.0_pReal) then
+     if (abs(udotn) > tol_math_check) then
        Ld = Ld + udotn*lattice_Scleavage(1:3,1:3,3,index_myFamily+i,phase)
        dudotn_dt = sign(1.0_pReal,traction_n)*udotn*damage_anisoBrittle_N(instance)/ &
                    max(0.0_pReal, abs(traction_n) - traction_crit)
@@ -496,7 +496,7 @@ end subroutine damage_anisoBrittle_LdAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage
 !--------------------------------------------------------------------------------------------------
-function damage_anisoBrittle_getDamage(ipc, ip, el)
+pure function damage_anisoBrittle_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
@@ -515,7 +515,7 @@ function damage_anisoBrittle_getDamage(ipc, ip, el)
  real(pReal) :: damage_anisoBrittle_getDamage
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_LOCAL_ID)
+   case default
     damage_anisoBrittle_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
       state(1,mappingConstitutive(1,ipc,ip,el))
     
@@ -551,7 +551,7 @@ end subroutine damage_anisoBrittle_putLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local damage
 !--------------------------------------------------------------------------------------------------
-function damage_anisoBrittle_getLocalDamage(ipc, ip, el)
+pure function damage_anisoBrittle_getLocalDamage(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
@@ -572,12 +572,11 @@ end function damage_anisoBrittle_getLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns brittle damage diffusion tensor 
 !--------------------------------------------------------------------------------------------------
-function damage_anisoBrittle_getDamageDiffusion33(ipc, ip, el)
+pure function damage_anisoBrittle_getDamageDiffusion33(ipc, ip, el)
  use lattice, only: &
    lattice_DamageDiffusion33
  use material, only: &
-   mappingConstitutive, &
-   damageState
+   mappingConstitutive
 
  implicit none
  integer(pInt), intent(in) :: &
@@ -602,8 +601,7 @@ end function damage_anisoBrittle_getDamageDiffusion33
 function damage_anisoBrittle_postResults(ipc,ip,el)
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
+   phase_damageInstance
 
  implicit none
  integer(pInt),              intent(in) :: &

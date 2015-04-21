@@ -114,7 +114,7 @@ subroutine damage_anisoDuctile_init(fileUnit)
  integer(pInt) :: maxNinstance,mySize=0_pInt,phase,instance,o
  integer(pInt) :: sizeState, sizeDotState
  integer(pInt) :: NofMyPhase   
- integer(pInt) :: Nchunks_SlipFamilies, j   
+ integer(pInt) :: Nchunks_SlipFamilies = 0_pInt, j   
  character(len=65536) :: &
    tag  = '', &
    line = ''
@@ -379,6 +379,8 @@ end subroutine damage_anisoDuctile_microstructure
 !> @brief  contains the constitutive equation for calculating the velocity gradient  
 !--------------------------------------------------------------------------------------------------
 subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc, ip, el)
+ use prec, only: &
+   tol_math_check
  use lattice, only: &
    lattice_maxNslipFamily, &
    lattice_NslipSystem, &
@@ -387,8 +389,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
    lattice_sn
  use material, only: &
    mappingConstitutive, &
-   phase_damageInstance, &
-   damageState
+   phase_damageInstance
  use math, only: &
    math_Plain3333to99, &
    math_I3, &
@@ -455,7 +456,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
        damage_anisoDuctile_sdot_0(instance)* &
        (abs(traction_d)/traction_crit - &
         abs(traction_d)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
-     if (udotd /= 0.0_pReal) then
+     if (abs(udotd) > tol_math_check) then
        Ld = Ld + udotd*projection_d
        dudotd_dt = udotd*damage_anisoDuctile_N(instance)/traction_d
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -468,7 +469,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
        damage_anisoDuctile_sdot_0(instance)* &
        (abs(traction_t)/traction_crit - &
         abs(traction_t)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
-     if (udott /= 0.0_pReal) then
+     if (abs(udott) > tol_math_check) then
        Ld = Ld + udott*projection_t
        dudott_dt = udott*damage_anisoDuctile_N(instance)/traction_t
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -479,7 +480,7 @@ subroutine damage_anisoDuctile_LdAndItsTangent(Ld, dLd_dTstar3333, Tstar_v, ipc,
        damage_anisoDuctile_sdot_0(instance)* &
        (max(0.0_pReal,traction_n)/traction_crit - &
         max(0.0_pReal,traction_n)/damage_anisoDuctile_critLoad(f,instance))**damage_anisoDuctile_N(instance)
-     if (udotn /= 0.0_pReal) then
+     if (abs(udotn) > tol_math_check) then
        Ld = Ld + udotn*projection_n
        dudotn_dt = udotn*damage_anisoDuctile_N(instance)/traction_n
        forall (k=1_pInt:3_pInt,l=1_pInt:3_pInt,m=1_pInt:3_pInt,n=1_pInt:3_pInt) &
@@ -494,7 +495,7 @@ end subroutine damage_anisoDuctile_LdAndItsTangent
 !--------------------------------------------------------------------------------------------------
 !> @brief returns damage
 !--------------------------------------------------------------------------------------------------
-function damage_anisoDuctile_getDamage(ipc, ip, el)
+pure function damage_anisoDuctile_getDamage(ipc, ip, el)
  use material, only: &
    material_homog, &
    mappingHomogenization, &
@@ -513,7 +514,7 @@ function damage_anisoDuctile_getDamage(ipc, ip, el)
  real(pReal) :: damage_anisoDuctile_getDamage
  
  select case(field_damage_type(material_homog(ip,el)))                                                   
-   case (FIELD_DAMAGE_LOCAL_ID)
+   case default
     damage_anisoDuctile_getDamage = damageState(mappingConstitutive(2,ipc,ip,el))% &
       state(1,mappingConstitutive(1,ipc,ip,el))
     
@@ -549,7 +550,7 @@ end subroutine damage_anisoDuctile_putLocalDamage
 !--------------------------------------------------------------------------------------------------
 !> @brief returns local damage
 !--------------------------------------------------------------------------------------------------
-function damage_anisoDuctile_getLocalDamage(ipc, ip, el)
+pure function damage_anisoDuctile_getLocalDamage(ipc, ip, el)
  use material, only: &
    mappingConstitutive, &
    damageState
