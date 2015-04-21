@@ -210,9 +210,10 @@ output = []
 try: 
   with open(configFile,'r') as f:
     for line in f:
+      line = line.strip()
       items = re.split('[= ]',line)
     
-      if (not line.strip() or items[0].startswith('#')):
+      if (not line or items[0].startswith('#')):
         pass
       if items[0] == 'DAMASK_BIN':
         line = '%s=%s'%(items[0],options.prefix)
