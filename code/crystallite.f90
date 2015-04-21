@@ -178,8 +178,6 @@ subroutine crystallite_init
    IO_error, &
    IO_EOF
  use material
- use lattice, only: &
-   lattice_structure
  use constitutive, only: &
    constitutive_microstructure                                                                     ! derived (shortcut) quantities of given state
 
@@ -399,10 +397,12 @@ subroutine crystallite_init
    call IO_write_jobFile(FILEUNIT,'outputCrystallite')
 
    do p = 1_pInt,material_Ncrystallite
-     write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(p))//']'
-     do e = 1_pInt,crystallite_Noutput(p)
-       write(FILEUNIT,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
-     enddo
+     if (any(microstructure_crystallite(mesh_element(4,:)) == p)) then
+       write(FILEUNIT,'(/,a,/)') '['//trim(crystallite_name(p))//']'
+       do e = 1_pInt,crystallite_Noutput(p)
+         write(FILEUNIT,'(a,i4)') trim(crystallite_output(e,p))//char(9),crystallite_sizePostResult(e,p)
+       enddo
+     endif
    enddo
 
    close(FILEUNIT)
@@ -519,6 +519,8 @@ end subroutine crystallite_init
 !> @brief calculate stress (P) and tangent (dPdF) for crystallites
 !--------------------------------------------------------------------------------------------------
 subroutine crystallite_stressAndItsTangent(updateJaco)
+ use prec, only: &
+   tol_math_check
  use numerics, only: &
    subStepMinCryst, &
    subStepSizeCryst, &
@@ -529,7 +531,6 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
    numerics_integrator, &
    numerics_integrationMode, &
    numerics_timeSyncing, &
-   relevantStrain, &
    analyticJaco
  use debug, only: &
    debug_level, &
@@ -1177,7 +1178,7 @@ subroutine crystallite_stressAndItsTangent(updateJaco)
              call constitutive_LiAndItsTangent(temp_33,dLidS,dLidFi,crystallite_Tstar_v(1:6,g,i,e), &
                                                crystallite_Fi(1:3,1:3,g,i,e),crystallite_Lp(1:3,1:3,g,i,e), &
                                                g,i,e)                                                  ! call constitutive law to calculate Li tangent in lattice configuration
-             if (sum(abs(dLidS)) == 0.0_pReal) then
+             if (sum(abs(dLidS)) < tol_math_check) then
                dFidS = 0.0_pReal
              else  
                temp_33 = math_inv33(crystallite_subFi0(1:3,1:3,g,i,e))
@@ -1534,25 +1535,20 @@ subroutine crystallite_integrateStateRK4()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use FEsolving, only: &
    FEsolving_execElem, &
    FEsolving_execIP
  use mesh, only: &
    mesh_element, &
-   mesh_NcpElems, &
-   mesh_maxNips
+   mesh_NcpElems
  use material, only: &
    homogenization_Ngrains, &
    plasticState, &
    damageState, &
    thermalState, &
    vacancyState, &
-   mappingConstitutive, &
-   homogenization_maxNgrains
+   mappingConstitutive
  use constitutive, only: &
    constitutive_collectDotState, &
    constitutive_microstructure
@@ -1830,9 +1826,6 @@ subroutine crystallite_integrateStateRKCK45()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    rTol_crystalliteState, &
@@ -2363,9 +2356,6 @@ subroutine crystallite_integrateStateAdaptiveEuler()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    rTol_crystalliteState, &
@@ -2750,9 +2740,6 @@ subroutine crystallite_integrateStateEuler()
    debug_levelBasic, &
    debug_levelExtensive, &
    debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_StateLoopDistribution
  use numerics, only: &
    numerics_integrationMode, &
@@ -2971,9 +2958,6 @@ subroutine crystallite_integrateStateFPI()
  use prec, only: &
    prec_isNaN
  use debug, only: &
-   debug_e, &
-   debug_i, &
-   debug_g, &
    debug_level,&
    debug_crystallite, &
    debug_levelBasic, &
@@ -3459,23 +3443,12 @@ end subroutine crystallite_integrateStateFPI
 !--------------------------------------------------------------------------------------------------
 logical function crystallite_stateJump(g,i,e)
  use debug, only: &
-   debug_level, &
    debug_crystallite, &
    debug_levelExtensive, &
-   debug_levelSelective, &
-   debug_e, &
-   debug_i, &
-   debug_g
- use FEsolving, only: &
-   FEsolving_execElem, &
-   FEsolving_execIP
- use mesh, only: &
-   mesh_element, &
-   mesh_NcpElems
+   debug_levelSelective
  use material, only: &
    plasticState, &
-   mappingConstitutive, &
-   homogenization_Ngrains
+   mappingConstitutive
  use constitutive, only: &
    constitutive_collectDeltaState
 
@@ -3552,7 +3525,8 @@ logical function crystallite_integrateStress(&
       e,&          ! element number
       timeFraction &
       )
- use prec, only:         pLongInt
+ use prec, only:         pLongInt, &
+                         tol_math_check
  use numerics, only:     nStress, &
                          aTol_crystalliteStress, &
                          rTol_crystalliteStress, &
@@ -3563,9 +3537,6 @@ logical function crystallite_integrateStress(&
                          debug_levelBasic, &
                          debug_levelExtensive, &
                          debug_levelSelective, &
-                         debug_e, &
-                         debug_i, &
-                         debug_g, &
                          debug_cumLpCalls, &
                          debug_cumLpTicks, &
                          debug_StressLoopLpDistribution, &
@@ -3592,7 +3563,6 @@ logical function crystallite_integrateStress(&
                          math_Plain33to9, &
                          math_Plain9to33, &
                          math_Plain99to3333
- use mesh, only:         mesh_element
 
  implicit none
  integer(pInt), intent(in)::         e, &                          ! element index
@@ -4150,7 +4120,6 @@ function crystallite_postResults(ipc, ip, el)
  use mesh, only: &
    mesh_element, &
    mesh_ipVolume, &
-   mesh_ipCoordinates, &
    mesh_maxNipNeighbors, &
    mesh_ipNeighborhood, &
    FE_NipNeighbors, &
